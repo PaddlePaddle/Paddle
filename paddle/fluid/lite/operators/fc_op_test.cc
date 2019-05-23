@@ -59,12 +59,8 @@ TEST(fc_op_lite, test) {
 
   fc.SetValidPlaces({Place{TARGET(kHost), PRECISION(kFloat)}});
   fc.Attach(desc, &scope);
-  auto kernels = fc.CreateKernels({Place{TARGET(kHost), PRECISION(kFloat)}});
-  ASSERT_FALSE(kernels.empty());
 }
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
-
-USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);

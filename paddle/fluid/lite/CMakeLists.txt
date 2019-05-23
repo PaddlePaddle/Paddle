@@ -60,7 +60,7 @@ endfunction()
 function(lite_cc_library TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -71,13 +71,21 @@ function(lite_cc_library TARGET)
             ARM_DEPS ${args_ARM_DEPS}
             )
 
-    cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps})
+    cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
 endfunction()
 
+# Add a unit-test name to file for latter offline manual test.
+set(offline_test_registry_file "${CMAKE_BINARY_DIR}/lite_tests.txt")
+file(WRITE ${offline_test_registry_file} "") # clean
+function (register_test_offline TARGET)
+  file(APPEND ${offline_test_registry_file} "${TARGET}\n")
+endfunction()
+
+# Test lite modules.
 function(lite_cc_test TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -87,7 +95,8 @@ function(lite_cc_test TARGET)
             CUDA_DEPS ${args_CUDA_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
             )
-    _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps})
+    _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
+    register_test_offline("${TARGET}")
 endfunction()
 
 add_subdirectory(core)

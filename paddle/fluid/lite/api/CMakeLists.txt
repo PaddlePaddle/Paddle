@@ -25,22 +25,21 @@ set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
         "A path setting inference demo download directories.")
 
 
-lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
-  DEPS cxx_api_lite model_parser_lite target_wrapper_host
-  ${ops_lite} ${host_kernels} ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
-        --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+# lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
+#   DEPS cxx_api_lite model_parser_lite target_wrapper_host
+#   ${ops_lite} ${host_kernels} ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
+#         --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 if(WITH_TESTING)
 lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
-add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
+# add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif(WITH_TESTING)
 
-lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+# lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
 cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
-    DEPS 
+    DEPS
     cxx_api_lite
-    model_parser_lite 
-    target_wrapper_host 
-    mir_passes 
+    model_parser_lite
+    target_wrapper_host
+    mir_passes
     ${ops_lite} ${host_kernels} ${arm_kernels})
- 
