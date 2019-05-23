@@ -2930,9 +2930,12 @@ def adaptive_pool3d(input,
           #                 output[:, :, i, j, k] =
           #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
           #
+
+          import paddle.fluid as fluid
+
           data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          pool_out, mask = fluid.layers.adaptive_pool3d(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3, 3],
                             pool_type='avg')
@@ -3525,10 +3528,13 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         Variable: A tensor variable of weight parameters after spectral normalization.
 
     Examples:
+       .. code-block:: python
 
-        >>> weight = fluid.layers.data(name='weight', shape=[8, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.spectral_norm(weight=data, dim=1, power_iters=2)
+            import paddle.fluid as fluid
+
+            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
+                                       append_batch_size=False, dtype='float32')
+            x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
     dtype = weight.dtype
@@ -5864,7 +5870,7 @@ def transpose(x, perm, name=None):
             # batch size in shape
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
-            x_transposed = layers.transpose(x, perm=[1, 0, 2])
+            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
     """
 
     if len(perm) != len(x.shape):
@@ -6703,8 +6709,8 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
-            x = layers.data(name='x', shape=[5, 10])
-            y = layers.unsequeeze(input=x, axes=[1])
+            x = fluid.layers.data(name='x', shape=[5, 10])
+            y = fluid.layers.unsqueeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -9104,6 +9110,12 @@ def unstack(x, axis=0, num=None):
     Returns:
         list(Variable): The unstacked variables.
 
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
+            y = fluid.layers.unstack(x, axis=1)
+
     """
 
     helper = LayerHelper('unstack', **locals())
@@ -10398,9 +10410,11 @@ def grid_sampler(x, grid, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
-            theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
-            grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[10, 32, 32], dtype='float32')
+            theta = fluid.layers.data(name='theta', shape=[2, 3], dtype='float32')
+            grid = fluid.layers.affine_grid(theta=theta, out_shape=[3, 10, 32, 32])
             out = fluid.layers.grid_sampler(x=x, grid=grid)
 
     """
