@@ -741,6 +741,14 @@ def has_inf(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+          
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_inf(data)
+
     """
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -757,6 +765,14 @@ def has_nan(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+    
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_nan(data)
+
     """
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
