@@ -839,7 +839,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         helper = LayerHelper("dgc_clip_by_norm_op", **args)
 
         if name is None:
-            name = unique_name.generate(".".join([helper.name, 'tmp']))
+            name = unique_name.generate_tmp(".".join([helper.name, 'tmp']))
 
         out = helper.create_variable(
             type=x.type, name=name, dtype=x.dtype, persistable=False)
@@ -1922,7 +1922,8 @@ class ModelAverage(Optimizer):
         ).all_parameters():
             if param.do_model_average != False:
                 grad = param.block.create_var(
-                    name=unique_name.generate(".".join([param.name, 'tmp'])),
+                    name=unique_name.generate_tmp(".".join([param.name, 'tmp'
+                                                            ])),
                     dtype=param.dtype,
                     persistable=False,
                     stop_gradient=True)

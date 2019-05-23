@@ -58,6 +58,14 @@ def generate(key):
     return generator(key)
 
 
+def generate_tmp(key):
+    from .framework import in_dygraph_mode
+    if in_dygraph_mode():
+        key = "tmp"
+
+    return generator(key)
+
+
 def switch(new_generator=None):
     global generator
     old = generator
