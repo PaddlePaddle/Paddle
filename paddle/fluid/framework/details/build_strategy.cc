@@ -16,16 +16,18 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <memory>
+#include <unordered_set>
 #include <utility>
-#include "paddle/fluid/framework/details/memory_optimize_helper.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
-#include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
+#include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
+#include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_print_pass.h"
+
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -56,8 +58,24 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Note(zcd): record_skip_memory_opt_vars_pass should be the first pass.
     AppendPass("record_skip_memory_opt_vars_pass");
 
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) {
+      VLOG(5) << "Add mkldnn_placement_pass";
+      AppendPass("mkldnn_placement_pass");
+    } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
+      LOG(WARNING)
+          << "mkldnn_enabled_op_types specify the operator type list to "
+             "use MKLDNN acceleration. It is null in default, means "
+             "that all the operators supported by MKLDNN will be "
+             "accelerated. And it should not be set when "
+             "FLAGS_use_mkldnn=false.";
+    }
+#else
+    PADDLE_ENFORCE(!FLAGS_use_mkldnn,
+                   "Please compile with MKLDNN first to use MKLDNN");
+#endif
     if (strategy_.enable_sequential_execution_) {
-      VLOG(10) << "Add sequential_execution_pass";
+      VLOG(5) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
     }
 
@@ -68,7 +86,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add op fusion.
     if (strategy.fuse_relu_depthwise_conv_) {
-      VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
+      VLOG(5) << "Add fuse_relu_depthwise_conv_pass";
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
@@ -80,19 +98,19 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add automatically inplace.
     if (strategy_.enable_inplace_) {
-      VLOG(10) << "Add inplace_pass";
+      VLOG(5) << "Add inplace_pass";
       AppendPass("inplace_pass");
     }
 
     if (strategy_.fuse_elewise_add_act_ops_) {
-      VLOG(10) << "Add fuse_elewise_add_act_pass";
+      VLOG(5) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
     if (strategy_.fuse_all_reduce_ops_) {
-      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+      VLOG(5) << "Add alloc_continuous_space_for_grad_pass";
       AppendPass("alloc_continuous_space_for_grad_pass");
     }
 
@@ -107,10 +125,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         // NOTE: fuse_all_xx_ops will count the number of xx operator first,
         // if the number is zero, fuse_all_reduce_ops will do nothing.
         // Currently, only one type of optimization algorithm can be fused.
-        VLOG(10) << "Add fuse_adam_op_pass";
+        VLOG(5) << "Add fuse_adam_op_pass";
         AppendPass("fuse_adam_op_pass");
-        VLOG(10) << "Add fuse_sgd_op_pass";
+        VLOG(5) << "Add fuse_sgd_op_pass";
         AppendPass("fuse_sgd_op_pass");
+        VLOG(5) << "Add fuse_momentum_op_pass";
+        AppendPass("fuse_momentum_op_pass");
       }
     }
 
@@ -139,7 +159,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
     if (strategy_.memory_optimize_) {
-      VLOG(10) << "Add memory_optimize_pass";
+      VLOG(5) << "Add memory_optimize_pass";
       AppendPass("memory_optimize_pass");
     }
 
@@ -147,13 +167,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
     if (strategy_.cache_runtime_context_) {
-      VLOG(10) << "Add runtime_context_cache_pass";
+      VLOG(5) << "Add runtime_context_cache_pass";
       AppendPass("runtime_context_cache_pass");
-    }
-
-    if (strategy_.cache_expected_kernel_) {
-      VLOG(10) << "Add expected_kernel_cache_pass";
-      AppendPass("expected_kernel_cache_pass");
     }
 
     AppendMultiDevPass(strategy_);
@@ -161,7 +176,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.fuse_all_reduce_ops_) {
       // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
       // first, if the number is zero, fuse_all_reduce_ops will do nothing.
-      VLOG(10) << "Add fuse_all_reduce_op_pass";
+      VLOG(5) << "Add fuse_all_reduce_op_pass";
       AppendPass("fuse_all_reduce_op_pass");
     }
 
@@ -171,10 +186,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       const std::string graph_path =
           string::Sprintf("%s%s", strategy_.debug_graphviz_path_.c_str(),
                           "_multi_devices_graph");
-      multi_devices_print_pass->Set<std::string>(kGraphvizPath,
+      multi_devices_print_pass->Set<std::string>(ir::kGraphvizPath,
                                                  new std::string(graph_path));
-      multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
-          "graph_printer", new details::GraphvizSSAGraphPrinter);
+      multi_devices_print_pass->Set<ir::GraphvizSSAGraphPrinter>(
+          "graph_printer", new ir::GraphvizSSAGraphPrinter);
     }
 
     // experimental shows that the program will be faster if append
@@ -182,12 +197,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (!strategy_.enable_parallel_graph_ &&
         (SeqOnlyAllReduceOps(strategy_) ||
          strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce)) {
-      VLOG(10) << "Add all_reduce_deps_pass";
+      VLOG(5) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
 
     if (strategy_.remove_unnecessary_lock_) {
-      VLOG(10) << "Add modify_op_lock_and_record_event_pass";
+      VLOG(5) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
 
@@ -202,16 +217,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.async_mode_) {
       multi_devices_pass = AppendPass("async_multi_devices_pass").get();
     } else if (strategy_.is_distribution_) {
-      VLOG(10)
+      VLOG(5)
           << "Add dist_multi_devices_pass, multi device parameter server mode";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
-        VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
+        VLOG(5) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-        VLOG(10) << "Add reduce_mode_multi_devices_pass";
+        VLOG(5) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
         PADDLE_THROW("Unknown reduce strategy.");
@@ -238,7 +253,7 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 }
 
 bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
-  return framework::details::MultiDevSSAGraphBuilder().count(pass_name) > 0;
+  return framework::ir::MultiDevSSAGraphBuilder().count(pass_name) > 0;
 }
 
 ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
@@ -261,13 +276,13 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
-      pass->Erase(kLossVarName);
-      pass->SetNotOwned<const std::string>(kLossVarName, &loss_var_name);
+      pass->Erase(ir::kLossVarName);
+      pass->SetNotOwned<const std::string>(ir::kLossVarName, &loss_var_name);
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase(kNRanks);
-      pass->Set<size_t>(kNRanks, new size_t(nranks));
+      pass->Erase(ir::kNRanks);
+      pass->Set<size_t>(ir::kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
@@ -277,6 +292,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
                pass->Type() == "fuse_sgd_op_pass" ||
+               pass->Type() == "fuse_momentum_op_pass" ||
                pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -308,6 +324,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "inplace_pass") {
+      pass->Erase(ir::kUseCuda);
+      pass->Set<bool>(ir::kUseCuda, new bool(use_cuda));
+    } else if (pass->Type() == "mkldnn_placement_pass") {
+      pass->Set("mkldnn_enabled_op_types",
+                new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
@@ -341,7 +363,10 @@ USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
+USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
-USE_PASS(expected_kernel_cache_pass);
 USE_PASS(record_skip_memory_opt_vars_pass);
+#ifdef PADDLE_WITH_MKLDNN
+USE_PASS(mkldnn_placement_pass);
+#endif

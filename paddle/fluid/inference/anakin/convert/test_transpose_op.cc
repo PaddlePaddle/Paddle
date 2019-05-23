@@ -20,12 +20,12 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(transpose_op, test) {
-  auto* converter = Registry<AnakinOpConverter>::Global().Lookup("transpose");
-  ASSERT_TRUE(converter != nullptr);
+template <typename TargetT>
+void test_transpose1_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("transpose-X", {2, 3, 4, 5});
   validator.DeclOutputVar("transpose-Out", {4, 2, 5, 3});
 
@@ -43,11 +43,12 @@ TEST(transpose_op, test) {
   validator.Execute(3);
 }
 
-// test input shape's dims < 4
-TEST(transpose_op, test2) {
+template <typename TargetT>
+void test_transpose2_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("transpose-X", {3, 4, 5});
   validator.DeclOutputVar("transpose-Out", {3, 5, 4});
 
@@ -65,9 +66,38 @@ TEST(transpose_op, test2) {
   validator.Execute(1);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(transpose1_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_transpose1_op<::anakin::saber::NV>(ctx, true);
+}
+
+TEST(transpose2_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_transpose2_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(transpose1_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_transpose2_op<::anakin::saber::X86>(ctx, false);
+}
+
+TEST(transpose2_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_transpose2_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(transpose);
+USE_CPU_ANAKIN_CONVERTER(transpose);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(transpose);
+#endif

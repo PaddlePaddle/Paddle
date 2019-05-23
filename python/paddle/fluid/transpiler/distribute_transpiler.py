@@ -158,6 +158,7 @@ class DistributeTranspilerConfig(object):
     wait_port = True
     # split the send recv var in runtime
     runtime_split_send_recv = False
+    sync_mode = True
 
 
 class DistributeTranspiler(object):
@@ -1016,7 +1017,8 @@ class DistributeTranspiler(object):
                 new_inputs = self._get_input_map_from_op(pserver_vars, op)
 
                 if op.type in [
-                        "gaussian_random", "fill_constant", "uniform_random"
+                        "gaussian_random", "fill_constant", "uniform_random",
+                        "truncated_gaussian_random"
                 ]:
                     op._set_attr("shape", list(new_outputs["Out"].shape))
                 s_prog.global_block().append_op(
