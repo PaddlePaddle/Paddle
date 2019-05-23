@@ -87,5 +87,5 @@ modules = sys.argv[1].split(",")
 for m in modules:
     visit_all_module(importlib.import_module(m))
 
-#for name in member_dict:
-#    print(name, member_dict[name])
+for name in member_dict:
+    print(name, member_dict[name])
