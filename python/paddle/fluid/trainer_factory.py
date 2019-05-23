@@ -38,4 +38,5 @@ class TrainerFactory(object):
             device_worker._set_fleet_desc(opt_info["fleet_desc"])
             trainer._set_device_worker(device_worker)
             trainer._set_fleet_desc(opt_info["fleet_desc"])
+            trainer._set_use_cvm(opt_info["use_cvm"])
         return trainer

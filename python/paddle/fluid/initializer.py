@@ -824,6 +824,7 @@ class NumpyArrayInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            x = fluid.layers.data(name="x", shape=[5], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
     """
