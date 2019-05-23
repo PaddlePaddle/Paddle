@@ -164,22 +164,15 @@ inline std::string GetFlatNCCLVarName(size_t pos) {
   if (pos == 0) {
     return NCCL_ID_VARNAME;
   }
-  char name[256];
-  snprintf(name, sizeof(name) - 1, "%s_%d", NCCL_ID_VARNAME,
-           static_cast<int>(pos));
-  return name;
+  return string::Sprintf("%s_%d", NCCL_ID_VARNAME, static_cast<int>(pos));
 }
 
 inline std::string GetHierarchicalExterNCCLVarName(size_t pos) {
-  char name[256];
-  snprintf(name, sizeof(name) - 1, "Hierarchical_exter_%s_%d", NCCL_ID_VARNAME,
-           static_cast<int>(pos));
-  return name;
+  return string::Sprintf("Hierarchical_exter_%s_%d", NCCL_ID_VARNAME,
+                         static_cast<int>(pos));
 }
 inline std::string GetHierarchicalInterNCCLVarName() {
-  char name[256];
-  snprintf(name, sizeof(name) - 1, "Hierarchical_inter_%s", NCCL_ID_VARNAME);
-  return name;
+  return string::Sprintf("Hierarchical_inter_%s", NCCL_ID_VARNAME);
 }
 
 class MultiNCCLContextMap {

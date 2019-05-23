@@ -161,7 +161,7 @@ class DistributeTranspilerConfig(object):
     sync_mode = None
 
     nccl_comm_num = 1
-    #The picture is here:
+    #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
     #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.

@@ -98,7 +98,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatNcclAllReduce(platform::Place place, const void* sendbuff,
+  void FlatNCCLAllReduce(platform::Place place, const void* sendbuff,
                          void* recvbuff, size_t count, ncclDataType_t datatype,
                          ncclRedOp_t op) {
     PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
@@ -121,7 +121,7 @@ class NCCLOpHandleBase : public OpHandleBase {
                      ncclRedOp_t op) {
     PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
     if (!use_hierarchical_allreduce_) {
-      FlatNcclAllReduce(place, sendbuff, recvbuff, count, datatype, op);
+      FlatNCCLAllReduce(place, sendbuff, recvbuff, count, datatype, op);
       return;
     }
 
