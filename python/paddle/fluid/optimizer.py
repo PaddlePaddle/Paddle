@@ -2165,21 +2165,23 @@ class ExponentialMovingAverage(object):
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
     will be
 
-    ..  math:
+    ..  math::
 
 	\\text{EMA}_t = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+
  
     The average results will be saved in temporary variables which can be 
-    applied to parameters of current model by calling 'apply()' method. And 
-    the 'restore()' method is used to restore the parameter values of 
-    current model.
+    applied to parameters of current model by calling `apply()` method. And 
+    the `restore()` method is used to restore the parameters.
+
 
     Args:
-	decay (float|Variable): The exponential decay rate. Can be scheduled 
-                                in the same way as learning rate.
-	zero_init (bool): Whether using zero to initialize EMA Variable. If `True`, 
-            :math:`\\text{EMA}_0 = 0.0` else :math:`\\text{EMA}_0 = \\theta_0`.
+	decay (float|Variable): The exponential decay rate. Can be scheduled like 
+                                learning rate.
+	zero_init (bool): Whether using zero to initialize EMA Variable. If set to 
+            `True`, :math:`\\text{EMA}_0 = 0.0` else :math:`\\text{EMA}_0 = \\theta_0`.
 	name (str|None): An optional name prefix.
+
 
     Examples:
 
@@ -2271,7 +2273,12 @@ class ExponentialMovingAverage(object):
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
-        """Apply average values to parameters of current model.
+        """
+        Apply moving average to parameters for evaluation.
+        
+        Args:
+            executor (Executor): The Executor to execute applying.
+            need_restore (bool): Whether to restore parameters after applying.
         """
         executor.run(self.apply_program)
         try:
@@ -2281,6 +2288,9 @@ class ExponentialMovingAverage(object):
                 self.restore(executor)
 
     def restore(self, executor):
-        """Restore parameter values of current model.
+        """Restore parameter after evaluation.
+        
+        Args:
+            executor (Executor): The Executor to execute restoring.
         """
         executor.run(self.restore_program)
