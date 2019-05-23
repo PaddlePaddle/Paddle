@@ -169,13 +169,13 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
                       "The spatial scale must greater than 0");
     PADDLE_ENFORCE_EQ(group_size.size(), 2,
-                      "thr size of group_size should be 2.");
+                      "The size of group_size should be 2.");
     PADDLE_ENFORCE_GT(group_height, 0,
                       "The group_height in group_size must greater than 0");
     PADDLE_ENFORCE_GT(group_width, 0,
                       "The group_width in group_size must greater than 0");
     PADDLE_ENFORCE_EQ(part_size.size(), 2,
-                      "thr size of part_size should be 2.");
+                      "The size of part_size should be 2.");
     PADDLE_ENFORCE_GT(part_height, 0,
                       "The part_height in part_size must greater than 0");
     PADDLE_ENFORCE_GT(part_width, 0,
