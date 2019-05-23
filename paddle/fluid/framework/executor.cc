@@ -63,11 +63,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {
-  cur_step_ = 0;
-  open_ctx_cache_ = false;
-  ctx_is_cached_ = false;
-}
+Executor::Executor(const platform::Place& place) : place_(place) {}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -151,17 +147,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool force_disable_gc) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
-
-  if (open_ctx_cache_) {
-    if (!ctx_is_cached_) {
-      PrepareCtxCache(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-      ctx_is_cached_ = true;
-    }
-    RunPreparedContext(ctx_.get(), scope, create_local_scope, create_vars);
-  } else {
-    auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-    RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
-  }
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -252,21 +239,23 @@ static bool has_fetch_operators(
   return fetch_count > 0;
 }
 
-void Executor::PrepareCtxCache(
+std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
     const ProgramDesc& program, int block_id,
     const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
-  ctx_.reset(new ExecutorPrepareContext(program, block_id));
+  std::unique_ptr<ExecutorPrepareContext> ctx;
+  ctx.reset(new ExecutorPrepareContext(program, block_id));
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
-    ctx_->ops_.push_back(OpRegistry::CreateOp(*op_desc));
+    ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 #ifdef PADDLE_WITH_NGRAPH
   if (FLAGS_use_ngraph) {
     paddle::operators::NgraphEngine::FuseNgraphOps(
-        ctx_->prog_.Block(ctx_->block_id_), &ctx_->ops_);
+        ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
   }
 #endif
-  ctx_->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
+  ctx->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
+  return ctx;
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
@@ -377,44 +366,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
-    }
-  }
-}
-
-void Executor::RunPreparedContext(
-    ExecutorPrepareContext* ctx, Scope* scope,
-    std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
-    bool create_vars, const std::string& feed_holder_name,
-    const std::string& fetch_holder_name) {
-  auto& global_block = ctx->prog_.Block(ctx->block_id_);
-
-  PADDLE_ENFORCE(
-      has_feed_operators(global_block, *feed_targets, feed_holder_name),
-      "Program in ExecutorPrepareContext should has feed_ops.");
-  PADDLE_ENFORCE(
-      has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
-      "Program in the prepared context should has fetch_ops.");
-
-  // map the data of feed_targets to feed_holder
-  for (auto* op : global_block.AllOps()) {
-    if (op->Type() == kFeedOpType) {
-      std::string feed_target_name = op->Output("Out")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
-      SetFeedVariable(scope, *(*feed_targets)[feed_target_name],
-                      feed_holder_name, idx);
-    }
-  }
-
-  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
-
-  // obtain the data of fetch_targets from fetch_holder
-  for (auto* op : global_block.AllOps()) {
-    if (op->Type() == kFetchOpType) {
-      std::string fetch_target_name = op->Input("X")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
-      *(*fetch_targets)[fetch_target_name] =
-          GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }
 }

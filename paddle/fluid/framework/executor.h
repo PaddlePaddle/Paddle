@@ -31,14 +31,16 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
+class ExecutorPrepareContext {
+ public:
+  explicit ExecutorPrepareContext(const ProgramDesc& prog, size_t block_id);
 
   ~ExecutorPrepareContext();
 
   void PrepareUnusedVars(const std::vector<std::string>& keep_vars,
                          bool force_disable_gc = false);
 
+ public:
   const framework::ProgramDesc& prog_;
   const size_t block_id_;
 
@@ -75,17 +77,11 @@ class Executor {
                std::vector<std::string>(),
            bool force_disable_gc = false);
 
-  void SetCtxCacheFlag(const bool& flag) {
-    open_ctx_cache_ = flag;
-    // each time a user set ctx cache flag
-    // ctx is cached should be set false
-    ctx_is_cached_ = false;
-  }
-
-  void PrepareCtxCache(const ProgramDesc& program, int block_id,
-                       const std::vector<std::string>& skip_ref_cnt_vars =
-                           std::vector<std::string>(),
-                       bool force_disable_gc = false);
+  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
+      const ProgramDesc& program, int block_id,
+      const std::vector<std::string>& skip_ref_cnt_vars =
+          std::vector<std::string>(),
+      bool force_disable_gc = false);
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
@@ -106,13 +102,12 @@ class Executor {
                           bool create_vars = true, bool keep_kids = false);
 
   // This API is very slow.
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                          std::map<std::string, const LoDTensor*>* feed_targets,
-                          std::map<std::string, LoDTensor*>* fetch_targets,
-                          bool create_local_scope = true,
-                          bool create_vars = true,
-                          const std::string& feed_holder_name = "feed",
-                          const std::string& fetch_holder_name = "fetch");
+  void Run(const ProgramDesc& program, Scope* scope,
+           std::map<std::string, const LoDTensor*>* feed_targets,
+           std::map<std::string, LoDTensor*>* fetch_targets,
+           bool create_local_scope = true, bool create_vars = true,
+           const std::string& feed_holder_name = "feed",
+           const std::string& fetch_holder_name = "fetch");
 
   void EnableMKLDNN(const ProgramDesc& program);
 
@@ -121,10 +116,6 @@ class Executor {
 
  private:
   const platform::Place place_;
-  bool open_ctx_cache_;
-  bool ctx_is_cached_;
-  std::unique_ptr<ExecutorPrepareContext> ctx_;
-  int64_t cur_step_;
 };
 
 }  // namespace framework
