@@ -1636,5 +1636,21 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     }
   }
 }
+
+template <typename DeviceContext, typename T>
+static inline void GetDoubleGradSafeTensor(
+    const framework::ExecutionContext &ctx, const framework::Tensor *x,
+    const framework::Tensor *ddx, framework::Tensor *ddx_safe) {
+  if (ddx) {
+    *ddx_safe = *ddx;
+  } else {
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+    *ddx_safe = ctx.AllocateTmpTensor<T, DeviceContext>(x->dims(), dev_ctx);
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(ctx.template device_context<DeviceContext>(), ddx_safe,
+             static_cast<T>(0));
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

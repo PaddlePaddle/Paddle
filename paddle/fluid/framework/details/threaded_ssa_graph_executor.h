@@ -44,6 +44,7 @@ struct OpDependentData {
   std::unordered_map<OpHandleBase *, size_t> pending_ops_;
   std::unordered_set<VarHandleBase *> pending_vars_;
   std::unordered_set<OpHandleBase *> ready_ops_;
+  size_t num_ops_{0};
 };
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
@@ -80,6 +81,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::list<std::future<void>> run_op_futures_;
   ::ThreadPool prepare_pool_;
   std::unique_ptr<::ThreadPool> pool_;
+  std::vector<OpHandleBase *> traced_ops_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
@@ -89,7 +91,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                         VarHandleBase *var) const;
 
   void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
-                      std::vector<FetchOpHandle *> *fetch_ops,
+                      std::vector<OpHandleBase *> *fetch_ops,
                       std::unordered_set<VarHandleBase *> *fetch_dependencies,
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
@@ -97,7 +99,16 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       FeedFetchList *fetch_data);
 
   void PrepareOpDeps();
+
   void CopyOpDeps();
+
+  inline void RecordOps(OpHandleBase *op);
+
+  inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
+
+  inline void RunOpSync(OpHandleBase *op);
+
+  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 };
 
 }  // namespace details
