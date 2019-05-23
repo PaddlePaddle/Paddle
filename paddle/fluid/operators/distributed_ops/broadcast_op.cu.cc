@@ -43,23 +43,24 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
 
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-    out->Resize(in->dims());
-    void* recv_buffer = out->mutable_data<T>(ctx.GetPlace());
-    const void* send_buffer = in->data<void>();
-
-    int in_dev_id = boost::get<platform::CUDAPlace>(in->place()).device;
-    PADDLE_ENFORCE_EQ(dev_id, in_dev_id);
+    PADDLE_ENFORCE(out->IsInitialized(),
+                   "Currently, the output of broadcast op must be initialized, "
+                   "because this op can only be an In-Place operation.");
+    void* send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
+    PADDLE_ENFORCE_EQ(
+        send_recv_buffer, in->data<void>(),
+        "Currently, the broadcast op can only be an In-Place operation.");
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
 
-    PADDLE_ENFORCE(platform::dynload::ncclBroadcast(
-        send_buffer, recv_buffer, static_cast<size_t>(in->numel()),
+    PADDLE_ENFORCE(platform::dynload::ncclBcast(
+        send_recv_buffer, static_cast<size_t>(in->numel()),
         platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
 
     VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << ", (" << in->numel() << ")"
-            << " From " << root_dev_id << " to " << in_dev_id;
+            << " From " << root_dev_id << " to " << dev_id;
 
     if (ctx.Attr<bool>("sync_mode")) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
