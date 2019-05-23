@@ -159,13 +159,44 @@ void compare_sum(size_t n, std::function<void(const size_t, const T*, T*)> tgt,
 TEST(CpuVecTest, vec_sum) {
   namespace platform = paddle::platform;
   using namespace paddle::operators::math;  // NOLINT
-
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     compare_sum<float>(sz, vec_sum<float>, vec_sum<float, platform::isa_any>);
     compare_sum<float>(sz, vec_sum<float, platform::avx>,
                        vec_sum<float, platform::isa_any>);
   }
   compare_sum<double>(30U, vec_sum<double>, vec_sum<double, platform::isa_any>);
+}
+
+template <typename T>
+void compare_clip(
+    size_t n, T threshold,
+    std::function<void(const size_t, const T, const T*, T*)> tgt,
+    std::function<void(const size_t, const T, const T*, T*)> ref) {
+  std::vector<T> x(n);
+  std::vector<T> ytgt(n), yref(n);
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  T* yref_data = yref.data();
+  T* ytgt_data = ytgt.data();
+  tgt(n, threshold, x_data, ytgt_data);
+  ref(n, threshold, x_data, yref_data);
+  for (int i = 0; i < n; ++i) {
+    EXPECT_NEAR(ytgt_data[i], yref_data[i], 1e-3);
+  }
+}
+
+TEST(CpuVecTest, vec_clip) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_clip<float>(sz, -4.f, vec_clip<float>,
+                        vec_clip<float, platform::isa_any>);
+    compare_clip<float>(sz, -1.1f, vec_clip<float, platform::avx>,
+                        vec_clip<float, platform::isa_any>);
+  }
+  compare_clip<double>(30U, 1.0, vec_clip<double>,
+                       vec_clip<double, platform::isa_any>);
 }
 
 template <typename T>
