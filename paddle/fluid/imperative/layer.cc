@@ -345,6 +345,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
     }
   }
 
+  platform::RecordEvent record_event("merge_grads");
   // Add tmp grad outputs to original grad vars
   for (size_t k = 0; k < grad_output_vars_.size(); ++k) {
     for (const auto& it : grad_output_vars_[k]) {
