@@ -84,6 +84,7 @@ using enable_if_CPU = typename std::enable_if<
 
 template <typename DeviceContext, typename T, bool is_test>
 class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
+ public:
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
     auto in_dims = X->dims();
@@ -101,6 +102,8 @@ class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
         T max_val = *std::max_element(in_data, in_data + num_classes);
         max_val *= static_cast<T>(-1);
         vec_add_bias<T, platform::avx>(num_classes, max_val, in_data, out_data);
+        vec_clip<T, platform::avx>(num_classes, static_cast<T>(-64), out_data,
+                                   out_data);
         vec_exp<T>(num_classes, out_data, out_data);
 
         T sum = 0;
@@ -119,6 +122,7 @@ class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
 
 template <typename DeviceContext>
 class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
+ public:
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
     auto in_dims = X->dims();

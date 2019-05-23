@@ -291,6 +291,39 @@ inline void vec_cross<float, platform::avx512f>(const int n, const float* x,
 }
 
 template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_clip(const size_t n, const T a, const T* x, T* y) {
+  for (size_t i = 0; i < n; ++i) {
+    y[i] = x[i] < a ? a : x[i];
+  }
+}
+
+template <>
+inline void vec_clip<float, platform::avx>(const size_t n, const float a,
+                                           const float* x, float* y) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_clip<float, platform::isa_any>(n, a, x, y);
+    return;
+  }
+
+  unsigned int i = 0, end = 0;
+  end = n & ~(block - 1);
+  __m256 threshold = _mm256_set1_ps(a);
+
+  for (i = 0; i < end; i += block) {
+    _mm256_storeu_ps(y + i, _mm256_max_ps(_mm256_loadu_ps(x + i), threshold));
+  }
+
+  for (; i < n; i++) {
+    y[i] = x[i] < a ? a : x[i];
+  }
+#else
+  vec_clip<float, platform::isa_any>(n, a, x, y);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] + a;
