@@ -33,7 +33,8 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.channels = 3 * 2 * 2
         self.height = 12
         self.width = 12
-        self.input_dim = [self.batch_size, self.channels, self.height, self.width]
+        self.input_dim = [self.batch_size, self.channels, 
+                          self.height, self.width]
         self.no_trans = 1
         self.spatial_scale = 1.0 / 4.0
         self.output_channels = 12
@@ -56,7 +57,6 @@ class TestDeformablePSROIPoolOp(OpTest):
                     0, self.width // self.spatial_scale - self.pooled_width)
                 y1 = np.random.random_integers(
                     0, self.height // self.spatial_scale - self.pooled_height)
-
                 x2 = np.random.random_integers(x1 + self.pooled_width,
                                                self.width // self.spatial_scale)
                 y2 = np.random.random_integers(
@@ -92,8 +92,8 @@ class TestDeformablePSROIPoolOp(OpTest):
         return val
     
     def calc_deformable_psroi_pooling(self):
-        output_shape = (self.rois_num, self.output_channels, self.pooled_height, self.pooled_width)
-
+        output_shape = (self.rois_num, self.output_channels,
+                        self.pooled_height, self.pooled_width)
         self.out = np.zeros(output_shape)
         top_count = np.zeros(output_shape)
         self.trans = np.random.rand(self.rois_num, 2, self.part_size[0], 
@@ -105,40 +105,32 @@ class TestDeformablePSROIPoolOp(OpTest):
             ph = int(index / self.pooled_width % self.pooled_height)
             ctop = int(index / self.pooled_width / self.pooled_height % self.output_channels)
             n = int(index / self.pooled_width / self.pooled_height / self.output_channels)
-
             roi = self.rois[n]
             roi_batch_id = int(roi[0])
             roi_start_w = int(np.round(roi[1])) * self.spatial_scale - 0.5
             roi_start_h = int(np.round(roi[2])) * self.spatial_scale - 0.5
             roi_end_w = int(np.round(roi[3]+1)) * self.spatial_scale - 0.5
             roi_end_h = int(np.round(roi[4]+1)) * self.spatial_scale - 0.5
-
             roi_width = max(roi_end_w - roi_start_w, 0.1)
             roi_height = max(roi_end_h - roi_start_h, 0.1)
-
             bin_size_h = float(roi_height) / float(self.pooled_height);
             bin_size_w = float(roi_width) / float(self.pooled_width);
-
             sub_bin_size_h = bin_size_h / self.sample_per_part;
             sub_bin_size_w = bin_size_w / self.sample_per_part;
-
             part_h = int(np.floor(ph) / self.pooled_height * self.part_size[0])
             part_w = int(np.floor(pw) / self.pooled_width * self.part_size[1])
-
             if self.no_trans:
                 trans_x = 0
                 trans_y = 0
             else:
                 trans_x = self.trans[n][0][part_h][part_w] * self.trans_std
                 trans_y = self.trans[n][1][part_h][part_w] * self.trans_std
-
             wstart = pw * bin_size_w + roi_start_w
             wstart = wstart + trans_x * roi_width
             hstart = ph * bin_size_h + roi_start_h
             hstart = hstart + trans_y * roi_height
-
             sum = 0
-            count_time = 0
+            num_sample = 0
             gw = np.floor(pw * self.group_size[0] / self.pooled_height)
             gh = np.floor(ph * self.group_size[1] / self.pooled_width)
             gw = min(max(gw, 0), self.group_size[0] - 1)
@@ -157,12 +149,12 @@ class TestDeformablePSROIPoolOp(OpTest):
                     c = int((ctop * self.group_size[0] + gh) * self.group_size[1] + gw)
                     val = self.dmc_bilinear(input_i[c], h, w)
                     sum = sum + val
-                    count_time = count_time + 1
-            if count_time == 0 :
+                    num_sample = num_sample + 1
+            if num_sample == 0 :
                 self.out[n][c][ph][pw] = 0
             else:
-                self.out[n][c][ph][pw] = sum / count_time
-            self.top_count[n][c][ph][pw] = count_time
+                self.out[n][c][ph][pw] = sum / num_sample
+            self.top_count[n][c][ph][pw] = num_sample
             
     def setUp(self):
         self.op_type = "deformable_psroi_pooling"
