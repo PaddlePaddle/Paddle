@@ -34,7 +34,8 @@ template <typename T>
 class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()));
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                   "The place of ExecutionContext should be CUDAPlace.");
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     int dev_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).device;
@@ -43,30 +44,28 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     out->Resize(in->dims());
+    void* recv_buffer = out->mutable_data<T>(ctx.GetPlace());
+    const void* send_buffer = in->data<void>();
 
-    const int in_dev_id = boost::get<platform::CUDAPlace>(in->place()).device;
+    int in_dev_id = boost::get<platform::CUDAPlace>(in->place()).device;
     PADDLE_ENFORCE_EQ(dev_id, in_dev_id);
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
 
-    void* send_recv_buffer = const_cast<void*>(in->data<void>());
-    if (root_dev_id != in_dev_id) {
-      send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
-    }
-
-    VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << ", ("
-            << static_cast<size_t>(in->numel()) << ")"
-            << " From " << root_dev_id << " to " << in_dev_id;
-
-    PADDLE_ENFORCE(platform::dynload::ncclBcast(
-        send_recv_buffer, static_cast<size_t>(in->numel()),
+    PADDLE_ENFORCE(platform::dynload::ncclBroadcast(
+        send_buffer, recv_buffer, static_cast<size_t>(in->numel()),
         platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
+
+    VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << ", (" << in->numel() << ")"
+            << " From " << root_dev_id << " to " << in_dev_id;
 
     if (ctx.Attr<bool>("sync_mode")) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
     }
+#else
+    PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
   }
 };
