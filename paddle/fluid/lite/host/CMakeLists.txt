@@ -1,2 +1,1 @@
-cc_library(target_wrapper_host SRCS target_wrapper.cc DEPS target_wrapper_lite)
- 
+cc_library(target_wrapper_host SRCS target_wrapper.cc)

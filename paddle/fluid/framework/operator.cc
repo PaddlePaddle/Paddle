@@ -39,6 +39,10 @@ DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 namespace paddle {
 namespace framework {
 
+OpDuppy op_duppy;
+Scope scope_duppy;
+RuntimeContext runtime_context_duppy({}, {});
+
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),

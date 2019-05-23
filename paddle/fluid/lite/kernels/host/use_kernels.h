@@ -15,8 +15,5 @@
 #pragma once
 #include "paddle/fluid/lite/core/op_registry.h"
 
-USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);

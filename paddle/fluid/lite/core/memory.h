@@ -18,57 +18,16 @@
 namespace paddle {
 namespace lite {
 
-static void* TargetMalloc(TargetType target, size_t size) {
-  void* data{nullptr};
-  switch (target) {
-    case TargetType::kHost:
-#ifdef LITE_WITH_X86
-    case TargetType::kX86:
-#endif
-      data = TargetWrapper<TARGET(kHost)>::Malloc(size);
-      break;
-#ifdef LITE_WITH_CUDA
-    case TargetType::kCUDA:
-      data =
-          TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>::Malloc(size);
-      break;
-#endif  // LITE_WITH_CUDA
-    default:
-      LOG(FATAL) << "Unknown supported target " << TargetToStr(target);
-  }
-  return data;
-}
+// Malloc memory for a specific Target. All the targets should be an element in
+// the `switch` here.
+void* TargetMalloc(TargetType target, size_t size);
 
-static void TargetFree(TargetType target, void* data) {
-  switch (static_cast<int>(target)) {
-    case static_cast<int>(TargetType::kX86):
-      TargetWrapper<TARGET(kX86)>::Free(data);
-      break;
-    case static_cast<int>(TargetType::kCUDA):
-      TargetWrapper<TARGET(kX86)>::Free(data);
-      break;
-    default:
-      LOG(FATAL) << "Unknown type";
-  }
-}
+// Free memory for a specific Target. All the targets should be an element in
+// the `switch` here.
+void TargetFree(TargetType target, void* data);
 
-static void TargetCopy(TargetType target, void* dst, const void* src,
-                       size_t size) {
-  switch (target) {
-    case TargetType::kX86:
-    case TargetType::kHost:
-      TargetWrapper<TARGET(kHost)>::MemcpySync(dst, src, size,
-                                               IoDirection::DtoD);
-      break;
-
-    case TargetType::kCUDA:
-      TargetWrapper<TARGET(kCUDA)>::MemcpySync(dst, src, size,
-                                               IoDirection::DtoD);
-      break;
-    default:
-      LOG(FATAL) << "unsupported type";
-  }
-}
+// Copy a buffer from host to another target.
+void TargetCopy(TargetType target, void* dst, const void* src, size_t size);
 
 // Memory buffer manager.
 class Buffer {

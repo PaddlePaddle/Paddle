@@ -427,7 +427,7 @@ function(raw_cc_test TARGET_NAME)
   endif()
 endfunction(raw_cc_test)
 
-function(lite_cc_test args)
+function(_lite_cc_test args)
   if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "building lite raw test: ${args}")
     raw_cc_test(${args} ${ARGN})

@@ -25,22 +25,8 @@ namespace lite {
 
 void Run(const char* model_dir) {
   lite::ExecutorLite predictor;
-  // #ifndef LITE_WITH_CUDA
-  //   std::vector<Place> valid_places({Place{TARGET(kHost),
-  //   PRECISION(kFloat)}});
-  // #elif defined(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-  // #else
-  //   std::vector<Place> valid_places({
-  //       Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
-  //       Place{TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW)},
-  //       Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kNCHW)},
-  //       Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kNCHW)},
-  //       Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)},
-  //       Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)},
-  //   });
-  // #endif
-
-  std::vector<Place> valid_places({Place{TARGET(kARM), PRECISION(kFloat)}});
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kARM), PRECISION(kFloat)}});
 
   predictor.Build(model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
                   valid_places);
@@ -52,8 +38,6 @@ void Run(const char* model_dir) {
     data[i] = i;
   }
 
-  LOG(INFO) << "input " << *input_tensor;
-
   predictor.Run();
 
   auto* out = predictor.GetOutput(0);
@@ -61,7 +45,7 @@ void Run(const char* model_dir) {
   LOG(INFO) << "out " << out->data<float>()[0];
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
-  LOG(INFO) << "out " << *out;
+  LOG(INFO) << "out data size: " << out->data_size();
 }
 
 }  // namespace lite
@@ -79,12 +63,18 @@ USE_LITE_OP(fc);
 USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
-// USE_LITE_OP(io_copy);
+USE_LITE_OP(io_copy);
+
+USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
+USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
+
+#ifdef LITE_WITH_ARM
 USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
-USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
+// USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
+// USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
+#endif  // LITE_WITH_ARM
 
 #ifdef LITE_WITH_CUDA
 USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
