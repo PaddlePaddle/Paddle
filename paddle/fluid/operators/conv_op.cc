@@ -209,6 +209,12 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("fuse_brelu",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<float>("fuse_brelu_threshold",
+                 "(float, default false 6.0) Only used in mkldnn kernel")
+      .SetDefault(6.0f);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "

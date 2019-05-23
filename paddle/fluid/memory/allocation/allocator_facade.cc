@@ -209,6 +209,7 @@ class AllocatorFacadePrivate {
                      static_cast<int>(strategy));
       }
     }
+    InitZeroSizeAllocators();
   }
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
