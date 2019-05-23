@@ -1,4 +1,4 @@
-if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+if(NOT (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM))
     return()
 endif()
 
@@ -17,4 +17,3 @@ set(arm_kernels
     )
 
 set(arm_kernels "${arm_kernels}" CACHE INTERNAL "arm kernels")
- 
