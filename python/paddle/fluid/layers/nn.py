@@ -157,6 +157,7 @@ __all__ = [
     'elementwise_pow',
     'elementwise_mod',
     'elementwise_floordiv',
+    'elementwise_sign',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -9589,6 +9590,9 @@ def elementwise_mod(x, y, axis=-1, act=None, name=None):
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
+def elementwise_sign(x, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_sign', **locals()))
+
 
 for func in [
         elementwise_add,
@@ -9600,6 +9604,7 @@ for func in [
         elementwise_pow,
         elementwise_mod,
         elementwise_floordiv,
+        elementwise_sign,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(

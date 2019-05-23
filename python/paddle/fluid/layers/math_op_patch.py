@@ -175,6 +175,7 @@ def monkey_patch_variable():
         ("__pow__", "elementwise_pow", False),
         ("__rpow__", "elementwise_pow", True),
         ("__floordiv__", "elementwise_floordiv", False),
+        ("__sign__", "elementwise_sign", False),
         ("__mod__", "elementwise_mod", False),
             # for logical compare
         ("__eq__", "equal", False),
