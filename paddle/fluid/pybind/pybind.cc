@@ -391,7 +391,7 @@ PYBIND11_MODULE(core, m) {
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__",
            [](const Tensor &self) {
-             std::ostringstream ostr;
+             std::stringstream ostr;
              ostr << self;
              return ostr.str();
            })
@@ -618,7 +618,7 @@ PYBIND11_MODULE(core, m) {
            )DOC")
       .def("__str__",
            [](const LoDTensor &self) {
-             std::ostringstream ostr;
+             std::stringstream ostr;
              ostr << self;
              return ostr.str();
            })

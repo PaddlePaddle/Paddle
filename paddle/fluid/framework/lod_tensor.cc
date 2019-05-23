@@ -54,7 +54,7 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   os << "lod: " << t.lod() << "\n";
-  os << "data: " << t << "\n";
+  os << static_cast<Tensor>(t) << "\n";
 
   return os;
 }

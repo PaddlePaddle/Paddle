@@ -496,12 +496,14 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
   auto inspect = tensor.data<T>();
   auto element_num = tensor.numel();
 
-  os << "[";
-  os << inspect[0];
-  for (int j = 1; j < element_num; ++j) {
-    os << " " << inspect[j];
+  os << "data: [";
+  if (element_num > 0) {
+    os << inspect[0];
+    for (int j = 1; j < element_num; ++j) {
+      os << " " << inspect[j];
+    }
+    os << "]";
   }
-  os << "]";
   return os;
 }
 
