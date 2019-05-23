@@ -2288,7 +2288,7 @@ class ExponentialMovingAverage(object):
                 self.restore(executor)
 
     def restore(self, executor):
-        """Restore parameter after evaluation.
+        """Restore parameters.
         
         Args:
             executor (Executor): The Executor to execute restoring.
