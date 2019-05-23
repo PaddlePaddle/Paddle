@@ -39,7 +39,6 @@ from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
-from . import communicator
 from . import regularizer
 from . import average
 from . import metrics
@@ -83,7 +82,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'optimizer',
         'learning_rate_decay',
         'backward',
-        'communicator',
         'regularizer',
         'LoDTensor',
         'LoDTensorArray',
