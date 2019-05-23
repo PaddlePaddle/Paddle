@@ -12,4 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/kernels/host/relu_compute.h"
+#include "paddle/fluid/lite/core/memory.h"
+#include <gtest/gtest.h>
+
+namespace paddle {
+namespace lite {
+
+TEST(memory, test) {
+  auto* buf = TargetMalloc(TARGET(kX86), 10);
+  ASSERT_TRUE(buf);
+  TargetFree(TARGET(kX86), buf);
+
+#ifdef LITE_WITH_CUDA
+  auto* buf_cuda = TargetMalloc(TARGET(kCUDA), 10);
+  ASSERT_TRUE(buf_cuda);
+  TargetFree(Target(kCUDA), buf_cuda);
+#endif
+}
+
+}  // namespace lite
+}  // namespace paddle

@@ -59,9 +59,6 @@ class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
     mul_compute_eigen(param.x->data<float>(), x_shape.x, x_shape.y,  //
                       param.y->data<float>(), y_shape.x, y_shape.y,  //
                       param.output->mutable_data<float>());
-    LOG(INFO) << "MUL x " << *param.x;
-    LOG(INFO) << "MUL W " << *param.y;
-    LOG(INFO) << "MUL out " << *param.output;
   }
 
   virtual ~MulCompute() = default;

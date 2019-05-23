@@ -239,9 +239,10 @@ class OpDuppy : public OperatorBase {
   void RunImpl(const Scope& scope,
                const platform::Place& place) const override {}
 };
-OpDuppy op_duppy;
-Scope scope_duppy;
-RuntimeContext runtime_context_duppy({}, {});
+
+extern OpDuppy op_duppy;
+extern Scope scope_duppy;
+extern RuntimeContext runtime_context_duppy;
 
 class ExecutionContext {
  public:
@@ -255,7 +256,7 @@ class ExecutionContext {
         ctx_(ctx),
         kernel_configs_(configs) {}
 
-  ExecutionContext(const platform::DeviceContext& device_context)
+  explicit ExecutionContext(const platform::DeviceContext& device_context)
       : op_(op_duppy),
         scope_(scope_duppy),
         device_context_(device_context),
