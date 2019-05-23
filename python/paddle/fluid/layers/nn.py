@@ -4001,6 +4001,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Examples:
         .. code-block:: python
+	
             import paddle.fluid.layers as layers
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
@@ -7855,6 +7856,7 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
+	
             import paddle.fluid.layers as layers
 
             input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
@@ -8998,6 +9000,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Examples:
         .. code-block:: python
+	
             import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[10], dtype='float32', lod_level=1)
@@ -10070,7 +10073,8 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
-            
+	
+            import paddle.fluid as fluid
             import numpy as np
 
             data = fluid.layers.data(
