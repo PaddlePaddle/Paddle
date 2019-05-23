@@ -201,7 +201,7 @@ class PyReader(object):
             self._init_non_iterable()
 
     def _init_iterable(self, places):
-        if self._return_list:
+        if in_dygraph_mode():
             self._var_names = []
         else:
             self._var_names = [v.name for v in self._feed_list]
@@ -296,25 +296,26 @@ class PyReader(object):
                 return self.next()
 
             def next(self):
-                ret = None
-                if self._return_list:
-                    ret = self._reader.read_next_list()
-                    if ret and ret[0]:
-                        ret = ret[0]
-                        if in_dygraph_mode():
-                            return [
-                                dygraph.base.to_variable(np.array(v))
-                                for v in ret
-                            ]
-                        else:
-                            return ret
+                if not in_dygraph_mode():
+                    ret = None
+                    if self._return_list:
+                        ret = self._reader.read_next_list()
+                        ret = ret[0] if ret is not None and len(
+                            ret) > 0 else None
+                    else:
+                        ret = self._reader.read_next()
+                    if ret:
+                        return ret
                     else:
                         self._reset()
                         raise StopIteration
                 else:
-                    ret = self._reader.read_next()
-                    if ret:
-                        return ret
+                    ret = self._reader.read_next_list()
+                    if ret and ret[0]:
+                        return [
+                            dygraph.base.to_variable(np.array(v))
+                            for v in ret[0]
+                        ]
                     else:
                         self._reset()
                         raise StopIteration
@@ -554,7 +555,7 @@ class PyReader(object):
         '''
         assert self._tensor_reader is None, \
             "Cannot reset the data source of PyReader"
-        if not self._return_list:
+        if not in_dygraph_mode():
             with program_guard(Program(), Program()):
                 feeder = DataFeeder(
                     feed_list=self._feed_list, place=core.CPUPlace())
@@ -565,13 +566,10 @@ class PyReader(object):
                 for slots in paddle_reader():
                     yield [slots[var.name] for var in self._feed_list]
         else:
-            provider = ListTensorProvider(
-                reader, place=core.CPUPlace(), multi_devices=False)
-            paddle_reader = provider.decorate_reader(
-                reader, multi_devices=False)
+            provider = ListTensorProvider(reader, place=core.CPUPlace())
 
             def __tensor_reader_impl__():
-                for slots in paddle_reader():
+                for slots in provider():
                     yield slots
 
         self.decorate_batch_generator(__tensor_reader_impl__, places)
