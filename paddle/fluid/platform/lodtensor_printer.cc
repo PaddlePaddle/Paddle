@@ -20,14 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-void PrintVar(framework::Scope *scope, const std::string &var_name,
-              const std::string &print_info) {
-  framework::Variable *var = scope->FindVar(var_name);
+void PrintVar(framework::Scope* scope, const std::string& var_name,
+              const std::string& print_info) {
+  framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
     VLOG(1) << "Variable Name " << var_name << " does not exist in your scope";
     return;
   }
-  framework::LoDTensor *tensor = var->GetMutable<framework::LoDTensor>();
+  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   if (tensor == nullptr) {
     VLOG(1) << "tensor of variable " << var_name
             << " does not exist in your scope";
@@ -41,5 +41,5 @@ void PrintVar(framework::Scope *scope, const std::string &var_name,
   std::cout << sstream.str() << std::endl;
 }
 
-} // end namespace platform
-} // end namespace paddle
+}  // end namespace platform
+}  // end namespace paddle

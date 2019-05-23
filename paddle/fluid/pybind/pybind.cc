@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <map>
 #include <memory>
-#include <mutex> // NOLINT // for call_once
+#include <mutex>  // NOLINT // for call_once
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -59,11 +59,12 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/pybind/protobuf.h"
-#include "paddle/fluid/pybind/pybind.h" // NOLINT
+#include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -141,7 +142,8 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
   return paddle::platform::Place(p1) == paddle::platform::Place(p2);
 }
 
-template <typename PlaceType> static inline int PlaceIndex(const PlaceType &p) {
+template <typename PlaceType>
+static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
@@ -155,15 +157,15 @@ PYBIND11_MODULE(core, m) {
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
-  using namespace paddle::framework; // NOLINT
+  using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
 
-  m.def("_append_python_callable_object_and_return_id",
-        [](py::object py_obj) -> size_t {
-          return paddle::operators::AppendPythonCallableObjectAndReturnId(
-              py_obj);
-        });
+  m.def(
+      "_append_python_callable_object_and_return_id",
+      [](py::object py_obj) -> size_t {
+        return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
+      });
 
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
@@ -905,10 +907,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_CUDA
-             PADDLE_ENFORCE(dev_id >= 0 &&
-                                dev_id < platform::GetCUDADeviceCount(),
-                            "Invalid CUDAPlace(%d), must inside [0, %d)",
-                            dev_id, platform::GetCUDADeviceCount());
+             PADDLE_ENFORCE(
+                 dev_id >= 0 && dev_id < platform::GetCUDADeviceCount(),
+                 "Invalid CUDAPlace(%d), must inside [0, %d)", dev_id,
+                 platform::GetCUDADeviceCount());
              new (&self) platform::CUDAPlace(dev_id);
 #else
              PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
@@ -1250,7 +1252,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
           [](ExecutionStrategy &self, bool use_cuda) {
             self.use_cuda_ = use_cuda;
-          }) // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
+          })  // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
       // make user confuse, because ParallelExecutor has a parameter named
       // 'use_cuda' too, in current implementation, ParallelExecutor's
       // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
@@ -1564,5 +1566,5 @@ All parameter, weight, gradient are variables in Paddle.
   BindCommunicator(&m);
 #endif
 }
-} // namespace pybind
-} // namespace paddle
+}  // namespace pybind
+}  // namespace paddle

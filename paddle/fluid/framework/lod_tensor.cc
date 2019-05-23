@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <iterator>
 #include <stdint.h>
 #include <string.h>
+#include <algorithm>
+#include <iterator>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -96,8 +96,7 @@ LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
 
 LoD ToAbsOffset(const LoD &in) {
   // the lowest level stores relative offsets
-  if (in.empty() || in.size() == 1)
-    return in;
+  if (in.empty() || in.size() == 1) return in;
   LoD result = in;
   for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
     for (size_t i = 0; i < in[level].size(); ++i) {
@@ -129,15 +128,12 @@ bool operator==(const LoD &a, const LoD &b) {
 }
 
 bool CheckLoD(const LoD &in, int tensor_height) {
-  if (in.empty())
-    return true;
+  if (in.empty()) return true;
   for (const auto &level : in) {
     // check: there should be more than 2 offsets existing in each level.
-    if (level.size() < 2)
-      return false;
+    if (level.size() < 2) return false;
     // check: the first offset(the begin offset) of each level should be 0.
-    if (level.front() != 0)
-      return false;
+    if (level.front() != 0) return false;
     // check: all the offsets in a level should be non-descending
     if (!std::is_sorted(level.begin(), level.end())) {
       return false;
@@ -153,34 +149,29 @@ bool CheckLoD(const LoD &in, int tensor_height) {
   // NOTE LoD store the levels from top to bottom, so the higher level goes
   // first.
   for (size_t level = 0; level < in.size() - 1; level++) {
-    if (in[level].back() != in[level + 1].size() - 1)
-      return false;
+    if (in[level].back() != in[level + 1].size() - 1) return false;
   }
   return true;
 }
 
 bool CheckAbsLoD(const LoD &in, int tensor_height) {
-  if (in.empty())
-    return true;
+  if (in.empty()) return true;
   for (const auto &level : in) {
     // check: all the offsets in a level should be ascending(no same items
     // allowed).
     if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
-          if (a < b)
-            return true;
+          if (a < b) return true;
           return false;
         })) {
       return false;
     }
 
     // check: there should be more than 2 offsets existing in each level.
-    if (level.size() < 2)
-      return false;
+    if (level.size() < 2) return false;
 
     // check: the first offset of each level should be 0, and the last should be
     // the same(the height of underlying tensor).
-    if (level.front() != 0)
-      return false;
+    if (level.front() != 0) return false;
     if (tensor_height < 0) {
       tensor_height = level.back();
     } else if ((size_t)tensor_height != level.back()) {
@@ -216,7 +207,7 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
     for (size_t i = 0; i < lod_length.size(); ++i) {
-      lod->emplace_back(1, 0); // size = 1, value = 0;
+      lod->emplace_back(1, 0);  // size = 1, value = 0;
     }
     *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
   }
@@ -230,7 +221,7 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
-  { // the 1st field, uint32_t version for LoDTensor
+  {  // the 1st field, uint32_t version for LoDTensor
     os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
              sizeof(kCurTensorVersion));
   }
@@ -314,8 +305,8 @@ bool ReadFromRecordIO(recordio::Scanner *scanner,
   return true;
 }
 
-std::vector<LoDTensor>
-LoDTensor::SplitLoDTensor(const std::vector<platform::Place> places) const {
+std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
+    const std::vector<platform::Place> places) const {
   check_memory_size();
   int batch_size =
       lod().empty() ? dims()[0] : static_cast<int>(lod()[0].size()) - 1;
@@ -329,7 +320,7 @@ LoDTensor::SplitLoDTensor(const std::vector<platform::Place> places) const {
   for (size_t i = 0; i < result_size; ++i) {
     int begin = static_cast<int>(i * step_width);
     int end = static_cast<int>((i + 1) * step_width);
-    if (i + 1 == places.size()) { // last
+    if (i + 1 == places.size()) {  // last
       end += remainder;
     }
 
@@ -437,5 +428,5 @@ LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
   return offset_lod;
 }
 
-} // namespace framework
-} // namespace paddle
+}  // namespace framework
+}  // namespace paddle
