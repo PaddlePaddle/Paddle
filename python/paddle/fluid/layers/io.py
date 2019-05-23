@@ -894,6 +894,7 @@ def open_files(filenames,
     Examples:
        .. code-block:: python
 
+         import paddle.fluid. as fluid
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1,)],
@@ -1089,15 +1090,16 @@ def read_file(reader):
 
     Examples:
         .. code-block:: python
-
+          
+           import paddle.fluid as fluid
            data_file = fluid.layers.open_files(
                 filenames=['mnist.recordio'],
                 shapes=[(-1, 748), (-1, 1)],
                 lod_levels=[0, 0],
                 dtypes=["float32", "int64"])
-            data_file = fluid.layers.double_buffer(
+           data_file = fluid.layers.double_buffer(
                 fluid.layers.batch(data_file, batch_size=64))
-            input, label = fluid.layers.read_file(data_file)
+           input, label = fluid.layers.read_file(data_file)
     """
     helper = LayerHelper('read_file')
     out = [
