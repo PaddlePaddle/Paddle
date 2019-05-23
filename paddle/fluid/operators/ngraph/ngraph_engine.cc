@@ -134,12 +134,11 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
   int pivot = left;
   while (pivot < right) {
     auto op_type = ops->at(pivot)->Type();
-    if (NgraphBridge::isRegister(op_type)) {
+    if (!NgraphBridge::isSupported(ops->at(pivot))) {
       ++pivot;
     } else {
       int start = pivot, end = start;
-      while (pivot < right &&
-             (!NgraphBridge::isRegister(ops->at(pivot)->Type()))) {
+      while (pivot < right && (NgraphBridge::isSupported(ops->at(pivot)))) {
         ++pivot;
         ++end;
       }
