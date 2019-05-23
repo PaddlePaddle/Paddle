@@ -1040,8 +1040,8 @@ All parameter, weight, gradient are variables in Paddle.
               std::map<std::string, const LoDTensor *> *feed_targets,
               std::map<std::string, LoDTensor *> *fetch_targets,
               bool create_local_scope = true, bool create_vars = true,
-              const std::string &feed_holder_name,
-              const std::string &fetch_holder_name) {
+              const std::string &feed_holder_name = "feed",
+              const std::string &fetch_holder_name = "fetch") {
              pybind11::gil_scoped_release release;
              self.RunPreparedContext(ctx, scope, feed_targets, fetch_targets,
                                      create_local_scope, create_vars,
