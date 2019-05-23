@@ -17,12 +17,13 @@ from __future__ import print_function
 import unittest
 
 import paddle.fluid as fluid
+from paddle.fluid.communicator import Communicator
 
 
 class TestCommunicator(unittest.TestCase):
     def test_communicator_init_and_start(self):
         prog = fluid.Program()
-        comm = fluid.communicator.Communicator(prog)
+        comm = Communicator(prog)
         comm.start()
         comm.stop()
 
