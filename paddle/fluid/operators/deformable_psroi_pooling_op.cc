@@ -181,9 +181,9 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(part_width, 0,
                       "The part_width in part_size must greater than 0");
     PADDLE_ENFORCE(part_height <= trans_dims[2],
-                   "The height of trans must be more than part_height");
+                   "The height of trans must greater than part_height");
     PADDLE_ENFORCE(part_width <= trans_dims[3],
-                   "The width of trans must be more than part_width");
+                   "The width of trans must greater than part_width");
     PADDLE_ENFORCE_GT(sample_per_part, 0,
                       "The sample_per_part must greater than 0");
     auto out_dims = input_dims;
