@@ -30,7 +30,7 @@ using framework::Tensor;
  * A thin wrapper for gathering on cpu tensor
  * Return a new tensor from source tensor, gathered according to index
  * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
+ * input[index]: type-IndexT index Tensor (1-D)
  * return: output tensor
  */
 template <typename T, typename IndexT = int>

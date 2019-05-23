@@ -43,7 +43,7 @@ __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
  * A thin wrapper on gpu tensor
  * Return a new tensor from source tensor, gathered according to index
  * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
+ * input[index]: type-IndexT index Tensor (1-D)
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
@@ -65,7 +65,6 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   const T* p_src = src.data<T>();
-  // why must be int?
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
