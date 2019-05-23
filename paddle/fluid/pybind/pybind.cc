@@ -389,7 +389,12 @@ PYBIND11_MODULE(core, m) {
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
-      //      .def("__str__"), TensorToString)
+      .def("__str__",
+           [](const Tensor &self) {
+             std::ostringstream ostr;
+             ostr << self;
+             return ostr.str();
+           })
       .def("set_shared",
            [](Tensor &self, py::array val) { SetShared(self, val); });
 
