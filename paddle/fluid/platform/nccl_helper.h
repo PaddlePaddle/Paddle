@@ -160,7 +160,7 @@ struct NCCLContextMap {
   }
 };
 
-// In order to apply hierarchical or group communication with NCCL, we need
+// In order to apply hierarchical communication with NCCL, we need
 // a communication group contains NCCL communicators associated to a global
 // ncclUniqueId. E.g. for a hierarchical case,
 //
@@ -174,6 +174,8 @@ struct NCCLContextMap {
 //
 // we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
 // (31,32,33,34), (41,42,43,44) as bottoms respectively.
+//
+// We could also use a single communication group for the flatten case
 //
 // The NCCLCommGroup instance is created and reversed in the NCCLContextPool
 // singleton with a global user specified id.
