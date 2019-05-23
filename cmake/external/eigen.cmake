@@ -38,6 +38,9 @@ else()
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
+        PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h
+            ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h
         INSTALL_COMMAND   ""
         TEST_COMMAND      ""
     )
