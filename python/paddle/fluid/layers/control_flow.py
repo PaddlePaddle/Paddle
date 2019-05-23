@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -169,12 +169,16 @@ def Print(input,
 
 
     Examples:
-
         .. code-block:: python
+           
+           import paddle.fluid as fluid
+           
+           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+           fluid.layers.Print(input, message = "The content of input layer:")
+           # value = some_layer(...)
+           # Print(value, summarize=10,
+           #    message="The content of some_layer: ")
 
-           value = some_layer(...)
-           Print(value, summarize=10,
-               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     helper.append_op(
@@ -1645,23 +1649,7 @@ class DynamicRNN(object):
     sample sequence can be different. This API automatically process them in
     batch.
 
-    The input lod must be set. Please reference `lod_tensor`
-
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name='sentence', dtype='int64', lod_level=1)
-    >>> embedding = fluid.layers.embedding(input=data, size=[65535, 32],
-    >>>                                    is_sparse=True)
-    >>>
-    >>> drnn = fluid.layers.DynamicRNN()
-    >>> with drnn.block():
-    >>>     word = drnn.step_input(embedding)
-    >>>     prev = drnn.memory(shape=[200])
-    >>>     hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
-    >>>     drnn.update_memory(prev, hidden)  # set prev to hidden
-    >>>     drnn.output(hidden)
-    >>>
-    >>> # last is the last time step of rnn. It is the encoding result.
-    >>> last = fluid.layers.sequence_last_step(drnn())
+    The input lod must be set. Please reference to `lod_tensor`.
 
     The dynamic RNN will unfold sequence into timesteps. Users need to define
     how to process each time step during the :code:`with` block.
@@ -1671,10 +1659,30 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
-    
+
     NOTES:
         Currently it is not supported that setting is_sparse to True of any 
         layers within DynamicRNN.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
+          embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
+    
+          drnn = fluid.layers.DynamicRNN()
+          with drnn.block():
+              word = drnn.step_input(embedding)
+              prev = drnn.memory(shape=[200])
+              hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
+              drnn.update_memory(prev, hidden)  # set prev to hidden
+              drnn.output(hidden)
+
+          # Get the last time step of rnn. It is the encoding result.
+          rnn_output = drnn()
+          last = fluid.layers.sequence_last_step(rnn_output)
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1701,8 +1709,8 @@ class DynamicRNN(object):
         Mark a sequence as a dynamic RNN input.
 
         Args:
-            x(Variable): The input sequence.
-            level(int): The level of lod used to split steps. Default: 0.
+            x (Variable): The input sequence which should have lod information.
+            level (int): The level of lod used to split steps. Default: 0.
 
         Returns:
             The current timestep in the input sequence.
@@ -1753,13 +1761,37 @@ class DynamicRNN(object):
     def static_input(self, x):
         """
         Mark a variable as a RNN input. The input will not be scattered into
-        time steps.
+        time steps. It is optional.
 
         Args:
-            x(Variable): The input variable.
+            x (Variable): The input variable.
 
         Returns:
             The input variable that can access in RNN.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+
+              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
+              encoder_proj = fluid.layers.data(name='encoder_proj', dtype='float32', shape=[32], lod_level=1)
+              decoder_boot = fluid.layers.data(name='boot', dtype='float32', shape=[10], lod_level=1)
+
+              drnn = fluid.layers.DynamicRNN()
+              with drnn.block():
+                  current_word = drnn.step_input(sentence)
+                  encoder_word = drnn.static_input(encoder_proj)
+                  hidden_mem = drnn.memory(init=decoder_boot, need_reorder=True)
+                  fc_1 = fluid.layers.fc(input=encoder_word, size=30, bias_attr=False)
+                  fc_2 = fluid.layers.fc(input=current_word, size=30, bias_attr=False)
+                  decoder_inputs = fc_1 + fc_2
+                  h, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=hidden_mem, size=30)
+                  drnn.update_memory(hidden_mem, h)
+                  out = fluid.layers.fc(input=h, size=10, bias_attr=True, act='softmax') 
+                  drnn.output(out)
+
+              rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
         if not isinstance(x, Variable):
@@ -1836,54 +1868,51 @@ class DynamicRNN(object):
         the input variable. It should be set to true when the initialized memory
         depends on the input sample.
 
-        For example,
+        Examples:
+            .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> sentence = fluid.layers.data(
-        >>>                 name='sentence', dtype='float32', shape=[32])
-        >>> boot_memory = fluid.layers.data(
-        >>>                 name='boot', dtype='float32', shape=[10])
-        >>>
-        >>> drnn = fluid.layers.DynamicRNN()
-        >>> with drnn.block():
-        >>>     word = drnn.step_input(sentence)
-        >>>     memory = drnn.memory(init=boot_memory, need_reorder=True)
-        >>>     hidden = fluid.layers.fc(
-        >>>                 input=[word, memory], size=10, act='tanh')
-        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
-        >>>     drnn.output(hidden)
-        >>> rnn_output = drnn()
+              import paddle.fluid as fluid
+
+              sentence = fluid.layers.data(name='sentence', shape=[32], dtype='float32', lod_level=1)
+              boot_memory = fluid.layers.data(name='boot', shape=[10], dtype='float32', lod_level=1)
+              
+              drnn = fluid.layers.DynamicRNN()
+              with drnn.block():
+                  word = drnn.step_input(sentence)
+                  memory = drnn.memory(init=boot_memory, need_reorder=True)
+                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                  drnn.output(hidden)
+
+              rnn_output = drnn()
 
 
         Otherwise, if :code:`shape`, :code:`value`, :code:`dtype` are set, the
         :code:`memory` will be initialized by this :code:`value`.
 
-        For example,
+        Examples:
+            .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> sentence = fluid.layers.data(
-        >>>                 name='sentence', dtype='float32', shape=[32])
-        >>>
-        >>> drnn = fluid.layers.DynamicRNN()
-        >>> with drnn.block():
-        >>>     word = drnn.step_input(sentence)
-        >>>     memory = drnn.memory(shape=[10], dtype='float32', value=0)
-        >>>     hidden = fluid.layers.fc(
-        >>>             input=[word, memory], size=10, act='tanh')
-        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
-        >>>     drnn.output(hidden)
-        >>> rnn_output = drnn()
+              import paddle.fluid as fluid
+
+              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
+              
+              drnn = fluid.layers.DynamicRNN()
+              with drnn.block():
+                  word = drnn.step_input(sentence)
+                  memory = drnn.memory(shape=[10], dtype='float32', value=0)
+                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                  drnn.output(hidden)
+
+              rnn_output = drnn()
 
 
         Args:
             init(Variable|None): The initialized variable.
-
-            shape(list|tuple): The memory shape. NOTE the shape does not contain batch_size.
-
+            shape(list|tuple): The memory shape. The shape does not contain batch_size.
             value(float): the initalized value.
-
             need_reorder(bool): True if the initialized memory depends on the input sample.
-
             dtype(str|numpy.dtype): The data type of the initialized memory.
 
         Returns:
@@ -2035,8 +2064,31 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc()
+@templatedoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
+    """
+    ${comment}
+
+    Args:
+    
+        x(${x_type}): ${x_comment}
+        rank_table(${rank_table_type}): ${rank_table_type}
+    
+    Returns:
+        out(${out_type}): ${out_comment} 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data_desc = (['input', [9], 0], ['ref', [5], 1])
+          data = fluid.layers.data(name=data_desc[0][0], shape=data_desc[0][1])
+          rank_data = fluid.layers.data(name=data_desc[1][0], shape=data_desc[1][1])
+          table = fluid.layers.control_flow.lod_rank_table(rank_data)
+          new_data = fluid.layers.reorder_lod_tensor_by_rank(
+                           x=data, rank_table=table)
+
+    """
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
@@ -2069,9 +2121,12 @@ def is_empty(x, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
           res = fluid.layers.is_empty(x=input)
           # or:
-          fluid.layers.is_empty(x=input, cond=res)
+          # fluid.layers.is_empty(x=input, cond=res)
+
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
