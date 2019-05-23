@@ -46,16 +46,16 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
              "W is pooled width.");
     AddAttr<int>("no_trans",
                  "(int), "
-                 "Whether add offset to get new value or not while roi "
+                 "whether add offset to get new value or not while roi "
                  "pooling, which value is 0 or 1");
     AddAttr<float>("spatial_scale",
                    "(float), "
-                   "Ratio of input feature map height (or width) to "
+                   "ratio of input feature map height (or width) to "
                    "raw image height (or width). Equals the reciprocal "
                    "of total stride in convolutional layers.");
     AddAttr<int>("output_dim",
                  "(int), "
-                 "The number of output channels, which shoule be less than "
+                 "the number of output channels, which shoule be less than "
                  "input channels. While output channels equal to input "
                  "channels, the operator becomes deformable roi pooling and "
                  "while output channels equal to input channels * "
@@ -63,23 +63,23 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
                  "deformable psroi pooling.");
     AddAttr<std::vector<int>>("group_size",
                  "(vector<int>), "
-                 "The number of groups which input channels are divided."
+                 "the number of groups which input channels are divided."
                  "(eg. number of input channels is k1*k2*(C+1), which k is "
-                 "group size and C+1 is number of output chanel)s, eg.(4, 6)"
+                 "group size and C+1 is number of output chanel)s, eg.(4, 6) "
                  "which 4 is height of group and 6 is width of group");
     AddAttr<int>("pooled_height",
                  "(int), "
-                 "The pooled output height.");
+                 "the pooled output height.");
     AddAttr<int>("pooled_width",
                  "(int), "
-                 "The pooled output width.");
+                 "the pooled output width.");
     AddAttr<std::vector<int>>("part_size",
                  "(vector<int>), "
-                 "The height and width of offset, eg.(4, 6), which height is 4 "
+                 "the height and width of offset, eg.(4, 6), which height is 4 "
                  " and width is 6");
     AddAttr<int>("sample_per_part",
                  "(int), "
-                 "The number of samples in each bin");
+                 "the number of samples in each bin");
     AddAttr<float>("trans_std",
                    "(float), "
                    "Coefficient of offset");
