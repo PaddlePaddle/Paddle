@@ -852,6 +852,7 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[1], dtype='float32',
                                    append_batch_size=False)
           data = fluid.layers.increment(x=data, value=3.0, in_place=True)
@@ -892,6 +893,7 @@ def array_write(x, i, array=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
@@ -1166,6 +1168,7 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           item = fluid.layers.array_read(array, i)
@@ -1240,6 +1243,7 @@ def array_length(array):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
