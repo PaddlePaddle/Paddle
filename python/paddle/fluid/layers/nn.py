@@ -1544,14 +1544,16 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def bpr_loss(input, label, name=None):
     """
-    Bayesian Personalized Ranking Loss Operator.
+    **Bayesian Personalized Ranking Loss Operator**
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
     The loss at a given point in one session is defined as:
-    $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
+
+    .. math::
+        Y[i] = 1/(N[i] - 1) * \sum_j{\log(\sigma(X[i, Label[i]]-X[i, j]))}
 
     Learn more details by reading paper <session-based recommendations with recurrent
-    neural networks>(https://arxiv.org/abs/1511.06939)
+    neural networks>.
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
@@ -1567,9 +1569,15 @@ def bpr_loss(input, label, name=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+
+          neg_size = 10
+          label = fluid.layers.data(
+                    name="label", shape=[1], dtype="int64")
+          predict = fluid.layers.data(
+                    name="predict", shape=[neg_size + 1], dtype="float32")
           cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
-
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -3207,9 +3215,11 @@ def data_norm(input,
     Examples:
 
         .. code-block:: python
+            
+            import paddle.fluid as fluid
 
-            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.data_norm(input=hidden1)
+            hidden1 = fluid.layers.data(name="hidden1", shape=[200])
+            hidden2 = fluid.layers.data_norm(name="hidden2", input=hidden1)
     """
     helper = LayerHelper('data_norm', **locals())
     dtype = helper.input_dtype()
@@ -9875,6 +9885,18 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
+            dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
+            output = fluid.layers.mul(dataX, dataY,
+                                      x_num_col_dims = 1,
+                                      y_num_col_dims = 1)
+            
+
     """
 
     helper = LayerHelper("mul", **locals())
@@ -10472,8 +10494,16 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
+          
+          import paddle.fluid as fluid
 
+          batch_size = 64
+          label = fluid.layers.data(
+                    name="label", shape=[batch_size, 1], dtype="int64", append_batch_size=False)
+          similarity = fluid.layers.data(
+                    name="similarity", shape=[batch_size, 1], dtype="float32", append_batch_size=False)
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
+
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
     out = helper.create_variable(dtype=input.dtype)
@@ -11358,7 +11388,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
                           if don't use cvm, the output dim is input dim - 2(remove show and click)
-                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+                          (cvm op is a customized op, which input is a sequence has embed_with_cvm default, so we need an op named cvm to decided whever use it or not.)
 
     Returns:
 
