@@ -11482,17 +11482,16 @@ def deformable_psroi_pooling(input,
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
        trans (Variable): ${trans_comment}
-       no_trans(integer): ${no_trans_comment}, Default: 0
-       spatial_scale(float): ${spatial_scale_comment}, Default: 1.0
-       output_channels(integer): ${output_dim_comment}, Default: 64
-       group_size(integer): ${group_size_comment}, Default: 1
-       pooled_height(integer): ${pooled_height_comment}, Default: 1
-       pooled_width(integer): ${pooled_width_comment}, Default: 1
-       part_height(integer): ${part_height_comment}, Default: equal to pooled_height
-       part_width(integer): ${part_width_comment}, Default: equal to pooled_width
-       sample_per_part(integer): ${sample_per_part_comment}, Default: 1
-       trans_std(float): Coefficient of offset, Default: 0.1
-       name(str): name of layer, Default: None
+       no_trans(integer): ${no_trans_comment}, Default: 0.
+       spatial_scale(float): ${spatial_scale_comment}, Default: 1.0.
+       output_channels(integer): ${output_dim_comment}, Default: 64.
+       group_size(list): ${group_size_comment}, Default: [1, 1].
+       pooled_height(integer): ${pooled_height_comment}, Default: 1.
+       pooled_width(integer): ${pooled_width_comment}, Default: 1.
+       part_size(list): ${part_size_comment}, Default: if None, default value is [pooled_height, pooled_width].
+       sample_per_part(integer): ${sample_per_part_comment}, Default: 1.
+       trans_std(float): Coefficient of offset, Default: 0.1.
+       name(str): name of layer, Default: None.
     Returns:
         Variable: ${output_comment}
 
