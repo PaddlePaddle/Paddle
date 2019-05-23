@@ -75,6 +75,23 @@ class Executor {
                std::vector<std::string>(),
            bool force_disable_gc = false);
 
+  // This API is very slow.
+  void Run(const ProgramDesc& program, Scope* scope,
+           std::map<std::string, const LoDTensor*>* feed_targets,
+           std::map<std::string, LoDTensor*>* fetch_targets,
+           bool create_local_scope = true, bool create_vars = true,
+           const std::string& feed_holder_name = "feed",
+           const std::string& fetch_holder_name = "fetch");
+
+  // This API is very slow.
+  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                          std::map<std::string, const LoDTensor*>* feed_targets,
+                          std::map<std::string, LoDTensor*>* fetch_targets,
+                          bool create_local_scope = true,
+                          bool create_vars = true,
+                          const std::string& feed_holder_name = "feed",
+                          const std::string& fetch_holder_name = "fetch");
+
   std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =

@@ -263,6 +263,79 @@ std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
   return ctx;
 }
 
+void Executor::Run(const ProgramDesc& program, Scope* scope,
+                   std::map<std::string, const LoDTensor*>* feed_targets,
+                   std::map<std::string, LoDTensor*>* fetch_targets,
+                   bool create_local_scope, bool create_vars,
+                   const std::string& feed_holder_name,
+                   const std::string& fetch_holder_name) {
+  platform::RecordBlock b(kProgramId);
+  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+  bool has_feed_ops =
+      has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
+  bool has_fetch_ops =
+      has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
+
+  ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
+  std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
+  if (!has_feed_ops || !has_fetch_ops) {
+    unique_ptr_of_copy_program.reset(new ProgramDesc(program));
+    copy_program = unique_ptr_of_copy_program.get();
+  }
+  auto* global_block = copy_program->MutableBlock(0);
+
+  if (!has_feed_ops) {
+    // create feed_holder variable
+    auto* feed_holder = global_block->Var(feed_holder_name);
+    feed_holder->SetType(proto::VarType::FEED_MINIBATCH);
+    feed_holder->SetPersistable(true);
+
+    int i = 0;
+    for (auto& feed_target : (*feed_targets)) {
+      std::string var_name = feed_target.first;
+      VLOG(3) << "feed target's name: " << var_name;
+
+      // prepend feed op
+      auto* op = global_block->PrependOp();
+      op->SetType(kFeedOpType);
+      op->SetInput("X", {feed_holder_name});
+      op->SetOutput("Out", {var_name});
+      op->SetAttr("col", {static_cast<int>(i)});
+      op->CheckAttrs();
+
+      i++;
+    }
+  }
+
+  if (!has_fetch_ops) {
+    // create fetch_holder variable
+    auto* fetch_holder = global_block->Var(fetch_holder_name);
+    fetch_holder->SetType(proto::VarType::FETCH_LIST);
+    fetch_holder->SetPersistable(true);
+
+    int i = 0;
+    for (auto& fetch_target : (*fetch_targets)) {
+      std::string var_name = fetch_target.first;
+      VLOG(3) << "fetch target's name: " << var_name;
+
+      // append fetch op
+      auto* op = global_block->AppendOp();
+      op->SetType(kFetchOpType);
+      op->SetInput("X", {var_name});
+      op->SetOutput("Out", {fetch_holder_name});
+      op->SetAttr("col", {static_cast<int>(i)});
+      op->CheckAttrs();
+
+      i++;
+    }
+  }
+
+  auto ctx = Prepare(*copy_program, 0);
+  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
+                     create_local_scope, create_vars, feed_holder_name,
+                     fetch_holder_name);
+}
+
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id,
     const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
@@ -372,6 +445,44 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
       scope->DropKids();
+    }
+  }
+}
+
+void Executor::RunPreparedContext(
+    ExecutorPrepareContext* ctx, Scope* scope,
+    std::map<std::string, const LoDTensor*>* feed_targets,
+    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
+    bool create_vars, const std::string& feed_holder_name,
+    const std::string& fetch_holder_name) {
+  auto& global_block = ctx->prog_.Block(ctx->block_id_);
+
+  PADDLE_ENFORCE(
+      has_feed_operators(global_block, *feed_targets, feed_holder_name),
+      "Program in ExecutorPrepareContext should has feed_ops.");
+  PADDLE_ENFORCE(
+      has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
+      "Program in the prepared context should has fetch_ops.");
+
+  // map the data of feed_targets to feed_holder
+  for (auto* op : global_block.AllOps()) {
+    if (op->Type() == kFeedOpType) {
+      std::string feed_target_name = op->Output("Out")[0];
+      int idx = boost::get<int>(op->GetAttr("col"));
+      SetFeedVariable(scope, *(*feed_targets)[feed_target_name],
+                      feed_holder_name, idx);
+    }
+  }
+
+  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
+
+  // obtain the data of fetch_targets from fetch_holder
+  for (auto* op : global_block.AllOps()) {
+    if (op->Type() == kFetchOpType) {
+      std::string fetch_target_name = op->Input("X")[0];
+      int idx = boost::get<int>(op->GetAttr("col"));
+      *(*fetch_targets)[fetch_target_name] =
+          GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }
 }
