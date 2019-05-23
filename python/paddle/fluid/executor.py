@@ -656,6 +656,7 @@ class Executor(object):
             # performance.
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
+            # use_program_cache is not valid with CompiledProgram
             return self._run(
                 program._program,
                 self._default_executor,
@@ -665,7 +666,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=False)
 
     def _run(self, program, exe, feed, fetch_list, feed_var_name,
              fetch_var_name, scope, return_numpy, use_program_cache):
