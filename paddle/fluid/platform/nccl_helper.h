@@ -160,9 +160,23 @@ struct NCCLContextMap {
   }
 };
 
-// a NCCL communication group contains NCCL communicators associated to
-// a global ncclUniqueId. The instances are created and reversed
-// in the NCCLContextPool singleton, which assigns unique group ids for them
+// In order to apply hierarchical or group communication with NCCL, we need
+// a communication group contains NCCL communicators associated to a global
+// ncclUniqueId. E.g. for a hierarchical case,
+//
+//    11 - 12   21 - 22
+//     |    |    |    |
+//    13 - 14 - 23 - 24
+//          |    |
+//    31 - 32 - 41 - 42
+//     |    |    |    |
+//    33 - 34   43 - 44
+//
+// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
+// (31,32,33,34), (41,42,43,44) as bottoms respectively.
+//
+// The NCCLCommGroup instance is created and reversed in the NCCLContextPool
+// singleton with a global user specified id.
 class NCCLCommGroup {
  public:
   NCCLCommGroup(ncclUniqueId* nccl_id, int nranks, int group_id) {
