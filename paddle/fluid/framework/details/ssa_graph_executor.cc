@@ -19,10 +19,13 @@ namespace framework {
 namespace details {
 SSAGraphExecutor::~SSAGraphExecutor() {}
 
-void ClearFetchOp(ir::Graph* graph, std::vector<FetchOpHandle*>* fetch_ops) {
+void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
   if (fetch_ops->empty()) return;
 
   for (auto& op : *fetch_ops) {
+    PADDLE_ENFORCE_NOT_NULL(
+        dynamic_cast<FetchOpHandle*>(op),
+        "The input ops of ClearFetchOp function should be FetchOpHandle.");
     for (auto& out_var : op->Node()->outputs) {
       graph->RemoveNode(out_var);
     }

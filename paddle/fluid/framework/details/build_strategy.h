@@ -109,7 +109,6 @@ struct BuildStrategy {
   bool remove_unnecessary_lock_{true};
 
   bool cache_runtime_context_{false};
-  bool cache_expected_kernel_{true};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   size_t nccl_comm_num_{1};
