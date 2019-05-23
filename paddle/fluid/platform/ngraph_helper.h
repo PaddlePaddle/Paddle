@@ -77,9 +77,7 @@ std::shared_ptr<ngraph::Node> GetNode(
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
   auto& var_names = var_map.at(name);
-  PADDLE_ENFORCE_EQ(var_names.size(), 1,
-                    "op %s name %s expects one associated var", op->Type(),
-                    name);
+  if (var_names.size() == 0) return nullptr;
   if (ngb_node_map->find(var_names[0]) != ngb_node_map->end()) {
     return (*ngb_node_map)[var_names[0]];
   } else {
@@ -188,6 +186,22 @@ inline void TrimTrailingSingularDims(ngraph::Shape* shape) {
       shape->pop_back();
     }
   }
+}
+
+ngraph::element::Type GetNgType(paddle::framework::proto::VarType::Type dtype) {
+  ngraph::element::Type ng_dtype;
+  if (dtype == paddle::framework::proto::VarType::FP32) {
+    ng_dtype = ngraph::element::f32;
+  } else if (dtype == paddle::framework::proto::VarType::FP64) {
+    ng_dtype = ngraph::element::f64;
+  } else if (dtype == paddle::framework::proto::VarType::INT64) {
+    ng_dtype = ngraph::element::i64;
+  } else if (dtype == paddle::framework::proto::VarType::INT32) {
+    ng_dtype = ngraph::element::i32;
+  } else {
+    PADDLE_THROW("unsupported data type: %s", dtype);
+  }
+  return ng_dtype;
 }
 }  // namespace platform
 }  // namespace paddle
