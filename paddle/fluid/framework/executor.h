@@ -31,16 +31,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class ExecutorPrepareContext {
- public:
-  explicit ExecutorPrepareContext(const ProgramDesc& prog, size_t block_id);
+struct ExecutorPrepareContext {
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
 
   ~ExecutorPrepareContext();
 
   void PrepareUnusedVars(const std::vector<std::string>& keep_vars,
                          bool force_disable_gc = false);
 
- public:
   const framework::ProgramDesc& prog_;
   const size_t block_id_;
 
