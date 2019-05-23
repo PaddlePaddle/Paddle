@@ -201,6 +201,7 @@ __all__ = [
     'fsp_matrix',
     'continuous_value_model',
     'where',
+    'sign',
 ]
 
 kIgnoreIndex = -100
@@ -1244,6 +1245,19 @@ def linear_chain_crf(input, label, param_attr=None):
         output(${transition_exps_type}): ${transition_exps_comment} \n
         output(${log_likelihood_type}): ${log_likelihood_comment}
 
+    Examples:
+        .. code-block:: python
+
+             import paddle.fluid as fluid
+             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
+             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
+             crf_cost = fluid.layers.linear_chain_crf(
+                 input=emission,
+                 label=target,
+                 param_attr=fluid.ParamAttr(
+                     name='crfw',
+                     learning_rate=0.2))
+
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -1530,14 +1544,16 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def bpr_loss(input, label, name=None):
     """
-    Bayesian Personalized Ranking Loss Operator.
+    **Bayesian Personalized Ranking Loss Operator**
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
     The loss at a given point in one session is defined as:
-    $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
+
+    .. math::
+        Y[i] = 1/(N[i] - 1) * \sum_j{\log(\sigma(X[i, Label[i]]-X[i, j]))}
 
     Learn more details by reading paper <session-based recommendations with recurrent
-    neural networks>(https://arxiv.org/abs/1511.06939)
+    neural networks>.
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
@@ -1553,9 +1569,15 @@ def bpr_loss(input, label, name=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+
+          neg_size = 10
+          label = fluid.layers.data(
+                    name="label", shape=[1], dtype="int64")
+          predict = fluid.layers.data(
+                    name="predict", shape=[neg_size + 1], dtype="float32")
           cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
-
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -1901,6 +1923,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
+             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
              fc = fluid.layers.fc(input=x, size=10)
              # perform softmax in the second dimension
              softmax = fluid.layers.softmax(input=fc, axis=1)
@@ -2906,9 +2930,12 @@ def adaptive_pool3d(input,
           #                 output[:, :, i, j, k] =
           #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
           #
+
+          import paddle.fluid as fluid
+
           data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          pool_out, mask = fluid.layers.adaptive_pool3d(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3, 3],
                             pool_type='avg')
@@ -3191,9 +3218,11 @@ def data_norm(input,
     Examples:
 
         .. code-block:: python
+            
+            import paddle.fluid as fluid
 
-            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.data_norm(input=hidden1)
+            hidden1 = fluid.layers.data(name="hidden1", shape=[200])
+            hidden2 = fluid.layers.data_norm(name="hidden2", input=hidden1)
     """
     helper = LayerHelper('data_norm', **locals())
     dtype = helper.input_dtype()
@@ -3499,10 +3528,13 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         Variable: A tensor variable of weight parameters after spectral normalization.
 
     Examples:
+       .. code-block:: python
 
-        >>> weight = fluid.layers.data(name='weight', shape=[8, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.spectral_norm(weight=data, dim=1, power_iters=2)
+            import paddle.fluid as fluid
+
+            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
+                                       append_batch_size=False, dtype='float32')
+            x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
     dtype = weight.dtype
@@ -5147,6 +5179,8 @@ def topk(input, k, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     helper = LayerHelper("top_k", **locals())
@@ -6639,8 +6673,9 @@ def squeeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
             x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.sequeeze(input=x, axes=[1])
+            y = layers.squeeze(input=x, axes=[1])
     """
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
@@ -9050,6 +9085,14 @@ def stack(x, axis=0):
     Returns:
         Variable: The stacked variable.
 
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid.layers as layers
+            x1 = layers.data(name='x1', shape[1, 2], dtype='int32')
+            x2 = layers.data(name='x2', shape[1, 2], dtype='int32')
+            data = layers.stack([x1,x2])
+
     """
 
     helper = LayerHelper('stack', **locals())
@@ -9229,6 +9272,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
             out = layers.gaussian_random(shape=[20, 30])
     """
 
@@ -9877,6 +9921,18 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
+            dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
+            output = fluid.layers.mul(dataX, dataY,
+                                      x_num_col_dims = 1,
+                                      y_num_col_dims = 1)
+            
+
     """
 
     helper = LayerHelper("mul", **locals())
@@ -10378,9 +10434,11 @@ def grid_sampler(x, grid, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
-            theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
-            grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[10, 32, 32], dtype='float32')
+            theta = fluid.layers.data(name='theta', shape=[2, 3], dtype='float32')
+            grid = fluid.layers.affine_grid(theta=theta, out_shape=[3, 10, 32, 32])
             out = fluid.layers.grid_sampler(x=x, grid=grid)
 
     """
@@ -10474,8 +10532,16 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
+          
+          import paddle.fluid as fluid
 
+          batch_size = 64
+          label = fluid.layers.data(
+                    name="label", shape=[batch_size, 1], dtype="int64", append_batch_size=False)
+          similarity = fluid.layers.data(
+                    name="similarity", shape=[batch_size, 1], dtype="float32", append_batch_size=False)
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
+
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
     out = helper.create_variable(dtype=input.dtype)
@@ -11360,7 +11426,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
                           if don't use cvm, the output dim is input dim - 2(remove show and click)
-                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+                          (cvm op is a customized op, which input is a sequence has embed_with_cvm default, so we need an op named cvm to decided whever use it or not.)
 
     Returns:
 
@@ -11425,4 +11491,35 @@ def where(condition):
 
     helper.append_op(
         type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
+    return out
+
+
+def sign(x):
+    """
+    **sign**
+
+    This function returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+    Args:
+        x(Variable|numpy.ndarray): The input tensor.
+
+    Returns:
+        Variable: The output sign tensor with identical shape and dtype to `x`.
+
+    Examples:
+        .. code-block:: python
+
+          # [1, 0, -1]
+          data = fluid.layers.sign(np.array([3, 0, -2])) 
+    """
+
+    helper = LayerHelper("sign", **locals())
+
+    if not isinstance(x, Variable):
+        x = assign(x)
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
+
     return out
