@@ -57,6 +57,7 @@ class GradClipByValue(GradClipBase):
 
     Examples:
         .. code-block:: python
+        
             import numpy as np
             import paddle
             import paddle.fluid as fluid
@@ -212,6 +213,7 @@ class GradClipByGlobalNorm(GradClipBase):
 
     Examples:
         .. code-block:: python
+        
             import numpy as np
             import paddle
             import paddle.fluid as fluid
