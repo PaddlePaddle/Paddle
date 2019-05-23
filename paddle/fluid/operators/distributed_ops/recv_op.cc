@@ -36,7 +36,7 @@ class RecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    bool do_not_run = Attr<bool>("do_not_run");
+    int do_not_run = Attr<int>("do_not_run");
     if (do_not_run) {
       VLOG(3) << "recv do not run!";
       return;
@@ -132,7 +132,7 @@ This operator can get variables from server side.
         "(vector<string>) "
         "the splited parameter varnames to be recved from pserver")
         .SetDefault(std::vector<std::string>{});
-    AddAttr<bool>("do_not_run", "if recv need to really run").SetDefault(false);
+    AddAttr<int>("do_not_run", "if recv need to really run").SetDefault(0);
   }
 };
 
