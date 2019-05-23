@@ -12,25 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import sys
-
-from paddle.fluid.executor import Executor
-
-from paddle.fluid.framework import Program
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import default_startup_program
-
-from paddle.fluid.optimizer import Optimizer
 
 import paddle.fluid.io as io
-
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.communicator import Communicator
+from paddle.fluid.framework import default_startup_program
+from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
-from ...base.role_maker import Role
+from ...base.fleet_base import DistributedOptimizer
 from ...base.fleet_base import Fleet
 from ...base.fleet_base import Mode
-from ...base.fleet_base import DistributedOptimizer
 
 
 class DistributedTranspiler(Fleet):
@@ -40,105 +32,79 @@ class DistributedTranspiler(Fleet):
 
     def __init__(self):
         super(DistributedTranspiler, self).__init__(Mode.TRANSPILER)
-        self._transpiler = OriginTranspiler()
-        self._startup_program = None
-        self._main_program = None
+        self._transpile_config = None
+        self._transpiler = None
+        self.startup_program = None
+        self.main_program = None
+        self._communicator = None
 
-    def init_worker(self, executor):
+    def init_worker(self):
         """
         `init_worker` has many many functions to do before training,
         first, wait for all parameter servers launch completely.
         second, run executor to initialize startup program
         third, wait for all worker initialize completely.
 
-        Args:
-            executor(Executor): The executor to run for init startup program.
-
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
+        if not self._transpile_config.sync_mode:
+            self._communicator = Communicator(self.main_program)
+            self._communicator.start()
 
-        if not self._startup_program:
-            raise ValueError(
-                "startup_program is None, need invoke DistributedOptimizer.minimize first"
-            )
-
-        executor.run(self._startup_program)
-
-    def run_worker(self, executor, main_program=None):
-        pass
-
-    def init_server(self, executor, model_dir=None):
+    def init_server(self, model_dir=None):
         """
         `init_server` has many many functions to do before start pserver,
         first, run executor to initialize startup program,
         second, if the `model_dir` is not empty, it will load parameters from it for increment training.
 
         Args:
-            executor(Executor): The executor to run for init server.
             model_dir(str): The directory path.
 
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-
-        if not self._startup_program:
+        if not self.startup_program:
             raise ValueError(
                 "startup_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        executor.run(self._startup_program)
+        self._executor.run(self.startup_program)
 
         if model_dir:
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            io.load_persistables(executor, model_dir, self._startup_program)
+            io.load_persistables(self._executor, model_dir,
+                                 self.startup_program)
 
-    def run_server(self, executor):
+    def run_server(self):
         """
         `run_server` execute executor to start pserver main program.
-
-        Args:
-            executor(Executor): The executor to run for init server.
 
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-
-        if not self._main_program:
+        if not self.main_program:
             raise ValueError(
                 "main_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        executor.run(self._main_program)
+        self._executor.run(self.main_program)
 
     def stop_worker(self):
-        pass
-
-    def stop(self, executor):
         """
         Close this executor.
 
         For the distributed training, this method would free the resource on PServers related to
         the current Trainer.
 
-        Args:
-            executor(Executor): The executor to run for init server.
-
         Returns:
             None
         """
-
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-        executor.close()
+        if not self._transpile_config.sync_mode:
+            self._communicator.stop()
+        self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -157,8 +123,8 @@ class DistributedTranspiler(Fleet):
 
         if not isinstance(optimizer, Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
-        self.optimizer = TranspilerOptimizer(optimizer, strategy)
-        return self.optimizer
+        self._optimizer = TranspilerOptimizer(optimizer, strategy)
+        return self._optimizer
 
     def save_inference_model(self,
                              executor,
@@ -193,31 +159,58 @@ class DistributedTranspiler(Fleet):
             raise ValueError(
                 "config must be an instance of DistributeTranspilerConfig")
 
+        if not config.sync_mode:
+            config.runtime_split_send_recv = True
+
+        self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
         self._transpiler.transpile(
-            trainer_id=fleet.worker_id(),
-            pservers=fleet.server_endpoints,
-            trainers=fleet.worker_num())
+            trainer_id=fleet.worker_index(),
+            pservers=fleet.server_endpoints(to_string=True),
+            trainers=fleet.worker_num(),
+            sync_mode=config.sync_mode)
 
-        if self.role == Role.WORKER:
-            self._main_program = self._transpiler.get_trainer_program()
-            self._startup_program = default_startup_program()
+        if self.is_worker():
+            self.main_program = self._transpiler.get_trainer_program()
+            self.startup_program = default_startup_program()
         else:
-            self._main_program, self._startup_program = \
-                self._transpiler.get_pserver_programs(self.current_endpoint)
+            self.main_program, self.startup_program = \
+                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
 
 
 fleet = DistributedTranspiler()
 
 
 class TranspilerOptimizer(DistributedOptimizer):
+    """
+    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
+    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    minimize() function is implemented.
+    DistributedOptimizer is the starting point for a user who wants to
+    run distributed training. The optimized information will be stored in
+    Fleet() instance who holds the global information about current distributed
+    training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(DistributeTranspilerConfig): instance of DistributeTranspilerConfig.
+
+    Returns:
+        None
+    """
+
     def __init__(self, optimizer, strategy=None):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
-        if strategy and not isinstance(strategy, DistributeTranspilerConfig):
-            raise ValueError(
-                "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
-                format(fleet.mode))
+        if strategy:
+            if not isinstance(strategy, DistributeTranspilerConfig):
+                raise ValueError(
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
+                    format(fleet._mode))
+            else:
+                self._strategy = strategy
+        else:
+            self._strategy = DistributeTranspilerConfig()
 
     def backward(self,
                  loss,
@@ -225,24 +218,68 @@ class TranspilerOptimizer(DistributedOptimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
+        """
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+
+        Examples:
+            See examples in `apply_gradients`.
+        """
         return self._optimizer.backward(loss, startup_program, parameter_list,
                                         no_grad_set, callbacks)
 
     def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
+        """
         return self._optimizer.apply_gradients(params_grads)
 
     def minimize(self,
                  loss,
+                 scope=None,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
+
+        if isinstance(loss, list):
+            raise ValueError(
+                "DistributedTranspiler's minimize can not accept loss with list")
+
+        if isinstance(startup_program, list):
+            raise ValueError(
+                "DistributedTranspiler's minimize can not accept program with list"
+            )
+
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
-        self.transpile()
-        return optimize_ops, params_grads
-
-    def transpile(self):
-        if self._strategy is None:
-            self._strategy = DistributeTranspilerConfig()
-
         fleet._transpile(config=self._strategy)
+        return optimize_ops, params_grads

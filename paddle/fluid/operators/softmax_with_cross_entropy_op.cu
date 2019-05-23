@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <cub/cub.cuh>
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -310,12 +311,6 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
 };
 
 template <typename T>
-static __global__ void SetSoftmaxToOneWhenFeatureSizeIsOne(T* out, int n) {
-  auto idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < n) out[idx] = static_cast<T>(1);
-}
-
-template <typename T>
 static void HardLabelSoftmaxWithCrossEntropy(
     const platform::CUDADeviceContext& ctx, const T* logits_data,
     const int64_t* labels_data, T* loss_data, T* softmax_data, int n, int d,
@@ -354,13 +349,6 @@ static void HardLabelSoftmaxWithCrossEntropy(
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(8);
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(4);
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
-    case 1:
-      SetSoftmaxToOneWhenFeatureSizeIsOne<<<(grid_dim + kMaxBlockDim - 1) /
-                                                kMaxBlockDim,
-                                            kMaxBlockDim, 0, stream>>>(
-          softmax_data, grid_dim);
-      cudaMemsetAsync(loss_data, 0, grid_dim * sizeof(T), stream);
-      break;
     default:
       PADDLE_THROW("BlockDim must be 2^n in softmax_with_cross_entropy_op");
       break;
@@ -401,13 +389,6 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(8);
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(4);
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
-    case 1:
-      SetSoftmaxToOneWhenFeatureSizeIsOne<<<(grid_dim + kMaxBlockDim - 1) /
-                                                kMaxBlockDim,
-                                            kMaxBlockDim, 0, stream>>>(
-          softmax_data, n);
-      cudaMemsetAsync(loss_data, 0, grid_dim * sizeof(T), stream);
-      break;
     default:
       PADDLE_THROW("BlockDim must be 2^n in softmax_with_cross_entropy_op");
       break;
@@ -430,6 +411,13 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     const int rank = logits->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
+
+    if (axis_dim == 1) {
+      math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+      set_constant(context.cuda_device_context(), softmax, static_cast<T>(1));
+      set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
+      return;
+    }
 
     const int n = SizeToAxis(axis, logits->dims());
     const int d = SizeFromAxis(axis, logits->dims());

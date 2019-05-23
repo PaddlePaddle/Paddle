@@ -88,6 +88,10 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
 
+    // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
+    // not be set as Input in grad Maker, use Out_grad to replace here
+    if (!input1) input1 = input2;
+
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::From(*input1);

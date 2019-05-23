@@ -22,10 +22,10 @@ namespace paddle {
 namespace operators {
 
 struct RangeInitFunctor {
-  int start_;
-  int delta_;
-  int* out_;
-  HOSTDEVICE void operator()(size_t i) { out_[i] = start_ + i * delta_; }
+  int start;
+  int delta;
+  int* out;
+  HOSTDEVICE void operator()(size_t i) { out[i] = start + i * delta; }
 };
 
 template <typename T>
