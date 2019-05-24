@@ -113,7 +113,9 @@ struct Instruct {
   }
 
   void Run() {
+#ifdef LITE_WITH_PROFILE
     profile::Profile<profile::BasicRecord> x(profile_id_);
+#endif  // LITE_WITH_PROFILE
     CHECK(op_);
     CHECK(kernel_);
     if (first_epoch_) {
@@ -137,8 +139,10 @@ struct Instruct {
   std::unique_ptr<KernelBase> kernel_;
   bool first_epoch_{true};
 
+#ifdef LITE_WITH_PROFILE
   // for profiler
   int profile_id_{-1};
+#endif  // LITE_WITH_PROFILE
 };
 
 /*
