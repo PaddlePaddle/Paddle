@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 import numpy as np
 from .... import Executor
 from .... import io
@@ -71,7 +72,13 @@ class InferQuantStrategy(Strategy):
             infer_config.enable_mkldnn()
 
             #Prepare the data for calculating the quantization scales 
-            data = context.eval_reader().next()
+            warmup_reader = context.eval_reader()
+            if six.PY2:
+                data = warmup_reader.next()
+
+            if six.PY3:
+                data = warmup_reader.__next__()
+
             num_images = len(data)
             dshape = [3, 224, 224]
             shape = [num_images, 3, 224, 224]
@@ -80,8 +87,11 @@ class InferQuantStrategy(Strategy):
             image.shape = shape
             image.dtype = core.PaddleDType.FLOAT32
             image.data.resize(num_images * 3 * 224 * 224 * sys.getsizeof(float))
-            image_data = np.array(map(lambda x: x[0].reshape(dshape),
-                                      data)).astype("float32")
+            if six.PY2:
+                image_data = map(lambda x: x[0].reshape(dshape), data)
+            if six.PY3:
+                image_data = list(map(lambda x: x[0].reshape(dshape), data))
+            image_data = np.array(image_data).astype("float32")
             image_data = np.reshape(image_data, (np.product(image_data.shape)))
             image.data = core.PaddleBuf(image_data.tolist())
 
@@ -90,7 +100,11 @@ class InferQuantStrategy(Strategy):
             label.shape = [num_images, 1]
             label.dtype = core.PaddleDType.INT64
             image.data.resize(num_images * sys.getsizeof(int))
-            label_data = np.array(map(lambda x: x[1], data)).astype("int64")
+            if six.PY2:
+                label_data = map(lambda x: x[1], data)
+            if six.PY3:
+                label_data = list(map(lambda x: x[1], data))
+            label_data = np.array(label_data)
             label_data = label_data.reshape([-1, 1])
             label.data = core.PaddleBuf(label_data)
 
