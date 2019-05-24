@@ -244,9 +244,9 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
-           tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import paddle.fluid as fluid
+            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
