@@ -512,6 +512,8 @@ def memory_optimize(input_program,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
 
@@ -520,6 +522,7 @@ def memory_optimize(input_program,
 
             exe.run(startup_prog)
             fluid.memory_optimize(main_prog)
+
     """
     sys.stderr.write('memory_optimize is deprecated. '
                      'Use CompiledProgram and Executor\n')
@@ -579,6 +582,8 @@ def release_memory(input_program, skip_opt_set=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
 
@@ -587,6 +592,7 @@ def release_memory(input_program, skip_opt_set=None):
 
             exe.run(startup_prog)
             fluid.release_memory(main_prog)
+
     """
     cfgs = _get_cfgs(input_program)
     input_program._is_mem_optimized = True
