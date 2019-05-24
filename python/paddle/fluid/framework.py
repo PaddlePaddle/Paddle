@@ -564,8 +564,9 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (
+                self.name, self.dtype, self.shape,
+                str(self._ivar.value().get_tensor()))
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -577,7 +578,7 @@ class Variable(object):
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (
                     attr_name, six.binary_type(getattr(self, attr_name)))
-        return res_str
+        return res_str + tensor_str
 
     __repr__ = __str__
 
