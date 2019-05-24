@@ -470,13 +470,13 @@ function assert_api_spec_approvals() {
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          # approval_user_list: velconia 1979255,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
+          # approval_user_list: velconia 1979255,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,xsrobin 50069408. 
           if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 35982308 46782768 30176695`
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 50069408 46782768 30176695`
             if [ "${APPROVALS}" == "TRUE" ];then
               APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-              python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
+              python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
             fi
           elif [ "$API_FILE" == "CMakeLists.txt" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
@@ -488,7 +488,7 @@ function assert_api_spec_approvals() {
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
             if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
-              echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+              echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (xsrobin) approval for the api change! ${API_FILE}"
             elif [ "$API_FILE" == "CMakeLists.txt" ];then
               echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
             else
@@ -834,11 +834,9 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
-        assert_api_spec_approvals
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
@@ -869,7 +867,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         run_test
-        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
