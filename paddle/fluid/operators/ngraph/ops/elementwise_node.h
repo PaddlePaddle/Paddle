@@ -14,10 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/elementwise_binary_prepare_node.h"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -61,3 +64,10 @@ void BuildElementwiseCompareNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(elementwise_max,
+               BuildElementwiseBinaryNode<ngraph::op::Maximum>);
+REGISTER_NG_OP(elementwise_sub,
+               BuildElementwiseBinaryNode<ngraph::op::Subtract>);
+REGISTER_NG_OP(elementwise_min,
+               BuildElementwiseBinaryNode<ngraph::op::Minimum>);

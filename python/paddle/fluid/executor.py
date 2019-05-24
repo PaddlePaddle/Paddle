@@ -66,20 +66,20 @@ def scope_guard(scope):
     Change the global/default scope instance by Python `with` statement. All
     variable in runtime will assigned to the new scope.
 
+    Args:
+        scope: The new global/default scope.
+
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy
+            import numpy
 
-          new_scope = fluid.Scope()
-          with fluid.scope_guard(new_scope):
-              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
-          numpy.array(new_scope.find_var("data").get_tensor())
-
-    Args:
-        scope: The new global/default scope.
+            new_scope = fluid.Scope()
+            with fluid.scope_guard(new_scope):
+                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            numpy.array(new_scope.find_var("data").get_tensor())
     """
+
     ex = _switch_scope(scope)
     yield
     _switch_scope(ex)
@@ -119,7 +119,10 @@ def as_numpy(tensor):
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
-    return np.array(tensor)
+    if tensor._is_initialized():
+        return np.array(tensor)
+    else:
+        return None
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -244,6 +247,10 @@ def _to_name_str(var):
         raise TypeError(str(var) + " should be Variable or str")
 
 
+def _get_strong_program_cache_key(program, feed, fetch_list):
+    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+
+
 def _get_program_cache_key(feed, fetch_list):
     feed_var_names = list(feed.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
@@ -353,16 +360,23 @@ class Executor(object):
     def __init__(self, place):
         self.place = place
         self.program_caches = dict()
+        self.ctx_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+
+    def _get_ctx_cache(self, program_cache_key):
+        return self.ctx_caches.get(program_cache_key, None)
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
     def _add_program_cache(self, program_cache_key, program):
         self.program_caches[program_cache_key] = program
+
+    def _add_ctx_cache(self, ctx_cache_key, ctx):
+        self.ctx_caches[ctx_cache_key] = ctx
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
                             fetch_var_name):
@@ -642,6 +656,7 @@ class Executor(object):
             # performance.
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
+            # use_program_cache is not valid with CompiledProgram
             return self._run(
                 program._program,
                 self._default_executor,
@@ -651,7 +666,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=False)
 
     def _run(self, program, exe, feed, fetch_list, feed_var_name,
              fetch_var_name, scope, return_numpy, use_program_cache):
@@ -674,9 +689,10 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
-        cache_key = _get_program_cache_key(feed, fetch_list)
+        cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         if use_program_cache:
             cached_program = self._get_program_cache(cache_key)
+            cached_ctx = self._get_ctx_cache(cache_key)
             if cached_program is None:
                 cached_program = self._add_feed_fetch_ops(
                     program=program,
@@ -685,7 +701,11 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
                 self._add_program_cache(cache_key, cached_program)
+                cached_ctx = self._default_executor.prepare_ctx_cache(
+                    cached_program.desc, 0, fetch_list, False)
+                self._add_ctx_cache(cache_key, cached_ctx)
             program = cached_program
+            ctx = cached_ctx
         else:
             self.program_caches.pop(cache_key, None)
             program = self._add_feed_fetch_ops(
@@ -696,7 +716,10 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        if not use_program_cache:
+            exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        else:
+            exe.run_cached_prepared_ctx(ctx, scope, True, True, False)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
@@ -789,13 +812,15 @@ class Executor(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                place = fluid.CPUPlace()
+
+                place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", type="int64")
-                y = fluid.layers.data(name="y", type="int64")
+                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
-                filelist = ["dataA.txt", "dataB.txt"]
+                dataset.set_thread(1)
+                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
                 dataset.set_filelist(filelist)
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
@@ -817,8 +842,7 @@ class Executor(object):
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
         dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
@@ -868,14 +892,15 @@ class Executor(object):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              place = fluid.CPUPlace()
+
+              place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", type="int64")
-              y = fluid.layers.data(name="y", type="int64")
+              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
-              dataset.set_thread(2)
-              filelist = ["dataA.txt", "dataB.txt"]
+              dataset.set_thread(1)
+              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
               dataset.set_filelist(filelist)
               exe.run(fluid.default_startup_program())
               exe.train_from_dataset(program=fluid.default_main_program(),
@@ -896,8 +921,7 @@ class Executor(object):
             print_period=print_period)
         trainer._gen_trainer_desc()
         dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
