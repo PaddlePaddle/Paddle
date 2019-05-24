@@ -162,5 +162,6 @@ class TestVariable(unittest.TestCase):
         else:
             self._tostring()
 
+
 if __name__ == '__main__':
     unittest.main()
