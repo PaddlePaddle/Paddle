@@ -145,6 +145,17 @@ class TestVariable(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self._test_slice(core.CUDAPlace(0))
 
+    def test_tostring(self):
+        b = default_main_program().current_block()
+        w = b.create_var(dtype="float64", lod_level=0, name="w1")
+        print(w)
+        self.assertTrue(isinstance(str(w), str))
+
+        if core.is_compiled_with_cuda():
+            wc = b.create_var(dtype="int", lod_level=0, name="wc1")
+            print(wc)
+            self.assertTrue(isinstance(str(wc), str))
+
 
 if __name__ == '__main__':
     unittest.main()
