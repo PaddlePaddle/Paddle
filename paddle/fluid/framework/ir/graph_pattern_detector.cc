@@ -785,6 +785,33 @@ PDNode *patterns::ConvReLU::operator()(
   return relu_out_var;
 }
 
+PDNode *patterns::ConvBReLU::operator()(
+    paddle::framework::ir::PDNode *conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *brelu_op = pattern->NewNode(brelu_repr())->assert_is_op("relu6");
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("relu6");
+  // output
+  auto *brelu_out_var = pattern->NewNode(brelu_out_repr())
+                            ->AsOutput()
+                            ->assert_is_op_output("relu6");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  brelu_op->LinksFrom({conv_out_var}).LinksTo({brelu_out_var});
+  return brelu_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
@@ -1155,6 +1182,46 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   elementwise_add_op->LinksTo({out_var});
 
   return out_var;
+}
+
+PDNode *patterns::ConcatReLU::operator()() {
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
+
+  auto concat_out =
+      pattern->NewNode(concat_out_repr())->assert_is_op_output("concat", "Out");
+
+  auto relu_out = pattern->NewNode(relu_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("relu", "Out");
+
+  concat_op->LinksTo({concat_out});
+  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
+
+  return relu_out;
+}
+
+PDNode *patterns::ConvConcatReLU::operator()() {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
+
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d", "Output");
+
+  auto concat_out = pattern->NewNode(concat_out_repr())
+                        ->assert_is_op_output("concat", "Out")
+                        ->assert_is_op_input("relu", "X");
+
+  auto relu_out = pattern->NewNode(relu_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("relu", "Out");
+
+  conv_op->LinksTo({conv_out});
+  concat_op->LinksFrom({conv_out}).LinksTo({concat_out});
+  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
+
+  return relu_out;
 }
 
 std::unordered_set<std::string> conv_act_set({"identity", "relu"});

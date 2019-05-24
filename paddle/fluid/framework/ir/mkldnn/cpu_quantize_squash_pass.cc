@@ -81,6 +81,9 @@ void CPUQuantizeSquashPass::Squash(
       auto quant_out_var_name = quant_out->Name();
       auto next_op_inputs = next_op_desc->InputNames();
       for (const auto& name : next_op_inputs) {
+        if (next_op_desc->Inputs().count(name) == 0 ||
+            next_op_desc->Input(name).size() == 0)
+          continue;
         auto var_name = next_op_desc->Input(name)[0];
         if (var_name.compare(quant_out_var_name) == 0) {
           next_op_desc->SetInput(
