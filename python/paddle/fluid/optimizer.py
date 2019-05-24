@@ -1427,6 +1427,13 @@ class DecayedAdagradOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.optimizer import DecayedAdagrad
+
+            x = layers.data( name='x', shape=[-1, 10], dtype='float32' )
+            trans = layers.fc( x, 100 )
+            cost = layers.reduce_mean( trans )
             optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
             optimizer.minimize(cost)
 
