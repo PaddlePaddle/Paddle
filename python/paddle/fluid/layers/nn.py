@@ -483,10 +483,18 @@ def dynamic_lstm(input,
 
     Examples:
         .. code-block:: python
-
+            
+            emb_dim = 256
+            vocab_size = 10000
             hidden_dim = 512
-            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+            
+            data = fluid.layers.data(name='x', shape=[1],
+                         dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+
+            forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                            bias_attr=False)
+
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
@@ -625,20 +633,23 @@ def lstm(input,
 
     Examples:
         .. code-block:: python
-
-            input = embedding
+            
+            emb_dim = 256
+            vocab_size = 10000
+            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
+                         dtype='int32')
+            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
             input_size = 100
             hidden_size = 150
             num_layers = 1
-            init_hidden1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
-            init_cell1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
-
-            rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
-                    max_len, dropout_prob, input_size, hidden_size, \
-                    num_layers)
+            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
+                    max_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
@@ -4016,7 +4027,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Examples:
         .. code-block:: python
-
+	
+            import paddle.fluid.layers as layers
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
                              dtype='float32', lod_level=1)
@@ -4084,6 +4096,7 @@ def sequence_expand_as(x, y, name=None):
 
     Examples:
         .. code-block:: python
+            import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
@@ -7119,6 +7132,8 @@ def label_smooth(label,
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid.layers as layers
 
             label = layers.data(name="label", shape=[1], dtype="float32")
             one_hot_label = layers.one_hot(input=label, depth=10)
@@ -7887,7 +7902,12 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
+	
+            import paddle.fluid.layers as layers
 
+            input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
+            index = layers.data( name='index', shape=[1], dtype='int32')
+            updates = layers.data( name='updates', shape=[1], dtype='float32')
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
@@ -8369,9 +8389,9 @@ def rank_loss(label, left, right, name=None):
 
         .. code-block:: python
 
-            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
-            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
-            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
             out = fluid.layers.rank_loss(label, left, right)
 
     """
@@ -8981,7 +9001,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
+            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -9023,6 +9043,14 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Returns:
         Variable: The output sequence mask.
+
+    Examples:
+        .. code-block:: python
+	
+            import paddle.fluid.layers as layers
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32', lod_level=1)
+            mask = layers.sequence_mask(x=x)
 
     """
     assert not in_dygraph_mode(), (
@@ -9251,6 +9279,8 @@ def uniform_random_batch_size_like(input,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid.layers as layers 
 
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             out = layers.uniform_random_batch_size_like(input, [-1, 11])
@@ -10089,6 +10119,9 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
+	
+            import paddle.fluid as fluid
+            import numpy as np
 
             data = fluid.layers.data(
                 name='data', shape=[1, 4, 2, 2], dtype='float32', append_batch_size=False)
@@ -10100,6 +10133,7 @@ def space_to_depth(x, blocksize, name=None):
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
                           fetch_list=[space_to_depthed])
+
     """
 
     helper = LayerHelper("space_to_depth", **locals())
