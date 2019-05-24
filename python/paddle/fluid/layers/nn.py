@@ -383,9 +383,8 @@ def embedding(input,
     Examples:
         .. code-block:: python
 
-          dict_size = len(dataset.ids)
-          data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          fc = fluid.layers.embedding(input=data, size=[dict_size, 16])
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.embedding(input=data, size=[128, 64])          
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -1780,6 +1779,12 @@ def sequence_conv(input,
 
     Returns:
         Variable: output of sequence_conv
+
+    Examples:
+        .. code-block:: python
+
+             x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
+             x_conved = fluid.layers.sequence_conv(x,2)
     """
 
     assert not in_dygraph_mode(), (
@@ -2376,7 +2381,9 @@ def sequence_concat(input, name=None):
     Examples:
         .. code-block:: python
 
-           out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
+           x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+           y = fluid.layers.data(name='y', shape=[10], dtype='float32')
+           out = fluid.layers.sequence_concat(input=[x, y])
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -5425,8 +5432,8 @@ def sequence_reshape(input, new_dim):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
-            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
+            x = fluid.layers.data(name='x', shape=[2, 6], append_batch_size=False, dtype='float32', lod_level=1)
+            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -10013,6 +10020,12 @@ def sequence_reverse(x, name=None):
 
     Returns:
         out(${y_type}): ${y_comment}
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[2, 6], dtype='float32')
+            x_reversed = fluid.layers.sequence_reverse(x)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -10567,6 +10580,13 @@ def get_tensor_from_selected_rows(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+	    
+            b = fluid.default_main_program().global_block()
+            input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
