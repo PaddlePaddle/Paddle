@@ -483,10 +483,18 @@ def dynamic_lstm(input,
 
     Examples:
         .. code-block:: python
-
+            
+            emb_dim = 256
+            vocab_size = 10000
             hidden_dim = 512
-            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+            
+            data = fluid.layers.data(name='x', shape=[1],
+                         dtype='int32', lod_level=1)
+            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+
+            forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                            bias_attr=False)
+
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
@@ -625,20 +633,23 @@ def lstm(input,
 
     Examples:
         .. code-block:: python
-
-            input = embedding
+            
+            emb_dim = 256
+            vocab_size = 10000
+            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
+                         dtype='int32')
+            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
             input_size = 100
             hidden_size = 150
             num_layers = 1
-            init_hidden1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
-            init_cell1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
-
-            rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
-                    max_len, dropout_prob, input_size, hidden_size, \
-                    num_layers)
+            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
+                    max_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
@@ -1041,6 +1052,8 @@ def dynamic_gru(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             dict_dim, emb_dim = 128, 64
             data = fluid.layers.data(name='sequence', shape=[1],
                                      dtype='int32', lod_level=1)
@@ -1178,10 +1191,17 @@ def gru_unit(input,
 
         .. code-block:: python
 
-             # assuming we have x_t_data and prev_hidden of size=10
-             x_t = fluid.layers.fc(input=x_t_data, size=30)
-             hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
-                                                    hidden = prev_hidden)
+            import paddle.fluid as fluid
+
+            dict_dim, emb_dim = 128, 64
+            data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
+            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            hidden_dim = 512
+            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
+            pre_hidden = fluid.layers.data(
+                name='pre_hidden', shape=[hidden_dim], dtype='float32')
+            hidden = fluid.layers.gru_unit(
+                input=x, hidden=pre_hidden, size=hidden_dim * 3)
 
     """
     activation_dict = dict(
@@ -1724,10 +1744,21 @@ def chunk_eval(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
+            dict_size = 10000
+            label_dict_len = 7
+            sequence = fluid.layers.data(
+                name='id', shape=[1], lod_level=1, dtype='int64')
+            embedding = fluid.layers.embedding(
+                input=sequence, size=[dict_size, 512])
+            hidden = fluid.layers.fc(input=embedding, size=512)
+            label = fluid.layers.data(
+                name='label', shape=[1], lod_level=1, dtype='int32')
             crf = fluid.layers.linear_chain_crf(
-                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+                input=hidden, label=label, param_attr=fluid.ParamAttr(name="crfw"))
             crf_decode = fluid.layers.crf_decoding(
-                input=hidden, param_attr=ParamAttr(name="crfw"))
+                input=hidden, param_attr=fluid.ParamAttr(name="crfw"))
             fluid.layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -3996,7 +4027,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Examples:
         .. code-block:: python
-
+	
+            import paddle.fluid.layers as layers
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
                              dtype='float32', lod_level=1)
@@ -4064,6 +4096,7 @@ def sequence_expand_as(x, y, name=None):
 
     Examples:
         .. code-block:: python
+            import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
@@ -4281,16 +4314,25 @@ def beam_search(pre_ids,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             # Suppose `probs` contains predicted results from the computation
             # cell and `pre_ids` and `pre_scores` is the output of beam_search
             # at previous step.
-            topk_scores, topk_indices = layers.topk(probs, k=beam_size)
-            accu_scores = layers.elementwise_add(
-                x=layers.log(x=topk_scores)),
-                y=layers.reshape(
-                    pre_scores, shape=[-1]),
+            beam_size = 4
+            end_id = 1
+            pre_ids = fluid.layers.data(
+                name='pre_id', shape=[1], lod_level=2, dtype='int64')
+            pre_scores = fluid.layers.data(
+                name='pre_scores', shape=[1], lod_level=2, dtype='float32')
+            probs = fluid.layers.data(
+                name='probs', shape=[10000], dtype='float32')
+            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
+            accu_scores = fluid.layers.elementwise_add(
+                x=fluid.layers.log(x=topk_scores),
+                y=fluid.layers.reshape(pre_scores, shape=[-1]),
                 axis=0)
-            selected_ids, selected_scores = layers.beam_search(
+            selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,
                 pre_scores=pre_scores,
                 ids=topk_indices,
@@ -4364,9 +4406,13 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
-            finished_ids, finished_scores = layers.beam_search_decode(
+            ids = fluid.layers.create_array(dtype='int64')
+            scores = fluid.layers.create_array(dtype='float32')
+            finished_ids, finished_scores = fluid.layers.beam_search_decode(
                 ids, scores, beam_size=5, end_id=0)
     """
     helper = LayerHelper('beam_search_decode', **locals())
@@ -4464,12 +4510,19 @@ def lstm_unit(x_t,
 
         .. code-block:: python
 
-             x_t = fluid.layers.fc(input=x_t_data, size=10)
-             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=30)
-             prev_cell = fluid.layers.fc(input=prev_cell_data, size=30)
-             hidden_value, cell_value = fluid.layers.lstm_unit(x_t=x_t,
-                                                    hidden_t_prev=prev_hidden,
-                                                    cell_t_prev=prev_cell)
+            import paddle.fluid as fluid
+
+            dict_dim, emb_dim, hidden_dim = 128, 64, 512
+            data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
+            x = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            pre_hidden = fluid.layers.data(
+                name='pre_hidden', shape=[hidden_dim], dtype='float32')
+            pre_cell = fluid.layers.data(
+                name='pre_cell', shape=[hidden_dim], dtype='float32')
+            hidden = fluid.layers.lstm_unit(
+                x_t=x,
+                hidden_t_prev=pre_hidden,
+                cell_t_prev=pre_cell)
     """
     helper = LayerHelper('lstm_unit', **locals())
 
@@ -7079,6 +7132,8 @@ def label_smooth(label,
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid.layers as layers
 
             label = layers.data(name="label", shape=[1], dtype="float32")
             one_hot_label = layers.one_hot(input=label, depth=10)
@@ -7847,7 +7902,12 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
+	
+            import paddle.fluid.layers as layers
 
+            input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
+            index = layers.data( name='index', shape=[1], dtype='int32')
+            updates = layers.data( name='updates', shape=[1], dtype='float32')
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
@@ -8329,9 +8389,9 @@ def rank_loss(label, left, right, name=None):
 
         .. code-block:: python
 
-            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
-            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
-            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
             out = fluid.layers.rank_loss(label, left, right)
 
     """
@@ -8941,7 +9001,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
+            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -8983,6 +9043,14 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Returns:
         Variable: The output sequence mask.
+
+    Examples:
+        .. code-block:: python
+	
+            import paddle.fluid.layers as layers
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32', lod_level=1)
+            mask = layers.sequence_mask(x=x)
 
     """
     assert not in_dygraph_mode(), (
@@ -9211,6 +9279,8 @@ def uniform_random_batch_size_like(input,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid.layers as layers 
 
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             out = layers.uniform_random_batch_size_like(input, [-1, 11])
@@ -10049,6 +10119,9 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
+	
+            import paddle.fluid as fluid
+            import numpy as np
 
             data = fluid.layers.data(
                 name='data', shape=[1, 4, 2, 2], dtype='float32', append_batch_size=False)
@@ -10060,6 +10133,7 @@ def space_to_depth(x, blocksize, name=None):
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
                           fetch_list=[space_to_depthed])
+
     """
 
     helper = LayerHelper("space_to_depth", **locals())
@@ -10555,7 +10629,15 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          position_tensor = fluid.layers.add_position_encoding(input=tensor)
+          import paddle.fluid as fluid
+
+          tensor = fluid.layers.data(
+              name='tensor',
+              shape=[32, 64, 512],
+              dtype='float32',
+              append_batch_size=False)
+          position_tensor = fluid.layers.add_position_encoding(
+              input=tensor, alpha=1.0, beta=1.0)
 
     """
     helper = LayerHelper('add_position_encoding', **locals())

@@ -1055,7 +1055,8 @@ def double_buffer(reader, place=None, name=None):
 
     Examples:
 
-        >>> reader = fluid.layers.open_files(filenames=['somefile'],
+        >>> import paddle.fluid as fluid
+        >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
         >>>                                  shapes=[[-1, 784], [-1, 1]],
         >>>                                  dtypes=['float32', 'int64'])
         >>> reader = fluid.layers.double_buffer(reader)

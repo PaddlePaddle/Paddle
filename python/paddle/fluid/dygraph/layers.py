@@ -18,6 +18,7 @@ import sys
 import numpy as np
 import collections
 import six
+from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
@@ -154,6 +155,8 @@ class Layer(core.Layer):
     def __call__(self, *inputs):
         if not self._built:
             self.build_once(*inputs)
+            if parallel_helper._is_data_parallel_mode():
+                parallel_helper._broadcast_parameters(self._parameters.values())
 
         outputs = self.forward(*inputs)
         self._built = True
