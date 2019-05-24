@@ -75,11 +75,11 @@ def start_procs(gpus, entrypoint, entrypoint_args, log_dir):
     nranks = num_nodes * gpus
     # ======== for dist training =======
     gpu_ids = get_gpu_ids(gpus)
-    for i in gpu_ids:
+    for i in range(gpus):
         curr_env = {}
         curr_env.update(default_envs)
         curr_env.update({
-            "FLAGS_selected_gpus": "%d" % i,
+            "FLAGS_selected_gpus": "%d" % gpu_ids[i],
             "PADDLE_TRAINER_ID": "%d" % (node_trainer_id * gpus + i),
             "PADDLE_CURRENT_ENDPOINT": "%s:617%d" % (current_ip, i),
             # nranks
