@@ -146,6 +146,16 @@ struct FillConstantParam {
   lite::Tensor* Out{};
 };
 
+/// ----------------------- sgd operators ----------------------
+struct SGDParam {
+  int dtype{framework::proto::VarType::FP32};
+
+  const lite::Tensor* Param{};
+  const lite::Tensor* LearningRate{};
+  const lite::Tensor* Grad{};
+  lite::Tensor* ParamOut{};
+};
+
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle

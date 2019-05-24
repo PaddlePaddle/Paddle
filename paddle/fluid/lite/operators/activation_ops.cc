@@ -37,9 +37,12 @@ class ActivationOp : public OpLite {
 
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Out = GetMutableVar<Tensor>(scope, Out_name);
+    return true;
   }
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
+
+  std::string DebugString() const override { return "activation_op"; }
 
  private:
   mutable ActivationParam param_;
@@ -66,12 +69,15 @@ class ActivationGradOp : public OpLite {
 
     param_.Out_grad = GetVar<lite::Tensor>(scope, Out_grad_name);
     param_.X_grad = GetMutableVar<Tensor>(scope, X_grad_name);
+    return true;
   }
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
+  std::string DebugString() const override { return "activation_grad_op"; }
+
  private:
-  mutable ActivationParam param_;
+  mutable ActivationGradParam param_;
 };
 
 }  // namespace operators
