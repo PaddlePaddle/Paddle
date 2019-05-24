@@ -178,35 +178,22 @@ inline std::string GetHierarchicalInterNCCLVarName() {
 class MultiNCCLContextMap {
  public:
   MultiNCCLContextMap() {}
-  virtual ~MultiNCCLContextMap() {
-    for (size_t i = 0; i < flat_ctxs_.size(); i++) {
-      delete flat_ctxs_[i];
-    }
-    flat_ctxs_.clear();
-
-    for (size_t i = 0; i < h_inter_ctxs_.size(); i++) {
-      delete h_inter_ctxs_[i];
-    }
-    h_inter_ctxs_.clear();
-
-    for (size_t i = 0; i < h_exter_ctxs_.size(); i++) {
-      delete h_exter_ctxs_[i];
-    }
-    h_exter_ctxs_.clear();
-  }
+  virtual ~MultiNCCLContextMap() {}
 
   NCCLContextMap *DefaultFlatCtx() const {
     if (flat_ctxs_.size() == 0) {
       return nullptr;
     }
 
-    return flat_ctxs_[0];
+    return flat_ctxs_[0].get();
   }
 
-  std::vector<NCCLContextMap *> *GetFlatCtxs() { return &flat_ctxs_; }
+  std::vector<std::unique_ptr<NCCLContextMap>> *GetFlatCtxs() {
+    return &flat_ctxs_;
+  }
 
   NCCLContextMap *GetFlatCtx(size_t run_order) const {
-    return flat_ctxs_[run_order % flat_ctxs_.size()];
+    return flat_ctxs_[run_order % flat_ctxs_.size()].get();
   }
 
   NCCLContextMap *GetRunEnvNCCLCtx(size_t run_order,
@@ -224,7 +211,7 @@ class MultiNCCLContextMap {
     if (nccl_ids.size() == 0) {
       auto ptr = new platform::NCCLContextMap(places);
       VLOG(1) << "init local trainer";
-      flat_ctxs_.push_back(ptr);
+      flat_ctxs_.emplace_back(ptr);
       return;
     }
 
@@ -232,7 +219,7 @@ class MultiNCCLContextMap {
       auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
                                               trainer_id);
       VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
-      flat_ctxs_.push_back(ptr);
+      flat_ctxs_.emplace_back(ptr);
     }
   }
 
@@ -255,7 +242,7 @@ class MultiNCCLContextMap {
     auto local = new NCCLContextMap(places, inter_nccl_id, inter_trainers_num,
                                     inter_trainer_id);
 
-    h_inter_ctxs_.push_back(local);
+    h_inter_ctxs_.emplace_back(local);
 
     int exter_trainer_id = -1;
     if (trainer_id % inter_trainers_num == 0) {
@@ -268,7 +255,7 @@ class MultiNCCLContextMap {
                                      exter_trainers_num, exter_trainer_id);
         VLOG(1) << "init exter_trainer_id:" << exter_trainer_id
                 << ", comm no:" << i;
-        h_exter_ctxs_.push_back(ex);
+        h_exter_ctxs_.emplace_back(ex);
       }
     }
   }
@@ -276,29 +263,29 @@ class MultiNCCLContextMap {
   bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
-    return h_inter_ctxs_[run_order % h_inter_ctxs_.size()];
+    return h_inter_ctxs_[run_order % h_inter_ctxs_.size()].get();
   }
 
   NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
-    return h_exter_ctxs_[run_order % h_exter_ctxs_.size()];
+    return h_exter_ctxs_[run_order % h_exter_ctxs_.size()].get();
   }
 
-  std::vector<NCCLContextMap *> *GetHierarchicalInterCtxs() {
+  std::vector<std::unique_ptr<NCCLContextMap>> *GetHierarchicalInterCtxs() {
     return &h_inter_ctxs_;
   }
 
-  std::vector<NCCLContextMap *> *GetHierarchicalExterCtxs() {
+  std::vector<std::unique_ptr<NCCLContextMap>> *GetHierarchicalExterCtxs() {
     return &h_exter_ctxs_;
   }
 
  protected:
   // Support multi nccl comm on default nccl ring while NCCLContextMap can't.
-  std::vector<NCCLContextMap *> flat_ctxs_;
+  std::vector<std::unique_ptr<NCCLContextMap>> flat_ctxs_;
 
   // h_inter_ctxs_ and h_exter_ctxs_ are for 2d allreduce.
   // And h_exter_ctxs_ can support multi comm too.
-  std::vector<NCCLContextMap *> h_inter_ctxs_;
-  std::vector<NCCLContextMap *> h_exter_ctxs_;
+  std::vector<std::unique_ptr<NCCLContextMap>> h_inter_ctxs_;
+  std::vector<std::unique_ptr<NCCLContextMap>> h_exter_ctxs_;
 };
 
 }  // namespace platform
