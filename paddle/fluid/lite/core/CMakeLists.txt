@@ -1,9 +1,12 @@
 if (WITH_TESTING)
     cc_library(lite_gtest_main SRCS lite_gtest_main.cc DEPS gtest)
 endif()
-cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite)
-lite_cc_library(target_wrapper_lite SRCS target_wrapper.cc DEPS target_wrapper_host X86_DEPS target_wrapper_x86 CUDA_DEPS target_wrapper_cuda)
-cc_library(lite_tensor SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
+lite_cc_library(target_wrapper_lite SRCS target_wrapper.cc
+  DEPS target_wrapper_host
+  X86_DEPS target_wrapper_x86
+  CUDA_DEPS target_wrapper_cuda)
+lite_cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite)
+lite_cc_library(lite_tensor SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
 if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cc_library(hvy_tensor SRCS hvy_tensor.cc DEPS lod_tensor)
 endif()
@@ -16,12 +19,12 @@ endif()
 
 proto_library(framework_proto_lite SRCS framework.proto)
 
-cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite)
+cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite)
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
 cc_library(scope_lite SRCS scope.cc)
 cc_library(context_lite SRCS context.cc DEPS any_lite)
-cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_pb_lite)
+cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_pb_lite target_wrapper_lite ${tensor_lite})
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
@@ -42,7 +45,7 @@ cc_library(program_fake_utils SRCS program_fake_utils.cc DEPS mir_ssa_graph
         )
 
 lite_cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
-lite_cc_test(test_kernel_lite SRCS kernel_test.cc DEPS kernel_lite target_wrapper_lite)
+lite_cc_test(test_kernel_lite SRCS kernel_test.cc DEPS kernel_lite target_wrapper_lite any_lite)
 lite_cc_test(test_op_lite SRCS op_lite_test.cc DEPS op_lite)
 lite_cc_test(test_tensor_lite SRCS lite_tensor_test.cc DEPS lite_tensor)
 lite_cc_test(test_type_system SRCS type_system_test.cc DEPS type_system utils_lite)

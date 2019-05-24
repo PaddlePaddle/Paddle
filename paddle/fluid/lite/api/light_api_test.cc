@@ -44,8 +44,3 @@ USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
-USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
-USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);

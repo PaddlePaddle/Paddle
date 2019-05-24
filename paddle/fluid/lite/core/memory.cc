@@ -47,7 +47,7 @@ void TargetFree(TargetType target, void* data) {
 
 #ifdef LITE_WITH_CUDA
     case TargetType::kCUDA:
-      TargetWrapper<TARGET(kX86)>::Free(data);
+      TargetWrapper<TARGET(kCUDA)>::Free(data);
       break;
 #endif  // LITE_WITH_CUDA
     default:

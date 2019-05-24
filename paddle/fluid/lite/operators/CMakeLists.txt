@@ -10,7 +10,7 @@ cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
 cc_library(activation_ops_lite SRCS activation_ops.cc DEPS ${op_DEPS})
 cc_library(elementwise_ops_lite SRCS elementwise_ops.cc DEPS ${op_DEPS})
 
-cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite})
+cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite)
 set(ops_lite
         fc_op_lite
         relu_op_lite
@@ -21,5 +21,4 @@ set(ops_lite
         io_copy_op_lite
         PARENT_SCOPE)
 
-lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite)
- 
+lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite memory_lite)
