@@ -55,3 +55,7 @@ REGISTER_NG_OP(abs, BuildUnaryNode<ngraph::op::Abs>);
 REGISTER_NG_OP(relu, BuildUnaryNode<ngraph::op::Relu>);
 REGISTER_NG_OP(tanh, BuildUnaryNode<ngraph::op::Tanh>);
 REGISTER_NG_OP(sigmoid, BuildUnaryNode<ngraph::op::Sigmoid>);
+
+REGISTER_NG_OP(logical_and, BuildBinaryNode<ngraph::op::And>);
+REGISTER_NG_OP(logical_or, BuildBinaryNode<ngraph::op::Or>);
+REGISTER_NG_OP(logical_not, BuildUnaryNode<ngraph::op::Not>);
