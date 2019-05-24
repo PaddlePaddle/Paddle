@@ -140,16 +140,16 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
 };
 
 template <typename DeviceContext, typename T>
-void SoftmaxGradFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const int axis_dim,
-    const framework::Tensor* y, const framework::Tensor* y_grad,
-    framework::Tensor* x_grad) {
+void SoftmaxGradEigen(const DeviceContext& context, const int axis_dim,
+                      const framework::Tensor* y,
+                      const framework::Tensor* y_grad,
+                      framework::Tensor* x_grad) {
   auto softmax = EigenMatrix<T>::From(*y);
   auto softmax_grad = EigenMatrix<T>::From(*y_grad);
   auto logits_grad = EigenMatrix<T>::From(*x_grad);
 
-  const int kBatchDim = 0;
-  const int kClassDim = 1;
+  constexpr int kBatchDim = 0;
+  constexpr int kClassDim = 1;
 
   const int batch_size = softmax.dimension(kBatchDim);
   const int num_classes = softmax.dimension(kClassDim);
@@ -168,6 +168,48 @@ void SoftmaxGradFunctor<DeviceContext, T>::operator()(
                  .broadcast(one_axis);
   logits_grad.device(*context.eigen_device()) = (softmax_grad - dot) * softmax;
 }
+
+template <typename DeviceContext, typename T, typename Enable>
+void SoftmaxGradFunctor<DeviceContext, T, Enable>::operator()(
+    const DeviceContext& context, const int axis_dim,
+    const framework::Tensor* y, const framework::Tensor* y_grad,
+    framework::Tensor* x_grad) {
+  SoftmaxGradEigen<DeviceContext, T>(context, axis_dim, y, y_grad, x_grad);
+}
+
+template <typename DeviceContext, typename T>
+class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
+ public:
+  void operator()(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* y, const framework::Tensor* y_grad,
+                  framework::Tensor* x_grad) {
+    auto out_dims = y->dims();
+    constexpr int kBatchDim = 0;
+    constexpr int kClassDim = 1;
+    const int num_classes = out_dims[kClassDim];
+    const int batch_size = out_dims[kBatchDim];
+    const int num_remain = num_classes / axis_dim;
+
+    if (num_remain == 1 && platform::MayIUse(platform::avx)) {
+      const T* out_data = y->data<T>();
+      const T* out_grad = y_grad->data<T>();
+      T* in_grad = x_grad->data<T>();
+      for (int bs = 0; bs < batch_size; ++bs) {
+        T scalar;
+        vec_mul_reduce<T, platform::avx>(num_classes, out_grad, out_data,
+                                         &scalar);
+        scalar *= static_cast<T>(-1);
+        vec_add_bias<T, platform::avx>(num_classes, scalar, out_grad, in_grad);
+        vec_mul<T, platform::avx>(num_classes, out_data, in_grad, in_grad);
+        out_data += num_classes;
+        out_grad += num_classes;
+        in_grad += num_classes;
+      }
+    } else {
+      SoftmaxGradEigen<DeviceContext, T>(context, axis_dim, y, y_grad, x_grad);
+    }
+  }
+};
 
 }  // namespace math
 }  // namespace operators

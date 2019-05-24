@@ -1032,10 +1032,28 @@ All parameter, weight, gradient are variables in Paddle.
            [](const OperatorBase &op) { return op.OutputVars(false); })
       .def("support_gpu", &OperatorBase::SupportGPU);
 
+  py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
+      .def(py::init<const ProgramDesc &, size_t>());
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
-      .def("run_from_dataset", &Executor::RunFromDataset)
+      .def("run_from_dataset", &Executor::RunFromDataset,
+           py::call_guard<py::gil_scoped_release>())
+      .def("run_prepared_ctx",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              std::map<std::string, const LoDTensor *> *feed_targets,
+              std::map<std::string, LoDTensor *> *fetch_targets,
+              bool create_local_scope = true, bool create_vars = true,
+              const std::string &feed_holder_name = "feed",
+              const std::string &fetch_holder_name = "fetch") {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, feed_targets, fetch_targets,
+                                     create_local_scope, create_vars,
+                                     feed_holder_name, fetch_holder_name);
+           })
+      .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
+           py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
