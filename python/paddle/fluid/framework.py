@@ -564,8 +564,9 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (
+                self.name, self.dtype, self.shape,
+                str(self._ivar.value().get_tensor()))
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)

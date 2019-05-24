@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -391,7 +392,12 @@ PYBIND11_MODULE(core, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
-      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
+      .def("__str__", [](const Tensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -610,7 +616,12 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
-           )DOC");
+           )DOC")
+      .def("__str__", [](const LoDTensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
