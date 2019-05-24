@@ -229,15 +229,17 @@ class Conv2D(layers.Layer):
                 'use_mkldnn': False,
             })
 
-        pre_act = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
-
-        self._helper.append_op(
-            type='elementwise_add',
-            inputs={'X': [pre_bias],
-                    'Y': [self._bias_param]},
-            outputs={'Out': [pre_act]},
-            attrs={'axis': 1})
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_act, act=self._act)
@@ -1054,7 +1056,7 @@ class BatchNorm(layers.Layer):
                  use_global_stats=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
-        self._param_attr = bias_attr
+        self._bias_attr = bias_attr
         self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
@@ -1076,7 +1078,7 @@ class BatchNorm(layers.Layer):
             self._scale.stop_gradient = True
 
         self._bias = self.create_parameter(
-            attr=self._param_attr,
+            attr=self._bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
