@@ -157,9 +157,10 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(isinstance(str(wc), str))
 
     def test_tostring(self):
-        if in_dygraph_mode():
+        with fluid.dygraph.guard():
             self._tostring()
-        else:
+
+        with fluid.program_guard(default_main_program()):
             self._tostring()
 
 
