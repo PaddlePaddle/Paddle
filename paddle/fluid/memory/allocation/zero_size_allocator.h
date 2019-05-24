@@ -24,12 +24,6 @@ namespace allocation {
 // The allocator handles the request's size is zero. Allocator will always
 // return an allocation even the request size is zero. However, the
 // allocation.ptr() is nullptr
-class ZeroSizeAllocation : public Allocation {
- public:
-  explicit ZeroSizeAllocation(const platform::Place& p)
-      : Allocation(nullptr, 0, p) {}
-};
-
 class ZeroSizeAllocator : public Allocator {
  public:
   ZeroSizeAllocator(std::shared_ptr<Allocator> underlying_allocator,
@@ -40,6 +34,7 @@ class ZeroSizeAllocator : public Allocator {
 
  protected:
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+  void FreeImpl(Allocation* allocation) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

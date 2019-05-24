@@ -236,7 +236,35 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("DDX")->type();
+    auto input_data_type = ctx.Input<Tensor>("DOut")->type();
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
+class ElementwiseOpDoubleGradWithoutDXDY
+    : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("DOut", "DDOut");
+      ctx->ShareLoD("DOut", "DDOut");
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = ctx.Input<Tensor>("DOut")->type();
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -359,3 +387,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
                     ::paddle::operators::ElementwiseOpExplicitGrad, \
                     ::paddle::operators::ElementwiseGradOpInplace,  \
                     ::paddle::operators::ElementwiseGradNoBufVarsInference)
+
+#define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type, op_name, equation) \
+  class __ElemwiseOp##op_type##Maker__                                         \
+      : public ::paddle::operators::ElementwiseOpMaker {                       \
+   protected:                                                                  \
+    virtual std::string GetName() const { return op_name; }                    \
+    virtual std::string GetEquation() const { return equation; }               \
+  };                                                                           \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,               \
+                    __ElemwiseOp##op_type##Maker__,                            \
+                    ::paddle::operators::ElementwiseOpInferVarType,            \
+                    op_type##GradMaker,                                        \
+                    ::paddle::operators::ElementwiseOpInplace);

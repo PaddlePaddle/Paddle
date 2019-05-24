@@ -321,7 +321,6 @@ TEST(Analyzer_dam, compare_determine) {
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
 }
-
 // Save optim model
 TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;
