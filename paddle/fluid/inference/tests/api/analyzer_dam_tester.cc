@@ -200,8 +200,9 @@ void profile(bool use_mkldnn = false) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
-                                               "relu"};
+                                               "relu", "fc"};
     cfg.SetMKLDNNOp(op_list);
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;

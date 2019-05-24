@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -80,6 +81,7 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
     }
 
     desc.SetType("fc");
+
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});
 
