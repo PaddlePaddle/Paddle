@@ -1052,6 +1052,14 @@ All parameter, weight, gradient are variables in Paddle.
                                      create_local_scope, create_vars,
                                      feed_holder_name, fetch_holder_name);
            })
+      .def("run_cached_prepared_ctx",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              bool create_local_scope = true, bool create_vars = true,
+              bool keep_kids = false) {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, create_local_scope,
+                                     create_vars, keep_kids);
+           })
       .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
            py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
