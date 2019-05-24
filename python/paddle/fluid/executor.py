@@ -247,6 +247,10 @@ def _to_name_str(var):
         raise TypeError(str(var) + " should be Variable or str")
 
 
+def _get_strong_program_cache_key(program, feed, fetch_list):
+    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+
+
 def _get_program_cache_key(feed, fetch_list):
     feed_var_names = list(feed.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
@@ -356,16 +360,23 @@ class Executor(object):
     def __init__(self, place):
         self.place = place
         self.program_caches = dict()
+        self.ctx_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+
+    def _get_ctx_cache(self, program_cache_key):
+        return self.ctx_caches.get(program_cache_key, None)
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
     def _add_program_cache(self, program_cache_key, program):
         self.program_caches[program_cache_key] = program
+
+    def _add_ctx_cache(self, ctx_cache_key, ctx):
+        self.ctx_caches[ctx_cache_key] = ctx
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
                             fetch_var_name):
@@ -645,6 +656,7 @@ class Executor(object):
             # performance.
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
+            # use_program_cache is not valid with CompiledProgram
             return self._run(
                 program._program,
                 self._default_executor,
@@ -654,7 +666,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=False)
 
     def _run(self, program, exe, feed, fetch_list, feed_var_name,
              fetch_var_name, scope, return_numpy, use_program_cache):
@@ -677,9 +689,10 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
-        cache_key = _get_program_cache_key(feed, fetch_list)
+        cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         if use_program_cache:
             cached_program = self._get_program_cache(cache_key)
+            cached_ctx = self._get_ctx_cache(cache_key)
             if cached_program is None:
                 cached_program = self._add_feed_fetch_ops(
                     program=program,
@@ -688,7 +701,11 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
                 self._add_program_cache(cache_key, cached_program)
+                cached_ctx = self._default_executor.prepare_ctx_cache(
+                    cached_program.desc, 0, fetch_list, False)
+                self._add_ctx_cache(cache_key, cached_ctx)
             program = cached_program
+            ctx = cached_ctx
         else:
             self.program_caches.pop(cache_key, None)
             program = self._add_feed_fetch_ops(
@@ -699,7 +716,10 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        if not use_program_cache:
+            exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        else:
+            exe.run_cached_prepared_ctx(ctx, scope, True, True, False)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
