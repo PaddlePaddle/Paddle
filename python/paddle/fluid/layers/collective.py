@@ -32,11 +32,9 @@ def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
         raise TypeError("reduce type can only be [sum|prod|max|min]")
 
     if out is None:
-        # FIXME(zjl): in dygraph mode, if x is not gradient of parameter,
-        # memory leak would occur in unique_name, which makes the dygraph
-        # program run slower and slower as batch increases.
         out = helper.create_variable(
-            name=unique_name.generate(".".join([x.name, 'tmp'])),
+            name=unique_name.generate_with_ignorable_key(".".join(
+                [x.name, 'tmp'])),
             shape=x.shape,
             dtype=x.dtype,
             type=x.type,
