@@ -381,6 +381,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
 
@@ -434,7 +435,9 @@ def fill_constant_batch_size_like(input,
 
         .. code-block:: python
 
-             data = fluid.layers.fill_constant_batch_size_like(
+             import paddle.fluid as fluid
+             like = fluid.layers.data(name='like', shape=[1], dtype='float32')
+             data = fluid.lgyers.fill_constant_batch_size_like(
                          input=like, shape=[1], value=0, dtype='int64')
 
     """

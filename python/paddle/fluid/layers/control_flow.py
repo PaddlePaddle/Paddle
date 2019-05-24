@@ -1123,6 +1123,9 @@ def equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          label = fluid.layers.data(name="label", shape=[3,10,32,32], dtype="float32")
+          limit = fluid.layers.data(name="limit", shape=[3,10,32,32], dtype="float32")
           less = fluid.layers.equal(x=label, y=limit)
     """
     helper = LayerHelper("equal", **locals())
