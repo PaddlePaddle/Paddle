@@ -18,5 +18,8 @@ from . import quantization_pass
 from .quantization_pass import *
 from . import quantization_strategy
 from .quantization_strategy import *
+from . import infer_quant_strategy
+from .infer_quant_strategy import *
 
 __all__ = quantization_pass.__all__ + quantization_strategy.__all__
+__all__ += infer_quant_strategy.__all__

@@ -1,0 +1,13 @@
+version: 1.0
+strategies:
+    infer_quant_strategy:
+        class: 'InferQuantStrategy'
+        start_epoch: 0
+        end_epoch: 0
+        int8_model_save_path: './output/int8'
+        fp32_model_path: 'MODEL_PATH'
+compressor:
+    epoch: 0
+    checkpoint_path: './checkpoints_quan/'
+    strategies:
+        - infer_quant_strategy
