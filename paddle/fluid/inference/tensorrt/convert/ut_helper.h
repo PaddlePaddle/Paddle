@@ -159,7 +159,7 @@ class TRTConvertValidation {
     PADDLE_ENFORCE_LE(batch_size, max_batch_size_);
     platform::CUDADeviceContext ctx(place_);
     op_->Run(scope_, place_);
-
+    cudaStreamSynchronize(stream_);
     std::vector<std::string> input_output_names;
 
     // Note: we need filter the parameter
@@ -194,6 +194,7 @@ class TRTConvertValidation {
 
     // Execute TRT.
     engine_->Execute(batch_size, &buffers, stream_);
+    cudaStreamSynchronize(stream_);
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
     int index = 0;

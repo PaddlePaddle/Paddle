@@ -151,5 +151,7 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
 }
+
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
 }  // namespace framework
 }  // namespace paddle

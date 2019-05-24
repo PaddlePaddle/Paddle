@@ -449,6 +449,27 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// CONV with ReLU6
+// op: conv + relu6
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// relu6_out, relu6
+struct ConvBReLU : public PatternBase {
+  ConvBReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bounded_relu") {}
+
+  PDNode* operator()(PDNode* conv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(brelu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(brelu_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -494,6 +515,25 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(Out);
+};
+
+// MKL-DNN's FC with bias
+// op: fc
+// named node:
+// fc
+// w, bias, output
+struct FCMKLDNN : public PatternBase {
+  FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_mkldnn") {}
+
+  PDNode* operator()(PDNode* x, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  // declare variable node's name
+  PATTERN_DECL_NODE(weights);
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(output);
 };
 
 // Embedding
@@ -705,6 +745,39 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_x);
   PATTERN_DECL_NODE(elementwise_add_y);
   PATTERN_DECL_NODE(elementwise_add_out);
+};
+
+// Concat + ReLU
+// named nodes:
+// concat_op, concat_out, relu_op, relu_out
+struct ConcatReLU : public PatternBase {
+  ConcatReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "concat_relu") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+  PATTERN_DECL_NODE(relu_op);
+  PATTERN_DECL_NODE(relu_out);
+};
+
+// Conv + Concat + ReLU
+// named nodes:
+// conv_op, conv_out
+// concat_op, concat_out, relu_op, relu_out
+struct ConvConcatReLU : public PatternBase {
+  ConvConcatReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_concat_relu") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+  PATTERN_DECL_NODE(relu_op);
+  PATTERN_DECL_NODE(relu_out);
 };
 
 // Conv + ElementwiseAdd + an activation

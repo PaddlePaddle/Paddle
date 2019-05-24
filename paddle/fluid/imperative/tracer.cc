@@ -18,11 +18,13 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace imperative {
@@ -140,6 +142,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                                     framework::AttributeMap attrs_map,
                                     const platform::Place expected_place,
                                     const bool stop_gradient) {
+  platform::RecordEvent record_event(op->type_);
   framework::VariableValueMap invars_map;
   framework::VariableValueMap outvars_map;
 
@@ -153,7 +156,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       PADDLE_ENFORCE_NOT_NULL(inp->var_, "op %s input %s nullptr", op->Type(),
                               inp->Name());
 
-      invars.emplace_back(inp->var_);
+      invars.emplace_back(inp->var_.get());
       if (!stop_gradient) {
         current_vars_map[inp->Name()] = inp;
       }
@@ -171,7 +174,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     outvars.reserve(outputs.size());
     for (size_t i = 0U; i < outputs.size(); ++i) {
       VarBase* out = outputs[i];
-      outvars.emplace_back(out->var_);
+      outvars.emplace_back(out->var_.get());
       out->TrackPreOp(op, it.first, i, stop_gradient);
       if (!stop_gradient) {
         current_vars_map[out->Name()] = out;
@@ -294,17 +297,15 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
 
   op->input_vars_[PyLayer::kFwdInp] = inputs;
 
-  std::vector<framework::Variable*> ret_vars =
+  std::vector<std::unique_ptr<framework::Variable>> ret_vars =
       PyLayer::Apply(op->forward_id_, inputs);
-
   op->TrackPreOp(PyLayer::kFwdInp, inputs);
 
   std::vector<VarBase*>& outputs = op->output_vars_[PyLayer::kFwdOut];
   outputs.reserve(ret_vars.size());
   for (size_t i = 0U; i != ret_vars.size(); ++i) {
-    framework::Variable* v = ret_vars[i];
-    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i), v,
-                               nullptr, stop_gradient);
+    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i),
+                               std::move(ret_vars[i]), nullptr, stop_gradient);
     outputs.emplace_back(out);
     out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
   }

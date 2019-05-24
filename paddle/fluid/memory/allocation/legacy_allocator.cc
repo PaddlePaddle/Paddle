@@ -347,7 +347,7 @@ Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   return tmp_alloc;
 }
 
-void LegacyAllocator::Free(Allocation *allocation) {
+void LegacyAllocator::FreeImpl(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
