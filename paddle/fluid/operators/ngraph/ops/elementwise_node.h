@@ -67,5 +67,7 @@ void BuildElementwiseCompareNode(
 
 REGISTER_NG_OP(elementwise_max,
                BuildElementwiseBinaryNode<ngraph::op::Maximum>);
+REGISTER_NG_OP(elementwise_sub,
+               BuildElementwiseBinaryNode<ngraph::op::Subtract>);
 REGISTER_NG_OP(elementwise_min,
                BuildElementwiseBinaryNode<ngraph::op::Minimum>);
