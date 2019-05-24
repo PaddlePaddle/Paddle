@@ -1,11 +1,11 @@
 #!/bin/bash
-set -e
+set -ex
 
 TESTS_FILE=""
 
-readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON"
-function cmake_cpu {
-    cmake ..  -DWITH_GPU=OFF ${common_flags}
+readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
+function cmake_x86 {
+    cmake ..  -DWITH_GPU=OFF -DLITE_WITH_X86=ON ${common_flags}
     make test_cxx_api_lite -j8
 }
 
@@ -77,7 +77,7 @@ function main {
                 shift
                 ;;
             cmake_x86)
-                cmake_cpu
+                cmake_x86
                 shift
                 ;;
             cmake_cuda)

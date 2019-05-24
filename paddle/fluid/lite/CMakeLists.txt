@@ -74,6 +74,23 @@ function(lite_cc_library TARGET)
     cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
 endfunction()
 
+function(lite_cc_binary TARGET)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
+    cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(deps "")
+    lite_deps(deps
+            DEPS ${args_DEPS}
+            X86_DEPS ${args_X86_DEPS}
+            CUDA_DEPS ${args_CUDA_DEPS}
+            ARM_DEPS ${args_ARM_DEPS}
+            )
+
+    cc_binary(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+endfunction()
+
 # Add a unit-test name to file for latter offline manual test.
 set(offline_test_registry_file "${CMAKE_BINARY_DIR}/lite_tests.txt")
 file(WRITE ${offline_test_registry_file} "") # clean
