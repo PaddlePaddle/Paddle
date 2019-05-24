@@ -1388,6 +1388,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
     Examples:
         .. code-block:: python
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             from paddle.fluid.optimizer import DecayedAdagrad
