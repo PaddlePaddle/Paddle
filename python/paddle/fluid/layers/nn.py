@@ -5868,6 +5868,7 @@ def transpose(x, perm, name=None):
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
             x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
@@ -6709,6 +6710,7 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10])
             y = fluid.layers.unsqueeze(input=x, axes=[1])
     """
@@ -9113,6 +9115,7 @@ def unstack(x, axis=0, num=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
             y = fluid.layers.unstack(x, axis=1)
 
