@@ -578,7 +578,7 @@ class Variable(object):
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (
                     attr_name, six.binary_type(getattr(self, attr_name)))
-        return res_str + tensor_str
+        return res_str
 
     __repr__ = __str__
 
