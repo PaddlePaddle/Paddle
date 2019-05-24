@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like'
+    'range', 'linspace', 'zeros_like', 'diag'
 ]
 
 
@@ -275,14 +275,23 @@ def sums(input, out=None):
     Examples:
         .. code-block:: python
 
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          a0 = layers.array_read(array=tmp, i=i)
-          i = layers.increment(x=i)
-          a1 = layers.array_read(array=tmp, i=i)
-          mean_a0 = layers.mean(a0)
-          mean_a1 = layers.mean(a1)
-          a_sum = layers.sums(input=[mean_a0, mean_a1])
+          import paddle.fluid as fluid
+
+          # sum of several tensors
+          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
+          sums = fluid.layers.sums(input=[a0, a1, a2])
+
+          # sum of a tensor array
+          array = fluid.layers.create_array('int64')
+          i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
+          fluid.layers.array_write(a0, array=array, i=i)
+          i = fluid.layers.increment(x=i)
+          fluid.layers.array_write(a1, array=array, i=i)
+          i = fluid.layers.increment(x=i)
+          fluid.layers.array_write(a2, array=array, i=i)
+          sums = fluid.layers.sums(input=array)
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -732,6 +741,14 @@ def has_inf(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+          
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_inf(data)
+
     """
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -748,6 +765,14 @@ def has_nan(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+    
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_nan(data)
+
     """
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -888,5 +913,41 @@ def zeros_like(x, out=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out
+
+
+def diag(diagonal):
+    """
+    **diag**
+
+    This function creates a square matrix which has diagonal values specified by `diagonal`.
+
+    Args:
+        diagonal(Variable|numpy.ndarray): The input tensor specifying diagonal values, should be of rank 1.
+
+    Returns:
+        Variable: The tensor variable storing the square matrix.
+
+    Examples:
+        .. code-block:: python
+
+          # [[3, 0, 0]
+          #  [0, 4, 0]
+          #  [0, 0, 5] 
+          data = fluid.layers.diag(np.arange(3, 6)) 
+
+    """
+
+    helper = LayerHelper("diag", **locals())
+
+    if not isinstance(diagonal, Variable):
+        diagonal = assign(diagonal)
+
+    out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
+
+    helper.append_op(
+        type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
+
     out.stop_gradient = True
     return out

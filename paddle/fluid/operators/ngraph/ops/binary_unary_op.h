@@ -51,6 +51,7 @@ static void BuildUnaryNode(
 }  // namespace operators
 }  // namespace paddle
 
+REGISTER_NG_OP(abs, BuildUnaryNode<ngraph::op::Abs>);
 REGISTER_NG_OP(relu, BuildUnaryNode<ngraph::op::Relu>);
 REGISTER_NG_OP(tanh, BuildUnaryNode<ngraph::op::Tanh>);
 REGISTER_NG_OP(sigmoid, BuildUnaryNode<ngraph::op::Sigmoid>);

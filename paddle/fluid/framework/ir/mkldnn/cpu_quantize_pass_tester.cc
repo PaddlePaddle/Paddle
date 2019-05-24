@@ -132,7 +132,7 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
     (*scales)[v] = std::make_pair(false, std::move(tensor));
   }
 
-  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
+  graph->SetNotOwned(kParamScopeAttr, &scope);
 
   auto pass = PassRegistry::Instance().Get("cpu_quantize_pass");
   pass->Set("quant_var_scales", scales);
