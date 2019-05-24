@@ -13,7 +13,6 @@ set(arm_kernels
     fc_compute_arm
     relu_compute_arm
     mul_compute_arm
-    scale_compute_arm
-    )
+    scale_compute_arm)
 
 set(arm_kernels "${arm_kernels}" CACHE INTERNAL "arm kernels")
