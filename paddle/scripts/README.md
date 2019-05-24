@@ -112,7 +112,7 @@ We also release a script and Dockerfile for building PaddlePaddle docker images
 across different cuda versions. To build these docker images, run:
 
 ```bash
-REPO=[your_repo_name] bash ./build_all.sh
+REPO=[your_repo_name] bash ./build_docker_images.sh
 ```
 
 - NOTE: note that you can choose different base images for your environment, you can find all the versions [here](https://hub.docker.com/r/nvidia/cuda/).
