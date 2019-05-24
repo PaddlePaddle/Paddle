@@ -20,7 +20,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/memory/allocation/cpu_allocator.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -516,10 +516,10 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
 #endif
 }
 
-class PYBIND11_HIDDEN PyAllocation : public memory::allocation::CPUAllocation {
+class PYBIND11_HIDDEN PyAllocation : public memory::allocation::Allocation {
  public:
   PyAllocation(py::array &obj, void *ptr, size_t size)
-      : memory::allocation::CPUAllocation(ptr, size) {
+      : memory::allocation::Allocation(ptr, size, platform::CPUPlace()) {
     _obj = obj;
   }
   virtual ~PyAllocation() {}
