@@ -101,9 +101,11 @@ class TestConv2dTransposeOp(OpTest):
     def test_check_output(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            # TODO(minqiyang): support mkldnn op in dygraph mode
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
         else:
-            self.check_output()
+            # TODO(minqiyang): support mkldnn op in dygraph mode
+            self.check_output(check_dygraph=False)
 
     def test_check_grad_no_input(self):
         if self.use_cudnn:
