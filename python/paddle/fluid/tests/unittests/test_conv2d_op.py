@@ -123,7 +123,8 @@ class TestConv2dOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -274,7 +275,9 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=2e-2)
+                    # TODO(minqiyang): support mkldnn op in dygraph mode
+                    self.check_output_with_place(
+                        place, atol=2e-2, check_dygraph=False)
 
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)

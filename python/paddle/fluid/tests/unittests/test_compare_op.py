@@ -31,7 +31,7 @@ def create_test_class(op_type, typename, callback):
 
         def test_output(self):
             # TODO(minqiyang): support compare op in dygraph mode
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
     cls_name = "{0}_{1}".format(op_type, typename)
     Cls.__name__ = cls_name
@@ -39,11 +39,11 @@ def create_test_class(op_type, typename, callback):
 
 
 for _type_name in {'float32', 'float64', 'int32', 'int64'}:
-    #  create_test_class('less_than', _type_name, lambda _a, _b: _a < _b)
-    #  create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b)
-    #  create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)
-    #  create_test_class('greater_equal', _type_name, lambda _a, _b: _a >= _b)
-    #  create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
+    create_test_class('less_than', _type_name, lambda _a, _b: _a < _b)
+    create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b)
+    create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)
+    create_test_class('greater_equal', _type_name, lambda _a, _b: _a >= _b)
+    create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
     create_test_class('not_equal', _type_name, lambda _a, _b: _a != _b)
 
 if __name__ == '__main__':

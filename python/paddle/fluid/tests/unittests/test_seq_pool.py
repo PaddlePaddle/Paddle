@@ -60,7 +60,7 @@ class TestSeqAvgPool(OpTest):
         self.compute(x, offset, out)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         # Remove MaxIndex after check_grad is refined.
@@ -198,7 +198,7 @@ class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
             out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
 
     def test_check_grad(self):
-        """Grad computation does not apply to Sequence MAX 
+        """Grad computation does not apply to Sequence MAX
             Pool executed when is_test is true """
         return
 

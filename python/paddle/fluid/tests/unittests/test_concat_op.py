@@ -31,7 +31,8 @@ class TestConcatOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')

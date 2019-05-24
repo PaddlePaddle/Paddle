@@ -113,7 +113,8 @@ class TestConv3dOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -243,7 +244,9 @@ class TestFP16CUDNN(TestConv3dOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=2e-2, check_dygraph=False)
 
 
 class TestWithGroup1CUDNN(TestWithGroup1):
@@ -260,7 +263,9 @@ class TestFP16WithGroup1CUDNN(TestWithGroup1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=2e-2, check_dygraph=False)
 
 
 class TestWithGroup2CUDNN(TestWithGroup2):
@@ -277,7 +282,9 @@ class TestFP16WithGroup2CUDNN(TestWithGroup2):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=2e-2, check_dygraph=False)
 
 
 class TestWith1x1CUDNN(TestWith1x1):
@@ -294,7 +301,9 @@ class TestFP16With1x1CUDNN(TestWith1x1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=2e-2, check_dygraph=False)
 
 
 class TestWithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
@@ -311,7 +320,9 @@ class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=2e-2, check_dygraph=False)
 
 
 class TestCUDNNExhaustiveSearch(TestCUDNN):

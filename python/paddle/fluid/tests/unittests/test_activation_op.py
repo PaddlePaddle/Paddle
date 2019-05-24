@@ -35,7 +35,8 @@ class TestActivation(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -259,7 +260,7 @@ class TestFloor(TestActivation):
         self.outputs = {'Out': out}
 
     # the gradient on floor, ceil, round is undefined.
-    # we return zero as gradient, but the numpy return nan 
+    # we return zero as gradient, but the numpy return nan
     # The same reason with TestFloor
     def test_check_grad(self):
         pass
@@ -707,7 +708,9 @@ def create_test_act_fp16_class(parent,
             place = core.CUDAPlace(0)
             support_fp16 = core.is_float16_supported(place)
             if support_fp16:
-                self.check_output_with_place(place, atol=atol)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=atol, check_dygraph=False)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)

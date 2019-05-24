@@ -38,7 +38,8 @@ class TestTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output(no_check_set=['XShape'], check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')

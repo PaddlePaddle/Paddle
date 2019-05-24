@@ -40,7 +40,8 @@ class TestElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
@@ -79,7 +80,9 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                # TODO(minqiyang): support mkldnn op in dygraph mode
+                self.check_output_with_place(
+                    place, atol=1e-3, check_dygraph=False)
 
 
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
