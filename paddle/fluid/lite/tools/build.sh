@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 TESTS_FILE=""
 
@@ -34,43 +34,77 @@ function build {
 
 # It will eagerly test all lite related unittests.
 function test_lite {
-    file=$1
+    local file=$1
     echo "file: ${file}"
     for _test in $(cat $file); do
         ctest -R $_test -V
     done
 }
 
+# Run test on mobile
+function test_mobile {
+    # TODO(XXX) Implement this
+    local file=$1
+}
 
-# Parse command line.
-for i in "$@"; do
-    case $i in
-        -e=*|--tests=*)
-            TESTS_FILE="${i#*=}"
-            shift
-            ;;
-        -b|--build)
-            build $TESTS_FILE
-            shift
-            ;;
-        -c|--cmake_x86)
-            cmake_cpu
-            shift
-            ;;
-        -a|--cmake_cuda)
-            cmake_cuda
-            shift
-            ;;
-        -m|--cmake_arm)
-            cmake_arm
-            shift
-            ;;
-        -t|--test)
-            test_lite $TESTS_FILE
-            shift
-            ;;
-        *)
-            # unknown option
-            ;;
-    esac
-done
+############################# MAIN #################################
+function print_usage {
+    echo -e "\nUSAGE:"
+    echo
+    echo "----------------------------------------"
+    echo -e "cmake_x86: run cmake with X86 mode"
+    echo -e "cmake_cuda: run cmake with CUDA mode"
+    echo -e "cmake_arm: run cmake with ARM mode"
+    echo
+    echo -e "build: compile the tests"
+    echo
+    echo -e "test_server: run server tests"
+    echo -e "test_mobile: run mobile tests"
+    echo "----------------------------------------"
+    echo
+}
+
+function main {
+    # Parse command line.
+    for i in "$@"; do
+        case $i in
+            --tests=*)
+                TESTS_FILE="${i#*=}"
+                shift
+                ;;
+            build)
+                build $TESTS_FILE
+                shift
+                ;;
+            cmake_x86)
+                cmake_cpu
+                shift
+                ;;
+            cmake_cuda)
+                cmake_cuda
+                shift
+                ;;
+            cmake_arm)
+                cmake_arm
+                shift
+                ;;
+            test_server)
+                test_lite $TESTS_FILE
+                shift
+                ;;
+            test_mobile)
+                test_lite $TESTS_FILE
+                shift
+                ;;
+            *)
+                # unknown option
+                print_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+print_usage
+
+main $@

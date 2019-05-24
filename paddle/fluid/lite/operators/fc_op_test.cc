@@ -47,7 +47,7 @@ TEST(fc_op_lite, test) {
   }
 
   // prepare op desc
-  framework::OpDesc desc;
+  lite::OpDesc desc;
   desc.SetType("fc");
   desc.SetInput("Input", {"x"});
   desc.SetInput("W", {"w"});
