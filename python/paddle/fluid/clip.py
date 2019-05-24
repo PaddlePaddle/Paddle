@@ -134,6 +134,7 @@ class GradientClipByValue(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             w_param_attrs = fluid.ParamAttr(name=None,
               initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
