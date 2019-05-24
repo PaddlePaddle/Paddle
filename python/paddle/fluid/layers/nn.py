@@ -9852,7 +9852,8 @@ def clip(x, min, max, name=None):
     helper = LayerHelper("clip", **locals())
 
     if name is None:
-        name = unique_name.generate(".".join([helper.name, 'tmp']))
+        name = unique_name.generate_with_ignorable_key(".".join(
+            [helper.name, 'tmp']))
 
     out = helper.create_variable(
         type=x.type, name=name, dtype=x.dtype, persistable=False)
@@ -9891,7 +9892,8 @@ def clip_by_norm(x, max_norm, name=None):
     helper = LayerHelper("clip_by_norm", **locals())
 
     if name is None:
-        name = unique_name.generate(".".join([helper.name, 'tmp']))
+        name = unique_name.generate_with_ignorable_key(".".join(
+            [helper.name, 'tmp']))
 
     out = helper.create_variable(
         type=x.type, name=name, dtype=x.dtype, persistable=False)
