@@ -23,12 +23,6 @@ from paddle.fluid import framework
 __all__ = ['Tracer']
 
 
-def release_op(op):
-    del framework._dygraph_tracer()._ops[op._trace_id].inputs
-    del framework._dygraph_tracer()._ops[op._trace_id].outputs
-    del framework._dygraph_tracer()._ops[op._trace_id].backward_refs
-
-
 class Tracer(core.Tracer):
     """
     Python wrapper of dygraph tracer
@@ -37,7 +31,6 @@ class Tracer(core.Tracer):
     def __init__(self, block):
         super(Tracer, self).__init__(block)
 
-        self._ops = defaultdict()
         self._vars = defaultdict()
         self._trace_id = 0
         self._train_mode = True
@@ -50,28 +43,23 @@ class Tracer(core.Tracer):
                      if isinstance(item, framework.Parameter)))
 
     def _clear_ops(self):
-        self._ops = defaultdict()
         self._trace_id = 0
 
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
-        # TODO(hy): previous version will cause memory failed
-        op.inputs = inputs
-        inps = defaultdict(list)
+        # TODO(minqiyang): take forward var and grad var apart, then this method could be implemented
         for k, vars in six.iteritems(inputs):
             if isinstance(vars, framework.Variable):
-                inps[k].append(vars._ivar)
+                op.previous_ops.append(vars.op)
             elif isinstance(vars, list) or isinstance(vars, tuple):
                 for var in vars:
-                    inps[k].append(var._ivar)
+                    op.previous_ops.append(var.op)
 
-        op.outputs = outputs
-        outs = defaultdict(list)
         for k, vars in six.iteritems(outputs):
             if isinstance(vars, framework.Variable):
-                outs[k].append(vars._ivar)
+                vars.op = self
             elif isinstance(vars, list) or isinstance(vars, tuple):
                 for var in vars:
-                    outs[k].append(var._ivar)
+                    var.op = self
 
         # record op's trace id
         op.iop._trace_id = self._trace_id
@@ -82,12 +70,9 @@ class Tracer(core.Tracer):
 
         if not stop_gradient and self._train_mode:
             self._trace_id += 1
-            self._ops[op.iop._trace_id] = op
 
             # register backward hooks and variables if needed
             if len(backward_refs) > 0:
-                op.iop.register_backward_hooks(release_op)
-
                 # TODO(minqiyang): remove all inputs and outputs after separate
                 # var and grad
                 op.backward_refs = defaultdict(list)
