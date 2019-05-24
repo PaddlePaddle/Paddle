@@ -99,7 +99,7 @@ class TestInferQuantizeStrategy(unittest.TestCase):
 
         data_path = os.path.join(self.cache_folder,
                                  'imagenet_val_100_tail/data.bin')
-        #warmup dataset, only use the first batch
+        #warmup dataset, only use the first batch data
         test_reader = paddle.batch(
             self._reader_creator(data_path, False), batch_size=100)
         com_pass = Compressor(
