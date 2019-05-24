@@ -53,6 +53,8 @@ class SendBarrierOp : public framework::OperatorBase {
       rpc_client->AsyncSendBatchBarrier(ep);
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+
+    VLOG(1) << "SendBarrierOp SYNC with trainer=" << trainer_id << " End";
   }
 };
 
