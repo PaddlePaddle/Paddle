@@ -130,16 +130,6 @@ void SetOutputNode(
         ngb_node_map) {
   auto& var_names = op->Outputs().at(name);
   if (var_names.size() == 1) {
-    /*  */
-    auto dummy_out = GetOutputNode(op, name, ngb_node_map);
-    if (dummy_out && dummy_out->get_shape() != node->get_shape()) {
-      node = NgReshaper(node, dummy_out->get_shape());
-    }
-    if (dummy_out &&
-        dummy_out->get_element_type() != node->get_element_type()) {
-      node = std::make_shared<ngraph::op::Convert>(
-          node, dummy_out->get_element_type());
-    }
     (*ngb_node_map)[var_names[0]] = node;
   } else if (var_names.size() == 0) {
     (*ngb_node_map)[""] = node;

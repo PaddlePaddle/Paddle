@@ -77,6 +77,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/communicator_py.h"
+#endif
+
 #include "pybind11/stl.h"
 
 DEFINE_bool(reader_queue_speed_test_mode, false,
@@ -353,6 +357,7 @@ PYBIND11_MODULE(core, m) {
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
@@ -1027,10 +1032,28 @@ All parameter, weight, gradient are variables in Paddle.
            [](const OperatorBase &op) { return op.OutputVars(false); })
       .def("support_gpu", &OperatorBase::SupportGPU);
 
+  py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
+      .def(py::init<const ProgramDesc &, size_t>());
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
-      .def("run_from_dataset", &Executor::RunFromDataset)
+      .def("run_from_dataset", &Executor::RunFromDataset,
+           py::call_guard<py::gil_scoped_release>())
+      .def("run_prepared_ctx",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              std::map<std::string, const LoDTensor *> *feed_targets,
+              std::map<std::string, LoDTensor *> *fetch_targets,
+              bool create_local_scope = true, bool create_vars = true,
+              const std::string &feed_holder_name = "feed",
+              const std::string &fetch_holder_name = "fetch") {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, feed_targets, fetch_targets,
+                                     create_local_scope, create_vars,
+                                     feed_holder_name, fetch_holder_name);
+           })
+      .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
+           py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -1205,14 +1228,22 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+          y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+          y_predict = fluid.layers.fc(input=x, size=1, act=None)
+
+          cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+          avg_loss = fluid.layers.mean(cost)
+
+          sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+          sgd_optimizer.minimize(avg_loss)
+
           exec_strategy = fluid.ExecutionStrategy()
           exec_strategy.num_threads = 4
 
-          train_exe = fluid.ParallelExecutor(use_cuda=True,
-                                             loss_name=loss.name,
+          train_exe = fluid.ParallelExecutor(use_cuda=False,
+                                             loss_name=avg_loss.name,
                                              exec_strategy=exec_strategy)
-
-          train_loss, = train_exe.run([loss.name], feed=feed_dict)
 
         )DOC");
 
@@ -1547,6 +1578,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindNode(&m);
   BindInferenceApi(&m);
   BindDataset(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindCommunicator(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle
