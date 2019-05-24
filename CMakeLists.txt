@@ -124,6 +124,7 @@ option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
 option(LITE_WITH_X86  "Enable X86 in lite mode"  ON)
 option(LITE_WITH_ARM  "Enable ARM in lite mode"  OFF)
 option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" OFF)
+option(LITE_WITH_PROFILE  "Enable profile mode in lite framework"  OFF)
 
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING

@@ -22,6 +22,9 @@
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
+#ifdef LITE_WITH_PROFILE
+#include "paddle/fluid/lite/core/profile/basic_profiler.h"
+#endif  // LITE_WITH_PROFILE
 
 namespace paddle {
 namespace lite {
@@ -103,9 +106,14 @@ struct Program {
 struct Instruct {
   Instruct(const std::shared_ptr<OpLite>& op,
            std::unique_ptr<KernelBase>&& kernel)
-      : op_(op), kernel_(std::move(kernel)) {}
+      : op_(op), kernel_(std::move(kernel)) {
+    profile_id_ = profile::BasicProfiler::Global()
+                      .NewRcd(kernel_->SerializedKernelType())
+                      .id();
+  }
 
   void Run() {
+    profile::Profile<profile::BasicRecord> x(profile_id_);
     CHECK(op_);
     CHECK(kernel_);
     if (first_epoch_) {
@@ -128,6 +136,9 @@ struct Instruct {
   std::shared_ptr<OpLite> op_;
   std::unique_ptr<KernelBase> kernel_;
   bool first_epoch_{true};
+
+  // for profiler
+  int profile_id_{-1};
 };
 
 /*
