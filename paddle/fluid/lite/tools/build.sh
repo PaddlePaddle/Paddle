@@ -14,6 +14,17 @@ function cmake_gpu {
     make test_cxx_api_lite -j8
 }
 
+function cmake_arm {
+    cmake .. \
+          -DWITH_GPU=OFF \
+          -DWITH_LITE=ON \
+          -DLITE_WITH_X86=OFF \
+          -DLITE_WITH_CUDA=OFF \
+          -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+          -DWITH_TESTING=ON \
+          -DWITH_MKLDNN=OFF
+}
+
 function build {
     file=$1
     for _test in $(cat $file); do
@@ -42,8 +53,16 @@ for i in "$@"; do
             build $TESTS_FILE
             shift
             ;;
-        -c|--cmake)
+        -c|--cmake_x86)
             cmake_cpu
+            shift
+            ;;
+        -a|--cmake_cuda)
+            cmake_cuda
+            shift
+            ;;
+        -m|--cmake_arm)
+            cmake_arm
             shift
             ;;
         -t|--test)
@@ -53,11 +72,5 @@ for i in "$@"; do
         *)
             # unknown option
             ;;
-        esac
+    esac
 done
-
-echo "tests: ${TESTS_FILE}"
-
-
-#build $TESTS_FILE
-#test_lite $TESTS_FILE
