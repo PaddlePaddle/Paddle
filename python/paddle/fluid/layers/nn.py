@@ -6710,7 +6710,10 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle.fluid as fluid
+=======
+>>>>>>> 9f317327f6135e500eda33883db765b2eb4a596f
             x = fluid.layers.data(name='x', shape=[5, 10])
             y = fluid.layers.unsqueeze(input=x, axes=[1])
     """
@@ -9115,7 +9118,10 @@ def unstack(x, axis=0, num=None):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle.fluid as fluid
+=======
+>>>>>>> 9f317327f6135e500eda33883db765b2eb4a596f
             x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
             y = fluid.layers.unstack(x, axis=1)
 

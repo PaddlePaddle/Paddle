@@ -244,7 +244,10 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
            import paddle.fluid as fluid
+=======
+>>>>>>> 9f317327f6135e500eda33883db765b2eb4a596f
            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """

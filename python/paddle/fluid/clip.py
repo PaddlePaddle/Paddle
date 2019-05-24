@@ -56,8 +56,12 @@ class ErrorClipByValue(BaseErrorClipAttr):
         .. code-block:: python
 
 
+<<<<<<< HEAD
             import paddle.fluid as fluid
             BATCH_SIZE = 128
+=======
+            BATCH_SIZE = 128 
+>>>>>>> 9f317327f6135e500eda33883db765b2eb4a596f
             CLIP_MAX = 2e-6
             CLIP_MIN = -1e-6
 
@@ -208,7 +212,10 @@ class GradientClipByNorm(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle.fluid as fluid
+=======
+>>>>>>> 9f317327f6135e500eda33883db765b2eb4a596f
             w_param_attrs = fluid.ParamAttr(name=None,
               initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
@@ -264,7 +271,10 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle.fluid as fluid
+=======
+>>>>>>> 9f317327f6135e500eda33883db765b2eb4a596f
             prog = fluid.framework.Program()
             startup_program = fluid.framework.Program()
             with fluid.program_guard(
