@@ -200,6 +200,70 @@ TEST(CpuVecTest, vec_clip) {
 }
 
 template <typename T>
+void compare_mul(
+    size_t n, std::function<void(const size_t, const T*, const T*, T*)> tgt,
+    std::function<void(const size_t, const T*, const T*, T*)> ref) {
+  std::vector<T> x(n), y(n);
+  std::vector<T> ztgt(n), zref(n);
+
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+  RandomVec<T>(n, y.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  const T* y_data = y.data();
+  T* ztgt_data = ztgt.data();
+  T* zref_data = zref.data();
+
+  tgt(n, x_data, y_data, ztgt_data);
+  ref(n, x_data, y_data, zref_data);
+  for (size_t i = 0; i < n; ++i) {
+    EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+  }
+}
+
+TEST(CpuVecTest, vec_mul) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_mul<float>(sz, vec_mul<float>, vec_mul<float, platform::isa_any>);
+    compare_mul<float>(sz, vec_mul<float, platform::avx>,
+                       vec_mul<float, platform::isa_any>);
+  }
+  compare_mul<double>(30U, vec_mul<double>, vec_mul<double, platform::isa_any>);
+}
+
+template <typename T>
+void compare_mul_reduce(
+    size_t n, std::function<void(const size_t, const T*, const T*, T*)> tgt,
+    std::function<void(const size_t, const T*, const T*, T*)> ref) {
+  std::vector<T> x(n), y(n);
+  T ztgt_data, zref_data;
+
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+  RandomVec<T>(n, y.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  const T* y_data = y.data();
+
+  tgt(n, x_data, y_data, &ztgt_data);
+  ref(n, x_data, y_data, &zref_data);
+  EXPECT_NEAR(ztgt_data, zref_data, 1e-3);
+}
+
+TEST(CpuVecTest, vec_mul_reduce) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_mul_reduce<float>(sz, vec_mul_reduce<float>,
+                              vec_mul_reduce<float, platform::isa_any>);
+    compare_mul_reduce<float>(sz, vec_mul_reduce<float, platform::avx>,
+                              vec_mul_reduce<float, platform::isa_any>);
+  }
+  compare_mul_reduce<double>(30U, vec_mul_reduce<double>,
+                             vec_mul_reduce<double, platform::isa_any>);
+}
+
+template <typename T>
 void TestInplace(const int n, std::function<void(const int, const T*, T*)> tgt,
                  std::function<void(const int, const T*, T*)> ref) {
   std::vector<T> x(n);

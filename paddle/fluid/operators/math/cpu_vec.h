@@ -177,6 +177,79 @@ inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
 }
 
 template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_mul(const size_t n, const T* x, const T* y, T* z) {
+  for (size_t i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+}
+
+template <>
+inline void vec_mul<float, platform::avx>(const size_t n, const float* x,
+                                          const float* y, float* z) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_mul<float, platform::isa_any>(n, x, y, z);
+    return;
+  }
+
+  unsigned int i = 0, end = 0;
+  end = n & ~(block - 1);
+  for (i = 0; i < end; i += block) {
+    _mm256_storeu_ps(
+        z + i, _mm256_mul_ps(_mm256_loadu_ps(x + i), _mm256_loadu_ps(y + i)));
+  }
+
+  for (; i < n; i++) {
+    z[i] = x[i] * y[i];
+  }
+#else
+  vec_mul<float, platform::isa_any>(n, x, y, z);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_mul_reduce(const size_t n, const T* x, const T* y, T* z) {
+  z[0] = x[0] * y[0];
+  for (size_t i = 1; i < n; ++i) {
+    z[0] += x[i] * y[i];
+  }
+}
+
+template <>
+inline void vec_mul_reduce<float, platform::avx>(const size_t n, const float* x,
+                                                 const float* y, float* z) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_mul_reduce<float, platform::isa_any>(n, x, y, z);
+    return;
+  }
+
+  unsigned int i = 0, end = 0;
+  z[0] = 0.f;
+
+  end = n & ~(block - 1);
+  __m256 tmp = _mm256_setzero_ps();
+  for (i = 0; i < end; i += block) {
+    tmp = _mm256_add_ps(
+        tmp, _mm256_mul_ps(_mm256_loadu_ps(x + i), _mm256_loadu_ps(y + i)));
+  }
+
+  __m256 hsum = _mm256_hadd_ps(tmp, tmp);
+  hsum = _mm256_add_ps(hsum, _mm256_permute2f128_ps(hsum, hsum, 0x1));
+  _mm_store_ss(z, _mm_hadd_ps(_mm256_castps256_ps128(hsum),
+                              _mm256_castps256_ps128(hsum)));
+
+  for (; i < n; i++) {
+    z[0] += x[i] * y[i];
+  }
+#else
+  vec_mul_reduce<float, platform::isa_any>(n, x, y, z);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a - x[i];
