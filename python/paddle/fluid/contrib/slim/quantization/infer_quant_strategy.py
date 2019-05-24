@@ -71,8 +71,8 @@ class InferQuantStrategy(Strategy):
             infer_config.enable_mkldnn()
 
             #Prepare the data for calculating the quantization scales 
-            warmup_data = []
-            num_images = 100
+            data = context.eval_reader().next()
+            num_images = len(data)
             dshape = [3, 224, 224]
             shape = [num_images, 3, 224, 224]
             image = core.PaddleTensor()
@@ -80,32 +80,26 @@ class InferQuantStrategy(Strategy):
             image.shape = shape
             image.dtype = core.PaddleDType.FLOAT32
             image.data.resize(num_images * 3 * 224 * 224 * sys.getsizeof(float))
+            image_data = np.array(map(lambda x: x[0].reshape(dshape),
+                                      data)).astype("float32")
+            image_data = np.reshape(image_data, (np.product(image_data.shape)))
+            image.data = core.PaddleBuf(image_data.tolist())
 
             label = core.PaddleTensor()
             label.name = "y"
             label.shape = [num_images, 1]
             label.dtype = core.PaddleDType.INT64
             image.data.resize(num_images * sys.getsizeof(int))
-
-            for batch_id, data in enumerate(context.eval_reader()):
-                label_data = np.array(map(lambda x: x[1], data)).astype("int64")
-                label_data = label_data.reshape([-1, 1])
-                image_data = np.array(
-                    map(lambda x: x[0].reshape(dshape), data)).astype("float32")
-                image_data = np.reshape(image_data,
-                                        (np.product(image_data.shape)))
-                if batch_id == 0:
-                    break
-            image.data = core.PaddleBuf(image_data.tolist())
+            label_data = np.array(map(lambda x: x[1], data)).astype("int64")
+            label_data = label_data.reshape([-1, 1])
             label.data = core.PaddleBuf(label_data)
 
-            warmup_data.append(image)
-            warmup_data.append(label)
+            warmup_data = [image, label]
 
             #Enable the int8 quantization
             infer_config.enable_quantizer()
             infer_config.quantizer_config().set_quant_data(warmup_data)
-            infer_config.quantizer_config().set_quant_batch_size(100)
+            infer_config.quantizer_config().set_quant_batch_size(num_images)
             #Run INT8 MKL-DNN Quantization
             predictor = core.create_paddle_predictor(infer_config)
             predictor.SaveOptimModel(self.int8_model_save_path)
