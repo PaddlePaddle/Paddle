@@ -49,6 +49,17 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+static inline std::shared_ptr<Allocator> WrapRetryAllocator(
+    std::shared_ptr<Allocator> allocator, int64_t retry_time) {
+  if (retry_time > 0) {
+    auto* retry_allocator =
+        new RetryAllocator(std::move(allocator), retry_time);
+    allocator.reset(retry_allocator);
+  }
+
+  return allocator;
+}
+
 // TODO(yy): Dirty code here. This class should be configurable in runtime.
 class CPUManagedAllocator : public Allocator {
  public:
@@ -112,14 +123,10 @@ class ChunkedAllocator : public Allocator {
   std::shared_ptr<Allocator> CreateAllocatorWithChunk() {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
-    std::unique_ptr<Allocator> allocator(new LockedAllocator(
-        std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
+    std::shared_ptr<Allocator> allocator(new LockedAllocator(
+        std::shared_ptr<Allocator>(new BestFitAllocator(allocation))));
 
-    if (retry_time_ > 0) {
-      auto* retry_allocator =
-          new RetryAllocator(std::move(allocator), retry_time_);
-      allocator.reset(retry_allocator);
-    }
+    allocator = WrapRetryAllocator(allocator, retry_time_);
 
     return std::make_shared<AlignedAllocator<64u>>(std::move(allocator));
   }
@@ -190,13 +197,23 @@ class AllocatorFacadePrivate {
   ~AllocatorFacadePrivate() = default;
 
   AllocatorFacadePrivate() {
-    if (GetAllocatorStrategy() == AllocatorStrategy::kLegacy) {
-      InitLegacyAllocator();
-    } else {
-      InitCPUAllocator();
-      InitCUDAAllocator();
-      InitCUDAPinnedAllocator();
-      WrapZeroSizeAllocator();
+    auto strategy = GetAllocatorStrategy();
+    switch (strategy) {
+      case AllocatorStrategy::kLegacy: {
+        InitLegacyAllocator();
+        break;
+      }
+      case AllocatorStrategy::kNaiveBestFit: {
+        InitCPUAllocator();
+        InitCUDAAllocator();
+        InitCUDAPinnedAllocator();
+        WrapZeroSizeAllocator();
+        break;
+      }
+      default: {
+        PADDLE_THROW("Unsupported allocator strategy: %d",
+                     static_cast<int>(strategy));
+      }
     }
   }
 
@@ -254,8 +271,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(Alloc(place, size, attr).release(),
-                                     AllocationDeleter());
+  return std::shared_ptr<Allocation>(Alloc(place, size, attr));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
