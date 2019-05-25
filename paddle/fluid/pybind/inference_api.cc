@@ -229,7 +229,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = true)
+           py::arg("use_static") = true, py::arg("use_calib_mode") = false)
       .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
            py::arg("max_batch_size") = 1,
            py::arg("max_input_shape") =

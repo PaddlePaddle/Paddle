@@ -78,6 +78,11 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("enable_int8", base_op_desc->GetAttr("enable_int8"));
       desc.SetAttr("input_scale", base_op_desc->GetAttr("input_scale"));
       desc.SetAttr("weight_scale", base_op_desc->GetAttr("weight_scale"));
+      if (base_op_desc->HasAttr("out_scale"))
+        desc.SetAttr("out_scale", base_op_desc->GetAttr("out_scale"));
+      auto elementwise_desc = elementwise_add->Op();
+      if (elementwise_desc->HasAttr("out_scale"))
+        desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
 
     desc.SetType("fc");
