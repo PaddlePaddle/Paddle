@@ -491,5 +491,51 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
   }
 }
 
+template <typename T>
+std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
+  auto inspect = tensor.data<T>();
+  auto element_num = tensor.numel();
+
+  os << "\tdata: [";
+  if (element_num > 0) {
+    os << inspect[0];
+    for (int j = 1; j < element_num; ++j) {
+      os << " " << inspect[j];
+    }
+  }
+  os << "]";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Tensor& t) {
+  os << "\tdim: " << t.dims() << "\n";
+  os << "\tlayout: " << DataLayoutToString(t.layout()) << "\n";
+
+  Tensor tensor;
+  tensor.Resize(t.dims());
+  if (platform::is_cpu_place(t.place())) {
+    tensor.ShareDataWith(t);
+  } else {
+    platform::CPUPlace place;
+    framework::TensorCopy(t, place, &tensor);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(t.place());
+    dev_ctx.Wait();
+  }
+
+#define PrintTensorCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (tensor.type() == proto_type) {            \
+      os << "\tdtype: " << proto_type << "\n";    \
+      print_tensor<cpp_type>(os, tensor);         \
+      return os;                                  \
+    }                                             \
+  } while (0)
+
+  _ForEachDataType_(PrintTensorCallback);
+  VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
+  return os;
+}
+
 }  // namespace framework
 }  // namespace paddle

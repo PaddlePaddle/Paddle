@@ -385,6 +385,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
   if (config_.anakin_engine_enabled()) {
