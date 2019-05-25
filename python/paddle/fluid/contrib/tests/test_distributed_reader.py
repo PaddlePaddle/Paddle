@@ -36,7 +36,7 @@ class TestDistributedReader(unittest.TestCase):
 
         reader = fluid.contrib.reader.distributed_sampler(
             data_generator, batch_size=batch_size)
-        data = reader().next()
+        data = next(reader())
         assert len(data) == batch_size // trainer_num,\
             "sub batch size should be {}, but the returned size is {}".format(
             batch_size // trainer_num, len(data))
