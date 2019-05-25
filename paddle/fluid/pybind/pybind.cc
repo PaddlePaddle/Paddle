@@ -1536,9 +1536,10 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef WIN32
             VLOG(1) << "Windows has no support to distribute mode, "
                        "is_distribution would be forced to false.";
-            is_distribution = false;
-#endif
+            self.is_distribution_ = false;
+#else
             self.is_distribution_ = b;
+#endif
           })
       .def_property("async_mode",
                     [](const BuildStrategy &self) { return self.async_mode_; },
