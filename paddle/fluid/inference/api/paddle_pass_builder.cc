@@ -70,6 +70,24 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
+const std::vector<std::string> kTRTSubgraphPasses({
+  "infer_clean_graph_pass",                        //
+      "conv_affine_channel_fuse_pass",             //
+      "conv_eltwiseadd_affine_channel_fuse_pass",  //
+      "quant_conv2d_dequant_fuse_pass",            //
+      "delete_quant_dequant_op_pass",              //
+      // "fc_fuse_pass",                                 //
+      "tensorrt_subgraph_pass",  //
+      "conv_bn_fuse_pass",       //
+#if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
+                           // guaranteed at least v7
+      "conv_elementwise_add_act_fuse_pass",   //
+      "conv_elementwise_add2_act_fuse_pass",  //
+      "conv_elementwise_add_fuse_pass",       //
+#endif                                        //
+      "transpose_flatten_concat_fuse_pass",
+});
+
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
     "infer_clean_graph_pass",                       //
