@@ -26,6 +26,19 @@ const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 const char kBoth[] = "BOTH";
 
+class LogGuard {
+ public:
+  inline LogGuard() { LogMutex().lock(); }
+
+  inline ~LogGuard() { LogMutex().unlock(); }
+
+ private:
+  static std::mutex &LogMutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+};
+
 struct Formater {
   std::string message;
   std::string name;
@@ -45,6 +58,7 @@ struct Formater {
     PrintDtype();
     PrintLod();
     PrintData(size);
+    LogGuard guard;
     CLOG << logs.str();
   }
 
