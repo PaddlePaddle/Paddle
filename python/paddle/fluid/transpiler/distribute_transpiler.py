@@ -146,6 +146,11 @@ class DistributeTranspilerConfig(object):
           We can use bandwidth effiently when data size is larger than 2MB.If you
           want to change it, please be sure you have read the slice_variable function.
 
+    Examples:
+        .. code-block:: python
+
+            config = fluid.DistributeTranspilerConfig()
+            config.slice_var_up = True
     """
 
     slice_var_up = True
@@ -158,7 +163,7 @@ class DistributeTranspilerConfig(object):
     wait_port = True
     # split the send recv var in runtime
     runtime_split_send_recv = False
-    sync_mode = None
+    sync_mode = True
 
 
 class DistributeTranspiler(object):
@@ -181,13 +186,23 @@ class DistributeTranspiler(object):
     Examples:
         .. code-block:: python
 
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_loss = fluid.layers.mean(cost)
+
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_loss)
+
             # for pserver mode
             pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
             trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
             current_endpoint = "192.168.0.1:6174"
             trainer_id = 0
             trainers = 4
-            role = os.getenv("PADDLE_TRAINING_ROLE")
+            role = "PSERVER"
             t = fluid.DistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
@@ -199,14 +214,17 @@ class DistributeTranspiler(object):
                  trainer_program = t.get_trainer_program()
 
             # for nccl2 mode
+            trainer_num = 2
+            trainer_id = 0
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
+            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
             t = fluid.DistributeTranspiler(config=config)
-            t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
+            t.transpile(trainer_id=trainer_id, trainers=trainer_endpoints, current_endpoint="192.168.0.1:6174")
             exe = fluid.ParallelExecutor(
-                use_cuda,
-                loss_name=loss_var.name,
-                num_trainers=len(trainers.split(",)),
+                use_cuda=True,
+                loss_name=avg_loss.name,
+                num_trainers=trainer_num,
                 trainer_id=trainer_id
             )
     """
@@ -289,7 +307,7 @@ class DistributeTranspiler(object):
                   startup_program=None,
                   current_endpoint="127.0.0.1:6174"):
         """
-        Run the transpiler.
+        Run the transpiler. Transpile the input program.
 
         Args:
             trainer_id (int): id for current trainer worker, if you have
@@ -309,6 +327,17 @@ class DistributeTranspiler(object):
             current_endpoint (str): need pass current endpoint when
                 transpile as nccl2 distributed mode. In pserver mode
                 this argument is not used.
+
+        Examples:
+            .. code-block:: python
+
+                transpiler = fluid.DistributeTranspiler()
+                t.transpile(
+                    trainer_id=0,
+                    pservers="127.0.0.1:7000,127.0.0.1:7001",
+                    trainers=2,
+                    sync_mode=False,
+                    current_endpoint="127.0.0.1:7000")
         """
         if program is None:
             program = default_main_program()
@@ -330,7 +359,7 @@ class DistributeTranspiler(object):
             return
 
         self.trainer_num = trainers
-        self.sync_mode = self.config.sync_mode if self.config.sync_mode else sync_mode
+        self.sync_mode = sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints

@@ -264,7 +264,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
     const detail::BackwardStrategy& bck_stratedy) {
   PADDLE_ENFORCE(!grad_op_descs_.empty() || backward_id_ > 0,
                  "%s has no backward implementation", Type());
-
   VLOG(3) << "apply op grad: " << Type();
   std::vector<VarBasePtrMap> tmp_grad_outputs;
   if (backward_id_ > 0) {
@@ -282,7 +281,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       framework::OpDesc* grad_op_desc = grad_op_descs_[k];
       platform::RecordEvent record_event(grad_op_desc->Type());
       auto& grad_output_variable_map = grad_output_vars_[k];
-
       VLOG(3) << "apply grad op " << grad_op_desc->Type();
 
       // Allocate tmp grad output variable

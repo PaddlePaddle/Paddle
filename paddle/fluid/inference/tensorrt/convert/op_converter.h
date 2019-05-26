@@ -172,6 +172,21 @@ class OpConverter {
     engine->FreezeNetwork();
   }
 
+  void RreplenishLayerAndOutput(
+      nvinfer1::ILayer* layer, const std::string& layer_type,
+      const std::vector<std::string>& output_tensor_names,
+      bool test_mode = false) {
+    size_t num_out = output_tensor_names.size();
+    for (size_t i = 0; i < num_out; i++) {
+      layer->getOutput(i)->setName(output_tensor_names[i].c_str());
+      engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
+      if (test_mode) {
+        engine_->DeclareOutput(output_tensor_names[i]);
+      }
+    }
+    layer->setName(
+        (layer_type + " (Output: " + output_tensor_names[0] + ")").c_str());
+  }
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
 
   virtual ~OpConverter() {}
