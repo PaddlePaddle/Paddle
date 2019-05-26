@@ -885,7 +885,8 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         helper = LayerHelper("dgc_clip_by_norm_op", **args)
 
         if name is None:
-            name = unique_name.generate(".".join([helper.name, 'tmp']))
+            name = unique_name.generate_with_ignorable_key(".".join(
+                [helper.name, 'tmp']))
 
         out = helper.create_variable(
             type=x.type, name=name, dtype=x.dtype, persistable=False)
@@ -1495,6 +1496,13 @@ class DecayedAdagradOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.optimizer import DecayedAdagrad
+
+            x = layers.data( name='x', shape=[-1, 10], dtype='float32' )
+            trans = layers.fc( x, 100 )
+            cost = layers.reduce_mean( trans )
             optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
             optimizer.minimize(cost)
 
@@ -2164,7 +2172,8 @@ class ModelAverage(Optimizer):
         ).all_parameters():
             if param.do_model_average != False:
                 grad = param.block.create_var(
-                    name=unique_name.generate(".".join([param.name, 'tmp'])),
+                    name=unique_name.generate_with_ignorable_key(".".join(
+                        [param.name, 'tmp'])),
                     dtype=param.dtype,
                     persistable=False,
                     stop_gradient=True)
