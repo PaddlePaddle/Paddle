@@ -12,6 +12,13 @@ if(NOT WITH_FAST_MATH)
   add_definitions(-DEIGEN_FAST_MATH=0)
 endif()
 
+if(WIN32)
+    set(PATCH_COMMAND "${CMAKE_COMMAND} -E copy_if_different
+            ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h
+            ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h")
+else()
+    set(PATCH_COMMAND "")
+endif()
 if(WITH_AMD_GPU)
     ExternalProject_Add(
         extern_eigen3
@@ -38,9 +45,7 @@ else()
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
-        PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h
-            ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h
+        PATCH_COMMAND     ${PATCH_COMMAND}
         INSTALL_COMMAND   ""
         TEST_COMMAND      ""
     )
