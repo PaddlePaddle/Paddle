@@ -28,13 +28,17 @@ using Tensor = framework::Tensor;
 template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                                   T* output, size_t index_size,
-                                  size_t slice_size) {
+                                  size_t slice_size, bool overwrite) {
   CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
     IndexT out_i = scatter_i * slice_size + slice_i;
-    *(output + out_i) = *(params + i);
+    if (overwrite) {
+      *(output + out_i) = *(params + i);
+    } else {
+      *(output + out_i) += *(params + i);
+    }
   }
 }
 
@@ -48,7 +52,8 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
  */
 template <typename T, typename IndexT = int>
 void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
-                      const Tensor& index, Tensor* output) {
+                      const Tensor& index, Tensor* output,
+                      bool overwrite = true) {
   // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
   PADDLE_ENFORCE(index.dims().size() == 1 ||
@@ -67,6 +72,12 @@ void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
+  // if in accumulate mode, need init the output
+  if (!overwrite) {
+    // init p_output
+    memset(p_output, 0, output->numel() * sizeof(T));
+  }
+
   int block = 512;
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
@@ -74,7 +85,7 @@ void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   ScatterCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, p_index, p_output, index_size, slice_size, overwrite);
 }
 
 }  // namespace operators
