@@ -142,6 +142,7 @@ class GpuPassStrategy : public PassStrategy {
   virtual ~GpuPassStrategy() = default;
 };
 
+extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 }  // namespace paddle
