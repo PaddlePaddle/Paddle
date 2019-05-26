@@ -64,8 +64,8 @@ typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
-    GroupGradsAndParams;
-constexpr char kGroupGradsAndParams[] = "group_grads_params";
+    GroupParamsAndGrads;
+constexpr char kGroupParamsAndGrads[] = "group_params_grads";
 
 }  // namespace details
 }  // namespace framework

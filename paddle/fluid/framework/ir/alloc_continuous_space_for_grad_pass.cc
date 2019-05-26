@@ -71,44 +71,28 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
 
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndGrads, &result);
-    ResetAttribute<details::GroupGradsAndParams>(details::kGroupGradsAndParams,
+    ResetAttribute<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads,
                                                  &result);
 
-    // NOTE: The operator nodes should be in topology order.
-    std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(result);
     auto &params_grads =
         result.Get<details::ParamsAndGrads>(details::kParamsAndGrads);
-    for (auto &node : topo_nodes) {
-      RecordParamsAndGrads(node, &params_grads);
-    }
+    RecordParamsAndGrads(result, &params_grads);
 
+    VLOG(10) << "The number of params and grads is:" << params_grads.size();
     if (params_grads.size() == 0) {
-      VLOG(10) << "Doesn't find gradients";
       return;
     }
 
-    std::unordered_map<std::string, ir::Node *> vars;
-    for (ir::Node *node : result.Nodes()) {
-      if (node->IsVar() && node->Var()) {
-        // Note: The graph may have the same name node. For example, parameter
-        // is the input of operator and it also is the output of optimizer;
-        vars.emplace(node->Var()->Name(), node);
-      }
-    }
-
-    auto &group_grads_params =
-        result.Get<details::GroupGradsAndParams>(details::kGroupGradsAndParams);
-
-    // Note: the order of params_grads may be changed by SetGroupGradsAndParams.
-    SetGroupGradsAndParams(vars, params_grads, &group_grads_params);
+    std::unordered_map<std::string, Node *> vars = GetVarInfo(result);
+    auto &group_params_grads =
+        result.Get<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads);
+    // Note: the order of params_grads may be changed by SetGroupParamsAndGrads.
+    SetGroupParamsAndGrads(vars, params_grads, &group_params_grads);
 
     params_grads.clear();
-    for (auto &group_p_g : group_grads_params) {
-      params_grads.insert(params_grads.begin(), group_p_g.begin(),
+    for (auto &group_p_g : group_params_grads) {
+      params_grads.insert(params_grads.end(), group_p_g.begin(),
                           group_p_g.end());
-    }
-    for (auto &p_g : params_grads) {
-      std::swap(p_g.first, p_g.second);
     }
 
     // Set Gradients as Persistable to prevent this var becoming reusable.
@@ -118,9 +102,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       auto iter = vars.find(p_g.second);
       PADDLE_ENFORCE(iter != vars.end(), "%s is not found.", p_g.second);
       iter->second->Var()->SetPersistable(true);
-
       PADDLE_ENFORCE(IsSupportedVarType(iter->second->Var()->GetType()));
-
       // Get Dtype
       auto ele_dtype = iter->second->Var()->GetDataType();
       if (dtype == kDefaultDtype) {
@@ -132,26 +114,48 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
                         "The data type of input is not consistent.");
     }
 
+    AllocContinuousAddressSpace(places, local_scopes, vars, params_grads,
+                                &result);
+  }
+
+  void AllocContinuousAddressSpace(
+      const std::vector<platform::Place> &places,
+      const std::vector<Scope *> &local_scopes,
+      const std::unordered_map<std::string, Node *> &vars,
+      const details::ParamsAndGrads &params_grads, Graph *result) const {
     // Create a FusedVarsSet to avoid duplicating names for fused_var in other
     // pass.
-    if (!result.Has(details::kFusedVars)) {
-      result.Set(details::kFusedVars, new details::FusedVars);
+    if (!result->Has(details::kFusedVars)) {
+      result->Set(details::kFusedVars, new details::FusedVars);
     }
     // the kFusedGrads is used be fuse_optimizer_op_pass.
-    result.Set(details::kFusedGrads, new details::FusedGrads);
+    result->Set(details::kFusedGrads, new details::FusedGrads);
 
     // the fused_var_name should be unique, so it appends
     // params_grads.begin()->second.
     auto fused_var_name = std::string(details::kFusedVarNamePrefix) + "@GRAD@" +
                           params_grads.begin()->second;
-    result.Get<details::FusedGrads>(details::kFusedGrads) = fused_var_name;
-    auto &fused_var_set = result.Get<details::FusedVars>(details::kFusedVars);
+    result->Get<details::FusedGrads>(details::kFusedGrads) = fused_var_name;
+    auto &fused_var_set = result->Get<details::FusedVars>(details::kFusedVars);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0,
                       "%s is duplicate in FusedVars.", fused_var_name);
     fused_var_set.insert(fused_var_name);
 
     InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars,
                                       fused_var_name, params_grads);
+  }
+
+  std::unordered_map<std::string, Node *> GetVarInfo(
+      const Graph &result) const {
+    std::unordered_map<std::string, Node *> vars;
+    for (Node *node : result.Nodes()) {
+      if (node->IsVar() && node->Var()) {
+        // Note: The graph may have the same name node. For example, parameter
+        // is the input of operator and it also is the output of optimizer;
+        vars.emplace(node->Var()->Name(), node);
+      }
+    }
+    return vars;
   }
 
   template <typename AttrType>
@@ -163,19 +167,19 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     graph->Set(attr_name, new AttrType);
   }
 
-  void SetGroupGradsAndParams(
+  void SetGroupParamsAndGrads(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
-      details::GroupGradsAndParams *group_grads_params) const {
-    SetGroupAccordingToLayers(var_nodes, params_grads, group_grads_params);
-    SetGroupAccordingToMemorySize(var_nodes, group_grads_params);
-    SetGroupAccordingToGroupSize(var_nodes, group_grads_params);
+      details::GroupParamsAndGrads *group_params_grads) const {
+    SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
+    SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
+    SetGroupAccordingToGroupSize(var_nodes, group_params_grads);
   }
 
   void SetGroupAccordingToLayers(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
-      details::GroupGradsAndParams *group_grads_params) const {
+      details::GroupParamsAndGrads *group_params_grads) const {
     std::unordered_map<std::string, std::vector<int>> layer_params;
 
     for (size_t i = 0; i < params_grads.size(); ++i) {
@@ -187,7 +191,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    group_grads_params->reserve(layer_params.size());
+    group_params_grads->reserve(layer_params.size());
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
       std::string key = kUnKnow;
@@ -197,42 +201,44 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       auto iter = layer_params.find(key);
       if (iter == layer_params.end()) continue;
 
-      group_grads_params->emplace_back();
-      auto &local_group_grads_params = group_grads_params->back();
+      group_params_grads->emplace_back();
+      auto &local_group_params_grads = group_params_grads->back();
       for (auto &idx : iter->second) {
-        local_group_grads_params.emplace_back(
-            std::make_pair(params_grads[idx].second, params_grads[idx].first));
+        local_group_params_grads.emplace_back(
+            std::make_pair(params_grads[idx].first, params_grads[idx].second));
       }
       layer_params.erase(iter);
     }
 
-    VLOG(10) << "SetGroupAccordingToLayers: ";
-    for (size_t i = 0; i < group_grads_params->size(); ++i) {
-      VLOG(10) << "group " << i;
-      std::stringstream out;
-      for (auto &p_g : group_grads_params->at(i)) {
-        out << "(" << p_g.second << ", " << p_g.first << "), ";
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << "SetGroupAccordingToLayers: ";
+      for (size_t i = 0; i < group_params_grads->size(); ++i) {
+        VLOG(10) << "group " << i;
+        std::stringstream out;
+        for (auto &p_g : group_params_grads->at(i)) {
+          out << "(" << p_g.first << ", " << p_g.second << "), ";
+        }
+        VLOG(10) << out.str();
       }
-      VLOG(10) << out.str();
     }
   }
 
   void SetGroupAccordingToMemorySize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      details::GroupGradsAndParams *group_grads_params) const {
+      details::GroupParamsAndGrads *group_params_grads) const {
     const uint64_t group_memory_size = GetFuseParameterMemorySize();
     if (group_memory_size == 0) {
       return;
     }
-    details::GroupGradsAndParams local_group_grads_params;
+    details::GroupParamsAndGrads local_group_params_grads;
     size_t j = 0;
-    while (j < group_grads_params->size()) {
-      local_group_grads_params.emplace_back();
-      auto &group_p_g = local_group_grads_params.back();
+    while (j < group_params_grads->size()) {
+      local_group_params_grads.emplace_back();
+      auto &group_p_g = local_group_params_grads.back();
       size_t local_group_memory_size = 0;
-      while (j < group_grads_params->size()) {
+      while (j < group_params_grads->size()) {
         std::for_each(
-            group_grads_params->at(j).begin(), group_grads_params->at(j).end(),
+            group_params_grads->at(j).begin(), group_params_grads->at(j).end(),
             [&local_group_memory_size,
              &var_nodes](const std::pair<std::string, std::string> &g_p) {
               auto iter = var_nodes.find(g_p.second);
@@ -245,8 +251,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
                             [&size](const int64_t &n) { size *= n; });
               local_group_memory_size += size;
             });
-        group_p_g.insert(group_p_g.end(), group_grads_params->at(j).begin(),
-                         group_grads_params->at(j).end());
+        group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
+                         group_params_grads->at(j).end());
         ++j;
         if (local_group_memory_size >= group_memory_size) {
           break;
@@ -254,63 +260,69 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
-    std::swap(*group_grads_params, local_group_grads_params);
+    std::swap(*group_params_grads, local_group_params_grads);
 
-    VLOG(10) << string::Sprintf(
-        "SetGroupAccordingToMemorySize(memory_size: %d):", group_memory_size);
-    for (size_t i = 0; i < group_grads_params->size(); ++i) {
-      VLOG(10) << "group " << i;
-      std::stringstream out;
-      for (auto &g_p : group_grads_params->at(i)) {
-        auto iter = var_nodes.find(g_p.second);
-        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", g_p.second);
-        auto shape = iter->second->Var()->GetShape();
-        size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
-        std::for_each(shape.begin(), shape.end(),
-                      [&size](const int64_t &n) { size *= n; });
-        out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << string::Sprintf(
+          "SetGroupAccordingToMemorySize(memory_size: %d):", group_memory_size);
+      for (size_t i = 0; i < group_params_grads->size(); ++i) {
+        VLOG(10) << "group " << i;
+        std::stringstream out;
+        for (auto &g_p : group_params_grads->at(i)) {
+          auto iter = var_nodes.find(g_p.second);
+          PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.",
+                         g_p.second);
+          auto shape = iter->second->Var()->GetShape();
+          size_t size =
+              framework::SizeOfType(iter->second->Var()->GetDataType());
+          std::for_each(shape.begin(), shape.end(),
+                        [&size](const int64_t &n) { size *= n; });
+          out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
+        }
+        VLOG(10) << out.str();
       }
-      VLOG(10) << out.str();
     }
   }
 
   void SetGroupAccordingToGroupSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      details::GroupGradsAndParams *group_grads_params) const {
+      details::GroupParamsAndGrads *group_params_grads) const {
     if (GetFuseParameterGroupsSize() == 1) {
       return;
     }
     const int group_size = GetFuseParameterGroupsSize() == -1
-                               ? static_cast<int>(group_grads_params->size())
+                               ? static_cast<int>(group_params_grads->size())
                                : GetFuseParameterGroupsSize();
     PADDLE_ENFORCE_GT(group_size, 1);
-    size_t groups = (group_grads_params->size() + group_size - 1) / group_size;
-    details::GroupGradsAndParams local_group_grads_params;
-    local_group_grads_params.reserve(groups);
+    size_t groups = (group_params_grads->size() + group_size - 1) / group_size;
+    details::GroupParamsAndGrads local_group_params_grads;
+    local_group_params_grads.reserve(groups);
 
     size_t j = 0;
     for (size_t i = 0; i < groups; ++i) {
-      local_group_grads_params.emplace_back();
-      auto &group_p_g = local_group_grads_params.back();
-      group_p_g.reserve(group_size);
-      while (j < group_grads_params->size()) {
-        group_p_g.insert(group_p_g.end(), group_grads_params->at(j).begin(),
-                         group_grads_params->at(j).end());
+      local_group_params_grads.emplace_back();
+      auto &group_p_g = local_group_params_grads.back();
+      group_p_g.reserve(static_cast<size_t>(group_size));
+      while (j < group_params_grads->size()) {
+        group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
+                         group_params_grads->at(j).end());
         ++j;
         if (j % group_size == 0) break;
       }
     }
-    std::swap(*group_grads_params, local_group_grads_params);
+    std::swap(*group_params_grads, local_group_params_grads);
 
-    VLOG(10) << string::Sprintf("SetGroupAccordingToGroupSize(group_size: %d):",
-                                group_size);
-    for (size_t i = 0; i < group_grads_params->size(); ++i) {
-      VLOG(10) << "group " << i;
-      std::stringstream out;
-      for (auto &p_g : group_grads_params->at(i)) {
-        out << "(" << p_g.second << ", " << p_g.first << "), ";
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << string::Sprintf(
+          "SetGroupAccordingToGroupSize(group_size: %d):", group_size);
+      for (size_t i = 0; i < group_params_grads->size(); ++i) {
+        VLOG(10) << "group " << i;
+        std::stringstream out;
+        for (auto &p_g : group_params_grads->at(i)) {
+          out << "(" << p_g.first << ", " << p_g.second << "), ";
+        }
+        VLOG(10) << out.str();
       }
-      VLOG(10) << out.str();
     }
   }
 
@@ -320,30 +332,31 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     return type == proto::VarType::LOD_TENSOR;
   }
 
-  void RecordParamsAndGrads(ir::Node *node,
+  void RecordParamsAndGrads(const ir::Graph &graph,
                             details::ParamsAndGrads *params_grads) const {
-    try {
-      bool is_bk_op =
-          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kBackward));
-      if (!is_bk_op) return;
+    std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(graph);
+    for (auto &node : topo_nodes) {
+      try {
+        bool is_bk_op =
+            static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                              static_cast<int>(OpRole::kBackward));
+        if (!is_bk_op) continue;
+        // Currently, we assume that once gradient is generated, it can be
+        // broadcast, and each gradient is only broadcast once.
+        auto backward_vars =
+            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
+                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+        PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
+        for (size_t i = 0; i < backward_vars.size(); i += 2) {
+          VLOG(10) << "Trainable parameter: " << backward_vars[i]
+                   << ", gradient: " << backward_vars[i + 1];
 
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once.
-      auto backward_vars =
-          boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
-
-      for (size_t i = 0; i < backward_vars.size(); i += 2) {
-        VLOG(10) << "Trainable parameter: " << backward_vars[i]
-                 << ", gradient: " << backward_vars[i + 1];
-
-        params_grads->emplace_back(std::make_pair(
-            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
+          params_grads->emplace_back(std::make_pair(
+              backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
+        }
+      } catch (boost::bad_get e) {
       }
-    } catch (boost::bad_get e) {
     }
   }
 
