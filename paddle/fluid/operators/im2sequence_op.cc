@@ -40,8 +40,8 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-    ctx->SetOutputDim("Out",
-                      {in_dim[0], img_channels * kernels[0] * kernels[1]});
+    auto out_row = framework::contain_unknown_dim(in_dim) ? -1 : in_dim[0];
+    ctx->SetOutputDim("Out", {out_row, img_channels * kernels[0] * kernels[1]});
   }
 };
 
