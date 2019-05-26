@@ -32,9 +32,9 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__device__ T dmcn_get_gradient_weight(T argmax_h, T argmax_w, const int h,
-                                      const int w, const int height,
-                                      const int width) {
+__device__ T DmcnGetGradientWeight(T argmax_h, T argmax_w, const int h,
+                                   const int w, const int height,
+                                   const int width) {
   if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
       argmax_w >= width) {
     return 0;
@@ -58,7 +58,7 @@ __device__ T dmcn_get_gradient_weight(T argmax_h, T argmax_w, const int h,
 }
 
 template <typename T>
-__global__ void modulated_deformable_col2im_gpu_kernel(
+__global__ void ModulatedDeformableCol2imGpuKernel(
     const int nthreads, const T* data_col, const T* data_offset,
     const T* data_mask, const int channels, const int height, const int width,
     const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
@@ -113,8 +113,8 @@ __global__ void modulated_deformable_col2im_gpu_kernel(
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
           T weight =
-              dmcn_get_gradient_weight(cur_inv_h_data, cur_inv_w_data,
-                                       cur_h + dy, cur_w + dx, height, width);
+              DmcnGetGradientWeight(cur_inv_h_data, cur_inv_w_data, cur_h + dy,
+                                    cur_w + dx, height, width);
 
           atomicAdd(grad_im + cur_bottom_grad_pos, weight * cur_top_grad);
         }
@@ -124,7 +124,7 @@ __global__ void modulated_deformable_col2im_gpu_kernel(
 }
 
 template <typename T>
-inline void modulated_deformable_col2im(
+inline void ModulatedDeformableCol2im(
     const platform::DeviceContext& ctx, const T* data_col, const T* data_offset,
     const T* data_mask, const std::vector<int64_t> im_shape,
     const std::vector<int64_t> col_shape,
@@ -136,7 +136,7 @@ inline void modulated_deformable_col2im(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  modulated_deformable_col2im_gpu_kernel<T><<<
+  ModulatedDeformableCol2imGpuKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       num_kernels, data_col, data_offset, data_mask, im_shape[0], im_shape[1],
@@ -146,10 +146,9 @@ inline void modulated_deformable_col2im(
 }
 
 template <typename T>
-__device__ T dmcn_get_coordinate_weight(T argmax_h, T argmax_w,
-                                        const int height, const int width,
-                                        const T* im_data, const int data_width,
-                                        const int bp_dir) {
+__device__ T DmcnGetCoordinateWeight(T argmax_h, T argmax_w, const int height,
+                                     const int width, const T* im_data,
+                                     const int data_width, const int bp_dir) {
   if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
       argmax_w >= width) {
     return 0;
@@ -193,7 +192,7 @@ __device__ T dmcn_get_coordinate_weight(T argmax_h, T argmax_w,
 }
 
 template <typename T>
-__global__ void modulated_deformable_col2im_coord_gpu_kernel(
+__global__ void ModulatedDeformableCol2imCoordGpuKernel(
     const int nthreads, const T* data_col, const T* data_im,
     const T* data_offset, const T* data_mask, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
@@ -261,10 +260,10 @@ __global__ void modulated_deformable_col2im_coord_gpu_kernel(
         inv_h = inv_w = -2;
       } else {
         mval += data_col_ptr[col_pos] *
-                dmcn_im2col_bilinear(data_im_ptr + cnt * height * width, width,
-                                     height, width, inv_h, inv_w);
+                DmcnIm2colBilinear(data_im_ptr + cnt * height * width, width,
+                                   height, width, inv_h, inv_w);
       }
-      const T weight = dmcn_get_coordinate_weight(
+      const T weight = DmcnGetCoordinateWeight(
           inv_h, inv_w, height, width, data_im_ptr + cnt * height * width,
           width, bp_dir);
       val += weight * data_col_ptr[col_pos] * mask;
@@ -283,7 +282,7 @@ __global__ void modulated_deformable_col2im_coord_gpu_kernel(
 }
 
 template <typename T>
-inline void modulated_deformable_col2im_coord(
+inline void ModulatedDeformableCol2imCoord(
     const platform::DeviceContext& ctx, const T* data_col, const T* data_im,
     const T* data_offset, const T* data_mask,
     const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
@@ -296,7 +295,7 @@ inline void modulated_deformable_col2im_coord(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  modulated_deformable_col2im_coord_gpu_kernel<T><<<
+  ModulatedDeformableCol2imCoordGpuKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       num_kernels, data_col, data_im, data_offset, data_mask, im_shape[0],
@@ -308,8 +307,8 @@ inline void modulated_deformable_col2im_coord(
 }
 
 template <typename T>
-__device__ T dmcn_im2col_bilinear(const T* bottom_data, const int data_width,
-                                  const int height, const int width, T h, T w) {
+__device__ T DmcnIm2colBilinear(const T* bottom_data, const int data_width,
+                                const int height, const int width, T h, T w) {
   int h_low = floor(h);
   int w_low = floor(w);
   int h_high = h_low + 1;
@@ -338,7 +337,7 @@ __device__ T dmcn_im2col_bilinear(const T* bottom_data, const int data_width,
 }
 
 template <typename T>
-__global__ void modulated_deformable_im2col_gpu_kernel(
+__global__ void ModulatedDeformableIm2colGpuKernel(
     const int nthreads, const T* data_im, const T* data_offset,
     const T* data_mask, const int height, const int width, const int kernel_h,
     const int kernel_w, const int pad_h, const int pad_w, const int stride_h,
@@ -391,8 +390,8 @@ __global__ void modulated_deformable_im2col_gpu_kernel(
         const T h_im = h_in + i * dilation_h + offset_h;
         const T w_im = w_in + j * dilation_w + offset_w;
         if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
-          val = dmcn_im2col_bilinear(data_im_ptr, width, height, width, h_im,
-                                     w_im);
+          val =
+              DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
         }
         *data_col_ptr = val * mask;
         data_col_ptr += batch_size * height_col * width_col;
@@ -402,7 +401,7 @@ __global__ void modulated_deformable_im2col_gpu_kernel(
 }
 
 template <typename T>
-inline void modulated_deformable_im2col(
+inline void ModulatedDeformableIm2col(
     const platform::DeviceContext& ctx, const T* data_im, const T* data_offset,
     const T* data_mask, const std::vector<int64_t> im_shape,
     const std::vector<int64_t> col_shape,
@@ -415,7 +414,7 @@ inline void modulated_deformable_im2col(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  modulated_deformable_im2col_gpu_kernel<T><<<
+  ModulatedDeformableIm2colGpuKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       num_kernels, data_im, data_offset, data_mask, im_shape[1], im_shape[2],
@@ -426,10 +425,9 @@ inline void modulated_deformable_im2col(
 }
 
 template <typename T>
-__global__ void filter_grad_addup_gpu_kernel(const int nthreads, const int n,
-                                             const int height, const int width,
-                                             const T* dweight_3d,
-                                             T* filter_grad) {
+__global__ void FilterGradAddupGpuKernel(const int nthreads, const int n,
+                                         const int height, const int width,
+                                         const T* dweight_3d, T* filter_grad) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (size_t i = index; i < nthreads; i += offset) {
@@ -513,7 +511,7 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
     T* col_buffer_ptr = col_buffer.data<T>();
 
     for (int i = 0; i < batch_size / im2col_step; ++i) {
-      modulated_deformable_im2col(
+      ModulatedDeformableIm2col(
           ctx.device_context(), input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
@@ -671,7 +669,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
       if (mask_grad && offset_grad) {
         T* offset_grad_ptr = offset_grad->data<T>();
         T* mask_grad_ptr = mask_grad->data<T>();
-        modulated_deformable_col2im_coord(
+        ModulatedDeformableCol2imCoord(
             ctx.device_context(), col_buffer_ptr,
             input_ptr + i * im2col_step * input_dim,
             offset_ptr + i * im2col_step * input_offset_dim,
@@ -683,7 +681,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
       }
       if (input_grad) {
         T* input_grad_ptr = input_grad->data<T>();
-        modulated_deformable_col2im(
+        ModulatedDeformableCol2im(
             ctx.device_context(), col_buffer_ptr,
             offset_ptr + i * im2col_step * input_offset_dim,
             mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
@@ -693,7 +691,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
         input_grad->Resize(input->dims());
       }
 
-      modulated_deformable_im2col(
+      ModulatedDeformableIm2col(
           ctx.device_context(), input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
@@ -720,7 +718,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
           blas.MatMul(out_grad_3d_slice, false, col_buffer_3d_slice, true,
                       T(1.0), &dweight_3d_slice, T(0.0));
         }
-        filter_grad_addup_gpu_kernel<
+        FilterGradAddupGpuKernel<
             T><<<NumBlocks(dweight_3d.numel()), kNumCUDAThreads, 0,
                  ctx.cuda_device_context().stream()>>>(
             dweight_3d.numel(), groups, K, M, dweight_3d.data<T>(),
