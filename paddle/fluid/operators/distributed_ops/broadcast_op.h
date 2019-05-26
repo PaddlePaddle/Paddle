@@ -37,30 +37,38 @@ class BroadcastOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(is_gpu_place(place),
                    "BroadcastOp can run on gpu place only for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    int numel = x->numel();
+    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+
     int gid = ctx.Attr<int>("group");
-    auto& nccl_ctx =
-      platform::NCCLContextPool::Instance().Group(gid)->at(place);
-
-    auto out = ctx.Output<framework::Tensor>("Out");
-    int dtype = platform::ToNCCLDataType(out->type());
-    int64_t numel = out->numel();
-    void* buff = out->mutable_data<T>(place);
-
-    auto comm = nccl_ctx.comm();
-    auto stream = nccl_ctx.stream();
-    PADDLE_ENFORCE(comm != nullptr && stream != nullptr,
-        "Should initialize NCCL firstly.");
+    auto comm = platform::NCCLCommContext::Instance().Group(gid)->Get(place);
 
     int root = ctx.Attr<int>("root");
-    PADDLE_ENFORCE(platform::dynload::ncclBcast(
-        buff, numel, static_cast<ncclDataType_t>(dtype), root, comm, stream));
-    if (ctx.Attr<bool>("sync_mode")) {
-      VLOG(0) << "sync nccl broadcast ...";
-      cudaError_t e_sync = cudaStreamSynchronize(stream);
-      if (e_sync != 0) {
-        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+    if (root == comm->rank()) {
+      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
+          numel, dtype, root, comm->comm(), comm->stream()));
+      VLOG(3) << "rank " << comm->rank()
+        << " invoke Bcast. sent " << x->numel();
+
+      if (out != x) {
+        // TODO(liuyi05): check inplace
+        framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
+                *platform::DeviceContextPool::Instance().Get(place),
+                static_cast<framework::Tensor*>(out));
       }
+    } else {
+      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+          out->mutable_data<T>(place), numel, dtype, root,
+          comm->comm(), comm->stream()));
+      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+              << framework::product(out->dims());
     }
+
+    out->Resize(x->dims());
+    out->set_lod(x->lod());
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

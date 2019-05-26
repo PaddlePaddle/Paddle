@@ -49,8 +49,9 @@ class CollectiveCommInitOp : public framework::OperatorBase {
     int rank_id = Attr<int>("rank");
     int gid = Attr<int>("group");
 
-    platform::NCCLContextPool::Instance().CreateCommGroup(
-        nccl_id, nranks, gid)->InitRank(place, rank_id);
+    auto& ctx = platform::NCCLCommContext::Instance();
+    ctx.InitCUDADevCtx(boost::get<platform::CUDAPlace>(place).device);
+    ctx.CreateCommGroup(nccl_id, nranks, gid)->InitRank(place, rank_id);
   }
 };
 
@@ -59,9 +60,9 @@ class CollectiveCommInitOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
-NCCLContextInit operator
+CollectiveCommInit operator
 
-Initialize nccl context within this trainer
+Initialize collective communicatoin context within this trainer
 )DOC");
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",

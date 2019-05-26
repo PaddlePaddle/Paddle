@@ -24,12 +24,14 @@ class BroadcastOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Output<framework::Tensor>("Out")->type(),
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
                                    ctx.GetPlace());
   }
 };
@@ -37,9 +39,8 @@ class BroadcastOp : public framework::OperatorWithKernel {
 class BroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Tensor) tensor to be broadcasted.");
     AddOutput("Out", "(Tensor) the result of broadcast.");
-    AddAttr<bool>("sync_mode",
-        "(bool) whether to synchronize data.") .SetDefault(false);
     AddAttr<int>("group", "(int) nccl communication group id.").SetDefault(0);
     AddAttr<int>("root", "(int) root id for broadcasting.").SetDefault(0);
     AddComment(R"DOC(

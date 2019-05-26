@@ -302,11 +302,10 @@ class DistributeTranspiler(object):
             if isinstance(var, Parameter):
                 startup_program.global_block().append_op(
                     type="broadcast",
-                    inputs={},
+                    inputs={"X": var},
                     outputs={"Out": var},
                     attrs={"group": 0,
-                           "root": 0,
-                           "sync_mode": True})
+                           "root": 0})
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []

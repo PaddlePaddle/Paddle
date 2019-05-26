@@ -967,7 +967,7 @@ class Operator(object):
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id',
-        'collective_comm_init'
+        'collective_comm_init', 'sync_stream'
     }
 
     def __init__(self,

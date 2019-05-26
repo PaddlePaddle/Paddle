@@ -23,10 +23,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -160,6 +162,22 @@ struct NCCLContextMap {
   }
 };
 
+class NCCLComm {
+ public:
+  NCCLComm(int rank, ncclComm_t comm, CUDADeviceContext* dev_ctx)
+    : rank_(rank), comm_(comm), dev_ctx_(dev_ctx) {}
+
+  int rank() const { return rank_; }
+  ncclComm_t comm() const { return comm_; }
+  cudaStream_t stream() const { return dev_ctx_->stream(); }
+  CUDADeviceContext* DevCtx() { return dev_ctx_; }
+
+ private:
+  int rank_;
+  ncclComm_t comm_;
+  CUDADeviceContext* dev_ctx_;
+};
+
 // In order to apply hierarchical communication with NCCL, we need
 // a communication group contains NCCL communicators associated to a global
 // ncclUniqueId. E.g. for a hierarchical case,
@@ -188,26 +206,10 @@ class NCCLCommGroup {
     nranks_ = nranks;
     group_id_ = group_id;
   }
-  ~NCCLCommGroup() {}
+  ~NCCLCommGroup() = default;
 
   // bind the global rank id to the device id, or rather the local rank
-  void InitRank(int dev_id, int rank_id) {
-    std::lock_guard<std::mutex> lg(mutex_);
-
-    PADDLE_ENFORCE(dev_id >= 0 && rank_id >= 0,
-                   "invalid arguments: dev_id=%d, rank_id=%d", dev_id, rank_id);
-    PADDLE_ENFORCE(ctx_map_.count(dev_id) == 0,
-                   "device %d is used in the communication group %d", dev_id,
-                   group_id_);
-
-    std::shared_ptr<NCCLContext> nccl_ctx(new NCCLContext(dev_id));
-
-    PADDLE_ENFORCE(cudaSetDevice(dev_id));
-    PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
-        &(nccl_ctx->comm_), nranks_, *nccl_id_, rank_id));
-
-    ctx_map_.emplace(dev_id, nccl_ctx);
-  }
+  void InitRank(int dev_id, int rank_id);
 
   void InitRank(Place place, int rank_id) {
     InitRank(boost::get<CUDAPlace>(place).device, rank_id);
@@ -215,16 +217,14 @@ class NCCLCommGroup {
 
   int group_id() const { return group_id_; }
 
-  CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
-
-  CUDADeviceContext* DevCtx(platform::Place p) const {
-    return DevCtx(boost::get<CUDAPlace>(p).device);
+  NCCLComm* Get(int dev_id) const {
+    PADDLE_ENFORCE(comm_map_.count(dev_id),
+        "NCCLComm at device %d has not been initialized.");
+    return comm_map_.at(dev_id).get();
   }
 
-  const NCCLContext& at(int dev_id) const { return *ctx_map_.at(dev_id); }
-
-  const NCCLContext& at(Place p) const {
-    return at(boost::get<CUDAPlace>(p).device);
+  NCCLComm* Get(platform::Place p) const {
+    return Get(boost::get<CUDAPlace>(p).device);
   }
 
  private:
@@ -236,20 +236,30 @@ class NCCLCommGroup {
 
   std::mutex mutex_;
 
-  // Mapping dev_id to NCCLContext
-  std::unordered_map<int, std::shared_ptr<NCCLContext>> ctx_map_;
+  // Mapping dev_id to NCCLComm
+  std::unordered_map<int, std::unique_ptr<NCCLComm>> comm_map_;
 
   NCCLCommGroup(const NCCLCommGroup& other) = delete;
   NCCLCommGroup& operator=(const NCCLCommGroup& other) = delete;
 };
 
-// a singleton NCCL context pool reserves NCCLContext instances
-// which are grouped by communication group
-class NCCLContextPool {
+// a singleton NCCL communicator context reserves communication groups
+class NCCLCommContext {
  public:
-  static NCCLContextPool& Instance() {
-    static NCCLContextPool pool;
-    return pool;
+  static NCCLCommContext& Instance() {
+    static NCCLCommContext comm_ctx;
+    return comm_ctx;
+  }
+  ~NCCLCommContext() = default;
+
+  CUDADeviceContext* InitCUDADevCtx(int dev_id) {
+    PADDLE_ENFORCE(dev_id >= 0, "invalid device id: %d", dev_id);
+    PADDLE_ENFORCE(dev_ctx_map_.count(dev_id) == 0,
+        "CUDADeviceContext has been initialized on device %d", dev_id);
+
+    dev_ctx_map_.emplace(dev_id, std::unique_ptr<CUDADeviceContext>(
+          new CUDADeviceContext(CUDAPlace(dev_id))));
+    return dev_ctx_map_.at(dev_id).get();
   }
 
   // create a communication group with a ncclUniqueId, the
@@ -261,10 +271,21 @@ class NCCLContextPool {
     PADDLE_ENFORCE(group_map_.count(group) == 0, "group id %d is in use",
                    group);
 
-    group_map_.emplace(group, std::shared_ptr<NCCLCommGroup>(
+    group_map_.emplace(group, std::unique_ptr<NCCLCommGroup>(
                                   new NCCLCommGroup(nccl_id, nranks, group)));
-
+    VLOG(0) << "nccl comm group " << group << " has been created";
     return Group(group);
+  }
+
+  CUDADeviceContext* DevCtx(int dev_id) const {
+    PADDLE_ENFORCE(dev_ctx_map_.count(dev_id),
+        "CUDADeviceContext at device %d has not been initialized. "
+        "Please call InitCUDADevCtx first");
+    return dev_ctx_map_.at(dev_id).get();
+  }
+
+  CUDADeviceContext* DevCtx(platform::Place p) const {
+    return DevCtx(boost::get<CUDAPlace>(p).device);
   }
 
   // retrieve a communication group by the group id
@@ -274,11 +295,15 @@ class NCCLContextPool {
   }
 
  private:
-  std::unordered_map<int, std::shared_ptr<NCCLCommGroup>> group_map_;
+  // group id to NCCLCommGroup
+  std::unordered_map<int, std::unique_ptr<NCCLCommGroup>> group_map_;
 
-  NCCLContextPool() {}
-  NCCLContextPool(const NCCLContextPool& other) = delete;
-  NCCLContextPool& operator=(const NCCLContextPool& other) = delete;
+  // device id to CUDADeviceContext
+  std::unordered_map<int, std::unique_ptr<CUDADeviceContext>> dev_ctx_map_;
+
+  NCCLCommContext() = default;
+  NCCLCommContext(const NCCLCommContext& other) = delete;
+  NCCLCommContext& operator=(const NCCLCommContext& other) = delete;
 };
 
 }  // namespace platform

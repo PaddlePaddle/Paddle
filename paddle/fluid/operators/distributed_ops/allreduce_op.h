@@ -36,23 +36,17 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(is_gpu_place(place),
                    "AllReduce op can run on gpu place only for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    int gid = ctx.Attr<int>("group");
-    auto& nccl_ctx =
-      platform::NCCLContextPool::Instance().Group(gid)->at(place);
-
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
-    int dtype = platform::ToNCCLDataType(in->type());
+    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<void>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto comm = nccl_ctx.comm();
-    auto stream = nccl_ctx.stream();
-    PADDLE_ENFORCE(comm != nullptr && stream != nullptr,
-        "Should initialize NCCL firstly.");
+    int gid = ctx.Attr<int>("group");
+    auto comm = platform::NCCLCommContext::Instance().Group(gid)->Get(place);
 
     int reduce_type = ctx.Attr<int>("reduce_type");
     ncclRedOp_t red_type = ncclSum;
@@ -71,10 +65,10 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         break;
     }
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
-        comm, stream));
+        sendbuff, recvbuff, numel, dtype, red_type,
+        comm->comm(), comm->stream()));
     if (ctx.Attr<bool>("sync_mode")) {
-      cudaError_t e_sync = cudaStreamSynchronize(stream);
+      cudaError_t e_sync = cudaStreamSynchronize(comm->stream());
       if (e_sync != 0) {
         LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
       }

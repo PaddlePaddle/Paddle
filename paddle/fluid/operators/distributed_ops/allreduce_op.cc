@@ -24,7 +24,9 @@ class AllReduceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -41,9 +43,10 @@ class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allreduced result.");
     AddAttr<int>("reduce_type",
         "(int) determin the reduce type.") .SetDefault(0);
-    AddAttr<bool>("sync_mode",
-        "(bool) whether to synchronize data.") .SetDefault(false);
     AddAttr<int>("group", "(int) communication group id.").SetDefault(0);
+    AddAttr<bool>("sync_mode",
+        "(bool) whether to synchronize data. "
+        "NOTE: To be deprecated, use SyncOp to sync").SetDefault(false);
     AddComment(R"DOC(
 ***AllReduce Operator***
 
