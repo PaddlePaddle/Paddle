@@ -69,6 +69,7 @@ class TensorLite : public TensorBase<TensorLite> {
   void Resize(const std::vector<int64_t> &x) { dims_ = DDimLite(x); }
 
   const DDimLite &dims() const { return dims_; }
+  int64_t numel() const { return dims_.product(); }
 
   const LoD &lod() const { return lod_; }
   LoD *mutable_lod() { return &lod_; }

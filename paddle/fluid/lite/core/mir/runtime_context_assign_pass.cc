@@ -32,7 +32,7 @@ class RuntimeContextAssignPass : public StmtPass {
       if (!node.IsStmt()) continue;
 
       auto& inst = node.AsStmt();
-
+      LOG(INFO) << "--------------------in context??????";
       switch (inst.picked_kernel().target()) {
         case TARGET(kHost):
         case TARGET(kX86):

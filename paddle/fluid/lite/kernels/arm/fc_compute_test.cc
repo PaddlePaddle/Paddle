@@ -22,20 +22,33 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-TEST(fc_compute_naive, test) {
-  lite::Tensor x, w, b, out, out1;
-  const int batch_size = 2;
+TEST(fc_arm, retrive_op) {
+  auto fc =
+      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("fc");
+  ASSERT_FALSE(fc.empty());
+  ASSERT_TRUE(fc.front());
+}
+
+TEST(fc_arm, init) {
+  FcCompute fc;
+  ASSERT_EQ(fc.precision(), PRECISION(kFloat));
+  ASSERT_EQ(fc.target(), TARGET(kARM));
+}
+
+TEST(fc_arm, compare_test) {
+  lite::Tensor x, w, b, out, ref;
+  constexpr int batch_size = 2;
   x.Resize({batch_size, 3});
-  w.Resize({4, 3});
+  w.Resize({3, 4});
   b.Resize({1, 4});
   out.Resize({batch_size, 4});
-  out1.Resize({batch_size, 4});
+  ref.Resize({batch_size, 4});
 
   auto x_data = x.mutable_data<float>();
   auto w_data = w.mutable_data<float>();
   auto b_data = b.mutable_data<float>();
   auto out_data = out.mutable_data<float>();
-  auto out_data1 = out1.mutable_data<float>();
+  auto ref_data = ref.mutable_data<float>();
 
   for (int64_t i = 0; i < x.dims().product(); i++) {
     x_data[i] = static_cast<float>(i);
@@ -47,41 +60,30 @@ TEST(fc_compute_naive, test) {
     b_data[i] = static_cast<float>(i);
   }
 
-  fc_compute_naive(x_data, 3, batch_size,  //
+  fc_compute_eigen(x_data, batch_size, 3,  //
                    w_data, 3, 4,           //
-                   b_data, out_data);
-  fc_compute_eigen(x_data, 3, batch_size,  //
-                   w_data, 3, 4,           //
-                   b_data, out_data1);
+                   b_data, ref_data);
 
-  for (int i = 0; i < out.dims().product(); i++) {
-    EXPECT_NEAR(out_data[0], out_data1[0], 1e-6);
+  // fc compute kernel
+  FcCompute fc;
+  operators::FcParam param;
+
+  param.in_num_col_dims = 1;
+  param.input = &x;
+  param.w = &w;
+  param.bias = &b;
+  param.output = &out;
+  param.in_mat_dims = x.dims();
+
+  fc.SetParam(param);
+  fc.Run();
+
+  for (int i = 0; i < out.dims().product(); ++i) {
+    EXPECT_NEAR(out_data[i], ref_data[i], 1e-5);
   }
 }
 
-TEST(fc_arm, init) {
-  FcCompute fc;
-  ASSERT_EQ(fc.precision(), PRECISION(kFloat));
-  ASSERT_EQ(fc.target(), TARGET(kARM));
-}
-
-TEST(fc_arm, algorithm) {
-  using matrix_t = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
-  using matrix_map_t = Eigen::Map<matrix_t>;
-
-  // dim 10, 20
-  std::vector<float> input(10 * 20);
-  std::vector<float> w(20 * 20);
-  std::vector<float> output(10 * 20);
-
-  Eigen::Map<const matrix_t> input_mat(input.data(), 10, 20);
-  Eigen::Map<const matrix_t> weight_mat(w.data(), 20, 20);
-  matrix_map_t output_mat(output.data(), 10, 20);
-
-  output_mat = input_mat * weight_mat.transpose();
-}
-
-TEST(fc_arm, compute) {
+TEST(fc_arm, num_col_dims) {
   FcCompute fc;
   operators::FcParam param;
 
@@ -90,10 +92,10 @@ TEST(fc_arm, compute) {
   lite::Tensor bias;
   lite::Tensor output;
 
-  x.Resize({1, 10, 20});
-  w.Resize({20, 20});
-  bias.Resize({1, 10});
-  output.Resize({10, 20});
+  x.Resize({1, 2, 3});
+  w.Resize({3, 4});
+  bias.Resize({1, 4});
+  output.Resize({2, 4});
 
   auto* x_data = x.mutable_data<float>();
   auto* w_data = w.mutable_data<float>();
@@ -123,21 +125,15 @@ TEST(fc_arm, compute) {
   fc.SetParam(param);
   fc.Run();
 
-  VLOG(3) << "x";
-  for (int i = 0; i < 10 * 20; i++) {
+  VLOG(3) << "x:";
+  for (int64_t i = 0; i < 2 * 3; i++) {
     VLOG(3) << x_data[i];
   }
 
   VLOG(3) << "output:";
-  for (int i = 0; i < 10 * 20; i++) {
+  for (int i = 0; i < 2 * 4; i++) {
     VLOG(3) << output.data<float>()[i];
   }
-}
-
-TEST(fc, retrive_op) {
-  auto fc =
-      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("fc");
-  ASSERT_FALSE(fc.empty());
 }
 
 }  // namespace arm

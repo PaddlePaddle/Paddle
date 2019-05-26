@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
-#include <Eigen/Core>
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
 
@@ -25,21 +24,48 @@ namespace arm {
 // NOTE should use pure std C++ implementation.
 void FcCompute::Run() {
   auto& param = this->Param<operators::FcParam>();
+  auto x_dims = param.input->dims();
+  auto w_dims = param.w->dims();
 
-  CHECK_GE(param.input->dims().size(), 2UL);
+  CHECK_GE(x_dims.size(), 2UL);
+  CHECK_EQ(w_dims.size(), 2UL);
+  CHECK_EQ(param.bias->numel(), w_dims[1]);
   CHECK_EQ(param.output->dims().size(), 2UL);
+#ifdef __aarch64__
+  LOG(INFO) << "--------64-";
+#else
+  LOG(INFO) << "--------32-";
+#endif
+  // ARMContext ctx;
 
-  fc_compute_eigen(
-      param.input->data<float>(),  // x
-      param.input->dims().Slice(0, param.in_num_col_dims).production(),
-      param.input->dims()
-          .Slice(param.in_num_col_dims, param.input->dims().size())
-          .production(),
-      param.w->data<float>(),     // w
-      param.w->dims()[1],         // w_w
-      param.w->dims()[0],         // w_h
-      param.bias->data<float>(),  // b
-      param.output->mutable_data<float>());
+  int x_h = x_dims.Slice(0, param.in_num_col_dims).production();
+  if (x_h > 1) {
+    // float *pre_din = static_cast<float *>(this->_ctx->get_work_space()) +
+    // this->_ctx->l2_cache_size() / sizeof(float);
+    // prepackA(pre_din, (const float*)din, _k, 0, _m, 0, _k, false,
+    // this->_ctx);
+    // sgemm_prepack(pre_din, (const float*)weights, (const float*)bias,
+    // (float*)dout, _m, _n, _k, false, false,
+    //               !_param->_flag_trans, this->_ctx);
+    // if (_param->_flag_bias) {
+    //     fill_bias_fc((float*)dout, (const float*)bias, _m, _n);
+    // }
+  } else {
+    // use sgemmv
+    //            sgemv((const float*)weights, (const float*)din, (float*)dout,
+    //            false, _n, _k, _param->_flag_bias, (float*)bias, false);
+  }
+
+  fc_compute_eigen(param.input->data<float>(),  // x
+                   x_h,
+                   param.input->dims()
+                       .Slice(param.in_num_col_dims, param.input->dims().size())
+                       .production(),
+                   param.w->data<float>(),     // w
+                   w_dims[0],                  // w_h
+                   w_dims[1],                  // w_w
+                   param.bias->data<float>(),  // b
+                   param.output->mutable_data<float>());
 }
 
 TargetType FcCompute::target() const { return TARGET(kARM); }
