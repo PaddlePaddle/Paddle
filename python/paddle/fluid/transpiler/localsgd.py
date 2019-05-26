@@ -16,6 +16,18 @@ import sys
 from paddle import fluid
 
 
+def init_nccl(trainer_id, trainer_endpoints, current_endpoint, startup_prog):
+    config = fluid.DistributeTranspilerConfig()
+    config.mode = 'nccl'
+    t = fluid.DistributeTranspiler(config=config)
+
+    t.transpile(
+        trainer_id,
+        trainers=','.join(trainer_endpoints),
+        current_endpoint=current_endpoint,
+        startup_program=startup_prog)
+
+
 def gen_sync_program_simple(ntrainers, start_prog, main_prog):
     sync_prog = main_prog.clone()
     for var in start_prog.list_vars():
