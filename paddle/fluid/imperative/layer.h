@@ -121,7 +121,7 @@ class VarBase {
       : VarBase(name, var->Get<framework::LoDTensor>().type(),
                 var->Get<framework::LoDTensor>().dims(),
                 var->Get<framework::LoDTensor>().place(), nullptr, grad,
-                stop_gradient, false) {
+                stop_gradient, false, true) {
     var_ = std::move(var);
   }
 
@@ -137,18 +137,27 @@ class VarBase {
           const framework::DDim& shape, const platform::Place& place,
           bool stop_gradient, bool persistable)
       : VarBase(name, dtype, shape, place, nullptr, nullptr, stop_gradient,
-                persistable) {}
+                persistable, true) {}
+
+  // Grad used constructor
+  VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
+          const std::vector<int64_t>& shape, const platform::Place& place,
+          bool stop_gradient, bool persistable, bool need_initialize)
+      : VarBase(name, dtype, framework::make_ddim(shape), place, nullptr,
+                nullptr, stop_gradient, persistable, need_initialize) {}
 
  private:
   // TODO(minqiyang): need support SelectedRows
   VarBase(const std::string& name, framework::proto::VarType::Type dtype,
           const framework::DDim& shape, const platform::Place& place,
           std::unique_ptr<framework::Variable> var, VarBase* grad,
-          bool stop_gradient, bool persistable)
+          bool stop_gradient, bool persistable, bool need_initialize)
       : name_(name),
         type_(framework::proto::VarType::LOD_TENSOR),
+        place_(place),
         var_(std::move(var)),
         grads_(grad),
+        dtype_(dtype),
         stop_gradient_(stop_gradient),
         persistable_(persistable),
         pre_op_(nullptr),
@@ -159,9 +168,17 @@ class VarBase {
     }
     auto tensor = var_->GetMutable<framework::LoDTensor>();
     tensor->Resize(shape);
-    tensor->mutable_data(place, dtype);
-    VLOG(10) << "create varbase: " << name_ << " type: " << dtype
-             << " place: " << place;
+    if (need_initialize) {
+      tensor->mutable_data(place, dtype);
+      is_initialized_ = true;
+      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype
+              << " place: " << place;
+    } else {
+      is_initialized_ = false;
+      VLOG(2) << "not initialized varbase: " << name_;
+    }
+    VLOG(2) << "create varbase: " << name_ << " type: " << dtype
+            << " place: " << place;
   }
 
  public:
@@ -173,10 +190,12 @@ class VarBase {
 
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
+    VLOG(2) << "destruct varbase: " << name_;
   }
 
   inline void SetName(const std::string& name) { name_ = name; }
   inline std::string Name() const { return name_; }
+  inline bool IsInitialize() const { return is_initialized_; }
 
   inline std::vector<int64_t> Shape() const {
     if (var_->IsInitialized()) {
@@ -211,7 +230,7 @@ class VarBase {
 
   inline void SetPersistable(bool persistable) { persistable_ = persistable; }
   inline bool IsPersistable() const { return persistable_; }
-
+  inline platform::Place GetPlace() { return place_; }
   inline OpBase* PreOp() const { return pre_op_; }
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
@@ -222,6 +241,17 @@ class VarBase {
       // clear pre_op info when op equals to var's pre_op
       pre_op_ = nullptr;
       pre_op_out_idx_ = -1;
+    }
+  }
+
+  void InitBuffer() {
+    if (!is_initialized_) {
+      var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
+      is_initialized_ = true;
+      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype_
+              << " place: " << place_;
+    } else {
+      VLOG(2) << "var: " << name_ << " has already been initialized ";
     }
   }
 
@@ -263,9 +293,10 @@ class VarBase {
   VarBase* grads_;
 
  private:
+  framework::proto::VarType::Type dtype_;
   bool stop_gradient_;
   bool persistable_;
-
+  bool is_initialized_;
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
