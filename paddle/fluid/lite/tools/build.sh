@@ -22,7 +22,9 @@ function cmake_arm {
           -DLITE_WITH_CUDA=OFF \
           -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
           -DWITH_TESTING=ON \
+          -DWITH_MKL=OFF \
           -DWITH_MKLDNN=OFF
+    make cxx_api_lite_bin -j8
 }
 
 function build {

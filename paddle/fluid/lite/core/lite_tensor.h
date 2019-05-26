@@ -14,6 +14,7 @@
 
 #pragma once
 #include <algorithm>
+#include <functional>  // for multiplies
 #include <memory>
 #include <numeric>
 #include <vector>
@@ -40,6 +41,10 @@ class DDimLite : public DDimBase<DDimLite> {
 
   size_t size() const { return data_.size(); }
   bool empty() const { return data_.empty(); }
+  value_type product() const {
+    return std::accumulate(std::begin(data_), std::end(data_), 1,
+                           std::multiplies<value_type>());
+  }
   const std::vector<value_type> &data() const { return data_; }
 
  private:
@@ -61,6 +66,7 @@ class TensorLite : public TensorBase<TensorLite> {
   }
 
   void Resize(const DDimLite &ddim) { dims_ = ddim; }
+  void Resize(const std::vector<int64_t> &x) { dims_ = DDimLite(x); }
 
   const DDimLite &dims() const { return dims_; }
 
