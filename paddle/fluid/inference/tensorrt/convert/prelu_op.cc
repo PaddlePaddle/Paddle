@@ -43,33 +43,23 @@ class PReluOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(alpha_var);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
-    platform::CUDAPlace place;
-    std::unique_ptr<framework::LoDTensor> alpha_tensor_device(
+    platform::CPUPlace cpu_place;
+    std::unique_ptr<framework::LoDTensor> alpha_tensor_temp(
         new framework::LoDTensor());
-    alpha_tensor_device->Resize(alpha_tensor->dims());
-    TensorCopySync(*alpha_tensor, place, alpha_tensor_device.get());
-    float* alpha_data = alpha_tensor_device->mutable_data<float>(place);
+    alpha_tensor_temp->Resize(alpha_tensor->dims());
+    TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
+    float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
-    // Transform alpha to TensorRTEngine::Weight
-    TensorRTEngine::Weight alpha_rt(nvinfer1::DataType::kFLOAT,
-                                    static_cast<void*>(alpha_data),
-                                    alpha_tensor_device->numel());
-    plugin::PReluPlugin* plugin = new plugin::PReluPlugin(alpha_rt, mode);
+    plugin::PReluPlugin* plugin =
+        new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);
     // keep alpha tensor to avoid release it's memory
     engine_->weight_map[op_desc.Input("Alpha")[0]] =
-        std::move(alpha_tensor_device);
+        std::move(alpha_tensor_temp);
 
-    std::string layer_name = "prelu (Output: ";
     auto output_name = op_desc.Output("Out")[0];
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    layer_name += output_name;
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
-    layer->setName((layer_name + ")").c_str());
+    RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);
   }
 };
 

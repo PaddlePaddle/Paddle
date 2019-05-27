@@ -26,14 +26,15 @@ using platform::DeviceContext;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
 
-template <typename T>
-__global__ void GatherCUDAKernel(const T* params, const int* indices, T* output,
-                                 size_t index_size, size_t slice_size) {
+template <typename T, typename IndexT = int>
+__global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
+                                 T* output, size_t index_size,
+                                 size_t slice_size) {
   CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    int gather_i = indices[indices_i];
-    int params_i = gather_i * slice_size + slice_i;
+    IndexT gather_i = indices[indices_i];
+    IndexT params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
   }
 }
@@ -42,10 +43,10 @@ __global__ void GatherCUDAKernel(const T* params, const int* indices, T* output,
  * A thin wrapper on gpu tensor
  * Return a new tensor from source tensor, gathered according to index
  * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
+ * input[index]: type-IndexT index Tensor (1-D)
  * return: output tensor
  */
-template <typename T>
+template <typename T, typename IndexT = int>
 void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
   // PADDLE_ENFORCE(platform::is_gpu_place(place));
@@ -64,14 +65,14 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   const T* p_src = src.data<T>();
-  const int* p_index = index.data<int>();
+  const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
   int block = 512;
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
 
-  GatherCUDAKernel<T><<<
+  GatherCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       p_src, p_index, p_output, index_size, slice_size);

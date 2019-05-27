@@ -290,7 +290,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       "USE_OP_DEVICE_KERNEL must be in global namespace");                 \
   extern int                                                               \
       TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name(); \
-  UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_##DEFAULT_TYPE##_ = /* NOLINT */ \
+  UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_##customized_name##_ = /* NOLINT */ \
       TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name()
 
 #define USE_OP_DEVICE_KERNEL(op_type, LIBRARY_TYPE) \

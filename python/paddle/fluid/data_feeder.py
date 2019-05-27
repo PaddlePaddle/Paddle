@@ -26,6 +26,24 @@ from .framework import Variable, default_main_program
 __all__ = ['DataFeeder']
 
 
+def convert_dtype(dtype):
+    if dtype == core.VarDesc.VarType.FP32:
+        return 'float32'
+    elif dtype == core.VarDesc.VarType.INT64:
+        return 'int64'
+    elif dtype == core.VarDesc.VarType.FP64:
+        return 'float64'
+    elif dtype == core.VarDesc.VarType.FP16:
+        return 'float16'
+    elif dtype == core.VarDesc.VarType.INT32:
+        return 'int32'
+    elif dtype == core.VarDesc.VarType.UINT8:
+        return 'uint8'
+    else:
+        raise ValueError("dtype must be any of [int32, float32, int64, "
+                         "float64, uint8]")
+
+
 class DataToLoDTensorConverter(object):
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
@@ -38,27 +56,12 @@ class DataToLoDTensorConverter(object):
             if negtive_count > 1:
                 self.shape = None
                 break
-        if dtype == core.VarDesc.VarType.FP32:
-            self.dtype = 'float32'
-        elif dtype == core.VarDesc.VarType.INT64:
-            self.dtype = 'int64'
-        elif dtype == core.VarDesc.VarType.FP64:
-            self.dtype = 'float64'
-        elif dtype == core.VarDesc.VarType.FP16:
-            self.dtype = 'float16'
-        elif dtype == core.VarDesc.VarType.INT32:
-            self.dtype = 'int32'
-        elif dtype == core.VarDesc.VarType.UINT8:
-            self.dtype = 'uint8'
-        else:
-            raise ValueError("dtype must be any of [int32, float32, int64, "
-                             "float64, uint8]")
+        self.dtype = convert_dtype(dtype)
+        self._reset()
 
+    def _reset(self):
         self.data = []
-        self.lod = []
-
-        for i in six.moves.range(lod_level):
-            self.lod.append([])
+        self.lod = [[] for _ in six.moves.range(self.lod_level)]
 
     def feed(self, data):
         self._feed_impl_(data, self.lod, self.lod_level)
@@ -88,13 +91,50 @@ class DataToLoDTensorConverter(object):
                     raise ValueError(
                         "Reshape error. What is defined in data layer is {}, but receive {}"
                         .format(self.shape, arr.shape))
-            #else:
-            #    self._check_shape(arr.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
             t.set_recursive_sequence_lengths(self.lod)
+        self._reset()
         return t
+
+
+class BatchedTensorProvider(object):
+    def __init__(self, feed_list, place, batch_size, generator, drop_last):
+        self.place = place
+        self.batch_size = batch_size
+        self.generator = generator
+        self.converters = []
+        self.drop_last = drop_last
+
+        for var in feed_list:
+            assert var.lod_level == 0, "lod_level must be 0"
+            self.converters.append(
+                DataToLoDTensorConverter(
+                    place=self.place,
+                    lod_level=0,
+                    shape=var.shape,
+                    dtype=var.dtype))
+
+    def _done(self):
+        return [c.done() for c in self.converters]
+
+    def __call__(self):
+        idx = 0
+        for each_sample in self.generator():
+            for each_slot, each_converter in six.moves.zip(each_sample,
+                                                           self.converters):
+                each_converter.data.append(each_slot)
+
+            idx += 1
+            if idx == self.batch_size:
+                idx = 0
+                yield self._done()
+
+        if not self.drop_last and idx > 0:
+            yield self._done()
+        else:
+            [c._reset() for c in self.converters]
 
 
 class DataFeeder(object):
@@ -109,6 +149,7 @@ class DataFeeder(object):
 
     ..  code-block:: python
 
+        import paddle.fluid as fluid
         place = fluid.CPUPlace()
         img = fluid.layers.data(name='image', shape=[1, 28, 28])
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -121,10 +162,16 @@ class DataFeeder(object):
 
     ..  code-block:: python
 
+        import paddle
+        import paddle.fluid as fluid
+        
         place=fluid.CUDAPlace(0)
+        data = fluid.layers.data(name='data', shape=[3, 224, 224], dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        
         feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
         reader = feeder.decorate_reader(
-            paddle.batch(flowers.train(), batch_size=16))
+                paddle.batch(paddle.dataset.flowers.train(), batch_size=16), multi_devices=False)
 
     Args:
         feed_list(list): The Variables or Variables'name that will
@@ -140,17 +187,36 @@ class DataFeeder(object):
         ValueError: If some Variable is not in this Program.
 
     Examples:
-        .. code-block:: python
+        ..  code-block:: python
 
-            # ...
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+            
             place = fluid.CPUPlace()
-            feed_list = [
-                main_program.global_block().var(var_name) for var_name in feed_vars_name
-            ] # feed_vars_name is a list of variables' name.
-            feeder = fluid.DataFeeder(feed_list, place)
+            
+            def reader():
+                yield [np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32')],
+            
+            main_program = fluid.Program()
+            startup_program = fluid.Program()
+            
+            with fluid.program_guard(main_program, startup_program):
+                data_1 = fluid.layers.data(name='data_1', shape=[1, 2, 2])
+                data_2 = fluid.layers.data(name='data_2', shape=[1, 1, 3])
+                out = fluid.layers.fc(input=[data_1, data_2], size=2)
+                # ...
+            
+            feeder = fluid.DataFeeder([data_1, data_2], place)
+                        
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
             for data in reader():
                 outs = exe.run(program=main_program,
-                               feed=feeder.feed(data))
+                               feed=feeder.feed(data),
+                               fetch_list=[out])
+
     """
 
     def __init__(self, feed_list, place, program=None):
@@ -182,6 +248,23 @@ class DataFeeder(object):
 
         Returns:
             dict: the result of conversion.
+
+        Examples:
+            ..  code-block:: python
+
+                import numpy.random as random
+                import paddle.fluid as fluid
+                
+                def reader(limit=5):
+                    for i in range(limit):
+                        yield random.random([784]).astype('float32'), random.random([1]).astype('int64'), random.random([256]).astype('float32')
+                
+                data_1 = fluid.layers.data(name='data_1', shape=[1, 28, 28])
+                data_2 = fluid.layers.data(name='data_2', shape=[1], dtype='int64')
+                data_3 = fluid.layers.data(name='data_3', shape=[16, 16], dtype='float32')
+                feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
+                
+                result = feeder.feed(reader()) 
         """
         converter = []
         for lod_level, shape, dtype in six.moves.zip(
@@ -220,6 +303,32 @@ class DataFeeder(object):
 
         Notes:
             The number of devices and number of mini-batches must be same.
+
+        Examples:
+            ..  code-block:: python
+
+                import numpy.random as random
+                import paddle.fluid as fluid
+                
+                def reader(limit=10):
+                    for i in range(limit):
+                        yield [random.random([784]).astype('float32'), random.randint(10)],
+                
+                x = fluid.layers.data(name='x', shape=[1, 28, 28])
+                y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                
+                feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
+                place_num = 2
+                places = [fluid.CPUPlace() for x in range(place_num)]
+                data = []
+                exe = fluid.Executor(fluid.CPUPlace())
+                exe.run(fluid.default_startup_program())
+                program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
+                for item in reader():
+                    data.append(item)
+                    if place_num == len(data):
+                        exe.run(program=program, feed=list(feeder.feed_parallel(data, place_num)), fetch_list=[])
+                        data = []
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
@@ -268,8 +377,8 @@ class DataFeeder(object):
         Args:
             reader(function): the reader is the function which can generate data.
             multi_devices(bool): whether to use multiple devices or not.
-            num_places(int): if the multi_devices is True, you can specify the number
-                of GPU to use, if 'num_places' is None, the function will use all the
+            num_places(int): if multi_devices is True, you can specify the number
+                of GPU to use, if multi_devices is None, the function will use all the
                 GPU of the current machine. Default None.
             drop_last(bool): whether to drop the last batch if the
                 size of the last batch is less than batch_size. Default True.
@@ -278,7 +387,30 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot fit for devices.
+            ValueError: If drop_last is False and the data batch cannot fit for devices.
+
+        Examples:
+            ..  code-block:: python
+
+                import numpy.random as random
+                import paddle
+                import paddle.fluid as fluid
+                
+                def reader(limit=5):
+                    for i in range(limit):
+                        yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
+                
+                place=fluid.CUDAPlace(0)
+                data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                
+                feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
+                reader = feeder.decorate_reader(reader, multi_devices=False)
+                
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in reader():
+                    exe.run(feed=data)
         """
 
         def __reader_creator__():

@@ -34,12 +34,9 @@ using platform::to_void_cast;
 
 class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
  public:
-  SoftmaxMKLDNNHandler(
-      std::shared_ptr<mkldnn::softmax_forward::primitive_desc> softmax_pd,
-      const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-      const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        softmax_pd_(softmax_pd) {}
+  SoftmaxMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
+                       mkldnn::engine engine, const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
   SoftmaxMKLDNNHandler(
       std::shared_ptr<mkldnn::softmax_forward::primitive_desc> softmax_pd,
@@ -54,6 +51,26 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     key_ += "-BWD";
   }
 
+  std::shared_ptr<softmax_forward::primitive_desc>
+  AcquireSoftmaxPrimitiveDescriptor(const softmax_forward::desc& softmax_desc,
+                                    const mkldnn::engine& engine) {
+    const std::string key_softmax_pd = key_ + "@softmax_pd";
+
+    auto softmax_pd = std::static_pointer_cast<softmax_forward::primitive_desc>(
+        dev_ctx_.GetBlob(key_softmax_pd));
+
+    if (softmax_pd == nullptr) {
+      softmax_pd_.reset(
+          new softmax_forward::primitive_desc(softmax_desc, engine));
+      dev_ctx_.SetBlob(key_softmax_pd, softmax_pd_);
+    } else {
+      softmax_pd_ = softmax_pd;
+      is_reusing_ = true;
+    }
+
+    return softmax_pd_;
+  }
+
   std::shared_ptr<mkldnn::softmax_forward> AcquireSoftmax(
       std::shared_ptr<mkldnn::memory> dst_memory_p,
       std::shared_ptr<mkldnn::memory> src_memory_p) {
@@ -66,8 +83,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
                    "Fail to find softmax primitive in device context");
     if (softmax_p == nullptr) {
       softmax_p = std::make_shared<mkldnn::softmax_forward>(
-          *(softmax_pd_.get()),
-          *(static_cast<mkldnn::memory*>(src_memory_p.get())),
+          *softmax_pd_, *(static_cast<mkldnn::memory*>(src_memory_p.get())),
           *(static_cast<mkldnn::memory*>(dst_memory_p.get())));
       dev_ctx_.SetBlob(prim_key, softmax_p);
     } else {
@@ -88,8 +104,8 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
                    "Fail to find softmax backward primitive in device context");
     if (softmax_bwd_p == nullptr) {
       softmax_bwd_p = std::make_shared<mkldnn::softmax_backward>(
-          *softmax_bwd_pd_, *(dst_memory_p.get()), *(diff_dst_memory_p.get()),
-          *(diff_src_memory_p.get()));
+          *softmax_bwd_pd_, *dst_memory_p, *diff_dst_memory_p,
+          *diff_src_memory_p);
       dev_ctx_.SetBlob(prim_key, softmax_bwd_p);
     } else {
       is_reusing_ = true;
@@ -139,19 +155,18 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     // Generate keys for storing/retriving primitives for this operator
     const std::string key =
         platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
-    const std::string key_softmax_pd = key + "@softmax_pd";
 
+    SoftmaxMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
     // Currently only NC data format is supported
     auto softmax_md = MKLDNNMemDesc(
         {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format::nc);
     // Normalization is made after innermost dimension eg. C out of NC
     auto softmax_desc = softmax_forward::desc(prop_kind::forward_scoring,
                                               softmax_md, 1 /*dim: C*/);
-    auto softmax_pd = std::make_shared<mkldnn::softmax_forward::primitive_desc>(
-        softmax_desc, mkldnn_engine);
-    dev_ctx.SetBlob(key_softmax_pd, softmax_pd);
 
-    SoftmaxMKLDNNHandler handler(softmax_pd, dev_ctx, mkldnn_engine, key);
+    auto softmax_pd =
+        handler.AcquireSoftmaxPrimitiveDescriptor(softmax_desc, mkldnn_engine);
+
     auto softmax_src_memory_p =
         handler.AcquireSrcMemory(softmax_md, to_void_cast<T>(input_data));
     auto softmax_dst_memory_p =

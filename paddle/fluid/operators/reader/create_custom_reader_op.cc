@@ -85,10 +85,10 @@ class CreateCustomReaderOpMaker : public DecoratedReaderMakerBase {
     AddComment(R"DOC(
       CreateCustomReader Operator
 
-      A custom reader can be used for input data preprocessing. 
-      A custom reader holds its own sub-block, which will be executed in CPU 
-      in its 'ReadNext()' function. Users can configurate their own 
-      preprocessing pipelines by inserting operators into custom reader's 
+      A custom reader can be used for input data preprocessing.
+      A custom reader holds its own sub-block, which will be executed in CPU
+      in its 'ReadNext()' function. Users can configurate their own
+      preprocessing pipelines by inserting operators into custom reader's
       sub-block.
     )DOC");
   }
@@ -123,23 +123,22 @@ class CustomReaderInferShape : public framework::InferShapeBase {
 
 class CustomReaderInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    framework::VarDesc* out_reader = block->FindVar(op_desc.Output("Out")[0]);
-    PADDLE_ENFORCE_NOT_NULL(out_reader);
-    out_reader->SetType(framework::proto::VarType::READER);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& out_var_name = ctx->Output("Out")[0];
+    PADDLE_ENFORCE(ctx->HasVar(out_var_name));
+    ctx->SetType(out_var_name, framework::proto::VarType::READER);
 
     auto sink_var_names =
-        boost::get<std::vector<std::string>>(op_desc.GetAttr("sink_var_names"));
+        boost::get<std::vector<std::string>>(ctx->GetAttr("sink_var_names"));
     const auto* sub_block =
-        boost::get<framework::BlockDesc*>(op_desc.GetAttr("sub_block"));
+        boost::get<framework::BlockDesc*>(ctx->GetAttr("sub_block"));
     std::vector<framework::proto::VarType::Type> res_data_types;
     for (const std::string& var_name : sink_var_names) {
       framework::VarDesc* var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var);
       res_data_types.emplace_back(var->GetDataType());
     }
-    out_reader->SetDataTypes(res_data_types);
+    ctx->SetDataTypes(out_var_name, res_data_types);
   }
 };
 

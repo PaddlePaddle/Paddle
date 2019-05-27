@@ -14,8 +14,10 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include <string>
 #include <vector>
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/nccl_context.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -26,16 +28,18 @@ class Layer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
 
-  std::vector<imperative::VarBase> Forward(
-      const std::vector<imperative::VarBase>& inputs) override {
-    PYBIND11_OVERLOAD(std::vector<imperative::VarBase>, Layer, Forward,
+  std::vector<imperative::VarBase*> Forward(
+      const std::vector<imperative::VarBase*>& inputs) override {
+    PYBIND11_OVERLOAD(std::vector<imperative::VarBase*>, Layer, Forward,
                       inputs);  // NOLINT
   }
 };
 
-class PyOpBase : public imperative::OpBase {
+class PYBIND11_HIDDEN PyOpBase : public imperative::OpBase {
  public:
   using imperative::OpBase::OpBase;  // Inherit constructors
+
+  PyOpBase(const std::string& name) : OpBase(name) {}
 };
 
 class PyVarBase : public imperative::VarBase {
@@ -43,7 +47,7 @@ class PyVarBase : public imperative::VarBase {
   using imperative::VarBase::VarBase;  // Inherit constructors
 };
 
-void BindTracer(pybind11::module* m);
+void BindImperative(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

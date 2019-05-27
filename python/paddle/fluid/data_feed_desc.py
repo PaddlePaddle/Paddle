@@ -24,28 +24,32 @@ class DataFeedDesc(object):
     currently only used for AsyncExecutor (See comments for class AsyncExecutor
     for a brief introduction)
 
-    DataFeedDesc shall be initialized from a valid protobuf message from disk:
-    >>> data_feed = fluid.DataFeedDesc('data.proto')
+    DataFeedDesc shall be initialized from a valid protobuf message from disk.
 
     See :code:`paddle/fluid/framework/data_feed.proto` for message definition.
     A typical message might look like:
 
-    >>> name: "MultiSlotDataFeed"
-    >>> batch_size: 2
-    >>> multi_slot_desc {
-    >>>     slots {
-    >>>         name: "words"
-    >>>         type: "uint64"
-    >>>         is_dense: false
-    >>>         is_used: true
-    >>>     }
-    >>>     slots {
-    >>>         name: "label"
-    >>>         type: "uint64"
-    >>>         is_dense: false
-    >>>         is_used: true
-    >>>     }
-    >>> }
+    .. code-block:: python
+
+      f = open("data.proto", "w")
+      print >> f, 'name: "MultiSlotDataFeed"'
+      print >> f, 'batch_size: 2'
+      print >> f, 'multi_slot_desc {'
+      print >> f, '    slots {'
+      print >> f, '         name: "words"'
+      print >> f, '         type: "uint64"'
+      print >> f, '         is_dense: false'
+      print >> f, '         is_used: true'
+      print >> f, '     }'
+      print >> f, '     slots {'
+      print >> f, '         name: "label"'
+      print >> f, '         type: "uint64"'
+      print >> f, '         is_dense: false'
+      print >> f, '         is_used: true'
+      print >> f, '    }'
+      print >> f, '}'
+      f.close()
+      data_feed = fluid.DataFeedDesc('data.proto')
 
     However, users usually shouldn't care about the message format; instead,
     they are encouragd to use :code:`Data Generator` as a tool to generate a
@@ -54,20 +58,28 @@ class DataFeedDesc(object):
 
     DataFeedDesc can also be changed during runtime. Once you got familiar with
     what each field mean, you can modify it to better suit your need. E.g.:
-    >>> data_feed.set_batch_size(128)
-    >>> data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
-    >>> data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
+
+    .. code-block:: python
+
+      data_feed = fluid.DataFeedDesc('data.proto')
+      data_feed.set_batch_size(128)
+      data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
+      data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
 
     Finally, the content can be dumped out for debugging purpose:
-    >>> print(data_feed.desc())
+
+    .. code-block:: python
+
+      print(data_feed.desc())
 
     Args:
         proto_file(string): Disk file containing a data feed description.
-    
+
     """
 
     def __init__(self, proto_file):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
+        self.proto_desc.pipe_command = "cat"
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         if self.proto_desc.name == "MultiSlotDataFeed":
@@ -81,8 +93,28 @@ class DataFeedDesc(object):
         Set batch size. Will be effective during training
 
         Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> data_feed.set_batch_size(128)
+            .. code-block:: python
+
+              f = open("data.proto", "w")
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
+              f.close()
+              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed.set_batch_size(128)
 
         Args:
             batch_size: batch size
@@ -97,8 +129,28 @@ class DataFeedDesc(object):
         sparse slot will be fed into a LoDTensor
 
         Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> data_feed.set_dense_slots(['words'])
+            .. code-block:: python
+
+              f = open("data.proto", "w")
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
+              f.close()
+              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed.set_dense_slots(['words'])
 
         Args:
             dense_slots_name: a list of slot names which will be set dense
@@ -108,7 +160,7 @@ class DataFeedDesc(object):
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError(
-                "Only MultiSlotDataFeed need set_dense_slots, pls check your datafeed.proto"
+                "Only MultiSlotDataFeed needs set_dense_slots, please check your datafeed.proto"
             )
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
@@ -121,8 +173,28 @@ class DataFeedDesc(object):
         ones will be used for a specific model.
 
         Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> data_feed.set_use_slots(['words'])
+            .. code-block:: python
+
+              f = open("data.proto", "w")
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
+              f.close()
+              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed.set_use_slots(['words'])
 
         Args:
             use_slots_name: a list of slot names which will be used in training
@@ -132,7 +204,7 @@ class DataFeedDesc(object):
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError(
-                "Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto"
+                "Only MultiSlotDataFeed needs set_use_slots, please check your datafeed.proto"
             )
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
@@ -143,8 +215,28 @@ class DataFeedDesc(object):
         Returns a protobuf message for this DataFeedDesc
 
         Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> print(data_feed.desc())
+            .. code-block:: python
+
+              f = open("data.proto", "w")
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
+              f.close()
+              data_feed = fluid.DataFeedDesc('data.proto')
+              print(data_feed.desc())
 
         Returns:
             A string message

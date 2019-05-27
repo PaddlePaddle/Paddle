@@ -39,6 +39,8 @@ struct FetchOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  bool IsMultiDeviceTransfer() override;
+
  protected:
   void RunImpl() override;
 

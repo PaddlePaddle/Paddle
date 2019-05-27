@@ -57,10 +57,14 @@ template <typename DeviceContext, typename T>
 class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
+    auto* output_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
     int group = ctx.Attr<int>("group");
 
-    auto input_dims = input->dims();
+    const auto& input_dims = input_grad->dims();
     auto num = input_dims[0];
     auto channel = input_dims[1];
     auto height = input_dims[2];
@@ -71,10 +75,6 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
     int group_row = group;
     int group_column = channel / group_row;
 
-    auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
     const T* output_grad_data = output_grad->data<T>();
     for (int n = 0; n < num; ++n) {

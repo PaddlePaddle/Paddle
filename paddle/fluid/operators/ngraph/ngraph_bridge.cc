@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <functional>
+#include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
@@ -23,11 +25,41 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
+constexpr int64_t kNoPadding = -1;
+
 namespace paddle {
 namespace operators {
 
 bool NgraphBridge::isRegister(const std::string& str) {
   return ops::NgraphSingleton::Lookup(str);
+}
+
+bool NgraphBridge::isSupported(
+    const std::unique_ptr<framework::OperatorBase>& op) {
+  static std::unordered_set<std::string> skip_op_list{"reshape", "reshape2",
+                                                      "lookup_table"};
+  bool result = true;
+  auto& op_type = op->Type();
+  auto op_attrs = paddle::framework::AttrReader(op->Attrs());
+  if (!isRegister(op_type)) {
+    if (skip_op_list.count(op_type)) {
+      if (op_type == "lookup_table") {
+        if (op_attrs.Get<bool>("is_sparse") ||
+            (op_attrs.Get<int64_t>("padding_idx") != kNoPadding)) {
+          result = false;
+        }
+      } else if ((op_type == "reshape") || (op_type == "reshape2")) {
+        if (op->Input("Shape") != paddle::framework::kEmptyVarName) {
+          result = false;
+        }
+      } else {
+        result = false;
+      }
+    }
+  } else {
+    result = false;
+  }
+  return result;
 }
 
 void NgraphBridge::BuildNgNode(

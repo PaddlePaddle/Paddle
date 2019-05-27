@@ -73,7 +73,7 @@ class LegacyAllocator : public Allocator {
 
  protected:
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
-  void Free(Allocation *allocation) override;
+  void FreeImpl(Allocation *allocation) override;
 
  private:
   platform::Place place_;

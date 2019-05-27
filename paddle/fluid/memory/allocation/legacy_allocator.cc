@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
-
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,11 +22,16 @@
 #endif
 
 #include "glog/logging.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -36,6 +40,8 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_uint64(initial_gpu_memory_in_mb);
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -139,7 +145,6 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   std::call_once(init_flag, [gpu_id]() {
     devices = platform::GetSelectedDevices();
     int gpu_num = devices.size();
-
     allocation::GPUMemMonitor.Initialize(devices.size());
 
     a_arr = new BuddyAllocator *[gpu_num];
@@ -152,16 +157,22 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
                                     platform::GpuMinChunkSize(),
                                     platform::GpuMaxChunkSize());
 
-      VLOG(10) << "\n\nNOTE: each GPU device use "
-               << FLAGS_fraction_of_gpu_memory_to_use * 100
-               << "% of GPU memory.\n"
-               << "You can set GFlags environment variable '"
-               << "FLAGS_fraction_of_gpu_memory_to_use"
-               << "' to change the fraction of GPU usage.\n\n";
+      VLOG(10) << "\n\nNOTE:\n"
+               << "You can set GFlags environment variable "
+               << "'FLAGS_fraction_of_gpu_memory_to_use' "
+               << "or 'FLAGS_initial_gpu_memory_in_mb' "
+               << "or 'FLAGS_reallocate_gpu_memory_in_mb' "
+               << "to change the memory size for GPU usage.\n"
+               << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
+               << FLAGS_fraction_of_gpu_memory_to_use
+               << ". Current 'FLAGS_initial_gpu_memory_in_mb' value is "
+               << FLAGS_initial_gpu_memory_in_mb
+               << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
+               << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
     }
+    platform::SetDeviceId(gpu_id);
   });
 
-  platform::SetDeviceId(gpu_id);
   auto pos = std::distance(devices.begin(),
                            std::find(devices.begin(), devices.end(), gpu_id));
   return a_arr[pos];
@@ -184,8 +195,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    int cur_dev = platform::GetCurrentDeviceId();
-    platform::SetDeviceId(place.device);
+    platform::CUDADeviceGuard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
@@ -197,7 +207,6 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
                << "GPU memory used: "
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
-    platform::SetDeviceId(cur_dev);
   } else {
     if (FLAGS_benchmark) {
       allocation::GPUMemMonitor.Add(place.device, size);
@@ -328,18 +337,22 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
-
 LegacyMemMonitor GPUMemMonitor;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  return new Allocation(ptr, size, place_);
+  auto *tmp_alloc = new Allocation(ptr, size, place_);
+  platform::MemEvenRecorder::Instance().PushMemRecord(
+      static_cast<void *>(tmp_alloc), place_, size);
+  return tmp_alloc;
 }
 
-void LegacyAllocator::Free(Allocation *allocation) {
+void LegacyAllocator::FreeImpl(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
+  platform::MemEvenRecorder::Instance().PopMemRecord(
+      static_cast<void *>(allocation), place_);
   delete allocation;
 }
 

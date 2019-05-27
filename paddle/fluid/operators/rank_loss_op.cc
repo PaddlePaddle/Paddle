@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/rank_loss_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -113,6 +114,25 @@ class RankLossGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(right_grad_name)) {
       ctx->SetOutputDim(right_grad_name, dims);
     }
+  }
+};
+
+class RankLossGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("rank_loss_grad");
+    op->SetInput("Label", Input("Label"));
+    op->SetInput("Left", Input("Left"));
+    op->SetInput("Right", Input("Right"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("Left"), InputGrad("Left"));
+    op->SetOutput(framework::GradVarName("Right"), InputGrad("Right"));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 

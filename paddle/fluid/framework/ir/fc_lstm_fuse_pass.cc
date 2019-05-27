@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -99,11 +100,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     op_desc.SetAttr("use_seq", true);
 
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+    auto& scope = graph->Get<Scope>(kParamScopeAttr);
 #define OP_SET_OUT(x)                            \
   const std::string x = patterns::UniqueKey(#x); \
   op_desc.SetOutput(#x, {x});                    \
-  scope->Var(x)->GetMutable<LoDTensor>()
+  scope.Var(x)->GetMutable<LoDTensor>()
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);
@@ -157,26 +158,22 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> MulLstmFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void MulLstmFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 false /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), false /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
-std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void FCLstmFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 true /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
 }  // namespace ir
