@@ -11,24 +11,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/fluid/memory/allocation/zero_size_allocator.h"
+#pragma once
+#include <memory>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
-namespace memory {
-namespace allocation {
+namespace framework {
+namespace ir {
 
-bool ZeroSizeAllocator::IsAllocThreadSafe() const {
-  return underlying_allocator_->IsAllocThreadSafe();
-}
+/*
+ * Transpose weights of FC to comply with MKL-DNN interface
+ */
+class FCMKLDNNPass : public FusePassBase {
+ public:
+  virtual ~FCMKLDNNPass() {}
 
-Allocation *ZeroSizeAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
-  if (size == 0) {
-    return new ZeroSizeAllocation(place_);
-  } else {
-    return underlying_allocator_->Allocate(size, attr).release();
-  }
-}
-}  // namespace allocation
-}  // namespace memory
+ protected:
+  void ApplyImpl(ir::Graph* graph) const;
+};
+
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle
