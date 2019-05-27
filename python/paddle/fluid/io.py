@@ -907,7 +907,8 @@ def save_inference_model(dirname,
                          main_program=None,
                          model_filename=None,
                          params_filename=None,
-                         export_for_deployment=True):
+                         export_for_deployment=True,
+                         model_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -1070,6 +1071,12 @@ def save_inference_model(dirname,
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
+
+    if model_only:
+        warnings.warn(
+            "save_inference_model specified the param `save_model_only` to True, It will not save params of Program."
+        )
+        return target_var_name_list
 
     main_program._copy_dist_param_info_from(origin_program)
 
