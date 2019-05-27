@@ -14,6 +14,7 @@
 
 import six
 import numpy as np
+import platform
 from .... import Executor
 from .... import io
 from .... import core
@@ -116,6 +117,7 @@ class InferQuantStrategy(Strategy):
             infer_config.quantizer_config().set_quant_batch_size(num_images)
             #Run INT8 MKL-DNN Quantization
             predictor = core.create_paddle_predictor(infer_config)
-            predictor.SaveOptimModel(self.int8_model_save_path)
+            if platform.platform() == 'Linux':
+                predictor.SaveOptimModel(self.int8_model_save_path)
 
             logger.info('Finish InferQuantStrategy::on_compresseion_begin')

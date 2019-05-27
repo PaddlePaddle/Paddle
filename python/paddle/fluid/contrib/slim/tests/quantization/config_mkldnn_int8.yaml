@@ -8,6 +8,6 @@ strategies:
         fp32_model_path: 'MODEL_PATH'
 compressor:
     epoch: 0
-    checkpoint_path: './checkpoints_quan/'
+    checkpoint_path: ''
     strategies:
         - infer_quant_strategy

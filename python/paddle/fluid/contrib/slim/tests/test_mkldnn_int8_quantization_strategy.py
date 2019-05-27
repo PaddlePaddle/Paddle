@@ -88,6 +88,8 @@ class TestInferQuantizeStrategy(unittest.TestCase):
         return reader
 
     def test_infer_quant(self):
+        if not fluid.core.is_compiled_with_mkldnn():
+            return
         config_path = './quantization/config_mkldnn_int8.yaml'
         with open(config_path, 'r+') as fp:
             data = fp.read()
@@ -114,7 +116,7 @@ class TestInferQuantizeStrategy(unittest.TestCase):
             eval_feed_list=[],
             eval_fetch_list=[],
             teacher_programs=[],
-            checkpoint_path='./checkpoints',
+            checkpoint_path='',
             train_optimizer=None,
             distiller_optimizer=None)
         com_pass.config(config_path)
