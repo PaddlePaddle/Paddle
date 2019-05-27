@@ -264,8 +264,8 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
 
     framework::Tensor need_find_max, out_size;
-    int* find_max = need_find_max.mutable_data<int>(gpu_place);
-    int* out_size_data = out_size.mutable_data<int>(gpu_place);
+    int* find_max = need_find_max.mutable_data<int>({1}, gpu_place);
+    int* out_size_data = out_size.mutable_data<int>({1}, gpu_place);
 
     FindRangeAbsMaxAndFillArray<T><<<1, 1, 0, ctx.stream()>>>(
         cur_scale.data<T>(), last_scale.data<T>(), iter.data<int64_t>(),
