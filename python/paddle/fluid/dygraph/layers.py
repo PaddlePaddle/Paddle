@@ -18,13 +18,14 @@ import sys
 import numpy as np
 import collections
 import six
+from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 
-__all__ = ['Layer', 'PyLayer']
+__all__ = ['Layer']
 
 
 class Layer(core.Layer):
@@ -154,6 +155,8 @@ class Layer(core.Layer):
     def __call__(self, *inputs):
         if not self._built:
             self.build_once(*inputs)
+            if parallel_helper._is_data_parallel_mode():
+                parallel_helper._broadcast_parameters(self._parameters.values())
 
         outputs = self.forward(*inputs)
         self._built = True
@@ -263,76 +266,3 @@ class Layer(core.Layer):
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
                     layer_item.load_dict(stat_dict)
-
-
-class PyLayer(core.PyLayer):
-    """Layers composed of user-defined python codes."""
-
-    def __init__(self):
-        super(PyLayer, self).__init__()
-
-    def train(self):
-        framework._dygraph_tracer().train_mode()
-
-    def eval(self):
-        framework._dygraph_tracer().eval_mode()
-
-    @classmethod
-    def _do_forward(cls, inputs):
-        return cls._to_tuple(cls.forward(inputs))
-
-    @classmethod
-    def _do_backward(cls, inputs):
-        return cls._to_tuple(cls.backward(inputs))
-
-    @staticmethod
-    def _to_tuple(inputs):
-        if not isinstance(inputs, list) and not isinstance(inputs, tuple):
-            inputs = [inputs]
-        ret = []
-        for inp in inputs:
-            if isinstance(inp, core.LoDTensor):
-                ret.append(inp)
-            else:
-                tensor = core.LoDTensor()
-                tensor.set(inp, core.CPUPlace())
-                ret.append(tensor)
-        return tuple(ret)
-
-    @staticmethod
-    def forward(*inputs):
-        raise NotImplementedError
-
-    @staticmethod
-    def backward(*douts):
-        raise NotImplementedError
-
-    @classmethod
-    def __call__(cls, *inputs):
-        tracer = framework._dygraph_tracer()
-        block = framework.default_main_program().current_block()
-        ivar_inputs = [x._ivar for x in inputs]
-
-        if not hasattr(cls, 'forward_id'):
-            cls.forward_id = core.PyLayer.num_funcs() + 1
-            PyLayer.register_func(cls.forward_id, cls._do_forward)
-            cls.backward_id = core.PyLayer.num_funcs() + 1
-            PyLayer.register_func(cls.backward_id, cls._do_backward)
-
-        iop = core.OpBase(cls.__class__.__name__ + str(cls.forward_id))
-        iop.forward_id = cls.forward_id
-        iop.backward_id = cls.backward_id
-        block.ops.append(iop)
-        ivars = tracer.py_trace(iop, ivar_inputs, False)
-        ret = []
-        for ivar in ivars:
-            tensor = ivar.value().get_tensor()
-            py_var = framework.Variable(
-                block,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                name=None,
-                shape=tensor.shape(),
-                dtype=tensor._dtype(),
-                ivar=ivar)
-            ret.append(py_var)
-        return ret

@@ -38,6 +38,19 @@ default_envs = {
 GPUS = 8
 
 
+def get_gpu_ids(gpus):
+    if os.getenv("CUDA_VISIBLE_DEVICES"):
+        ids = [int(i)
+               for i in os.getenv("CUDA_VISIBLE_DEVICES").split(",")][:gpus]
+        if gpus > len(ids):
+            raise EnvironmentError(
+                "The count of env CUDA_VISIBLE_DEVICES should not greater than the passed gpus: %s"
+                % gpus)
+        return ids
+    else:
+        return [i for i in range(gpus)]
+
+
 def start_procs(gpus, entrypoint, entrypoint_args, log_dir):
     procs = []
     log_fns = []
@@ -61,12 +74,12 @@ def start_procs(gpus, entrypoint, entrypoint_args, log_dir):
             all_nodes_devices_endpoints += "%s:617%d" % (n, i)
     nranks = num_nodes * gpus
     # ======== for dist training =======
-
+    gpu_ids = get_gpu_ids(gpus)
     for i in range(gpus):
         curr_env = {}
         curr_env.update(default_envs)
         curr_env.update({
-            "FLAGS_selected_gpus": "%d" % i,
+            "FLAGS_selected_gpus": "%d" % gpu_ids[i],
             "PADDLE_TRAINER_ID": "%d" % (node_trainer_id * gpus + i),
             "PADDLE_CURRENT_ENDPOINT": "%s:617%d" % (current_ip, i),
             # nranks
