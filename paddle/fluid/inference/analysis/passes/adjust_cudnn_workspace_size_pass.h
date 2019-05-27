@@ -14,20 +14,28 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-namespace memory {
-namespace allocation {
+namespace inference {
+namespace analysis {
 
-class AllocationWithUnderlying : public Allocation {
+/*
+ * The default cudnn workspace is 4G, we set it to 64M in this pass, which
+ * is applicable for most inference tasks.
+ */
+class AdjustCudnnWorkSpacePass : public AnalysisPass {
  public:
-  explicit AllocationWithUnderlying(AllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
-        allocation_(std::move(allocation)) {}
-  AllocationPtr allocation_;
+  void RunImpl(Argument *argument) override;
+  std::string repr() const override;
 };
 
-}  // namespace allocation
-}  // namespace memory
+}  // namespace analysis
+}  // namespace inference
 }  // namespace paddle

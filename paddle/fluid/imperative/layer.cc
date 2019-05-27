@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -101,34 +102,58 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
   boost::apply_visitor(func, place);
 }
 
+void AddGradBySort(BackwardSumMap* bck_map, VarBase* target) {
+  PADDLE_ENFORCE(bck_map->find(target) != bck_map->end(),
+                 "Can't find %s in backward grad map", target->Name());
+  std::pair<platform::Place, std::vector<std::pair<int, VarBase*>>>& current =
+      bck_map->at(target);
+  std::sort(
+      current.second.begin(), current.second.end(),
+      [](const std::pair<int, VarBase*>& a, const std::pair<int, VarBase*>& b) {
+        return a.first > b.first;
+      });
+  for (auto& var_pair : current.second) {
+    Variable* origin_grad = target->var_.get();
+    Variable* grad_to_add = var_pair.second->var_.get();
+    VLOG(2) << "add origin_grad: " << target->Name();
+    VLOG(2) << "added grad: " << var_pair.second->Name()
+            << " trace id is: " << var_pair.first;
+    AddTo(grad_to_add, origin_grad, current.first);
+    delete var_pair.second;
+    var_pair.second = nullptr;
+  }
+}
+
 class Autograd {
  public:
   Autograd() {}
 
-  void RunBackward(VarBase* var) {
+  void RunBackward(VarBase* var, const detail::BackwardStrategy& bck_stratedy) {
     if (var->IsStopGradient()) {
       return;
     }
     VLOG(3) << "start autograd";
-
+    BackwardSumMap bck_map;
+    GradientRef grad_ref;
     std::deque<OpBase*> ready;
     ready.push_back(var->PreOp());
 
-    std::map<OpBase*, int> dep_counts = ComputeDepCounts(var->PreOp());
+    std::map<OpBase*, int> dep_counts =
+        ComputeDepCounts(var->PreOp(), bck_stratedy, &grad_ref);
 
     while (!ready.empty()) {
       OpBase* ready_op = ready.front();
       ready.pop_front();
       std::map<std::string, std::vector<VarBase*>> input_grads =
-          ready_op->ApplyGrad();
+          ready_op->ApplyGrad(&bck_map, &grad_ref, bck_stratedy);
 
       for (auto it = input_grads.rbegin(); it != input_grads.rend(); ++it) {
         const std::vector<VarBase*>& ingrads = it->second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it->first][i]->IsStopGradient()) {
-            continue;
-          }
+          auto p = ready_op->input_vars_[it->first][i];
+
+          if (p->IsStopGradient()) continue;
           OpBase* pre_op = ready_op->pre_ops_[it->first][i];
           if (!pre_op) continue;
 
@@ -146,7 +171,14 @@ class Autograd {
   }
 
  private:
-  std::map<OpBase*, int> ComputeDepCounts(OpBase* op) {
+  std::map<OpBase*, int> ComputeDepCounts(
+      OpBase* op, const detail::BackwardStrategy& bck_stratedy,
+      GradientRef* grad_ref) {
+    if (bck_stratedy.sorted_sum_gradient_) {
+      PADDLE_ENFORCE_NOT_NULL(grad_ref,
+                              "grad_ref should not be null when "
+                              "using sorted grad backward strategy");
+    }
     std::map<OpBase*, int> ret;
 
     std::deque<OpBase*> queue;
@@ -156,10 +188,19 @@ class Autograd {
     while (!queue.empty()) {
       OpBase* candidate = queue.front();
       queue.pop_front();
+      if (bck_stratedy.sorted_sum_gradient_) {
+        for (const auto& map : candidate->grad_output_vars_) {
+          for (const auto& it : map) {
+            for (const auto& vb : it.second) {
+              ++(*grad_ref)[vb];
+            }
+          }
+        }
+      }
       for (auto it : candidate->pre_ops_) {
         for (OpBase* pre_op : it.second) {
           if (!pre_op) continue;
-          VLOG(5) << "op dep " << candidate->Type() << " trace id "
+          VLOG(2) << "op dep " << candidate->Type() << " trace id "
                   << candidate->trace_id_ << " <---- " << it.first << " <---- "
                   << pre_op->Type() << " trace id " << pre_op->trace_id_;
           if (visited.find(pre_op) == visited.end()) {
@@ -187,16 +228,14 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
       new_var->var_->GetMutable<framework::LoDTensor>();
   tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
+  const auto& src_tensor = var_->Get<framework::LoDTensor>();
+  framework::TensorCopy(src_tensor, dst_place, tensor);
   if (blocking) {
-    platform::DeviceContext* dev_ctx =
-        platform::DeviceContextPool::Instance().Get(dst_place);
-
-    framework::TensorCopySync(var_->Get<framework::LoDTensor>(), dst_place,
-                              tensor);
-
-    dev_ctx->Wait();
-  } else {
-    framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+    auto src_place = src_tensor.place();
+    if (!(src_place == dst_place)) {
+      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    }
   }
 
   if (platform::is_gpu_place(dst_place)) {
@@ -213,10 +252,11 @@ framework::LoDTensor& VarBase::GradValue() {
   return *(grads_->var_->GetMutable<framework::LoDTensor>());
 }
 
-std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
+std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
+    BackwardSumMap* bck_map, GradientRef* grad_ref,
+    const detail::BackwardStrategy& bck_stratedy) {
   PADDLE_ENFORCE(!grad_op_descs_.empty() || backward_id_ > 0,
                  "%s has no backward implementation", Type());
-
   VLOG(3) << "apply op grad: " << Type();
   std::vector<VarBasePtrMap> tmp_grad_outputs;
   if (backward_id_ > 0) {
@@ -232,8 +272,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     tmp_grad_outputs.resize(grad_op_count);
     for (size_t k = 0; k < grad_op_count; ++k) {
       framework::OpDesc* grad_op_desc = grad_op_descs_[k];
+      platform::RecordEvent record_event(grad_op_desc->Type());
       auto& grad_output_variable_map = grad_output_vars_[k];
-
       VLOG(3) << "apply grad op " << grad_op_desc->Type();
 
       // Allocate tmp grad output variable
@@ -281,7 +321,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
           PADDLE_ENFORCE_NOT_NULL(grad_inp->var_, "op %s input %s nullptr",
                                   grad_op_desc->Type(), grad_inp->Name());
 
-          grad_invars.emplace_back(grad_inp->var_);
+          grad_invars.emplace_back(grad_inp->var_.get());
         }
       }
 
@@ -292,7 +332,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
           PADDLE_ENFORCE_NOT_NULL(grad_out->var_, "op %s output %s nullptr",
                                   grad_op_desc->Type(), grad_out->Name());
 
-          grad_outvars.emplace_back(grad_out->var_);
+          grad_outvars.emplace_back(grad_out->var_.get());
         }
       }
 
@@ -305,6 +345,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
     }
   }
 
+  platform::RecordEvent record_event("merge_grads");
   // Add tmp grad outputs to original grad vars
   for (size_t k = 0; k < grad_output_vars_.size(); ++k) {
     for (const auto& it : grad_output_vars_[k]) {
@@ -313,13 +354,52 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
 
       for (size_t i = 0; i < outputs.size(); ++i) {
-        framework::Variable* grad = outputs[i]->var_;
-        framework::Variable* orig_grad = origin_outputs[i]->var_;
-        VLOG(3) << "AddTo Called with orig_grad is: "
-                << origin_outputs[i]->name_ << " Grad to be added is "
-                << outputs[i]->name_;
-        AddTo(grad, orig_grad, place_);
-        delete grad;
+        // track outputs used by sum
+        if (bck_stratedy.sorted_sum_gradient_) {
+#ifndef PADDLE_WITH_CUDA
+          VLOG(2) << "origin_outputs is : " << origin_outputs[i]->Name() << " ";
+          VLOG(2) << origin_outputs[i]
+                         ->var_->GetMutable<framework::LoDTensor>()
+                         ->data<float>()[0];
+          VLOG(2) << "outputs is : " << outputs[i]->Name() << " ";
+          VLOG(2) << outputs[i]
+                         ->var_->GetMutable<framework::LoDTensor>()
+                         ->data<float>()[0];
+#endif
+          if (bck_map->find(origin_outputs[i]) != bck_map->end()) {
+            VLOG(2) << "add sub grad to " << origin_outputs[i]->Name();
+            bck_map->at(origin_outputs[i])
+                .second.emplace_back(
+                    std::pair<int, VarBase*>(this->trace_id_, outputs[i]));
+          } else {
+            VLOG(2) << "insert new map for " << origin_outputs[i]->Name();
+            std::pair<platform::Place, std::vector<std::pair<int, VarBase*>>>
+                tmp(place_, {std::make_pair(this->trace_id_, outputs[i])});
+            bck_map->insert(std::make_pair(origin_outputs[i], tmp));
+          }
+
+          PADDLE_ENFORCE(grad_ref->find(origin_outputs[i]) != grad_ref->end(),
+                         "Can't find  %s in grad_reference count map",
+                         origin_outputs[i]->Name());
+          PADDLE_ENFORCE(grad_ref->at(origin_outputs[i]) >= 1,
+                         "Backward error when calculate grad reference");
+          if (grad_ref->at(origin_outputs[i]) > 1) {
+            VLOG(2) << "remove ref for " << origin_outputs[i]->Name();
+            grad_ref->at(origin_outputs[i])--;
+          } else {
+            VLOG(2) << "Add grad for: " << origin_outputs[i]->Name();
+            AddGradBySort(bck_map, origin_outputs[i]);
+            grad_ref->at(origin_outputs[i])--;
+          }
+        } else {
+          framework::Variable* grad = outputs[i]->var_.get();
+          framework::Variable* orig_grad = origin_outputs[i]->var_.get();
+          VLOG(2) << "AddTo Called with orig_grad is: "
+                  << origin_outputs[i]->name_ << " Grad to be added is "
+                  << outputs[i]->name_;
+          AddTo(grad, orig_grad, place_);
+          delete outputs[i];
+        }
       }
     }
   }
@@ -336,20 +416,16 @@ void OpBase::InvokeBackwardHooks() {
   }
 }
 
-void OpBase::RegisterBackwardHooks(const py::object& callable, bool front) {
+void OpBase::RegisterBackwardHooks(const py::object& callable) {
   VLOG(3) << "Register backward hooks " << trace_id_;
 
   // TODO(minqiyang): check the callable format
-  if (front) {
-    backward_hooks_.insert(backward_hooks_.begin(), callable);
-  } else {
-    backward_hooks_.push_back(callable);
-  }
+  backward_hooks_.push_back(callable);
 }
 
-void VarBase::RunBackward() {
+void VarBase::RunBackward(const detail::BackwardStrategy& bck_stratedy) {
   if (!pre_op_) return;
-
+  platform::RecordEvent record_event("Imperative Backward");
   VLOG(3) << "start backward";
   auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
   operators::math::set_constant(
@@ -360,7 +436,7 @@ void VarBase::RunBackward() {
   PADDLE_ENFORCE(
       grads_ ==
       pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
-  Autograd().RunBackward(this);
+  Autograd().RunBackward(this, bck_stratedy);
 }
 
 void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
@@ -369,7 +445,7 @@ void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
 
 int PyLayer::NumFuncs() { return py_funcs_.size(); }
 
-std::vector<framework::Variable*> PyLayer::Apply(
+std::vector<std::unique_ptr<framework::Variable>> PyLayer::Apply(
     int func_id, const std::vector<VarBase*>& inputs) {
   PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
   return CallPythonFunc(py_funcs_[func_id], inputs);
@@ -386,13 +462,13 @@ std::vector<VarBase*> PyLayer::ApplyGrad(int func_id,
     outs.emplace_back(new VarBase(
         string::Sprintf("%s_out_%d", framework::GradVarName(PyLayer::kFwdOut),
                         i),
-        rets[i], nullptr, true));
+        std::move(rets[i]), nullptr, true));
   }
 
   return outs;
 }
 
-std::vector<framework::Variable*> PyLayer::CallPythonFunc(
+std::vector<std::unique_ptr<framework::Variable>> PyLayer::CallPythonFunc(
     const py::object& callable, const std::vector<VarBase*>& ins) {
   py::gil_scoped_acquire guard;
   py::tuple in_args(ins.size());
@@ -406,7 +482,7 @@ std::vector<framework::Variable*> PyLayer::CallPythonFunc(
   auto ret = callable(in_args);
   auto ret_tuple = py::cast<py::tuple>(ret);
   size_t ret_num = py::len(ret_tuple);
-  std::vector<framework::Variable*> outs;
+  std::vector<std::unique_ptr<framework::Variable>> outs;
   outs.reserve(ret_num);
   VLOG(3) << "pyfunc out " << ret_num;
   for (size_t i = 0; i < ret_num; ++i) {
@@ -414,11 +490,12 @@ std::vector<framework::Variable*> PyLayer::CallPythonFunc(
       auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
                               "Output tensor %d should not be nullptr", i);
-      auto* var = new framework::Variable();
+      auto var =
+          std::unique_ptr<framework::Variable>(new framework::Variable());
       auto* tensor = var->GetMutable<framework::LoDTensor>();
       tensor->ShareDataWith(*py_out_tensor);
       tensor->set_lod(py_out_tensor->lod());
-      outs.emplace_back(var);
+      outs.emplace_back(std::move(var));
     } catch (py::cast_error&) {
       PADDLE_THROW("The %d-th output must be LoDTensor", i);
     }

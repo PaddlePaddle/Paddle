@@ -120,7 +120,11 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    if (config_.use_gpu_) {
+      paddle::framework::InitDevices(false, {config_.device_id_});
+    } else {
+      paddle::framework::InitDevices(false, {});
+    }
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -198,6 +202,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -225,7 +230,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Here is a bugfix, collect all the container variables, and reset then to a
   // bool; the next time, the operator will call MutableData and construct a new
   // container again, so that the container will be empty for each batch.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
   tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
@@ -381,6 +388,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
   if (config_.anakin_engine_enabled()) {
@@ -459,6 +467,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
+      flags.push_back("--selected_gpus=" +
+                      std::to_string(config.gpu_device_id()));
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
