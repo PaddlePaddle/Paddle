@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <limits>
 #include <utility>
-#include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 
 namespace paddle {
 namespace memory {
