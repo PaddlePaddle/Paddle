@@ -57,7 +57,7 @@ constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 typedef std::string FusedOptType;
 constexpr char kFusedOptType[] = "fused_opt_type";
 
-typedef std::string FusedGrads;
+typedef std::vector<std::string> FusedGrads;
 constexpr char kFusedGrads[] = "fused_gradients";
 
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;

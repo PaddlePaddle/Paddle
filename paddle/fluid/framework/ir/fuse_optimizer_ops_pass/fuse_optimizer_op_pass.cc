@@ -101,10 +101,17 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
             "this pass.");
       }
       auto &fused_grad = result.Get<details::FusedGrads>(details::kFusedGrads);
+      PADDLE_ENFORCE_NE(fused_grad.size(), 0,
+                        "The fused gradient should not be empty.");
+      PADDLE_ENFORCE_EQ(fused_grad.size(), 1,
+                        "Because the dtype of those gradients "
+                        "is not unified, so the number of fused gradients is "
+                        "more than one, but it is not supported currently.");
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
-      auto iter = std::find(fused_vars.begin(), fused_vars.end(), fused_grad);
+      auto iter =
+          std::find(fused_vars.begin(), fused_vars.end(), fused_grad.front());
       PADDLE_ENFORCE(iter != fused_vars.end(), "Not find the fused_grad.");
-      fused_vars_name[kGrad] = fused_grad;
+      fused_vars_name[kGrad] = fused_grad.front();
 
       // Sort the parameters and auxiliary variables according
       // to parameters' name to make variables' name correspond correctly.
