@@ -71,12 +71,6 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 /// this Op's execution to save the elapsed time.
 constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 
-/// If an Op has attribtue kEnableCacheExpectedKernel, it means that in a same
-/// name scope and same place, since the expected kerenl of this Op does not
-/// change in the execution, it could be recorded only at the first iteration of
-/// this Op's execution to save the elapsed time.
-constexpr char kEnableCacheExpectedKernel[] = "@ENABLE_CACHE_EXPECTED_KERNEL@";
-
 /// If an Op has this attribute, all its kernels should calculate output
 /// variable's shape in the corresponding Compute() function. And
 /// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
@@ -372,9 +366,6 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 

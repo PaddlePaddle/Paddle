@@ -12,20 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/operators/optimizers/lamb_op.h"
 
-#include <memory>
-#include "paddle/fluid/framework/ir/pass.h"
-
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class ExpectedKernelCachePass : public Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    lamb, ops::LambOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LambOpKernel<paddle::platform::CUDADeviceContext, double>);
