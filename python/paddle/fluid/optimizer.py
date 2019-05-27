@@ -2179,7 +2179,7 @@ class ModelAverage(Optimizer):
 
         Args:
             executor(fluid.Executor): current executor.
-            need_restore(bool): If you finally need to do restore, set it to True.
+            need_restore(bool): If you finally need to do restore, set it to True. Default is True.
         """
         executor.run(self.apply_program)
         try:
