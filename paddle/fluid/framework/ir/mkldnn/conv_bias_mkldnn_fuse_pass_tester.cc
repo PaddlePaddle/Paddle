@@ -141,12 +141,12 @@ TEST(ConvBiasFusePass, conv_with_existing_bias) { MainTest(true); }
 
 TEST(ConvBiasFusePass, conv3d) {
   Conv3DBiasFusePass pass;
-  ASSERT_TRUE(pass.type() == "conv3d");
+  ASSERT_EQ(pass.type(), std::string("conv3d"));
 }
 
 TEST(ConvBiasFusePass, conv2d_transpose) {
   Conv2DTransposeBiasFusePass pass;
-  ASSERT_TRUE(pass.type() == "conv2d_transpose");
+  ASSERT_EQ(pass.type(), std::string("conv2d_transpose"));
 }
 
 }  // namespace ir
