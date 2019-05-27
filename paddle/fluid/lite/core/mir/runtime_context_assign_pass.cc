@@ -43,6 +43,11 @@ class RuntimeContextAssignPass : public StmtPass {
           inst.picked_kernel().SetContext(NewCudaContext());
           break;
 #endif
+#ifdef LITE_WITH_ARM
+        case TARGET(kARM):
+          inst.picked_kernel().SetContext(NewARMContext());
+          break;
+#endif
         default:
           LOG(FATAL) << "unsupported target "
                      << TargetToStr(inst.picked_kernel().target());
@@ -57,6 +62,14 @@ class RuntimeContextAssignPass : public StmtPass {
     return ctx;
   }
 
+#ifdef LITE_WITH_ARM
+  std::unique_ptr<KernelContext> NewARMContext() {
+    std::unique_ptr<KernelContext> ctx(new KernelContext);
+    // auto& arm = ctx->As<ARMContext>();
+    // todo init
+    return ctx;
+  }
+#endif
 #ifdef LITE_WITH_CUDA
   std::unique_ptr<KernelContext> NewCudaContext() {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
@@ -66,9 +79,7 @@ class RuntimeContextAssignPass : public StmtPass {
     cuda.blas_fp32 = cublas_fp32_;
     return ctx;
   }
-#endif
 
-#ifdef LITE_WITH_CUDA
   void InitCudaBlas() {
     cublas_fp32_ = std::make_shared<lite::cuda::Blas<float>>();
   }

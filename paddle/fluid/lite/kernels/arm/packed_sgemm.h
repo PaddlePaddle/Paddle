@@ -17,6 +17,7 @@
 #include <cmath>
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/cpu_info.h"
+#include "paddle/fluid/lite/core/lite_tensor.h"
 
 namespace paddle {
 namespace lite {
@@ -24,15 +25,15 @@ namespace kernels {
 namespace arm {
 
 #ifdef __aarch64__
-const int MBLOCK = 8;
-const int NBLOCK = 12;
-const int KBLOCK = 4;
+constexpr int MBLOCK = 8;
+constexpr int NBLOCK = 12;
+constexpr int KBLOCK = 4;
 inline int get_hblock(ARMArch arch) { return MBLOCK; }
 #else
-const int MBLOCK_A73 = 4;
-const int MBLOCK_OTH = 6;
-const int NBLOCK = 8;
-const int KBLOCK = 4;
+constexpr int MBLOCK_A73 = 4;
+constexpr int MBLOCK_OTH = 6;
+constexpr int NBLOCK = 8;
+constexpr int KBLOCK = 4;
 inline int get_hblock(ARMArch arch) {
   if (arch == kA73) {
     return MBLOCK_A73;
@@ -44,14 +45,18 @@ inline int get_hblock(ARMArch arch) {
 
 void prepackA(float* out, const float* in, const int ldin, const int m0,
               const int mmax, const int k0, const int kmax, bool is_trans,
-              Context* ctx);
+              ARMContext* ctx);
 
-void prepackA(Tensor<CPU>& tout, const Tensor<CPU>& tin,  // NOLINT
-              int m, int k, int group, bool is_trans, Context* ctx);
+void prepackA(TensorLite* tout, const TensorLite& tin, int m, int k, int group,
+              bool is_trans, ARMContext* ctx);
 
 void sgemm_prepack(const float* A_packed, const float* B, const float* bias,
                    float* C, int M, int N, int K, bool is_bias, bool is_relu,
-                   bool is_transB, Context* ctx);
+                   bool is_transB, ARMContext* ctx);
+
+// move to math
+template <typename T>
+void fill_bias_fc(T* tensor, const T* bias, const int num, const int channel);
 
 }  // namespace arm
 }  // namespace kernels

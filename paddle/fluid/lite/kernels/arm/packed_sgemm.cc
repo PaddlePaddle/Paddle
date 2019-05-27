@@ -13,11 +13,142 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/packed_sgemm.h"
+#include <arm_neon.h>
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
+
+template <>
+void fill_bias_fc<float>(float *tensor, const float *bias, const int num,
+                         const int channel) {
+  int cnt = channel >> 4;
+  int remain = channel & 15;
+
+  for (int j = 0; j < num; ++j) {
+    const float *ptr_bias = bias;
+    float *ptr_out = tensor + j * channel;
+
+    float32x4_t vout1;
+    float32x4_t vout2;
+    float32x4_t vout3;
+    float32x4_t vout4;
+
+    for (int i = 0; i < cnt; ++i) {
+      float32x4_t vin1 = vld1q_f32(ptr_out);
+      float32x4_t vb1 = vld1q_f32(ptr_bias);
+
+      float32x4_t vin2 = vld1q_f32(ptr_out + 4);
+      float32x4_t vb2 = vld1q_f32(ptr_bias + 4);
+
+      float32x4_t vin3 = vld1q_f32(ptr_out + 8);
+      float32x4_t vb3 = vld1q_f32(ptr_bias + 8);
+
+      float32x4_t vin4 = vld1q_f32(ptr_out + 12);
+      float32x4_t vb4 = vld1q_f32(ptr_bias + 12);
+
+      vout1 = vaddq_f32(vin1, vb1);
+      vout2 = vaddq_f32(vin2, vb2);
+      vout3 = vaddq_f32(vin3, vb3);
+      vout4 = vaddq_f32(vin4, vb4);
+
+      vst1q_f32(ptr_out, vout1);
+      vst1q_f32(ptr_out + 4, vout2);
+      vst1q_f32(ptr_out + 8, vout3);
+      vst1q_f32(ptr_out + 12, vout4);
+
+      ptr_out += 16;
+      ptr_bias += 16;
+    }
+
+#if 0
+        if (cnt > 0) {
+            asm(
+            "1: \n"
+            "vld1.32 {d0-d1}, [%[ptr_out]]    @ load data\n"
+            "vld1.32 {d2-d3}, [%[ptr_bias]]!  @ load data\n"
+            "vadd.f32 q2, q0, q1              @ add bias\n"
+            "vst1.32  {d4-d5}, [%[ptr_out]]!  @ store result\n"
+            "subs   %[cnt], #1                @ loop count -1\n"
+            "bne    1b                        @ jump to main loop\n"
+            :[ptr_out] "+r"(ptr_out), [ptr_bias] "+r"(ptr_bias), \
+                    [cnt] "+r"(cnt)
+            :
+            :"q0", "q1", "q2"
+            );
+        }
+#endif
+    for (; remain > 0; remain--) {
+      *(ptr_out++) += *(ptr_bias++);
+    }
+  }
+}
+
+template <>
+void fill_bias_fc<int>(int *tensor, const int *bias, const int num,
+                       const int channel) {
+  int cnt = channel >> 4;
+  int remain = channel & 15;
+
+  for (int j = 0; j < num; ++j) {
+    const int *ptr_bias = bias;
+    int *ptr_out = tensor + j * channel;
+
+    int32x4_t vout1;
+    int32x4_t vout2;
+    int32x4_t vout3;
+    int32x4_t vout4;
+
+    for (int i = 0; i < cnt; ++i) {
+      int32x4_t vin1 = vld1q_s32(ptr_out);
+      int32x4_t vb1 = vld1q_s32(ptr_bias);
+
+      int32x4_t vin2 = vld1q_s32(ptr_out + 4);
+      int32x4_t vb2 = vld1q_s32(ptr_bias + 4);
+
+      int32x4_t vin3 = vld1q_s32(ptr_out + 8);
+      int32x4_t vb3 = vld1q_s32(ptr_bias + 8);
+
+      int32x4_t vin4 = vld1q_s32(ptr_out + 12);
+      int32x4_t vb4 = vld1q_s32(ptr_bias + 12);
+
+      vout1 = vaddq_s32(vin1, vb1);
+      vout2 = vaddq_s32(vin2, vb2);
+      vout3 = vaddq_s32(vin3, vb3);
+      vout4 = vaddq_s32(vin4, vb4);
+
+      vst1q_s32(ptr_out, vout1);
+      vst1q_s32(ptr_out + 4, vout2);
+      vst1q_s32(ptr_out + 8, vout3);
+      vst1q_s32(ptr_out + 12, vout4);
+
+      ptr_out += 16;
+      ptr_bias += 16;
+    }
+
+#if 0
+        if (cnt > 0) {
+        asm(
+        "1: \n"
+        "vld1.32 {d0-d1}, [%[ptr_out]]    @ load data\n"
+        "vld1.32 {d2-d3}, [%[ptr_bias]]!  @ load data\n"
+        "vadd.s32 q2, q0, q1              @ add bias\n"
+        "vst1.32  {d4-d5}, [%[ptr_out]]!  @ store result\n"
+        "subs   %[cnt], #1                @ loop count -1\n"
+        "bne    1b                        @ jump to main loop\n"
+        :[ptr_out] "+r"(ptr_out), [ptr_bias] "+r"(ptr_bias), \
+                [cnt] "+r"(cnt)
+        :
+        :"q0", "q1", "q2"
+        );
+    }
+#endif
+    for (; remain > 0; remain--) {
+      *(ptr_out++) += *(ptr_bias++);
+    }
+  }
+}
 
 #ifdef __aarch64__
 void prepackA_8x12(float *out, const float *in, const int ldin, const int m0,
@@ -27,28 +158,28 @@ void prepackA_trans_8x12(float *out, const float *in, const int ldin,
                          const int kmax);
 void sgemm_conv_8x12(const float *A_packed, const float *B, const float *bias,
                      float *C, int M, int N, int K, bool is_bias, bool is_relu,
-                     bool transB, Context *ctx);
+                     bool transB, ARMContext *ctx);
 #else
 // for kA72
-void prepackA_6x8(float *out, const float *in, const int ldin, const int m0,
+void prepackA_6x8(float* out, const float* in, const int ldin, const int m0,
                   const int mmax, const int k0, const int kmax);
-void prepackA_trans_6x8(float *out, const float *in, const int ldin,
+void prepackA_trans_6x8(float* out, const float* in, const int ldin,
                         const int m0, const int mmax, const int k0,
                         const int kmax);
 // for kA73
-void prepackA_4x8(float *out, const float *in, const int ldin, const int m0,
+void prepackA_4x8(float* out, const float* in, const int ldin, const int m0,
                   const int mmax, const int k0, const int kmax);
-void prepackA_trans_4x8(float *out, const float *in, const int ldin,
+void prepackA_trans_4x8(float* out, const float* in, const int ldin,
                         const int m0, const int mmax, const int k0,
                         const int kmax);
 // for kA72, 6x8
-void sgemm_conv_6x8(const float *A_packed, const float *B, const float *bias,
-                    float *C, int M, int N, int K, bool is_bias, bool is_relu,
-                    bool transB, Context *ctx);
+void sgemm_conv_6x8(const float* A_packed, const float* B, const float* bias,
+                    float* C, int M, int N, int K, bool is_bias, bool is_relu,
+                    bool transB, ARMContext* ctx);
 // for kA73, 4x8
-void sgemm_conv_4x8(const float *A_packed, const float *B, const float *bias,
-                    float *C, int M, int N, int K, bool is_bias, bool is_relu,
-                    bool transB, Context *ctx);
+void sgemm_conv_4x8(const float* A_packed, const float* B, const float* bias,
+                    float* C, int M, int N, int K, bool is_bias, bool is_relu,
+                    bool transB, ARMContext* ctx);
 #endif  // __aarch64__
 
 /**
@@ -58,7 +189,7 @@ void sgemm_conv_4x8(const float *A_packed, const float *B, const float *bias,
  */
 void prepackA(float *out, const float *in, const int ldin, const int m0,
               const int mmax, const int k0, const int kmax, bool is_trans,
-              Context *ctx) {
+              ARMContext *ctx) {
 #ifdef __aarch64__
   if (is_trans) {
     prepackA_trans_8x12(out, in, ldin, m0, mmax, k0, kmax);
@@ -82,23 +213,22 @@ void prepackA(float *out, const float *in, const int ldin, const int m0,
 #endif
 }
 
-void prepackA(Tensor<CPU> &tout, const Tensor<CPU> &tin,  // NOLINT
-              int m, int k, int group, bool is_trans, Context *ctx) {
+void prepackA(TensorLite *tout, const TensorLite &tin, int m, int k, int group,
+              bool is_trans, ARMContext *ctx) {
   int hblock = get_hblock(ctx->get_arch());
   int m_roundup = hblock * ((m + hblock - 1) / hblock);
   int group_size_round_up = ((m_roundup * k + 15) / 16) * 16;
-  if (tout.valid_size() < group_size_round_up * group) {
-    tout.reshape(Shape(group_size_round_up * group));
+  if (tout->numel() < group_size_round_up * group) {
+    tout->Resize({group_size_round_up * group});
   }
   int lda = k;
   if (is_trans) {
     lda = m;
   }
   for (int g = 0; g < group; ++g) {
-    const float *weights_group =
-        static_cast<const float *>(tin.data()) + g * m * k;
+    const float *weights_group = tin.data<float>() + g * m * k;
     float *weights_trans_ptr =
-        static_cast<float *>(tout.mutable_data()) + g * group_size_round_up;
+        tout->mutable_data<float>() + g * group_size_round_up;
     prepackA(weights_trans_ptr, weights_group, lda, 0, m, 0, k, is_trans, ctx);
   }
 }
@@ -106,7 +236,7 @@ void prepackA(Tensor<CPU> &tout, const Tensor<CPU> &tin,  // NOLINT
 /// a: m*k  b: k*n  c: m*n
 void sgemm_prepack(const float *A_packed, const float *B, const float *bias,
                    float *C, int M, int N, int K, bool is_bias, bool is_relu,
-                   bool is_transB, Context *ctx) {
+                   bool is_transB, ARMContext *ctx) {
 #ifdef __aarch64__
   sgemm_conv_8x12(A_packed, B, bias, C, M, N, K, is_bias, is_relu, is_transB,
                   ctx);
@@ -1517,10 +1647,10 @@ void loadb_trans(float* out, const float* in, const int ldin, const int k0,
 #ifdef __aarch64__
 void sgemm_conv_8x12(const float *A_packed, const float *B, const float *bias,
                      float *C, int M, int N, int K, bool is_bias, bool is_relu,
-                     bool transB, Context *ctx) {
+                     bool transB, ARMContext *ctx) {
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
-  void *workspace = ctx->get_work_space();
+  float *workspace = ctx->get_workspace_data<float>();
   int threads = ctx->get_threads();
   //! MBLOCK * x (result) + MBLOCK * k (A) + x * k (B) = l2
   int x_block = (l2_cache - (MBLOCK * K)) / (sizeof(float) * (K + MBLOCK));
@@ -1551,7 +1681,7 @@ void sgemm_conv_8x12(const float *A_packed, const float *B, const float *bias,
       flag_p_remain = true;
     }
     //! load bpanel
-    float *b_pannel = static_cast<float *>(workspace);
+    float *b_pannel = workspace;
     if (transB) {
       loadb_trans(b_pannel, B, K, 0, K, x0, xmax);
     } else {
@@ -2355,10 +2485,10 @@ void sgemm_conv_8x12(const float *A_packed, const float *B, const float *bias,
  */
 void sgemm_conv_6x8(const float* A_packed, const float* B, const float* bias,
                     float* C, int M, int N, int K, bool is_bias, bool is_relu,
-                    bool transB, Context* ctx) {
+                    bool transB, ARMContext* ctx) {
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
-  void* workspace = ctx->get_work_space();
+  auto* workspace = ctx->get_workspace_data<float>();
   int threads = ctx->get_threads();
   //! MBLOCK * x (result) + MBLOCK * k (A) + x * k (B) = l2
   int x_block =
@@ -2392,7 +2522,7 @@ void sgemm_conv_6x8(const float* A_packed, const float* B, const float* bias,
       flag_p_remain = true;
     }
     //! load bpanel
-    float* b_pannel = static_cast<float*>(workspace);
+    float* b_pannel = workspace;
     if (transB) {
       loadb_trans(b_pannel, B, K, 0, K, x0, xmax);
     } else {
@@ -2748,7 +2878,7 @@ void sgemm_conv_6x8(const float* A_packed, const float* B, const float* bias,
 
 void sgemm_conv_4x8(const float* A_packed, const float* B, const float* bias,
                     float* C, int M, int N, int K, bool is_bias, bool is_relu,
-                    bool transB, Context* ctx) {
+                    bool transB, ARMContext* ctx) {
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
   void* workspace = ctx->get_work_space();
