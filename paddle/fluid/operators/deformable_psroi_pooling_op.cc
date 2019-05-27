@@ -63,9 +63,10 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("group_size",
                  "(vector<int>), "
                  "the number of groups which input channels are divided."
-                 "(eg. number of input channels is k1*k2*(C+1), which k1 and k2"
-                 "are group width and height and C+1 is number of output chanel)s, eg.(4, 6) "
-                 "which 4 is height of group and 6 is width of group");
+                 "(eg.number of input channels is k1*k2*(C+1), which k1 and k2 "
+                 "are group width and height and C+1 is number of output "
+                 "chanels. eg.(4, 6), which 4 is height of group and 6 is "
+                 "width of group");
     AddAttr<int>("pooled_height",
                  "(int), "
                  "the pooled output height.");
