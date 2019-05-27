@@ -22,6 +22,7 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 
 namespace paddle {
 namespace operators {
