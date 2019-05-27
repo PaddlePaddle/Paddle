@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -75,6 +76,10 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/communicator_py.h"
 #endif
 
 #include "pybind11/stl.h"
@@ -353,6 +358,7 @@ PYBIND11_MODULE(core, m) {
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
@@ -386,7 +392,12 @@ PYBIND11_MODULE(core, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
-      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
+      .def("__str__", [](const Tensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -605,7 +616,12 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
-           )DOC");
+           )DOC")
+      .def("__str__", [](const LoDTensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -1027,10 +1043,36 @@ All parameter, weight, gradient are variables in Paddle.
            [](const OperatorBase &op) { return op.OutputVars(false); })
       .def("support_gpu", &OperatorBase::SupportGPU);
 
+  py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
+      .def(py::init<const ProgramDesc &, size_t>());
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
-      .def("run_from_dataset", &Executor::RunFromDataset)
+      .def("run_from_dataset", &Executor::RunFromDataset,
+           py::call_guard<py::gil_scoped_release>())
+      .def("run_prepared_ctx",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              std::map<std::string, const LoDTensor *> *feed_targets,
+              std::map<std::string, LoDTensor *> *fetch_targets,
+              bool create_local_scope = true, bool create_vars = true,
+              const std::string &feed_holder_name = "feed",
+              const std::string &fetch_holder_name = "fetch") {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, feed_targets, fetch_targets,
+                                     create_local_scope, create_vars,
+                                     feed_holder_name, fetch_holder_name);
+           })
+      .def("run_cached_prepared_ctx",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              bool create_local_scope = true, bool create_vars = true,
+              bool keep_kids = false) {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, create_local_scope,
+                                     create_vars, keep_kids);
+           })
+      .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
+           py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -1205,14 +1247,22 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+          y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+          y_predict = fluid.layers.fc(input=x, size=1, act=None)
+
+          cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+          avg_loss = fluid.layers.mean(cost)
+
+          sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+          sgd_optimizer.minimize(avg_loss)
+
           exec_strategy = fluid.ExecutionStrategy()
           exec_strategy.num_threads = 4
 
-          train_exe = fluid.ParallelExecutor(use_cuda=True,
-                                             loss_name=loss.name,
+          train_exe = fluid.ParallelExecutor(use_cuda=False,
+                                             loss_name=avg_loss.name,
                                              exec_strategy=exec_strategy)
-
-          train_loss, = train_exe.run([loss.name], feed=feed_dict)
 
         )DOC");
 
@@ -1303,14 +1353,9 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          build_strategy = fluid.BuildStrategy()
-          build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-
-          train_exe = fluid.ParallelExecutor(use_cuda=True,
-                                             loss_name=loss.name,
-                                             build_strategy=build_strategy)
-
-          train_loss, = train_exe.run([loss.name], feed=feed_dict)
+            import paddle.fluid as fluid
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -1332,11 +1377,19 @@ All parameter, weight, gradient are variables in Paddle.
             self.reduce_ = strategy;
           },
           R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
-                  'AllReduce' and 'Reduce'. If you want that all the parameters'
-                  optimization are done on all devices independently, you should choose 'AllReduce';
-                  if you choose 'Reduce', all the parameters' optimization will be evenly distributed
-                  to different devices, and then broadcast the optimized parameter to other devices.
-                  In some models, `Reduce` is faster. Default 'AllReduce'. )DOC")
+                'AllReduce' and 'Reduce'. If you want that all the parameters'
+                optimization are done on all devices independently, you should choose 'AllReduce';
+                if you choose 'Reduce', all the parameters' optimization will be evenly distributed
+                to different devices, and then broadcast the optimized parameter to other devices.
+                In some models, `Reduce` is faster. Default 'AllReduce'.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+                  )DOC")
       .def_property(
           "gradient_scale_strategy",
           [](const BuildStrategy &self) { return self.gradient_scale_; },
@@ -1346,10 +1399,18 @@ All parameter, weight, gradient are variables in Paddle.
             self.gradient_scale_ = strategy;
           },
           R"DOC(The type is STR, there are three ways of defining :math:`loss@grad` in
-                   ParallelExecutor, 'CoeffNumDevice', 'One' and 'Customized'. By default,
-                   ParallelExecutor sets the :math:`loss@grad` according to the number of devices.
-                   If you want to customize :math:`loss@grad`, you can choose 'Customized'.
-                   Default 'CoeffNumDevice'.)DOC")
+                ParallelExecutor, 'CoeffNumDevice', 'One' and 'Customized'. By default,
+                ParallelExecutor sets the :math:`loss@grad` according to the number of devices.
+                If you want to customize :math:`loss@grad`, you can choose 'Customized'.
+                Default 'CoeffNumDevice'.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.gradient_scale_strategy = True
+                   )DOC")
       .def_property(
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
@@ -1358,8 +1419,16 @@ All parameter, weight, gradient are variables in Paddle.
             self.debug_graphviz_path_ = path;
           },
           R"DOC(The type is STR, debug_graphviz_path indicate the path that
-                    writing the SSA Graph to file in the form of graphviz, you.
-                    It is useful for debugging. Default "")DOC")
+                writing the SSA Graph to file in the form of graphviz.
+                It is useful for debugging. Default ""
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.debug_graphviz_path = ""
+                    )DOC")
       .def_property(
           "enable_sequential_execution",
           [](const BuildStrategy &self) {
@@ -1369,7 +1438,15 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
-          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.)DOC")
+          R"DOC(The type is BOOL. If set True, the execution order of ops would be the same as what is in the program. Default False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.enable_sequential_execution = True
+          )DOC")
       .def_property(
           "remove_unnecessary_lock",
           [](const BuildStrategy &self) {
@@ -1379,7 +1456,15 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default True.)DOC")
+          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be released and ParallelExecutor would run faster. Default True.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.remove_unnecessary_lock = True
+          )DOC")
       .def_property(
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },
@@ -1408,8 +1493,16 @@ All parameter, weight, gradient are variables in Paddle.
             self.fuse_elewise_add_act_ops_ = b;
           },
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
-                     to fuse elementwise_add_op and activation_op,
-                     it may make the execution faster. Default False)DOC")
+                to fuse elementwise_add_op and activation_op,
+                it may make the execution faster. Default False
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.fuse_elewise_add_act_ops = True
+                     )DOC")
       .def_property(
           "fuse_relu_depthwise_conv",
           [](const BuildStrategy &self) {
@@ -1420,10 +1513,18 @@ All parameter, weight, gradient are variables in Paddle.
             self.fuse_relu_depthwise_conv_ = b;
           },
           R"DOC(The type is BOOL, fuse_relu_depthwise_conv indicate whether
-                      to fuse relu and depthwise_conv2d,
-                      it will save GPU memory and may make the execution faster.
-                      This options is only available in GPU devices.
-                      Default False.)DOC")
+                to fuse relu and depthwise_conv2d,
+                it will save GPU memory and may make the execution faster.
+                This options is only available in GPU devices.
+                Default False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.fuse_relu_depthwise_conv = True
+          )DOC")
       .def_property(
           "fuse_broadcast_ops",
           [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
@@ -1460,7 +1561,15 @@ All parameter, weight, gradient are variables in Paddle.
                 Current implementation doesn't support FP16 training and CPU.
                 And only synchronous on one machine, not all machines.
 
-                Default False)DOC")
+                Default False
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.sync_batch_norm = True
+                )DOC")
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
@@ -1547,6 +1656,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindNode(&m);
   BindInferenceApi(&m);
   BindDataset(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindCommunicator(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle
