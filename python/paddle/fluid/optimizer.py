@@ -544,7 +544,7 @@ class SGDOptimizer(Optimizer):
                 exe.run(fluid.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
-                    break
+
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
@@ -1702,7 +1702,7 @@ class RMSPropOptimizer(Optimizer):
                 exe.run(fluid.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
-                    break
+
     """
 
     _momentum_acc_str = "momentum"
@@ -1861,7 +1861,6 @@ class FtrlOptimizer(Optimizer):
                 exe.run(fluid.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
-                    break
 
     Notes:
        Currently, FtrlOptimizer doesn't support sparse parameter optimization.
