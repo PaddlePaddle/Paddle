@@ -49,9 +49,6 @@ class ElementwiseSubCompute
         &param.Out->raw_tensor());
   }
 
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
-
   virtual ~ElementwiseSubCompute() = default;
 };
 
@@ -88,9 +85,6 @@ class ElementwiseSubGradCompute
         *context.x86_execution_context, skip, skip, skip, dout, param.axis, &dx,
         &dy, SubGradDX<T>(), SubGradDY<T>());
   }
-
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
 
   virtual ~ElementwiseSubGradCompute() = default;
 };

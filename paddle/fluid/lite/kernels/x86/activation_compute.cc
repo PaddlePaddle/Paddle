@@ -70,9 +70,6 @@ class SquareCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
                                                   &param.Out->raw_tensor());
   }
 
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
-
   virtual ~SquareCompute() = default;
 };
 
@@ -92,9 +89,6 @@ class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
         &param.Out->raw_tensor(), &param.Out_grad->raw_tensor(),
         &param.X_grad->raw_tensor());
   }
-
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
 
   virtual ~SquareGradCompute() = default;
 };

@@ -59,9 +59,6 @@ class SGDCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
     sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
   }
 
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
-
   virtual ~SGDCompute() = default;
 };
 

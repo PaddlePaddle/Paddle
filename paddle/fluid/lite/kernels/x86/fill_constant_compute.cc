@@ -41,9 +41,6 @@ class FillConstantCompute
         *context.x86_device_context, &param.Out->raw_tensor(), param.value);
   }
 
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
-
   virtual ~FillConstantCompute() = default;
 };
 
