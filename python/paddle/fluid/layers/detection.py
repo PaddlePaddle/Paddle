@@ -499,11 +499,10 @@ def detection_output(loc,
             instance, the offsets in first dimension are called LoD, the offset
             number is N + 1, N is the batch size. The i-th image has
             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
-            has no detected results. If all images have not detected results,
-            LoD will be set to {1}, and output tensor only contains one
-            value, which is -1.
-            (After version 1.3, when no boxes detected, the lod is changed
-             from {0} to {1}.)
+            has no detected results.
+
+            If all images have not detected results, all elements in LoD will be
+            0, and output tensor is empty (None).
 
     Examples:
         .. code-block:: python
