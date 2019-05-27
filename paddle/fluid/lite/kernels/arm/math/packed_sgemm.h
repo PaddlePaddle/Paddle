@@ -23,6 +23,7 @@ namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
+namespace math {
 
 #ifdef __aarch64__
 constexpr int MBLOCK = 8;
@@ -54,10 +55,7 @@ void sgemm_prepack(const float* A_packed, const float* B, const float* bias,
                    float* C, int M, int N, int K, bool is_bias, bool is_relu,
                    bool is_transB, ARMContext* ctx);
 
-// move to math
-template <typename T>
-void fill_bias_fc(T* tensor, const T* bias, const int num, const int channel);
-
+}  // namespace math
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite

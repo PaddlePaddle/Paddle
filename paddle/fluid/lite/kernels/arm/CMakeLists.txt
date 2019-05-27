@@ -4,7 +4,7 @@ endif()
 
 message(STATUS "compile with lite ARM kernels")
 
-cc_library(math_arm SRCS packed_sgemm.cc DEPS ${lite_kernel_deps})
+add_subdirectory(math)
 
 cc_library(fc_compute_arm SRCS fc_compute.cc DEPS ${lite_kernel_deps} math_arm)
 cc_library(relu_compute_arm SRCS relu_compute.cc DEPS ${lite_kernel_deps})
