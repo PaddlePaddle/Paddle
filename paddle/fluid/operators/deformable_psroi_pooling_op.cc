@@ -56,11 +56,10 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("output_dim",
                  "(int), "
                  "the number of output channels, which shoule be less than "
-                 "input channels. While output channels equal to input "
-                 "channels, the operator becomes deformable roi pooling and "
-                 "while output channels equal to input channels * "
-                 "pooled_height * pooled_width, the operator becomes "
-                 "deformable psroi pooling.");
+                 "input channels. Deformable roi_pooling requires "
+                 "output_channels = input_channels, while deformable "
+                 "psroi_pooling requires output_channels = input_channels "
+                 "* pooled_height * pooled_width");
     AddAttr<std::vector<int>>("group_size",
                  "(vector<int>), "
                  "the number of groups which input channels are divided."

@@ -178,7 +178,8 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(rois_batch_size, batch,
-        "The rois_batch_size and imgs batch_size must be the same.");
+                      "The rois_batch_size and imgs batch_size \
+                      must be the same.");
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
                       "The rois_num from input and lod must be the same.");
@@ -333,9 +334,9 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
 }
 
 template <typename DeviceContext, typename T>
-class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T>{
+class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx)  const override{
+  void Compute(const framework::ExecutionContext& ctx)  const override {
     auto* input = ctx.Input<Tensor>("Input");
     auto* rois = ctx.Input<LoDTensor>("ROIs");
     auto* trans = ctx.Input<Tensor>("Trans");
