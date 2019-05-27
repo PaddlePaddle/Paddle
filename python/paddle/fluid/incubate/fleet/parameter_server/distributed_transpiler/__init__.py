@@ -13,18 +13,16 @@
 # limitations under the License.
 import os
 
-from paddle.fluid.framework import default_startup_program
-
-from paddle.fluid.optimizer import Optimizer
-
 import paddle.fluid.io as io
-
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.communicator import Communicator
+from paddle.fluid.framework import default_startup_program
+from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
+from ...base.fleet_base import DistributedOptimizer
 from ...base.fleet_base import Fleet
 from ...base.fleet_base import Mode
-from ...base.fleet_base import DistributedOptimizer
 
 
 class DistributedTranspiler(Fleet):
@@ -34,9 +32,11 @@ class DistributedTranspiler(Fleet):
 
     def __init__(self):
         super(DistributedTranspiler, self).__init__(Mode.TRANSPILER)
-        self._transpiler = OriginTranspiler()
-        self._startup_program = None
-        self._main_program = None
+        self._transpile_config = None
+        self._transpiler = None
+        self.startup_program = None
+        self.main_program = None
+        self._communicator = None
 
     def init_worker(self):
         """
@@ -48,10 +48,9 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        pass
-
-    def run_worker(self, main_programs=None, scopes=None):
-        pass
+        if not self._transpile_config.sync_mode:
+            self._communicator = Communicator(self.main_program)
+            self._communicator.start()
 
     def init_server(self, model_dir=None):
         """
@@ -65,19 +64,19 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._startup_program:
+        if not self.startup_program:
             raise ValueError(
                 "startup_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        self._executor.run(self._startup_program)
+        self._executor.run(self.startup_program)
 
         if model_dir:
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
             io.load_persistables(self._executor, model_dir,
-                                 self._startup_program)
+                                 self.startup_program)
 
     def run_server(self):
         """
@@ -86,17 +85,14 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._main_program:
+        if not self.main_program:
             raise ValueError(
                 "main_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        self._executor.run(self._main_program)
+        self._executor.run(self.main_program)
 
     def stop_worker(self):
-        pass
-
-    def stop(self):
         """
         Close this executor.
 
@@ -106,6 +102,8 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
+        if not self._transpile_config.sync_mode:
+            self._communicator.stop()
         self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
@@ -129,6 +127,7 @@ class DistributedTranspiler(Fleet):
         return self._optimizer
 
     def save_inference_model(self,
+                             executor,
                              dirname,
                              feeded_var_names,
                              target_vars,
@@ -139,10 +138,10 @@ class DistributedTranspiler(Fleet):
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
         io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                self._executor, main_program, None, None,
+                                executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, dirname, main_program=None):
+    def save_persistables(self, executor, dirname, main_program=None):
         """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
@@ -153,21 +152,30 @@ class DistributedTranspiler(Fleet):
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
         """
-        io.save_persistables(self._executor, dirname, main_program, None)
+        io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
+        if not isinstance(config, DistributeTranspilerConfig):
+            raise ValueError(
+                "config must be an instance of DistributeTranspilerConfig")
+
+        if not config.sync_mode:
+            config.runtime_split_send_recv = True
+
+        self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
         self._transpiler.transpile(
             trainer_id=fleet.worker_index(),
             pservers=fleet.server_endpoints(to_string=True),
-            trainers=fleet.worker_num())
+            trainers=fleet.worker_num(),
+            sync_mode=config.sync_mode)
 
         if self.is_worker():
-            self._main_program = self._transpiler.get_trainer_program()
-            self._startup_program = default_startup_program()
+            self.main_program = self._transpiler.get_trainer_program()
+            self.startup_program = default_startup_program()
         else:
-            self._main_program, self._startup_program = \
-                self._transpiler.get_pserver_programs(self.server_endpoints(self.server_index()))
+            self.main_program, self.startup_program = \
+                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
 
 
 fleet = DistributedTranspiler()

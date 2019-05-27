@@ -390,6 +390,8 @@ def scaled_dot_product_attention(queries,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             queries = fluid.layers.data(name="queries",
                                         shape=[3, 5, 9],
                                         dtype="float32",
@@ -516,7 +518,7 @@ def scaled_dot_product_attention(queries,
 
     key_dim_per_head = keys.shape[-1] // num_heads
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = layers.matmul(x=k, y=scaled_q, transpose_y=True)
+    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     weights = layers.reshape(
         x=layers.reshape(

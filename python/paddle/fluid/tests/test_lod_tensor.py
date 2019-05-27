@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor
 import numpy as np
 import unittest
@@ -95,6 +96,23 @@ class TestLoDTensor(unittest.TestCase):
         self.assertEqual(tensor.recursive_sequence_lengths(),
                          recursive_seq_lens)
         self.assertEqual(tensor.shape(), [10, 1])
+
+    def test_print_lodtensor(self):
+        shape = [1]
+        recursive_seq_lens = [[2, 3, 5]]
+        dict_size = 100
+        low = 0
+        high = dict_size - 1
+        tensor = create_random_int_lodtensor(recursive_seq_lens, shape,
+                                             fluid.CPUPlace(), low, high)
+        print(tensor)
+        self.assertTrue(isinstance(str(tensor), str))
+
+        if core.is_compiled_with_cuda():
+            gtensor = create_random_int_lodtensor(recursive_seq_lens, shape,
+                                                  fluid.CUDAPlace(0), low, high)
+            print(gtensor)
+            self.assertTrue(isinstance(str(gtensor), str))
 
 
 if __name__ == '__main__':

@@ -29,10 +29,10 @@ using Tensor = framework::Tensor;
  * Return a updated tensor from source tensor, scattered according to index:
  * dst[i] = src[index[i]]
  * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
+ * input[index]: type-IndexT index Tensor (1-D)
  * return: output tensor
  */
-template <typename T>
+template <typename T, typename IndexT = int>
 void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
                    const Tensor& index, Tensor* output) {
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
@@ -45,7 +45,7 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   auto dst_dims = output->dims();
 
   const T* p_src = src.data<T>();
-  const int* p_index = index.data<int>();
+  const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
   // check src shape and dst shape should match
@@ -59,7 +59,7 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int i = 0; i < index_size; ++i) {
-    int index_ = p_index[i];
+    IndexT index_ = p_index[i];
     memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
   }
 }
