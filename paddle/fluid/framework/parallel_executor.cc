@@ -580,6 +580,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
   platform::RecordBlock b(0);
   if (member_->HasGarbageCollectors()) {
+    platform::RecordEvent event("PrepareGarbageCollectors");
     member_->ResetRuntimeReferenceCount(fetch_tensors, fetched_var_name);
   }
 
