@@ -32,14 +32,13 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       local_scopes_(std::move(local_scopes)),
       var_infos_(std::move(var_infos)),
       places_(std::move(places)),
-      threads_pool_(1) {
-  PrepareLocalExeScopes();
-}
+      threads_pool_(1) {}
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalExeScopes");
+    PrepareLocalExeScopes();
     run_op_future_.get();
   }
 
@@ -78,7 +77,6 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   drop_scope_event.reset(nullptr);
 
   platform::RecordEvent e("InitLocalExeScopes");
-  PrepareLocalExeScopes();
 }
 
 void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
