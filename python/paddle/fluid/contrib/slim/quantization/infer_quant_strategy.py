@@ -118,9 +118,8 @@ class InferQuantStrategy(Strategy):
             infer_config.quantizer_config().set_quant_batch_size(num_images)
             #Run INT8 MKL-DNN Quantization
             predictor = core.create_paddle_predictor(infer_config)
-            if 'Linux' in platform.platform():
-                if not os.path.exists(self.int8_model_save_path):
-                    os.makedirs(self.int8_model_save_path)
-                predictor.SaveOptimModel(self.int8_model_save_path)
+            if not os.path.exists(self.int8_model_save_path):
+                os.makedirs(self.int8_model_save_path)
+            predictor.SaveOptimModel(self.int8_model_save_path)
 
             logger.info('Finish InferQuantStrategy::on_compresseion_begin')
