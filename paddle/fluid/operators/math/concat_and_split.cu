@@ -208,9 +208,10 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
+    memory::allocation::AllocationPtr tmp_dev_ins_data;
     T** dev_ins_data = nullptr;
     if (!has_same_shape || (in_num > 2)) {
-      auto tmp_dev_ins_data =
+      tmp_dev_ins_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
               inputs_data.size() * sizeof(T*));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
@@ -291,9 +292,10 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, in_col, &block_dims, &grid_dims);
 
+    memory::allocation::AllocationPtr tmp_dev_outs_data;
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || (o_num > 2)) {
-      auto tmp_dev_outs_data =
+      tmp_dev_outs_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
               outputs_data.size() * sizeof(T*));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
