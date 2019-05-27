@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -391,7 +392,12 @@ PYBIND11_MODULE(core, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
-      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
+      .def("__str__", [](const Tensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -610,7 +616,12 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
-           )DOC");
+           )DOC")
+      .def("__str__", [](const LoDTensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -1472,6 +1483,34 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, int trainer_id) {
                       self.trainer_id_ = trainer_id;
                     })
+      .def_property(
+          "nccl_comm_num",
+          [](const BuildStrategy &self) { return self.nccl_comm_num_; },
+          [](BuildStrategy &self, int nccl_comm_num) {
+            self.nccl_comm_num_ = nccl_comm_num;
+          })
+      .def_property("use_hierarchical_allreduce_",
+                    [](const BuildStrategy &self) {
+                      return self.use_hierarchical_allreduce_;
+                    },
+                    [](BuildStrategy &self, bool use) {
+                      self.use_hierarchical_allreduce_ = use;
+                    })
+      .def_property("hierarchical_allreduce_inter_nranks_",
+                    [](const BuildStrategy &self) {
+                      return self.hierarchical_allreduce_inter_nranks_;
+                    },
+                    [](BuildStrategy &self, int nranks) {
+                      self.hierarchical_allreduce_inter_nranks_ = nranks;
+                    })
+      .def_property("hierarchical_allreduce_exter_nranks_",
+                    [](const BuildStrategy &self) {
+                      return self.hierarchical_allreduce_exter_nranks_;
+                    },
+                    [](BuildStrategy &self, int nranks) {
+                      self.hierarchical_allreduce_exter_nranks_ = nranks;
+                    })
+
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

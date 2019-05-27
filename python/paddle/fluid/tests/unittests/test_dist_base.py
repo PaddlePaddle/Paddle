@@ -51,11 +51,14 @@ class TestDistRunnerBase(object):
                        trainers,
                        sync_mode,
                        dc_asgd=False,
-                       current_endpoint=None):
+                       current_endpoint=None,
+                       nccl_comm_num=1):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
+        if nccl_comm_num > 1:
+            config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
@@ -106,6 +109,7 @@ class TestDistRunnerBase(object):
             # transpile for nccl2
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
+            config.nccl_comm_num = args.nccl_comm_num
             nccl2_t = fluid.DistributeTranspiler(config=config)
             nccl2_t.transpile(
                 args.trainer_id,
@@ -113,6 +117,7 @@ class TestDistRunnerBase(object):
                 startup_program=fluid.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint)
+
             trainer_prog = fluid.default_main_program()
         else:
             trainer_prog = fluid.default_main_program()
@@ -268,6 +273,7 @@ def runtime_main(test_class):
         choices=["pserver", "nccl2", "local", "nccl2_reduce_layer"])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
+    parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
@@ -345,6 +351,7 @@ class TestDistBase(unittest.TestCase):
         self._lr = 0.001
         self._use_dgc = False
         self._dygraph = False
+        self._nccl_comm_num = 1
         self._setup_config()
         self._after_setup_config()
 
@@ -590,6 +597,11 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr0_cmd += " --use_dgc"
             tr1_cmd += " --use_dgc"
+
+        if self._nccl_comm_num > 1:
+            tr0_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+            tr1_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+
         if self._mp_mode:
             env0 = {"FLAGS_selected_gpus": "0"}
             env1 = {"FLAGS_selected_gpus": "1"}

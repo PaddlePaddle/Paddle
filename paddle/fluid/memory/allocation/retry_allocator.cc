@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
-#include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
