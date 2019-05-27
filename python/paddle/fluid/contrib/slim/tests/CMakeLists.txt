@@ -6,6 +6,10 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 # Need to figure out the root cause and then add it back
 list(REMOVE_ITEM TEST_OPS test_distillation_strategy)
 
+if(APPLE OR WIN32 OR NOT WITH_MKL)
+    list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy)
+endif()
+
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
