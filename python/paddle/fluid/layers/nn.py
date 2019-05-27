@@ -2236,6 +2236,8 @@ def conv3d(input,
         input (Variable): The input image with [N, C, D, H, W] format.
             num_filters(int): The number of filter. It is as same as the output
             image channel.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
@@ -3086,19 +3088,25 @@ def batch_norm(input,
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
-             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-             will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. Default: None.
+            of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized 
+            with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
-             If it is set to None or one attribute of ParamAttr, batch_norm
-             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. Default: None.
+            If it is set to None or one attribute of ParamAttr, batch_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+            If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+            Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, batch_norm will not save mean, otherwise, batch_norm will save global Mean with
+            the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will not save mean, otherwise, batch_norm will save global Mean with
+            the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -5943,7 +5951,7 @@ def transpose(x, perm, name=None):
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
-            "It's length shoud be equal to Input(input)'s rank.")
+            "Its length shoud be equal to Input(input)'s rank.")
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
