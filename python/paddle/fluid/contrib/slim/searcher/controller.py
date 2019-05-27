@@ -50,7 +50,7 @@ class EvolutionaryController(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def next_tokens(self):
+    def next_tokens(self, tokens):
         """Generate new tokens.
         """
         raise NotImplementedError('Abstract method.')

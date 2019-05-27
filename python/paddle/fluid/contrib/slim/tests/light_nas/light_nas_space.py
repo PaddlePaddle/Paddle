@@ -12,18 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid.contrib.slim.nas import SearchSpace
 from light_nasnet import LightNASNet
+import paddle.fluid as fluid
+import paddle
+import json
 
-total_images = 1
-lr = 1
+total_images = 1281167
+lr = 0.1
 num_epochs = 1
-batch_size = 1
-lr_strategy = ""
-l2_decay = 1
-momentum_rate = 1
-image_shape = ""
+batch_size = 256
+lr_strategy = "cosine_decay"
+l2_decay = 4e-5
+momentum_rate = 0.9
+image_shape = [1, 28, 28]
 
 __all__ = ['LightNASSpace']
+
+NAS_FILTER_SIZE = [[18, 24, 30], [24, 32, 40], [48, 64, 80], [72, 96, 120],
+                   [120, 160, 192]]
+NAS_LAYERS_NUMBER = [[1, 2, 3], [2, 3, 4], [3, 4, 5], [2, 3, 4], [2, 3, 4]]
+NAS_KERNEL_SIZE = [3, 5]
+NAS_FILTERS_MULTIPLIER = [3, 4, 5, 6]
+NAS_SHORTCUT = [0, 1]
+NAS_SE = [0, 1]
+
+
+def get_bottleneck_params_list(var):
+    """Get bottleneck_params_list from var.
+    Args:
+        var: list, variable list.
+    Returns:
+        list, bottleneck_params_list.
+    """
+    params_list = [
+        1, 16, 1, 1, 3, 1, 0, \
+        6, 24, 2, 2, 3, 1, 0, \
+        6, 32, 3, 2, 3, 1, 0, \
+        6, 64, 4, 2, 3, 1, 0, \
+        6, 96, 3, 1, 3, 1, 0, \
+        6, 160, 3, 2, 3, 1, 0, \
+        6, 320, 1, 1, 3, 1, 0, \
+    ]
+    for i in range(5):
+        params_list[i * 7 + 7] = NAS_FILTERS_MULTIPLIER[var[i * 6]]
+        params_list[i * 7 + 8] = NAS_FILTER_SIZE[i][var[i * 6 + 1]]
+        params_list[i * 7 + 9] = NAS_LAYERS_NUMBER[i][var[i * 6 + 2]]
+        params_list[i * 7 + 11] = NAS_KERNEL_SIZE[var[i * 6 + 3]]
+        params_list[i * 7 + 12] = NAS_SHORTCUT[var[i * 6 + 4]]
+        params_list[i * 7 + 13] = NAS_SE[var[i * 6 + 5]]
+    return params_list
 
 
 class LightNASSpace(SearchSpace):
@@ -52,6 +90,9 @@ class LightNASSpace(SearchSpace):
         """
         if tokens is None:
             tokens = self.init_tokens()
+
+        bottleneck_params_list = get_bottleneck_params_list(tokens)
+
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         test_prog = fluid.Program()
@@ -59,34 +100,43 @@ class LightNASSpace(SearchSpace):
             is_train=True,
             main_prog=train_prog,
             startup_prog=startup_prog,
-            args=args)
+            bottleneck_params_list=bottleneck_params_list)
         test_py_reader, test_cost, test_acc1, test_acc5 = build_program(
             is_train=False,
             main_prog=test_prog,
             startup_prog=startup_prog,
-            args=args)
+            bottleneck_params_list=bottleneck_params_list)
         test_prog = test_prog.clone(for_test=True)
-
+        train_batch_size = batch_size / 1
+        test_batch_size = 16
+        r = paddle.dataset.mnist.train()
         train_reader = paddle.batch(
-            reader.train(), batch_size=train_batch_size, drop_last=True)
-        test_reader = paddle.batch(reader.val(), batch_size=test_batch_size)
+            r, batch_size=train_batch_size, drop_last=True)
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=test_batch_size)
 
-        train_py_reader.decorate_paddle_reader(train_reader)
-        test_py_reader.decorate_paddle_reader(test_reader)
+        with fluid.program_guard(train_prog, startup_prog):
+            train_py_reader.decorate_paddle_reader(train_reader)
+
+        with fluid.program_guard(test_prog, startup_prog):
+            test_py_reader.decorate_paddle_reader(test_reader)
         return startup_prog, train_prog, test_prog, (
-            train_cost, train_acc1, train_acc5, global_lr), (
-                test_cost, test_acc1, test_acc5)
+            train_cost, train_acc1, train_acc5,
+            global_lr), (test_cost, test_acc1,
+                         test_acc5), train_py_reader, test_py_reader
 
 
-def build_program(is_train, main_prog, startup_prog, tokens):
-
+def build_program(is_train,
+                  main_prog,
+                  startup_prog,
+                  bottleneck_params_list=None):
     with fluid.program_guard(main_prog, startup_prog):
         py_reader = fluid.layers.py_reader(
             capacity=16,
             shapes=[[-1] + image_shape, [-1, 1]],
             lod_levels=[0, 0],
             dtypes=["float32", "int64"],
-            use_double_buffer=True)
+            use_double_buffer=False)
         with fluid.unique_name.guard():
             image, label = fluid.layers.read_file(py_reader)
             model = LightNASNet()
@@ -94,9 +144,10 @@ def build_program(is_train, main_prog, startup_prog, tokens):
                 image,
                 label,
                 model,
-                class_dim=1000,
-                bottleneck_params_list=tokens,
+                class_dim=10,
+                bottleneck_params_list=bottleneck_params_list,
                 scale_loss=1.0)
+
             avg_cost.persistable = True
             acc_top1.persistable = True
             acc_top5.persistable = True
@@ -125,7 +176,6 @@ def net_config(image,
                class_dim=1000,
                bottleneck_params_list=None,
                scale_loss=1.0):
-    bottleneck_params_list = json.loads(bottleneck_params_list)
     bottleneck_params_list = [
         bottleneck_params_list[i:i + 7]
         for i in range(0, len(bottleneck_params_list), 7)
@@ -178,7 +228,7 @@ def optimizer_setting(params):
         lr = params["lr"]
         num_epochs = params["num_epochs"]
         optimizer = fluid.optimizer.Momentum(
-            learning_rate=cosine_decay(
+            learning_rate=fluid.layers.cosine_decay(
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs),
             momentum=momentum_rate,
             regularization=fluid.regularizer.L2Decay(l2_decay))

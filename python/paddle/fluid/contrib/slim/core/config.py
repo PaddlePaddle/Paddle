@@ -21,6 +21,7 @@ from ..quantization import *
 from .strategy import *
 from ..distillation import *
 from ..searcher import *
+from ..nas import *
 
 __all__ = ['ConfigFactory']
 """This factory is used to create instances by loading and parsing configure file with yaml format.

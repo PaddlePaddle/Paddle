@@ -38,30 +38,34 @@ class TestLightNAS(unittest.TestCase):
 
         space = LightNASSpace()
 
-        startup_prog, train_prog, test_prog, train_metrics, test_metrics = space.create_net(
+        startup_prog, train_prog, test_prog, train_metrics, test_metrics, train_reader, test_reader = space.create_net(
         )
         train_cost, train_acc1, train_acc5, global_lr = train_metrics
         test_cost, test_acc1, test_acc5 = test_metrics
+
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup_prog)
 
-        val_fetch_list = [('test_acc1', test_acc1.name), ('test_acc5',
-                                                          test_acc5.name)]
+        val_fetch_list = [('acc_top1', test_acc1.name), ('acc_top5',
+                                                         test_acc5.name)]
         train_fetch_list = [('loss', train_cost.name)]
 
+        #        train_reader.start()
+        #        test_reader.start()
         com_pass = Compressor(
             place,
             fluid.global_scope(),
-            None,
-            train_reader=None,
+            train_prog,
+            train_reader=train_reader,
             train_feed_list=None,
             train_fetch_list=train_fetch_list,
-            eval_program=None,
-            eval_reader=None,
+            eval_program=test_prog,
+            eval_reader=test_reader,
             eval_feed_list=None,
             eval_fetch_list=val_fetch_list,
-            train_optimizer=None)
+            train_optimizer=None,
+            search_space=space)
         com_pass.config('./light_nas/compress.yaml')
         eval_graph = com_pass.run()
 

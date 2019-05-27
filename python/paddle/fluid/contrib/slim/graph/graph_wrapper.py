@@ -209,6 +209,7 @@ class GraphWrapper(object):
             if var.persistable:
                 self.persistables[var.name] = var
         self.compiled_graph = None
+        in_nodes = [] if in_nodes is None else in_nodes
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()

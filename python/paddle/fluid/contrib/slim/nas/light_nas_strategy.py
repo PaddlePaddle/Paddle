@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,10 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .prune_strategy import PruneStrategy
+from ..core.strategy import Strategy
+from ..graph import GraphWrapper
+from .controller_server import ControllerServer
+from .search_agent import SearchAgent
+from ....executor import Executor
 import re
 import logging
+import functools
+import socket
+import fcntl
 
 __all__ = ['LightNASStrategy']
 
@@ -23,7 +29,7 @@ _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 
 
-class LightNASStrategy(object):
+class LightNASStrategy(Strategy):
     """
     Light-NAS search strategy.
     """
@@ -31,10 +37,9 @@ class LightNASStrategy(object):
     def __init__(self,
                  controller=None,
                  end_epoch=1000,
-                 target_flops=100000,
-                 delta=1000,
+                 target_flops=629145600,
+                 retrain_epoch=1,
                  metric_name='top1_acc',
-                 pruned_params='conv.*_weights',
                  server_ip=None,
                  server_port=None,
                  is_server=False):
@@ -42,68 +47,87 @@ class LightNASStrategy(object):
         """
         self.start_epoch = 0
         self.end_epoch = end_epoch
-        self._max_flops = target_flops + delta
-        self._min_flops = target_flops - delta
-        self.controller = controller
+        self._max_flops = target_flops
+        self._metric_name = metric_name
+        self._controller = controller
         self._retrain_epoch = 0
-        self.server_ip = server_ip
-        self.server_port = server_port
-        self.is_server = is_server
+        self._server_ip = server_ip
+        self._server_port = server_port
+        self._is_server = is_server
+        self._retrain_epoch = retrain_epoch
 
     def on_compression_begin(self, context):
         self._current_tokens = context.search_space.init_tokens()
         constrain_func = functools.partial(
             self._constrain_func, context=context)
-        self._controller.reset(
-            range_table, constrain_func, init_tokens=self._current_tokens)
+        self._controller.reset(context.search_space.range_table(), None)
 
         # create controller server
-        if self.is_server:
+        if self._is_server:
+            open("./slim_LightNASStrategy_controller_server.socket",
+                 'a').close()
             socket_file = open(
-                "~/slim_LightNASStrategy_controller_server.socket", 'w')
+                "./slim_LightNASStrategy_controller_server.socket", 'r+')
             fcntl.flock(socket_file, fcntl.LOCK_EX)
             tid = socket_file.readline()
+            _logger.info("tid: [{}]".format(tid))
             if tid == '':
-                server = ControllerServer(self._controller, self._server_ip,
-                                          self._server_port)
+                _logger.info("start controller server...")
+                server = ControllerServer(
+                    controller=self._controller,
+                    address=(self._server_ip, self._server_port),
+                    max_client_num=100,
+                    max_iter=1000)
                 tid = server.start()
                 socket_file.write(tid)
+                _logger.info("started controller server...")
             fcntl.flock(socket_file, fcntl.LOCK_UN)
             socket_file.close()
 
         # create client
-        self._search_agent = SerachAgent(self._server_ip, self._server_port)
+        self._search_agent = SearchAgent(self._server_ip, self._server_port)
 
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
-        program = context.search_space.create_eval_net(tokens)
-        flops = GraphWrapper(program).flops()
-        if flops >= self._min_flops and flops <= self._max_flops:
+        _, _, test_prog, _, _, _, _ = context.search_space.create_net(tokens)
+        flops = GraphWrapper(test_prog).flops()
+        if flops <= self._max_flops:
             return True
         else:
             return False
 
     def on_epoch_begin(self, context):
+        #        if context.epoch_id == self.start_epoch:
+        #            self._current_tokens = self._search_agent.init_tokens()
 
-        if context.epoch_id == self.start_epoch:
-            self._current_tokens = self._search_agent.init_tokens()
-
-        if context.epoch_id > self.start_epoch and context.epoch_id <= self.end_epoch and (
+        _logger.info("light nas strategy on_epoch_begin")
+        #        _logger.info("epoch_id: {}; start_epoch: {}; end_epoch: {};".format( context.epoch_id, self.start_epoch, self.end_epoch))
+        if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
 
-            train_program = context.search_space.create_train_net(
+            startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
                 self._current_tokens)
-            eval_program = context.search_space.create_eval_net(
-                self._current_tokens)
-            context.train_graph.program = program
-            context.eval_graph.program = program
-            context.optimize_graph = None
+            #            context.train_graph.program = train_p
+            context.eval_graph.program = test_p
+            context.train_reader = train_reader
+            context.eval_reader = test_reader
+
+            exe = Executor(context.place)
+            exe.run(startup_p)
+
+            context.optimize_graph.program = train_p
+            context.optimize_graph.compile()
+
+            context.skip_training = (self._retrain_epoch == 0)
 
     def on_epoch_end(self, context):
         if context.epoch_id >= self.start_epoch and context.epoch_id < self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-            self._current_reward = context.eval_results[-1]
-            self._current_tokens = self._search_client.update(
+
+            self._current_reward = context.eval_results[self._metric_name][-1]
+            flops = context.eval_graph.flops()
+            self._current_reward = self._current_reward if flops <= self._max_flops else 0
+            self._current_tokens = self._search_agent.update(
                 self._current_tokens, self._current_reward)

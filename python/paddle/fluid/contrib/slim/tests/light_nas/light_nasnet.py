@@ -243,7 +243,6 @@ class LightNASNet(object):
             Variable, layers output.
         """
         num_expfilter = int(round(num_in_filter * expansion_factor))
-
         channel_expand = self.conv_bn_layer(
             input=input,
             num_filters=num_expfilter,

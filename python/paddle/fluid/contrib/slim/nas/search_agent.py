@@ -48,5 +48,5 @@ class SearchAgent(object):
         tokens = ",".join([str(token) for token in tokens])
         socket_client.send("{}\t{}".format(tokens, reward))
         tokens = socket_client.recv(1024).decode()
-        tokens = [float(token) for token in tokens.strip("\n").split(",")]
+        tokens = [int(token) for token in tokens.strip("\n").split(",")]
         return tokens
