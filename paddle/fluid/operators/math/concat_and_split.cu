@@ -210,7 +210,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
 
     memory::allocation::AllocationPtr tmp_dev_ins_data;
     T** dev_ins_data = nullptr;
-    if (!has_same_shape || (in_num > 2)) {
+    if (!has_same_shape || (in_num != 2)) {
       tmp_dev_ins_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
               inputs_data.size() * sizeof(T*));
@@ -294,7 +294,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
 
     memory::allocation::AllocationPtr tmp_dev_outs_data;
     T** dev_out_gpu_data = nullptr;
-    if (!has_same_shape || (o_num > 2)) {
+    if (!has_same_shape || (o_num != 2)) {
       tmp_dev_outs_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
               outputs_data.size() * sizeof(T*));
