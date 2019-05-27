@@ -74,6 +74,7 @@ class DownpourServer(Server):
         table.table_class = "DownpourSparseTable"
         table.type = pslib.PS_SPARSE_TABLE
         table.compress_in_save = True
+        table.shard_num = 1000
         table.accessor.accessor_class = "DownpourFeatureValueAccessor"
         table.accessor.sparse_sgd_param.learning_rate = learning_rate
         table.accessor.sparse_sgd_param.initial_g2sum = 3

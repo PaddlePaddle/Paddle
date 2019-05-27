@@ -12,26 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/expected_kernel_cache_pass.h"
-#include <memory>
-#include "paddle/fluid/framework/operator.h"
+#pragma once
+
+#include <Python.h>
+
+#include "pybind11/pybind11.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace pybind {
 
-void ExpectedKernelCachePass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(3) << "Applies Expected Kernel Cache strategy.";
-  for (const Node* n : graph->Nodes()) {
-    if (n->IsOp() && n->Op()) {
-      n->Op()->SetAttr(kEnableCacheExpectedKernel, true);
-    }
-  }
-}
+void BindCommunicator(pybind11::module* m);
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle
-
-REGISTER_PASS(expected_kernel_cache_pass,
-              paddle::framework::ir::ExpectedKernelCachePass);
