@@ -60,6 +60,19 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::ReluGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ===========================   sqrt register  ============================= */
+REGISTER_ACTIVATION_CUDA_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    sqrt_grad_grad,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<float>>,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<double>>,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 /* ===========================  square register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(square, Square, SquareFunctor,
                                 SquareGradFunctor);

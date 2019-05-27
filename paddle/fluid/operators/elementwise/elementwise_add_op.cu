@@ -31,3 +31,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_add_grad_grad,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int64_t>);

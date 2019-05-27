@@ -54,6 +54,7 @@ __all__ = [
     'multiclass_nms',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
+    'collect_fpn_proposals',
 ]
 
 
@@ -141,19 +142,24 @@ def rpn_target_assign(bbox_pred,
     Examples:
         .. code-block:: python
 
-            bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
-                              append_batch_size=False, dtype='float32')
-            cls_logits = layers.data(name='cls_logits', shape=[100, 1],
-                              append_batch_size=False, dtype='float32')
-            anchor_box = layers.data(name='anchor_box', shape=[20, 4],
-                              append_batch_size=False, dtype='float32')
-            gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                             append_batch_size=False, dtype='float32')
-            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
-                fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
-                                              cls_logits=cls_logits,
-                                              anchor_box=anchor_box,
-                                              gt_boxes=gt_boxes)
+            import paddle.fluid as fluid
+            bbox_pred = fluid.layers.data(name='bbox_pred', shape=[100, 4],
+                            append_batch_size=False, dtype='float32')
+            cls_logits = fluid.layers.data(name='cls_logits', shape=[100, 1],
+                            append_batch_size=False, dtype='float32')
+            anchor_box = fluid.layers.data(name='anchor_box', shape=[20, 4],
+                            append_batch_size=False, dtype='float32')
+            anchor_var = fluid.layers.data(name='anchor_var', shape=[20, 4],
+                            append_batch_size=False, dtype='float32')
+            gt_boxes = fluid.layers.data(name='gt_boxes', shape=[10, 4],
+                            append_batch_size=False, dtype='float32')
+            is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
+                            append_batch_size=False, dtype='float32')
+            im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
+                            append_batch_size=False, dtype='float32')
+            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight=
+                fluid.layers.rpn_target_assign(bbox_pred, cls_logits,
+                anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
 
     """
 
@@ -502,6 +508,14 @@ def polygon_box_transform(input, name=None):
 
     Returns:
         output(${output_type}): ${output_comment}
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            input = fluid.layers.data(name='input', shape=[4, 10, 5, 5],
+                                      append_batch_size=False, dtype='float32')
+            out = fluid.layers.polygon_box_transform(input)
     """
     helper = LayerHelper("polygon_box_transform", **locals())
     if name is None:
@@ -1935,6 +1949,26 @@ def generate_proposal_labels(rpn_rois,
         bbox_reg_weights(list|tuple): Box regression weights.
         class_nums(int): Class number.
         use_random(bool): Use random sampling to choose foreground and background boxes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            rpn_rois = fluid.layers.data(name='rpn_rois', shape=[2, 4],
+                           append_batch_size=False, dtype='float32')
+            gt_classes = fluid.layers.data(name='gt_classes', shape=[8, 1],
+                           append_batch_size=False, dtype='float32')
+            is_crowd = fluid.layers.data(name='is_crowd', shape=[8, 1],
+                           append_batch_size=False, dtype='float32')
+            gt_boxes = fluid.layers.data(name='gt_boxes', shape=[8, 4],
+                           append_batch_size=False, dtype='float32')
+            im_info = fluid.layers.data(name='im_info', shape=[10, 3],
+                           append_batch_size=False, dtype='float32')
+            rois, labels_int32, bbox_targets, bbox_inside_weights,
+            bbox_outside_weights = fluid.layers.generate_proposal_labels(
+                           rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
+                           class_nums=10)
+
     """
 
     helper = LayerHelper('generate_proposal_labels', **locals())
@@ -2181,6 +2215,24 @@ def generate_proposals(scores,
             width < min_size. 0.1 by default.
         eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5,
             adaptive_threshold = adaptive_threshold * eta in each iteration.
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle.fluid as fluid
+            scores = fluid.layers.data(name='scores', shape=[2, 4, 5, 5],
+                         append_batch_size=False, dtype='float32')
+            bbox_deltas = fluid.layers.data(name='bbox_deltas', shape=[2, 16, 5, 5],
+                         append_batch_size=False, dtype='float32')
+            im_info = fluid.layers.data(name='im_info', shape=[2, 3],
+                         append_batch_size=False, dtype='float32')
+            anchors = fluid.layers.data(name='anchors', shape=[5, 5, 4, 4],
+                         append_batch_size=False, dtype='float32')
+            variances = fluid.layers.data(name='variances', shape=[5, 5, 10, 4],
+                         append_batch_size=False, dtype='float32')
+            rois, roi_probs = fluid.layers.generate_proposals(scores, bbox_deltas,
+                         im_info, anchors, variances)
+
     """
     helper = LayerHelper('generate_proposals', **locals())
 
@@ -2512,3 +2564,68 @@ def box_decoder_and_assign(prior_box,
             "OutputAssignBox": output_assign_box
         })
     return decoded_box, output_assign_box
+
+
+def collect_fpn_proposals(multi_rois,
+                          multi_scores,
+                          min_level,
+                          max_level,
+                          post_nms_top_n,
+                          name=None):
+    """
+    Concat multi-level RoIs (Region of Interest) and select N RoIs 
+    with respect to multi_scores. This operation performs the following steps:
+
+    1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
+    2. Concat multi-level RoIs and scores
+    3. Sort scores and select post_nms_top_n scores
+    4. Gather RoIs by selected indices from scores
+    5. Re-sort RoIs by corresponding batch_id
+
+    Args:
+        multi_ros(list): List of RoIs to collect
+        multi_scores(list): List of scores
+        min_level(int): The lowest level of FPN layer to collect
+        max_level(int): The highest level of FPN layer to collect
+        post_nms_top_n(int): The number of selected RoIs
+        name(str|None): A name for this layer(optional)
+        
+    Returns:
+        Variable: Output variable of selected RoIs. 
+
+    Examples:
+        .. code-block:: python
+           
+            multi_rois = []
+            multi_scores = []
+            for i in range(4):
+                multi_rois.append(fluid.layers.data(
+                    name='roi_'+str(i), shape=[4], dtype='float32', lod_level=1))
+            for i in range(4):
+                multi_scores.append(fluid.layers.data(
+                    name='score_'+str(i), shape=[1], dtype='float32', lod_level=1))
+
+            fpn_rois = fluid.layers.collect_fpn_proposals(
+                multi_rois=multi_rois, 
+                multi_scores=multi_scores,
+                min_level=2, 
+                max_level=5, 
+                post_nms_top_n=2000)
+    """
+
+    helper = LayerHelper('collect_fpn_proposals', **locals())
+    dtype = helper.input_dtype('multi_rois')
+    num_lvl = max_level - min_level + 1
+    input_rois = multi_rois[:num_lvl]
+    input_scores = multi_scores[:num_lvl]
+    output_rois = helper.create_variable_for_type_inference(dtype)
+    output_rois.stop_gradient = True
+    helper.append_op(
+        type='collect_fpn_proposals',
+        inputs={
+            'MultiLevelRois': input_rois,
+            'MultiLevelScores': input_scores
+        },
+        outputs={'FpnRois': output_rois},
+        attrs={'post_nms_topN': post_nms_top_n})
+    return output_rois
