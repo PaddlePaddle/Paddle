@@ -260,7 +260,6 @@ class MkldnnQuantizerTest : public testing::Test {
     predictor.reset(new AnalysisPredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
-    // The MkldnnQuantizerConfig will be deleted by MkldnnQuantizer's destructor
     auto qconfig = new MkldnnQuantizerConfig();
 
     mkldnn_quantizer.reset(
