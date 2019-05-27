@@ -2176,35 +2176,35 @@ class ExponentialMovingAverage(object):
 
     ..  math::
 
-        \\text{EMA}_0 = 0
+        \\text{EMA}_0 & = 0
 
-	\\text{EMA}_t = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+	\\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
 
     The average results will be saved in temporary variables which are created 
     and maintained by the object, and can be applied to parameters of current 
-    model by calling `apply()` method. And the `restore()` method is used to 
+    model by calling **apply()** method. And the **restore()** method is used to 
     restore the parameters.
 
-    **Bias correction**. All EMAs are initialized to `0` and hence they will be 
+    **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be 
     zero biased, which can be corrected by divided by a factor 
-    :math:`(1 - \\text{decay}^t)`, i.e., the actual EMAs applied to parameters 
-    when calling `apply()` method would be 
+    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters 
+    when calling **apply()** method would be 
 
     ..  math::
     
-        \\widehat{\\text{EMA}}_t = \\text{EMA}_t / (1 - \\text{decay}^t)
+        \\widehat{\\text{EMA}}_t = \\frac{\\text{EMA}_t}{1 - \\text{decay}^t}
 
     **Decay rate scheduling**. A large decay rate very close to 1 would result 
     in that the averages move very slowly. And a better strategy is to set a 
-    relative smaller decay rate in the very beginning. The argument `thres_steps`
+    relative smaller decay rate in the very beginning. The argument **thres_steps**
     allows users to pass a Variable to schedule the decay rate, in this case, 
     the actual decay rate becomes
      
     ..  math::
     
-        \\min(\\text{decay}, (1 + \\text{thres_steps}) / (10 + \\text{thres_steps}))
+        \\min(\\text{decay}, \\frac{1 + \\text{thres_steps}}{10 + \\text{thres_steps}})
 
-    Usually `thres_steps` can be the global training steps.
+    Usually **thres_steps** can be the global training steps.
 
 
     Args:
@@ -2227,7 +2227,8 @@ class ExponentialMovingAverage(object):
 	     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 	     optimizer.minimize(cost)
 
-	     ema = fluid.optimizer.ExponentialMovingAverage(0.99)
+             global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+             ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
 
 	     # pseudo code
 	     for pass_id in range(args.pass_num):
