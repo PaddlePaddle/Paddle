@@ -77,8 +77,9 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         result.Get<details::ParamsAndGrads>(details::kParamsAndGrads);
     RecordParamsAndGrads(result, &params_grads);
 
+    size_t num_params_grads = params_grads.size();
     VLOG(10) << "The number of params and grads is:" << params_grads.size();
-    if (params_grads.size() == 0) {
+    if (num_params_grads == 0) {
       return;
     }
 
@@ -89,10 +90,14 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     SetGroupParamsAndGrads(vars, params_grads, &group_params_grads);
 
     params_grads.clear();
+    params_grads.reserve(num_params_grads);
     for (auto &group_p_g : group_params_grads) {
       params_grads.insert(params_grads.end(), group_p_g.begin(),
                           group_p_g.end());
     }
+    PADDLE_ENFORCE_EQ(
+        num_params_grads, params_grads.size(),
+        "The number of params_grads is not consistent with before.");
 
     if (IsUnifiedDtype(params_grads, vars)) {
       SetGradientPersistable(params_grads, vars);
