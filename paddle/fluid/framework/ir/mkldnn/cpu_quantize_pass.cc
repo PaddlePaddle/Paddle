@@ -287,6 +287,8 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     // get scales calculated after warmup, they scale variables to MAX=1.0
     auto scales = Get<VarQuantScale>("quant_var_scales");
 
+    // if all inputs were unsigned, then the output was set to unsigned
+    // during the scale calculation step
     bool are_all_inputs_unsigned = scales[concat_out->Name()].first;
     QuantizeInputs(g, concat_op, "X", &scales, are_all_inputs_unsigned);
 
