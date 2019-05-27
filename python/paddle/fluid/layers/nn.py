@@ -5456,8 +5456,11 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
 
         .. code-block:: python
 
-            label = fluid.layers.data(shape=[11, 8], dtype='float32', lod_level=1)
-            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
+            import paddle.fluid as fluid
+            label = fluid.layers.data(name='label', shape=[11, 8],
+                                      dtype='float32', lod_level=1)
+            predict = fluid.layers.data(name='predict', shape=[11, 1],
+                                        dtype='float32')
             cost = fluid.layers.warpctc(input=predict, label=label)
 
     """
@@ -6070,8 +6073,12 @@ def im2sequence(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            data = fluid.layers.data(name='data', shape=[3, 32, 32],
+                                     dtype='float32')
             output = fluid.layers.im2sequence(
-                input=layer, stride=[1, 1], filter_size=[2, 2])
+                input=data, stride=[1, 1], filter_size=[2, 2])
+
 
     """
     assert not in_dygraph_mode(), (
@@ -8115,7 +8122,11 @@ def mean_iou(input, label, num_classes):
 
         .. code-block:: python
 
-            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
+            import paddle.fluid as fluid
+            predict = fluid.layers.data(name='predict', shape=[3, 32, 32])
+            label = fluid.layers.data(name='label', shape=[1])
+            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label,
+                                                          num_classes=5)
     """
     helper = LayerHelper('mean_iou', **locals())
     dtype = helper.input_dtype()
@@ -8549,8 +8560,11 @@ def pad2d(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='data', shape=[3, 32, 32],
+                                   dtype='float32')
+          result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
+                                      mode='reflect')
     """
 
     helper = LayerHelper('pad2d', **locals())
@@ -10233,6 +10247,20 @@ def affine_channel(x,
 
     Returns:
         out (Variable): A tensor of the same shape and data layout with x.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            data = fluid.layers.data(name='data', shape=[3, 32, 32],
+                                     dtype='float32')
+            input_scale = fluid.layers.create_parameter(shape=[3],
+                                     dtype="float32")
+            input_bias = fluid.layers.create_parameter(shape=[3],
+                                     dtype="float32")
+            out = fluid.layers.affine_channel(data,scale=input_scale,
+                                     bias=input_bias)
+
     """
     helper = LayerHelper("affine_channel", **locals())
 
@@ -11476,8 +11504,12 @@ def fsp_matrix(x, y):
 
         .. code-block:: python
 
-            feature_map_0 = fluid.layers.conv2d(x)
-            feature_map_1 = fluid.layers.conv2d(feature_map_0)
+            import paddle.fluid as fluid
+            data = fluid.layers.data(name='data', shape=[3, 32, 32])
+            feature_map_0 = fluid.layers.conv2d(data, num_filters=2,
+                                                filter_size=3)
+            feature_map_1 = fluid.layers.conv2d(feature_map_0, num_filters=2,
+                                                filter_size=1)
             loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
 
     """
