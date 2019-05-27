@@ -128,7 +128,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   bool overwrite = true;
 
   // if find duplicate index, can not use overwrite mode
-  std::unordered_set<int> index_count;
+  std::unordered_set<IndexT> index_count;
   for (int i = 0; i < index_size; ++i) {
     if (index_count.count(p_index[i]) > 0) {
       overwrite = false;
