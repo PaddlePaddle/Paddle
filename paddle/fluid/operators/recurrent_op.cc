@@ -15,6 +15,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -29,6 +30,7 @@ constexpr char kStates[] = "states";
 constexpr char kStepBlock[] = "sub_block";
 constexpr char kReverse[] = "reverse";
 constexpr char kIsTrain[] = "is_train";
+constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 #define GRAD_SUFFIX "@GRAD"
 constexpr char kInputGrads[] = "inputs" GRAD_SUFFIX;
 constexpr char kOutputGrads[] = "outputs" GRAD_SUFFIX;
@@ -291,8 +293,9 @@ class RecurrentOp : public RecurrentBase {
       // Every inputs are linked now, execute!
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/, true /*create_vars*/,
-                   std::vector<std::string>() /*skip_ref_cnt_vars*/,
-                   true /*force_disable_gc*/);
+                   Attr<std::vector<std::string>>(
+                       kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/,
+                   false /*force_disable_gc*/);
 
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
@@ -407,8 +410,9 @@ class RecurrentGradOp : public RecurrentBase {
       // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/, true /*create_vars*/,
-                   std::vector<std::string>() /*skip_ref_cnt_vars*/,
-                   true /*force_disable_gc*/);
+                   Attr<std::vector<std::string>>(
+                       kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/,
+                   false /*force_disable_gc*/);
 
       VLOG(5) << "executor.Run finished ";
 
@@ -597,6 +601,11 @@ if reverse is True
       o          o          o         o
 )DOC").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
+    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
+                                      "Vars that would skip eager deletion."
+                                      "Users should not set this manually.")
+        .SetDefault(std::vector<std::string>());
+
     AddComment(R"DOC(
 Static Length Recurrent Operator.
 
