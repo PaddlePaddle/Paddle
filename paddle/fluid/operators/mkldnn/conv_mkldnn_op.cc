@@ -457,6 +457,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           platform::MKLDNNMemDesc(dst_tz, dst_dt, chosen_memory_format);
 
       // create a conv primitive descriptor and save it for usage in backward
+      // TODO(lidanqing): We use relu post-op instead of brelu post-op cause
+      // mkldnn v0.18 does not support INT8 brelu post-op. Use code in /**/ when
+      // v0.20 is enabled
       if (bias) {
         bias_tz = paddle::framework::vectorize2int(bias->dims());
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
@@ -464,14 +467,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         conv_pd = ConvFwdPrimitiveDesc(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu, fuse_residual_conn, fuse_brelu,
-            fuse_brelu_threshold, output_shift_scale, sum_scale, is_test);
+            mkldnn_engine, fuse_relu || fuse_brelu /*fuse_relu*/,
+            fuse_residual_conn, false /*fuse_brelu*/, fuse_brelu_threshold,
+            output_shift_scale, sum_scale, is_test);
 
       } else {
         conv_pd = ConvFwdPrimitiveDesc(
             src_md, weights_md, dst_md, strides, paddings, mkldnn_engine,
-            fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold,
-            output_shift_scale, sum_scale, is_test);
+            fuse_relu || fuse_brelu /*fuse_relu*/, fuse_residual_conn,
+            false /*fuse_brelu*/, fuse_brelu_threshold, output_shift_scale,
+            sum_scale, is_test);
       }
       // Save conv_pd/src_memory/weights_memory for backward pass
       dev_ctx.SetBlob(key_conv_pd, conv_pd);
