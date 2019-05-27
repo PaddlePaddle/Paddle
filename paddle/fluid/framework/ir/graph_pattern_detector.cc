@@ -1214,6 +1214,17 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
+PDNode *patterns::Concat::operator()() {
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+
+  auto output_var = pattern->NewNode(concat_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("concat", "Out");
+
+  concat_op->LinksTo({output_var});
+  return output_var;
+}
+
 PDNode *patterns::ConcatReLU::operator()() {
   auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
   auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
