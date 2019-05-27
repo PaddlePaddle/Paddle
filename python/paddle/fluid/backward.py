@@ -142,6 +142,7 @@ def _addup_repetitive_outputs_(op_descs):
     pending_sum_ops = []
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
+    renamed_var_start_idx = collections.defaultdict(list)
     for idx, op_desc in enumerate(op_descs):
         for var_name in op_desc.input_arg_names():
             if len(renamed_vars[var_name]) > 1:
@@ -166,7 +167,8 @@ def _addup_repetitive_outputs_(op_descs):
                         var_rename_count[var_name] += 1
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
-                        _rename_arg_(op_descs, var_name, new_name, 0, idx)
+                        _rename_arg_(op_descs, var_name, new_name,
+                                     renamed_var_start_idx[var_name], idx)
                         _rename_arg_(pending_sum_ops, var_name, new_name)
 
                         for p in op_desc.output_names()[:param_idx]:
