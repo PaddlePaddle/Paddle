@@ -15,45 +15,29 @@
 import paddle
 import unittest
 import os
-import tarfile
+import sys
 import struct
 import numpy as np
 import paddle.fluid as fluid
 from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
-from paddle.dataset.common import download
+sys.path.append('../../tests')
+from test_calibration_resnet50 import TestCalibration
 
 
-class TestInferQuantizeStrategy(unittest.TestCase):
+class TestInferQuantizeStrategy(TestCalibration):
     """
     Test API of Post Training quantization strategy for int8 with MKLDNN.
     """
 
-    def setUp(self):
-        self.cache_folder = os.path.expanduser(
-            '~/.cache/paddle/dataset/int8/download')
-        if not os.path.exists(self.cache_folder):
-            os.makedirs(self.cache_folder)
-
-        self.mobilenetv1 = 'mobilenetv1_int8_model.tar.gz'
-        self.small_data = 'imagenet_val_100_tail.tar.gz'
-        self.url_base = 'http://paddle-inference-dist.bj.bcebos.com/int8/'
-        urls = [
-            self.url_base + 'imagenet_val_100_tail.tar.gz',
-            self.url_base + 'mobilenetv1_int8_model.tar.gz'
-        ]
-        md5s = [
-            'b6e05365252f12f75e7daf3fcbc62e96',
-            '13892b0716d26443a8cdea15b3c6438b'
-        ]
-        for url, md5 in zip(urls, md5s):
-            download(url, self.cache_folder, md5)
-            file_name = url.split('/')[-1]
-            tar_file = tarfile.open(os.path.join(self.cache_folder, file_name))
-            target_dir = file_name.split('.')[0]
-            target_dir = os.path.join(self.cache_folder, target_dir)
-            tar_file.extractall(target_dir)
+    def download(self):
+        self.download_data([
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ], ['13892b0716d26443a8cdea15b3c6438b'], 'mobilenetv1_int8_model')
+        self.download_data([
+            'http://paddle-inference-dist.bj.bcebos.com/int8/imagenet_val_100_tail.tar.gz'
+        ], ['b6e05365252f12f75e7daf3fcbc62e96'], 'imagenet_val_100_tail', False)
 
     def _reader_creator(self, data_file='data.bin', cycle=False):
         def reader():
@@ -90,6 +74,7 @@ class TestInferQuantizeStrategy(unittest.TestCase):
     def test_infer_quant(self):
         if not fluid.core.is_compiled_with_mkldnn():
             return
+        self.download()
         config_path = './quantization/config_mkldnn_int8.yaml'
         with open(config_path, 'r+') as fp:
             data = fp.read()
