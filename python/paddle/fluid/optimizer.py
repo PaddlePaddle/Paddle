@@ -629,7 +629,7 @@ class MomentumOptimizer(Optimizer):
                 exe.run(fluid.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
-                    break
+
     """
     _velocity_acc_str = "velocity"
 
@@ -1175,7 +1175,6 @@ class AdamOptimizer(Optimizer):
                 exe.run(fluid.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
-                    break
 
     """
     _moment1_acc_str = "moment1"
