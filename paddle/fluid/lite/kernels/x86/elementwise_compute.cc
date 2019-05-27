@@ -101,7 +101,7 @@ class ElementwiseSubGradCompute
 }  // namespace paddle
 
 // float
-REGISTER_LITE_KERNEL(elementwise_sub, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(elementwise_sub, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::ElementwiseSubCompute<float>,
                      def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
@@ -109,7 +109,7 @@ REGISTER_LITE_KERNEL(elementwise_sub, kHost, kFloat, kNCHW,
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
 
-REGISTER_LITE_KERNEL(elementwise_sub_grad, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(elementwise_sub_grad, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::ElementwiseSubCompute<float>,
                      def)
     .BindInput(paddle::framework::GradVarName("Out"),

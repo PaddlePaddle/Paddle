@@ -107,16 +107,16 @@ class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 // float
 REGISTER_LITE_KERNEL(square, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::SquareCompute<float>, def)
-    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
 
 REGISTER_LITE_KERNEL(square_grad, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::SquareGradCompute<float>, def)
-    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput(paddle::framework::GradVarName("Out"),
-               {LiteType::GetTensorTy(TARGET(kHost))})
+               {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput(paddle::framework::GradVarName("X"),
-                {LiteType::GetTensorTy(TARGET(kHost))})
+                {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();

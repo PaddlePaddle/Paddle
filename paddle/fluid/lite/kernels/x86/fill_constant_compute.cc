@@ -53,7 +53,7 @@ class FillConstantCompute
 }  // namespace paddle
 
 // float
-REGISTER_LITE_KERNEL(fill_constant, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(fill_constant, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::FillConstantCompute<float>,
                      def)
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})

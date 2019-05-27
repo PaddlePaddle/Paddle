@@ -129,16 +129,21 @@ class MulGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(mul, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(mul, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::MulCompute<float>, def)
-    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
 
-REGISTER_LITE_KERNEL(mul_grad, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(mul_grad, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::MulGradCompute<float>, def)
-    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput(paddle::framework::GradVarName("Out"),
+               {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput(paddle::framework::GradVarName("X"),
+                {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput(paddle::framework::GradVarName("Y"),
+                {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();

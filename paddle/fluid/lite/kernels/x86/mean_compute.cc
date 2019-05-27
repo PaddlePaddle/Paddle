@@ -81,14 +81,14 @@ class MeanGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 // float
-REGISTER_LITE_KERNEL(mean, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(mean, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::MeanCompute<float>, def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput("Y", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
 
-REGISTER_LITE_KERNEL(mean_grad, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(mean_grad, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::MeanGradCompute<float>, def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput(paddle::framework::GradVarName("Out"),

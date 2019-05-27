@@ -73,8 +73,8 @@ class SGDCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 // float
 REGISTER_LITE_KERNEL(sgd, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::SGDCompute<float>, def)
-    .BindInput("Param", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("LearningRate", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("Grad", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindOutput("ParamOut", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("Param", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("LearningRate", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Grad", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("ParamOut", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
