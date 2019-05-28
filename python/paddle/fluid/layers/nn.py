@@ -4606,9 +4606,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
-            fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
+            fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
     helper = LayerHelper('reduce_sum', **locals())
@@ -4667,9 +4667,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_mean(x, dim=[1, 2]) # [2.5, 6.5]
-            fluid.layers.reduce_mean(x, dim=[0, 1]) # [4.0, 5.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
+            fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4725,9 +4725,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_max(x, dim=[1, 2]) # [4.0, 8.0]
-            fluid.layers.reduce_max(x, dim=[0, 1]) # [7.0, 8.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
+            fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4783,9 +4783,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_min(x, dim=[1, 2]) # [1.0, 5.0]
-            fluid.layers.reduce_min(x, dim=[0, 1]) # [1.0, 2.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
+            fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4842,9 +4842,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_prod(x, dim=[1, 2]) # [24.0, 1680.0]
-            fluid.layers.reduce_prod(x, dim=[0, 1]) # [105.0, 384.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
+            fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
