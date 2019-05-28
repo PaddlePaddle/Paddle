@@ -47,6 +47,33 @@ void fc_compute_eigen(const T* x, int x_h, int x_w,  //
   }
 }
 
+template <typename T>
+void softmax_basic(const T* din, T* dout, const int axis_size,
+                   const int inner_num, const int outer_num);
+
+template <typename T>
+void softmax_inner8_axis4(const T* din, T* dout, const int axis_size,
+                          const int inner_num, const int outer_num);
+
+template <typename T>
+void softmax_inner4_axis4(const T* din, T* dout, const int axis_size,
+                          const int inner_num, const int outer_num);
+template <typename T>
+void softmax_inner8(const T* din, T* dout, const int axis_size,
+                    const int inner_num, const int outer_num);
+
+template <typename T>
+void softmax_inner4(const T* din, T* dout, const int axis_size,
+                    const int inner_num, const int outer_num);
+
+template <typename T>
+void softmax_inner1_large_axis(const T* din, T* dout, const int outer_size,
+                               const int axis_size);
+
+template <typename T>
+void softmax_inner1_small_axis(const T* din, T* dout, const int outer_size,
+                               const int axis_size);
+
 }  // namespace math
 }  // namespace arm
 }  // namespace lite

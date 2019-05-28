@@ -82,6 +82,14 @@ struct ScaleParam {
   bool bias_after_scale{true};
 };
 
+// For Softmax Op
+struct SoftmaxParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+
+  int axis{-1};
+};
+
 /// ----------------------- element wise operators ----------------------
 struct ElementwiseParam {
   const lite::Tensor* X{};
