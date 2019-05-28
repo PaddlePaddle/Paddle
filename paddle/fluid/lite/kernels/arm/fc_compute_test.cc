@@ -15,6 +15,7 @@
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
 #include <gtest/gtest.h>
 #include <vector>
+#include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
@@ -22,35 +23,11 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-TEST(fc_compute_naive, test) {
-  lite::Tensor x, w, b, out, out1;
-  const int batch_size = 2;
-  x.Resize({batch_size, 3});
-  w.Resize({4, 3});
-  b.Resize({1, 4});
-  out.Resize({batch_size, 4});
-  out1.Resize({batch_size, 4});
-
-  auto x_data = x.mutable_data<float>();
-  auto w_data = w.mutable_data<float>();
-  auto b_data = b.mutable_data<float>();
-  auto out_data = out.mutable_data<float>();
-  auto out_data1 = out1.mutable_data<float>();
-
-  for (int i = 0; i < product(x.dims()); i++) x_data[i] = i;
-  for (int i = 0; i < product(w.dims()); i++) w_data[i] = i;
-  for (int i = 0; i < product(b.dims()); i++) b_data[i] = i;
-
-  fc_compute_naive(x_data, 3, batch_size,  //
-                   w_data, 3, 4,           //
-                   b_data, out_data);
-  fc_compute_eigen(x_data, 3, batch_size,  //
-                   w_data, 3, 4,           //
-                   b_data, out_data1);
-
-  for (int i = 0; i < product(out.dims()); i++) {
-    EXPECT_NEAR(out_data[0], out_data1[0], 1e-6);
-  }
+TEST(fc_arm, retrive_op) {
+  auto fc =
+      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("fc");
+  ASSERT_FALSE(fc.empty());
+  ASSERT_TRUE(fc.front());
 }
 
 TEST(fc_arm, init) {
@@ -59,23 +36,66 @@ TEST(fc_arm, init) {
   ASSERT_EQ(fc.target(), TARGET(kARM));
 }
 
-TEST(fc_arm, algorithm) {
-  using matrix_t = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
-  using matrix_map_t = Eigen::Map<matrix_t>;
+TEST(fc_arm, compare_test) {
+  lite::Tensor x, w, b, out, ref;
+  constexpr int batch_size = 2;
+  x.Resize({batch_size, 3});
+  w.Resize({3, 4});
+  b.Resize({1, 4});
+  out.Resize({batch_size, 4});
+  ref.Resize({batch_size, 4});
 
-  // dim 10, 20
-  std::vector<float> input(10 * 20);
-  std::vector<float> w(20 * 20);
-  std::vector<float> output(10 * 20);
+  auto x_data = x.mutable_data<float>();
+  auto w_data = w.mutable_data<float>();
+  auto b_data = b.mutable_data<float>();
+  auto out_data = out.mutable_data<float>();
+  auto ref_data = ref.mutable_data<float>();
 
-  Eigen::Map<const matrix_t> input_mat(input.data(), 10, 20);
-  Eigen::Map<const matrix_t> weight_mat(w.data(), 20, 20);
-  matrix_map_t output_mat(output.data(), 10, 20);
+  for (int64_t i = 0; i < x.dims().product(); i++) {
+    x_data[i] = static_cast<float>(i);
+  }
+  for (int64_t i = 0; i < w.dims().product(); i++) {
+    w_data[i] = static_cast<float>(i);
+  }
+  for (int64_t i = 0; i < b.dims().product(); i++) {
+    b_data[i] = static_cast<float>(i);
+  }
 
-  output_mat = weight_mat.transpose() * input_mat;
+  // TODO(TJ): enable bias soon
+  b_data = nullptr;
+  lite::arm::math::fc_compute_eigen(x_data, batch_size, 3,  //
+                                    w_data, 3, 4,           //
+                                    b_data, ref_data);
+
+  // fc compute kernel
+  FcCompute fc;
+  operators::FcParam param;
+
+  param.in_num_col_dims = 1;
+  param.input = &x;
+  param.w = &w;
+  param.bias = nullptr;
+  param.output = &out;
+  param.in_mat_dims = x.dims();
+
+  DeviceInfo::init_info();
+  std::unique_ptr<KernelContext> ctx(new KernelContext);
+  ctx->As<ARMContext>();
+  fc.SetParam(param);
+  fc.SetContext(std::move(ctx));
+  fc.Run();
+
+  VLOG(3) << "output vs ref";
+  for (int i = 0; i < out.dims().product(); i++) {
+    VLOG(3) << out_data[i] << " vs " << ref_data[i];
+  }
+
+  for (int i = 0; i < out.dims().product(); ++i) {
+    EXPECT_NEAR(out_data[i], ref_data[i], 1e-5);
+  }
 }
 
-TEST(fc_arm, compute) {
+TEST(fc_arm, num_col_dims) {
   FcCompute fc;
   operators::FcParam param;
 
@@ -84,20 +104,28 @@ TEST(fc_arm, compute) {
   lite::Tensor bias;
   lite::Tensor output;
 
-  x.Resize(DDim(std::vector<int64_t>({1, 10, 20})));
-  w.Resize(DDim(std::vector<int64_t>({20, 20})));
-  bias.Resize(DDim(std::vector<int64_t>({1, 10})));
-  output.Resize(DDim(std::vector<int64_t>({10, 20})));
+  x.Resize({1, 2, 3});
+  w.Resize({3, 4});
+  bias.Resize({1, 4});
+  output.Resize({2, 4});
 
   auto* x_data = x.mutable_data<float>();
   auto* w_data = w.mutable_data<float>();
   auto* bias_data = bias.mutable_data<float>();
   auto* output_data = output.mutable_data<float>();
 
-  for (int i = 0; i < 10 * 20; i++) x_data[i] = i;
-  for (int i = 0; i < 20 * 20; i++) w_data[i] = i;
-  for (int i = 0; i < 10; i++) bias_data[i] = i;
-  for (int i = 0; i < 10 * 20; i++) output_data[i] = 0;
+  for (int64_t i = 0; i < x.dims().product(); i++) {
+    x_data[i] = static_cast<float>(i);
+  }
+  for (int64_t i = 0; i < w.dims().product(); i++) {
+    w_data[i] = static_cast<float>(i);
+  }
+  for (int64_t i = 0; i < bias.dims().product(); i++) {
+    bias_data[i] = static_cast<float>(i);
+  }
+  for (int64_t i = 0; i < output.dims().product(); i++) {
+    output_data[i] = static_cast<float>(i);
+  }
 
   param.in_num_col_dims = 2;
   param.input = &x;
@@ -106,20 +134,13 @@ TEST(fc_arm, compute) {
   param.output = &output;
   param.in_mat_dims = x.dims();
 
+  std::unique_ptr<KernelContext> ctx(new KernelContext);
+  ctx->As<ARMContext>();
+  DeviceInfo::init_info();
+
   fc.SetParam(param);
+  fc.SetContext(std::move(ctx));
   fc.Run();
-
-  LOG(INFO) << "x";
-  for (int i = 0; i < 10 * 20; i++) LOG(INFO) << x_data[i];
-
-  LOG(INFO) << "output:";
-  for (int i = 0; i < 10 * 20; i++) LOG(INFO) << output.data<float>()[i];
-}
-
-TEST(fc, retrive_op) {
-  auto fc =
-      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("fc");
-  ASSERT_TRUE(fc);
 }
 
 }  // namespace arm

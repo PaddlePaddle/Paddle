@@ -60,7 +60,7 @@ class SquareCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
   using param_t = operators::ActivationParam;
 
   void Run() override {
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::ActivationParam>();
     CHECK(context.x86_device_context);
 
@@ -82,7 +82,7 @@ class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
   using param_t = operators::ActivationGradParam;
 
   void Run() override {
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::ActivationGradParam>();
     CHECK(context.x86_device_context);
     param.X_grad->template mutable_data<T>();

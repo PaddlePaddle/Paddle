@@ -16,6 +16,8 @@ if(NOT ANDROID)
     return()
 endif()
 
+add_definitions(-DLITE_WITH_ANDROID)
+
 if(NOT DEFINED ANDROID_NDK)
     set(ANDROID_NDK $ENV{NDK_ROOT})
     if(NOT ANDROID_NDK)
