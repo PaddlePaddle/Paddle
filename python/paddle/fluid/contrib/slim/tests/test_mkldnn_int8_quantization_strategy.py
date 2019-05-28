@@ -17,6 +17,7 @@ import unittest
 import os
 import sys
 import struct
+import shutil
 import numpy as np
 import paddle.fluid as fluid
 from mobilenet import MobileNet
@@ -26,18 +27,10 @@ sys.path.append('../../tests')
 from test_calibration_resnet50 import TestCalibration
 
 
-class TestInferQuantizeStrategy(TestCalibration):
+class TestMKLDNNPostTrainingQuantStrategy(TestCalibration):
     """
     Test API of Post Training quantization strategy for int8 with MKLDNN.
     """
-
-    def download(self):
-        self.download_data([
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        ], ['13892b0716d26443a8cdea15b3c6438b'], 'mobilenetv1_int8_model')
-        self.download_data([
-            'http://paddle-inference-dist.bj.bcebos.com/int8/imagenet_val_100_tail.tar.gz'
-        ], ['b6e05365252f12f75e7daf3fcbc62e96'], 'imagenet_val_100_tail', False)
 
     def _reader_creator(self, data_file='data.bin', cycle=False):
         def reader():
@@ -71,28 +64,31 @@ class TestInferQuantizeStrategy(TestCalibration):
 
         return reader
 
-    def test_infer_quant(self):
-        if not fluid.core.is_compiled_with_mkldnn():
-            return
-        self.download()
+    def _update_config_file(self, model_name):
         config_path = './quantization/config_mkldnn_int8.yaml'
-        with open(config_path, 'r+') as fp:
+        new_config_path = './quantization/{0}.yaml'.format(model_name)
+        shutil.copy(config_path, new_config_path)
+
+        with open(new_config_path, 'r+') as fp:
             data = fp.read()
-        model_path = os.path.join(self.cache_folder,
-                                  'mobilenetv1_int8_model/model')
+        model_path = '{0}/model'.format(model_name)
+        model_path = os.path.join(self.cache_folder, model_path)
         data = data.replace('MODEL_PATH', model_path)
-        with open(config_path, 'w') as fp:
+        output_path = './{0}/int8'.format(model_name)
+        data = data.replace('OUTPUT_PATH', output_path)
+        with open(new_config_path, 'w') as fp:
             fp.write(data)
 
-        data_path = os.path.join(self.cache_folder,
-                                 'imagenet_val_100_tail/data.bin')
+        return new_config_path
+
+    def _test_int8_quant(self, data_path, config_path):
         #warmup dataset, only use the first batch data
         test_reader = paddle.batch(
             self._reader_creator(data_path, False), batch_size=100)
         com_pass = Compressor(
-            None,
-            None,
-            None,
+            place=None,
+            scope=None,
+            train_program=None,
             train_reader=None,
             train_feed_list=[],
             train_fetch_list=[],
@@ -106,6 +102,32 @@ class TestInferQuantizeStrategy(TestCalibration):
             distiller_optimizer=None)
         com_pass.config(config_path)
         eval_graph = com_pass.run()
+
+    def test_post_traing_quant_int8(self):
+        if not fluid.core.is_compiled_with_mkldnn():
+            return
+
+        base_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/'
+        self.download_data([base_url + 'imagenet_val_100_tail.tar.gz'],
+                           ['b6e05365252f12f75e7daf3fcbc62e96'],
+                           'imagenet_val_100_tail', False)
+        data_path = os.path.join(self.cache_folder,
+                                 'imagenet_val_100_tail/data.bin')
+
+        model_urls = [
+            base_url + 'mobilenetv1_int8_model.tar.gz',
+            base_url + 'resnet50_int8_model.tar.gz'
+        ]
+        md5s = [
+            '13892b0716d26443a8cdea15b3c6438b',
+            '4a5194524823d9b76da6e738e1367881'
+        ]
+        for model_url, md5 in zip(model_urls, md5s):
+            model_name = model_url.split('/')[-1]
+            model_name = model_name.split('.')[0]
+            self.download_data([model_url], [md5], model_name)
+            config_path = self._update_config_file(model_name)
+            self._test_int8_quant(data_path, config_path)
 
 
 if __name__ == '__main__':

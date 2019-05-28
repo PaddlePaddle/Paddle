@@ -467,7 +467,7 @@ class Compressor(object):
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
-        if 'InferQuantStrategy' in [
+        if 'MKLDNNPostTrainingQuantStrategy' in [
                 i.__class__.__name__ for i in self.strategies
         ]:
             return

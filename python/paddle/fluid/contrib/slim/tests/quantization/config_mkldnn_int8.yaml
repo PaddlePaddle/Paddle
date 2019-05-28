@@ -1,13 +1,11 @@
 version: 1.0
 strategies:
-    infer_quant_strategy:
-        class: 'InferQuantStrategy'
-        start_epoch: 0
-        end_epoch: 0
-        int8_model_save_path: './output/int8'
+    mkldnn_post_training_strategy:
+        class: 'MKLDNNPostTrainingQuantStrategy'
+        int8_model_save_path: 'OUTPUT_PATH'
         fp32_model_path: 'MODEL_PATH'
 compressor:
     epoch: 0
     checkpoint_path: ''
     strategies:
-        - infer_quant_strategy
+        - mkldnn_post_training_strategy 

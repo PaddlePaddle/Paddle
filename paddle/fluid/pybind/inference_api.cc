@@ -259,7 +259,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
 #ifdef PADDLE_WITH_MKLDNN
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
-      .def("quantizer_enabled", &AnalysisConfig::mkldnn_quantizer_enabled)
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
 #endif
