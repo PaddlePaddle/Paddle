@@ -49,6 +49,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
 
 FeedFetchList FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
