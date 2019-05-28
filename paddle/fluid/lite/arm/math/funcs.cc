@@ -21,14 +21,14 @@ namespace arm {
 namespace math {
 
 template <>
-void fill_bias_fc<float>(float *tensor, const float *bias, const int num,
+void fill_bias_fc<float>(float *out, const float *bias, const int num,
                          const int channel) {
   int cnt = channel >> 4;
   int remain = channel & 15;
 
   for (int j = 0; j < num; ++j) {
     const float *ptr_bias = bias;
-    float *ptr_out = tensor + j * channel;
+    float *ptr_out = out + j * channel;
 
     float32x4_t vout1;
     float32x4_t vout2;
@@ -61,7 +61,6 @@ void fill_bias_fc<float>(float *tensor, const float *bias, const int num,
       ptr_out += 16;
       ptr_bias += 16;
     }
-
 #if 0
         if (cnt > 0) {
             asm(
@@ -79,21 +78,21 @@ void fill_bias_fc<float>(float *tensor, const float *bias, const int num,
             );
         }
 #endif
-    for (; remain > 0; remain--) {
+    for (int i = 0; i < remain; ++i) {
       *(ptr_out++) += *(ptr_bias++);
     }
   }
 }
 
 template <>
-void fill_bias_fc<int>(int *tensor, const int *bias, const int num,
+void fill_bias_fc<int>(int *out, const int *bias, const int num,
                        const int channel) {
   int cnt = channel >> 4;
   int remain = channel & 15;
 
   for (int j = 0; j < num; ++j) {
     const int *ptr_bias = bias;
-    int *ptr_out = tensor + j * channel;
+    int *ptr_out = out + j * channel;
 
     int32x4_t vout1;
     int32x4_t vout2;
@@ -144,7 +143,7 @@ void fill_bias_fc<int>(int *tensor, const int *bias, const int num,
         );
     }
 #endif
-    for (; remain > 0; remain--) {
+    for (int i = 0; i < remain; ++i) {
       *(ptr_out++) += *(ptr_bias++);
     }
   }

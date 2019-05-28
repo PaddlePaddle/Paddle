@@ -45,7 +45,8 @@ if (NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
 endif()
 
 if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
-    message(STATUS "NEON is enabled on arm-v7a")
+    set(CMAKE_ANDROID_ARM_NEON ON)
+    message(STATUS "NEON is enabled on arm-v7a with softfp")
 endif()
 
 set(ANDROID_STL_TYPE_LITS "gnustl_static" "c++_static")

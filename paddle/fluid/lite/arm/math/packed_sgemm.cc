@@ -2751,7 +2751,7 @@ void sgemm_conv_4x8(const float* A_packed, const float* B, const float* bias,
                     bool transB, ARMContext* ctx) {
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
-  void* workspace = ctx->get_work_space();
+  auto* workspace = ctx->workspace_data<float>();
   int threads = ctx->threads();
   //! MBLOCK * x (result) + MBLOCK * k (A) + x * k (B) = l2
   int x_block =
@@ -2785,7 +2785,7 @@ void sgemm_conv_4x8(const float* A_packed, const float* B, const float* bias,
       flag_p_remain = true;
     }
     //! load bpanel
-    float* b_pannel = static_cast<float*>(workspace);
+    float* b_pannel = workspace;
     if (transB) {
       loadb_trans(b_pannel, B, K, 0, K, x0, xmax);
     } else {
