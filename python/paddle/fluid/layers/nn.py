@@ -7778,7 +7778,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
-def gather(input, index):
+def gather(input, index, overwrite=True):
     """
     **Gather Layer**
 
@@ -7809,6 +7809,12 @@ def gather(input, index):
     Args:
         input (Variable): The source input with rank>=1.
         index (Variable): The index input with rank=1.
+        overwrite (bool): The mode that update the grad when has same index.
+            If True, use the overwrite mode to update the grad of the same index,
+	    if False, use the accumulate mode to update the grad of the same index. 
+	    Default value is True.
+	    
+
 
     Returns:
         output (Variable): The output is a tensor with the same rank as input.
@@ -7828,7 +7834,8 @@ def gather(input, index):
         type="gather",
         inputs={"X": input,
                 "Index": index},
-        outputs={"Out": out})
+        outputs={"Out": out},
+        attrs={'overwrite': overwrite})
     return out
 
 
