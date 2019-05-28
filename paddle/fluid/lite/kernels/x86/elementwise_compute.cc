@@ -38,7 +38,7 @@ class ElementwiseSubCompute
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     CHECK(context.x86_device_context);
 
     param.Out->template mutable_data<T>();

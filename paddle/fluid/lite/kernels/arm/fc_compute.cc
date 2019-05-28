@@ -22,7 +22,6 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-// NOTE should use pure std C++ implementation.
 void FcCompute::Run() {
   auto& param = this->Param<operators::FcParam>();
   auto x_dims = param.input->dims();
@@ -30,8 +29,8 @@ void FcCompute::Run() {
 
   CHECK_GE(x_dims.size(), 2UL);
   CHECK_EQ(w_dims.size(), 2UL);
-
   CHECK_EQ(param.output->dims().size(), 2UL);
+
   const auto* i_data = param.input->data<float>();
   const auto* w_data = param.w->data<float>();
   const auto* b_data = param.bias ? param.bias->data<float>() : nullptr;

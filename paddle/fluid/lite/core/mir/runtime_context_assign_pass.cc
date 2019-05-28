@@ -32,7 +32,6 @@ class RuntimeContextAssignPass : public StmtPass {
       if (!node.IsStmt()) continue;
 
       auto& inst = node.AsStmt();
-      LOG(INFO) << "--------------------in context??????";
       switch (inst.picked_kernel().target()) {
         case TARGET(kHost):
         case TARGET(kX86):
@@ -59,14 +58,15 @@ class RuntimeContextAssignPass : public StmtPass {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
     ctx->As<HostContext>();
     // Some initialization here.
+
     return ctx;
   }
 
 #ifdef LITE_WITH_ARM
   std::unique_ptr<KernelContext> NewARMContext() {
+    DeviceInfo::init_info();
     std::unique_ptr<KernelContext> ctx(new KernelContext);
-    // auto& arm = ctx->As<ARMContext>();
-    // todo init
+    ctx->As<ARMContext>();
     return ctx;
   }
 #endif

@@ -48,12 +48,11 @@ void ARMContext::set_cache(int l1size, int l2size, int l3size) {
 }
 
 ARMContext::ARMContext() {
-  //! 1 thread, big core
-  act_ids_ = {0};
+  active_ids_ = {0};
   mode_ = LITE_POWER_HIGH;
   DeviceInfo& dev = DeviceInfo::Global();
   workspace_.Resize(
-      {static_cast<int64_t>(dev.L2_cache_[act_ids_[0]] / sizeof(float))});
+      {static_cast<int64_t>(dev.L2_cache_[active_ids_[0]] / sizeof(float))});
 #ifdef TARGET_IOS
   arch_ = APPLE;  // use 6x8
 #else
@@ -65,11 +64,11 @@ ARMContext::ARMContext() {
 
 PowerMode ARMContext::get_mode() const { return mode_; }
 
-int ARMContext::get_threads() const { return act_ids_.size(); }
+int ARMContext::get_threads() const { return active_ids_.size(); }
 
 ARMContext::ARMContext(const ARMContext& ctx) {
   mode_ = ctx.mode_;
-  act_ids_ = ctx.act_ids_;
+  active_ids_ = ctx.active_ids_;
   workspace_ = ctx.workspace_;
   arch_ = ctx.arch_;
   count_ = ctx.count_;
@@ -77,7 +76,7 @@ ARMContext::ARMContext(const ARMContext& ctx) {
 
 ARMContext& ARMContext::operator=(const ARMContext& ctx) {
   mode_ = ctx.mode_;
-  act_ids_ = ctx.act_ids_;
+  active_ids_ = ctx.active_ids_;
   workspace_ = ctx.workspace_;
   arch_ = ctx.arch_;
   count_ = ctx.count_;
@@ -86,7 +85,7 @@ ARMContext& ARMContext::operator=(const ARMContext& ctx) {
 
 void ARMContext::bind_dev() {
 #ifdef USE_OPENMP
-  int num_threads = act_ids_.size();
+  int num_threads = active_ids_.size();
   omp_set_num_threads(num_threads);
 #ifdef LITE_WITH_ANDROID
   std::vector<int> ssarets;
@@ -95,11 +94,11 @@ void ARMContext::bind_dev() {
   }
 #pragma omp parallel for
   for (int i = 0; i < num_threads; i++) {
-    ssarets[i] = set_sched_affinity(act_ids_);
+    ssarets[i] = set_sched_affinity(active_ids_);
   }
   for (int i = 0; i < num_threads; i++) {
     if (ssarets[i] != 0) {
-      LOGE("set cpu affinity failed, cpuID: %d\n", act_ids_[i]);
+      LOGE("set cpu affinity failed, cpuID: %d\n", active_ids_[i]);
       return;
     }
   }
@@ -107,10 +106,10 @@ void ARMContext::bind_dev() {
 #else   // USE_OPENMP
 #ifdef LITE_WITH_ANDROID
   std::vector<int> cpuid1;
-  cpuid1.push_back(act_ids_[0]);
+  cpuid1.push_back(active_ids_[0]);
   int ssaret = set_sched_affinity(cpuid1);
   if (ssaret != 0) {
-    printf("set cpu affinity failed, cpuID: %d\n", act_ids_[0]);
+    printf("set cpu affinity failed, cpuID: %d\n", active_ids_[0]);
     return;
   }
 #endif  // LITE_WITH_ANDROID
@@ -130,94 +129,94 @@ void ARMContext::set_run_mode(PowerMode mode, int threads) {
   switch (mode) {
     case LITE_POWER_FULL:
       mode_ = mode;
-      act_ids_.clear();
+      active_ids_.clear();
       for (int i = 0; i < threads; ++i) {
         if (i < big_core_size) {
-          act_ids_.push_back(dev.big_core_ids_[i]);
+          active_ids_.push_back(dev.big_core_ids_[i]);
         } else {
-          act_ids_.push_back(dev.little_core_ids_[i - big_core_size]);
+          active_ids_.push_back(dev.little_core_ids_[i - big_core_size]);
         }
       }
-      if (act_ids_.size() == 0) {
-        act_ids_.push_back(0);
+      if (active_ids_.size() == 0) {
+        active_ids_.push_back(0);
       }
       break;
     case LITE_POWER_HIGH:
-      act_ids_.clear();
+      active_ids_.clear();
       if (big_core_size > 0) {
         mode_ = LITE_POWER_HIGH;
         if (threads > big_core_size) {
           LOGE("threads: %d, exceed the big cores size: %d\n", threads,
                big_core_size);
-          act_ids_ = dev.big_core_ids_;
+          active_ids_ = dev.big_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(dev.big_core_ids_[i]);
+            active_ids_.push_back(dev.big_core_ids_[i]);
           }
         }
       } else {
         mode_ = LITE_POWER_LOW;
         LOGE("HIGH POWER MODE is not support, switch to little cores\n");
         if (threads > small_core_size) {
-          act_ids_ = dev.little_core_ids_;
+          active_ids_ = dev.little_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(dev.little_core_ids_[i]);
+            active_ids_.push_back(dev.little_core_ids_[i]);
           }
         }
       }
-      if (act_ids_.size() == 0) {
-        act_ids_.push_back(0);
+      if (active_ids_.size() == 0) {
+        active_ids_.push_back(0);
       }
       break;
     case LITE_POWER_LOW:
-      act_ids_.clear();
+      active_ids_.clear();
       if (small_core_size > 0) {
         mode_ = LITE_POWER_LOW;
         if (threads > small_core_size) {
           LOGW("threads: %d, exceed the little cores size: %d\n", threads,
                small_core_size);
-          act_ids_ = dev.little_core_ids_;
+          active_ids_ = dev.little_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(dev.little_core_ids_[i]);
+            active_ids_.push_back(dev.little_core_ids_[i]);
           }
         }
       } else {
         mode_ = LITE_POWER_HIGH;
         LOGW("LOW POWER MODE is not support, switch to big cores\n");
         if (threads > big_core_size) {
-          act_ids_ = dev.big_core_ids_;
+          active_ids_ = dev.big_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(dev.big_core_ids_[i]);
+            active_ids_.push_back(dev.big_core_ids_[i]);
           }
         }
       }
-      if (act_ids_.size() == 0) {
-        act_ids_.push_back(0);
+      if (active_ids_.size() == 0) {
+        active_ids_.push_back(0);
       }
       break;
     case LITE_POWER_NO_BIND:
       mode_ = LITE_POWER_NO_BIND;
-      act_ids_.clear();
+      active_ids_.clear();
       if (threads > dev.core_ids_.size()) {
-        act_ids_.resize(dev.core_ids_.size());
+        active_ids_.resize(dev.core_ids_.size());
       } else {
-        act_ids_.resize(threads);
+        active_ids_.resize(threads);
       }
       break;
     case LITE_POWER_RAND_HIGH:
-      act_ids_.clear();
+      active_ids_.clear();
       if (big_core_size > 0) {
         mode_ = LITE_POWER_RAND_HIGH;
         if (threads > big_core_size) {
           LOGW("threads: %d, exceed the big cores size: %d\n", threads,
                big_core_size);
-          act_ids_ = dev.big_core_ids_;
+          active_ids_ = dev.big_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(
+            active_ids_.push_back(
                 dev.big_core_ids_[(i + shift_num) % big_core_size]);
           }
         }
@@ -225,28 +224,28 @@ void ARMContext::set_run_mode(PowerMode mode, int threads) {
         mode_ = LITE_POWER_LOW;
         LOGW("HIGH POWER MODE is not support, switch to little cores\n");
         if (threads > small_core_size) {
-          act_ids_ = dev.little_core_ids_;
+          active_ids_ = dev.little_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(dev.little_core_ids_[i]);
+            active_ids_.push_back(dev.little_core_ids_[i]);
           }
         }
       }
-      if (act_ids_.size() == 0) {
-        act_ids_.push_back(0);
+      if (active_ids_.size() == 0) {
+        active_ids_.push_back(0);
       }
       break;
     case LITE_POWER_RAND_LOW:
-      act_ids_.clear();
+      active_ids_.clear();
       if (small_core_size > 0) {
         mode_ = LITE_POWER_RAND_LOW;
         if (threads > small_core_size) {
           LOGW("threads: %d, exceed the little cores size: %d\n", threads,
                small_core_size);
-          act_ids_ = dev.little_core_ids_;
+          active_ids_ = dev.little_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(
+            active_ids_.push_back(
                 dev.little_core_ids_[(i + shift_num) % small_core_size]);
           }
         }
@@ -254,44 +253,44 @@ void ARMContext::set_run_mode(PowerMode mode, int threads) {
         mode_ = LITE_POWER_HIGH;
         LOGW("LOW POWER MODE is not support, switch to big cores\n");
         if (threads > big_core_size) {
-          act_ids_ = dev.big_core_ids_;
+          active_ids_ = dev.big_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
-            act_ids_.push_back(dev.big_core_ids_[i]);
+            active_ids_.push_back(dev.big_core_ids_[i]);
           }
         }
       }
-      if (act_ids_.size() == 0) {
-        act_ids_.push_back(0);
+      if (active_ids_.size() == 0) {
+        active_ids_.push_back(0);
       }
       break;
   }
   //! fix multi-threads LITE_POWER_HIGH mode
   if (mode_ == LITE_POWER_NO_BIND || threads > 1) {
-    int threads = act_ids_.size();
+    int threads = active_ids_.size();
     omp_set_num_threads(threads);
   } else {
-    if (check_online(act_ids_)) {
+    if (check_online(active_ids_)) {
       bind_dev();
     } else {
-      LOG(ERROR) << "core id " << act_ids_[0]
+      LOG(ERROR) << "core id " << active_ids_[0]
                  << " is offline, switch to NO BIND MODE";
-      int threads = act_ids_.size();
+      int threads = active_ids_.size();
       omp_set_num_threads(threads);
     }
   }
 #else
   if (big_core_size > 0) {
-    act_ids_ = {dev.big_core_ids_[0]};
+    active_ids_ = {dev.big_core_ids_[0]};
   } else {
-    act_ids_ = {0};
+    active_ids_ = {0};
   }
 #endif
   //! alloc memory for sgemm in this context
   int temp_mem_size =
-      DeviceInfo::Global().L2_cache_[act_ids_[0]] / sizeof(float);
+      DeviceInfo::Global().L2_cache_[active_ids_[0]] / sizeof(float);
   workspace_.Resize({temp_mem_size});
-  arch_ = DeviceInfo::Global().archs_[act_ids_[0]];
+  arch_ = DeviceInfo::Global().archs_[active_ids_[0]];
 }
 
 ARMArch ARMContext::get_arch() const { return arch_; }
@@ -300,17 +299,17 @@ void ARMContext::set_arch(ARMArch arch) { arch_ = arch; }
 
 int ARMContext::l1_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
-  return dev.L1_cache_[act_ids_[0]];
+  return dev.L1_cache_[active_ids_[0]];
 }
 
 int ARMContext::l2_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
-  return dev.L2_cache_[act_ids_[0]];
+  return dev.L2_cache_[active_ids_[0]];
 }
 
 int ARMContext::l3_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
-  return dev.L3_cache_[act_ids_[0]];
+  return dev.L3_cache_[active_ids_[0]];
 }
 
 bool ARMContext::workspace_extend(DDimLite dims) {

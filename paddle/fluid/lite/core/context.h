@@ -67,7 +67,7 @@ struct ARMContext {
   //! LITE_POWER_FULL stands for using all cores
   ARMArch arch_;
   PowerMode mode_;
-  std::vector<int> act_ids_;
+  std::vector<int> active_ids_;
   TensorLite workspace_;
   int64_t count_{0};
 };

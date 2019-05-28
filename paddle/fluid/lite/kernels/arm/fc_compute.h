@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <Eigen/Core>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
 
@@ -21,26 +20,6 @@ namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
-
-template <typename T>
-void fc_compute_eigen(const T* x, int x_h, int x_w,  //
-                      const T* w, int w_h, int w_w,  //
-                      const T* b,                    //
-                      T* out) {
-  using matrix_t =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
-  Eigen::Map<const matrix_t> X(x, x_h, x_w);
-  Eigen::Map<const matrix_t> W(w, w_h, w_w);
-  Eigen::Map<matrix_t> Out(out, x_h, w_w);
-
-  Out = X * W;
-
-  if (b) {
-    Eigen::Map<const Eigen::Matrix<T, 1, Eigen::Dynamic>> B(b, w_w);
-    Out = Out.array().rowwise() + B.array();
-  }
-}
 
 class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:

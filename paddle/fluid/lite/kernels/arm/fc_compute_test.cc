@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
+#include <Eigen/Core>  // move to math
+
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"
@@ -21,6 +23,26 @@ namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
+
+template <typename T>
+void fc_compute_eigen(const T* x, int x_h, int x_w,  //
+                      const T* w, int w_h, int w_w,  //
+                      const T* b,                    //
+                      T* out) {
+  using matrix_t =
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
+  Eigen::Map<const matrix_t> X(x, x_h, x_w);
+  Eigen::Map<const matrix_t> W(w, w_h, w_w);
+  Eigen::Map<matrix_t> Out(out, x_h, w_w);
+
+  Out = X * W;
+
+  if (b) {
+    Eigen::Map<const Eigen::Matrix<T, 1, Eigen::Dynamic>> B(b, w_w);
+    Out = Out.array().rowwise() + B.array();
+  }
+}
 
 TEST(fc_arm, retrive_op) {
   auto fc =
@@ -60,6 +82,8 @@ TEST(fc_arm, compare_test) {
     b_data[i] = static_cast<float>(i);
   }
 
+  // TODO(TJ): enable bias soon
+  b_data = nullptr;
   fc_compute_eigen(x_data, batch_size, 3,  //
                    w_data, 3, 4,           //
                    b_data, ref_data);
@@ -71,12 +95,21 @@ TEST(fc_arm, compare_test) {
   param.in_num_col_dims = 1;
   param.input = &x;
   param.w = &w;
-  param.bias = &b;
+  param.bias = nullptr;
   param.output = &out;
   param.in_mat_dims = x.dims();
 
+  DeviceInfo::init_info();
+  std::unique_ptr<KernelContext> ctx(new KernelContext);
+  ctx->As<ARMContext>();
   fc.SetParam(param);
+  fc.SetContext(std::move(ctx));
   fc.Run();
+
+  VLOG(3) << "output vs ref";
+  for (int i = 0; i < out.dims().product(); i++) {
+    VLOG(3) << out_data[i] << " vs " << ref_data[i];
+  }
 
   for (int i = 0; i < out.dims().product(); ++i) {
     EXPECT_NEAR(out_data[i], ref_data[i], 1e-5);
@@ -122,18 +155,13 @@ TEST(fc_arm, num_col_dims) {
   param.output = &output;
   param.in_mat_dims = x.dims();
 
+  std::unique_ptr<KernelContext> ctx(new KernelContext);
+  ctx->As<ARMContext>();
+  DeviceInfo::init_info();
+
   fc.SetParam(param);
+  fc.SetContext(std::move(ctx));
   fc.Run();
-
-  VLOG(3) << "x:";
-  for (int64_t i = 0; i < 2 * 3; i++) {
-    VLOG(3) << x_data[i];
-  }
-
-  VLOG(3) << "output:";
-  for (int i = 0; i < 2 * 4; i++) {
-    VLOG(3) << output.data<float>()[i];
-  }
 }
 
 }  // namespace arm

@@ -24,6 +24,7 @@ void DeviceInfo::get_info(DeviceInfo* dev) {
   set_default_cache(dev);
   dev->compute_core_num_ = arm_get_cpucount();
   dev->max_memory_ = arm_get_meminfo();
+
 // get max freq
 #ifdef LITE_WITH_ANDROID
   std::vector<int> max_freq(dev->compute_core_num_);
@@ -57,11 +58,11 @@ void DeviceInfo::get_info(DeviceInfo* dev) {
   for (int i = 0; i < dev->compute_core_num_; ++i) {
     LOG(INFO) << dev->L1_cache_[i] / 1024 << " KB";
   }
-  LOG(INFO) << "\nL2 Cache size is: ";
+  LOG(INFO) << "L2 Cache size is: ";
   for (int i = 0; i < dev->compute_core_num_; ++i) {
     LOG(INFO) << dev->L2_cache_[i] / 1024 << " KB";
   }
-  LOG(INFO) << "\nTotal memory: " << dev->max_memory_ << "KB";
+  LOG(INFO) << "Total memory: " << dev->max_memory_ << "KB";
 
   dev->max_freq_ = max_freq[0];
   for (int j = 1; j < dev->compute_core_num_; ++j) {
