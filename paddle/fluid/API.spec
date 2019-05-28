@@ -255,7 +255,7 @@ paddle.fluid.layers.create_tensor (ArgSpec(args=['dtype', 'name', 'persistable']
 paddle.fluid.layers.create_parameter (ArgSpec(args=['shape', 'dtype', 'name', 'attr', 'is_bias', 'default_initializer'], varargs=None, keywords=None, defaults=(None, None, False, None)), ('document', 'd62b866c899bc1fedb5385f95b88e1f8'))
 paddle.fluid.layers.create_global_var (ArgSpec(args=['shape', 'value', 'dtype', 'persistable', 'force_cpu', 'name'], varargs=None, keywords=None, defaults=(False, False, None)), ('document', 'ab914fac893607e29ac6e52bbdbea1a4'))
 paddle.fluid.layers.cast (ArgSpec(args=['x', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '992eb42590fc1c380841a6db72ce78b3'))
-paddle.fluid.layers.tensor_array_to_tensor (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(1, None)), ('document', '16afc48c3b51e22618af2a51578dd7fd'))
+paddle.fluid.layers.tensor_array_to_tensor (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(1, None)), ('document', '764c095ba4562ae740f979e970152d6e'))
 paddle.fluid.layers.concat (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(0, None)), ('document', 'f9e905b48123914c78055a45fe23106a'))
 paddle.fluid.layers.sums (ArgSpec(args=['input', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '5df743d578638cd2bbb9369499b44af4'))
 paddle.fluid.layers.assign (ArgSpec(args=['input', 'output'], varargs=None, keywords=None, defaults=(None,)), ('document', 'b690184f3537df5501e4d9d8f31152a5'))
