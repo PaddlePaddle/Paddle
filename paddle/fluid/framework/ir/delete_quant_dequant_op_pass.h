@@ -13,21 +13,22 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include <vector>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace memory {
-namespace allocation {
+namespace framework {
+namespace ir {
 
-class AllocationWithUnderlying : public Allocation {
+class DeleteQuantDequantOpPass : public FusePassBase {
  public:
-  explicit AllocationWithUnderlying(AllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
-        allocation_(std::move(allocation)) {}
-  AllocationPtr allocation_;
+  virtual ~DeleteQuantDequantOpPass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-}  // namespace allocation
-}  // namespace memory
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle

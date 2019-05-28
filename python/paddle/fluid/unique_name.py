@@ -55,10 +55,75 @@ generator = UniqueNameGenerator()
 
 
 def generate(key):
+    """
+    Generate unique name with prefix key.
+
+    Args:
+        key(str): The generated name prefix. All generated name will be 
+                  started with this prefix.
+
+    Returns: 
+        str: A unique string with the prefix key.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            name1 = fluid.unique_name.generate('fc')
+            name2 = fluid.unique_name.generate('fc')
+            # The result is fc_0, fc_1
+            print name1, name2 
+    """
+    return generator(key)
+
+
+# FIXME(zjl): The previous naming rule in static graph would
+# cause memory leak in dygraph mode. It is because the previous
+# nameing rule would use `conv_0.tmp` as the key, and in dygraph
+# mode, `conv_i` increases as batch increases. Thus, keys would
+# increase in a way like `conv_0.tmp`, `conv_1.tmp`, .... 
+# Not find a better way to fix this bug in dygraph mode. In TF,
+# variable name is meaningless in eager execution mode, and in
+# PyTorch, there is no variable name at all. Maybe we should
+# discard variable name in dygraph mode.
+#
+# Another concern is that save/load inference. Usually, user
+# would save model in static graph mode, and load it in dygraph
+# mode. Therefore, we keep the variable name of Parameter currently.
+# 
+# Please fix me if a better method is found.        
+def generate_with_ignorable_key(key):
+    from .framework import in_dygraph_mode
+    if in_dygraph_mode():
+        key = "tmp"
+
     return generator(key)
 
 
 def switch(new_generator=None):
+    """
+    Switch the Global namespace to a new namespace.
+
+    Args:
+        new_generator(None|UniqueNameGenerator): A new UniqueNameGenerator.
+
+    Returns: 
+        UniqueNameGenerator: The previous UniqueNameGenerator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            name1 = fluid.unique_name.generate('fc')
+            name2 = fluid.unique_name.generate('fc')
+            # The result is fc_0, fc_1
+            print name1, name2 
+
+            fluid.unique_name.switch()
+            name2 = fluid.unique_name.generate('fc')
+            # The result is fc_0
+            print name2
+    """
     global generator
     old = generator
     if new_generator is None:
@@ -70,6 +135,32 @@ def switch(new_generator=None):
 
 @signature_safe_contextmanager
 def guard(new_generator=None):
+    """
+    Change the global namespace with `with` statement.
+    
+    Args:
+        new_generator(None|str|bytes): New name of global namespace.
+            Note that str in Python2 was spilted into str and bytes in Python3, 
+            so here are two types. Default is None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            with fluid.unique_name.guard():
+              name_1 = fluid.unique_name.generate('fc')
+            with fluid.unique_name.guard():
+              name_2 = fluid.unique_name.generate('fc')
+            # The result is fc_0, fc_0
+            print name_1, name_2
+
+            with fluid.unique_name.guard('A'):
+              name_1 = fluid.unique_name.generate('fc')
+            with fluid.unique_name.guard('B'):
+              name_2 = fluid.unique_name.generate('fc')
+            # The result is Afc_0, Bfc_0
+            print name_1, name_2
+    """
     if isinstance(new_generator, six.string_types):
         new_generator = UniqueNameGenerator(new_generator)
     elif isinstance(new_generator, six.binary_type):
