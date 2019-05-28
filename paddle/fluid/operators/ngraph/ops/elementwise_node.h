@@ -1,4 +1,4 @@
-/*Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,3 +67,8 @@ void BuildElementwiseCompareNode(
 
 REGISTER_NG_OP(elementwise_max,
                BuildElementwiseBinaryNode<ngraph::op::Maximum>);
+REGISTER_NG_OP(elementwise_pow, BuildElementwiseBinaryNode<ngraph::op::Power>);
+REGISTER_NG_OP(elementwise_sub,
+               BuildElementwiseBinaryNode<ngraph::op::Subtract>);
+REGISTER_NG_OP(elementwise_min,
+               BuildElementwiseBinaryNode<ngraph::op::Minimum>);

@@ -202,11 +202,12 @@ class WeightNormParamAttr(ParamAttr):
 
     Examples:
         .. code-block:: python
-
+            
+            import paddle.fluid as fluid
             data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=data,
                                  size=1000,
-                                 param_attr=WeightNormParamAttr(
+                                 param_attr=fluid.WeightNormParamAttr(
                                       dim=None,
                                       name='weight_norm_param'))
 
