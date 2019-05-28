@@ -556,9 +556,9 @@ paddle.fluid.profiler.reset_profiler (ArgSpec(args=[], varargs=None, keywords=No
 paddle.fluid.profiler.profiler (ArgSpec(args=['state', 'sorted_key', 'profile_path'], varargs=None, keywords=None, defaults=(None, '/tmp/profile')), ('document', 'd8db46bf9a579bec476d09dea80eb23d'))
 paddle.fluid.profiler.start_profiler (ArgSpec(args=['state'], varargs=None, keywords=None, defaults=None), ('document', '88da8fb6dbebaee2f7520188a09574f9'))
 paddle.fluid.profiler.stop_profiler (ArgSpec(args=['sorted_key', 'profile_path'], varargs=None, keywords=None, defaults=(None, '/tmp/profile')), ('document', 'a7500e39dd033f1e64f562e909333a8a'))
-paddle.fluid.unique_name.generate (ArgSpec(args=['key'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.unique_name.switch (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.unique_name.guard (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.unique_name.generate (ArgSpec(args=['key'], varargs=None, keywords=None, defaults=None), ('document', '4d68cde4c4df8f1b8018620b4dc19b42'))
+paddle.fluid.unique_name.switch (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', '695a6e91afbcdbafac69a069038811be'))
+paddle.fluid.unique_name.guard (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ead717d6d440a1eb11971695cd1727f4'))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_file (ArgSpec(args=['filename', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None)), ('document', '65c7523e86f0c50bb729b01667f36310'))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_files (ArgSpec(args=['filename', 'batch_per_file', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None)), ('document', 'bc643f0f5f1b9db57ff0d8a57d379bd7'))
 paddle.fluid.Scope Scope() -> paddle.fluid.core._Scope
