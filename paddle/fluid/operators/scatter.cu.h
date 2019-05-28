@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <unordered_set>
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 
+const int32_t BAD_INDEX = -1;
 using Tensor = framework::Tensor;
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
@@ -28,13 +31,19 @@ using Tensor = framework::Tensor;
 template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                                   T* output, size_t index_size,
-                                  size_t slice_size) {
+                                  size_t slice_size, bool overwrite) {
   CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
     IndexT out_i = scatter_i * slice_size + slice_i;
-    *(output + out_i) = *(params + i);
+    if (overwrite) {
+      if (scatter_i != BAD_INDEX) {
+        *(output + out_i) = *(params + i);
+      }
+    } else {
+      paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
+    }
   }
 }
 
@@ -48,7 +57,8 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
  */
 template <typename T, typename IndexT = int>
 void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
-                      const Tensor& index, Tensor* output) {
+                      const Tensor& index, Tensor* output,
+                      bool overwrite = true) {
   // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
   PADDLE_ENFORCE(index.dims().size() == 1 ||
@@ -66,6 +76,28 @@ void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
+  IndexT* uniq_index = new IndexT(index_size);
+
+  // If in overwirte mode, when has same indices, need to
+  // unique the indices, because the GPU can not control the random write
+  if (overwrite) {
+    int unique_index_size = 0;
+    std::unordered_set<IndexT> count_index;
+    for (int i = 0; i < index_size; ++i) {
+      const IndexT& index = p_index[i];
+      if (count_index.count(index) > 0) {
+        // if find duplidate index, set bad_index
+        *(uniq_index + i) = BAD_INDEX;
+      } else {
+        *(uniq_index + i) = index;
+        count_index.emplace(index);
+      }
+    }
+  } else {
+    // if in accumulate mode, need init the output
+    // init p_output
+    memset(p_output, 0, output->numel() * sizeof(T));
+  }
 
   int block = 512;
   int n = slice_size * index_size;
@@ -74,7 +106,10 @@ void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   ScatterCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, uniq_index, p_output, index_size, slice_size, overwrite);
+
+  // free memory
+  delete[] uniq_index;
 }
 
 }  // namespace operators
