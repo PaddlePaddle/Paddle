@@ -45,26 +45,29 @@ struct ARMContext {
 
   ARMContext& operator=(const ARMContext& ctx);
 
-  void set_run_mode(PowerMode mode, int threads);
-  void bind_dev();
-  PowerMode get_mode() const;
-  int get_threads() const;
-  void set_cache(int l1size, int l2size, int l3size);
+  void SetRunMode(PowerMode mode, int threads);
+  void SetCache(int l1size, int l2size, int l3size);
+  void SetArch(ARMArch arch);
+  void BindDev();
+
+  PowerMode mode() const;
+  int threads() const;
+  ARMArch arch() const;
+
   template <typename T>
-  T* get_workspace_data() {
+  T* workspace_data() {
     return workspace_.mutable_data<T>();
   }
-  ARMArch get_arch() const;
-  void set_arch(ARMArch arch);
+
   int l1_cache_size() const;
   int l2_cache_size() const;
   int l3_cache_size() const;
-  bool workspace_extend(DDimLite dims);
+  bool ExtendWorkspace(DDimLite dims);
 
  private:
-  //! LITE_POWER_HIGH stands for using big cores,
-  //! LITE_POWER_LOW stands for using small core,
-  //! LITE_POWER_FULL stands for using all cores
+  // LITE_POWER_HIGH stands for using big cores,
+  // LITE_POWER_LOW stands for using small core,
+  // LITE_POWER_FULL stands for using all cores
   ARMArch arch_;
   PowerMode mode_;
   std::vector<int> active_ids_;

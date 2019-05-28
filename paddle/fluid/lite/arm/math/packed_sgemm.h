@@ -21,7 +21,6 @@
 
 namespace paddle {
 namespace lite {
-namespace kernels {
 namespace arm {
 namespace math {
 
@@ -57,6 +56,5 @@ void sgemm_prepack(const float* A_packed, const float* B, const float* bias,
 
 }  // namespace math
 }  // namespace arm
-}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
+#include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
-#include "paddle/fluid/lite/kernels/arm/math/funcs.h"
 
 namespace paddle {
 namespace lite {
@@ -42,15 +42,16 @@ void FcCompute::Run() {
   CHECK_EQ(x_w, static_cast<int>(w_dims[0]));
   auto& ctx = this->ctx_->template As<ARMContext>();
   if (x_h > 1) {
-    float* packed_in = static_cast<float*>(ctx.get_workspace_data<float>()) +
+    float* packed_in = static_cast<float*>(ctx.workspace_data<float>()) +
                        ctx.l2_cache_size() / sizeof(float);
-    math::prepackA(packed_in, i_data, x_w, 0, x_h, 0, x_w, false, &ctx);
-    math::sgemm_prepack(packed_in, w_data, b_data, o_data, x_h, n, x_w, false,
-                        false, false, &ctx);
+    lite::arm::math::prepackA(packed_in, i_data, x_w, 0, x_h, 0, x_w, false,
+                              &ctx);
+    lite::arm::math::sgemm_prepack(packed_in, w_data, b_data, o_data, x_h, n,
+                                   x_w, false, false, false, &ctx);
 
     if (param.bias) {
       CHECK_EQ(param.bias->numel(), n);
-      math::fill_bias_fc(o_data, b_data, x_h, n);
+      lite::arm::math::fill_bias_fc(o_data, b_data, x_h, n);
     }
   } else {
     // use sgemmv

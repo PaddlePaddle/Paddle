@@ -33,7 +33,7 @@ namespace lite {
 
 #ifdef LITE_WITH_ARM
 
-void ARMContext::set_cache(int l1size, int l2size, int l3size) {
+void ARMContext::SetCache(int l1size, int l2size, int l3size) {
   DeviceInfo& dev = DeviceInfo::Global();
   int cpu_count = arm_get_cpucount();
   dev.L1_cache_.resize(cpu_count);
@@ -62,9 +62,9 @@ ARMContext::ARMContext() {
 #endif
 }
 
-PowerMode ARMContext::get_mode() const { return mode_; }
+PowerMode ARMContext::mode() const { return mode_; }
 
-int ARMContext::get_threads() const { return active_ids_.size(); }
+int ARMContext::threads() const { return active_ids_.size(); }
 
 ARMContext::ARMContext(const ARMContext& ctx) {
   mode_ = ctx.mode_;
@@ -83,7 +83,7 @@ ARMContext& ARMContext::operator=(const ARMContext& ctx) {
   return *this;
 }
 
-void ARMContext::bind_dev() {
+void ARMContext::BindDev() {
 #ifdef USE_OPENMP
   int num_threads = active_ids_.size();
   omp_set_num_threads(num_threads);
@@ -116,7 +116,7 @@ void ARMContext::bind_dev() {
 #endif  // USE_OPENMP
 }
 
-void ARMContext::set_run_mode(PowerMode mode, int threads) {
+void ARMContext::SetRunMode(PowerMode mode, int threads) {
   DeviceInfo& dev = DeviceInfo::Global();
   int big_core_size = dev.big_core_ids_.size();
   int small_core_size = dev.little_core_ids_.size();
@@ -271,7 +271,7 @@ void ARMContext::set_run_mode(PowerMode mode, int threads) {
     omp_set_num_threads(threads);
   } else {
     if (check_online(active_ids_)) {
-      bind_dev();
+      BindDev();
     } else {
       LOG(ERROR) << "core id " << active_ids_[0]
                  << " is offline, switch to NO BIND MODE";
@@ -293,9 +293,9 @@ void ARMContext::set_run_mode(PowerMode mode, int threads) {
   arch_ = DeviceInfo::Global().archs_[active_ids_[0]];
 }
 
-ARMArch ARMContext::get_arch() const { return arch_; }
+ARMArch ARMContext::arch() const { return arch_; }
 
-void ARMContext::set_arch(ARMArch arch) { arch_ = arch; }
+void ARMContext::SetArch(ARMArch arch) { arch_ = arch; }
 
 int ARMContext::l1_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
@@ -312,7 +312,7 @@ int ARMContext::l3_cache_size() const {
   return dev.L3_cache_[active_ids_[0]];
 }
 
-bool ARMContext::workspace_extend(DDimLite dims) {
+bool ARMContext::ExtendWorkspace(DDimLite dims) {
   auto count = dims.product();
   auto old = workspace_.dims();
   if (count == old.product()) {

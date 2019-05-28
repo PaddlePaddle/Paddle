@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/kernels/arm/math/funcs.h"
+#include "paddle/fluid/lite/arm/math/funcs.h"
 #include <arm_neon.h>
 
 namespace paddle {
 namespace lite {
-namespace kernels {
 namespace arm {
 namespace math {
 
@@ -153,6 +152,5 @@ void fill_bias_fc<int>(int *tensor, const int *bias, const int num,
 
 }  // namespace math
 }  // namespace arm
-}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

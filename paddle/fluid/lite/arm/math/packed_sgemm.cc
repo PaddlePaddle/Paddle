@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/kernels/arm/math/packed_sgemm.h"
+#include "paddle/fluid/lite/arm/math/packed_sgemm.h"
 #include <arm_neon.h>
 
 namespace paddle {
 namespace lite {
-namespace kernels {
 namespace arm {
 namespace math {
 
@@ -68,7 +67,7 @@ void prepackA(float *out, const float *in, const int ldin, const int m0,
     prepackA_8x12(out, in, ldin, m0, mmax, k0, kmax);
   }
 #else
-  if (ctx->get_arch() == kA73) {
+  if (ctx->arch() == kA73) {
     if (is_trans) {
       prepackA_trans_4x8(out, in, ldin, m0, mmax, k0, kmax);
     } else {
@@ -86,7 +85,7 @@ void prepackA(float *out, const float *in, const int ldin, const int m0,
 
 void prepackA(TensorLite *tout, const TensorLite &tin, int m, int k, int group,
               bool is_trans, ARMContext *ctx) {
-  int hblock = get_hblock(ctx->get_arch());
+  int hblock = get_hblock(ctx->arch());
   int m_roundup = hblock * ((m + hblock - 1) / hblock);
   int group_size_round_up = ((m_roundup * k + 15) / 16) * 16;
   if (tout->numel() < group_size_round_up * group) {
@@ -112,7 +111,7 @@ void sgemm_prepack(const float *A_packed, const float *B, const float *bias,
   sgemm_conv_8x12(A_packed, B, bias, C, M, N, K, is_bias, is_relu, is_transB,
                   ctx);
 #else   // armv7
-  if (ctx->get_arch() == kA73) {
+  if (ctx->arch() == kA73) {
     sgemm_conv_4x8(A_packed, B, bias, C, M, N, K, is_bias, is_relu, is_transB,
                    ctx);
   } else {
@@ -1521,8 +1520,8 @@ void sgemm_conv_8x12(const float *A_packed, const float *B, const float *bias,
                      bool transB, ARMContext *ctx) {
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
-  float *workspace = ctx->get_workspace_data<float>();
-  int threads = ctx->get_threads();
+  float *workspace = ctx->workspace_data<float>();
+  int threads = ctx->threads();
   //! MBLOCK * x (result) + MBLOCK * k (A) + x * k (B) = l2
   int x_block = (l2_cache - (MBLOCK * K)) / (sizeof(float) * (K + MBLOCK));
   x_block /= NBLOCK;
@@ -2359,8 +2358,8 @@ void sgemm_conv_6x8(const float* A_packed, const float* B, const float* bias,
                     bool transB, ARMContext* ctx) {
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
-  auto* workspace = ctx->get_workspace_data<float>();
-  int threads = ctx->get_threads();
+  auto* workspace = ctx->workspace_data<float>();
+  int threads = ctx->threads();
   //! MBLOCK * x (result) + MBLOCK * k (A) + x * k (B) = l2
   int x_block =
       (l2_cache - (MBLOCK_OTH * K)) / (sizeof(float) * (K + MBLOCK_OTH));
@@ -2753,7 +2752,7 @@ void sgemm_conv_4x8(const float* A_packed, const float* B, const float* bias,
   size_t l2_cache =
       ctx->l2_cache_size() > 0 ? ctx->l2_cache_size() : 512 * 1024;
   void* workspace = ctx->get_work_space();
-  int threads = ctx->get_threads();
+  int threads = ctx->threads();
   //! MBLOCK * x (result) + MBLOCK * k (A) + x * k (B) = l2
   int x_block =
       (l2_cache - (MBLOCK_A73 * K)) / (sizeof(float) * (K + MBLOCK_A73));
@@ -3046,6 +3045,5 @@ void sgemm_conv_4x8(const float* A_packed, const float* B, const float* bias,
 
 }  // namespace math
 }  // namespace arm
-}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle
