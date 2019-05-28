@@ -176,6 +176,13 @@ if(WITH_MKLDNN)
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
  
+  #mobilenetv2 int8
+  set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
+  if (NOT EXISTS ${INT8_MOBILENETV2_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_v2_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+ 
   #resnet101 int8
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
   if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
