@@ -794,6 +794,15 @@ def isfinite(x):
 
     Returns:
         Variable: The tensor variable storing the output, contains a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+            var = fluid.layers.data(name="data",
+                                    shape=(4, 6),
+                                    dtype="float32")
+            out = fluid.layers.isfinite(v)
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
