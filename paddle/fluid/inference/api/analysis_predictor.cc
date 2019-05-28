@@ -202,6 +202,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -229,7 +230,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Here is a bugfix, collect all the container variables, and reset then to a
   // bool; the next time, the operator will call MutableData and construct a new
   // container again, so that the container will be empty for each batch.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
   tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }

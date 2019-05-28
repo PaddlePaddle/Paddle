@@ -310,8 +310,6 @@ class PYBIND11_HIDDEN OpBase {
   OpBase(const std::string& type)
       : type_(type),
         trace_id_(-1),
-        forward_id_(-1),
-        backward_id_(-1),
         place_(platform::CPUPlace()),
         backward_hooks_() {}
 
@@ -366,16 +364,10 @@ class PYBIND11_HIDDEN OpBase {
   }
 
   std::string type_;
-  // One of `trace_id_` or `forward_id_` is set, not both.
-  // For pure python PyLayer, use `forward_id_`, otherwise, use trace_id_.
   int trace_id_;
-  int forward_id_;
 
-  // When has backward, one of `grad_op_descs_` or `backward_id_` is set,
-  // not both.
   // Note: each fwd op corresponds to a vector of bwd ops.
   std::vector<framework::OpDesc*> grad_op_descs_;
-  int backward_id_;
 
   platform::Place place_;
 
@@ -402,28 +394,6 @@ class Layer {
     std::vector<VarBase*> vars;
     return vars;
   }
-};
-
-class PyLayer {
- public:
-  virtual ~PyLayer() {}
-
-  static const char* kFwdInp;
-  static const char* kFwdOut;
-
-  static void RegisterFunc(int func_id, const py::object& py_func);
-
-  static int NumFuncs();
-
-  static std::vector<std::unique_ptr<framework::Variable>> Apply(
-      int func_id, const std::vector<VarBase*>& inputs);
-
-  static std::vector<VarBase*> ApplyGrad(int func_id,
-                                         const std::vector<VarBase*>& inputs);
-
- private:
-  static std::vector<std::unique_ptr<framework::Variable>> CallPythonFunc(
-      const py::object& callable, const std::vector<VarBase*>& ins);
 };
 
 // infer var type context for imperative mode

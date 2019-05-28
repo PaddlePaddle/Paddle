@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_squash_pass.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
@@ -81,15 +82,10 @@ void CPUQuantizeSquashPass::Squash(
       auto quant_out_var_name = quant_out->Name();
       auto next_op_inputs = next_op_desc->InputNames();
       for (const auto& name : next_op_inputs) {
-        if (next_op_desc->Inputs().count(name) == 0 ||
-            next_op_desc->Input(name).size() == 0)
-          continue;
-        auto var_name = next_op_desc->Input(name)[0];
-        if (var_name.compare(quant_out_var_name) == 0) {
-          next_op_desc->SetInput(
-              name, std::vector<std::string>({dequant_in->Name()}));
-          break;
-        }
+        auto input_names = next_op_desc->Input(name);
+        std::replace(input_names.begin(), input_names.end(), quant_out_var_name,
+                     dequant_in->Name());
+        next_op_desc->SetInput(name, input_names);
       }
 
       if (keep_dequant)

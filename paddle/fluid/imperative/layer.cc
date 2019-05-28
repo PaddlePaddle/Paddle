@@ -33,11 +33,6 @@
 namespace paddle {
 namespace imperative {
 
-const char* PyLayer::kFwdInp = "X";
-const char* PyLayer::kFwdOut = "Out";
-
-std::map<int, py::object> py_funcs_;
-
 using framework::Variable;
 
 namespace detail {
@@ -262,100 +257,91 @@ framework::LoDTensor& VarBase::GradValue() {
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
     BackwardSumMap* bck_map, GradientRef* grad_ref,
     const detail::BackwardStrategy& bck_stratedy) {
-  PADDLE_ENFORCE(!grad_op_descs_.empty() || backward_id_ > 0,
-                 "%s has no backward implementation", Type());
+  PADDLE_ENFORCE(!grad_op_descs_.empty(), "%s has no backward implementation",
+                 Type());
   VLOG(3) << "apply op grad: " << Type();
   std::vector<VarBasePtrMap> tmp_grad_outputs;
-  if (backward_id_ > 0) {
-    VLOG(3) << "py_layer_grad";
-    tmp_grad_outputs.resize(1);
-    tmp_grad_outputs[0][framework::GradVarName(PyLayer::kFwdOut)] =
-        PyLayer::ApplyGrad(
-            backward_id_,
-            grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)]);
-  } else {
-    const size_t grad_op_count = grad_op_descs_.size();
+  const size_t grad_op_count = grad_op_descs_.size();
 
-    tmp_grad_outputs.resize(grad_op_count);
-    for (size_t k = 0; k < grad_op_count; ++k) {
-      framework::OpDesc* grad_op_desc = grad_op_descs_[k];
-      platform::RecordEvent record_event(grad_op_desc->Type());
-      auto& grad_output_variable_map = grad_output_vars_[k];
-      VLOG(3) << "apply grad op " << grad_op_desc->Type();
+  tmp_grad_outputs.resize(grad_op_count);
+  for (size_t k = 0; k < grad_op_count; ++k) {
+    framework::OpDesc* grad_op_desc = grad_op_descs_[k];
+    platform::RecordEvent record_event(grad_op_desc->Type());
+    auto& grad_output_variable_map = grad_output_vars_[k];
+    VLOG(3) << "apply grad op " << grad_op_desc->Type();
 
-      // Allocate tmp grad output variable
-      for (const auto& it : grad_output_variable_map) {
-        auto& outputs = tmp_grad_outputs[k][it.first];
-        outputs.reserve(it.second.size());
-        for (VarBase* origin_grad_var_base : it.second) {
-          if (!origin_grad_var_base->IsInitialize()) {
-            origin_grad_var_base->InitBuffer();
-            ZeroGrads(origin_grad_var_base, place_);
-          }
-          // Allocate a new variable
-          VarBase* tmp_grad_var_base = new VarBase(
-              string::Sprintf("%s@IGrad", origin_grad_var_base->Name()),
-              origin_grad_var_base->DataType(), origin_grad_var_base->Dims(),
-              place_, true, false);
-          outputs.emplace_back(tmp_grad_var_base);
+    // Allocate tmp grad output variable
+    for (const auto& it : grad_output_variable_map) {
+      auto& outputs = tmp_grad_outputs[k][it.first];
+      outputs.reserve(it.second.size());
+      for (VarBase* origin_grad_var_base : it.second) {
+        if (!origin_grad_var_base->IsInitialize()) {
+          origin_grad_var_base->InitBuffer();
+          ZeroGrads(origin_grad_var_base, place_);
         }
+        // Allocate a new variable
+        VarBase* tmp_grad_var_base = new VarBase(
+            string::Sprintf("%s@IGrad", origin_grad_var_base->Name()),
+            origin_grad_var_base->DataType(), origin_grad_var_base->Dims(),
+            place_, true, false);
+        outputs.emplace_back(tmp_grad_var_base);
       }
-
-      // No need to do compile time infer shape here.
-      // grad_op_desc_->InferShape(*block_);
-      // grad_op_desc->InferVarType(block_);
-
-      std::unique_ptr<framework::OperatorBase> opbase =
-          framework::OpRegistry::CreateOp(*grad_op_desc);
-
-      auto& info = framework::OpInfoMap::Instance().Get(grad_op_desc->Type());
-      if (info.infer_var_type_) {
-        RuntimeInferVarTypeContext infer_var_type_ctx(
-            &grad_input_vars_[k], &tmp_grad_outputs[k], &attrs_);
-        info.infer_var_type_(&infer_var_type_ctx);
-      }
-
-      framework::OperatorWithKernel* op_kernel =
-          dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
-      PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
-
-      // Run grad op
-      framework::VariableValueMap grad_invars_map;
-      framework::VariableValueMap grad_outvars_map;
-
-      for (const auto& it : grad_input_vars_[k]) {
-        auto& grad_invars = grad_invars_map[it.first];
-        grad_invars.reserve(it.second.size());
-        for (VarBase* grad_inp : it.second) {
-          PADDLE_ENFORCE_NOT_NULL(grad_inp->var_, "op %s input %s nullptr",
-                                  grad_op_desc->Type(), grad_inp->Name());
-          if (!grad_inp->IsInitialize()) {
-            grad_inp->InitBuffer();
-            ZeroGrads(grad_inp, place_);
-          }
-          const VarBase* const_grad_inp = grad_inp;
-          grad_invars.emplace_back(const_grad_inp->var_.get());
-        }
-      }
-
-      for (const auto& it : tmp_grad_outputs[k]) {
-        auto& grad_outvars = grad_outvars_map[it.first];
-        grad_outvars.reserve(it.second.size());
-        for (VarBase* grad_out : it.second) {
-          PADDLE_ENFORCE_NOT_NULL(grad_out->var_, "op %s output %s nullptr",
-                                  grad_op_desc->Type(), grad_out->Name());
-
-          grad_outvars.emplace_back(grad_out->var_.get());
-        }
-      }
-
-      framework::RuntimeContext ctx(grad_invars_map, grad_outvars_map);
-      framework::Scope scope;
-      PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
-      p.op.RuntimeInferShape(scope, place_, ctx);
-      p.func(
-          framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
     }
+
+    // No need to do compile time infer shape here.
+    // grad_op_desc_->InferShape(*block_);
+    // grad_op_desc->InferVarType(block_);
+
+    std::unique_ptr<framework::OperatorBase> opbase =
+        framework::OpRegistry::CreateOp(*grad_op_desc);
+
+    auto& info = framework::OpInfoMap::Instance().Get(grad_op_desc->Type());
+    if (info.infer_var_type_) {
+      RuntimeInferVarTypeContext infer_var_type_ctx(
+          &grad_input_vars_[k], &tmp_grad_outputs[k], &attrs_);
+      info.infer_var_type_(&infer_var_type_ctx);
+    }
+
+    framework::OperatorWithKernel* op_kernel =
+        dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
+    PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+
+    // Run grad op
+    framework::VariableValueMap grad_invars_map;
+    framework::VariableValueMap grad_outvars_map;
+
+    for (const auto& it : grad_input_vars_[k]) {
+      auto& grad_invars = grad_invars_map[it.first];
+      grad_invars.reserve(it.second.size());
+      for (VarBase* grad_inp : it.second) {
+        PADDLE_ENFORCE_NOT_NULL(grad_inp->var_, "op %s input %s nullptr",
+                                grad_op_desc->Type(), grad_inp->Name());
+        if (!grad_inp->IsInitialize()) {
+          grad_inp->InitBuffer();
+          ZeroGrads(grad_inp, place_);
+        }
+        const VarBase* const_grad_inp = grad_inp;
+        grad_invars.emplace_back(const_grad_inp->var_.get());
+      }
+    }
+
+    for (const auto& it : tmp_grad_outputs[k]) {
+      auto& grad_outvars = grad_outvars_map[it.first];
+      grad_outvars.reserve(it.second.size());
+      for (VarBase* grad_out : it.second) {
+        PADDLE_ENFORCE_NOT_NULL(grad_out->var_, "op %s output %s nullptr",
+                                grad_op_desc->Type(), grad_out->Name());
+
+        grad_outvars.emplace_back(grad_out->var_.get());
+      }
+    }
+
+    framework::RuntimeContext ctx(grad_invars_map, grad_outvars_map);
+    framework::Scope scope;
+    PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
+    p.op.RuntimeInferShape(scope, place_, ctx);
+    p.func(
+        framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
   }
 
   platform::RecordEvent record_event("merge_grads");
@@ -452,70 +438,6 @@ void VarBase::RunBackward(const detail::BackwardStrategy& bck_stratedy) {
       grads_ ==
       pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
   Autograd().RunBackward(this, bck_stratedy);
-}
-
-void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
-  py_funcs_[func_id] = py_func;
-}
-
-int PyLayer::NumFuncs() { return py_funcs_.size(); }
-
-std::vector<std::unique_ptr<framework::Variable>> PyLayer::Apply(
-    int func_id, const std::vector<VarBase*>& inputs) {
-  PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  return CallPythonFunc(py_funcs_[func_id], inputs);
-}
-
-std::vector<VarBase*> PyLayer::ApplyGrad(int func_id,
-                                         const std::vector<VarBase*>& inputs) {
-  PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  auto rets = CallPythonFunc(py_funcs_[func_id], inputs);
-
-  std::vector<VarBase*> outs;
-  outs.reserve(rets.size());
-  for (size_t i = 0U; i != rets.size(); ++i) {
-    outs.emplace_back(new VarBase(
-        string::Sprintf("%s_out_%d", framework::GradVarName(PyLayer::kFwdOut),
-                        i),
-        std::move(rets[i]), nullptr, true));
-  }
-
-  return outs;
-}
-
-std::vector<std::unique_ptr<framework::Variable>> PyLayer::CallPythonFunc(
-    const py::object& callable, const std::vector<VarBase*>& ins) {
-  py::gil_scoped_acquire guard;
-  py::tuple in_args(ins.size());
-  for (size_t i = 0; i < ins.size(); ++i) {
-    const framework::LoDTensor& t = ins[i]->var_->Get<framework::LoDTensor>();
-    in_args[i] = t.IsInitialized() ? py::cast(t) : py::cast(nullptr);
-  }
-  VLOG(3) << "pyfunc in " << py::len(in_args);
-
-  // TODO(panyx0718): Who owns the returned LoDTensor.
-  auto ret = callable(in_args);
-  auto ret_tuple = py::cast<py::tuple>(ret);
-  size_t ret_num = py::len(ret_tuple);
-  std::vector<std::unique_ptr<framework::Variable>> outs;
-  outs.reserve(ret_num);
-  VLOG(3) << "pyfunc out " << ret_num;
-  for (size_t i = 0; i < ret_num; ++i) {
-    try {
-      auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              "Output tensor %d should not be nullptr", i);
-      auto var =
-          std::unique_ptr<framework::Variable>(new framework::Variable());
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
-      tensor->ShareDataWith(*py_out_tensor);
-      tensor->set_lod(py_out_tensor->lod());
-      outs.emplace_back(std::move(var));
-    } catch (py::cast_error&) {
-      PADDLE_THROW("The %d-th output must be LoDTensor", i);
-    }
-  }
-  return outs;
 }
 
 }  // namespace imperative

@@ -287,59 +287,5 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
   return vars_saved_for_backward;
 }
-
-std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
-                                      const std::vector<VarBase*>& inputs,
-                                      bool stop_gradient) {
-  VLOG(3) << "py_trace " << op->Type();
-
-  op->input_vars_[PyLayer::kFwdInp] = inputs;
-
-  std::vector<std::unique_ptr<framework::Variable>> ret_vars =
-      PyLayer::Apply(op->forward_id_, inputs);
-  op->TrackPreOp(PyLayer::kFwdInp, inputs);
-
-  std::vector<VarBase*>& outputs = op->output_vars_[PyLayer::kFwdOut];
-  outputs.reserve(ret_vars.size());
-  for (size_t i = 0U; i != ret_vars.size(); ++i) {
-    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i),
-                               std::move(ret_vars[i]), nullptr, stop_gradient);
-    outputs.emplace_back(out);
-    out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
-  }
-
-  if (!stop_gradient) {
-    VLOG(5) << "start construct backward op";
-    op->grad_input_vars_.resize(1);
-    op->grad_output_vars_.resize(1);
-    auto& grad_input_vars =
-        op->grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)];
-    auto& grad_output_vars =
-        op->grad_output_vars_[0][framework::GradVarName(PyLayer::kFwdOut)];
-
-    for (VarBase* inp : inputs) {
-      grad_input_vars.push_back(inp);
-    }
-    for (VarBase* out : outputs) {
-      grad_input_vars.push_back(out);
-    }
-
-    // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
-    platform::CPUPlace place;
-    for (VarBase* out : outputs) {
-      CreateNoBuffuerGrad(out,
-                          platform::DeviceContextPool::Instance().Get(place));
-      grad_input_vars.push_back(out->grads_);
-    }
-
-    for (VarBase* inp : inputs) {
-      CreateNoBuffuerGrad(inp,
-                          platform::DeviceContextPool::Instance().Get(place));
-      grad_output_vars.push_back(inp->grads_);
-    }
-  }
-  return outputs;
-}
-
 }  // namespace imperative
 }  // namespace paddle
