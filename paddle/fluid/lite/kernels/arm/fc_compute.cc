@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
-#include <Eigen/Core>
+#include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
 
@@ -22,24 +22,42 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-// NOTE should use pure std C++ implementation.
 void FcCompute::Run() {
   auto& param = this->Param<operators::FcParam>();
+  auto x_dims = param.input->dims();
+  auto w_dims = param.w->dims();
 
-  CHECK_GE(param.input->dims().size(), 2UL);
+  CHECK_GE(x_dims.size(), 2UL);
+  CHECK_EQ(w_dims.size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
 
-  fc_compute_eigen(
-      param.input->data<float>(),  // x
-      param.input->dims().Slice(0, param.in_num_col_dims).production(),
-      param.input->dims()
-          .Slice(param.in_num_col_dims, param.input->dims().size())
-          .production(),
-      param.w->data<float>(),     // w
-      param.w->dims()[1],         // w_w
-      param.w->dims()[0],         // w_h
-      param.bias->data<float>(),  // b
-      param.output->mutable_data<float>());
+  const auto* i_data = param.input->data<float>();
+  const auto* w_data = param.w->data<float>();
+  const auto* b_data = param.bias ? param.bias->data<float>() : nullptr;
+  auto* o_data = param.output->mutable_data<float>();
+
+  int x_h = x_dims.Slice(0, param.in_num_col_dims).production();
+  int x_w = x_dims.Slice(param.in_num_col_dims, x_dims.size()).production();
+  int n = w_dims[1];
+  CHECK_EQ(x_w, static_cast<int>(w_dims[0]));
+  auto& ctx = this->ctx_->template As<ARMContext>();
+  if (x_h > 1) {
+    float* packed_in = static_cast<float*>(ctx.workspace_data<float>()) +
+                       ctx.l2_cache_size() / sizeof(float);
+    lite::arm::math::prepackA(packed_in, i_data, x_w, 0, x_h, 0, x_w, false,
+                              &ctx);
+    lite::arm::math::sgemm_prepack(packed_in, w_data, b_data, o_data, x_h, n,
+                                   x_w, false, false, false, &ctx);
+
+    if (param.bias) {
+      CHECK_EQ(param.bias->numel(), n);
+      lite::arm::math::fill_bias_fc(o_data, b_data, x_h, n);
+    }
+  } else {
+    // use sgemmv
+    // sgemv((const float*)weights, (const float*)din, (float*)dout,
+    //       false, n, x_w, _param->_flag_bias, (float*)bias, false);
+  }
 }
 
 TargetType FcCompute::target() const { return TARGET(kARM); }

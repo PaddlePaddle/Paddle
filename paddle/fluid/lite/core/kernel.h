@@ -44,7 +44,7 @@ class KernelBase {
   virtual void Run() = 0;
 
   void SetContext(std::unique_ptr<KernelContext>&& ctx) {
-    context_ = std::move(ctx);
+    ctx_ = std::move(ctx);
   }
   template <typename T>
   void SetParam(T param) {
@@ -86,7 +86,7 @@ class KernelBase {
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
   virtual DataLayoutType layout() const = 0;
-  const KernelContext* context() const { return context_.get(); }
+  const KernelContext* context() const { return ctx_.get(); }
   virtual std::string name() const = 0;
 
   // Short human-readable document.
@@ -134,7 +134,7 @@ class KernelBase {
   void Torch() {}
 
  protected:
-  std::unique_ptr<KernelContext> context_;
+  std::unique_ptr<KernelContext> ctx_;
   mutable operators::param_t param_;
   // The corresponding op type.
   std::string op_type_{};
@@ -152,9 +152,6 @@ template <TargetType Target, PrecisionType Precision,
           DataLayoutType DataLayout = DataLayoutType::kNCHW>
 class KernelLite : public KernelBase {
  public:
-  // Set runtime context.
-  void SetContext(std::unique_ptr<KernelContext>&& ctx) { ctx_ = ctx; }
-
   // Run the kernel.
   virtual void Run() { CHECK(false) << "Not Implemented"; }
 
@@ -168,9 +165,6 @@ class KernelLite : public KernelBase {
 
   KernelLite() = default;
   virtual ~KernelLite() = default;
-
- protected:
-  std::unique_ptr<KernelContext> ctx_;
 };
 
 template <TargetType Target, PrecisionType Precision, DataLayoutType DataLayout>
