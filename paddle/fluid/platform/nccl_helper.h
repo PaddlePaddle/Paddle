@@ -225,8 +225,8 @@ class MultiNCCLContextMap {
   }
 
   void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
-                            const std::vector<ncclUniqueId *> &inter_nccl_id,
-                            const std::vector<ncclUniqueId *> &exter_nccl_id,
+                            const std::vector<ncclUniqueId *> &inter_nccl_ids,
+                            const std::vector<ncclUniqueId *> &exter_nccl_ids,
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
@@ -240,9 +240,9 @@ class MultiNCCLContextMap {
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
     VLOG(1) << "init inter_trainer_id:" << inter_trainer_id;
-    for (size_t i = 0; i < inter_nccl_id.size(); i++) {
-      auto local = new NCCLContextMap(places, inter_nccl_id, inter_trainers_num,
-                                      inter_trainer_id);
+    for (size_t i = 0; i < inter_nccl_ids.size(); i++) {
+      auto local = new NCCLContextMap(places, inter_nccl_ids[i],
+                                      inter_trainers_num, inter_trainer_id);
 
       h_inter_ctxs_.emplace_back(local);
     }
@@ -253,8 +253,8 @@ class MultiNCCLContextMap {
     }
 
     if (exter_trainer_id >= 0) {
-      for (size_t i = 0; i < exter_nccl_id.size(); i++) {
-        auto ex = new NCCLContextMap(places, exter_nccl_id[i],
+      for (size_t i = 0; i < exter_nccl_ids.size(); i++) {
+        auto ex = new NCCLContextMap(places, exter_nccl_ids[i],
                                      exter_trainers_num, exter_trainer_id);
         VLOG(1) << "init exter_trainer_id:" << exter_trainer_id
                 << ", comm no:" << i;
