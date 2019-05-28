@@ -239,8 +239,9 @@ class MultiNCCLContextMap {
                    inter_trainers_num);
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
-    VLOG(1) << "init inter_trainer_id:" << inter_trainer_id;
     for (size_t i = 0; i < inter_nccl_ids.size(); i++) {
+      VLOG(1) << "init inter_trainer_id:" << inter_trainer_id
+              << ", comm no:" << i;
       auto local = new NCCLContextMap(places, inter_nccl_ids[i],
                                       inter_trainers_num, inter_trainer_id);
 
