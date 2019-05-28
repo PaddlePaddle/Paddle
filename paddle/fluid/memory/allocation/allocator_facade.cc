@@ -29,7 +29,6 @@
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
-#include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -192,10 +191,6 @@ class CUDAPinnedChunkedAllocator : public ChunkedAllocator {
 
 class AllocatorFacadePrivate {
  public:
-  std::map<platform::Place, std::shared_ptr<Allocator>> allocators_;
-
-  ~AllocatorFacadePrivate() = default;
-
   AllocatorFacadePrivate() {
     auto strategy = GetAllocatorStrategy();
     switch (strategy) {
@@ -207,7 +202,6 @@ class AllocatorFacadePrivate {
         InitCPUAllocator();
         InitCUDAAllocator();
         InitCUDAPinnedAllocator();
-        WrapZeroSizeAllocator();
         break;
       }
       default: {
@@ -215,6 +209,18 @@ class AllocatorFacadePrivate {
                      static_cast<int>(strategy));
       }
     }
+    InitZeroSizeAllocators();
+  }
+
+  inline const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place, size_t size) {
+    const auto& allocators = (size > 0 ? allocators_ : zero_size_allocators_);
+    auto iter = allocators.find(place);
+    if (iter == allocators.end()) {
+      throw BadAlloc(
+          string::Sprintf("No such allocator for the place, %s", place));
+    }
+    return iter->second;
   }
 
  private:
@@ -252,12 +258,40 @@ class AllocatorFacadePrivate {
 #endif
   }
 
-  void WrapZeroSizeAllocator() {
-    for (auto& pair : allocators_) {
-      pair.second =
-          std::make_shared<ZeroSizeAllocator>(pair.second, pair.first);
+  class ZeroSizeAllocator : public Allocator {
+   public:
+    explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
+
+   protected:
+    Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
+      return new Allocation(nullptr, 0, place_);
+    }
+
+    void FreeImpl(Allocation* allocation) override { delete allocation; }
+
+   private:
+    platform::Place place_;
+  };
+
+  void InitZeroSizeAllocators() {
+    std::vector<platform::Place> places;
+    places.emplace_back(platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+    int device_count = platform::GetCUDADeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::CUDAPlace(dev_id));
+    }
+    places.emplace_back(platform::CUDAPinnedPlace());
+#endif
+
+    for (auto& p : places) {
+      zero_size_allocators_[p] = std::make_shared<ZeroSizeAllocator>(p);
     }
   }
+
+ private:
+  std::map<platform::Place, std::shared_ptr<Allocator>> allocators_;
+  std::map<platform::Place, std::shared_ptr<Allocator>> zero_size_allocators_;
 };
 
 // Pimpl. Make interface clean.
@@ -276,12 +310,7 @@ std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      Allocator::Attr attr) {
-  auto it = m_->allocators_.find(place);
-  if (it == m_->allocators_.end()) {
-    throw BadAlloc(
-        string::Sprintf("No such allocator for the place, %s", place));
-  }
-  return m_->allocators_.at(place)->Allocate(size, attr);
+  return m_->GetAllocator(place, size)->Allocate(size, attr);
 }
 
 }  // namespace allocation
