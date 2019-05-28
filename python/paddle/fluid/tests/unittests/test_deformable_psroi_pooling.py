@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +17,17 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+
 class TestDeformablePSROIPoolOp(OpTest):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
         self.calc_deformable_psroi_pooling()
-        self.inputs = {'Input': self.input, "ROIs": (self.rois[:, 1:5],
-                                                     self.rois_lod), "Trans": self.trans}
+        self.inputs = {
+            'Input': self.input,
+            "ROIs": (self.rois[:, 1:5], self.rois_lod),
+            "Trans": self.trans
+        }
         self.attrs = {
             'no_trans': self.no_trans,
             'spatial_scale': self.spatial_scale,
@@ -36,16 +40,19 @@ class TestDeformablePSROIPoolOp(OpTest):
             'trans_std': self.trans_std
         }
 
-        self.outputs = {'Output': self.out.astype('float32'),
-                        'TopCount': self.top_count.astype('float32')}
+        self.outputs = {
+            'Output': self.out.astype('float32'),
+            'TopCount': self.top_count.astype('float32')
+        }
 
     def init_test_case(self):
         self.batch_size = 3
         self.channels = 3 * 2 * 2
         self.height = 12
         self.width = 12
-        self.input_dim = [self.batch_size, self.channels,
-                          self.height, self.width]
+        self.input_dim = [
+            self.batch_size, self.channels, self.height, self.width
+        ]
         self.no_trans = 1
         self.spatial_scale = 1.0 / 4.0
         self.output_channels = 12
@@ -68,8 +75,8 @@ class TestDeformablePSROIPoolOp(OpTest):
                     0, self.width // self.spatial_scale - self.pooled_width)
                 y_1 = np.random.random_integers(
                     0, self.height // self.spatial_scale - self.pooled_height)
-                x_2 = np.random.random_integers(x_1 + self.pooled_width,
-                                                self.width // self.spatial_scale)
+                x_2 = np.random.random_integers(
+                    x_1 + self.pooled_width, self.width // self.spatial_scale)
                 y_2 = np.random.random_integers(
                     y_1 + self.pooled_height, self.height // self.spatial_scale)
                 roi = [bno, x_1, y_1, x_2, y_2]
@@ -101,10 +108,10 @@ class TestDeformablePSROIPoolOp(OpTest):
         w_1, w_2, w_3, w_4 = h_h * h_w, h_h * l_w, l_h * h_w, l_h * l_w
         val = w_1 * v_1 + w_2 * v_2 + w_3 * v_3 + w_4 * v_4
         return val
- 
+
     def calc_deformable_psroi_pooling(self):
-        output_shape = (self.rois_num, self.output_channels,
-                        self.pooled_height, self.pooled_width)
+        output_shape = (self.rois_num, self.output_channels, self.pooled_height,
+                        self.pooled_width)
         self.out = np.zeros(output_shape)
         self.trans = np.random.rand(self.rois_num, 2, self.part_size[0],
                                     self.part_size[1]).astype('float32')
@@ -113,14 +120,16 @@ class TestDeformablePSROIPoolOp(OpTest):
         for index in range(count):
             p_w = int(index % self.pooled_width)
             p_h = int(index / self.pooled_width % self.pooled_height)
-            ctop = int(index / self.pooled_width / self.pooled_height % self.output_channels)
-            n_out = int(index / self.pooled_width / self.pooled_height / self.output_channels)
+            ctop = int(index / self.pooled_width / self.pooled_height %
+                       self.output_channels)
+            n_out = int(index / self.pooled_width / self.pooled_height /
+                        self.output_channels)
             roi = self.rois[n_out]
             roi_batch_id = int(roi[0])
             roi_start_w = int(np.round(roi[1])) * self.spatial_scale - 0.5
             roi_start_h = int(np.round(roi[2])) * self.spatial_scale - 0.5
-            roi_end_w = int(np.round(roi[3]+1)) * self.spatial_scale - 0.5
-            roi_end_h = int(np.round(roi[4]+1)) * self.spatial_scale - 0.5
+            roi_end_w = int(np.round(roi[3] + 1)) * self.spatial_scale - 0.5
+            roi_end_h = int(np.round(roi[4] + 1)) * self.spatial_scale - 0.5
             roi_width = max(roi_end_w - roi_start_w, 0.1)
             roi_height = max(roi_end_h - roi_start_h, 0.1)
             bin_size_h = float(roi_height) / float(self.pooled_height)
@@ -156,8 +165,10 @@ class TestDeformablePSROIPoolOp(OpTest):
                         continue
                     w_sample = min(max(w_sample, 0.), self.width - 1.)
                     h_sample = min(max(h_sample, 0.), self.height - 1.)
-                    c_sample = int((ctop * self.group_size[0] + g_h) * self.group_size[1] + g_w)
-                    val = self.dmc_bilinear(input_i[c_sample], h_sample, w_sample)
+                    c_sample = int((ctop * self.group_size[0] + g_h) *
+                                   self.group_size[1] + g_w)
+                    val = self.dmc_bilinear(input_i[c_sample], h_sample,
+                                            w_sample)
                     sum = sum + val
                     num_sample = num_sample + 1
             if num_sample == 0:
@@ -165,7 +176,7 @@ class TestDeformablePSROIPoolOp(OpTest):
             else:
                 self.out[n_out][ctop][p_h][p_w] = sum / num_sample
             self.top_count[n_out][ctop][p_h][p_w] = num_sample
- 
+
     def setUp(self):
         self.op_type = "deformable_psroi_pooling"
         self.set_data()
@@ -175,6 +186,7 @@ class TestDeformablePSROIPoolOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['Input'], 'Output')
+
 
 if __name__ == '__main__':
     unittest.main()
