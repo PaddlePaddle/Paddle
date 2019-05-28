@@ -24,9 +24,9 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__global__ void ConcatKernel(T** inputs, const int* input_cols, int col_size,
-                             const int output_rows, const int output_cols,
-                             T* output) {
+__global__ void ConcatKernel(const T** inputs, const int* input_cols,
+                             int col_size, const int output_rows,
+                             const int output_cols, T* output) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   int curr_segment = 0;
   int curr_offset = input_cols[0];
@@ -41,7 +41,7 @@ __global__ void ConcatKernel(T** inputs, const int* input_cols, int col_size,
     int local_col = tid_x - curr_offset;
     int segment_width = curr_col_offset - curr_offset;
 
-    T* input_ptr = inputs[curr_segment];
+    const T* input_ptr = inputs[curr_segment];
     int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y)
       output[tid_y * output_cols + tid_x] =
@@ -50,14 +50,14 @@ __global__ void ConcatKernel(T** inputs, const int* input_cols, int col_size,
 }
 
 template <typename T>
-__device__ void ConcatKernelDetail(T** inputs_data, const int fixed_in_col,
-                                   const int out_rows, const int out_cols,
-                                   T* output_data) {
+__device__ void ConcatKernelDetail(const T** inputs_data,
+                                   const int fixed_in_col, const int out_rows,
+                                   const int out_cols, T* output_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   for (; tid_x < out_cols; tid_x += blockDim.x * gridDim.x) {
     int split = tid_x * 1.0 / fixed_in_col;
     int in_offset = tid_x - split * fixed_in_col;
-    T* input_ptr = inputs_data[split];
+    const T* input_ptr = inputs_data[split];
     int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < out_rows; tid_y += blockDim.y * gridDim.y) {
       output_data[tid_y * out_cols + tid_x] =
@@ -67,10 +67,10 @@ __device__ void ConcatKernelDetail(T** inputs_data, const int fixed_in_col,
 }
 
 template <typename T>
-__global__ void ConcatKernel(T* input_addr0, T* input_addr1,
+__global__ void ConcatKernel(const T* input_addr0, const T* input_addr1,
                              const int fixed_in_col, const int out_rows,
                              const int out_cols, T* output_data) {
-  T* inputs_data[2];
+  const T* inputs_data[2];
   inputs_data[0] = input_addr0;
   inputs_data[1] = input_addr1;
   ConcatKernelDetail<T>(inputs_data, fixed_in_col, out_rows, out_cols,
@@ -78,7 +78,7 @@ __global__ void ConcatKernel(T* input_addr0, T* input_addr1,
 }
 
 template <typename T>
-__global__ void ConcatKernel(T** inputs_data, const int in_num,
+__global__ void ConcatKernel(const T** inputs_data, const int in_num,
                              const int fixed_in_col, const int out_rows,
                              const int out_cols, T* output_data) {
   ConcatKernelDetail<T>(inputs_data, fixed_in_col, out_rows, out_cols,
@@ -209,7 +209,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
     memory::allocation::AllocationPtr tmp_dev_ins_data;
-    T** dev_ins_data = nullptr;
+    const T** dev_ins_data = nullptr;
     if (!has_same_shape || (in_num != 2)) {
       tmp_dev_ins_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
@@ -218,14 +218,14 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
                    tmp_dev_ins_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_data.data()),
                    inputs_data.size() * sizeof(T*), context.stream());
-      dev_ins_data = reinterpret_cast<T**>(tmp_dev_ins_data->ptr());
+      dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
     }
 
     if (has_same_shape) {
       if (in_num == 2) {
         ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
-            const_cast<T*>(inputs_data[0]), const_cast<T*>(inputs_data[1]),
-            in_col, out_row, out_col, output->data<T>());
+            inputs_data[0], inputs_data[1], in_col, out_row, out_col,
+            output->data<T>());
       } else {
         ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
             dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
