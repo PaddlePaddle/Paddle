@@ -62,7 +62,8 @@ class LightNASStrategy(Strategy):
         self._current_tokens = context.search_space.init_tokens()
         constrain_func = functools.partial(
             self._constrain_func, context=context)
-        self._controller.reset(context.search_space.range_table(), None)
+        self._controller.reset(context.search_space.range_table(),
+                               self._current_tokens, None)
 
         # create controller server
         if self._is_server:
@@ -98,18 +99,14 @@ class LightNASStrategy(Strategy):
             return False
 
     def on_epoch_begin(self, context):
-        #        if context.epoch_id == self.start_epoch:
-        #            self._current_tokens = self._search_agent.init_tokens()
 
         _logger.info("light nas strategy on_epoch_begin")
-        #        _logger.info("epoch_id: {}; start_epoch: {}; end_epoch: {};".format( context.epoch_id, self.start_epoch, self.end_epoch))
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
 
             startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
                 self._current_tokens)
-            #            context.train_graph.program = train_p
             context.eval_graph.program = test_p
             context.train_reader = train_reader
             context.eval_reader = test_reader

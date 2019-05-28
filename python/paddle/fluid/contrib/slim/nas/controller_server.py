@@ -64,7 +64,7 @@ class ControllerServer(object):
             tokens, reward = message.strip('\n').split("\t")
             tokens = [int(token) for token in tokens.split(",")]
             self._controller.update(tokens, float(reward))
-            tokens = self._controller.next_tokens(tokens)
+            tokens = self._controller.next_tokens()
             tokens = ",".join([str(token) for token in tokens])
             conn.send(tokens)
             _logger.info("send message to {}: [{}]".format(addr, tokens))

@@ -89,9 +89,10 @@ class SAController(EvolutionaryController):
                 d[key] = self.__dict__[key]
         return d
 
-    def reset(self, range_table, constrain_func=None):
+    def reset(self, range_table, init_tokens, constrain_func=None):
         self._range_table = range_table
         self._constrain_func = constrain_func
+        self._tokens = init_tokens
         self._iter = 0
 
     def update(self, tokens, reward):
@@ -107,7 +108,8 @@ class SAController(EvolutionaryController):
         _logger.info("iter: {}; max_reward: {}; best_tokens: {}".format(
             self._iter, self._max_reward, self._best_tokens))
 
-    def next_tokens(self, tokens):
+    def next_tokens(self):
+        tokens = self._tokens
         new_tokens = tokens[:]
         index = int(len(self._range_table) * np.random.random())
         new_tokens[index] = np.random.randint(self._range_table[index])
