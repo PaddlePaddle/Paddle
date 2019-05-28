@@ -81,7 +81,8 @@ class AutoPruneStrategy(PruneStrategy):
         constrain_func = functools.partial(
             self._constrain_func, context=context)
 
-        self._controller.reset(self._range_table, constrain_func)
+        self._controller.reset(self._range_table, self._current_tokens,
+                               constrain_func)
 
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
@@ -170,8 +171,7 @@ class AutoPruneStrategy(PruneStrategy):
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-            self._current_tokens = self._controller.next_tokens(
-                self._current_tokens)
+            self._current_tokens = self._controller.next_tokens()
             params = self._pruned_param_names
             ratios = self._tokens_to_ratios(self._current_tokens)
 
