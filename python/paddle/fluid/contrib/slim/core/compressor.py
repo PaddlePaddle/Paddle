@@ -242,7 +242,7 @@ class Compressor(object):
                  eval_feed_list=None,
                  eval_fetch_list=None,
                  teacher_programs=[],
-                 checkpoint_path='./checkpoints',
+                 checkpoint_path=None,
                  train_optimizer=None,
                  distiller_optimizer=None,
                  search_space=None):
@@ -406,7 +406,6 @@ class Compressor(object):
         """
         Save checkpoints to file.
         """
-        return
         if context.epoch_id % 1 == 0 and self.checkpoint_path:
             checkpoint_path = os.path.join(self.checkpoint_path,
                                            str(context.epoch_id))

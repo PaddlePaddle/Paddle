@@ -108,10 +108,11 @@ class LightNASSpace(SearchSpace):
             bottleneck_params_list=bottleneck_params_list)
         test_prog = test_prog.clone(for_test=True)
         train_batch_size = batch_size / 1
-        test_batch_size = 16
-        r = paddle.dataset.mnist.train()
+        test_batch_size = batch_size
         train_reader = paddle.batch(
-            r, batch_size=train_batch_size, drop_last=True)
+            paddle.dataset.mnist.train(),
+            batch_size=train_batch_size,
+            drop_last=True)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=test_batch_size)
 

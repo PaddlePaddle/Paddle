@@ -32,18 +32,22 @@ class ControllerServer(object):
                  controller=None,
                  address=None,
                  max_client_num=None,
-                 max_iter=1000):
+                 search_steps=None):
         """
         """
         self._controller = controller
         self._address = address
         self._max_client_num = max_client_num
-        self._max_iter = max_iter
+        self._search_steps = search_steps
+        self._closed = False
 
     def start(self):
         thread = Thread(target=self.run)
         thread.start()
         return str(thread)
+
+    def close(self):
+        self._closed = True
 
     def run(self):
         _logger.info("Controller Server run...")
@@ -51,7 +55,9 @@ class ControllerServer(object):
         socket_server.bind(self._address)
         socket_server.listen(self._max_client_num)
         _logger.info("listen on: [{}]".format(self._address))
-        while self._controller._iter < (self._max_iter):
+        while ((self._search_steps is None) or
+               (self._controller._iter <
+                (self._search_steps))) and not self._closed:
             conn, addr = socket_server.accept()
             message = conn.recv(1024).decode()
             _logger.info("recv message from {}: [{}]".format(addr, message))

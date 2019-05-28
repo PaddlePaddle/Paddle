@@ -51,8 +51,6 @@ class TestLightNAS(unittest.TestCase):
                                                          test_acc5.name)]
         train_fetch_list = [('loss', train_cost.name)]
 
-        #        train_reader.start()
-        #        test_reader.start()
         com_pass = Compressor(
             place,
             fluid.global_scope(),

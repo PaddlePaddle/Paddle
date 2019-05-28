@@ -86,7 +86,8 @@ class AutoPruneStrategy(PruneStrategy):
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
         ori_flops = context.eval_graph.flops()
-        params, ratios = self._get_prune_ratios(tokens)
+        ratios = self._tokens_to_ratios(tokens)
+        params = self._pruned_param_names
         param_shape_backup = {}
         self._prune_parameters(
             context.eval_graph,

@@ -6,18 +6,18 @@ controllers:
         init_temperature: 1024
         max_iter_number: 300
 strategies:
-    auto_pruning_strategy:
+    light_nas_strategy:
         class: 'LightNASStrategy'
         controller: 'sa_controller'
         target_flops: 629145600
-        end_epoch: 3
+        end_epoch: 2
         retrain_epoch: 1
         metric_name: 'acc_top1'
         server_ip: '10.255.142.41'
         server_port: 8871
         is_server: 1
+        search_steps: 2
 compressor:
-    epoch: 3
-    checkpoint_path: './checkpoints_light_nas/'
+    epoch: 2
     strategies:
-        - auto_pruning_strategy
+        - light_nas_strategy

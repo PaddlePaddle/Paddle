@@ -42,7 +42,8 @@ class LightNASStrategy(Strategy):
                  metric_name='top1_acc',
                  server_ip=None,
                  server_port=None,
-                 is_server=False):
+                 is_server=False,
+                 search_steps=None):
         """
         """
         self.start_epoch = 0
@@ -55,6 +56,7 @@ class LightNASStrategy(Strategy):
         self._server_port = server_port
         self._is_server = is_server
         self._retrain_epoch = retrain_epoch
+        self._search_steps = search_steps
 
     def on_compression_begin(self, context):
         self._current_tokens = context.search_space.init_tokens()
@@ -70,15 +72,14 @@ class LightNASStrategy(Strategy):
                 "./slim_LightNASStrategy_controller_server.socket", 'r+')
             fcntl.flock(socket_file, fcntl.LOCK_EX)
             tid = socket_file.readline()
-            _logger.info("tid: [{}]".format(tid))
             if tid == '':
                 _logger.info("start controller server...")
-                server = ControllerServer(
+                self._server = ControllerServer(
                     controller=self._controller,
                     address=(self._server_ip, self._server_port),
                     max_client_num=100,
-                    max_iter=1000)
-                tid = server.start()
+                    search_steps=self._search_steps)
+                tid = self._server.start()
                 socket_file.write(tid)
                 _logger.info("started controller server...")
             fcntl.flock(socket_file, fcntl.LOCK_UN)
