@@ -524,8 +524,31 @@ class SGDOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.2)
-            sgd_optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+                sgd_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
@@ -586,8 +609,31 @@ class MomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
-            optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+                moment_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
     """
     _velocity_acc_str = "velocity"
 
@@ -1125,8 +1171,29 @@ class AdamOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.Adam(learning_rate=0.2)
-            optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
+                adam_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
     """
     _moment1_acc_str = "moment1"
@@ -1657,8 +1724,31 @@ class RMSPropOptimizer(Optimizer):
     Examples:
           .. code-block:: python
 
-              optimizer = fluid.optimizer.RMSProp(0.0001)
-              _, params_grads = optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+                rms_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
     """
 
     _momentum_acc_str = "momentum"
@@ -1793,8 +1883,30 @@ class FtrlOptimizer(Optimizer):
     Examples:
           .. code-block:: python
 
-              optimizer = fluid.optimizer.Ftrl(0.0001)
-              _, params_grads = optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)
+                ftrl_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
     Notes:
        Currently, FtrlOptimizer doesn't support sparse parameter optimization.
