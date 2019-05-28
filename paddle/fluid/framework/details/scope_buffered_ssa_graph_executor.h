@@ -61,7 +61,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope*> local_scopes_;
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
-  std::future<int> run_op_future_;
+  std::future<void> run_op_future_;
   ::ThreadPool threads_pool_;
 };
 }  // namespace details
