@@ -41,7 +41,7 @@ class LightNASStrategy(Strategy):
                  retrain_epoch=1,
                  metric_name='top1_acc',
                  server_ip=None,
-                 server_port=None,
+                 server_port=0,
                  is_server=False,
                  search_steps=None):
         """
@@ -57,6 +57,20 @@ class LightNASStrategy(Strategy):
         self._is_server = is_server
         self._retrain_epoch = retrain_epoch
         self._search_steps = search_steps
+
+        if self._server_ip is None:
+            self._server_ip = self._get_host_ip()
+
+    def _get_host_ip(self):
+
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+        finally:
+            s.close()
+
+        return ip
 
     def on_compression_begin(self, context):
         self._current_tokens = context.search_space.init_tokens()
@@ -81,11 +95,13 @@ class LightNASStrategy(Strategy):
                     max_client_num=100,
                     search_steps=self._search_steps)
                 tid = self._server.start()
+                self._server_port = self._server.port()
                 socket_file.write(tid)
                 _logger.info("started controller server...")
             fcntl.flock(socket_file, fcntl.LOCK_UN)
             socket_file.close()
-
+        _logger.info("self._server_ip: {}; self._server_port: {}".format(
+            self._server_ip, self._server_port))
         # create client
         self._search_agent = SearchAgent(self._server_ip, self._server_port)
 

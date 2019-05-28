@@ -13,8 +13,6 @@ strategies:
         end_epoch: 2
         retrain_epoch: 1
         metric_name: 'acc_top1'
-        server_ip: '10.255.142.41'
-        server_port: 8871
         is_server: 1
         search_steps: 2
 compressor:

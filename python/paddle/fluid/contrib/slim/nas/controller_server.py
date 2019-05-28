@@ -30,7 +30,7 @@ class ControllerServer(object):
 
     def __init__(self,
                  controller=None,
-                 address=None,
+                 address=('', 0),
                  max_client_num=None,
                  search_steps=None):
         """
@@ -40,8 +40,16 @@ class ControllerServer(object):
         self._max_client_num = max_client_num
         self._search_steps = search_steps
         self._closed = False
+        self._port = address[1]
+        self._ip = address[0]
 
     def start(self):
+        self._socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket_server.bind(self._address)
+        self._socket_server.listen(self._max_client_num)
+        self._port = self._socket_server.getsockname()[1]
+        self._ip = self._socket_server.getsockname()[0]
+        _logger.info("listen on: [{}:{}]".format(self._ip, self._port))
         thread = Thread(target=self.run)
         thread.start()
         return str(thread)
@@ -49,16 +57,18 @@ class ControllerServer(object):
     def close(self):
         self._closed = True
 
+    def port(self):
+        return self._port
+
+    def ip(self):
+        return self._ip
+
     def run(self):
         _logger.info("Controller Server run...")
-        socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket_server.bind(self._address)
-        socket_server.listen(self._max_client_num)
-        _logger.info("listen on: [{}]".format(self._address))
         while ((self._search_steps is None) or
                (self._controller._iter <
                 (self._search_steps))) and not self._closed:
-            conn, addr = socket_server.accept()
+            conn, addr = self._socket_server.accept()
             message = conn.recv(1024).decode()
             _logger.info("recv message from {}: [{}]".format(addr, message))
             tokens, reward = message.strip('\n').split("\t")
@@ -69,5 +79,5 @@ class ControllerServer(object):
             conn.send(tokens)
             _logger.info("send message to {}: [{}]".format(addr, tokens))
             conn.close()
-        socket_server.close()
+        self._socket_server.close()
         _logger.info("server closed!")
