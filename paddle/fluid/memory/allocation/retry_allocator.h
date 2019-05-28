@@ -25,32 +25,25 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class RetryAllocator;
-
 class RetryAllocator : public Allocator {
  public:
-  RetryAllocator(std::unique_ptr<Allocator>&& allocator, size_t retry_ms)
+  RetryAllocator(std::shared_ptr<Allocator> allocator, size_t retry_ms)
       : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {
-    EnforceCheck();
-  }
-
-  bool IsAllocThreadSafe() const override;
-
- private:
-  void EnforceCheck() {
     PADDLE_ENFORCE_NOT_NULL(
-        underlying_allocator_.get(),
-        "UnderlyingAllocator of RetryAllocator must be UnmanagedAllocator");
+        underlying_allocator_,
+        "UnderlyingAllocator of RetryAllocator must not be null");
     PADDLE_ENFORCE(underlying_allocator_->IsAllocThreadSafe(),
                    "UnderlyingAllocator of RetryAllocator must be thread-safe");
   }
 
+  bool IsAllocThreadSafe() const override { return true; }
+
  protected:
-  void Free(Allocation* allocation) override;
+  void FreeImpl(Allocation* allocation) override;
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
-  std::unique_ptr<Allocator> underlying_allocator_;
+  std::shared_ptr<Allocator> underlying_allocator_;
   std::chrono::milliseconds retry_time_;
   std::mutex mutex_;
   std::condition_variable cv_;
@@ -58,8 +51,6 @@ class RetryAllocator : public Allocator {
   // For debug, We can add an atomic integer to record how many memory sizes are
   // waited to allocate
   // std::atomic<size_t> waited_allocate_size_{0};
-
-  friend class RetryAllocation;
 };
 
 }  // namespace allocation

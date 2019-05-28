@@ -83,9 +83,10 @@ def create_parameter(shape,
         the created parameter.
 
     Examples:
-        >>> W = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-        >>> data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-        >>> hidden = fluid.layers.matmul(x=data, y=W)
+        .. code-block:: python
+
+            import paddle.fluid.layers as layers
+            W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
@@ -122,8 +123,9 @@ def create_global_var(shape,
     Examples:
         .. code-block:: python
 
-            var = fluid.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                 persistable=True, force_cpu=True, name='new_var')
+            import paddle.fluid.layers as layers
+            var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+                                          persistable=True, force_cpu=True, name='new_var')
     """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
@@ -244,7 +246,9 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import paddle.fluid as fluid
+            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -741,6 +745,14 @@ def has_inf(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+          
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_inf(data)
+
     """
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -757,6 +769,14 @@ def has_nan(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+    
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_nan(data)
+
     """
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

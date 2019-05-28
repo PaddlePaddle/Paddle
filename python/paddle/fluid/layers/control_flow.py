@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -169,12 +169,16 @@ def Print(input,
 
 
     Examples:
-
         .. code-block:: python
+           
+           import paddle.fluid as fluid
+           
+           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+           fluid.layers.Print(input, message = "The content of input layer:")
+           # value = some_layer(...)
+           # Print(value, summarize=10,
+           #    message="The content of some_layer: ")
 
-           value = some_layer(...)
-           Print(value, summarize=10,
-               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     helper.append_op(
@@ -391,7 +395,7 @@ class StaticRNN(object):
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
             parent_block = self._parent_block()
-            var_name = unique_name.generate("@".join(
+            var_name = unique_name.generate_with_ignorable_key("@".join(
                 [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name,
@@ -414,7 +418,8 @@ class StaticRNN(object):
             return self.memory(init=boot_var)
         else:
             pre_mem = self.helper.create_variable(
-                name=unique_name.generate("@".join([self.helper.name, "mem"])),
+                name=unique_name.generate_with_ignorable_key("@".join(
+                    [self.helper.name, "mem"])),
                 dtype=init.dtype,
                 shape=init.shape)
             self.memories[pre_mem.name] = StaticRNNMemoryLink(
@@ -1559,11 +1564,13 @@ class IfElse(object):
         if id(x) not in self.input_table:
             parent_block = self._parent_block()
             out_true = parent_block.create_var(
-                name=unique_name.generate('ifelse_input' + self.helper.name),
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
                 dtype=x.dtype)
 
             out_false = parent_block.create_var(
-                name=unique_name.generate('ifelse_input' + self.helper.name),
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
                 dtype=x.dtype)
             parent_block.append_op(
                 type='split_lod_tensor',
@@ -1605,7 +1612,7 @@ class IfElse(object):
                 raise TypeError("Each output should be a variable")
             # create outside tensor
             outside_out = parent_block.create_var(
-                name=unique_name.generate("_".join(
+                name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, 'output'])),
                 dtype=each_out.dtype)
             out_table.append(outside_out)
@@ -2023,7 +2030,7 @@ class DynamicRNN(object):
         parent_block = self._parent_block_()
         for each in outputs:
             outside_array = parent_block.create_var(
-                name=unique_name.generate("_".join(
+                name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, "output_array", each.name])),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=each.dtype)
@@ -2060,8 +2067,31 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc()
+@templatedoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
+    """
+    ${comment}
+
+    Args:
+    
+        x(${x_type}): ${x_comment}
+        rank_table(${rank_table_type}): ${rank_table_type}
+    
+    Returns:
+        out(${out_type}): ${out_comment} 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data_desc = (['input', [9], 0], ['ref', [5], 1])
+          data = fluid.layers.data(name=data_desc[0][0], shape=data_desc[0][1])
+          rank_data = fluid.layers.data(name=data_desc[1][0], shape=data_desc[1][1])
+          table = fluid.layers.control_flow.lod_rank_table(rank_data)
+          new_data = fluid.layers.reorder_lod_tensor_by_rank(
+                           x=data, rank_table=table)
+
+    """
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
@@ -2094,9 +2124,12 @@ def is_empty(x, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
           res = fluid.layers.is_empty(x=input)
           # or:
-          fluid.layers.is_empty(x=input, cond=res)
+          # fluid.layers.is_empty(x=input, cond=res)
+
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:

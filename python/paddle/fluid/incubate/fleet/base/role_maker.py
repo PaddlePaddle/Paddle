@@ -61,6 +61,15 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
+    def worker_num(self):
+        """
+        Get current total worker number.
+
+        Returns:
+            int: worker number
+        """
+        raise NotImplementedError("Please implement this method in child class")
+
     def worker_index(self):
         """
         Get current worker id.
@@ -197,6 +206,9 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             return self.is_worker() and 0 == self.worker_index()
         return False
 
+    def worker_num(self):
+        return self._worker_num()
+
     def is_worker(self):
         """
         return whether current process is worker assigned by role maker
@@ -293,10 +305,29 @@ class UserDefinedRoleMaker(RoleMakerBase):
         """
         super(UserDefinedRoleMaker, self).__init__()
 
-        self._current_id = current_id
-        self._role = role
-        self._worker_num = worker_num
-        self._server_endpoints = server_endpoints
+        if not isinstance(current_id, int):
+            raise TypeError("current_id must be as int")
+        else:
+            if current_id < 0:
+                raise ValueError("current_id must be gather or equal 0")
+            self._current_id = current_id
+
+        if not isinstance(role, Role):
+            raise TypeError("role must be as Role")
+        else:
+            self._role = role
+
+        if not isinstance(worker_num, int):
+            raise TypeError("worker_num must be as int")
+        else:
+            if worker_num < 0:
+                raise ValueError("worker_num must be gather or equal 0")
+            self._worker_num = worker_num
+
+        if not isinstance(server_endpoints, list):
+            raise TypeError("server_endpoints must be as string list")
+        else:
+            self._server_endpoints = server_endpoints
 
     def is_worker(self):
         return self._role == Role.WORKER
@@ -312,3 +343,6 @@ class UserDefinedRoleMaker(RoleMakerBase):
 
     def server_index(self):
         return self._current_id
+
+    def worker_num(self):
+        return self._worker_num

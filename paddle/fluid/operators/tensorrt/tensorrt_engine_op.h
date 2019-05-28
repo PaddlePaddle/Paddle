@@ -48,6 +48,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
+  bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string engine_serialized_data_;
@@ -65,6 +66,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     workspace_size_ = Attr<int>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
+    use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
     engine_serialized_data_ = Attr<std::string>("engine_serialized_data");
@@ -75,7 +77,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     // calibration_mode is ture represents we need to
     // generate the calibration table data.
-    calibration_mode_ = (enable_int8_ && calibration_data_.size() == 0);
+    calibration_mode_ =
+        (enable_int8_ && calibration_data_.size() == 0 && use_calib_mode_);
 
     VLOG(4) << "calibration_mode: " << calibration_mode_;
     if (enable_int8_ && calibration_data_.size()) {
