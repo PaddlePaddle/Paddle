@@ -45,7 +45,7 @@ else()
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
-        PATCH_COMMAND     ${PATCH_COMMAND}
+        PATCH_COMMAND     "${PATCH_COMMAND}"
         INSTALL_COMMAND   ""
         TEST_COMMAND      ""
     )
