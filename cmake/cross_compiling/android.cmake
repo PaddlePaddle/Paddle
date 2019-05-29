@@ -16,6 +16,8 @@ if(NOT ANDROID)
     return()
 endif()
 
+add_definitions(-DLITE_WITH_ANDROID)
+
 if(NOT DEFINED ANDROID_NDK)
     set(ANDROID_NDK $ENV{NDK_ROOT})
     if(NOT ANDROID_NDK)
@@ -43,7 +45,8 @@ if (NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
 endif()
 
 if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
-    message(STATUS "NEON is enabled on arm-v7a")
+    set(CMAKE_ANDROID_ARM_NEON ON)
+    message(STATUS "NEON is enabled on arm-v7a with softfp")
 endif()
 
 set(ANDROID_STL_TYPE_LITS "gnustl_static" "c++_static")
