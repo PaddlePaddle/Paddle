@@ -14,7 +14,7 @@ cc_library(mean_op_lite SRCS mean_op.cc DEPS ${op_DEPS})
 cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
 cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
 
-cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite)
+cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
 set(ops_lite
         fc_op_lite
         relu_op_lite
