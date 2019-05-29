@@ -9549,10 +9549,10 @@ def slice(input, axes, starts, ends):
             ends = [3, 3, 4]
             axes = [0, 1, 2]
 
-            input = layers.data(
+            input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
