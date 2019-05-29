@@ -64,7 +64,7 @@ class RuntimeContextAssignPass : public StmtPass {
 
 #ifdef LITE_WITH_ARM
   std::unique_ptr<KernelContext> NewARMContext() {
-    DeviceInfo::init_info();
+    DeviceInfo::Init();
     std::unique_ptr<KernelContext> ctx(new KernelContext);
     ctx->As<ARMContext>();
     return ctx;
