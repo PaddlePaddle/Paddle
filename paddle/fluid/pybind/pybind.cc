@@ -39,8 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -59,6 +57,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -189,134 +188,6 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
-  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
-      m, "BackwardStrategy", R"DOC()DOC");
-  backward_strategy.def(py::init())
-      .def_property("sort_sum_gradient",
-                    [](const imperative::detail::BackwardStrategy &self) {
-                      return self.sorted_sum_gradient_;
-                    },
-                    [](imperative::detail::BackwardStrategy &self,
-                       bool sorted_sum_gradient) {
-                      self.sorted_sum_gradient_ = sorted_sum_gradient;
-                    });
-
-  m.def("start_imperative_gperf_profiler",
-        []() { imperative::StartProfile(); });
-
-  m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
-
-  py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
-      .def(
-          py::init<const std::string &, paddle::framework::proto::VarType::Type,
-                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
-                   bool, bool>())
-      .def(
-          py::init<const std::string &, paddle::framework::proto::VarType::Type,
-                   const std::vector<int64_t>,
-                   const paddle::platform::CUDAPlace, bool, bool>())
-      .def("_run_backward",
-           [](imperative::VarBase &self,
-              const imperative::detail::BackwardStrategy &bckst) {
-             self.RunBackward(bckst);
-           })
-      .def("_grad_name", &imperative::VarBase::GradName)
-      .def("_grad_value", &imperative::VarBase::GradValue)
-      .def("_clear_gradient", &imperative::VarBase::ClearGradient)
-      .def("_grad_ivar",
-           [](const imperative::VarBase &self) { return self.grads_; },
-           py::return_value_policy::reference)
-      .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CPUPlace &place,
-              bool blocking) {
-             std::unique_ptr<imperative::VarBase> new_var =
-                 self.NewVarBase(place, blocking);
-             return new_var.release();
-           },
-           py::return_value_policy::take_ownership)
-      .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
-              bool blocking) {
-             std::unique_ptr<imperative::VarBase> new_var =
-                 self.NewVarBase(place, blocking);
-             return new_var.release();
-           },
-           py::return_value_policy::take_ownership)
-      .def("value",
-           [](const imperative::VarBase &self) { return self.var_.get(); },
-           py::return_value_policy::reference)
-      .def_property("name", &imperative::VarBase::Name,
-                    &imperative::VarBase::SetName)
-      .def_property_readonly("shape", &imperative::VarBase::Shape)
-      .def_property_readonly("dtype", &imperative::VarBase::DataType)
-      .def_property("persistable", &imperative::VarBase::IsPersistable,
-                    &imperative::VarBase::SetPersistable)
-      .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
-                    &imperative::VarBase::SetStopGradient);
-
-  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
-      .def(py::init<const std::string &>())
-      .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable) {
-             self.RegisterBackwardHooks(callable);
-           })
-      .def_property("_trace_id",
-                    [](const imperative::OpBase &self) {
-                      pybind11::gil_scoped_release release;
-                      return self.trace_id_;
-                    },
-                    [](imperative::OpBase &self, int trace_id) {
-                      pybind11::gil_scoped_release release;
-                      self.trace_id_ = trace_id;
-                    },
-                    py::return_value_policy::reference)
-      .def_property(
-          "forward_id",
-          [](const imperative::OpBase &self) { return self.forward_id_; },
-          [](imperative::OpBase &self, int forward_id) {
-            self.forward_id_ = forward_id;
-          },
-          py::return_value_policy::reference)
-      .def_property_readonly("type", &imperative::OpBase::Type)
-      .def_property(
-          "backward_id",
-          [](const imperative::OpBase &self) { return self.backward_id_; },
-          [](imperative::OpBase &self, int backward_id) {
-            self.backward_id_ = backward_id;
-          },
-          py::return_value_policy::reference);
-
-  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
-  layer.def(py::init<>())
-      .def("forward", [](imperative::Layer &self,
-                         const std::vector<imperative::VarBase *> &inputs) {
-        return self.Forward(inputs);
-      });
-
-  py::class_<imperative::PyLayer>(m, "PyLayer")
-      .def(py::init<>())
-      .def_static(
-          "apply",
-          [](int func_id, const std::vector<imperative::VarBase *> &inputs)
-              -> std::vector<imperative::VarBase *> {
-                auto ret_vars = imperative::PyLayer::Apply(func_id, inputs);
-                std::vector<imperative::VarBase *> outputs;
-                outputs.reserve(ret_vars.size());
-                for (size_t i = 0U; i != ret_vars.size(); ++i) {
-                  // TODO(minqiyang): use unique_name generator to set a name
-                  outputs.emplace_back(new imperative::VarBase(
-                      "", std::move(ret_vars[i]), nullptr, true));
-                }
-
-                return outputs;
-              },
-          py::return_value_policy::take_ownership)
-      .def_static("register_func",
-                  [](int func_id, const py::object &callable) {
-                    imperative::PyLayer::RegisterFunc(func_id, callable);
-                  })
-      .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
-
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
@@ -391,7 +262,12 @@ PYBIND11_MODULE(core, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
-      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
+      .def("__str__", [](const Tensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -610,7 +486,12 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
-           )DOC");
+           )DOC")
+      .def("__str__", [](const LoDTensor &self) {
+        std::stringstream ostr;
+        ostr << self;
+        return ostr.str();
+      });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -1052,6 +933,14 @@ All parameter, weight, gradient are variables in Paddle.
                                      create_local_scope, create_vars,
                                      feed_holder_name, fetch_holder_name);
            })
+      .def("run_cached_prepared_ctx",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              bool create_local_scope = true, bool create_vars = true,
+              bool keep_kids = false) {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, create_local_scope,
+                                     create_vars, keep_kids);
+           })
       .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
            py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
@@ -1464,6 +1353,34 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, int trainer_id) {
                       self.trainer_id_ = trainer_id;
                     })
+      .def_property(
+          "nccl_comm_num",
+          [](const BuildStrategy &self) { return self.nccl_comm_num_; },
+          [](BuildStrategy &self, int nccl_comm_num) {
+            self.nccl_comm_num_ = nccl_comm_num;
+          })
+      .def_property("use_hierarchical_allreduce_",
+                    [](const BuildStrategy &self) {
+                      return self.use_hierarchical_allreduce_;
+                    },
+                    [](BuildStrategy &self, bool use) {
+                      self.use_hierarchical_allreduce_ = use;
+                    })
+      .def_property("hierarchical_allreduce_inter_nranks_",
+                    [](const BuildStrategy &self) {
+                      return self.hierarchical_allreduce_inter_nranks_;
+                    },
+                    [](BuildStrategy &self, int nranks) {
+                      self.hierarchical_allreduce_inter_nranks_ = nranks;
+                    })
+      .def_property("hierarchical_allreduce_exter_nranks_",
+                    [](const BuildStrategy &self) {
+                      return self.hierarchical_allreduce_exter_nranks_;
+                    },
+                    [](BuildStrategy &self, int nranks) {
+                      self.hierarchical_allreduce_exter_nranks_ = nranks;
+                    })
+
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

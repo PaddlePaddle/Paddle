@@ -52,7 +52,7 @@ class Allocator;
  * decorate a RetryAllocator to any allocator to perform allocation retry when
  * first allocation request fails.
  *
- * Explanations of Allocator design is as follows:
+ * Explanations of Allocator design are as follows:
  *
  * Suppose we have an allocator which is decorated by several allocators:
  *
@@ -127,8 +127,15 @@ class Allocation {
   size_t size_;
   platform::Place place_;
 
-  // NOTE(zjl): Since decorated_allocators_ is usually a small vector
-  // We reserve a small buffer to it to prevent frequent heap allocation
+  /**
+   * NOTE(zjl): Since decorated_allocators_ is usually a small vector.
+   * We reserve a small buffer to it to prevent frequent heap allocation
+   *
+   * Instead, we can use a std::vector<Allocator *> here, and reserve
+   * kReserveAllocatorNum in constructor of Allocation.
+   * But using std::vector<Allocator *> would make ocr recognition model
+   * fail in CE. The train duration is 8% slower than KPI.
+   */
   static constexpr size_t kReserveAllocatorNum = 8;
   using DecoratedAllocatorStack =
       framework::InlinedVector<Allocator*, kReserveAllocatorNum>;
