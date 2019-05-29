@@ -91,6 +91,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
     auto in_grad_var_name = Output(framework::GradVarName("X"));
     auto *in_grad_var = scope.FindVar(in_grad_var_name);
+
+    VLOG(2) << "RnnMemoryGradOp gets in grad var " << in_grad_var_name;
     PADDLE_ENFORCE(in_grad_var != nullptr,
                    "Cannot find in_grad_var in scope, name is %s",
                    in_grad_var_name);
@@ -105,7 +107,9 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
+      VLOG(5) << "Before calling " << in_var_name << " type()";
       attrs["dtype"] = in_var_tensor.type();
+      VLOG(5) << "After calling " << in_var_name << " type()";
       attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
