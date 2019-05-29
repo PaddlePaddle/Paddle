@@ -11,10 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
+#include <string>
+#include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <gtest/gtest.h>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+#include "gtest/gtest.h"
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -127,40 +130,6 @@ void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
     }
     CompareNativeAndAnalysis(native_pred.get(), analysis_pred.get(),
                              inputs_all);
-  }
-}
-
-TEST(TensorRT_mobilenet, compare) {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  compare(model_dir, /* use_tensorrt */ true);
-  // Open it when need.
-  // profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
-}
-
-TEST(resnet50, compare_continuous_input) {
-  std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare_continuous_input(model_dir, true);
-}
-
-TEST(TensorRT_resnext50, compare) {
-  std::string model_dir = FLAGS_infer_model + "/resnext50";
-  compare(model_dir, /* use_tensorrt */ true);
-}
-
-TEST(AnalysisPredictor, use_gpu) {
-  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir);
-  config.pass_builder()->TurnOnDebug();
-
-  std::vector<std::vector<PaddleTensor>> inputs_all;
-  auto predictor = CreatePaddlePredictor(config);
-  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
-
-  std::vector<PaddleTensor> outputs;
-  for (auto& input : inputs_all) {
-    ASSERT_TRUE(predictor->Run(input, &outputs));
   }
 }
 
