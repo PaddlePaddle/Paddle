@@ -652,11 +652,11 @@ def py_reader(capacity,
     This layer returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source in Python side. When :code:`Executor::Run()` is invoked in C++
-    side, the data from the generator would be read automatically. Unlike
-    :code:`DataFeeder.feed()`, the data reading process and
-    :code:`Executor::Run()` process can run in parallel using
-    :code:`py_reader`. The :code:`start()` method of the Reader should be
+    sourcei. More details :ref:‘user_guides_use_py_reader_en` .  When
+    :code:`Executor::Run()` is invoked in C++ side, the data from the generator
+    would be read automatically. Unlike :code:`DataFeeder.feed()`, the data
+    reading process and :code:`Executor::Run()` process can run in parallel
+    using :code:`py_reader`. The :code:`start()` method of the Reader should be
     called when each pass begins, while the :code:`reset()` method should be
     called when the pass ends and :code:`fluid.core.EOFException` raises.
     Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.

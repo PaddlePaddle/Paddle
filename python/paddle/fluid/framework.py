@@ -2969,11 +2969,14 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will not do any prune on program here, So if you just want an
+          forward program for testing, please use :code:`clone` before using
+          :code:`Opimizer.minimize`
 
-        Notes: This API DOES NOT prune any operator. Use
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. This API DOES NOT prune any operator. Use
         :code:`clone(for_test=True)` before backward and optimization please. e.g.
 
         .. code-block:: python
@@ -2991,7 +2994,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3685,8 +3693,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3714,8 +3722,8 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
             None means do not change startup program.
     """
     if not isinstance(main_program, Program):
