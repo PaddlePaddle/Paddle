@@ -70,7 +70,7 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
         framework::Tensor temp;
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
-        auto place = platform::CPUPlace();
+        auto place = platform::CUDAPlace();
         auto& dev_ctx = *pool.Get(place);
         framework::TensorCopy(*depth_tensor, platform::CPUPlace(), dev_ctx,
                               &temp);
