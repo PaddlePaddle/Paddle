@@ -35,23 +35,30 @@ void SoftmaxCompute::Run() {
   int axis_size = dim_x[axis];
   if (inner_num == 1) {
     if (axis_size >= 4) {
-      lite::arm::math::softmax_inner1_large_axis(din, dout, outer_num, axis_size);
+      lite::arm::math::softmax_inner1_large_axis(din, dout, outer_num,
+                                                 axis_size);
     } else {
-      lite::arm::math::softmax_inner1_small_axis(din, dout, outer_num, axis_size);
+      lite::arm::math::softmax_inner1_small_axis(din, dout, outer_num,
+                                                 axis_size);
     }
   } else {
     int compute_size = outer_num * inner_num;
     if (axis_size == 4 && inner_num % 8 == 0) {
-      lite::arm::math::softmax_inner8_axis4(din, dout, axis_size, inner_num, outer_num);
+      lite::arm::math::softmax_inner8_axis4(din, dout, axis_size, inner_num,
+                                            outer_num);
     } else if (axis_size == 4 && inner_num % 4 == 0) {
-      lite::arm::math::softmax_inner4_axis4(din, dout, axis_size, inner_num, outer_num);
+      lite::arm::math::softmax_inner4_axis4(din, dout, axis_size, inner_num,
+                                            outer_num);
     } else {
       if (inner_num % 8 == 0) {
-        lite::arm::math::softmax_inner8(din, dout, axis_size, inner_num, outer_num);
+        lite::arm::math::softmax_inner8(din, dout, axis_size, inner_num,
+                                        outer_num);
       } else if (inner_num % 4 == 0) {
-        lite::arm::math::softmax_inner4(din, dout, axis_size, inner_num, outer_num);
+        lite::arm::math::softmax_inner4(din, dout, axis_size, inner_num,
+                                        outer_num);
       } else {
-        lite::arm::math::softmax_basic(din, dout, axis_size, inner_num, outer_num);
+        lite::arm::math::softmax_basic(din, dout, axis_size, inner_num,
+                                       outer_num);
       }
     }
   }
