@@ -37,7 +37,6 @@ class ElementwiseOp : public OpLite {
   }
 
   bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 2UL);
     auto X_name = opdesc.Input("X").front();
     auto Y_name = opdesc.Input("Y").front();
     auto Out_name = opdesc.Output("Out").front();
@@ -45,7 +44,7 @@ class ElementwiseOp : public OpLite {
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Y = GetVar<lite::Tensor>(scope, Y_name);
     param_.Out = GetMutableVar<Tensor>(scope, Out_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+    param_.axis = GetAttr<int>(opdesc.GetAttr("axis"));
 
     return true;
   }
@@ -58,6 +57,7 @@ class ElementwiseOp : public OpLite {
   mutable operators::ElementwiseParam param_;
 };
 
+#ifdef LITE_WITH_X86
 class ElementwiseGradExplicitOp : public OpLite {
  public:
   explicit ElementwiseGradExplicitOp(const std::string& type) : OpLite(type) {}
@@ -99,11 +99,14 @@ class ElementwiseGradExplicitOp : public OpLite {
  private:
   mutable operators::ElementwiseGradParam param_;
 };
+#endif
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
 REGISTER_LITE_OP(elementwise_sub, paddle::lite::operators::ElementwiseOp);
+#ifdef LITE_WITH_X86
 REGISTER_LITE_OP(elementwise_sub_grad,
                  paddle::lite::operators::ElementwiseGradExplicitOp);
+#endif

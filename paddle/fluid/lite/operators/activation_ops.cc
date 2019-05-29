@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef LITE_WITH_X86
 #include "paddle/fluid/framework/operator.h"
+#endif
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -48,6 +50,7 @@ class ActivationOp : public OpLite {
   mutable ActivationParam param_;
 };
 
+#ifdef LITE_WITH_X86
 class ActivationGradOp : public OpLite {
  public:
   explicit ActivationGradOp(const std::string& type) : OpLite(type) {}
@@ -79,10 +82,13 @@ class ActivationGradOp : public OpLite {
  private:
   mutable ActivationGradParam param_;
 };
+#endif
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
 REGISTER_LITE_OP(square, paddle::lite::operators::ActivationOp);
+#ifdef LITE_WITH_X86
 REGISTER_LITE_OP(square_grad, paddle::lite::operators::ActivationGradOp);
+#endif
