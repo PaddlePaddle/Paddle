@@ -21,7 +21,7 @@ __all__ = [
 
 
 class Role(Enum):
-    WORKER = 1,
+    WORKER = 1
     SERVER = 2
 
 
