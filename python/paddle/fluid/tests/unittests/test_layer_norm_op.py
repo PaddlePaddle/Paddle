@@ -160,15 +160,24 @@ class TestLayerNormdOp(unittest.TestCase):
                 self.__assert_close(bias_grad, out[5], "bias_grad")
 
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
         for place in places:
             test_with_place(place, shape, begin_norm_axis)
 
+    def init_test_case(self):
+        self.use_cudnn = False
+
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+
+
+class TestLayerNormdCudnnOp(TestLayerNormdOp):
+    def init_test_case(self):
+        self.use_cudnn = True
 
 
 if __name__ == '__main__':
