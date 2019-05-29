@@ -45,6 +45,13 @@ function test_mobile {
     local file=$1
 }
 
+# Build the code and run lite server tests.
+function build_test_server {
+    cmake_x86
+    build
+    test_lite
+}
+
 ############################# MAIN #################################
 function print_usage {
     echo -e "\nUSAGE:"
@@ -93,6 +100,10 @@ function main {
                 ;;
             test_mobile)
                 test_lite $TESTS_FILE
+                shift
+                ;;
+            build_test_server)
+                build_test_server
                 shift
                 ;;
             *)
