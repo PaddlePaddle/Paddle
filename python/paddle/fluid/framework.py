@@ -2977,7 +2977,7 @@ class Program(object):
         Notes: 
         1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
         2. This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        :code:`clone(for_test=True)` before backward and optimization please. E.g.
 
         .. code-block:: python
 
@@ -3724,7 +3724,7 @@ def program_guard(main_program, startup_program=None):
     Args:
         main_program(Program): New main program inside `"with"` statement.
         startup_program(Program): New startup program inside `"with"` statement.
-            None means do not change startup program.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

@@ -652,7 +652,7 @@ def py_reader(capacity,
     This layer returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    sourcei. More details :ref:`user_guides_use_py_reader_en` .  When
+    sourcei. More details :ref:`user_guide_use_py_reader_en` .  When
     :code:`Executor::Run()` is invoked in C++ side, the data from the generator
     would be read automatically. Unlike :code:`DataFeeder.feed()`, the data
     reading process and :code:`Executor::Run()` process can run in parallel
