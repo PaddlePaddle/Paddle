@@ -92,7 +92,7 @@ TEST(CXXTrainer, train) {
   main_program_desc.ParseFromString(main_program_pb);
   startup_program_desc.ParseFromString(startup_program_pb);
 
-  LOG(INFO) << main_program_desc.DebugString();
+  // LOG(INFO) << main_program_desc.DebugString();
 
   for (const auto& op : main_program_desc.blocks(0).ops()) {
     LOG(INFO) << "get op " << op.type();
