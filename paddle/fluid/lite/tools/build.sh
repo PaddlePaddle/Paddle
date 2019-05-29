@@ -6,12 +6,10 @@ TESTS_FILE=""
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DLITE_WITH_X86=ON ${common_flags}
-    make test_cxx_api_lite -j8
 }
 
 function cmake_gpu {
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
-    make test_cxx_api_lite -j8
 }
 
 function cmake_arm {
@@ -64,6 +62,7 @@ function print_usage {
     echo
 }
 
+TESTS_FILE="./lite_tests.txt"
 function main {
     # Parse command line.
     for i in "$@"; do
