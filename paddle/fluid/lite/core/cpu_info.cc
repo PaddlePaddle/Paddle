@@ -20,7 +20,7 @@ namespace lite {
 
 #ifdef LITE_WITH_ARM
 
-void DeviceInfo::get_info(DeviceInfo* dev) {
+void DeviceInfo::InitInternal(DeviceInfo* dev) {
   set_default_cache(dev);
   dev->compute_core_num_ = arm_get_cpucount();
   dev->max_memory_ = arm_get_meminfo();

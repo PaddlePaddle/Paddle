@@ -61,8 +61,6 @@ TEST(fc_arm, compare_test) {
     b_data[i] = static_cast<float>(i);
   }
 
-  // TODO(TJ): enable bias soon
-  b_data = nullptr;
   lite::arm::math::fc_compute_eigen(x_data, batch_size, 3,  //
                                     w_data, 3, 4,           //
                                     b_data, ref_data);
@@ -74,11 +72,11 @@ TEST(fc_arm, compare_test) {
   param.in_num_col_dims = 1;
   param.input = &x;
   param.w = &w;
-  param.bias = nullptr;
+  param.bias = &b;
   param.output = &out;
   param.in_mat_dims = x.dims();
 
-  DeviceInfo::init_info();
+  DeviceInfo::Init();
   std::unique_ptr<KernelContext> ctx(new KernelContext);
   ctx->As<ARMContext>();
   fc.SetParam(param);
@@ -136,7 +134,7 @@ TEST(fc_arm, num_col_dims) {
 
   std::unique_ptr<KernelContext> ctx(new KernelContext);
   ctx->As<ARMContext>();
-  DeviceInfo::init_info();
+  DeviceInfo::Init();
 
   fc.SetParam(param);
   fc.SetContext(std::move(ctx));

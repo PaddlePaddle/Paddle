@@ -85,14 +85,14 @@ class DeviceInfo {
     return *x;
   }
 
-  static void init_info() {
+  static void Init() {
     auto& info = Global();
-    get_info(&info);
+    InitInternal(&info);
   }
 
  private:
   DeviceInfo() = default;
-  static void get_info(DeviceInfo* dev);
+  static void InitInternal(DeviceInfo* dev);
 };
 
 size_t arm_get_meminfo();

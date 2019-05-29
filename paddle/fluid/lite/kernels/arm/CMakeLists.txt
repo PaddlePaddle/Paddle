@@ -9,7 +9,7 @@ cc_library(relu_compute_arm SRCS relu_compute.cc DEPS ${lite_kernel_deps})
 cc_library(mul_compute_arm SRCS mul_compute.cc DEPS ${lite_kernel_deps} eigen3)
 cc_library(scale_compute_arm SRCS scale_compute.cc DEPS ${lite_kernel_deps} eigen3)
 
-lite_cc_test(test_fc_compute_arm SRCS fc_compute_test.cc DEPS fc_compute_arm eigen3)
+lite_cc_test(test_fc_compute_arm SRCS fc_compute_test.cc DEPS fc_compute_arm math_arm)
 
 set(arm_kernels
     fc_compute_arm
