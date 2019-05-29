@@ -47,6 +47,8 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
 
         super(MKLDNNPostTrainingQuantStrategy, self).__init__(0, 0)
         self.int8_model_save_path = int8_model_save_path
+        if fp32_model_path is None:
+            raise Exception("fp32_model_path is None")
         self.fp32_model_path = fp32_model_path
 
     def on_compression_begin(self, context):
@@ -87,8 +89,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         labels.name = "y"
         labels.shape = [num_images, 1]
         labels.dtype = core.PaddleDType.INT64
-        label_data = [[label] for (_, label) in data]
-        label_data = np.array(label_data)
+        label_data = [label for (_, label) in data]
         labels.data = core.PaddleBuf(label_data)
 
         warmup_data = [images, labels]

@@ -103,7 +103,7 @@ class TestMKLDNNPostTrainingQuantStrategy(TestCalibration):
         com_pass.config(config_path)
         eval_graph = com_pass.run()
 
-    def test_post_traing_quant_int8(self):
+    def test_compression(self):
         if not fluid.core.is_compiled_with_mkldnn():
             return
 
