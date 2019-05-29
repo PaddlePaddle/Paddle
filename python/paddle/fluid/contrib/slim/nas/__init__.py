@@ -20,6 +20,8 @@ from . import search_agent
 from .search_agent import *
 from . import search_space
 from .search_space import *
+from . import lock
+from .lock import *
 
 __all__ = light_nas_strategy.__all__
 __all__ += controller_server.__all__

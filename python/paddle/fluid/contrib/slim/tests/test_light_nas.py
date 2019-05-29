@@ -18,7 +18,9 @@ import paddle.fluid as fluid
 from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
-from light_nas import LightNASSpace
+import sys
+sys.path.append("./light_nas")
+from light_nas_space import LightNASSpace
 
 
 class TestLightNAS(unittest.TestCase):

@@ -20,7 +20,7 @@ import re
 import logging
 import functools
 import socket
-import fcntl
+from .lock import lock, unlock, LOCK_EX
 
 __all__ = ['LightNASStrategy']
 
@@ -85,7 +85,7 @@ class LightNASStrategy(Strategy):
                  'a').close()
             socket_file = open(
                 "./slim_LightNASStrategy_controller_server.socket", 'r+')
-            fcntl.flock(socket_file, fcntl.LOCK_EX)
+            lock(socket_file, LOCK_EX)
             tid = socket_file.readline()
             if tid == '':
                 _logger.info("start controller server...")
@@ -98,7 +98,7 @@ class LightNASStrategy(Strategy):
                 self._server_port = self._server.port()
                 socket_file.write(tid)
                 _logger.info("started controller server...")
-            fcntl.flock(socket_file, fcntl.LOCK_UN)
+            unlock(socket_file)
             socket_file.close()
         _logger.info("self._server_ip: {}; self._server_port: {}".format(
             self._server_ip, self._server_port))
