@@ -458,16 +458,8 @@ void NgraphEngine::BuildNgNodes() {
   }
 }
 
-void NgraphEngine::RunInferShape() {
-  for (auto& op : fused_ops_) {
-    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
-    op->RuntimeInferShape(scope_, place_, ctx);
-  }
-}
-
 void NgraphEngine::BuildNgFunction(const framework::ExecutionContext& ctx) {
   Prepare(ctx);
-  RunInferShape();
   GetNgInputShape();
   BuildNgNodes();
   ngraph_function_ = nullptr;
@@ -624,6 +616,11 @@ void NgraphEngine::Run(const framework::Scope& scope,
       }
       (*p_t_in).emplace_back(ti);
     }
+  }
+
+  for (auto& op : fused_ops_) {
+    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+    op->RuntimeInferShape(scope_, place_, ctx);
   }
 
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out = {};
