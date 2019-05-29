@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -19,91 +20,79 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class ElementwiseOp : public OpLite {
+class MeanOp : public OpLite {
  public:
-  explicit ElementwiseOp(const std::string& type) : OpLite(type) {}
+  explicit MeanOp(const std::string& type) : OpLite(type) {}
 
   bool CheckShape() const override {
     CHECK_OR_FALSE(param_.X);
-    CHECK_OR_FALSE(param_.Y);
     CHECK_OR_FALSE(param_.Out);
     return true;
   }
 
   bool InferShape() const override {
-    CHECK_OR_FALSE(param_.X->dims().size() >= param_.Y->dims().size());
-    param_.Out->Resize(param_.X->dims());
+    param_.Out->Resize(std::vector<int64_t>{1});
     return true;
   }
 
   bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
     CHECK_EQ(opdesc.Inputs().size(), 2UL);
     auto X_name = opdesc.Input("X").front();
-    auto Y_name = opdesc.Input("Y").front();
     auto Out_name = opdesc.Output("Out").front();
 
     param_.X = GetVar<lite::Tensor>(scope, X_name);
-    param_.Y = GetVar<lite::Tensor>(scope, Y_name);
     param_.Out = GetMutableVar<Tensor>(scope, Out_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
-
     return true;
   }
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
-  std::string DebugString() const override { return "elementwise_op"; }
+  std::string DebugString() const override { return "mean"; }
 
  private:
   mutable operators::ElementwiseParam param_;
 };
 
-class ElementwiseGradExplicitOp : public OpLite {
+class MeanGradOp : public OpLite {
  public:
-  explicit ElementwiseGradExplicitOp(const std::string& type) : OpLite(type) {}
+  explicit MeanGradOp(const std::string& type) : OpLite(type) {}
 
   bool CheckShape() const override {
-    CHECK_OR_FALSE(param_.Y);
-    CHECK_OR_FALSE(param_.X_grad);
-    CHECK_OR_FALSE(param_.Y_grad);
+    CHECK_OR_FALSE(param_.X);
     CHECK_OR_FALSE(param_.Out_grad);
+    CHECK_OR_FALSE(param_.X_grad);
     return true;
   }
 
   bool InferShape() const override {
-    param_.X_grad->Resize(param_.Out_grad->dims());
-    param_.Y_grad->Resize(param_.Y->dims());
+    param_.X_grad->Resize(param_.X->dims());
+    // param_.X_grad->set_lod(param_.X->lod());
     return true;
   }
 
   bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 1UL);
-    auto Out_name = opdesc.Input(framework::GradVarName("Out")).front();
-    auto X_name = opdesc.Output(framework::GradVarName("X")).front();
-    auto Y_name = opdesc.Output(framework::GradVarName("Y")).front();
+    CHECK_EQ(opdesc.Inputs().size(), 3UL);
+    auto X_name = opdesc.Input("X").front();
+    auto Out_grad_name = opdesc.Input(framework::GradVarName("Out")).front();
+    auto X_grad_name = opdesc.Output(framework::GradVarName("X")).front();
 
-    param_.Out_grad = GetVar<lite::Tensor>(scope, Out_name);
-    param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_name);
-    param_.Y_grad = GetMutableVar<Tensor>(scope, Y_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
-
+    param_.X = GetVar<lite::Tensor>(scope, X_name);
+    param_.Out_grad = GetVar<lite::Tensor>(scope, Out_grad_name);
+    param_.X_grad = GetMutableVar<Tensor>(scope, X_grad_name);
     return true;
   }
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
-  std::string DebugString() const override {
-    return "elementwise_grad_explicit_op";
-  }
+  std::string DebugString() const override { return "mean_grad"; }
 
  private:
-  mutable operators::ElementwiseGradParam param_;
+  mutable operators::MeanGradParam param_;
 };
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_OP(elementwise_sub, paddle::lite::operators::ElementwiseOp);
-REGISTER_LITE_OP(elementwise_sub_grad,
-                 paddle::lite::operators::ElementwiseGradExplicitOp);
+REGISTER_LITE_OP(mean, paddle::lite::operators::MeanOp);
+REGISTER_LITE_OP(mean_grad, paddle::lite::operators::MeanGradOp);

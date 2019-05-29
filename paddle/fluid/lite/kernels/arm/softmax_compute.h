@@ -13,24 +13,23 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
 #include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/operators/fc_op.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class SoftmaxCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
-  using param_t = operators::FcParam;
-
   void Run() override;
 
   TargetType target() const override;
   PrecisionType precision() const override;
 
-  virtual ~FcCompute() = default;
+  virtual ~SoftmaxCompute() = default;
 };
 
 }  // namespace arm

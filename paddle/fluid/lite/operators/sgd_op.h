@@ -13,27 +13,38 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
+#include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/operators/fc_op.h"
+#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/operators/op_params.h"
+#include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
-namespace kernels {
-namespace arm {
+namespace operators {
 
-class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class SGDOpLite : public OpLite {
  public:
-  using param_t = operators::FcParam;
+  SGDOpLite() {}
 
-  void Run() override;
+  explicit SGDOpLite(const std::string &type) : OpLite(type) {}
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
+  bool CheckShape() const override;
 
-  virtual ~FcCompute() = default;
+  bool InferShape() const override;
+
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override;
+
+  std::string DebugString() const override { return "sgd"; }
+
+ private:
+  mutable SGDParam param_;
 };
 
-}  // namespace arm
-}  // namespace kernels
+}  // namespace operators
 }  // namespace lite
 }  // namespace paddle

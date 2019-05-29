@@ -55,12 +55,12 @@ void ActivateGrad(const platform::CPUDeviceContext& context,
 }
 
 template <typename T>
-class SquareCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class SquareCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ActivationParam;
 
   void Run() override {
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::ActivationParam>();
     CHECK(context.x86_device_context);
 
@@ -70,19 +70,16 @@ class SquareCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
                                                   &param.Out->raw_tensor());
   }
 
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
-
   virtual ~SquareCompute() = default;
 };
 
 template <typename T>
-class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class SquareGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ActivationGradParam;
 
   void Run() override {
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::ActivationGradParam>();
     CHECK(context.x86_device_context);
     param.X_grad->template mutable_data<T>();
@@ -92,9 +89,6 @@ class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
         &param.Out->raw_tensor(), &param.Out_grad->raw_tensor(),
         &param.X_grad->raw_tensor());
   }
-
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
 
   virtual ~SquareGradCompute() = default;
 };
@@ -107,16 +101,16 @@ class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 // float
 REGISTER_LITE_KERNEL(square, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::SquareCompute<float>, def)
-    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("W", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
 
 REGISTER_LITE_KERNEL(square_grad, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::SquareGradCompute<float>, def)
-    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindInput("W", {LiteType::GetTensorTy(TARGET(kHost))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput(paddle::framework::GradVarName("Out"),
+               {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput(paddle::framework::GradVarName("X"),
+                {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();

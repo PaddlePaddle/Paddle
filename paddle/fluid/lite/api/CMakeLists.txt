@@ -17,18 +17,19 @@ endif()
 cc_library(light_api_lite SRCS light_api.cc DEPS ${light_api_deps} ${ops_lite} ${host_kernels})
 
 message(STATUS "get ops ${ops_lite}")
-message(STATUS "get kernels ${host_kernels} ${arm_kernels}")
+message(STATUS "get Host kernels ${host_kernels}")
+message(STATUS "get ARM kernels ${arm_kernels}")
 
 include(ExternalProject)
 set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
         "A path setting inference demo download directories.")
 
-
 # lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
 #   DEPS cxx_api_lite model_parser_lite target_wrapper_host
 #   ${ops_lite} ${host_kernels} ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
 #         --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+
 if(WITH_TESTING)
 lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
 # add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
