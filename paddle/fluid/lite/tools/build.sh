@@ -49,6 +49,7 @@ function test_mobile {
 
 # Build the code and run lite server tests.
 function build_test_server {
+    mkdir -p ./build
     cd ./build
     cmake_x86
     build $TESTS_FILE
