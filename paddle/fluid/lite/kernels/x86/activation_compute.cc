@@ -55,7 +55,7 @@ void ActivateGrad(const platform::CPUDeviceContext& context,
 }
 
 template <typename T>
-class SquareCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class SquareCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ActivationParam;
 
@@ -74,7 +74,7 @@ class SquareCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 };
 
 template <typename T>
-class SquareGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class SquareGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ActivationGradParam;
 

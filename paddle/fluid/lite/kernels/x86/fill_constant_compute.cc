@@ -25,8 +25,7 @@ namespace kernels {
 namespace x86 {
 
 template <typename T>
-class FillConstantCompute
-    : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class FillConstantCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::FillConstantParam;
 

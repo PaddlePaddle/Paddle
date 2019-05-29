@@ -25,7 +25,7 @@ namespace x86 {
 using Tensor = framework::Tensor;
 
 template <typename T>
-class MulCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class MulCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 
@@ -65,7 +65,7 @@ class MulCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 };
 
 template <typename T>
-class MulGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class MulGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   void Run() override {
     auto& context = context_->As<X86Context>();

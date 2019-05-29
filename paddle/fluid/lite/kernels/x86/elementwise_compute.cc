@@ -32,7 +32,7 @@ struct SubFunctor {
 
 template <typename T>
 class ElementwiseSubCompute
-    : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+    : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ElementwiseParam;
 
@@ -64,7 +64,7 @@ struct SubGradDY {
 
 template <typename T>
 class ElementwiseSubGradCompute
-    : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+    : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ElementwiseGradParam;
 

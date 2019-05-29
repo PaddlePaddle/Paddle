@@ -24,7 +24,7 @@ namespace kernels {
 namespace x86 {
 
 template <typename T>
-class SGDCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class SGDCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ActivationParam;
 

@@ -31,7 +31,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
-class MeanCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class MeanCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::MeanParam;
 
@@ -53,7 +53,7 @@ class MeanCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 };
 
 template <typename T>
-class MeanGradCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+class MeanGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::MeanGradParam;
 
