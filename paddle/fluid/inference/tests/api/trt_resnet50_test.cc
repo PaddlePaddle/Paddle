@@ -11,20 +11,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#pragma once
 
-#include <Python.h>
-#include <string>
-#include <vector>
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/nccl_context.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+
+#include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
-namespace pybind {
+namespace inference {
 
-void BindImperative(pybind11::module* m);
+TEST(resnet50, compare_continuous_input) {
+  std::string model_dir = FLAGS_infer_model + "/resnet50";
+  compare_continuous_input(model_dir, true);
+}
 
-}  // namespace pybind
+}  // namespace inference
 }  // namespace paddle
