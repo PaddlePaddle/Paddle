@@ -258,14 +258,26 @@ class TransformFunctor {
 
   inline void RunRowWise(int n, int pre) const {
     platform::Transform<DeviceContext> trans;
-    trans(ctx_, x_, x_ + nx_, RowwiseTransformIterator<T, DeviceContext>(y_, n),
-          z_, func_);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (int ni = 0; ni < pre; ni++) {
+      trans(ctx_, x_ + ni * n, x_ + (ni + 1) * n,
+            RowwiseTransformIterator<T, DeviceContext>(y_, n), z_ + ni * n,
+            func_);
+    }
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
     platform::Transform<DeviceContext> trans;
-    trans(ctx_, x_, x_ + nx_,
-          MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (int ni = 0; ni < pre; ni++) {
+      trans(ctx_, x_ + ni * n * post, x_ + (ni + 1) * n * post,
+            MidWiseTransformIterator<T, DeviceContext>(y_, n, post),
+            z_ + ni * n * post, func_);
+    }
   }
 
  private:
