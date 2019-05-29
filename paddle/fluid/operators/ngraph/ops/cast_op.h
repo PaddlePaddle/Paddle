@@ -1,4 +1,4 @@
-/*Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
+
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
@@ -26,26 +27,36 @@ namespace paddle {
 namespace operators {
 namespace ngraphs {
 
-void BuildFillConstantNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
+static void BuildCastNode(
+    const std::shared_ptr<framework::OperatorBase>& op,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
-  auto op_attrs = paddle::framework::AttrReader(op->Attrs());
-  auto vsp = op_attrs.Get<std::vector<int64_t>>("shape");
-  ngraph::Shape shape;
-  for (auto& sp : vsp) {
-    shape.push_back(sp);
-  }
-  float value = op_attrs.Get<float>("value");
+  auto input = platform::GetInputNode(op, "X", ngb_node_map);
+  auto op_attrs = framework::AttrReader(op->Attrs());
   auto ng_dtype =
       platform::GetNgType(static_cast<paddle::framework::proto::VarType::Type>(
-          op_attrs.Get<int>("dtype")));
-  auto out = ngraph::op::Constant::create(ng_dtype, shape, {value});
+          op_attrs.Get<int>("out_dtype")));
+  auto out = std::make_shared<ngraph::op::Convert>(input, ng_dtype);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
+}
+
+static void BuildCastGradNode(
+    const std::shared_ptr<framework::OperatorBase>& op,
+    std::shared_ptr<
+        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
+        ngb_node_map) {
+  auto input = platform::GetInputNode(op, "Out@GRAD", ngb_node_map);
+  auto op_attrs = framework::AttrReader(op->Attrs());
+  auto ng_dtype =
+      platform::GetNgType(static_cast<paddle::framework::proto::VarType::Type>(
+          op_attrs.Get<int>("out_dtype")));
+  auto out = std::make_shared<ngraph::op::Convert>(input, ng_dtype);
+  platform::SetOutputNode(op, "X@GRAD", out, ngb_node_map);
 }
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_NG_OP(fill_constant, BuildFillConstantNode);
+REGISTER_NG_OP(cast, BuildCastNode);
+REGISTER_NG_OP(cast_grad, BuildCastGradNode);
