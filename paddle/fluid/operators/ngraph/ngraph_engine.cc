@@ -38,6 +38,10 @@ namespace operators {
 
 static ngraph::Shape Ddim2Shape(const framework::DDim& dims) {
   ngraph::Shape sp;
+  if (dims.size() == 1 && dims[0] == 0) {
+    sp.emplace_back(0);
+    return sp;
+  }
   for (int i = 0; i < dims.size(); ++i) {
     int k = dims[i];
     k = k == 0 ? 1 : k;
