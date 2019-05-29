@@ -51,6 +51,7 @@ static bool IsSkippableVar(const std::string &name,
   return name != framework::kEmptyVarName && !grad_block->HasVar(name);
 }
 
+// Add skip vars into op's attribute
 static void SetSkipVars(const OpVariant &op,
                         const std::unordered_set<std::string> &skip_vars) {
   auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
@@ -95,6 +96,7 @@ static void FindAllOpAndGradOp(OpAndGradOpPair *op_and_grad_op,
                     "There are extra grad ops in the graph or program");
 }
 
+// Returns GradVarName of input var names
 static std::vector<std::string> GradVarLists(
     const std::vector<std::string> &var_names) {
   std::vector<std::string> retv;
@@ -104,7 +106,8 @@ static std::vector<std::string> GradVarLists(
   return retv;
 }
 
-static void SetOpMemVarsAsSkip(const OpVariant &op) {
+// Set memory vars in recurrent op as skip vars.
+static void SetOpMemVarsAsSkip(const OpVariant &op, bool set_grad) {
   bool has_state = op.Attr<bool>(kHasStates);
   if (has_state) {
     std::unordered_set<std::string> skip_vars;
@@ -112,20 +115,22 @@ static void SetOpMemVarsAsSkip(const OpVariant &op) {
     auto &mem_vars = op.Attr<std::vector<std::string>>(kStates);
     skip_vars.insert(mem_vars.begin(), mem_vars.end());
 
-    auto mem_grad_vars = GradVarLists(mem_vars);
-    skip_vars.insert(mem_grad_vars.begin(), mem_grad_vars.end());
-
     auto &pre_mem_vars = op.Attr<std::vector<std::string>>(kExStates);
     skip_vars.insert(pre_mem_vars.begin(), pre_mem_vars.end());
 
-    auto pre_mem_grad_vars = GradVarLists(pre_mem_vars);
-    skip_vars.insert(pre_mem_grad_vars.begin(), pre_mem_grad_vars.end());
+    if (set_grad) {
+      auto mem_grad_vars = GradVarLists(mem_vars);
+      skip_vars.insert(mem_grad_vars.begin(), mem_grad_vars.end());
+      auto pre_mem_grad_vars = GradVarLists(pre_mem_vars);
+      skip_vars.insert(pre_mem_grad_vars.begin(), pre_mem_grad_vars.end());
+    }
     SetSkipVars(op, skip_vars);
   }
 }
 
+// Set outputs and memory vars of the input forward op as skip vars
 static void SetRecurrentForwardOpOnlySkipVarAttr(const OpVariant &fwd_op) {
-  SetOpMemVarsAsSkip(fwd_op);
+  SetOpMemVarsAsSkip(fwd_op, false);
 
   std::unordered_set<std::string> fwd_skip_vars;
   auto &output_vars = fwd_op.Outputs().at(kOutputs);
@@ -135,10 +140,11 @@ static void SetRecurrentForwardOpOnlySkipVarAttr(const OpVariant &fwd_op) {
   SetSkipVars(fwd_op, fwd_skip_vars);
 }
 
+// Set skip vars of matched recurrent op and recurrent_grad op
 static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
     const OpVariant &fwd_op, const OpVariant &bwd_op) {
   // Find all skippable variables in forward recurrent_op
-  SetOpMemVarsAsSkip(fwd_op);
+  SetOpMemVarsAsSkip(fwd_op, false);
 
   auto *grad_block = bwd_op.Attr<framework::BlockDesc *>(kStepBlock);
   std::unordered_set<std::string> fwd_skip_vars;
@@ -158,7 +164,7 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
 
   // Find all skippable variables in recurrent_grad_op
   // The skippable variables are those which would be used across time steps
-  SetOpMemVarsAsSkip(bwd_op);
+  SetOpMemVarsAsSkip(bwd_op, true);
   std::unordered_set<std::string> bwd_skip_vars;
 
   auto &fwd_input = fwd_op.Inputs().at(kInputs);

@@ -37,6 +37,7 @@ using paddle::operators::OpVariant;
 using paddle::operators::OpVariantSet;
 using paddle::operators::OpAndGradOpPair;
 
+// Pass class set skip eager deletion vars for recurrent ops
 class RecurrentOpEagerDeletionPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;

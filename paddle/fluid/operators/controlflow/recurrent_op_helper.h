@@ -33,9 +33,17 @@ using paddle::framework::OperatorBase;
 using OpVariantSet = std::unordered_set<OpVariant, OpVariant::Hasher>;
 using OpAndGradOpPair = std::pair<OpVariantSet, OpVariantSet>;
 
+// Set vars to skip eager deletion on input recurrent and recurrent_grad for
+// preparing safe eager deletion. Input contains all recurrent and
+// recurrent_grad ops at block 0 and the function will find all recurrent and
+// recurrent_grad ops across blocks.
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     OpAndGradOpPair *op_pair);
 
+// Set vars to skip eager deletion on input recurrent and recurrent_grad for
+// preparing safe eager deletion. The input block_id must be 0 and caller can
+// input all ops in the block. The function will find all recurrent and
+// recurrent_grad ops across blocks.
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     int block_id, const std::vector<std::unique_ptr<OperatorBase>> &all_ops);
 
