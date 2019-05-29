@@ -49,7 +49,7 @@ function test_mobile {
 
 # Build the code and run lite server tests.
 function build_test_server {
-    cd /paddle/build
+    cd ./build
     cmake_x86
     build $TESTS_FILE
     test_lite $TESTS_FILE
