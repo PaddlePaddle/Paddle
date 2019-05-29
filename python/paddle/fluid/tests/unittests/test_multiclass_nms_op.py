@@ -173,9 +173,10 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
             keep_top_k,
             normalized,
             shared=False)
+        lod.append(nmsed_num)
+
         if nmsed_num == 0:
             continue
-        lod.append(nmsed_num)
         tmp_det_out = []
         for c, indices in nmsed_outs.items():
             for idx in indices:
@@ -184,8 +185,6 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
         sorted_det_out = sorted(
             tmp_det_out, key=lambda tup: tup[0], reverse=False)
         det_outs.extend(sorted_det_out)
-    if len(lod) == 0:
-        lod.append(1)
 
     return det_outs, lod
 
@@ -213,10 +212,10 @@ def batched_multiclass_nms(boxes,
             keep_top_k,
             normalized,
             shared=True)
+        lod.append(nmsed_num)
+
         if nmsed_num == 0:
             continue
-
-        lod.append(nmsed_num)
         tmp_det_out = []
         for c, indices in nmsed_outs.items():
             for idx in indices:
@@ -226,8 +225,6 @@ def batched_multiclass_nms(boxes,
         sorted_det_out = sorted(
             tmp_det_out, key=lambda tup: tup[0], reverse=False)
         det_outs.extend(sorted_det_out)
-    if len(lod) == 0:
-        lod += [1]
     return det_outs, lod
 
 
@@ -265,7 +262,6 @@ class TestMulticlassNMSOp(OpTest):
         nmsed_outs, lod = batched_multiclass_nms(boxes, scores, background,
                                                  score_threshold, nms_threshold,
                                                  nms_top_k, keep_top_k)
-        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
         nmsed_outs = np.array(nmsed_outs).astype('float32')
 
         self.op_type = 'multiclass_nms'
@@ -327,7 +323,6 @@ class TestMulticlassNMSLoDInput(OpTest):
         nmsed_outs, lod = lod_multiclass_nms(
             boxes, scores, background, score_threshold, nms_threshold,
             nms_top_k, keep_top_k, box_lod, normalized)
-        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
         nmsed_outs = np.array(nmsed_outs).astype('float32')
         self.op_type = 'multiclass_nms'
         self.inputs = {
