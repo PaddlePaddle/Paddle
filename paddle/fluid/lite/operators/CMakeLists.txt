@@ -9,6 +9,9 @@ cc_library(fetch_op_lite SRCS fetch_op.cc DEPS ${op_DEPS})
 cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
 cc_library(activation_ops_lite SRCS activation_ops.cc DEPS ${op_DEPS})
 cc_library(elementwise_ops_lite SRCS elementwise_ops.cc DEPS ${op_DEPS})
+cc_library(mean_op_lite SRCS mean_op.cc DEPS ${op_DEPS})
+cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
+cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
 
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite)
 set(ops_lite
@@ -19,6 +22,9 @@ set(ops_lite
         feed_op_lite
         fetch_op_lite
         io_copy_op_lite
+        elementwise_ops_lite
+        mean_op_lite
+        fill_constant_op_lite
         PARENT_SCOPE)
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite memory_lite)
