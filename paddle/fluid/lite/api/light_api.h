@@ -63,7 +63,7 @@ class LightPredictor {
 
  private:
   void BuildRuntimeProgram(const framework::proto::ProgramDesc& prog) {
-    std::vector<Instruct> insts;
+    std::vector<Instruction> insts;
     // 1. Create op first
     Program program(prog, scope_, {});
 
@@ -71,7 +71,7 @@ class LightPredictor {
 
     // Create the kernels of the target places, and filter out the specific
     // kernel with the target alias.
-    for (auto& op : program.ops) {
+    for (auto& op : program.ops_) {
       lite::pb::OpDesc desc(op->op_info()->desc());
       auto kernel_type = desc.GetAttr(kKernelTypeAttr).get<std::string>();
       std::string op_type, alias;
@@ -87,8 +87,8 @@ class LightPredictor {
       insts.emplace_back(op, std::move(*it));
     }
     program_.reset(new RuntimeProgram(std::move(insts)));
-    CHECK(program.exec_scope);
-    program_->set_exec_scope(program.exec_scope);
+    CHECK(program.exec_scope_);
+    program_->set_exec_scope(program.exec_scope_);
   }
 
  private:
