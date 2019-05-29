@@ -49,9 +49,6 @@ function test_mobile {
 
 # Build the code and run lite server tests.
 function build_test_server {
-    export HTTPS_SERVER=http://agent.baidu.com:8118
-    export HTTP_SERVER=http://agent.baidu.com:8118
-
     mkdir -p ./build
     cd ./build
     cmake_x86
