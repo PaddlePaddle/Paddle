@@ -5,7 +5,7 @@ TESTS_FILE="./lite_tests.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 function cmake_x86 {
-    cmake ..  -DWITH_GPU=OFF -DLITE_WITH_X86=ON ${common_flags}
+    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
 function cmake_gpu {
@@ -49,6 +49,9 @@ function test_mobile {
 
 # Build the code and run lite server tests.
 function build_test_server {
+    export HTTPS_SERVER=http://agent.baidu.com:8118
+    export HTTP_SERVER=http://agent.baidu.com:8118
+
     mkdir -p ./build
     cd ./build
     cmake_x86
