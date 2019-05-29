@@ -1092,12 +1092,12 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
   return ele_add_grad;
 }
 
+// conv_type: conv2d, conv3d, conv2d_transpose
 PDNode *patterns::ConvBias::operator()(
-    paddle::framework::ir::PDNode *conv_input, bool is_conv3d) {
-  std::string type = is_conv3d ? "conv3d" : "conv2d";
+    paddle::framework::ir::PDNode *conv_input, std::string conv_type) {
   // Create Operators
-  conv_input->assert_is_op_input(type, "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(type);
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
   auto *eltiwse_op =
       pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
   // Create variables
@@ -1105,11 +1105,11 @@ PDNode *patterns::ConvBias::operator()(
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input(type, "Filter");
+                              ->assert_is_op_input(conv_type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op(type)
+                           ->assert_is_only_output_of_op(conv_type)
                            ->assert_is_op_input("elementwise_add");
   // Bias stored in elementwise_add
   auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
@@ -1212,6 +1212,17 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   elementwise_add_op->LinksTo({out_var});
 
   return out_var;
+}
+
+PDNode *patterns::Concat::operator()() {
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+
+  auto output_var = pattern->NewNode(concat_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("concat", "Out");
+
+  concat_op->LinksTo({output_var});
+  return output_var;
 }
 
 PDNode *patterns::ConcatReLU::operator()() {

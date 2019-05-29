@@ -112,7 +112,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("engine_opt_info", new std::map<std::string, std::string>(
                                        argument->engine_opt_info()));
     }
-
+    if (pass_name == "ngraph_subgraph_pass") {
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
+    }
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
