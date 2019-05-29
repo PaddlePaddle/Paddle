@@ -64,8 +64,10 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
             bool is_unsigned = false;
             if (is_output && op->Type() == "conv2d") {
               // output of conv2d with relu must be unsigned
-              is_unsigned = op->HasAttr("fuse_relu") &&
-                            boost::get<bool>(op->GetAttr("fuse_relu"));
+              is_unsigned = (op->HasAttr("fuse_relu") &&
+                             boost::get<bool>(op->GetAttr("fuse_relu"))) ||
+                            (op->HasAttr("fuse_brelu") &&
+                             boost::get<bool>(op->GetAttr("fuse_brelu")));
             } else if (is_output && op->Type() == "relu") {
               is_unsigned = true;
             } else if (is_output &&
