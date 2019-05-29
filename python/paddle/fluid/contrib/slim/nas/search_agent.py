@@ -34,14 +34,6 @@ class SearchAgent(object):
         self.server_port = server_port
         self.socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    def init_tokens(self):
-        socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket_client.connect((self.server_ip, self.server_port))
-        socket_client.send('init')
-        tokens = socket_client.recv(1024).decode()
-        tokens = [float(token) for token in tokens.strip("\n").split(",")]
-        return tokens
-
     def update(self, tokens, reward):
         socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_client.connect((self.server_ip, self.server_port))

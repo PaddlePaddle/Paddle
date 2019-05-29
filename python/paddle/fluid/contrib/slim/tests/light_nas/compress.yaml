@@ -14,6 +14,7 @@ strategies:
         retrain_epoch: 1
         metric_name: 'acc_top1'
         is_server: 1
+        max_client_num: 100
         search_steps: 2
 compressor:
     epoch: 2

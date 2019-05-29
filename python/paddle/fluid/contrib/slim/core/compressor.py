@@ -330,6 +330,9 @@ class Compressor(object):
         if 'init_model' in factory.compressor:
             self.init_model = factory.compressor['init_model']
 
+        if 'eval_epoch' in factory.compressor:
+            self.eval_epoch = factory.compressor['eval_epoch']
+
     def _init_model(self, context):
         """
         Load model that has been compressed. 
@@ -517,7 +520,6 @@ class Compressor(object):
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
         start = context.epoch_id
-        #        self._eval(context)
         for epoch in range(start, self.epoch):
             context.epoch_id = epoch
             for strategy in self.strategies:

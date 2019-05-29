@@ -43,6 +43,7 @@ class LightNASStrategy(Strategy):
                  server_ip=None,
                  server_port=0,
                  is_server=False,
+                 max_client_num=100,
                  search_steps=None):
         """
         """
@@ -57,6 +58,7 @@ class LightNASStrategy(Strategy):
         self._is_server = is_server
         self._retrain_epoch = retrain_epoch
         self._search_steps = search_steps
+        self._max_client_num = max_client_num
 
         if self._server_ip is None:
             self._server_ip = self._get_host_ip()
@@ -92,7 +94,7 @@ class LightNASStrategy(Strategy):
                 self._server = ControllerServer(
                     controller=self._controller,
                     address=(self._server_ip, self._server_port),
-                    max_client_num=100,
+                    max_client_num=self._max_client_num,
                     search_steps=self._search_steps)
                 tid = self._server.start()
                 self._server_port = self._server.port()
@@ -121,9 +123,14 @@ class LightNASStrategy(Strategy):
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
 
-            startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
-                self._current_tokens)
-            context.eval_graph.program = test_p
+            while True:
+                startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
+                    self._current_tokens)
+                context.eval_graph.program = test_p
+                flops = context.eval_graph.flops()
+                if flops <= self._max_flops:
+                    break
+
             context.train_reader = train_reader
             context.eval_reader = test_reader
 
@@ -142,6 +149,5 @@ class LightNASStrategy(Strategy):
 
             self._current_reward = context.eval_results[self._metric_name][-1]
             flops = context.eval_graph.flops()
-            self._current_reward = self._current_reward if flops <= self._max_flops else 0
             self._current_tokens = self._search_agent.update(
                 self._current_tokens, self._current_reward)

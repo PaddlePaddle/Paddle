@@ -25,14 +25,6 @@ from light_nas_space import LightNASSpace
 
 class TestLightNAS(unittest.TestCase):
     def test_compression(self):
-        """
-        Model: mobilenet_v1
-        data: mnist
-        step1: Training one epoch
-        step2: pruning flops
-        step3: fine-tune one epoch
-        step4: check top1_acc.
-        """
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10

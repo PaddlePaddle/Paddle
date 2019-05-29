@@ -98,6 +98,9 @@ class ConfigFactory(object):
                     if 'checkpoint_path' in key_values[key]:
                         self.compressor['checkpoint_path'] = key_values[key][
                             'checkpoint_path']
+                    if 'eval_epoch' in key_values[key]:
+                        self.compressor['eval_epoch'] = key_values[key][
+                            'eval_epoch']
                     if 'strategies' in key_values[key]:
                         for name in key_values[key]['strategies']:
                             strategy = self.instance(name)
