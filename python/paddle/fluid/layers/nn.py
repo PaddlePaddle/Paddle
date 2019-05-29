@@ -5124,25 +5124,29 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
-            fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+            # fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
 
             # x: [B, M, K], y: [B, K, N]
-            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # fluid.layers.matmul(x, y)  # out: [B, M, N]
 
             # x: [B, M, K], y: [K, N]
-            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # fluid.layers.matmul(x, y)  # out: [B, M, N]
 
             # x: [M, K], y: [K, N]
-            fluid.layers.matmul(x, y)  # out: [M, N]
+            # fluid.layers.matmul(x, y)  # out: [M, N]
 
             # x: [B, M, K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [B, M]
+            # fluid.layers.matmul(x, y)  # out: [B, M]
 
             # x: [K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [1]
+            # fluid.layers.matmul(x, y)  # out: [1]
 
             # x: [M], y: [N]
-            fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+            # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+
+            x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
+            out = fluid.layers.matmul(x, y, True, True)
     """
 
     def __check_input(x, y):
@@ -5940,9 +5944,10 @@ def transpose(x, perm, name=None):
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
-            x_transposed = layers.transpose(x, perm=[1, 0, 2])
+            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
     """
 
     if len(perm) != len(x.shape):
@@ -6787,8 +6792,9 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
-            x = layers.data(name='x', shape=[5, 10])
-            y = layers.unsequeeze(input=x, axes=[1])
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[5, 10])
+            y = fluid.layers.unsqueeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6877,9 +6883,9 @@ def lod_reset(x, y=None, target_lod=None):
     Examples:
         .. code-block:: python
 
-            x = layers.data(name='x', shape=[10])
-            y = layers.data(name='y', shape=[10, 20], lod_level=2)
-            out = layers.lod_reset(x=x, y=y)
+            x = fluid.layers.data(name='x', shape=[10])
+            y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
+            out = fluid.layers.lod_reset(x=x, y=y)
     """
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -8017,6 +8023,7 @@ def log(x, name=None):
 
         .. code-block:: python
 
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.log(x)
     """
     helper = LayerHelper('log', **locals())
@@ -9221,6 +9228,12 @@ def unstack(x, axis=0, num=None):
     Returns:
         list(Variable): The unstacked variables.
 
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
+            y = fluid.layers.unstack(x, axis=1)
     """
 
     helper = LayerHelper('unstack', **locals())
@@ -9965,6 +9978,13 @@ def mean(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[2, 3], dtype='float32')
+            mean = fluid.layers.mean(input)
     """
 
     helper = LayerHelper("mean", **locals())
@@ -9992,6 +10012,15 @@ def merge_selected_rows(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            b = fluid.default_main_program().global_block()
+            var = b.create_var(
+                name="X", dtype="float32", persistable=True,
+                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            y = fluid.layers.merge_selected_rows(var)
     """
 
     helper = LayerHelper("merge_selected_rows", **locals())
