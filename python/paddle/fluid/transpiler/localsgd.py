@@ -23,7 +23,7 @@ def init_nccl(trainer_id, trainer_endpoints, current_endpoint, startup_prog):
 
     t.transpile(
         trainer_id,
-        trainers=','.join(trainer_endpoints),
+        trainers=trainer_endpoints,
         current_endpoint=current_endpoint,
         startup_program=startup_prog)
 

@@ -282,7 +282,8 @@ class DistributeTranspiler(object):
 
         nccl_id_var = startup_program.global_block().create_var(
             persistable=True, type=core.VarDesc.VarType.RAW)
-        startup_program.global_block().append_op(
+        block = startup_program.global_block()
+        block.append_op(
             type="gen_nccl_id",
             inputs={},
             outputs={"Out": nccl_id_var},
@@ -291,7 +292,7 @@ class DistributeTranspiler(object):
                 "endpoint_list": worker_endpoints,
                 "trainer_id": trainer_id
             })
-        startup_program.global_block().append_op(
+        block.append_op(
             type="collective_comm_init",
             inputs={"X": nccl_id_var},
             outputs={},
@@ -300,12 +301,13 @@ class DistributeTranspiler(object):
                    "group": 0})
         for var in startup_program.list_vars():
             if isinstance(var, Parameter):
-                startup_program.global_block().append_op(
+                block.append_op(
                     type="broadcast",
                     inputs={"X": var},
                     outputs={"Out": var},
                     attrs={"group": 0,
                            "root": 0})
+                block.append_op(type='sync_stream', attrs={'sync_type': 2})
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
