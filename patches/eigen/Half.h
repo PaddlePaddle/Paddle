@@ -181,7 +181,13 @@ EIGEN_STRONG_INLINE __device__ half operator-(const half& a, const half& b) {
   return __hsub(a, b);
 }
 EIGEN_STRONG_INLINE __device__ half operator/(const half& a, const half& b) {
+#if EIGEN_CUDACC_VER < 90000
+  float num = __half2float(a);
+  float denom = __half2float(b);
+  return __float2half(num / denom);
+#else
   return __hdiv(a, b);
+#endif
 }
 EIGEN_STRONG_INLINE __device__ half operator-(const half& a) {
   return __hneg(a);
