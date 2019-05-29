@@ -15,6 +15,7 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 /*

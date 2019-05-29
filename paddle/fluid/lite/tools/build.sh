@@ -24,7 +24,6 @@ function cmake_arm {
           -DWITH_TESTING=ON \
           -DWITH_MKL=OFF \
           -DWITH_MKLDNN=OFF
-    make cxx_api_lite_bin -j8
 }
 
 function build {
