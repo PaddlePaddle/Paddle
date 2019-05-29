@@ -54,6 +54,27 @@ class Tracer(core.Tracer):
         self._trace_id = 0
 
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
+        trace_backward = self._train_mode and not stop_gradient
+
+        inps = defaultdict(list)
+        for k, vars in six.iteritems(inputs):
+            if isinstance(vars, framework.Variable):
+                inps[k].append(vars._ivar)
+            elif isinstance(vars, list) or isinstance(vars, tuple):
+                for var in vars:
+                    inps[k].append(var._ivar)
+
+        outs = defaultdict(list)
+        for k, vars in six.iteritems(outputs):
+            if isinstance(vars, framework.Variable):
+                outs[k].append(vars._ivar)
+            elif isinstance(vars, list) or isinstance(vars, tuple):
+                for var in vars:
+                    outs[k].append(var._ivar)
+
+        self.trace(op._op_type, inps, outs, op.attrs,
+                   framework._current_expected_place(), trace_backward)
+        '''
         # TODO(hy): previous version will cause memory failed
         op.inputs = inputs
         inps = defaultdict(list)
@@ -98,6 +119,7 @@ class Tracer(core.Tracer):
                 for k, v in six.iteritems(outputs):
                     if k in backward_refs:
                         op.backward_refs[k] = outputs[k]
+        '''
 
     def train_mode(self):
         self._train_mode = True

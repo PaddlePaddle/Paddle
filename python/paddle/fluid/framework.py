@@ -981,8 +981,9 @@ class Operator(object):
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
-            self.iop = core.OpBase(type)
-            self.previous_ops = []
+            self._op_type = type
+            # self.iop = core.OpBase(type)
+            # self.previous_ops = []
 
             self.attrs = attrs if attrs else {}
         else:
