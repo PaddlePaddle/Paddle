@@ -13,9 +13,7 @@ if(NOT WITH_FAST_MATH)
 endif()
 
 if(WIN32)
-    set(PATCH_COMMAND "${CMAKE_COMMAND} -E copy_if_different
-            ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h
-            ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h")
+    set(PATCH_COMMAND "${CMAKE_COMMAND} -E copy_if_different ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h")
 else()
     set(PATCH_COMMAND "")
 endif()
