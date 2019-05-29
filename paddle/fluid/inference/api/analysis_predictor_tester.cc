@@ -384,7 +384,7 @@ TEST_F(MkldnnQuantizerTest, histogram_empty) {
   // zero tensor
   framework::LoDTensor var_tensor;
   var_tensor.Resize({0});
-  ASSERT_TRUE(var_tensor.mutable_data<double>(platform::CPUPlace()));
+  var_tensor.mutable_data<double>(platform::CPUPlace());
 
   ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
 }

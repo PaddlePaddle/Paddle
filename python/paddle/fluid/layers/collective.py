@@ -33,7 +33,8 @@ def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
 
     if out is None:
         out = helper.create_variable(
-            name=unique_name.generate(".".join([x.name, 'tmp'])),
+            name=unique_name.generate_with_ignorable_key(".".join(
+                [x.name, 'tmp'])),
             shape=x.shape,
             dtype=x.dtype,
             type=x.type,
