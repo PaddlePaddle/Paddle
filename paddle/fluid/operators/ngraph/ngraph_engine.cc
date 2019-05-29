@@ -421,6 +421,15 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
       }
     }
   }
+  // remove output duplicates
+  std::unordered_set<std::string> var_out_set;
+  for (int i = static_cast<int>(var_out_.size()) - 1; i >= 0; --i) {
+    std::string var_name = var_out_.at(i);
+    if (var_out_set.count(var_name)) {
+      var_out_.erase(var_out_.begin() + i);
+    }
+    var_out_set.insert(var_name);
+  }
 }
 
 void NgraphEngine::GetNgInputShape() {
