@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e
+set -ex
 
-TESTS_FILE=""
+TESTS_FILE="./lite_tests.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 function cmake_x86 {
@@ -48,8 +48,8 @@ function test_mobile {
 # Build the code and run lite server tests.
 function build_test_server {
     cmake_x86
-    build
-    test_lite
+    build $TESTS_FILE
+    test_lite $TESTS_FILE
 }
 
 ############################# MAIN #################################
@@ -69,7 +69,6 @@ function print_usage {
     echo
 }
 
-TESTS_FILE="./lite_tests.txt"
 function main {
     # Parse command line.
     for i in "$@"; do
