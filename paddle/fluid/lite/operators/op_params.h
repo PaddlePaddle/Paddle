@@ -72,6 +72,17 @@ struct MulParam {
   int y_num_col_dims{1};
 };
 
+struct MulGradParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* y{};
+  const lite::Tensor* output_grad{};
+  lite::Tensor* x_grad{};
+  lite::Tensor* y_grad{};
+
+  int x_num_col_dims{1};
+  int y_num_col_dims{1};
+};
+
 // For Scale Op
 struct ScaleParam {
   lite::Tensor* x{};
@@ -99,9 +110,10 @@ struct ElementwiseParam {
 };
 
 struct ElementwiseGradParam {
-  const lite::Tensor* X_grad{};
-  const lite::Tensor* Y_grad{};
-  lite::Tensor* Out_grad{};
+  const lite::Tensor* Y{};
+  const lite::Tensor* Out_grad{};
+  lite::Tensor* X_grad{};
+  lite::Tensor* Y_grad{};
   int axis{-1};  // for broadcasting.
 };
 
@@ -117,6 +129,39 @@ struct ActivationGradParam {
   // for backward
   lite::Tensor* X_grad{};
   const lite::Tensor* Out_grad{};
+};
+
+/// ----------------------- mean operators ----------------------
+struct MeanParam {
+  const lite::Tensor* X{};
+  lite::Tensor* Out{};
+};
+
+struct MeanGradParam {
+  const lite::Tensor* X{};
+  const lite::Tensor* Out_grad{};
+  // for backward
+  lite::Tensor* X_grad{};
+};
+
+/// ----------------------- fill_constant operators ----------------------
+struct FillConstantParam {
+  int dtype{framework::proto::VarType::FP32};
+  std::vector<int64_t> shape{};
+  float value{0.0f};
+  // useless for x86, keep it for compatibility
+  bool force_cpu{false};
+  lite::Tensor* Out{};
+};
+
+/// ----------------------- sgd operators ----------------------
+struct SGDParam {
+  int dtype{framework::proto::VarType::FP32};
+
+  const lite::Tensor* Param{};
+  const lite::Tensor* LearningRate{};
+  const lite::Tensor* Grad{};
+  lite::Tensor* ParamOut{};
 };
 
 }  // namespace operators
