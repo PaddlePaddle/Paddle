@@ -157,9 +157,14 @@ class ParallelExecutorPrivate {
                             bst.trainer_id_);
 
     if (bst.use_hierarchical_allreduce_) {
-      std::string var_name = platform::GetHierarchicalInterNCCLVarName();
-      auto nccl_id_var = scope->FindVar(var_name);
-      auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+      std::vector<ncclUniqueId *> inter_nccl_ids;
+      for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
+        std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
+        auto nccl_id_var = scope->FindVar(var_name);
+        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+        auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        inter_nccl_ids.push_back(inter_nccl_id);
+      }
 
       std::vector<ncclUniqueId *> exter_nccl_ids;
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
@@ -169,7 +174,8 @@ class ParallelExecutorPrivate {
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
-      nccl_ctxs_.InitHierarchicalCtxs(places_, inter_nccl_id, exter_nccl_ids,
+
+      nccl_ctxs_.InitHierarchicalCtxs(places_, inter_nccl_ids, exter_nccl_ids,
                                       bst.num_trainers_, bst.trainer_id_,
                                       bst.hierarchical_allreduce_inter_nranks_,
                                       bst.hierarchical_allreduce_exter_nranks_);
