@@ -15,15 +15,38 @@ function cmake_gpu {
 }
 
 function cmake_arm {
-    cmake .. \
-          -DWITH_GPU=OFF \
-          -DWITH_LITE=ON \
-          -DLITE_WITH_X86=OFF \
-          -DLITE_WITH_CUDA=OFF \
-          -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-          -DWITH_TESTING=ON \
-          -DWITH_MKL=OFF \
-          -DWITH_MKLDNN=OFF
+    ARM_TARGET_OS="android" , "armlinux"
+    use ARM_TARGET_ARCH_ABI = "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
+
+    for os in "android" "armlinux"
+    do
+    for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf"
+    do
+        echo "Build for ${os} ${abi}"
+
+        build_dir=build.lite.${os}.${abi}
+        mkdir -p $build_dir
+        cd $build_dir
+
+        cmake .. \
+            -DWITH_GPU=OFF \
+            -DWITH_LITE=ON \
+            -DLITE_WITH_CUDA=OFF \
+            -DLITE_WITH_X86=OFF \
+            -DLITE_WITH_ARM=ON \
+            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+            -DWITH_TESTING=ON \
+            -DWITH_MKL=OFF \
+            -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_OS=${os}
+
+        make test_fc_compute_arm -j
+        make test_softmax_compute_arm -j
+        make cxx_api_lite_bin -j
+        cd -
+
+    done
+    done
+
 }
 
 function build {

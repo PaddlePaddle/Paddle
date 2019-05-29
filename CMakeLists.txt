@@ -21,15 +21,34 @@ include(system)
 
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cmake_minimum_required(VERSION 3.10)
-    # only android yet
-    set(ANDROID TRUE)
-    include(cross_compiling/android)
+    # TODO(TJ): make as function check_default
+    if(NOT DEFINED ARM_TARGET_OS)
+        set(ARM_TARGET_OS "android" CACHE STRING "Choose ARM Target OS")
+    endif()
+    set(ARM_TARGET_OS_LIST "android" "armlinux") # TODO: "ios"
+    set_property(CACHE ARM_TARGET_OS PROPERTY STRINGS ${ARM_TARGET_OS_LIST})
+    if (NOT ARM_TARGET_OS IN_LIST ARM_TARGET_OS_LIST)
+        message(FATAL_ERROR "ARM_TARGET_OS must be in one of ${ARM_TARGET_OS_LIST}")
+    endif()
+
+    if(NOT DEFINED ARM_TARGET_ARCH_ABI)
+        set(ARM_TARGET_ARCH_ABI "arm64-v8a" CACHE STRING "Choose ARM Target ARCH ABI")
+    endif()
+    set(ARM_TARGET_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v7a-softfp" "armeabi-v7a-hf")
+    set_property(CACHE ARM_TARGET_ARCH_ABI PROPERTY STRINGS ${ARM_TARGET_ARCH_ABI_LIST})
+    if (NOT ARM_TARGET_ARCH_ABI IN_LIST ARM_TARGET_ARCH_ABI_LIST)
+        message(FATAL_ERROR "ARM_TARGET_ARCH_ABI must be in one of ${ARM_TARGET_ARCH_ABI_LIST}")
+    endif()
+
+    if(NOT DEFINED TARGET_ARCH_ABI)
+        set(ARCH_ABI "arm64-v8a" CACHE STRING "Choose android platform")
+    endif()
+    
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
     include(cross_compiling/host)
-    set(CMAKE_SYSTEM_NAME Android)
-    set(CMAKE_SYSTEM_VERSION ${ANDROID_API_LEVEL})
-    set(CMAKE_ANDROID_ARCH_ABI ${ANDROID_ARCH_ABI})
-    set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
-    set(CMAKE_ANDROID_STL_TYPE ${ANDROID_STL_TYPE})
+    include(cross_compiling/armlinux)
+    include(cross_compiling/android)
 endif()
 
 project(paddle CXX C)
@@ -94,7 +113,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 
-if(ANDROID OR IOS)
+if(ANDROID OR IOS OR ARMLINUX)
     set(WITH_GPU OFF CACHE STRING
         "Disable GPU when cross-compiling for Android and iOS" FORCE)
     set(WITH_DSO OFF CACHE STRING
