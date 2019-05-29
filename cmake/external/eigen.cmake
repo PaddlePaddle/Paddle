@@ -5,15 +5,17 @@ SET(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR}/src/extern_eigen3)
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
 if(NOT WITH_FAST_MATH)
   # EIGEN_FAST_MATH: https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
-  # enables some optimizations which might affect the accuracy of the result. 
-  # This currently enables the SSE vectorization of sin() and cos(), 
+  # enables some optimizations which might affect the accuracy of the result.
+  # This currently enables the SSE vectorization of sin() and cos(),
   # and speedups sqrt() for single precision.
   # Defined to 1 by default. Define it to 0 to disable.
   add_definitions(-DEIGEN_FAST_MATH=0)
 endif()
 
 if(WIN32)
-    set(PATCH_COMMAND "${CMAKE_COMMAND} -E copy_if_different ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h")
+    set(PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h
+            ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h)
 else()
     set(PATCH_COMMAND "")
 endif()
@@ -43,7 +45,7 @@ else()
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
-        PATCH_COMMAND     "${PATCH_COMMAND}"
+        PATCH_COMMAND     ${PATCH_COMMAND}
         INSTALL_COMMAND   ""
         TEST_COMMAND      ""
     )
