@@ -21,12 +21,12 @@ namespace lite {
 namespace profile {
 
 TEST(basic_profile, init) {
-  auto& rcd = BasicProfiler::Global().NewRcd("fc");
+  auto& rcd = BasicProfiler<BasicRecord>::Global().NewRcd("fc");
   for (int i = 11; i < 100; i++) {
     rcd.Log(i);
   }
 
-  LOG(INFO) << BasicProfiler::Global().basic_repr();
+  LOG(INFO) << BasicProfiler<BasicRecord>::Global().basic_repr();
 }
 
 }  // namespace profile

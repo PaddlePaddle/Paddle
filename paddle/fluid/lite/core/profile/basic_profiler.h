@@ -27,16 +27,24 @@ namespace lite {
 namespace profile {
 
 template <typename ChildT>
-class ProfileRecordBase {
+class RecordBase {
  public:
   void Start() { self()->Start(); }
   void Stop() { self()->Stope(); }
+  void Log(uint32_t x) { return self()->Log(x); }
+  std::string basic_repr() const { return const_self()->basic_repr(); }
+
+  void SetId(int id) { self()->SetId(id); }
+  void SetKey(const std::string &key) { self()->SetKey(key); }
 
  protected:
   ChildT *self() { return reinterpret_cast<ChildT *>(this); }
+  const ChildT *const_self() const {
+    return reinterpret_cast<const ChildT *>(this);
+  }
 };
 
-class BasicRecord : ProfileRecordBase<BasicRecord> {
+class BasicRecord : RecordBase<BasicRecord> {
   uint64_t total_{};
   uint64_t count_{};
   uint32_t max_{};
@@ -48,6 +56,8 @@ class BasicRecord : ProfileRecordBase<BasicRecord> {
  public:
   BasicRecord(int id, const std::string &key) : id_(id), key_(key) {}
 
+  void SetId(int id) { id_ = id; }
+  void SetKey(const std::string &key) { key_ = key; }
   void Start() { timer_ = std::chrono::high_resolution_clock::now(); }
   void Stop() {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -62,6 +72,13 @@ class BasicRecord : ProfileRecordBase<BasicRecord> {
     max_ = std::max(max_, timespan);
     min_ = std::min(min_, timespan);
     count_++;
+  }
+
+  std::string basic_repr() const {
+    std::stringstream ss;
+    ss << key() << "\t" << ave() << "\t" << max() << "\t" << min() << "\t"
+       << count();
+    return ss.str();
   }
 
   const std::string &key() const { return key_; }
@@ -82,10 +99,11 @@ class BasicRecord : ProfileRecordBase<BasicRecord> {
 /*
  * A basic profiler, with each record logs the total latency.
  */
+template <typename RecordT>
 class BasicProfiler {
  public:
   explicit BasicProfiler(const std::string &name) : name_(name) {}
-  using record_t = BasicRecord;
+  using record_t = RecordBase<RecordT>;
 
   static BasicProfiler &Global() {
     static std::unique_ptr<BasicProfiler> x(new BasicProfiler("[global]"));
@@ -93,7 +111,9 @@ class BasicProfiler {
   }
 
   record_t &NewRcd(const std::string &key) {
-    records_.emplace_back(records_.size(), key);
+    records_.emplace_back();
+    records_.back().SetId(records_.size() - 1);
+    records_.back().SetKey(key);
     return records_.back();
   }
 
@@ -113,8 +133,7 @@ class BasicProfiler {
     std::stringstream ss;
 
     for (const auto &rcd : records_) {
-      ss << rcd.key() << "\t" << rcd.ave() << "\t" << rcd.max() << "\t"
-         << rcd.min() << "\t" << rcd.count() << "\n";
+      ss << rcd.basic_repr() << "\n";
     }
     return ss.str();
   }
@@ -127,10 +146,12 @@ class BasicProfiler {
 template <typename RecordT>
 struct Profile {
   explicit Profile(int id) : id_(id) {
-    BasicProfiler::Global().mutable_record(id_)->Start();
+    BasicProfiler<BasicRecord>::Global().mutable_record(id_)->Start();
   }
 
-  ~Profile() { BasicProfiler::Global().mutable_record(id_)->Stop(); }
+  ~Profile() {
+    BasicProfiler<BasicRecord>::Global().mutable_record(id_)->Stop();
+  }
 
  private:
   int id_{};
