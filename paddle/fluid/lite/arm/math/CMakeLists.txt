@@ -1,4 +1,3 @@
-
 if(NOT (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM))
   return()
 endif()

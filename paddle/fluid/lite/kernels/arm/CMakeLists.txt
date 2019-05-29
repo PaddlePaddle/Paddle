@@ -4,11 +4,11 @@ endif()
 
 message(STATUS "compile with lite ARM kernels")
 
-cc_library(fc_compute_arm SRCS fc_compute.cc DEPS ${lite_kernel_deps} math_arm)
-cc_library(relu_compute_arm SRCS relu_compute.cc DEPS ${lite_kernel_deps})
-cc_library(mul_compute_arm SRCS mul_compute.cc DEPS ${lite_kernel_deps} eigen3)
-cc_library(scale_compute_arm SRCS scale_compute.cc DEPS ${lite_kernel_deps} eigen3)
-cc_library(softmax_compute_arm SRCS softmax_compute.cc DEPS ${lite_kernel_deps} math_arm)
+lite_cc_library(fc_compute_arm SRCS fc_compute.cc DEPS ${lite_kernel_deps} ARM_DEPS math_arm)
+lite_cc_library(relu_compute_arm SRCS relu_compute.cc DEPS ${lite_kernel_deps})
+lite_cc_library(mul_compute_arm SRCS mul_compute.cc DEPS ${lite_kernel_deps} eigen3)
+lite_cc_library(scale_compute_arm SRCS scale_compute.cc DEPS ${lite_kernel_deps} eigen3)
+lite_cc_library(softmax_compute_arm SRCS softmax_compute.cc DEPS ${lite_kernel_deps} ARM_DEPS math_arm)
 
 lite_cc_test(test_fc_compute_arm SRCS fc_compute_test.cc DEPS fc_compute_arm math_arm)
 lite_cc_test(test_softmax_compute_arm SRCS softmax_compute_test.cc DEPS softmax_compute_arm)
