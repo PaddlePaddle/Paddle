@@ -40,8 +40,8 @@ inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__device__ T bilinear_interp(const T* data, const T x, const T y,
-                             const int width, const int height) {
+T bilinear_interpolation(const T* data, const T x, const T y, const int width,
+                         const int height) {
   int x1 = floor(x);
   int x2 = ceil(x);
   int y1 = floor(y);
@@ -135,8 +135,8 @@ __global__ void DeformablePSROIPoolForwardKernel(
         h = min(max(h, 0.), height - 1.);
         int c = (ctop * group_height + gh) * group_width + gw;
         // bilinear interpolation
-        T val = bilinear_interp(offset_bottom_data + c * height * width, w, h,
-                                width, height);
+        T val = bilinear_interpolation(offset_bottom_data + c * height * width,
+                                       w, h, width, height);
         sum += val;
         count++;
       }
