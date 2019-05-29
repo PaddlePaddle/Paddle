@@ -243,7 +243,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
         inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
     endif()
-    inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
+    inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+    inference_analysis_test(trt_resnet50_test SRCS trt_resnet50_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+    inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
 endif()
