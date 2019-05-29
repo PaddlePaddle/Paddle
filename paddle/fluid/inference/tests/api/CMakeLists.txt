@@ -160,6 +160,12 @@ if(WITH_MKLDNN)
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
   if (NOT EXISTS ${INT8_DATA_DIR})
     inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "imagenet_val_100_tail.tar.gz")
+    inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "pascalvoc_val_100_head.tar.gz")
+  endif()
+  
+  set(PASCALVOC_100_BIN_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+  if (NOT EXISTS ${PASCALVOC_100_BIN_DIR})
+
   endif()
 
   #resnet50 int8
@@ -210,6 +216,15 @@ if(WITH_MKLDNN)
     inference_download_and_uncompress(${INT8_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8" "GoogleNet_int8_model.tar.gz" )
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+  #mobilenet-ssd int8 model
+    set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
+    #  if (NOT EXISTS ${INT8_MOBILENET_SSD_MODEL_DIR})
+    #    inference_download_and_uncompress(${INT8_MOBILENET_SSD_MODEL_DIR} "${INFERENCE_URL}/int8" "model.tar.gz" )
+    #  endif()
+   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet_ssd ${INT8_MOBILENET_SSD_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_object_detection_tester.cc)
+
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
