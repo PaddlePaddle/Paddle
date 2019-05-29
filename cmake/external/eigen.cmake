@@ -5,8 +5,8 @@ SET(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR}/src/extern_eigen3)
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
 if(NOT WITH_FAST_MATH)
   # EIGEN_FAST_MATH: https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
-  # enables some optimizations which might affect the accuracy of the result.
-  # This currently enables the SSE vectorization of sin() and cos(),
+  # enables some optimizations which might affect the accuracy of the result. 
+  # This currently enables the SSE vectorization of sin() and cos(), 
   # and speedups sqrt() for single precision.
   # Defined to 1 by default. Define it to 0 to disable.
   add_definitions(-DEIGEN_FAST_MATH=0)
