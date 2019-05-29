@@ -45,9 +45,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
             fp32_model_path(str): The path to model with fp32 weight. defalut: None.
         """
 
-        super(Strategy, self).__init__()
-        self.start_epoch = 0
-        self.end_epoch = 0
+        super(MKLDNNPostTrainingQuantStrategy, self).__init__(0, 0)
         self.int8_model_save_path = int8_model_save_path
         self.fp32_model_path = fp32_model_path
 
@@ -55,6 +53,8 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         """
 	Prepare the data and quantify the model
         """
+        super(MKLDNNPostTrainingQuantStrategy,
+              self).on_compression_begin(context)
         logger.info('InferQuantStrategy::on_compression_begin')
 
         #Prepare the Analysis Config
