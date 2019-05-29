@@ -99,15 +99,15 @@ class DataGenerator(object):
                 sys.stdout.write(self._gen_str(sample))
 
     def run_from_stdin(self):
-        '''
+        """
         This function reads the data row from stdin, parses it with the
-        process function, and further parses the return value of the 
+        process function, and further parses the return value of the
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
 
         Example:
-        
+
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
@@ -121,12 +121,12 @@ class DataGenerator(object):
                 mydata = MyData()
                 mydata.run_from_stdin()
 
-        '''
+        """
         batch_samples = []
         for line in sys.stdin:
             line_iter = self.generate_sample(line)
             for user_parsed_line in line_iter():
-                if user_parsed_line == None:
+                if user_parsed_line is None:
                     continue
                 batch_samples.append(user_parsed_line)
                 if len(batch_samples) == self.batch_size_:

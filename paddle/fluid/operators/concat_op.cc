@@ -80,8 +80,19 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]);
+    auto vars = ctx.MultiInputVar("X");
+    auto input_data_type = framework::proto::VarType::Type(0);
+    bool flag = 0;
+    for (auto *var : vars) {
+      if (var->IsInitialized()) {
+        input_data_type = framework::GetDataTypeOfVar(var);
+        flag = 1;
+        break;
+      }
+    }
+    if (flag == 0) {
+      PADDLE_THROW("All Inputs of Concat OP are Empty!");
+    }
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -106,6 +117,12 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Concat Operator.
 

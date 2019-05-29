@@ -564,8 +564,9 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (
+                self.name, self.dtype, self.shape,
+                str(self._ivar.value().get_tensor()))
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -1670,13 +1671,18 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+            attrs = kwargs.get("attrs", {})
+            if _dygraph_tracer_._train_mode == False:
+                # eval mode
+                attrs['is_test'] = True
+
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                attrs=attrs)
 
             # record ops in tracer rather than blocks
             #
@@ -2756,6 +2762,10 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._nccl_comm_num = 1
+        self._use_hierarchical_allreduce = False
+        self._hierarchical_allreduce_inter_nranks = 0
+        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
