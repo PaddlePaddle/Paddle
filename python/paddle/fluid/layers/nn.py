@@ -6099,7 +6099,7 @@ def im2sequence(input,
         padding.append(padding[0])
         padding.append(padding[1])
     inputs = {"X": input}
-    attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
+    attrs = {"kernels": filter_size, "strides": stride, "paddings": padding}
     if input_image_size:
         if isinstance(out_stride, int):
             out_stride = [out_stride, out_stride]
