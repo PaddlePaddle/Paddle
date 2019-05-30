@@ -72,3 +72,4 @@ REGISTER_NG_OP(elementwise_sub,
                BuildElementwiseBinaryNode<ngraph::op::Subtract>);
 REGISTER_NG_OP(elementwise_min,
                BuildElementwiseBinaryNode<ngraph::op::Minimum>);
+REGISTER_NG_OP(less_than, BuildElementwiseCompareNode<ngraph::op::Less>);
