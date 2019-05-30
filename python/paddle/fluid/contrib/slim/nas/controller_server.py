@@ -26,14 +26,21 @@ _logger.setLevel(logging.INFO)
 
 class ControllerServer(object):
     """
+    The controller wrapper with a socket server to handle the request of search agentt.
     """
 
     def __init__(self,
                  controller=None,
                  address=('', 0),
-                 max_client_num=None,
+                 max_client_num=100,
                  search_steps=None):
         """
+        Args:
+            controller(slim.searcher.Controller): The controller used to generate tokens.
+            address(tuple): The address of current server binding with format (ip, port). Default: ('', 0).
+                            which means setting ip automatically
+            max_client_num(int): The maximum number of clients connecting to current server simultaneously. Default: 100.
+            search_steps(int): The total steps of searching. None means never stopping. Default: None 
         """
         self._controller = controller
         self._address = address
@@ -55,12 +62,15 @@ class ControllerServer(object):
         return str(thread)
 
     def close(self):
+        """Close the server."""
         self._closed = True
 
     def port(self):
+        """Get the port."""
         return self._port
 
     def ip(self):
+        """Get the ip."""
         return self._ip
 
     def run(self):
@@ -70,14 +80,19 @@ class ControllerServer(object):
                 (self._search_steps))) and not self._closed:
             conn, addr = self._socket_server.accept()
             message = conn.recv(1024).decode()
-            _logger.info("recv message from {}: [{}]".format(addr, message))
-            tokens, reward = message.strip('\n').split("\t")
-            tokens = [int(token) for token in tokens.split(",")]
-            self._controller.update(tokens, float(reward))
-            tokens = self._controller.next_tokens()
-            tokens = ",".join([str(token) for token in tokens])
-            conn.send(tokens)
-            _logger.info("send message to {}: [{}]".format(addr, tokens))
+            if message.strip("\n") == "next_tokens":
+                tokens = self._controller.next_tokens()
+                tokens = ",".join([str(token) for token in tokens])
+                conn.send(tokens)
+            else:
+                _logger.info("recv message from {}: [{}]".format(addr, message))
+                tokens, reward = message.strip('\n').split("\t")
+                tokens = [int(token) for token in tokens.split(",")]
+                self._controller.update(tokens, float(reward))
+                tokens = self._controller.next_tokens()
+                tokens = ",".join([str(token) for token in tokens])
+                conn.send(tokens)
+                _logger.info("send message to {}: [{}]".format(addr, tokens))
             conn.close()
         self._socket_server.close()
         _logger.info("server closed!")

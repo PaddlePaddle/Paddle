@@ -42,3 +42,11 @@ class SearchAgent(object):
         tokens = socket_client.recv(1024).decode()
         tokens = [int(token) for token in tokens.strip("\n").split(",")]
         return tokens
+
+    def next_tokens(self):
+        socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket_client.connect((self.server_ip, self.server_port))
+        socket_client.send("next_tokens")
+        tokens = socket_client.recv(1024).decode()
+        tokens = [int(token) for token in tokens.strip("\n").split(",")]
+        return tokens

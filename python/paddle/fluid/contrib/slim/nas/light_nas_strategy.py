@@ -59,6 +59,7 @@ class LightNASStrategy(Strategy):
         self._retrain_epoch = retrain_epoch
         self._search_steps = search_steps
         self._max_client_num = max_client_num
+        self._max_try_times = 300
 
         if self._server_ip is None:
             self._server_ip = self._get_host_ip()
@@ -121,15 +122,18 @@ class LightNASStrategy(Strategy):
         _logger.info("light nas strategy on_epoch_begin")
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
-            (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-
-            while True:
+            (context.epoch_id - self.start_epoch) % self._retrain_epoch == 1):
+            _logger.info("Construct new program...")
+            for _ in range(self._max_try_times):
                 startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
                     self._current_tokens)
                 context.eval_graph.program = test_p
                 flops = context.eval_graph.flops()
                 if flops <= self._max_flops:
                     break
+                else:
+                    self._current_tokens = self._search_agent.next_tokens()
+                    _logger.info("try [{}]".format(self._current_tokens))
 
             context.train_reader = train_reader
             context.eval_reader = test_reader
