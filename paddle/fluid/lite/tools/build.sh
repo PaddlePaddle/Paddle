@@ -1,17 +1,15 @@
 #!/bin/bash
-set -e
+set -ex
 
-TESTS_FILE=""
+TESTS_FILE="./lite_tests.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 function cmake_x86 {
-    cmake ..  -DWITH_GPU=OFF -DLITE_WITH_X86=ON ${common_flags}
-    make test_cxx_api_lite -j8
+    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
 function cmake_gpu {
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
-    make test_cxx_api_lite -j8
 }
 
 function cmake_arm {
@@ -24,7 +22,6 @@ function cmake_arm {
           -DWITH_TESTING=ON \
           -DWITH_MKL=OFF \
           -DWITH_MKLDNN=OFF
-    make cxx_api_lite_bin -j8
 }
 
 function build {
@@ -47,6 +44,16 @@ function test_lite {
 function test_mobile {
     # TODO(XXX) Implement this
     local file=$1
+}
+
+# Build the code and run lite server tests. This is executed in the CI system.
+function build_test_server {
+    mkdir -p ./build
+    cd ./build
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
+    cmake_x86
+    build $TESTS_FILE
+    test_lite $TESTS_FILE
 }
 
 ############################# MAIN #################################
@@ -96,6 +103,10 @@ function main {
                 ;;
             test_mobile)
                 test_lite $TESTS_FILE
+                shift
+                ;;
+            build_test_server)
+                build_test_server
                 shift
                 ;;
             *)

@@ -15,6 +15,7 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 /*
@@ -91,6 +92,14 @@ struct ScaleParam {
   float scale{1.};
   float bias{};
   bool bias_after_scale{true};
+};
+
+// For Softmax Op
+struct SoftmaxParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+
+  int axis{-1};
 };
 
 /// ----------------------- element wise operators ----------------------

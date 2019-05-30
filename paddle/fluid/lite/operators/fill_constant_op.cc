@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -35,14 +34,13 @@ class FillConstantOp : public OpLite {
   }
 
   bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 2UL);
     auto Out_name = opdesc.Output("Out").front();
 
     param_.Out = GetMutableVar<Tensor>(scope, Out_name);
-    param_.dtype = boost::get<int>(opdesc.GetAttr("dtype"));
-    param_.shape = boost::get<std::vector<int64_t>>(opdesc.GetAttr("shape"));
-    param_.value = boost::get<float>(opdesc.GetAttr("value"));
-    param_.force_cpu = boost::get<bool>(opdesc.GetAttr("force_cpu"));
+    param_.dtype = GetAttr<int>(opdesc.GetAttr("dtype"));
+    param_.shape = GetAttr<std::vector<int64_t>>(opdesc.GetAttr("shape"));
+    param_.value = GetAttr<float>(opdesc.GetAttr("value"));
+    param_.force_cpu = GetAttr<bool>(opdesc.GetAttr("force_cpu"));
     return true;
   }
 
