@@ -76,6 +76,8 @@ void BindImperative(pybind11::module *m_ptr) {
               bool stop_gradient, bool persistable) {
              new (&self) imperative::VarBase();
              self.SetPersistable(persistable);
+             self.SetDataType(dtype);
+             self.SetStopGradient(stop_gradient);
              self.SetName(name);
              auto *tensor =
                  self.MutableVar()->GetMutable<framework::LoDTensor>();
@@ -89,6 +91,8 @@ void BindImperative(pybind11::module *m_ptr) {
               bool stop_gradient, bool persistable) {
              new (&self) imperative::VarBase();
              self.SetPersistable(persistable);
+             self.SetDataType(dtype);
+             self.SetStopGradient(stop_gradient);
              self.SetName(name);
              auto *tensor =
                  self.MutableVar()->GetMutable<framework::LoDTensor>();

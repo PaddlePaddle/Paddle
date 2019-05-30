@@ -114,10 +114,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
           out_data, in_row_numel, in_rows.size());
 
     } else {
-      PADDLE_THROW("Unsupported Variable Type of Grad: %s",
-                   (grad_var && grad_var->IsInitialized()
-                        ? framework::ToTypeName(grad_var->Type())
-                        : "nullptr"));
+      PADDLE_THROW("Unsupported Variable Type of Grad");
     }
   }
 };

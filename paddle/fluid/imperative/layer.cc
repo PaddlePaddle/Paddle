@@ -251,6 +251,70 @@ class PreparedOp {
                                       kernel_configs_));
   }
 
+ public:
+  static std::string DebugString(
+      const std::string& name,
+      const std::vector<std::shared_ptr<VarBase>>& vars) {
+    std::stringstream ss;
+    ss << name << "{";
+
+    for (size_t i = 0; i < vars.size(); ++i) {
+      if (i > 0) ss << ", ";
+
+      if (vars[i] == nullptr) {
+        ss << "NULL";
+        continue;
+      }
+      ss << vars[i]->Name() << "[";
+      auto& var = vars[i]->Var();
+      if (!var.IsInitialized()) {
+        ss << "NOT_INITED_VAR";
+      } else if (var.IsType<framework::LoDTensor>()) {
+        auto& tensor = var.Get<framework::LoDTensor>();
+        ss << "LoDTensor<";
+        if (tensor.IsInitialized()) {
+          ss << framework::DataTypeToString(tensor.type()) << ", ";
+          ss << tensor.place() << ", ";
+          ss << "(" << tensor.dims() << ")";
+          ss << ">";
+        } else {
+          ss << "NOT_INITED";
+        }
+      } else {
+        ss << "UNKNOWN_TYPE";
+      }
+      ss << "]";
+    }
+
+    ss << "}";
+    return ss.str();
+  }
+
+  static std::string DebugString(const std::string& op_type,
+                                 const NameVarBaseMap& ins,
+                                 const NameVarBaseMap& outs) {
+    std::stringstream ss;
+    ss << "Op(" << op_type << "): ";
+
+    ss << "Inputs: ";
+
+    size_t i = 0;
+    for (auto& pair : ins) {
+      if (i > 0) ss << ", ";
+      ss << DebugString(pair.first, pair.second);
+      ++i;
+    }
+
+    ss << ",   Outputs: ";
+    i = 0;
+    for (auto& pair : outs) {
+      if (i > 0) ss << ", ";
+      ss << DebugString(pair.first, pair.second);
+      ++i;
+    }
+    return ss.str();
+  }
+
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
@@ -411,6 +475,7 @@ void OpBase::RunOp(const std::unique_ptr<framework::OperatorBase>& op,
   }
 
   VLOG(3) << "Running Op " << op->Type();
+  VLOG(1) << PreparedOp::DebugString(op->Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
@@ -420,6 +485,7 @@ void OpBase::RunOp(const std::unique_ptr<framework::OperatorBase>& op,
   prepared_op.Run();
 
   VLOG(3) << "Running Op " << op->Type() << " ends";
+  VLOG(1) << PreparedOp::DebugString(op->Type(), ins, outs);
 }
 
 void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
@@ -587,7 +653,7 @@ struct GradAccumulator {
  private:
   VarBase* var_;
   detail::BackwardStrategy backward_strategy_;
-  size_t ref_cnt_{0};
+  size_t ref_cnt_{1};
   std::vector<std::pair<std::shared_ptr<VarBase>, size_t>> tmp_grad_vars_;
   std::vector<size_t> trace_ids_;
 };
@@ -603,7 +669,7 @@ class AutoGradImpl {
 
   bool CheckBackwardInputs(OpBase* op);
 
-  void CheckBackwardOutputs(OpBase* op);
+  void PrepareGradAccumulators(OpBase* op);
 
   void SumGradient(OpBase* op, std::shared_ptr<VarBase> src, VarBase* dst) {
     auto iter = accumulators_.find(dst);
@@ -663,17 +729,23 @@ bool AutoGradImpl::CheckBackwardInputs(OpBase* op) {
   return false;
 }
 
-void AutoGradImpl::CheckBackwardOutputs(OpBase* op) {
+void AutoGradImpl::PrepareGradAccumulators(OpBase* op) {
   for (auto& out : op->BackwardOutputs()) {
     for (auto& pair : out) {
       for (auto& var : pair.second) {
         if (!var) continue;
 
-        auto pair = accumulators_.emplace(
-            var.get(), GradAccumulator(var.get(), backward_strategy_));
-        auto cnt = pair.first->second.IncreaseRefCnt();
+        auto iter = accumulators_.find(var.get());
+        size_t ref_cnt = 1;
+        if (iter != accumulators_.end()) {
+          ref_cnt = iter->second.IncreaseRefCnt();
+        } else {
+          accumulators_.insert(
+              {var.get(), GradAccumulator(var.get(), backward_strategy_)});
+        }
+
         VLOG(2) << "Prepare to acccumulate variable grad " << var->Name()
-                << "with reference count " << cnt;
+                << "with reference count " << ref_cnt;
       }
     }
   }
@@ -701,7 +773,7 @@ void AutoGradImpl::PrepareDeps() {
       continue;
     }
 
-    CheckBackwardOutputs(cur_op);
+    PrepareGradAccumulators(cur_op);
 
     auto& preceding_ops = cur_op->PrecedingOps();
     for (auto* preceding_op : preceding_ops) {
