@@ -44,7 +44,7 @@ class SendBarrierOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    VLOG(1) << "SendBarrierOp SYNC with trainer=" << trainer_id;
+    VLOG(1) << "SendBarrierOp SYNC with trainer=" << trainer_id << " Begin";
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");

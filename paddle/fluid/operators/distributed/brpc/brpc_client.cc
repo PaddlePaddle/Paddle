@@ -106,7 +106,7 @@ void HandleBarrierResponse(brpc::Controller *cntl,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(FATAL) << "HandleBarrier" << var_h->name()
+    LOG(FATAL) << "HandleBarrier " << var_h->name()
                << " Response from: " << cntl->remote_side()
                << " failed, error text: " << cntl->ErrorText();
     var_h->Finish(false);
@@ -117,7 +117,7 @@ void HandleBarrierResponse(brpc::Controller *cntl,
   var_h->Finish(true);
   cls->DecreaseReqCount();
 
-  VLOG(1) << "HandleBarrier" << var_h->name()
+  VLOG(1) << "HandleBarrier " << var_h->name()
           << " Response from: " << cntl->remote_side()
           << ",  latency: " << cntl->latency_us() << "us";
 }

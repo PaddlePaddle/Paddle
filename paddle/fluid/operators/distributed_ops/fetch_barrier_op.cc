@@ -40,7 +40,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
-    VLOG(1) << "FetchBarrierOp SYNC with trainer=" << trainer_id;
+    VLOG(1) << "FetchBarrierOp SYNC with trainer=" << trainer_id << " Begin";
 
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
 

@@ -160,7 +160,7 @@ class BRPCClient : public RPCClient {
   // mutex for Wait client sync
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
-  std::atomic<int64_t> req_count_{0};
+  std::atomic<int> req_count_{0};
 
   static constexpr int brpc_channel_num_per_server_ = 4;
 
