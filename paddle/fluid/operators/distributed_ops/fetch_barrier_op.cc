@@ -36,9 +36,9 @@ class FetchBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-    auto trainer_id =
-        Attr<int>("trainer_id") distributed::RPCClient* rpc_client =
-            distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
+    auto trainer_id = Attr<int>("trainer_id");
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
     VLOG(1) << "FetchBarrierOp SYNC with trainer=" << trainer_id;
 
