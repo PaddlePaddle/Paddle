@@ -91,5 +91,49 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
 
+class PipelineTrainer : public TrainerBase {
+ public:
+  PipelineTrainer() {}
+  virtual ~PipelineTrainer() {}
+  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
+  void InitTrainerEnv(const ProgramDesc& main_program,
+                      const platform::Place& place) override;
+  void InitOtherEnv(const ProgramDesc& main_program) override {}
+  void Run() override;
+  void Finalize() override;
+
+ protected:
+  int rank_num_;  // number device to sync parameter
+  int line_num_;  // number of pipelines
+  int scope_queue_size_;
+  int sync_steps_;
+  int section_num_;
+  PipelineWorkerParameter pipeline_config_;
+
+  std::vector<std::unique_ptr<std::vector<std::string>>> in_var_names_;
+  std::vector<std::unique_ptr<std::vector<std::string>>> out_var_names_;
+
+  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
+  std::vector<std::vector<int*>> worker_count_;
+
+  // worker: [section_id][line_id][id]
+  std::vector<std::vector<
+      std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>>
+      workers_;
+  std::vector<std::thread> section_threads_;
+
+  std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
+  std::vector<Scope*> line_scopes_;
+  std::shared_ptr<std::vector<std::string>> param_need_sync_;
+
+  std::vector<std::shared_ptr<DataFeed>> readers_;
+
+  std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
+  std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
+
+  void InitFirstScopeQueue(ScopeQueue* scope_queue, int line_id,
+                           const ProgramDesc& main_program);
+  void CopyParameters(const Scope& root_scope, int line_id);
+};
 }  // namespace framework
 }  // namespace paddle

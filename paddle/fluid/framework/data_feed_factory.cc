@@ -64,5 +64,6 @@ std::shared_ptr<DataFeed> DataFeedFactory::CreateDataFeed(
 
 REGISTER_DATAFEED_CLASS(MultiSlotDataFeed);
 REGISTER_DATAFEED_CLASS(MultiSlotInMemoryDataFeed);
+REGISTER_DATAFEED_CLASS(MultiSlotFileInstantDataFeed);
 }  // namespace framework
 }  // namespace paddle

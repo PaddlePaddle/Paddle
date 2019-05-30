@@ -23,7 +23,7 @@ from paddle.fluid.framework import Program, Variable, name_scope, default_main_p
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward
+from .backward import append_backward, _some_in_set_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
@@ -43,7 +43,7 @@ __all__ = [
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage'
+    'ExponentialMovingAverage', 'PipelineOptimizer'
 ]
 
 
@@ -2607,3 +2607,213 @@ class ExponentialMovingAverage(object):
             executor (Executor): The Executor to execute restoring.
         """
         executor.run(self.restore_program)
+
+
+class PipelineOptimizer(object):
+    def __init__(self,
+                 optimizer,
+                 cut_list=None,
+                 place_list=None,
+                 concurrency_list=None,
+                 queue_size=20,
+                 sync_steps=1):
+        # TODO: check properties
+        self._optimizer = optimizer
+        self._cut_list = cut_list
+        self._place_list = place_list
+        self._concurrency_list = concurrency_list
+        self._queue_size = queue_size
+        self._sync_steps = sync_steps
+
+    def reader_num_each(self):
+        # all readers are in the 1st section
+        return self._concurrency_list[0]
+
+    def create_vars(self, block, main_program):
+        used_var_set = set()
+        for op_idx in range(block.desc.op_size()):
+            op_desc = block.desc.op(op_idx)
+            new_vars = set()
+            vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+            for var in vars:
+                #print("var:" + str(var))
+                if var in used_var_set:
+                    continue
+                used_var_set.add(var)
+                #if block.desc.has_var_recursive(cpt.to_bytes(var)) or var == core.empty_var_name():#copy from append_backward_vars
+                #continue
+                source_var = main_program.block(0).var(str(var))
+                block._clone_variable(source_var, False)
+            """
+            for var in block.vars:
+                print("block var:"+str(var))
+            op_desc.infer_var_type(block.desc)
+            op_desc.infer_shape(block.desc)
+            for var in vars:
+                if var in new_vars:
+                    _infer_var_data_type_(var, block)
+            """
+
+    def split_ops(self, ops, cut_point_name, is_last):
+        """
+        forward
+        """
+        output_names = set(cut_point_name)
+        #output_names = set([cut_point_name])
+        relevant_op_flags = [True] * len(ops)
+        for i, op in reversed(list(enumerate(ops))):
+            if is_last and op.desc.type(
+            ) == "print":  #Just for print log, will delete
+                continue
+            if "tmp_1" in op.desc.output_arg_names(
+            ) or "tmp_2" in op.desc.output_arg_names():  #temp for diff lr
+                continue
+            if _some_in_set_(op.desc.output_arg_names(), output_names):
+                for name in op.desc.input_arg_names():
+                    output_names.add(name)
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def split_ops_backward(self, ops, cut_point_name):
+        """
+        backward
+        """
+        input_names = set(cut_point_name)
+        #input_names = set([cut_point_name])
+        relevant_op_flags = [True] * len(ops)
+        for i, op in list(enumerate(ops)):
+            if _some_in_set_(op.desc.input_arg_names(), input_names):
+                for name in op.desc.output_arg_names():
+                    input_names.add(name)
+            elif _some_in_set_(
+                    op.desc.output_arg_names(),
+                    input_names) and len(op.desc.input_arg_names()) == 0:
+                for name in op.desc.output_arg_names():
+                    input_names.add(name)
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def find_input_output(self, ops, name, is_forward=True):
+        """
+        The result for the bp part maybe wrong due to the optimization op, but it doesn't matter for our purpose. 
+        Correct me if i am wrong.
+        """
+        all_set = set(name)
+        part_set = set()
+        for op in ops:
+            if is_forward:
+                part_set.update(op.desc.output_arg_names())
+            else:
+                part_set.update(op.desc.input_arg_names())
+            all_set.update(op.desc.output_arg_names())
+            all_set.update(op.desc.input_arg_names())
+        return all_set - part_set
+
+    def find_persistable_vars(self, ops, whole_parameters):
+        """
+        workaround, should filter persistable vars
+        """
+        res = set()
+        for op in ops:
+            vars = op.desc.input_arg_names()
+            for var in vars:
+                if var in whole_parameters:
+                    res.add(var)
+        return res
+
+    def split_program(self, main_program, joint_list):
+        """
+        Split a program by the joint node in 'joint_list'
+        Don't cover all cases now
+        """
+        programs = []
+        backward_programs = []
+        block = main_program.block(0)
+        whole_parameters = []
+        for v in block.vars.values():
+            if v.persistable:
+                whole_parameters.append(v.name)
+        used_op_set = set()
+        for i, cut_vars in enumerate(joint_list):
+            is_last = i == len(joint_list) - 1
+            program = {
+                "program": Program(),
+                "input_set": set(),
+                "output_set": set()
+            }
+            cur_used_op_set = set()
+
+            cut_var_names = [cut_var.name for cut_var in cut_vars]
+            grad_cut_var_names = [
+                cut_var.name + "@GRAD" for cut_var in cut_vars
+            ]
+            cur_ops = self.split_ops(block.ops, cut_var_names, is_last)
+            cur_ops = [op for op in cur_ops if op not in used_op_set]
+            op_descs = [op.desc for op in cur_ops]
+            for op_desc in op_descs:
+                ap_op = program["program"].block(0).desc.append_op()
+                ap_op.copy_from(op_desc)
+            program["input_set"].update(
+                self.find_input_output(cur_ops, cut_var_names, True))
+            program["input_set"].update(self.find_persistable_vars(cur_ops))
+            if not is_last:
+                program["output_set"].update(cut_var_names)
+
+            b_program = None
+            if is_last:
+                b_program = program
+            else:
+                b_program = {
+                    "program": Program(),
+                    "input_set": set(),
+                    "output_set": set()
+                }
+            cur_back_ops = self.split_ops_backward(block.ops,
+                                                   grad_cut_var_names)
+            cur_back_ops = [op for op in cur_back_ops if op not in used_op_set]
+            op_descs = [op.desc for op in cur_back_ops]
+            for op_desc in op_descs:
+                ap_op = b_program["program"].block(0).desc.append_op()
+                ap_op.copy_from(op_desc)
+            if not is_last:
+                b_program["input_set"].update(grad_cut_var_names)
+            b_program["input_set"].update(
+                self.find_persistable_vars(cur_back_ops, whole_parameters))
+            b_program["output_set"].update(
+                self.find_input_output(cur_back_ops, grad_cut_var_names, False))
+
+            used_op_set.update(cur_ops)
+            used_op_set.update(cur_back_ops)
+            programs.append(program)
+            if not is_last:
+                backward_programs.append(b_program)
+        return programs + list(reversed(backward_programs))
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        self._optimizer.minimize(loss, startup_program, parameter_list,
+                                 no_grad_set)
+        program = loss.block.program
+        program_list = self.split_program(program, self._cut_list + [[loss]])
+        for p in program_list:
+            self.create_vars(p["program"].block(0), program)
+        program._pipeline_opt = {
+            "trainer": "PipelineTrainer",
+            "device_worker": "Pipeline",
+            "section_program_list": program_list,
+            "place_list": self._place_list + self._place_list[-2::-1],
+            "concurrency_list":
+            self._concurrency_list + self._concurrency_list[-2::-1],
+            #"concurrency_list": [2,1,5],
+            "queue_size": self._queue_size,
+            "sync_steps": self._sync_steps
+        }
