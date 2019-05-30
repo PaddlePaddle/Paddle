@@ -313,7 +313,7 @@ class Executor(object):
 
           use_cuda = True
           place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
+          exe = fluid.Executor(lace)
 
           train_program = fluid.Program()
           startup_program = fluid.Program()
@@ -361,6 +361,8 @@ class Executor(object):
         self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
+        self.scope_caches = dict()
+        self.var_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
@@ -715,8 +717,9 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
                 self._add_program_cache(cache_key, cached_program)
+                fetch_list_str = list(map(_to_name_str, fetch_list))
                 cached_ctx = self._default_executor.prepare_ctx_cache(
-                    cached_program.desc, 0, fetch_list, False)
+                    cached_program.desc, 0, fetch_list_str, False)
                 cached_var = self._default_executor.create_variables(
                     cached_program.desc, scope, 0)
                 # currently, we cache program, vars, sub_scope here
