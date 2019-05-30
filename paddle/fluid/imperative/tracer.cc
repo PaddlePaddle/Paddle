@@ -51,11 +51,11 @@ void CreateNoBuffuerGrad(VarBase* var, platform::DeviceContext* dev_ctx) {
   PADDLE_ENFORCE_NOT_NULL(dev_ctx,
                           "Could not get valid device from forward op");
 
-  if (var->grads_ == nullptr) {
-    auto& var_t = var->var_->Get<framework::LoDTensor>();
-    var->grads_ = new VarBase(var->GradName(), framework::proto::VarType::FP32,
-                              framework::vectorize(var_t.dims()),
-                              dev_ctx->GetPlace(), true, false, false);
+  if (var->Grad() == nullptr) {
+    auto& var_t = var->GetVar()->Get<framework::LoDTensor>();
+    var->SetGrad(new VarBase(var->GradName(), framework::proto::VarType::FP32,
+                             framework::vectorize(var_t.dims()),
+                             dev_ctx->GetPlace(), true, false, false));
   }
 }
 
@@ -64,7 +64,7 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
   for (auto it : inputs) {
     for (VarBase* var : it.second) {
       platform::Place tmp_place =
-          var->var_->Get<framework::LoDTensor>().place();
+          var->GetVar()->Get<framework::LoDTensor>().place();
       if (!platform::is_same_place(tmp_place, result)) {
         PADDLE_THROW(
             "Input variable should keep in the same place: %s, but get place: "
@@ -151,15 +151,15 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     auto& invars = invars_map[it.first];
     invars.reserve(it.second.size());
     for (VarBase* inp : it.second) {
-      PADDLE_ENFORCE_NOT_NULL(inp->var_, "op %s input %s nullptr", op->Type(),
-                              inp->Name());
+      PADDLE_ENFORCE_NOT_NULL(inp->GetVar(), "op %s input %s nullptr",
+                              op->Type(), inp->Name());
 
-      invars.emplace_back(inp->var_.get());
+      invars.emplace_back(inp->GetMutableVar());
       if (!stop_gradient) {
         current_vars_map[inp->Name()] = inp;
       }
       VLOG(3) << "input var name: " << inp->Name()
-              << " inited: " << inp->var_->IsInitialized()
+              << " inited: " << inp->GetVar()->IsInitialized()
               << " stop_grad: " << inp->IsStopGradient();
     }
     op->TrackPreOp(it.first, it.second);
@@ -172,14 +172,14 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     outvars.reserve(outputs.size());
     for (size_t i = 0U; i < outputs.size(); ++i) {
       VarBase* out = outputs[i];
-      outvars.emplace_back(out->var_.get());
+      outvars.emplace_back(out->GetMutableVar());
       out->TrackPreOp(op, it.first, i, stop_gradient);
       if (!stop_gradient) {
         current_vars_map[out->Name()] = out;
       }
 
       VLOG(3) << "output var name: " << out->Name()
-              << " inited: " << out->var_->IsInitialized()
+              << " inited: " << out->GetVar()->IsInitialized()
               << " stop_grad: " << out->IsStopGradient();
     }
   }
@@ -261,7 +261,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             VarBase* var = current_vars_map[var_it->second];
             CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
             // Douts.
-            grad_in_vars.emplace_back(var->grads_);
+            grad_in_vars.emplace_back(var->Grad());
           }
 
           vars_saved_for_backward.insert(it.first);
@@ -278,8 +278,8 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                          op->Type());
           VarBase* var = current_vars_map[var_it->second];
           CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
-          grad_out_vars.push_back(var->grads_);
-          VLOG(3) << "grads output var name: " << var->name_;
+          grad_out_vars.push_back(var->Grad());
+          VLOG(3) << "grads output var name: " << var->Name();
         }
       }
     }

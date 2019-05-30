@@ -166,19 +166,10 @@ class VarBase {
     if (!var_) {
       var_.reset(new framework::Variable());
     }
-    auto tensor = var_->GetMutable<framework::LoDTensor>();
-    tensor->Resize(shape);
-    if (need_initialize) {
-      tensor->mutable_data(place, dtype);
-      is_initialized_ = true;
-      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype
-              << " place: " << place;
-    } else {
-      is_initialized_ = false;
-      VLOG(2) << "not initialized varbase: " << name_;
-    }
-    VLOG(2) << "create varbase: " << name_ << " type: " << dtype
-            << " place: " << place;
+    tensor_ = var_->GetMutable<framework::LoDTensor>();
+    tensor_->Resize(shape);
+    VLOG(2) << "create varbase: " << name_ << " type: " << dtype_
+            << " place: " << place_;
   }
 
  public:
@@ -194,44 +185,46 @@ class VarBase {
   }
 
   inline void SetName(const std::string& name) { name_ = name; }
+
   inline std::string Name() const { return name_; }
-  inline bool IsInitialize() const { return is_initialized_; }
+
+  inline bool IsInitialize() const { return tensor_->IsInitialized(); }
 
   inline std::vector<int64_t> Shape() const {
     if (var_->IsInitialized()) {
       return framework::vectorize(var_->Get<framework::LoDTensor>().dims());
-    } else {
-      return {};
     }
+    return {};
   }
 
   inline framework::DDim Dims() const {
     return var_->Get<framework::LoDTensor>().dims();
   }
 
-  // data type. e.g.. FP32
-  inline void SetDataType(framework::proto::VarType::Type type) {
-    auto tensor = var_->GetMutable<framework::LoDTensor>();
-    tensor->mutable_data(tensor->place(), type);
+  inline void SetDataType(framework::proto::VarType::Type dtype) {
+    dtype_ = dtype;
+    tensor_->mutable_data(place_, dtype_);
   }
-  inline framework::proto::VarType::Type DataType() const {
-    auto tensor = var_->Get<framework::LoDTensor>();
-    return tensor.type();
-  }
+  inline framework::proto::VarType::Type DataType() const { return dtype_; }
 
-  // tensor type. e.g.. LoDTensor
   inline void SetType(framework::proto::VarType::Type type) { type_ = type; }
+
   inline framework::proto::VarType::Type Type() const { return type_; }
 
   inline void SetStopGradient(bool stop_gradient) {
     stop_gradient_ = stop_gradient;
   }
+
   inline bool IsStopGradient() const { return stop_gradient_; }
 
   inline void SetPersistable(bool persistable) { persistable_ = persistable; }
+
   inline bool IsPersistable() const { return persistable_; }
+
   inline platform::Place GetPlace() { return place_; }
+
   inline OpBase* PreOp() const { return pre_op_; }
+
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
   void RunBackward(const detail::BackwardStrategy& bck_stratedy);
@@ -245,9 +238,8 @@ class VarBase {
   }
 
   void InitBuffer() {
-    if (!is_initialized_) {
-      var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
-      is_initialized_ = true;
+    if (!tensor_->IsInitialized()) {
+      tensor_->mutable_data(place_, dtype_);
       VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype_
               << " place: " << place_;
     } else {
@@ -281,25 +273,31 @@ class VarBase {
   std::unique_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
 
+  const framework::Variable* GetVar() const { return var_.get(); }
+
+  framework::Variable* GetMutableVar() { return var_.get(); }
+
   inline std::string GradName() const {
     return string::Sprintf("%s@IGrad", Name());
   }
 
+  VarBase* Grad() const { return grads_; }
+
+  void SetGrad(VarBase* grads) { grads_ = grads; }
+
+ private:
   std::string name_;
   framework::proto::VarType::Type type_;
   platform::Place place_;
-
-  std::unique_ptr<framework::Variable> var_;
-  VarBase* grads_;
-
- private:
+  std::unique_ptr<framework::Variable> var_{nullptr};
+  VarBase* grads_{nullptr};
   framework::proto::VarType::Type dtype_;
   bool stop_gradient_;
   bool persistable_;
-  bool is_initialized_;
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
+  framework::LoDTensor* tensor_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
@@ -410,6 +408,9 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
         input_names_(),
         output_names_(),
         var_set_() {
+    PADDLE_ENFORCE_NOT_NULL(attrs_);
+    PADDLE_ENFORCE_NOT_NULL(inputs_);
+    PADDLE_ENFORCE_NOT_NULL(outputs_);
     input_names_.reserve(inputs_->size());
     for (auto& it : *inputs_) {
       for (imperative::VarBase* var : it.second) {
@@ -430,7 +431,6 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
   virtual ~RuntimeInferVarTypeContext() {}
 
   framework::Attribute GetAttr(const std::string& name) const override {
-    PADDLE_ENFORCE_NOT_NULL(attrs_);
     return attrs_->at(name);
   }
 
@@ -439,12 +439,10 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
   }
 
   bool HasInput(const std::string& name) const override {
-    PADDLE_ENFORCE_NOT_NULL(inputs_);
     return inputs_->count(name) > 0;
   }
 
   bool HasOutput(const std::string& name) const override {
-    PADDLE_ENFORCE_NOT_NULL(outputs_);
     return outputs_->count(name) > 0;
   }
 

@@ -90,7 +90,7 @@ void BindImperative(pybind11::module *m_ptr) {
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
       .def("_grad_ivar",
-           [](const imperative::VarBase &self) { return self.grads_; },
+           [](const imperative::VarBase &self) { return self.Grad(); },
            py::return_value_policy::reference)
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
@@ -105,7 +105,7 @@ void BindImperative(pybind11::module *m_ptr) {
            },
            py::return_value_policy::take_ownership)
       .def("value",
-           [](const imperative::VarBase &self) { return self.var_.get(); },
+           [](const imperative::VarBase &self) { return self.GetVar(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)

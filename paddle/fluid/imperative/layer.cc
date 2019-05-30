@@ -100,7 +100,7 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
 void ZeroGrads(VarBase* vb, const platform::Place& place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  auto grad_t = vb->var_->GetMutable<framework::LoDTensor>();
+  auto grad_t = vb->GetMutableVar()->GetMutable<framework::LoDTensor>();
   operators::math::set_constant(*dev_ctx, grad_t, 0.0);
 }
 
@@ -115,8 +115,8 @@ void AddGradBySort(BackwardSumMap* bck_map, VarBase* target) {
         return a.first > b.first;
       });
   for (auto& var_pair : current.second) {
-    Variable* origin_grad = target->var_.get();
-    Variable* grad_to_add = var_pair.second->var_.get();
+    Variable* origin_grad = target->GetMutableVar();
+    Variable* grad_to_add = var_pair.second->GetMutableVar();
     VLOG(10) << "add origin_grad: " << target->Name();
     VLOG(10) << "added grad: " << var_pair.second->Name()
              << " trace id is: " << var_pair.first;
@@ -227,7 +227,7 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   std::unique_ptr<VarBase> new_var(new VarBase(
       "Itmp", self_tensor.type(), self_tensor.dims(), dst_place, true, false));
   framework::LoDTensor* tensor =
-      new_var->var_->GetMutable<framework::LoDTensor>();
+      new_var->GetMutableVar()->GetMutable<framework::LoDTensor>();
   tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
   const auto& src_tensor = var_->Get<framework::LoDTensor>();
@@ -251,7 +251,7 @@ framework::LoDTensor& VarBase::GradValue() {
   VLOG(3) << "get var grad " << Name();
   PADDLE_ENFORCE_NOT_NULL(grads_,
                           "Could not get grad value from no grad variable");
-  return *(grads_->var_->GetMutable<framework::LoDTensor>());
+  return *(grads_->GetMutableVar()->GetMutable<framework::LoDTensor>());
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
@@ -297,9 +297,11 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
 
     auto& info = framework::OpInfoMap::Instance().Get(grad_op_desc->Type());
     if (info.infer_var_type_) {
+      VLOG(2) << "info.infer_var_ty";
       RuntimeInferVarTypeContext infer_var_type_ctx(
           &grad_input_vars_[k], &tmp_grad_outputs[k], &attrs_);
       info.infer_var_type_(&infer_var_type_ctx);
+      VLOG(2) << "info.infer_var_ty";
     }
 
     framework::OperatorWithKernel* op_kernel =
@@ -314,14 +316,13 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       auto& grad_invars = grad_invars_map[it.first];
       grad_invars.reserve(it.second.size());
       for (VarBase* grad_inp : it.second) {
-        PADDLE_ENFORCE_NOT_NULL(grad_inp->var_, "op %s input %s nullptr",
+        PADDLE_ENFORCE_NOT_NULL(grad_inp->GetVar(), "op %s input %s nullptr",
                                 grad_op_desc->Type(), grad_inp->Name());
         if (!grad_inp->IsInitialize()) {
           grad_inp->InitBuffer();
           ZeroGrads(grad_inp, place_);
         }
-        const VarBase* const_grad_inp = grad_inp;
-        grad_invars.emplace_back(const_grad_inp->var_.get());
+        grad_invars.emplace_back(grad_inp->GetMutableVar());
       }
     }
 
@@ -329,10 +330,10 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       auto& grad_outvars = grad_outvars_map[it.first];
       grad_outvars.reserve(it.second.size());
       for (VarBase* grad_out : it.second) {
-        PADDLE_ENFORCE_NOT_NULL(grad_out->var_, "op %s output %s nullptr",
+        PADDLE_ENFORCE_NOT_NULL(grad_out->GetVar(), "op %s output %s nullptr",
                                 grad_op_desc->Type(), grad_out->Name());
 
-        grad_outvars.emplace_back(grad_out->var_.get());
+        grad_outvars.emplace_back(grad_out->GetMutableVar());
       }
     }
 
@@ -359,11 +360,13 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
           VLOG(10) << "origin_outputs is : " << origin_outputs[i]->Name()
                    << " ";
           VLOG(10) << origin_outputs[i]
-                          ->var_->GetMutable<framework::LoDTensor>()
+                          ->GetMutableVar()
+                          ->GetMutable<framework::LoDTensor>()
                           ->data<float>()[0];
           VLOG(10) << "outputs is : " << outputs[i]->Name() << " ";
           VLOG(10) << outputs[i]
-                          ->var_->GetMutable<framework::LoDTensor>()
+                          ->GetMutableVar()
+                          ->GetMutable<framework::LoDTensor>()
                           ->data<float>()[0];
 #endif
           if (bck_map->find(origin_outputs[i]) != bck_map->end()) {
@@ -392,11 +395,11 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
             grad_ref->at(origin_outputs[i])--;
           }
         } else {
-          framework::Variable* grad = outputs[i]->var_.get();
-          framework::Variable* orig_grad = origin_outputs[i]->var_.get();
+          framework::Variable* grad = outputs[i]->GetMutableVar();
+          framework::Variable* orig_grad = origin_outputs[i]->GetMutableVar();
           VLOG(10) << "AddTo Called with orig_grad is: "
-                   << origin_outputs[i]->name_ << " Grad to be added is "
-                   << outputs[i]->name_;
+                   << origin_outputs[i]->Name() << " Grad to be added is "
+                   << outputs[i]->Name();
           AddTo(grad, orig_grad, place_);
           delete outputs[i];
         }
@@ -428,7 +431,7 @@ void VarBase::RunBackward(const detail::BackwardStrategy& bck_stratedy) {
   platform::RecordEvent record_event("Imperative Backward");
   VLOG(3) << "start backward";
   grads_->InitBuffer();
-  auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+  auto grads_t = grads_->GetMutableVar()->GetMutable<framework::LoDTensor>();
   operators::math::set_constant(
       *(platform::DeviceContextPool::Instance().Get(
           var_->GetMutable<framework::LoDTensor>()->place())),
