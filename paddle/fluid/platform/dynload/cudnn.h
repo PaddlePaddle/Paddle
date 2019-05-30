@@ -181,7 +181,10 @@ CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetCTCLossDescriptor);             \
   __macro(cudnnSetCTCLossDescriptor);             \
   __macro(cudnnGetCTCLossWorkspaceSize);          \
-  __macro(cudnnCTCLoss);
+  __macro(cudnnCTCLoss);                          \
+  __macro(cudnnGetConvolutionBackwardDataAlgorithm_v7);       \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithm_v7);     \
+  __macro(cudnnGetConvolutionForwardAlgorithm_v7);  
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
