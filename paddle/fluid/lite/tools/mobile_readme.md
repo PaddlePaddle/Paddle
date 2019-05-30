@@ -80,7 +80,19 @@ $ ./test_fc_compute_arm
 
 ### 在ARM LINUX下执行
 
-TBD
+拉取Linux arm64镜像
+```shell
+$ docker pull multiarch/ubuntu-core:arm64-bionic
+```
+运行容器并在内外建立目录映射关系
+```shell
+$ docker run -it --name <yourname> -v <your-directory-path>:<your-directory-path> multiarch/ubuntu-core:arm64-bionic
+```
+进入bin目录，并运行并文件
+```shell
+$ cd <bin-dir>
+$ ./test_fc_compute_arm
+```
 
 # Q&A
 
