@@ -15,5 +15,12 @@
 #include "paddle/fluid/lite/core/profile/basic_profiler.h"
 
 namespace paddle {
-namespace lite {}  // namespace lite
+namespace lite {
+namespace profile {
+
+const int BasicTimer::data_w = 10;
+const int BasicTimer::name_w = 10;
+
+}  // namespace profile
+}  // namespace lite
 }  // namespace paddle

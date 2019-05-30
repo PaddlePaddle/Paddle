@@ -15,18 +15,30 @@
 #include "paddle/fluid/lite/core/profile/basic_profiler.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <chrono>  // NOLINT
+#include <thread>  // NOLINT
 
 namespace paddle {
 namespace lite {
 namespace profile {
 
+TEST(basic_record, init) {
+  BasicTimer timer;
+  timer.SetKey("hello");
+}
+
 TEST(basic_profile, init) {
-  auto& rcd = BasicProfiler<BasicRecord>::Global().NewRcd("fc");
+  auto& rcd = BasicProfiler<BasicTimer>::Global().NewRcd("fc");
   for (int i = 11; i < 100; i++) {
     rcd.Log(i);
   }
 
-  LOG(INFO) << BasicProfiler<BasicRecord>::Global().basic_repr();
+  LOG(INFO) << BasicProfiler<BasicTimer>::Global().basic_repr();
+}
+
+TEST(basic_profile, real_latency) {
+  LITE_PROFILE_ONE(test0);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1200));
 }
 
 }  // namespace profile

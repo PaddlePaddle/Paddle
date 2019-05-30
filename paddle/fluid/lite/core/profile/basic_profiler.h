@@ -12,11 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * This file implements BasicProfile, a profiler that helps to profile the basic
+ * CPU execution. It can display the min, max, average lantency of the execution
+ * of each kernel.
+ */
 #pragma once
 #include <glog/logging.h>
 #include <time.h>
 #include <algorithm>
 #include <chrono>  // NOLINT
+#include <iomanip>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -26,16 +33,19 @@ namespace paddle {
 namespace lite {
 namespace profile {
 
+/* Base class of all the profile records */
 template <typename ChildT>
-class RecordBase {
+class TimerBase {
  public:
   void Start() { self()->Start(); }
-  void Stop() { self()->Stope(); }
+  void Stop() { self()->Stop(); }
   void Log(uint32_t x) { return self()->Log(x); }
   std::string basic_repr() const { return const_self()->basic_repr(); }
 
   void SetId(int id) { self()->SetId(id); }
   void SetKey(const std::string &key) { self()->SetKey(key); }
+
+  int id() const { return const_self()->id(); }
 
  protected:
   ChildT *self() { return reinterpret_cast<ChildT *>(this); }
@@ -44,17 +54,22 @@ class RecordBase {
   }
 };
 
-class BasicRecord : RecordBase<BasicRecord> {
+class BasicTimer : TimerBase<BasicTimer> {
   uint64_t total_{};
   uint64_t count_{};
-  uint32_t max_{};
-  uint32_t min_{};
+  uint32_t max_{std::numeric_limits<uint32_t>::min()};
+  uint32_t min_{std::numeric_limits<uint32_t>::max()};
   int id_{-1};
   std::string key_;
   std::chrono::time_point<std::chrono::high_resolution_clock> timer_{};
 
+  // TODO(Superjomn) make static
+  static const int name_w;
+  static const int data_w;
+
  public:
-  BasicRecord(int id, const std::string &key) : id_(id), key_(key) {}
+  BasicTimer() = default;
+  BasicTimer(int id, const std::string &key) : id_(id), key_(key) {}
 
   void SetId(int id) { id_ = id; }
   void SetKey(const std::string &key) { key_ = key; }
@@ -74,10 +89,23 @@ class BasicRecord : RecordBase<BasicRecord> {
     count_++;
   }
 
+  static std::string basic_repr_header() {
+    std::stringstream ss;
+    ss << std::setw(name_w) << "kernel"   //
+       << std::setw(data_w) << "average"  //
+       << std::setw(data_w) << "min"      //
+       << std::setw(data_w) << "max"      //
+       << std::setw(data_w) << "count";
+    return ss.str();
+  }
+
   std::string basic_repr() const {
     std::stringstream ss;
-    ss << key() << "\t" << ave() << "\t" << max() << "\t" << min() << "\t"
-       << count();
+    ss << std::setw(name_w) << key()  //
+       << std::setw(data_w) << ave()  //
+       << std::setw(data_w) << min()  //
+       << std::setw(data_w) << max()  //
+       << std::setw(data_w) << count_;
     return ss.str();
   }
 
@@ -93,17 +121,17 @@ class BasicRecord : RecordBase<BasicRecord> {
   double min() const { return min_; }
 
   // BasicRecord(const BasicRecord &) = delete;
-  void operator=(const BasicRecord &) = delete;
+  void operator=(const BasicTimer &) = delete;
 };
 
 /*
  * A basic profiler, with each record logs the total latency.
  */
-template <typename RecordT>
+template <typename TimerT>
 class BasicProfiler {
  public:
   explicit BasicProfiler(const std::string &name) : name_(name) {}
-  using record_t = RecordBase<RecordT>;
+  using record_t = TimerT;
 
   static BasicProfiler &Global() {
     static std::unique_ptr<BasicProfiler> x(new BasicProfiler("[global]"));
@@ -131,11 +159,15 @@ class BasicProfiler {
 
   std::string basic_repr() const {
     std::stringstream ss;
-
     for (const auto &rcd : records_) {
       ss << rcd.basic_repr() << "\n";
     }
     return ss.str();
+  }
+
+  ~BasicProfiler() {
+    LOG(INFO) << "Profile dumps:";
+    LOG(INFO) << "\n" + BasicTimer::basic_repr_header() + "\n" + basic_repr();
   }
 
  private:
@@ -143,25 +175,26 @@ class BasicProfiler {
   std::vector<record_t> records_;
 };
 
-template <typename RecordT>
-struct Profile {
-  explicit Profile(int id) : id_(id) {
-    BasicProfiler<BasicRecord>::Global().mutable_record(id_)->Start();
+struct ProfileBlock {
+  explicit ProfileBlock(int id) : id_(id) {
+    BasicProfiler<BasicTimer>::Global().mutable_record(id_)->Start();
   }
 
-  ~Profile() {
-    BasicProfiler<BasicRecord>::Global().mutable_record(id_)->Stop();
+  ~ProfileBlock() {
+    BasicProfiler<BasicTimer>::Global().mutable_record(id_)->Stop();
   }
 
  private:
   int id_{};
 };
 
-#define LITE_PROFILE_ONE(key__)                                  \
-  static int key__##__profiler_id =                              \
-      BasicProfiler::Global().NewRcd(#key__).id();               \
-  Profile<paddle::lite::profile::BasicRecord> key__##profiler__( \
-      key__##__profiler_id);
+#define LITE_PROFILE_ONE(key__)                          \
+  static int key__##__profiler_id =                      \
+      ::paddle::lite::profile::BasicProfiler<            \
+          ::paddle::lite::profile::BasicTimer>::Global() \
+          .NewRcd(#key__)                                \
+          .id();                                         \
+  ::paddle::lite::profile::ProfileBlock key__##profiler__(key__##__profiler_id);
 
 }  // namespace profile
 }  // namespace lite
