@@ -48,8 +48,25 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        self._optimizer = CollectiveOptimizer(optimizer, strategy)
-        return self._optimizer
+        if strategy == None:
+            self._optimizer = CollectiveOptimizer(optimizer, strategy)
+            return self._optimizer
+        if strategy.collecitve_op_based:
+            if strategy.use_fp16:
+                self._optmizer = \
+                    MixedPrecisionOptimizer(optmizer, strategy)
+            else:
+                self._optimizer = \
+                    FullPrecisionOptimizer(optmizer, strategy)
+        if strategy.local_sgd:
+            if strategy.use_fp16:
+                # should have an independent optimizer inherited from
+                # CollectiveOpBasedOptimizer
+                pass
+            else:
+                # should have an independent optimizer inherited from
+                # CollectiveOpBasedOptimizer
+                pass
 
     def save_inference_model(self,
                              executor,
@@ -69,6 +86,78 @@ class Collective(Fleet):
 fleet = Collective()
 
 
+class CollectiveOpBasedOptimizer(DistributedOptimizer):
+    """
+    TBA
+    """
+
+    def _transpile_program(self, startup_program=None):
+        startup_program = startup_program if startup_program else \
+                          fluid.framework.default_startup_program
+        worker_endpoints = fleet.worker_endpoints()
+        trainer_id = fleet.worker_index()
+        current_endpoint = fleet.worker_endpoints()[trainer_id]
+        # call transpiler
+        config = dist_transpiler.DistributeTranspilerConfig()
+        config.mode = "collective"
+        t = dist_transpiler.DistributeTranspiler(config=config)
+        t.transpile(
+            trainer_id,
+            trainers=','.join(worker_endpoints),
+            startup_program=startup_program,
+            current_endpoint=current_endpoint)
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        return self._optimizer.backward(loss, startup_program, parameter_list,
+                                        no_grad_set, callbacks)
+
+    def apply_gradients(self, params_grads):
+        return self._optimizer.apply_gradients(params_grads)
+
+
+class MixedPrecisionOptimizer(CollectiveOpBasedOptimizer):
+    """
+    TBA
+    """
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        pass
+
+
+class FullPrecisionOptimizer(CollectiveOpBasedOptimizer):
+    """
+    TBA
+    """
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        self._transpile_program(startup_program)
+
+        param_grads = self.backward(loss, startup_program, parameter_list,
+                                    no_grad_set)
+        train_program.global_block().append_op(type='c_sync_compute_stream')
+        data_parallel_param_grads = []
+        for p, g in param_grads:
+            # NOTE: scale will be done on loss scale
+            # in multi_devices_graph_pass using nranks.
+            reduced_g = fluid.layers.collective._allreduce(g, g)
+            data_parallel_param_grads.append([p, reduced_g])
+        train_program.global_block().append_op(type='c_sync_comm_stream')
+        self.apply_gradients(data_parallel_param_grads)
+
+
 class CollectiveOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
@@ -82,7 +171,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy=None):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
-        assert strategy is None, "You cannot set 'strategy' for collective."
+        self.strategy = strategy
 
     def backward(self,
                  loss,
