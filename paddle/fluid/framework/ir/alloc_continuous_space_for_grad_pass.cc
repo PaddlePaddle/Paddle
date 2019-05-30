@@ -30,7 +30,7 @@ DEFINE_uint64(fuse_parameter_memory_size, 0,  // 0 KB
               "The default value is 0, it means that "
               "not set group according to memory_size.");
 DEFINE_int32(
-    fuse_parameter_groups_size, 3,
+    fuse_parameter_groups_size, 1,
     "fuse_parameter_groups_size is the size of one group parameters' gradient. "
     "The default value is a experimental result. If the "
     "fuse_parameter_groups_size is 1, it means that the groups size is "
@@ -58,7 +58,6 @@ uint64_t GetFuseParameterMemorySize() {
   return FLAGS_fuse_parameter_memory_size;
 }
 
-static const char kUnKnow[] = "@UNKNOW@";
 static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
 
@@ -83,7 +82,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
 
     if (params_grads.size() == 0) {
-      VLOG(10) << "Doesn't find gradients";
+      LOG(WARNING) << "Doesn't find gradients";
       return;
     }
 
@@ -181,7 +180,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
       if (pos == std::string::npos) {
-        layer_params[std::string(kUnKnow)].emplace_back(i);
+        layer_params[params_grads[i].first].emplace_back(i);
       } else {
         layer_params[params_grads[i].first.substr(0, pos)].emplace_back(i);
       }
@@ -190,7 +189,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     group_grads_params->reserve(layer_params.size());
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
-      std::string key = kUnKnow;
+      std::string key = params_grads[i].first;
       if (pos != std::string::npos) {
         key = params_grads[i].first.substr(0, pos);
       }
@@ -261,6 +260,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     for (size_t i = 0; i < group_grads_params->size(); ++i) {
       VLOG(10) << "group " << i;
       std::stringstream out;
+      size_t gps_size = 0;
       for (auto &g_p : group_grads_params->at(i)) {
         auto iter = var_nodes.find(g_p.second);
         PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", g_p.second);
@@ -268,16 +268,17 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
         std::for_each(shape.begin(), shape.end(),
                       [&size](const int64_t &n) { size *= n; });
+        gps_size += size;
         out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
       }
-      VLOG(10) << out.str();
+      VLOG(10) << out.str() << ", group memory size:" << gps_size;
     }
   }
 
   void SetGroupAccordingToGroupSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       details::GroupGradsAndParams *group_grads_params) const {
-    if (GetFuseParameterGroupsSize() == 1) {
+    if (GetFuseParameterGroupsSize() <= 1) {
       return;
     }
     const int group_size = GetFuseParameterGroupsSize() == -1

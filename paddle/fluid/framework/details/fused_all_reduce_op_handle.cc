@@ -166,6 +166,8 @@ void FusedAllReduceOpHandle::RunImpl() {
       });
     }
 
+    VLOG(10) << "fusedallreduce size:" << numel * 4;
+
     this->RunAndRecordEvent([&] {
       if (all_reduce_calls.size() == 1UL) {
         // Do not use NCCLGroup when manage NCCL by per thread per device
