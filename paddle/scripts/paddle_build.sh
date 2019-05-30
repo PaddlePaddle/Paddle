@@ -520,6 +520,17 @@ function assert_api_spec_approvals() {
             exit 1
         fi
     fi
+
+    HAS_EXCLUSIVE_CASES=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "RUN_TYPE=EXCLUSIVE" || true`
+    if [ ${HAS_EXCLUSIVE_CASES} ] && [ "${GIT_PR_ID}" != "" ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 23548796 6836917`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have one RD (XiaoguangHu01,wopeizl,luotao1) approval for running unit-test case exclusively!."
+            exit 1
+        fi
+    fi
 }
 
 
