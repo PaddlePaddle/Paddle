@@ -31,17 +31,13 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
       var_infos_(std::move(var_infos)),
-      places_(std::move(places)),
-      threads_pool_(1) {}
+      places_(std::move(places)) {}
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalExeScopes");
-    if (!run_op_future_.valid()) {
-      PrepareLocalExeScopes();
-    }
-    run_op_future_.get();
+    PrepareLocalExeScopes();
   }
 
   std::vector<framework::LoDTensor> fetch_data;
@@ -64,8 +60,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 }
 
 void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
-  std::unique_ptr<platform::RecordEvent> drop_scope_event(
-      new platform::RecordEvent("DropLocalExeScopes"));
+  platform::RecordEvent drop_scope_event("DropLocalExeScopes");
   drop_scope_counter_ = 0;
   for (auto p : places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
@@ -76,32 +71,26 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
     scope->DeleteScope(local_scope);
     VLOG(3) << "Drop local execution scope: " << local_scope;
   }
-  drop_scope_event.reset(nullptr);
-
-  platform::RecordEvent e("InitLocalExeScopes");
-  PrepareLocalExeScopes();
 }
 
 void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
-  run_op_future_ = threads_pool_.enqueue([&] {
-    // Create local scopes.
-    for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
-      auto &scope = *it;
-      Scope &local_scope = scope->NewScope();
-      *scope->Var(kLocalExecScopeName)->GetMutable<Scope *>() = &local_scope;
+  // Create local scopes.
+  for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
+    auto &scope = *it;
+    Scope &local_scope = scope->NewScope();
+    *scope->Var(kLocalExecScopeName)->GetMutable<Scope *>() = &local_scope;
 
-      for (auto &info : var_infos_) {
-        if (scope->FindVar(info.name_) != nullptr) {
-          continue;
-        }
-        if (info.persistable_) {  // Persistable
-          InitializeVariable(scope->Var(info.name_), info.type_);
-        } else {
-          InitializeVariable(local_scope.Var(info.name_), info.type_);
-        }
+    for (auto &info : var_infos_) {
+      if (scope->FindVar(info.name_) != nullptr) {
+        continue;
+      }
+      if (info.persistable_) {  // Persistable
+        InitializeVariable(scope->Var(info.name_), info.type_);
+      } else {
+        InitializeVariable(local_scope.Var(info.name_), info.type_);
       }
     }
-  });
+  }
 }
 
 bool ScopeBufferedSSAGraphExecutor::NeedCreateLocalExeScope() {
