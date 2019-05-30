@@ -202,6 +202,7 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
+    'deformable_psroi_pooling',
 ]
 
 kIgnoreIndex = -100
