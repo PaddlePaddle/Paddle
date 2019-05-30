@@ -44,7 +44,7 @@ function cmake_arm {
                 -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
                 -DWITH_TESTING=ON \
                 -DWITH_MKL=OFF \
-                -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_OS=${os}
+                -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} 
 
             make test_fc_compute_arm -j
             make test_softmax_compute_arm -j
