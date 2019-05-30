@@ -67,5 +67,6 @@ TEST(fc_op_lite, test) {
 }  // namespace lite
 }  // namespace paddle
 #ifdef LITE_WITH_X86
+
 USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
 #endif
