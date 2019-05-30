@@ -14,35 +14,36 @@
 
 from __future__ import print_function
 
+import numpy as np
 from collections import defaultdict
-from .wrapped_decorator import signature_safe_contextmanager
+from functools import reduce
 
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid import core
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid.layers import tensor
 
 from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward
 from .clip import append_gradient_clip_ops, error_clip_callback
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
-from .dygraph import base as imperative_base
-from .dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid import core
-from paddle.fluid.layers import tensor
-from functools import reduce
-import copy
+from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer'
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
+    'ExponentialMovingAverage'
 ]
 
 
@@ -462,6 +463,8 @@ class Optimizer(object):
         if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
+                params_grads = append_regularization_ops(params_grads,
+                                                         self.regularization)
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
             program = loss.block.program
@@ -473,7 +476,8 @@ class Optimizer(object):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 grad_clip=None):
         """
         Add operations to minimize `loss` by updating `parameter_list`.
 
@@ -486,6 +490,7 @@ class Optimizer(object):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+            grad_clip (GradClipBase|None) : Gradient clip strategy
 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
@@ -496,6 +501,11 @@ class Optimizer(object):
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+        if grad_clip is not None and framework.in_dygraph_mode():
+            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
+            params_grads = grad_clip(params_grads)
+
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
@@ -523,8 +533,31 @@ class SGDOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.2)
-            sgd_optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+                sgd_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
@@ -585,8 +618,31 @@ class MomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
-            optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+                moment_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
     """
     _velocity_acc_str = "velocity"
 
@@ -839,7 +895,8 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         helper = LayerHelper("dgc_clip_by_norm_op", **args)
 
         if name is None:
-            name = unique_name.generate(".".join([helper.name, 'tmp']))
+            name = unique_name.generate_with_ignorable_key(".".join(
+                [helper.name, 'tmp']))
 
         out = helper.create_variable(
             type=x.type, name=name, dtype=x.dtype, persistable=False)
@@ -1123,8 +1180,29 @@ class AdamOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.Adam(learning_rate=0.2)
-            optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
+                adam_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
     """
     _moment1_acc_str = "moment1"
@@ -1427,6 +1505,13 @@ class DecayedAdagradOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.optimizer import DecayedAdagrad
+
+            x = layers.data( name='x', shape=[-1, 10], dtype='float32' )
+            trans = layers.fc( x, 100 )
+            cost = layers.reduce_mean( trans )
             optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
             optimizer.minimize(cost)
 
@@ -1648,8 +1733,31 @@ class RMSPropOptimizer(Optimizer):
     Examples:
           .. code-block:: python
 
-              optimizer = fluid.optimizer.RMSProp(0.0001)
-              _, params_grads = optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+                rms_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
     """
 
     _momentum_acc_str = "momentum"
@@ -1784,8 +1892,30 @@ class FtrlOptimizer(Optimizer):
     Examples:
           .. code-block:: python
 
-              optimizer = fluid.optimizer.Ftrl(0.0001)
-              _, params_grads = optimizer.minimize(cost)
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)
+                ftrl_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
     Notes:
        Currently, FtrlOptimizer doesn't support sparse parameter optimization.
@@ -2000,10 +2130,10 @@ Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
-    """Accumulate the average of parameters whtin sliding window. The average
+    """Accumulate the average of parameters within sliding window. The average
     result will be saved in temporary variables which can be applied to
     parameter variables of current model by calling 'apply()' method. And the
-    'restore()' method is used to restored the parameter values of current model.
+    'restore()' method is used to restore the parameter values of current model.
 
     The size of average window is determined by average_window_rate,
     min_average_window, max_average_window and current update times.
@@ -2050,7 +2180,8 @@ class ModelAverage(Optimizer):
         ).all_parameters():
             if param.do_model_average != False:
                 grad = param.block.create_var(
-                    name=unique_name.generate(".".join([param.name, 'tmp'])),
+                    name=unique_name.generate_with_ignorable_key(".".join(
+                        [param.name, 'tmp'])),
                     dtype=param.dtype,
                     persistable=False,
                     stop_gradient=True)
@@ -2154,5 +2285,193 @@ class ModelAverage(Optimizer):
 
     def restore(self, executor):
         """Restore parameter values of current model.
+        """
+        executor.run(self.restore_program)
+
+
+class ExponentialMovingAverage(object):
+    """
+    Compute the moving average of parameters with exponential decay.
+    Given a parameter :math:`\\theta`, its exponential moving average (EMA)
+    will be
+
+    ..  math::
+
+        \\text{EMA}_0 & = 0
+
+	\\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+
+    The average results will be saved in temporary variables which are created 
+    and maintained by the object, and can be applied to parameters of current 
+    model by calling **apply()** method. And the **restore()** method is used to 
+    restore the parameters.
+
+    **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be 
+    zero biased, which can be corrected by divided by a factor 
+    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters 
+    when calling **apply()** method would be 
+
+    ..  math::
+    
+        \\widehat{\\text{EMA}}_t = \\frac{\\text{EMA}_t}{1 - \\text{decay}^t}
+
+    **Decay rate scheduling**. A large decay rate very close to 1 would result 
+    in that the averages move very slowly. And a better strategy is to set a 
+    relative smaller decay rate in the very beginning. The argument **thres_steps**
+    allows users to pass a Variable to schedule the decay rate, in this case, 
+    the actual decay rate becomes
+     
+    ..  math::
+    
+        \\min(\\text{decay}, \\frac{1 + \\text{thres_steps}}{10 + \\text{thres_steps}})
+
+    Usually **thres_steps** can be the global training steps.
+
+
+    Args:
+	decay (float): The exponential decay rate, usually close to 1, such as 
+                       0.999, 0.9999, ... .
+        thres_steps (Variable|None): If not `None`, schedule the decay rate.
+	name (str|None): An optional name prefix.
+
+
+    Examples:
+
+	.. code-block:: python
+	     
+	     import paddle.fluid as fluid 
+
+	     data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+	     hidden = fluid.layers.fc(input=data, size=10)
+	     cost = fluid.layers.mean(hidden)
+
+	     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	     optimizer.minimize(cost)
+
+             global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+             ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+
+	     # pseudo code
+	     for pass_id in range(args.pass_num):
+		 for data in train_reader():
+		     exe.run(fluid.default_main_program()...)
+                 
+                 # usage 1
+		 with ema.apply(exe):
+		     for data in test_reader():
+			 exe.run(inference_program...)
+
+                 # usage 2
+		 with ema.apply(exe, need_restore=False):
+		     for data in test_reader():
+			 exe.run(inference_program...)
+                 ...
+                 ema.restore(exe)
+    """
+
+    def __init__(self, decay=0.999, thres_steps=None, name=None):
+        self._decay = decay
+        self._thres_steps = thres_steps
+        self._name = name if name is not None else ''
+        self._decay_var = self._get_ema_decay()
+
+        self.params_tmps = []
+        for param in default_main_program().global_block().all_parameters():
+            if param.do_model_average != False:
+                tmp = param.block.create_var(
+                    name=unique_name.generate(".".join(
+                        [self._name + param.name, 'ema_tmp'])),
+                    dtype=param.dtype,
+                    persistable=False,
+                    stop_gradient=True)
+                self.params_tmps.append((param, tmp))
+
+        ema_vars = {}
+        for param, tmp in self.params_tmps:
+            with param.block.program._optimized_guard(
+                [param, tmp]), name_scope('moving_average'):
+                ema_vars[param.name] = self._append_ema_ops(param)
+
+        self.apply_program = Program()
+        block = self.apply_program.global_block()
+        with program_guard(main_program=self.apply_program):
+            decay_pow = self._get_decay_pow(block)
+            for param, tmp in self.params_tmps:
+                param = block._clone_variable(param)
+                tmp = block._clone_variable(tmp)
+                ema = block._clone_variable(ema_vars[param.name])
+                layers.assign(input=param, output=tmp)
+                # bias correction
+                ema = ema / (1.0 - decay_pow)
+                layers.assign(input=ema, output=param)
+
+        self.restore_program = Program()
+        block = self.restore_program.global_block()
+        with program_guard(main_program=self.restore_program):
+            for param, tmp in self.params_tmps:
+                tmp = block._clone_variable(tmp)
+                param = block._clone_variable(param)
+                layers.assign(input=tmp, output=param)
+
+    def _get_ema_decay(self):
+        with default_main_program()._lr_schedule_guard():
+            decay_var = layers.tensor.create_global_var(
+                shape=[1],
+                value=self._decay,
+                dtype='float32',
+                persistable=True,
+                name="scheduled_ema_decay_rate")
+
+            if self._thres_steps is not None:
+                decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
+                with layers.control_flow.Switch() as switch:
+                    with switch.case(decay_t < self._decay):
+                        layers.tensor.assign(decay_t, decay_var)
+                    with switch.default():
+                        layers.tensor.assign(
+                            np.array(
+                                [self._decay], dtype=np.float32),
+                            decay_var)
+        return decay_var
+
+    def _get_decay_pow(self, block):
+        global_steps = layers.learning_rate_scheduler._decay_step_counter()
+        decay_var = block._clone_variable(self._decay_var)
+        decay_pow_acc = layers.elementwise_pow(decay_var, global_steps + 1)
+        return decay_pow_acc
+
+    def _append_ema_ops(self, param):
+        param_ema = layers.create_global_var(
+            name=unique_name.generate(self._name + param.name + '_ema'),
+            shape=param.shape,
+            value=0.0,
+            dtype=param.dtype,
+            persistable=True)
+
+        ema_t = param_ema * self._decay_var + param * (1 - self._decay_var)
+        layers.assign(input=ema_t, output=param_ema)
+        return param_ema
+
+    @signature_safe_contextmanager
+    def apply(self, executor, need_restore=True):
+        """
+        Apply moving average to parameters for evaluation.
+        
+        Args:
+            executor (Executor): The Executor to execute applying.
+            need_restore (bool): Whether to restore parameters after applying.
+        """
+        executor.run(self.apply_program)
+        try:
+            yield
+        finally:
+            if need_restore:
+                self.restore(executor)
+
+    def restore(self, executor):
+        """Restore parameters.
+        
+        Args:
+            executor (Executor): The Executor to execute restoring.
         """
         executor.run(self.restore_program)

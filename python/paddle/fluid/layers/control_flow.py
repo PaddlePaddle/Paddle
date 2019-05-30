@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -169,12 +169,16 @@ def Print(input,
 
 
     Examples:
-
         .. code-block:: python
+           
+           import paddle.fluid as fluid
+           
+           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+           fluid.layers.Print(input, message = "The content of input layer:")
+           # value = some_layer(...)
+           # Print(value, summarize=10,
+           #    message="The content of some_layer: ")
 
-           value = some_layer(...)
-           Print(value, summarize=10,
-               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     helper.append_op(
@@ -391,7 +395,7 @@ class StaticRNN(object):
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
             parent_block = self._parent_block()
-            var_name = unique_name.generate("@".join(
+            var_name = unique_name.generate_with_ignorable_key("@".join(
                 [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name,
@@ -414,7 +418,8 @@ class StaticRNN(object):
             return self.memory(init=boot_var)
         else:
             pre_mem = self.helper.create_variable(
-                name=unique_name.generate("@".join([self.helper.name, "mem"])),
+                name=unique_name.generate_with_ignorable_key("@".join(
+                    [self.helper.name, "mem"])),
                 dtype=init.dtype,
                 shape=init.shape)
             self.memories[pre_mem.name] = StaticRNNMemoryLink(
@@ -624,18 +629,20 @@ class While(object):
 
     Examples:
           .. code-block:: python
+            
+            import paddle.fluid as fluid
+            
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            d0 = fluid.layers.data("d0", shape=[10], dtype='float32')
+            data_array = fluid.layers.array_write(x=d0, i=i)
+            array_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=3)
 
-            d0 = layers.data("d0", shape=[10], dtype='float32')
-            data_array = layers.array_write(x=d0, i=i)
-            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
-
-            cond = layers.less_than(x=i, y=array_len)
-            while_op = layers.While(cond=cond)
+            cond = fluid.layers.less_than(x=i, y=array_len)
+            while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                d = layers.array_read(array=data_array, i=i)
-                i = layers.increment(x=i, in_place=True)
-                layers.array_write(result, i=i, array=d)
-                layers.less_than(x=i, y=array_len, cond=cond)
+                d = fluid.layers.array_read(array=data_array, i=i)
+                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                fluid.layers.less_than(x=i, y=array_len, cond=cond)            
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -964,9 +971,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> less = fluid.layers.less_than(x=label, y=limit)
-
     Args:
         x(${x_type}): ${x_comment}.
         y(${y_type}): ${y_comment}.
@@ -975,6 +979,13 @@ def less_than(x, y, force_cpu=None, cond=None):
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+          label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
+          cond = fluid.layers.less_than(x=label, y=limit)
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
@@ -1400,23 +1411,30 @@ class Switch(object):
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid as fluid
 
-            lr = fluid.layers.tensor.create_global_var(
+            lr = fluid.layers.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype='float32',
                 persistable=True,
                 name="learning_rate")
-            one_var = tensor.fill_constant(
+            zero_var = fluid.layers.fill_constant(
+                 shape=[1], dtype='float32', value=0.0)
+            one_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
-            two_var = tensor.fill_constant(
-                shape=[1], dtype='float32', value=2.0)
+            two_var = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=2.0) 
+
+            global_step = fluid.layers.autoincreased_step_counter(
+                   counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.tensor.assign(input=one_var, output=lr)
+                    fluid.layers.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.tensor.assign(input=two_var, output=lr)
+                    fluid.layers.assign(input=two_var, output=lr)
 
     """
 
@@ -1426,8 +1444,6 @@ class Switch(object):
         self.pre_not_conditions = []
 
     def case(self, condition):
-        """create a new block for this condition
-        """
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
 
@@ -1449,9 +1465,6 @@ class Switch(object):
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
-        """
-        create a default case for this switch
-        """
         pre_cond_num = len(self.pre_not_conditions)
         if pre_cond_num == 0:
             raise ValueError("there should be at least one condition")
@@ -1520,8 +1533,12 @@ class IfElse(object):
     Examples:
           .. code-block:: python
 
+            import paddle.fluid as fluid
+
+            image = fluid.layers.data(name="X", shape=[2, 5, 5], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             limit = fluid.layers.fill_constant_batch_size_like(
-                input=label, dtype='int64', shape=[1], value=5.0)
+                 input=label, dtype='int64', shape=[1], value=5.0)
             cond = fluid.layers.less_than(x=label, y=limit)
             ie = fluid.layers.IfElse(cond)
             with ie.true_block():
@@ -1559,11 +1576,13 @@ class IfElse(object):
         if id(x) not in self.input_table:
             parent_block = self._parent_block()
             out_true = parent_block.create_var(
-                name=unique_name.generate('ifelse_input' + self.helper.name),
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
                 dtype=x.dtype)
 
             out_false = parent_block.create_var(
-                name=unique_name.generate('ifelse_input' + self.helper.name),
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
                 dtype=x.dtype)
             parent_block.append_op(
                 type='split_lod_tensor',
@@ -1605,7 +1624,7 @@ class IfElse(object):
                 raise TypeError("Each output should be a variable")
             # create outside tensor
             outside_out = parent_block.create_var(
-                name=unique_name.generate("_".join(
+                name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, 'output'])),
                 dtype=each_out.dtype)
             out_table.append(outside_out)
@@ -2023,7 +2042,7 @@ class DynamicRNN(object):
         parent_block = self._parent_block_()
         for each in outputs:
             outside_array = parent_block.create_var(
-                name=unique_name.generate("_".join(
+                name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, "output_array", each.name])),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=each.dtype)
@@ -2060,8 +2079,31 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc()
+@templatedoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
+    """
+    ${comment}
+
+    Args:
+    
+        x(${x_type}): ${x_comment}
+        rank_table(${rank_table_type}): ${rank_table_type}
+    
+    Returns:
+        out(${out_type}): ${out_comment} 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data_desc = (['input', [9], 0], ['ref', [5], 1])
+          data = fluid.layers.data(name=data_desc[0][0], shape=data_desc[0][1])
+          rank_data = fluid.layers.data(name=data_desc[1][0], shape=data_desc[1][1])
+          table = fluid.layers.control_flow.lod_rank_table(rank_data)
+          new_data = fluid.layers.reorder_lod_tensor_by_rank(
+                           x=data, rank_table=table)
+
+    """
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
@@ -2094,9 +2136,12 @@ def is_empty(x, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
           res = fluid.layers.is_empty(x=input)
           # or:
-          fluid.layers.is_empty(x=input, cond=res)
+          # fluid.layers.is_empty(x=input, cond=res)
+
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:

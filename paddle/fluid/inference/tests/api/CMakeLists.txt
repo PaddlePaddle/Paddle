@@ -33,8 +33,10 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
-
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name mkl_debug)
+    if(mkl_debug) 
+        set(MKL_DEBUG_FLAG MKL_DEBUG_CPU_TYPE=7)
+    endif()
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
@@ -143,15 +145,15 @@ inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose 
 
 # googlenet
 inference_analysis_api_test_with_fake_data(test_analyzer_googlenet
-  "${INFERENCE_DEMO_INSTALL_DIR}/googlenet" analyzer_resnet50_tester.cc "googlenet.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/googlenet" analyzer_resnet50_tester.cc "googlenet.tar.gz" false)
 
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
-  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz" true)
 
 # mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
-  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" false)
 
 # int8 image classification tests
 if(WITH_MKLDNN)
@@ -174,6 +176,13 @@ if(WITH_MKLDNN)
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
  
+  #mobilenetv2 int8
+  set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
+  if (NOT EXISTS ${INT8_MOBILENETV2_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_v2_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+ 
   #resnet101 int8
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
   if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
@@ -194,6 +203,13 @@ if(WITH_MKLDNN)
     inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+
+  #googlenet int8
+  set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
+  if (NOT EXISTS ${INT8_GOOGLENET_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8" "GoogleNet_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
 endif()
 
 # bert, max_len=20, embedding_dim=128
@@ -227,7 +243,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
         inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
     endif()
-    inference_analysis_test(test_trt_models SRCS trt_models_tester.cc
+    inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+    inference_analysis_test(trt_resnet50_test SRCS trt_resnet50_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+    inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
 endif()
