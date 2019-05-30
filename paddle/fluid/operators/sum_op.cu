@@ -1,8 +1,11 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,10 +14,9 @@ limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/sum.h"
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/float16.h"
-
-namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
@@ -89,76 +91,38 @@ __global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
 template <class T>
 void SumToLoDTensor(const framework::ExecutionContext &context) {
   auto in_vars = context.MultiInputVar("X");
-  const size_t in_num = in_vars.size();
-
-  constexpr size_t theory_sm_threads = 1024;
-  auto &dev_ctx =
-      context.template device_context<platform::CUDADeviceContext>();
-  auto stream = dev_ctx.stream();
-
-  auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  auto sm_count = max_threads / theory_sm_threads;
-  size_t tile_size = 0;
-  dim3 grids;
-  dim3 blocks;
-
-  auto ComputeKernelParameter = [&](size_t length) {
-    if (length >= max_threads)
-      tile_size = 1024;
-    else if (length < max_threads && length > sm_count * 128)
-      tile_size = 512;
-    else if (length <= sm_count * 128)
-      tile_size = 256;
-    grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
-    blocks = dim3(tile_size, 1, 1);
-  };
-
   auto *out = context.Output<LoDTensor>("Out");
   bool in_place = in_vars[0] == context.OutputVar("Out");
   if (!in_place) {
     out->mutable_data<T>(context.GetPlace());
   }
 
-  // Sum of two tensors
-  if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
-      in_vars[1]->IsType<framework::LoDTensor>()) {
-    auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
-    auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
-
-    auto length = in_0.numel();
-    if (length) {
-      auto result = EigenVector<T>::Flatten(*out);
-      auto &place = *dev_ctx.eigen_device();
-      auto in_0_e = EigenVector<T>::Flatten(in_0);
-      auto in_1_e = EigenVector<T>::Flatten(in_1);
-      result.device(place) = in_0_e + in_1_e;
-    }
-    return;
-  }
-
-  int start = in_place ? 1 : 0;
-  if (!in_place) {
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
-    constant_functor(
-        context.template device_context<platform::CUDADeviceContext>(), out,
-        static_cast<T>(0));
-  }
-
-  std::vector<const T *> in_data;
+  std::vector<const framework::Tensor *> inputs;
   std::vector<int> selectrow_index;
-  int64_t lod_length = 0;
-  bool dst_write = false;
-  for (int i = start; i < in_num; ++i) {
+  for (size_t i = 0; i < in_vars.size(); ++i) {
     if (in_vars[i]->IsType<framework::LoDTensor>()) {
       auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
-      in_data.emplace_back(in_i.data<T>());
-      lod_length = in_i.numel();
+      if (in_i.numel() > 0) {
+        inputs.push_back(&in_i);
+      }
     } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
   }
 
-  // compute select rows seperately.
+  auto &dev_ctx =
+      context.template device_context<platform::CUDADeviceContext>();
+
+  // Compute the sum of LoDTensor inputs.
+  if (inputs.size() > 0U) {
+    math::SumLoDTensorFunctor<platform::CUDADeviceContext, T> sum_functor;
+    sum_functor(dev_ctx, inputs, out);
+  } else {
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    constant_functor(dev_ctx, out, static_cast<T>(0));
+  }
+
+  // Compute the sum of SelectRows inputs.
   if (!selectrow_index.empty()) {
     std::vector<const T *> sr_in_out_data;
     size_t rows = 0;
@@ -197,28 +161,23 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       T **sr_in_out_array_data =
           reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
 
-      ComputeKernelParameter(length);
-      SumSelectedRowsCUDAKernel<T><<<grids, blocks, 0, stream>>>(
+      constexpr size_t theory_sm_threads = 1024;
+      auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+      auto sm_count = max_threads / theory_sm_threads;
+      int64_t tile_size = 0;
+
+      if (length >= max_threads)
+        tile_size = 1024;
+      else if (length < max_threads && length > sm_count * 128)
+        tile_size = 512;
+      else if (length <= sm_count * 128)
+        tile_size = 256;
+      dim3 grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
+      dim3 blocks = dim3(tile_size, 1, 1);
+
+      SumSelectedRowsCUDAKernel<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
           sr_in_out_array_data, length, rows);
-      dst_write = true;
     }
-  }
-  // if indata not null, merge into one kernel call.
-  if (!in_data.empty()) {
-    auto tmp_in_array =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-            in_data.size() * sizeof(T *));
-
-    memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
-                 tmp_in_array->ptr(), platform::CPUPlace(),
-                 reinterpret_cast<void *>(in_data.data()),
-                 in_data.size() * sizeof(T *), dev_ctx.stream());
-
-    T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
-    ComputeKernelParameter(lod_length);
-    SumArrayCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-        in_array_data, out->data<T>(), lod_length, in_data.size(),
-        dst_write | in_place);
   }
 }
 
@@ -245,10 +204,10 @@ class SumKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     sum, ops::SumKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::SumKernel<paddle::platform::CUDADeviceContext,
+                   paddle::platform::float16>);

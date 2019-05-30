@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/math/sum.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -58,10 +59,10 @@ template <typename T>
 class SumLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext &context,
-                  const std::vector<framework::Tensor *> &inputs,
+                  const std::vector<const framework::Tensor *> &inputs,
                   framework::Tensor *output) {
     size_t in_num = inputs.size();
-    PADDLE_ENFORCE_LE(in_num, 2UL,
+    PADDLE_ENFORCE_GE(in_num, 2UL,
                       "The number of inputs should be not less than 2.");
 
     bool in_place = (inputs[0] == output) ? true : false;
@@ -137,6 +138,8 @@ template class SumLoDTensorFunctor<platform::CUDADeviceContext, float>;
 template class SumLoDTensorFunctor<platform::CUDADeviceContext, double>;
 template class SumLoDTensorFunctor<platform::CUDADeviceContext, int>;
 template class SumLoDTensorFunctor<platform::CUDADeviceContext, int64_t>;
+template class SumLoDTensorFunctor<platform::CUDADeviceContext,
+                                   platform::float16>;
 
 }  // namespace math
 }  // namespace operators

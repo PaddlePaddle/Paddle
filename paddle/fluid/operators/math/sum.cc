@@ -28,7 +28,7 @@ template <typename T>
 class SumLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<framework::Tensor*>& inputs,
+                  const std::vector<const framework::Tensor*>& inputs,
                   framework::Tensor* output) {
     size_t in_num = inputs.size();
     PADDLE_ENFORCE_LE(in_num, 2UL,

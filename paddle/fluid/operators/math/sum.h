@@ -26,7 +26,7 @@ template <typename DeviceContext, typename T>
 class SumLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const std::vector<framework::Tensor*>& inputs,
+                  const std::vector<const framework::Tensor*>& inputs,
                   framework::Tensor* output);
 };
 
