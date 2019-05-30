@@ -4980,16 +4980,21 @@ def split(input, num_or_sections, dim=-1, name=None):
     Examples:
         .. code-block:: python
 
-            # x is a Tensor variable with shape [3, 9, 5]:
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
-            x0.shape  # [3, 3, 5]
-            x1.shape  # [3, 3, 5]
-            x2.shape  # [3, 3, 5]
-            x0, x1, x2 = fluid.layers.split(
-                x, num_or_sections=[2, 3, 4], dim=1)
-            x0.shape  # [3, 2, 5]
-            x1.shape  # [3, 3, 5]
-            x2.shape  # [3, 4, 5]
+            import paddle.fluid as fluid
+
+            # input is a variable which shape is [-1, 3, 9, 5]
+            input = fluid.layers.data(
+                 name="input", shape=[3, 9, 5], dtype="float32")
+
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=2)
+            # x0.shape [-1, 3, 3, 5]
+            # x1.shape [-1, 3, 3, 5]
+            # x2.shape [-1, 3, 3, 5]
+
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
+            # x0.shape [-1, 3, 2, 5]
+            # x1.shape [-1, 3, 3, 5]
+            # x2.shape [-1, 3, 4, 5]
     """
     helper = LayerHelper('split', **locals())
     input_shape = input.shape
@@ -5119,25 +5124,29 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
-            fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+            # fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
 
             # x: [B, M, K], y: [B, K, N]
-            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # fluid.layers.matmul(x, y)  # out: [B, M, N]
 
             # x: [B, M, K], y: [K, N]
-            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # fluid.layers.matmul(x, y)  # out: [B, M, N]
 
             # x: [M, K], y: [K, N]
-            fluid.layers.matmul(x, y)  # out: [M, N]
+            # fluid.layers.matmul(x, y)  # out: [M, N]
 
             # x: [B, M, K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [B, M]
+            # fluid.layers.matmul(x, y)  # out: [B, M]
 
             # x: [K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [1]
+            # fluid.layers.matmul(x, y)  # out: [1]
 
             # x: [M], y: [N]
-            fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+            # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+
+            x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
+            out = fluid.layers.matmul(x, y, True, True)
     """
 
     def __check_input(x, y):
@@ -5935,9 +5944,10 @@ def transpose(x, perm, name=None):
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
-            x_transposed = layers.transpose(x, perm=[1, 0, 2])
+            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
     """
 
     if len(perm) != len(x.shape):
@@ -6094,7 +6104,7 @@ def im2sequence(input,
         padding.append(padding[0])
         padding.append(padding[1])
     inputs = {"X": input}
-    attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
+    attrs = {"kernels": filter_size, "strides": stride, "paddings": padding}
     if input_image_size:
         if isinstance(out_stride, int):
             out_stride = [out_stride, out_stride]
@@ -6401,11 +6411,13 @@ def sampled_softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
-            logits = fluid.layers.data(name='data', shape=[256], dtype='float32')
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(name='data', shape=[256], dtype='float32')
             label = fluid.layers.data(name='label', shape=[5], dtype='int64')
-            fc = fluid.layers.fc(input=data, size=100)
+            fc = fluid.layers.fc(input=input, size=100)
             out = fluid.layers.sampled_softmax_with_cross_entropy(
-                logits=fc, label=label, num_samples=25)
+                      logits=fc, label=label, num_samples=25)
     """
     helper = LayerHelper('sample_logits', **locals())
     samples = helper.create_variable_for_type_inference(dtype='int64')
@@ -6780,8 +6792,9 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
-            x = layers.data(name='x', shape=[5, 10])
-            y = layers.unsequeeze(input=x, axes=[1])
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[5, 10])
+            y = fluid.layers.unsqueeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6870,9 +6883,9 @@ def lod_reset(x, y=None, target_lod=None):
     Examples:
         .. code-block:: python
 
-            x = layers.data(name='x', shape=[10])
-            y = layers.data(name='y', shape=[10, 20], lod_level=2)
-            out = layers.lod_reset(x=x, y=y)
+            x = fluid.layers.data(name='x', shape=[10])
+            y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
+            out = fluid.layers.lod_reset(x=x, y=y)
     """
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7856,8 +7869,13 @@ def scatter(input, index, updates, name=None):
 
         .. code-block:: python
 
-            output = fluid.layers.scatter(input, index, updates)
+            import paddle.fluid as fluid
 
+            input = fluid.layers.data(name='data', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+            index = fluid.layers.data(name='index', shape=[3], dtype='int64', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+
+            output = fluid.layers.scatter(input, index, updates)
     """
     helper = LayerHelper('scatter', **locals())
     dtype = helper.input_dtype()
@@ -8005,6 +8023,7 @@ def log(x, name=None):
 
         .. code-block:: python
 
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.log(x)
     """
     helper = LayerHelper('log', **locals())
@@ -8071,8 +8090,12 @@ def selu(x, scale=None, alpha=None, name=None):
     Examples:
 
         .. code-block:: python
-
-            output = fluid.layers.selu(x)
+             
+            import paddle.fluid as fluid
+          
+            input = fluid.layers.data(
+                 name="input", shape=[3, 9, 5], dtype="float32")
+            output = fluid.layers.selu(input)
     """
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -8897,9 +8920,11 @@ def soft_relu(x, threshold=40.0, name=None):
 
     Examples:
 
-        .. code-block:: python
-
-            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        .. code-block:: python 
+ 
+            import paddle.fluid as fluid
+   
+            x = fluid.layers.data(name="x", shape=[3,16,16], dtype="float32")
             y = fluid.layers.soft_relu(x, threshold=20.0)
     """
     helper = LayerHelper('soft_relu', **locals())
@@ -9203,6 +9228,12 @@ def unstack(x, axis=0, num=None):
     Returns:
         list(Variable): The unstacked variables.
 
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
+            y = fluid.layers.unstack(x, axis=1)
     """
 
     helper = LayerHelper('unstack', **locals())
@@ -9512,14 +9543,16 @@ def slice(input, axes, starts, ends):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+ 
             starts = [1, 0, 2]
             ends = [3, 3, 4]
             axes = [0, 1, 2]
 
-            input = layers.data(
+            input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
@@ -9551,9 +9584,11 @@ def shape(input):
     Examples:
         .. code-block:: python
 
-            input = layers.data(
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
-            out = layers.shape(input)
+            out = fluid.layers.shape(input)
     """
 
     helper = LayerHelper('shape', **locals())
@@ -9634,6 +9669,14 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name="X", shape=[1, 2, 5, 5], dtype='float32')
+            y = fluid.layers.scale(x, scale = 2.0, bias = 1.0)
     """
 
     helper = LayerHelper('scale', **locals())
@@ -9935,6 +9978,13 @@ def mean(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', shape=[2, 3], dtype='float32')
+            mean = fluid.layers.mean(input)
     """
 
     helper = LayerHelper("mean", **locals())
@@ -9962,6 +10012,15 @@ def merge_selected_rows(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            b = fluid.default_main_program().global_block()
+            var = b.create_var(
+                name="X", dtype="float32", persistable=True,
+                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            y = fluid.layers.merge_selected_rows(var)
     """
 
     helper = LayerHelper("merge_selected_rows", **locals())
