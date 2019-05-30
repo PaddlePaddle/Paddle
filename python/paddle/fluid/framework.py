@@ -956,7 +956,9 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id',
+        'c_gen_nccl_id', 'c_comm_init', 'c_sync_compute_stream',
+        'c_sync_comm_stream'
     }
 
     def __init__(self,
@@ -2755,6 +2757,9 @@ class Program(object):
         self._trainers_endpoints = []
         # the distributed lookup table names
         self._distributed_lookup_table = None
+
+        # the original program before collective transpiling
+        self.origin_program = None
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
