@@ -165,6 +165,15 @@ class DistributeTranspilerConfig(object):
     runtime_split_send_recv = False
     sync_mode = True
 
+    nccl_comm_num = 1
+    #The picture here illustrates the principle:
+    #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+    use_hierarchical_allreduce = False
+    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
+    hierarchical_allreduce_inter_nranks = 0
+    #Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to nodes number.
+    hierarchical_allreduce_exter_nranks = 0
+
 
 class DistributeTranspiler(object):
     """
@@ -261,14 +270,36 @@ class DistributeTranspiler(object):
 
             nccl_id_var = startup_program.global_block().create_var(
                 name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+
+            for i in range(1, self.config.nccl_comm_num):
+                startup_program.global_block().create_var(
+                    name="NCCLID_{}".format(i),
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
+
+            if self.config.use_hierarchical_allreduce:
+                for i in range(0, self.config.nccl_comm_num):
+                    startup_program.global_block().create_var(
+                        name="Hierarchical_inter_NCCLID_{}".format(i),
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
+                    startup_program.global_block().create_var(
+                        name="Hierarchical_exter_NCCLID_{}".format(i),
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
+
             startup_program.global_block().append_op(
                 type="gen_nccl_id",
                 inputs={},
                 outputs={"NCCLID": nccl_id_var},
                 attrs={
-                    "endpoint": current_endpoint,
-                    "endpoint_list": worker_endpoints,
-                    "trainer_id": trainer_id
+                    "trainers": trainers.split(","),
+                    "trainer_id": trainer_id,
+                    "nccl_comm_num": self.config.nccl_comm_num,
+                    "use_hierarchical_allreduce":
+                    self.config.use_hierarchical_allreduce,
+                    "hierarchical_allreduce_inter_nranks":
+                    self.config.hierarchical_allreduce_inter_nranks
                 })
             return nccl_id_var
         else:
@@ -350,6 +381,12 @@ class DistributeTranspiler(object):
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
             self.origin_program._trainers_endpoints = trainers.split(",")
+            self.origin_program._nccl_comm_num = self.config.nccl_comm_num
+            self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
+            self.origin_program._hierarchical_allreduce_inter_nranks = \
+                int(self.config.hierarchical_allreduce_inter_nranks)
+            self.origin_program._hierarchical_allreduce_exter_nranks = \
+                int(self.config.hierarchical_allreduce_exter_nranks)
             self._transpile_nccl2(
                 trainer_id,
                 trainers,
@@ -612,6 +649,18 @@ class DistributeTranspiler(object):
 
         Returns:
             Program: trainer side program.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(trainer_id, trainers=trainers, pservers=pserver_endpoints)
+              trainer_program = t.get_trainer_program()
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
@@ -737,6 +786,20 @@ class DistributeTranspiler(object):
 
         Returns:
             Program: the program for current parameter server to run.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              current_endpoint = "192.168.0.1:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(
+                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
+              pserver_program = t.get_pserver_program(current_endpoint)
         """
         # TODO(panyx0718): Revisit this assumption. what if #blocks > #pservers.
         # NOTE: assume blocks of the same variable is not distributed
@@ -980,6 +1043,20 @@ class DistributeTranspiler(object):
 
         Returns:
             tuple: (main_program, startup_program), of type "Program"
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              current_endpoint = "192.168.0.1:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(
+                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
+              pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
         """
         pserver_prog = self.get_pserver_program(endpoint)
         pserver_startup = self.get_startup_program(
