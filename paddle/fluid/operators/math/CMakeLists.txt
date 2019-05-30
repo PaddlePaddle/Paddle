@@ -47,6 +47,7 @@ math_library(lstm_compute DEPS activation_functions)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
 math_library(math_function DEPS blas)
+math_library(sum DEPS math_function)
 math_library(maxouting)
 math_library(pooling)
 math_library(selected_rows_functor DEPS selected_rows math_function blas)
