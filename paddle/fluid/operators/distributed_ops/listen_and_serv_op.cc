@@ -33,6 +33,8 @@ limitations under the License. */
 DEFINE_int32(rpc_send_thread_num, 12, "number of threads for rpc send");
 DEFINE_int32(rpc_get_thread_num, 12, "number of threads for rpc get");
 DEFINE_int32(rpc_prefetch_thread_num, 12, "number of threads for rpc prefetch");
+DEFINE_int32(rpc_send_barrier_thread_num, 100,
+             "number of threads for send barrier");
 
 namespace paddle {
 namespace operators {
@@ -360,6 +362,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       sync_mode, checkpoint_block_id));
   request_get_no_barrier_handler_.reset(
       new distributed::RequestGetNoBarrierHandler());
+  request_send_barrier_handler_.reset(
+      new distributed::RequestSendBarrierHandler());
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
@@ -374,6 +378,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_checkpoint_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestGetNoBarrier,
                             request_get_no_barrier_handler_.get());
+  rpc_service_->RegisterRPC(distributed::kSendBarrier,
+                            request_send_barrier_handler_.get(),
+                            FLAGS_rpc_send_barrier_thread_num);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);

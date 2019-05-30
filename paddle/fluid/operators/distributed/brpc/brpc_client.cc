@@ -315,7 +315,7 @@ VarHandlePtr BRPCClient::AsyncSendBatchBarrier(const std::string &ep,
   google::protobuf::Closure *done = brpc::NewCallback(
       &HandleBarrierResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
-  ch_ctx->stub->GetVariable(cntl, &req, response, done);
+  ch_ctx->stub->SendBarrier(cntl, &req, response, done);
 
   req_count_++;
 
@@ -349,7 +349,7 @@ VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string &ep,
   google::protobuf::Closure *done = brpc::NewCallback(
       &HandleBarrierResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
-  ch_ctx->stub->GetVariable(cntl, &req, response, done);
+  ch_ctx->stub->SendBarrier(cntl, &req, response, done);
 
   req_count_++;
 

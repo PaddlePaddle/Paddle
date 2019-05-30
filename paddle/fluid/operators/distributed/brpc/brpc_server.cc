@@ -66,6 +66,13 @@ class BRPCServiceImpl : public SendRecvService {
           rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
     }
 
+    it = rpc_call_map.find(distributed::kBatchBarrierRPC);
+    if (it != rpc_call_map.end()) {
+      request_send_barrier_h_ = it->second;
+      send_barrier_threads_.reset(new paddle::framework::ThreadPool(
+          rpc_server_->GetThreadNum(distributed::kBatchBarrierRPC)));
+    }
+
     it = rpc_call_map.find(distributed::kRequestGetMonomerVariable);
     if (it != rpc_call_map.end()) {
       request_get_monomer_handler_h_ = it->second;
@@ -331,6 +338,38 @@ class BRPCServiceImpl : public SendRecvService {
         varname, scope, invar, &outvar, request->trainer_id());
   }
 
+  void SendBarrier(google::protobuf::RpcController* cntl_butil,
+                   const VariableMessage* request, VoidMessage* response,
+                   google::protobuf::Closure* done) override {
+    send_barrier_threads_->Run(
+        [=] { _SendBarrier(cntl_butil, request, response, done); });
+  }
+
+  void _SendBarrier(google::protobuf::RpcController* cntl_butil,
+                    const VariableMessage* request, VoidMessage* response,
+                    google::protobuf::Closure* done) {
+    PADDLE_ENFORCE(request_send_barrier_h_ != nullptr,
+                   "RequestGet handler should be registed first!");
+
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+
+    std::string varname = request->varname();
+    std::string out_varname = request->out_varname();
+    int trainer_id = request->trainer_id();
+
+    VLOG(3) << "RequestSendBarrier barrier:" << varname
+            << ", trainer_id:" << trainer_id
+            << ", from:" << cntl->remote_side();
+
+    auto scope = request_send_barrier_h_->scope();
+    paddle::framework::Variable* invar = nullptr;
+    paddle::framework::Variable* outvar = nullptr;
+
+    request_send_barrier_h_->Handle(varname, scope, invar, &outvar, trainer_id,
+                                    out_varname);
+  }
+
  private:
   distributed::RequestHandler* request_send_h_{nullptr};
   distributed::RequestHandler* request_get_h_{nullptr};
@@ -339,6 +378,7 @@ class BRPCServiceImpl : public SendRecvService {
   distributed::RequestHandler* request_checkpoint_h_{nullptr};
   distributed::RequestHandler* request_get_monomer_handler_h_{nullptr};
   distributed::RequestHandler* request_get_monomer_barrier_handler_h_{nullptr};
+  distributed::RequestHandler* request_send_barrier_h_{nullptr};
 
   distributed::RPCServer* rpc_server_{nullptr};
 
@@ -348,6 +388,7 @@ class BRPCServiceImpl : public SendRecvService {
   std::unique_ptr<paddle::framework::ThreadPool> getnobarrier_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> prefetch_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> checkpoint_notify_threads_;
+  std::unique_ptr<paddle::framework::ThreadPool> send_barrier_threads_;
 };
 }  // namespace sendrecv
 

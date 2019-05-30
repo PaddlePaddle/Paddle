@@ -27,6 +27,8 @@ service SendRecvService {
   // pre-fetch variable by given variable name and Ids
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 
+  rpc SendBarrier(VariableMessage) returns (VariableMessage) {}
+
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
 
   rpc GetMonomerVariable(VariableMessage) returns (VariableMessage) {}
