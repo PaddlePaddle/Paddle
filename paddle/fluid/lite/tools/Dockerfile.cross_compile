@@ -2,6 +2,7 @@
 FROM ubuntu:16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
+# change name to cross compile
 ARG UBUNTU_MIRROR
 RUN /bin/bash -c '\
 if [[ -n ${UBUNTU_MIRROR} ]]; then \
@@ -18,6 +19,7 @@ RUN apt-get install -y --no-install-recommends \
         g++ \
         git \
         graphviz \
+        less \
         make \
         patch \
         python \
@@ -31,12 +33,29 @@ RUN apt-get autoremove -y && apt-get clean
 RUN ln -s clang-format-3.8 /usr/bin/clang-format
 RUN pip install --upgrade pip
 RUN pip install pre-commit wheel
-RUN cd /tmp && curl -O https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
+
+# for cmake 3.10
 RUN curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
         tar xzf cmake-3.10.3-Linux-x86_64.tar.gz && \
         mv cmake-3.10.3-Linux-x86_64 /opt/cmake-3.10 && \
         mv /usr/bin/cmake /usr/bin/cmake.bak && ln -s /opt/cmake-3.10/bin/cmake /usr/bin/cmake && \
         mv /usr/bin/ccmake /usr/bin/ccmake.bak && ln -s /opt/cmake-3.10/bin/ccmake /usr/bin/ccmake
 RUN cd /opt && unzip /tmp/android-ndk-r17c-linux-x86_64.zip
+
+# for arm linux
+RUN apt-get install -y --no-install-recommends \
+        g++-arm-linux-gnueabi \
+        gcc-arm-linux-gnueabi \
+        g++-arm-linux-gnueabihf \
+        gcc-arm-linux-gnueabihf \
+        gcc-aarch64-linux-gnu \
+        g++-aarch64-linux-gnu 
+
+
+# for android
+RUN cd /tmp && curl -O https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
 ENV NDK_ROOT /opt/android-ndk-r17c
+
+# clean
 RUN rm -rf /tmp/android-ndk-r17c-linux-x86_64.zip /cmake-3.10.3-Linux-x86_64.tar.gz
+
