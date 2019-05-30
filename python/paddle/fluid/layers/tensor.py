@@ -246,7 +246,9 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import paddle.fluid as fluid
+            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -383,6 +385,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
 
@@ -436,7 +439,9 @@ def fill_constant_batch_size_like(input,
 
         .. code-block:: python
 
-             data = fluid.layers.fill_constant_batch_size_like(
+             import paddle.fluid as fluid
+             like = fluid.layers.data(name='like', shape=[1], dtype='float32')
+             data = fluid.lgyers.fill_constant_batch_size_like(
                          input=like, shape=[1], value=0, dtype='int64')
 
     """
@@ -792,6 +797,15 @@ def isfinite(x):
 
     Returns:
         Variable: The tensor variable storing the output, contains a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+            var = fluid.layers.data(name="data",
+                                    shape=(4, 6),
+                                    dtype="float32")
+            out = fluid.layers.isfinite(v)
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

@@ -43,7 +43,9 @@ def monkey_patch_variable():
                 'shape': shape,
                 'value': value,
                 'force_cpu': force_init_on_cpu()
-            })
+            },
+            stop_gradient=True)
+        var.stop_gradient = True
         return var
 
     def create_tensor_decorator(block, value, dtype, shape):
@@ -79,7 +81,10 @@ def monkey_patch_variable():
                 'value': value,
                 'input_dim_idx': batch_dim,
                 'output_dim_idx': batch_dim
-            })
+            },
+            stop_gradient=True)
+
+        var.stop_gradient = True
         return var
 
     def astype(self, dtype):
