@@ -329,6 +329,13 @@ class UserDefinedRoleMaker(RoleMakerBase):
         else:
             self._server_endpoints = server_endpoints
 
+        # currently not used
+        self._role_is_generated = False
+
+    def generate_role(self):
+        if not self._role_is_generated:
+            self._role_is_generated = True
+
     def is_worker(self):
         return self._role == Role.WORKER
 
