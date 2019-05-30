@@ -32,7 +32,8 @@ namespace lite {
 TEST(CXXApi, test) {
   lite::ExecutorLite predictor;
 #ifndef LITE_WITH_CUDA
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kX86), PRECISION(kFloat)}});
 #else
   std::vector<Place> valid_places({
       Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
@@ -44,7 +45,8 @@ TEST(CXXApi, test) {
   });
 #endif
 
-  predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
+  predictor.Build(FLAGS_model_dir,
+                  Place{TARGET(kX86), PRECISION(kFloat)},  // origin cuda
                   valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
@@ -69,7 +71,8 @@ TEST(CXXApi, test) {
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
   lite::ExecutorLite predictor;
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kX86), PRECISION(kFloat)}});
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
                   valid_places);
 
