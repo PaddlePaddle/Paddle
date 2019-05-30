@@ -193,7 +193,7 @@ class TestCalibration(unittest.TestCase):
             file_name = data_urls[0].split('/')[-1]
             zip_path = os.path.join(self.cache_folder, file_name)
 
-        print('Data is downloaded at {0}'.format(zip_path))
+        print('Data is downloaded at {0}').format(zip_path)
         self.cache_unzipping(data_cache_folder, zip_path)
         return data_cache_folder
 

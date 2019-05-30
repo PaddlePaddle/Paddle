@@ -12,22 +12,52 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import paddle
 import unittest
 import os
 import sys
-import struct
+import argparse
 import shutil
+import logging
+import struct
+import six
 import numpy as np
+import paddle
 import paddle.fluid as fluid
-from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
-from paddle.fluid.contrib.slim.graph import GraphWrapper
-sys.path.append('../../tests')
-from test_calibration_resnet50 import TestCalibration
+
+logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
 
 
-class TestMKLDNNPostTrainingQuantStrategy(TestCalibration):
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch_size', type=int, default=1, help='batch size')
+    parser.add_argument(
+        '--infer_model', type=str, default='', help='model path')
+    parser.add_argument('--infer_data', type=str, default='', help='data file')
+    parser.add_argument(
+        '--int8_model_save_path',
+        type=str,
+        default='./output',
+        help='path to save int8 model with fp32 weights')
+    parser.add_argument(
+        '--warmup_batch_size',
+        type=int,
+        default=100,
+        help='batch size for quantization warmup')
+    parser.add_argument(
+        '--quantized_accuracy',
+        type=float,
+        default=0.01,
+        help='Result Quantized Accuracy.')
+
+    test_args, args = parser.parse_known_args(namespace=unittest)
+
+    return test_args, sys.argv[:1] + args
+
+
+class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
     """
     Test API of Post Training quantization strategy for int8 with MKLDNN.
     """
@@ -64,27 +94,57 @@ class TestMKLDNNPostTrainingQuantStrategy(TestCalibration):
 
         return reader
 
-    def _update_config_file(self, model_name):
+    def _update_config_file(self, fp32_model_path, output_path):
         config_path = './quantization/config_mkldnn_int8.yaml'
-        new_config_path = './quantization/{0}.yaml'.format(model_name)
+        new_config_path = './quantization/temp.yaml'
         shutil.copy(config_path, new_config_path)
 
         with open(new_config_path, 'r+') as fp:
             data = fp.read()
-        model_path = '{0}/model'.format(model_name)
-        model_path = os.path.join(self.cache_folder, model_path)
-        data = data.replace('MODEL_PATH', model_path)
-        output_path = './{0}/int8'.format(model_name)
+        data = data.replace('MODEL_PATH', fp32_model_path)
         data = data.replace('OUTPUT_PATH', output_path)
         with open(new_config_path, 'w') as fp:
             fp.write(data)
 
         return new_config_path
 
-    def _test_int8_quant(self, data_path, config_path):
-        #warmup dataset, only use the first batch data
-        test_reader = paddle.batch(
-            self._reader_creator(data_path, False), batch_size=100)
+    def _predict(self, test_reader=None, model_path=None):
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        inference_scope = fluid.executor.global_scope()
+        with fluid.scope_guard(inference_scope):
+            if os.path.exists(os.path.join(model_path, '__model__')):
+                [inference_program, feed_target_names,
+                 fetch_targets] = fluid.io.load_inference_model(model_path, exe)
+            else:
+                [inference_program, feed_target_names,
+                 fetch_targets] = fluid.io.load_inference_model(
+                     model_path, exe, 'model', 'params')
+
+            dshape = [3, 224, 224]
+            top1 = 0.0
+            top5 = 0.0
+            total_samples = 0
+            for _, data in enumerate(test_reader()):
+                if six.PY2:
+                    images = map(lambda x: x[0].reshape(dshape), data)
+                if six.PY3:
+                    images = list(map(lambda x: x[0].reshape(dshape), data))
+                images = np.array(images).astype('float32')
+                labels = np.array([x[1] for x in data]).astype("int64")
+                labels = labels.reshape([-1, 1])
+                out = exe.run(inference_program,
+                              feed={
+                                  feed_target_names[0]: images,
+                                  feed_target_names[1]: labels
+                              },
+                              fetch_list=fetch_targets)
+                top1 += np.sum(out[1]) * len(data)
+                top5 += np.sum(out[2]) * len(data)
+                total_samples += len(data)
+            return top1 / total_samples, top5 / total_samples
+
+    def _warmup(self, reader=None, config_path=''):
         com_pass = Compressor(
             place=None,
             scope=None,
@@ -93,7 +153,7 @@ class TestMKLDNNPostTrainingQuantStrategy(TestCalibration):
             train_feed_list=[],
             train_fetch_list=[],
             eval_program=None,
-            eval_reader=test_reader,
+            eval_reader=reader,
             eval_feed_list=[],
             eval_fetch_list=[],
             teacher_programs=[],
@@ -101,34 +161,51 @@ class TestMKLDNNPostTrainingQuantStrategy(TestCalibration):
             train_optimizer=None,
             distiller_optimizer=None)
         com_pass.config(config_path)
-        eval_graph = com_pass.run()
+        com_pass.run()
 
     def test_compression(self):
         if not fluid.core.is_compiled_with_mkldnn():
             return
 
-        base_url = 'http://paddle-inference-dist.bj.bcebos.com/int8/'
-        self.download_data([base_url + 'imagenet_val_100_tail.tar.gz'],
-                           ['b6e05365252f12f75e7daf3fcbc62e96'],
-                           'imagenet_val_100_tail', False)
-        data_path = os.path.join(self.cache_folder,
-                                 'imagenet_val_100_tail/data.bin')
+        int8_model_path = test_case_args.int8_model_save_path
+        data_path = test_case_args.infer_data
+        fp32_model_path = test_case_args.infer_model
+        batch_size = test_case_args.batch_size
 
-        model_urls = [
-            base_url + 'mobilenetv1_int8_model.tar.gz',
-            base_url + 'resnet50_int8_model.tar.gz'
-        ]
-        md5s = [
-            '13892b0716d26443a8cdea15b3c6438b',
-            '4a5194524823d9b76da6e738e1367881'
-        ]
-        for model_url, md5 in zip(model_urls, md5s):
-            model_name = model_url.split('/')[-1]
-            model_name = model_name.split('.')[0]
-            self.download_data([model_url], [md5], model_name)
-            config_path = self._update_config_file(model_name)
-            self._test_int8_quant(data_path, config_path)
+        warmup_batch_size = test_case_args.warmup_batch_size
+        quantized_accuracy = test_case_args.quantized_accuracy
+
+        _logger.info(
+            'FP32 & INT8 prediction run: batch_size {0}, warmup batch size {1}.'.
+            format(batch_size, warmup_batch_size))
+
+        #warmup dataset, only use the first batch data
+        warmup_reader = paddle.batch(
+            self._reader_creator(data_path, False),
+            batch_size=warmup_batch_size)
+        config_path = self._update_config_file(fp32_model_path, int8_model_path)
+        self._warmup(warmup_reader, config_path)
+
+        _logger.info('--- FP32 prediction start ---')
+        val_reader = paddle.batch(
+            self._reader_creator(data_path, False), batch_size=batch_size)
+        fp32_model_result = self._predict(val_reader, fp32_model_path)
+        _logger.info('--- INT8 prediction start ---')
+        val_reader = paddle.batch(
+            self._reader_creator(data_path, False), batch_size=batch_size)
+        int8_model_result = self._predict(val_reader, int8_model_path)
+        _logger.info('--- comparing outputs ---')
+        _logger.info('Avg top1 INT8 accuracy: {0:.4}'.format(int8_model_result[
+            0]))
+        _logger.info('Avg top1 FP32 accuracy: {0:.4}'.format(fp32_model_result[
+            0]))
+        _logger.info('Accepted accuracy drop threshold: {0}'.format(
+            quantized_accuracy))
+        assert abs(int8_model_result[0] - fp32_model_result[
+            0]) <= quantized_accuracy
 
 
 if __name__ == '__main__':
-    unittest.main()
+    global test_case_args
+    test_case_args, remaining_args = parse_args()
+    unittest.main(argv=remaining_args)

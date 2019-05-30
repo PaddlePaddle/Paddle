@@ -257,8 +257,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("cpu_math_library_num_threads",
            &AnalysisConfig::cpu_math_library_num_threads)
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
-#ifdef PADDLE_WITH_MKLDNN
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
+#ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
 #endif

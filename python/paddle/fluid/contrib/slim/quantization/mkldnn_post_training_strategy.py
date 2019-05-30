@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import logging
 import six
 import numpy as np
-import platform
-import os
-from .... import Executor
-from .... import io
 from .... import core
-from ....compiler import CompiledProgram
-from ....framework import IrGraph
 from ..core.strategy import Strategy
-import logging
-import sys
 
 __all__ = ['MKLDNNPostTrainingQuantStrategy']
 
-FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
-logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
 
 
 class MKLDNNPostTrainingQuantStrategy(Strategy):
@@ -53,20 +47,21 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
 
     def on_compression_begin(self, context):
         """
-	Prepare the data and quantify the model
+	    Prepare the data and quantify the model
         """
+
         super(MKLDNNPostTrainingQuantStrategy,
               self).on_compression_begin(context)
-        logger.info('InferQuantStrategy::on_compression_begin')
+        _logger.info('InferQuantStrategy::on_compression_begin')
 
         #Prepare the Analysis Config
         infer_config = core.AnalysisConfig("AnalysisConfig")
         infer_config.switch_ir_optim(True)
-        infer_config.disable_gpu
+        infer_config.disable_gpu()
         infer_config.set_model(self.fp32_model_path)
         infer_config.enable_mkldnn()
 
-        #Prepare the data for calculating the quantization scales 
+        #Prepare the data for calculating the quantization scales
         warmup_reader = context.eval_reader()
         if six.PY2:
             data = warmup_reader.next()
@@ -80,7 +75,6 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         images.shape = [num_images, ] + list(data[0][0].shape)
         images.dtype = core.PaddleDType.FLOAT32
         image_data = [img.tolist() for (img, _) in data]
-
         image_data = np.array(image_data).astype("float32")
         image_data = image_data.ravel()
         images.data = core.PaddleBuf(image_data.tolist())
@@ -98,11 +92,13 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         infer_config.enable_quantizer()
         infer_config.quantizer_config().set_quant_data(warmup_data)
         infer_config.quantizer_config().set_quant_batch_size(num_images)
+
         #Run INT8 MKL-DNN Quantization
         predictor = core.create_paddle_predictor(infer_config)
-        if self.int8_model_save_path and self.int8_model_save_path != '':
+        if self.int8_model_save_path:
             if not os.path.exists(self.int8_model_save_path):
                 os.makedirs(self.int8_model_save_path)
             predictor.SaveOptimModel(self.int8_model_save_path)
 
-        logger.info('Finish InferQuantStrategy::on_compresseion_begin')
+        _logger.info(
+            'Finish MKLDNNPostTrainingQuantStrategy::on_compresseion_begin')
