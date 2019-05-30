@@ -62,9 +62,12 @@ def data(name,
                     should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
-            For example if shape=[1], the resulting shape is [-1, 1].
-          2. If shape contains -1, such as shape=[1, -1],
-            append_batch_size will be enforced to be be False (ineffective).
+            For example if shape=[1], the resulting shape is [-1, 1]. This will 
+            be useful to set different batch size at run time.
+          2. If shape contains -1, such as shape=[1, -1].
+            append_batch_size will be enforced to be be False (ineffective)
+            because PaddlePaddle cannot set more than 1 unknown number on the
+            shape.
        dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
