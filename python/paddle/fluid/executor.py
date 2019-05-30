@@ -740,7 +740,6 @@ class Executor(object):
         if not use_program_cache:
             exe.run(program.desc, scope, 0, True, True, fetch_var_name)
         else:
-            #exe.run_cached_prepared_ctx(ctx, scope, True, True, False)
             exe.run_cached_prepared_ctx(ctx, scope, False, False, False)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
