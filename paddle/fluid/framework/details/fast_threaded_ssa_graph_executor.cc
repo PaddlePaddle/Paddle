@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -50,6 +51,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
 FeedFetchList FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
@@ -64,7 +67,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
                  &fetch_ops, &ready_fetch_ops);
-
+  event.reset(nullptr);
   if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
     // execution in the first iteration, and in subsequent iterations,
