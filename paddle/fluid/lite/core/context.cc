@@ -15,7 +15,7 @@
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/cpu_info.h"
 
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
 #include <sys/syscall.h>
 #include <unistd.h>
 #endif
@@ -87,7 +87,7 @@ void ARMContext::BindDev() {
 #ifdef USE_OPENMP
   int num_threads = active_ids_.size();
   omp_set_num_threads(num_threads);
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   std::vector<int> ssarets;
   for (int j = 0; j < num_threads; ++j) {
     ssarets.push_back(0);
@@ -102,9 +102,9 @@ void ARMContext::BindDev() {
       return;
     }
   }
-#endif  // LITE_WITH_ANDROID
+#endif  // LITE_WITH_LINUX
 #else   // USE_OPENMP
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   std::vector<int> cpuid1;
   cpuid1.push_back(active_ids_[0]);
   int ssaret = set_sched_affinity(cpuid1);
@@ -112,7 +112,7 @@ void ARMContext::BindDev() {
     printf("set cpu affinity failed, cpuID: %d\n", active_ids_[0]);
     return;
   }
-#endif  // LITE_WITH_ANDROID
+#endif  // LITE_WITH_LINUX
 #endif  // USE_OPENMP
 }
 
