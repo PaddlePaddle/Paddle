@@ -719,7 +719,12 @@ class Executor(object):
                     cached_program.desc, 0, fetch_list, False)
                 cached_var = self._default_executor.create_variables(
                     cached_program.desc, scope, 0)
-                cached_scope = scope
+                # currently, we cache program, vars, sub_scope here
+                # we suppose that in a life cycle of training, a user
+                # will not create many programs. So, here the basic
+                # rule of caching is to cache all unseen (program, var, scope)
+                # when a user use use_program_cache.
+                cached_scope = scope.new_scope()
                 self._add_ctx_cache(cache_key, cached_ctx)
                 self._add_var_cache(cache_key, cached_var)
                 self._add_scope_cache(cache_key, cached_scope)
@@ -728,7 +733,6 @@ class Executor(object):
             scope = cached_scope
             var = cached_var
         else:
-            self.program_caches.pop(cache_key, None)
             program = self._add_feed_fetch_ops(
                 program=program,
                 feed=feed,
