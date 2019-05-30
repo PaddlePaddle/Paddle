@@ -39,8 +39,7 @@ size_t PDPattern::id_ = 0UL;
 PDNode *PDPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
     PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
-                      "PDNod"
-                      "ls's name should be unique, get duplicate [%s]",
+                      "PDNode's name should be unique, get duplicate [%s]",
                       name);
   }
 
