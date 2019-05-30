@@ -277,7 +277,7 @@ class MultiSlotType {
     } else if (type_[0] == 'u') {
       uint64_feasign_.clear();
       if (reserved_size) {
-        float_feasign_.reserve(reserved_size);
+        uint64_feasign_.reserve(reserved_size);
       }
     }
     type_ = type;

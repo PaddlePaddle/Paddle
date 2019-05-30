@@ -22,7 +22,8 @@ namespace framework {
 
 void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
-  line_num_ = trainer_desc.thread_num();
+  pipeline_num_ = trainer_desc.thread_num();
+  VLOG(3) << "pipeline num: " << pipeline_num_;
 
   SetDataset(dataset);
   // get filelist from trainer_desc here
@@ -32,17 +33,14 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
 
-  HTJ << "line num is: " << line_num_;
-  HTJ << "reader size is:" << readers.size();
-
-  pipeline_config_ = trainer_desc.pipeline_param();
+  pipeline_config_ = trainer_desc.section_param();
   scope_queue_size_ = pipeline_config_.queue_size();
   sync_steps_ = pipeline_config_.sync_steps();
   section_num_ = pipeline_config_.section_config_size();
 
-  HTJ << "queue_size: " << scope_queue_size_;
-  HTJ << "section num: " << section_num_;
-  HTJ << "sync_steps: " << sync_steps_;
+  VLOG(3) << "scope_queue_size: " << scope_queue_size_;
+  VLOG(3) << "section num: " << section_num_;
+  VLOG(3) << "sync_steps: " << sync_steps_;
 
   workers_.resize(section_num_);
   in_var_names_.resize(section_num_);
@@ -55,22 +53,24 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < section_num_; ++i) {
     const auto& section_config = pipeline_config_.section_config(i);
     int concurrency = section_config.concurrency();
+    VLOG(3) << "the thread num of each pipeline in section " << i
+            << " is: " << concurrency;
     in_var_names_[i].reset(new std::vector<std::string>(
         section_config.section_in_var_names().begin(),
         section_config.section_in_var_names().end()));
     out_var_names_[i].reset(new std::vector<std::string>(
         section_config.section_out_var_names().begin(),
         section_config.section_out_var_names().end()));
-    worker_count_[i].resize(line_num_);
-    worker_count_mutex_[i].resize(line_num_);
-    for (int j = 0; j < line_num_; ++j) {
+    worker_count_[i].resize(pipeline_num_);
+    worker_count_mutex_[i].resize(pipeline_num_);
+    for (int j = 0; j < pipeline_num_; ++j) {
       worker_count_[i][j] = new int(concurrency);
       worker_count_mutex_[i][j].reset(new std::mutex);
     }
 
     platform::Place place;
-    workers_[i].resize(line_num_);
-    for (int j = 0; j < line_num_; ++j) {
+    workers_[i].resize(pipeline_num_);
+    for (int j = 0; j < pipeline_num_; ++j) {
       workers_[i][j].resize(concurrency);
 
       switch (section_config.place()) {
@@ -90,8 +90,6 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       }
 
       for (int k = 0; k < concurrency; ++k) {
-        // workers_[i][j][k] =
-        // std::dynamic_pointer_cast<paddle::framework::SectionWorker>
         workers_[i][j][k] = DeviceWorkerFactory::CreateDeviceWorker(
             trainer_desc.device_worker_name());
         auto this_worker =
@@ -101,8 +99,10 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
         this_worker->SetDeviceIndex(j);
         this_worker->SetThreadIndex(k);
         this_worker->SetSectionNum(section_num_);
-        this_worker->SetLineNum(line_num_);
-        if (i == 0) this_worker->SetDataFeed(readers[reader_index++]);
+        this_worker->SetPipelineNum(pipeline_num_);
+        if (i == 0) {
+          this_worker->SetDataFeed(readers[reader_index++]);
+        }
         this_worker->SetPlace(place);
         this_worker->Initialize(trainer_desc);
       }
@@ -117,14 +117,19 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       }
     }
   }
+  VLOG(3) << "param_need_sync_ have: ";
+  for (const std::string& name : *param_need_sync_) {
+    VLOG(3) << name;
+  }
   // set debug here
   SetDebug(trainer_desc.debug());
 }
 
-void PipelineTrainer::InitFirstScopeQueue(ScopeQueue* scope_queue, int line_id,
+void PipelineTrainer::InitFirstScopeQueue(ScopeQueue* scope_queue,
+                                          int pipeline_id,
                                           const ProgramDesc& main_program) {
   for (int i = 0; i < scope_queue_size_; ++i) {
-    Scope* scope = &line_scopes_[line_id]->NewScope();
+    Scope* scope = &pipeline_scopes_[pipeline_id]->NewScope();
     for (auto& var : main_program.Block(0).AllVars()) {
       if (!var->Persistable()) {
         auto* ptr = scope->Var(var->Name());
@@ -135,33 +140,34 @@ void PipelineTrainer::InitFirstScopeQueue(ScopeQueue* scope_queue, int line_id,
   }
 }
 
-void PipelineTrainer::CopyParameters(const Scope& root_scope, int line_id) {
+void PipelineTrainer::CopyParameters(const Scope& root_scope, int pipeline_id) {
   for (const std::string& name : *param_need_sync_) {
     const LoDTensor& root_tensor = root_scope.FindVar(name)->Get<LoDTensor>();
 
     // TODO(hutxian): check a new var of the same name is created in
     // pipeline_scope
     LoDTensor* gpu_tensor =
-        line_scopes_[line_id]->Var(name)->GetMutable<LoDTensor>();
-    platform::Place place = platform::CUDAPlace(line_id);
+        pipeline_scopes_[pipeline_id]->Var(name)->GetMutable<LoDTensor>();
+    platform::Place place = platform::CUDAPlace(pipeline_id);
     TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
                *platform::DeviceContextPool::Instance().Get(place),
                static_cast<Tensor*>(gpu_tensor));
   }
 }
 
-// call only after all resources are set in current trainer
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
   PADDLE_ENFORCE(root_scope_, "Null root_scope pointer");
+  SectionWorker::cpu_id_.store(0);
   scope_queues_.resize(section_num_);
-  line_scopes_.resize(line_num_);
+  pipeline_scopes_.resize(pipeline_num_);
 
+  VLOG(3) << "Init ScopeQueues and create all scopes";
   for (int i = 0; i < section_num_; ++i) {
-    for (int j = 0; j < line_num_; ++j) {
+    for (int j = 0; j < pipeline_num_; ++j) {
       scope_queues_[i].emplace_back(new ScopeQueue(scope_queue_size_));
       if (i == 0) {
-        line_scopes_[j] = &root_scope_->NewScope();
+        pipeline_scopes_[j] = &root_scope_->NewScope();
         CopyParameters(*root_scope_, j);
         InitFirstScopeQueue(scope_queues_[0].back().get(), j, main_program);
       }
@@ -169,7 +175,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   }
 
   for (int i = 0; i < section_num_; ++i) {
-    for (int j = 0; j < line_num_; ++j) {
+    for (int j = 0; j < pipeline_num_; ++j) {
       for (size_t k = 0; k < workers_[i][j].size(); ++k) {
         auto this_worker =
             std::dynamic_pointer_cast<paddle::framework::SectionWorker>(
@@ -183,39 +189,40 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                        : scope_queues_[i + 1][j].get());
         this_worker->SetVarNames(*in_var_names_[i], *out_var_names_[i]);
         if (i != section_num_ - 1) {
+          // For data copy in adjacent different place
           this_worker->SetNextSectionPlace(
               std::dynamic_pointer_cast<paddle::framework::SectionWorker>(
                   workers_[i + 1][j][0])
                   ->place());
         }
-        this_worker->CreateDeviceResource(main_program);
       }
     }
   }
 
-  if (line_num_ <= 1) {
+  if (pipeline_num_ <= 1) {
     return;
   }
-  // For sync functor
+  // Construct sync functor
   std::vector<platform::Place> cuda_places;
-  for (int i = 0; i < line_num_; ++i) {
+  for (int i = 0; i < pipeline_num_; ++i) {
     cuda_places.emplace_back(platform::CUDAPlace(i));
   }
   nccl_ctx_map_.reset(new platform::NCCLContextMap(cuda_places));
-  sync_functors_.resize(line_num_);
+  sync_functors_.resize(pipeline_num_);
   SyncFunctor::sync_flag_ = 0;
-  SyncFunctor::line_scopes_.resize(0);
-  for (int j = 0; j < line_num_; ++j) {
-    SyncFunctor* sync_function = new SyncFunctor(j, line_num_, sync_steps_);
+  SyncFunctor::pipeline_scopes_.resize(0);
+
+  for (int j = 0; j < pipeline_num_; ++j) {
+    SyncFunctor* sync_function = new SyncFunctor(j, pipeline_num_, sync_steps_);
     sync_function->SetSyncParam(*param_need_sync_);
     sync_function->SetNcclCtxMap(nccl_ctx_map_.get());
-    SyncFunctor::line_scopes_.push_back(this->line_scopes_[j]);
+    SyncFunctor::pipeline_scopes_.push_back(this->pipeline_scopes_[j]);
     sync_functors_[j].reset(sync_function);
   }
   for (int i = section_num_ - 1; i >= 0; --i) {
     if (SectionConfig::CUDAPlace ==
         pipeline_config_.section_config(i).place()) {
-      for (int j = 0; j < line_num_; ++j) {
+      for (int j = 0; j < pipeline_num_; ++j) {
         for (size_t k = 0; k < workers_[i][j].size(); ++k) {
           auto this_worker =
               std::dynamic_pointer_cast<paddle::framework::SectionWorker>(
@@ -231,7 +238,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 void PipelineTrainer::Run() {
   VLOG(3) << "Going to run";
   for (int i = 0; i < section_num_; ++i) {
-    for (int j = 0; j < line_num_; ++j) {
+    for (int j = 0; j < pipeline_num_; ++j) {
       for (size_t k = 0; k < workers_[i][j].size(); ++k) {
         if (!debug_) {
           section_threads_.push_back(
@@ -251,7 +258,7 @@ void PipelineTrainer::Finalize() {
   }
   for (const auto& var : *param_need_sync_) {
     auto* root_tensor = root_scope_->Var(var)->GetMutable<LoDTensor>();
-    auto& thread_tensor = line_scopes_[0]->FindVar(var)->Get<LoDTensor>();
+    auto& thread_tensor = pipeline_scopes_[0]->FindVar(var)->Get<LoDTensor>();
     // TODO(hutuxian): use TensorCopy instead
     int res = cudaMemcpy(root_tensor->mutable_data<float>(platform::CPUPlace()),
                          thread_tensor.data<float>(),

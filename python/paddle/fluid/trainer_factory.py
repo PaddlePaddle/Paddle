@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
-from .device_worker import Hogwild, DownpourSGD, Pipeline
+from .device_worker import Hogwild, DownpourSGD, Section
 
 __all__ = ["TrainerFactory"]
 

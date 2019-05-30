@@ -781,6 +781,7 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
+            # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
                     program._pipeline_opt)
@@ -795,7 +796,8 @@ class Executor(object):
                 trainer = TrainerFactory()._create_trainer(
                     program.program._fleet_opt)
             trainer._set_program(program.program)
-        # The following logic will be deprecated
+
+        # The following thread_num-determined logic will be deprecated
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
@@ -805,12 +807,14 @@ class Executor(object):
                 trainer._set_thread(dataset.thread_num)
         else:
             trainer._set_thread(thread)
+
+        # Adjust the reader size for small file num
         if program._pipeline_opt:
             file_size = len(dataset.dataset.get_filelist())
             if file_size < thread:
                 thread = file_size
                 print(
-                    "Pipeline: setting the line num to %d is enough because there are only %d files"
+                    "Pipeline: setting the pipeline num to %d is enough because there are only %d files"
                     % (file_size, file_size))
             if file_size < thread * program._pipeline_opt["concurrency_list"][
                     0]:

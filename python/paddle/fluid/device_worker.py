@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Pipeline']
+__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section']
 
 
 class DeviceWorker(object):
@@ -181,20 +181,20 @@ class DownpourSGD(DeviceWorker):
             downpour.push_sparse = False
 
 
-class Pipeline(DeviceWorker):
+class Section(DeviceWorker):
     """
-    PipelineWorker
+    SectionWorker
     """
 
     def __init__(self):
         """
         Init.
         """
-        super(Pipeline, self).__init__()
+        super(Section, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
-        Generator worker desc, which device worker is PipelineWorker.
+        Generator worker desc, which device worker is SectionWorker.
         Args:
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
@@ -202,11 +202,11 @@ class Pipeline(DeviceWorker):
         from . import core
         trainer_desc.device_worker_name = "SectionWorker"
         pipeline_opt = self._program._pipeline_opt
-        pipeline_param = trainer_desc.pipeline_param
-        pipeline_param.queue_size = pipeline_opt["queue_size"]
-        pipeline_param.sync_steps = pipeline_opt["sync_steps"]
+        section_param = trainer_desc.section_param
+        section_param.queue_size = pipeline_opt["queue_size"]
+        section_param.sync_steps = pipeline_opt["sync_steps"]
         for i, program in enumerate(pipeline_opt["section_program_list"]):
-            cfg = pipeline_param.section_config.add()
+            cfg = section_param.section_config.add()
             cfg.program_desc.ParseFromString(program["program"]._get_desc()
                                              .serialize_to_string())
             # TODO: why does not work

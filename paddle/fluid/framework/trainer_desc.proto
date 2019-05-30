@@ -38,7 +38,7 @@ message TrainerDesc {
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
   optional PullDenseWorkerParameter pull_dense_param = 102;
-  optional PipelineWorkerParameter pipeline_param = 104;
+  optional SectionWorkerParameter section_param = 104;
   // datafeed desc
   optional DataFeedDesc data_desc = 201;
 }
@@ -54,7 +54,7 @@ message DownpourWorkerParameter {
   optional bool push_dense = 6 [ default = true ];
 }
 
-message PipelineWorkerParameter {
+message SectionWorkerParameter {
   repeated SectionConfig section_config = 1;
   optional int32 queue_size = 2 [ default = 1 ];
   optional int64 sync_steps = 3 [ default = 1 ];

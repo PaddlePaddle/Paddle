@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 
 uint64_t SyncFunctor::sync_flag_ = 0;
-std::vector<Scope*> SyncFunctor::line_scopes_;
+std::vector<Scope*> SyncFunctor::pipeline_scopes_;
 
 SyncFunctor::SyncFunctor(int rank_id, int rank_num, int sync_steps)
     : rank_id_(rank_id), rank_num_(rank_num), sync_steps_(sync_steps) {
@@ -68,16 +68,16 @@ void SyncFunctor::Synchronize() {
     platform::NCCLGroupGuard guard;
     for (int i = 0; i < rank_num_; ++i) {
       const platform::NCCLContext& nccl_ctx = nccl_ctx_map_->at(i);
-      LoDTensor* tensor = line_scopes_[i]->Var(name)->GetMutable<LoDTensor>();
-      // FIXME: do not depend on data type explicitly
+      LoDTensor* tensor =
+          pipeline_scopes_[i]->Var(name)->GetMutable<LoDTensor>();
+      // TODO(hutuxian): do not depend on data type explicitly
       float* data =
           tensor->mutable_data<float>(nccl_ctx_map_->DevCtx(i)->GetPlace());
       const int numel = tensor->numel();
 
-      // TBD: inplace is not work?
-
+      // TBD: inplace is more clear, but inplace scale is not work
       LoDTensor* tensor_o =
-          line_scopes_[i]->Var(name + "_")->GetMutable<LoDTensor>();
+          pipeline_scopes_[i]->Var(name + "_")->GetMutable<LoDTensor>();
       tensor_o->mutable_data<float>(nccl_ctx_map_->DevCtx(i)->GetPlace());
       TensorCopy(*static_cast<const Tensor*>(tensor),
                  nccl_ctx_map_->DevCtx(i)->GetPlace(),
@@ -88,7 +88,8 @@ void SyncFunctor::Synchronize() {
       attrs.insert({"scale", static_cast<float>(1. / rank_num_)});
       auto scale_op = framework::OpRegistry::CreateOp(
           "scale", {{"X", {name + "_"}}}, {{"Out", {name}}}, attrs);
-      scale_op->Run(*(line_scopes_[i]), nccl_ctx_map_->DevCtx(i)->GetPlace());
+      scale_op->Run(*(pipeline_scopes_[i]),
+                    nccl_ctx_map_->DevCtx(i)->GetPlace());
 
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           data, data, numel, ncclFloat, ncclSum, nccl_ctx.comm(),
@@ -98,46 +99,19 @@ void SyncFunctor::Synchronize() {
   nccl_ctx_map_->WaitAll();
 }
 
-// int SectionWorker::cpu_id_ = -1;
-// std::mutex SectionWorker::cpu_affinity_mutex_;
 std::atomic<int> SectionWorker::cpu_id_(0);
-
 void SectionWorker::Initialize(const TrainerDesc& trainer_desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   std::shared_ptr<framework::ProgramDesc> program;
-  program.reset(new ProgramDesc(trainer_desc.pipeline_param()
-                                    .section_config(section_id_)
-                                    .program_desc()));
+  program.reset(new ProgramDesc(
+      trainer_desc.section_param().section_config(section_id_).program_desc()));
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 }
 
-void SectionWorker::CreateDeviceResource(const ProgramDesc& main_prog) {}
-
 void SectionWorker::AutoSetCPUAffinity(bool reuse) {
   int thread_cpu_id = cpu_id_.fetch_add(1);
-
-  std::string hard_code = "";
-  if (hard_code == "414") {
-    if (section_id_ == 2) {
-      thread_cpu_id = 16 + line_id_ * 4 + thread_id_;
-    } else if (section_id_ == 1) {
-      thread_cpu_id = line_id_;
-    } else {
-      if (thread_id_ == 0) {
-        thread_cpu_id = line_id_;
-      } else {
-        thread_cpu_id = line_id_ + 8;
-      }
-    }
-  } else if (hard_code == "215") {
-    if (section_id_ <= 1) {
-      thread_cpu_id = line_id_;
-    } else {
-      thread_cpu_id = 8 + line_id_ * 5 + thread_id_;
-    }
-  }
 
   unsigned concurrency_cap = std::thread::hardware_concurrency();
   unsigned proc = thread_cpu_id;
@@ -167,16 +141,11 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       (0 == CPU_ISSET(proc, &mask))) {
     LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
   }
-
-  // LOG(INFO) << "Set " << thread_cpu_id << "th thread affinity to CPU " <<
-  // proc;
-  LOG(INFO) << "section: " << section_id_ << ", card: " << line_id_
-            << ", thread_id: " << thread_id_ << "to CPU: " << proc;
+  SEC_LOG << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
 }
 
 void SectionWorker::TrainFiles() {
-  SEC << "begin TrainFiles-----section_id: " << section_id_
-      << " line_id: " << line_id_ << " worker_count: " << *worker_count_;
+  SEC_LOG << "begin section_worker TrainFiles";
   AutoSetCPUAffinity(true);
 
   int64_t step_cnt = 0;
@@ -190,11 +159,10 @@ void SectionWorker::TrainFiles() {
       if (batch_size <= 0) {
         break;
       }
-      SEC << "read batch size: " << batch_size;
+      SEC_LOG << "read batch size: " << batch_size;
     } else {
       // TODO(hutuxian): Keep batch_size in scope? Or is there a better way to
-      // fetch
-      // batch_size?
+      // fetch batch_size? Some variables may not have batch_size.
       PADDLE_ENFORCE(
           in_var_names_->size(),
           "Section without a reader or in variable is not supported by now");
@@ -202,12 +170,12 @@ void SectionWorker::TrainFiles() {
           scope->FindVar(in_var_names_->at(0))->Get<LoDTensor>();
       batch_size =
           tensor.lod().size() ? tensor.lod()[0].size() - 1 : tensor.dims()[0];
-      SEC << "input batch size: " << batch_size;
+      SEC_LOG << "input batch size: " << batch_size;
     }
 
     Scope* exe_scope = scope;
     if (section_id_ > 0 && platform::is_gpu_place(place_)) {
-      SEC << "CPU2GPU memory copy";
+      SEC_LOG << "CPU2GPU memory copy";
 
       if (scope->kids().empty()) {
         exe_scope = &scope->NewScope();
@@ -229,7 +197,7 @@ void SectionWorker::TrainFiles() {
       }
     }
 
-    SEC << "begin running ops";
+    SEC_LOG << "begin running ops";
 
     for (auto& op : ops_) {
       op->Run(*exe_scope, place_);
@@ -250,7 +218,7 @@ void SectionWorker::TrainFiles() {
       // place of
       // joint-out variables, and do transform as required
 
-      SEC << "GPU2CPU memory copy";
+      SEC_LOG << "GPU2CPU memory copy";
 
       for (const std::string& name : *out_var_names_) {
         const LoDTensor& src_tensor =
@@ -266,7 +234,6 @@ void SectionWorker::TrainFiles() {
     out_scope_queue_->Send(scope);
 
     if (sync_func_) {
-      SEC << "begin sync func";
       (*sync_func_)(scope);
     }
 
@@ -287,8 +254,7 @@ void SectionWorker::TrainFiles() {
 }
 
 void SectionWorker::TrainFilesWithProfiler() {
-  SEC << "begin TrainFiles-----section_id: " << section_id_
-      << " line_id: " << line_id_ << " worker_count: " << *worker_count_;
+  SEC_LOG << "begin section_worker TrainFiles with profiler";
   AutoSetCPUAffinity(true);
 
   int64_t step_cnt = 0;
@@ -330,7 +296,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       if (batch_size <= 0) {
         break;
       }
-      SEC << "read batch size: " << batch_size;
+      SEC_LOG << "read batch size: " << batch_size;
     } else {
       PADDLE_ENFORCE(
           in_var_names_->size(),
@@ -339,12 +305,12 @@ void SectionWorker::TrainFilesWithProfiler() {
           scope->FindVar(in_var_names_->at(0))->Get<LoDTensor>();
       batch_size =
           tensor.lod().size() ? tensor.lod()[0].size() - 1 : tensor.dims()[0];
-      SEC << "input batch size: " << batch_size;
+      SEC_LOG << "input batch size: " << batch_size;
     }
 
     Scope* exe_scope = scope;
     if (section_id_ > 0 && platform::is_gpu_place(place_)) {
-      SEC << "CPU2GPU memory copy";
+      SEC_LOG << "CPU2GPU memory copy";
       trans_timer.Resume();
       if (scope->kids().empty()) {
         exe_scope = &scope->NewScope();
@@ -367,7 +333,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       trans_timer.Pause();
     }
 
-    SEC << "begin running ops";
+    SEC_LOG << "begin running ops";
     cal_timer.Resume();
     int op_id = 0;
     for (auto& op : ops_) {
@@ -393,7 +359,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       // place of
       // joint-out variables, and do transform as required
 
-      SEC << "GPU2CPU memory copy";
+      SEC_LOG << "GPU2CPU memory copy";
       trans_timer.Resume();
       for (const std::string& name : *out_var_names_) {
         const LoDTensor& src_tensor =
@@ -410,7 +376,6 @@ void SectionWorker::TrainFilesWithProfiler() {
     out_scope_queue_->Send(scope);
 
     if (sync_func_) {
-      SEC << "begin sync func";
       sync_timer.Resume();
       (*sync_func_)(scope);
       sync_timer.Pause();
@@ -433,7 +398,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     out_scope_queue_->Close();
   }
   LOG(ERROR) << "log_for_profile"
-             << " card:" << line_id_ << " thread:" << thread_id_
+             << " card:" << pipeline_id_ << " thread:" << thread_id_
              << " section:" << section_id_ << " step_count:" << step_cnt
              << " batch_count:" << accum_num
              << " read_time:" << reader_timer.ElapsedUS()

@@ -40,22 +40,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// #define DEBUG
-
-#ifdef DEBUG
-#define HTJ LOG(ERROR) << __FUNCTION__ << ": "
-#else
-#define HTJ VLOG(3)
-#endif
-
-#ifdef DEBUG
-#define SEC                                                                \
-  LOG(ERROR) << __FUNCTION__ << ": "                                       \
-             << "s" << section_id_ << "l" << line_id_ << "t" << thread_id_ \
-             << ": "
-#else
-#define SEC VLOG(3)
-#endif
+#define SEC_LOG                                                              \
+  VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
+          << "]: "
 
 class PullDenseWorker {
  public:
@@ -231,7 +218,7 @@ class SyncFunctor {
   }
 
   int operator()(Scope* scope);
-  static std::vector<Scope*> line_scopes_;
+  static std::vector<Scope*> pipeline_scopes_;
   static uint64_t sync_flag_;
 
  protected:
@@ -250,13 +237,12 @@ class SyncFunctor {
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}
-  virtual ~SectionWorker() {}
+  ~SectionWorker() override {}
+
   void Initialize(const TrainerDesc& desc) override;
 
-  void SetDeviceIndex(int tid) override { line_id_ = tid; }
-
   void BindingDataFeedMemory() override {}
-  void CreateDeviceResource(const ProgramDesc& main_prog) override;
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
 
   void TrainFiles() override;
   void TrainFilesWithProfiler() override;
@@ -264,7 +250,9 @@ class SectionWorker : public DeviceWorker {
   void PrintFetchVars() override {}
 
   const platform::Place& place() const { return place_; }
+
   void SetSectionIndex(int section_id) { section_id_ = section_id; }
+  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetVarNames(const std::vector<std::string>& in_var_names,
                    const std::vector<std::string>& out_var_names) {
@@ -278,25 +266,26 @@ class SectionWorker : public DeviceWorker {
   void SetCountMutex(std::mutex* mutex) { worker_count_mutex_ = mutex; }
   void SetWorkerCount(int* worker_count) { worker_count_ = worker_count; }
   void SetSectionNum(int section_num) { section_num_ = section_num; }
-  void SetLineNum(int line_num) { line_num_ = line_num; }
+  void SetPipelineNum(int pipeline_num) { pipeline_num_ = pipeline_num; }
   void SetNextSectionPlace(const paddle::platform::Place& place) {
     next_section_place_ = place;
   }
   void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
 
-  // static int cpu_id_;
-  // static std::mutex cpu_affinity_mutex_;
   static std::atomic<int> cpu_id_;
 
  protected:
   void AutoSetCPUAffinity(bool reuse);
   int section_id_;
-  int line_id_;
+  int pipeline_id_;
   int section_num_;
-  int line_num_;
+  int pipeline_num_;
   int thread_id_;
-  ScopeQueue* in_scope_queue_;
-  ScopeQueue* out_scope_queue_;
+
+  // This worker will consume scope from in_scope_queue_
+  // and produce scope to out_scope_queue_
+  ScopeQueue* in_scope_queue_ = nullptr;
+  ScopeQueue* out_scope_queue_ = nullptr;
   const std::vector<std::string>* in_var_names_ = nullptr;
   const std::vector<std::string>* out_var_names_ = nullptr;
   std::mutex* worker_count_mutex_ = nullptr;

@@ -94,7 +94,7 @@ class DistMultiTrainer : public MultiTrainer {
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}
-  virtual ~PipelineTrainer() {}
+  ~PipelineTrainer() override {}
   void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
   void InitTrainerEnv(const ProgramDesc& main_program,
                       const platform::Place& place) override;
@@ -103,37 +103,43 @@ class PipelineTrainer : public TrainerBase {
   void Finalize() override;
 
  protected:
-  int rank_num_;  // number device to sync parameter
-  int line_num_;  // number of pipelines
+  int section_num_;
+  int pipeline_num_;
   int scope_queue_size_;
   int sync_steps_;
-  int section_num_;
-  PipelineWorkerParameter pipeline_config_;
 
+  SectionWorkerParameter pipeline_config_;
+
+  // The in/output var names for each section
   std::vector<std::unique_ptr<std::vector<std::string>>> in_var_names_;
   std::vector<std::unique_ptr<std::vector<std::string>>> out_var_names_;
 
-  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
+  // Counter for the running thread
   std::vector<std::vector<int*>> worker_count_;
+  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
 
-  // worker: [section_id][line_id][id]
+  // worker: [section_id][pipeline_id][thread_id]
   std::vector<std::vector<
       std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>>
       workers_;
   std::vector<std::thread> section_threads_;
 
+  // We use scope to maintain context info, and scopes
+  // will be deliverd between different sections.
   std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
-  std::vector<Scope*> line_scopes_;
+  std::vector<Scope*> pipeline_scopes_;
+
+  // The parameters that should be syncronized between different cards using
+  // nccl all-reduce
   std::shared_ptr<std::vector<std::string>> param_need_sync_;
-
-  std::vector<std::shared_ptr<DataFeed>> readers_;
-
   std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
   std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
 
-  void InitFirstScopeQueue(ScopeQueue* scope_queue, int line_id,
+  std::vector<std::shared_ptr<DataFeed>> readers_;
+
+  void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
                            const ProgramDesc& main_program);
-  void CopyParameters(const Scope& root_scope, int line_id);
+  void CopyParameters(const Scope& root_scope, int pipeline_id);
 };
 }  // namespace framework
 }  // namespace paddle

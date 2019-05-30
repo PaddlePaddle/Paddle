@@ -2615,7 +2615,7 @@ class PipelineOptimizer(object):
                  cut_list=None,
                  place_list=None,
                  concurrency_list=None,
-                 queue_size=20,
+                 queue_size=30,
                  sync_steps=1):
         # TODO: check properties
         self._optimizer = optimizer
@@ -2633,41 +2633,21 @@ class PipelineOptimizer(object):
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
             op_desc = block.desc.op(op_idx)
-            new_vars = set()
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var in vars:
-                #print("var:" + str(var))
                 if var in used_var_set:
                     continue
                 used_var_set.add(var)
-                #if block.desc.has_var_recursive(cpt.to_bytes(var)) or var == core.empty_var_name():#copy from append_backward_vars
-                #continue
                 source_var = main_program.block(0).var(str(var))
                 block._clone_variable(source_var, False)
-            """
-            for var in block.vars:
-                print("block var:"+str(var))
-            op_desc.infer_var_type(block.desc)
-            op_desc.infer_shape(block.desc)
-            for var in vars:
-                if var in new_vars:
-                    _infer_var_data_type_(var, block)
-            """
 
-    def split_ops(self, ops, cut_point_name, is_last):
+    def extract_forward_section_ops(self, ops, cut_point_name):
         """
-        forward
+        Extract ops in the forward part of program
         """
         output_names = set(cut_point_name)
-        #output_names = set([cut_point_name])
         relevant_op_flags = [True] * len(ops)
         for i, op in reversed(list(enumerate(ops))):
-            if is_last and op.desc.type(
-            ) == "print":  #Just for print log, will delete
-                continue
-            if "tmp_1" in op.desc.output_arg_names(
-            ) or "tmp_2" in op.desc.output_arg_names():  #temp for diff lr
-                continue
             if _some_in_set_(op.desc.output_arg_names(), output_names):
                 for name in op.desc.input_arg_names():
                     output_names.add(name)
@@ -2677,12 +2657,11 @@ class PipelineOptimizer(object):
         op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
         return op_path
 
-    def split_ops_backward(self, ops, cut_point_name):
+    def extract_backward_section_ops(self, ops, cut_point_name):
         """
-        backward
+        Extract ops in the backward part of program
         """
         input_names = set(cut_point_name)
-        #input_names = set([cut_point_name])
         relevant_op_flags = [True] * len(ops)
         for i, op in list(enumerate(ops)):
             if _some_in_set_(op.desc.input_arg_names(), input_names):
@@ -2691,6 +2670,7 @@ class PipelineOptimizer(object):
             elif _some_in_set_(
                     op.desc.output_arg_names(),
                     input_names) and len(op.desc.input_arg_names()) == 0:
+                # such as the fill_constant operation
                 for name in op.desc.output_arg_names():
                     input_names.add(name)
             else:
@@ -2717,7 +2697,7 @@ class PipelineOptimizer(object):
 
     def find_persistable_vars(self, ops, whole_parameters):
         """
-        workaround, should filter persistable vars
+        find the persistable input vars in current section
         """
         res = set()
         for op in ops:
@@ -2727,10 +2707,11 @@ class PipelineOptimizer(object):
                     res.add(var)
         return res
 
-    def split_program(self, main_program, joint_list):
+    def split_program(self, main_program, cut_list):
         """
-        Split a program by the joint node in 'joint_list'
-        Don't cover all cases now
+        Split a program by the cut node specified in 'cut_list'.
+        Only support simplest scenario now and extended scenario 
+        will be supported later.
         """
         programs = []
         backward_programs = []
@@ -2740,28 +2721,29 @@ class PipelineOptimizer(object):
             if v.persistable:
                 whole_parameters.append(v.name)
         used_op_set = set()
-        for i, cut_vars in enumerate(joint_list):
-            is_last = i == len(joint_list) - 1
+        for i, cut_vars in enumerate(cut_list):
+            is_last = i == len(cut_list) - 1
             program = {
                 "program": Program(),
                 "input_set": set(),
                 "output_set": set()
             }
-            cur_used_op_set = set()
 
             cut_var_names = [cut_var.name for cut_var in cut_vars]
             grad_cut_var_names = [
-                cut_var.name + "@GRAD" for cut_var in cut_vars
+                cut_var_name + "@GRAD" for cut_var_name in cut_var_names
             ]
-            cur_ops = self.split_ops(block.ops, cut_var_names, is_last)
+            cur_ops = self.extract_forward_section_ops(block.ops, cut_var_names)
             cur_ops = [op for op in cur_ops if op not in used_op_set]
             op_descs = [op.desc for op in cur_ops]
             for op_desc in op_descs:
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
             program["input_set"].update(
-                self.find_input_output(cur_ops, cut_var_names, True))
-            program["input_set"].update(self.find_persistable_vars(cur_ops))
+                self.find_input_output(
+                    cur_ops, cut_var_names, is_forward=True))
+            program["input_set"].update(
+                self.find_persistable_vars(cur_ops, whole_parameters))
             if not is_last:
                 program["output_set"].update(cut_var_names)
 
@@ -2774,8 +2756,8 @@ class PipelineOptimizer(object):
                     "input_set": set(),
                     "output_set": set()
                 }
-            cur_back_ops = self.split_ops_backward(block.ops,
-                                                   grad_cut_var_names)
+            cur_back_ops = self.extract_backward_section_ops(block.ops,
+                                                             grad_cut_var_names)
             cur_back_ops = [op for op in cur_back_ops if op not in used_op_set]
             op_descs = [op.desc for op in cur_back_ops]
             for op_desc in op_descs:
@@ -2786,7 +2768,8 @@ class PipelineOptimizer(object):
             b_program["input_set"].update(
                 self.find_persistable_vars(cur_back_ops, whole_parameters))
             b_program["output_set"].update(
-                self.find_input_output(cur_back_ops, grad_cut_var_names, False))
+                self.find_input_output(
+                    cur_back_ops, grad_cut_var_names, is_forward=False))
 
             used_op_set.update(cur_ops)
             used_op_set.update(cur_back_ops)
@@ -2808,12 +2791,11 @@ class PipelineOptimizer(object):
             self.create_vars(p["program"].block(0), program)
         program._pipeline_opt = {
             "trainer": "PipelineTrainer",
-            "device_worker": "Pipeline",
+            "device_worker": "Section",
             "section_program_list": program_list,
             "place_list": self._place_list + self._place_list[-2::-1],
             "concurrency_list":
             self._concurrency_list + self._concurrency_list[-2::-1],
-            #"concurrency_list": [2,1,5],
             "queue_size": self._queue_size,
             "sync_steps": self._sync_steps
         }
