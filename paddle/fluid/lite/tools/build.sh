@@ -51,8 +51,6 @@ function test_mobile {
 function build_test_server {
     mkdir -p ./build
     cd ./build
-    ls -R .
-    #export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/*/lib"
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
     cmake_x86
     build $TESTS_FILE
