@@ -72,6 +72,10 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
 
 
 class TestLayerNormdOp(unittest.TestCase):
+    def setUp(self):
+        self.use_cudnn = False
+        self.init_test_case()
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
