@@ -112,6 +112,7 @@ static framework::VariableNameMap CreateVarNameMap(
     return {};
   }
 
+  VLOG(2) << "CreateVarNameMap " << kIsInput;
   framework::VariableNameMap result;
 
   for (auto& var :
@@ -131,6 +132,7 @@ static framework::VariableNameMap CreateVarNameMap(
     }
   }
 
+  VLOG(2) << "CreateVarNameMap " << kIsInput << " done";
   return result;
 }
 
@@ -249,70 +251,7 @@ class PreparedOp {
                                       kernel_configs_));
   }
 
- public:
-  static std::string DebugString(
-      const std::string& name,
-      const std::vector<std::shared_ptr<VarBase>>& vars) {
-    std::stringstream ss;
-    ss << name << "{";
-
-    for (size_t i = 0; i < vars.size(); ++i) {
-      if (i > 0) ss << ", ";
-
-      if (vars[i] == nullptr) {
-        ss << "NULL";
-        continue;
-      }
-      ss << vars[i]->Name() << "[";
-      auto& var = vars[i]->Var();
-      if (!var.IsInitialized()) {
-        ss << "NOT_INITED_VAR";
-      } else if (var.IsType<framework::LoDTensor>()) {
-        auto& tensor = var.Get<framework::LoDTensor>();
-        ss << "LoDTensor<";
-        if (tensor.IsInitialized()) {
-          ss << framework::DataTypeToString(tensor.type()) << ", ";
-          ss << tensor.place() << ", ";
-          ss << "(" << tensor.dims() << ")";
-          ss << ">";
-        } else {
-          ss << "NOT_INITED";
-        }
-      } else {
-        ss << "UNKNOWN_TYPE";
-      }
-      ss << "]";
-    }
-
-    ss << "}";
-    return ss.str();
-  }
-
-  static std::string DebugString(const std::string& op_type,
-                                 const NameVarBaseMap& ins,
-                                 const NameVarBaseMap& outs) {
-    std::stringstream ss;
-    ss << "Op(" << op_type << "): ";
-
-    ss << "Inputs: ";
-
-    size_t i = 0;
-    for (auto& pair : ins) {
-      if (i > 0) ss << ", ";
-      ss << DebugString(pair.first, pair.second);
-      ++i;
-    }
-
-    ss << ",   Outputs: ";
-    i = 0;
-    for (auto& pair : outs) {
-      if (i > 0) ss << ", ";
-      ss << DebugString(pair.first, pair.second);
-      ++i;
-    }
-    return ss.str();
-  }
-
+ private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
   framework::OperatorWithKernel::OpKernelFunc func_;
@@ -371,7 +310,7 @@ void VarBase::SetGeneratedOp(OpBase* op) {
 }
 
 void VarBase::ClearGradient() {
-  if (grad_var_) {
+  if (grad_var_ && !stop_gradient_) {
     auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
     if (grad_t->IsInitialized()) {
       auto* dev_ctx =
@@ -472,7 +411,6 @@ void OpBase::RunOp(const std::unique_ptr<framework::OperatorBase>& op,
   }
 
   VLOG(3) << "Running Op " << op->Type();
-  VLOG(1) << PreparedOp::DebugString(op->Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
@@ -482,7 +420,6 @@ void OpBase::RunOp(const std::unique_ptr<framework::OperatorBase>& op,
   prepared_op.Run();
 
   VLOG(3) << "Running Op " << op->Type() << " ends";
-  VLOG(1) << PreparedOp::DebugString(op->Type(), ins, outs);
 }
 
 void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
@@ -718,12 +655,12 @@ bool AutoGradImpl::CheckBackwardInputs(OpBase* op) {
     for (auto& pair : in) {
       for (auto& var : pair.second) {
         if (var && !var->StopGradient()) {
-          return false;
+          return true;
         }
       }
     }
   }
-  return true;
+  return false;
 }
 
 void AutoGradImpl::CheckBackwardOutputs(OpBase* op) {
@@ -757,7 +694,7 @@ void AutoGradImpl::PrepareDeps() {
     q.pop();
     VLOG(2) << "Checking grads of op " << cur_op->Type();
 
-    if (CheckBackwardInputs(cur_op)) {
+    if (!CheckBackwardInputs(cur_op)) {
       // TODO(zjl): clear ops that do not need grad before running autograd
       VLOG(2) << "Stop checking preceding ops of " << cur_op->Type()
               << " because all of its backward inputs is stop_gradient=True";
@@ -845,7 +782,7 @@ void AutoGradImpl::operator()() {
       PADDLE_ENFORCE(iter != op_deps_.end(), "Cannot find op %s",
                      cur_op->Type());
       VLOG(2) << "Found preceding op of " << cur_op->Type();
-      if (--iter->second == 0) {
+      if (--(iter->second) == 0) {
         q.push(preceding_op);
         VLOG(2) << "Push preceding op " << preceding_op->Type()
                 << " into queue";

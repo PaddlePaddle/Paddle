@@ -56,12 +56,12 @@ class VarBase {
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
   const framework::Variable& GradVar() const {
-    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
+    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist");
     return grad_var_->var_;
   }
 
   framework::Variable* MutableGradVar() {
-    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
+    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist");
     return &(grad_var_->var_);
   }
 
@@ -245,7 +245,6 @@ class Tracer {
 
  private:
   std::unordered_map<size_t, std::shared_ptr<OpBase>> ops_;
-
   const framework::BlockDesc* block_desc_;
 };
 

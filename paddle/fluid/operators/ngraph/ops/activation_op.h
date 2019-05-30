@@ -113,6 +113,5 @@ void BuildTanhGradNode(
 REGISTER_NG_OP(gelu, BuildGeluNode);
 REGISTER_NG_OP(gelu_grad, BuildGeluGradNode);
 REGISTER_NG_OP(relu_grad, BuildReluGradNode);
-REGISTER_NG_OP(sqrt, BuildUnaryNode<ngraph::op::Sqrt>);
 REGISTER_NG_OP(square, BuildSquareNode);
 REGISTER_NG_OP(tanh_grad, BuildTanhGradNode);
