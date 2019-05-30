@@ -150,7 +150,6 @@ void PipelineTrainer::CopyParameters(const Scope& root_scope, int pipeline_id) {
         pipeline_scopes_[pipeline_id]->Var(name)->GetMutable<LoDTensor>();
     platform::Place place = platform::CUDAPlace(pipeline_id);
     TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
-               *platform::DeviceContextPool::Instance().Get(place),
                static_cast<Tensor*>(gpu_tensor));
   }
 }
@@ -258,16 +257,10 @@ void PipelineTrainer::Finalize() {
   }
   for (const auto& var : *param_need_sync_) {
     auto* root_tensor = root_scope_->Var(var)->GetMutable<LoDTensor>();
-    auto& thread_tensor = pipeline_scopes_[0]->FindVar(var)->Get<LoDTensor>();
-    // TODO(hutuxian): use TensorCopy instead
-    int res = cudaMemcpy(root_tensor->mutable_data<float>(platform::CPUPlace()),
-                         thread_tensor.data<float>(),
-                         thread_tensor.numel() * sizeof(float),
-                         cudaMemcpyDeviceToHost);
-    if (res != 0) {
-      printf("cuda copy error\n");
-      exit(1);
-    }
+    // TODO(hutuxian): Add a final all-reduce?
+    const auto& thread_tensor =
+        pipeline_scopes_[0]->FindVar(var)->Get<LoDTensor>();
+    TensorCopySync(thread_tensor, platform::CPUPlace(), root_tensor);
   }
   dataset_ptr_->DestroyReaders();
   root_scope_->DropKids();

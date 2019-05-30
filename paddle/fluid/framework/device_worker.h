@@ -132,7 +132,6 @@ class CPUWorkerBase : public DeviceWorker {
   virtual void TrainFiles() = 0;
   virtual void TrainFilesWithProfiler() {}
   virtual void PrintFetchVars() {}
-  virtual void SetSectionIndex(int section_id) {}
   virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
 
  protected:

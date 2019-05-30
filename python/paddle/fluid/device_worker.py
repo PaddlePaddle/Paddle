@@ -219,7 +219,9 @@ class Section(DeviceWorker):
             elif isinstance(place, core.CUDAPinnedPlace):
                 cfg.place = cfg.CUDAPinnedPlace
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(
+                    "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
+                )
 
             cfg.concurrency = pipeline_opt["concurrency_list"][i]
             for var in program["input_set"]:

@@ -23,7 +23,7 @@ from paddle.fluid.framework import Program, Variable, name_scope, default_main_p
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward, _some_in_set_
+from .backward import append_backward, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
@@ -2625,10 +2625,6 @@ class PipelineOptimizer(object):
         self._queue_size = queue_size
         self._sync_steps = sync_steps
 
-    def reader_num_each(self):
-        # all readers are in the 1st section
-        return self._concurrency_list[0]
-
     def create_vars(self, block, main_program):
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
@@ -2731,7 +2727,8 @@ class PipelineOptimizer(object):
 
             cut_var_names = [cut_var.name for cut_var in cut_vars]
             grad_cut_var_names = [
-                cut_var_name + "@GRAD" for cut_var_name in cut_var_names
+                _append_grad_suffix_(cut_var_name)
+                for cut_var_name in cut_var_names
             ]
             cur_ops = self.extract_forward_section_ops(block.ops, cut_var_names)
             cur_ops = [op for op in cur_ops if op not in used_op_set]

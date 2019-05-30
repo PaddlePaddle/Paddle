@@ -810,6 +810,8 @@ class Executor(object):
 
         # Adjust the reader size for small file num
         if program._pipeline_opt:
+            dataset.set_thread(thread *
+                               program._pipeline_opt["concurrency_list"][0])
             file_size = len(dataset.dataset.get_filelist())
             if file_size < thread:
                 thread = file_size

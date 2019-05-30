@@ -75,22 +75,12 @@ void SyncFunctor::Synchronize() {
           tensor->mutable_data<float>(nccl_ctx_map_->DevCtx(i)->GetPlace());
       const int numel = tensor->numel();
 
-      // TBD: inplace is more clear, but inplace scale is not work
-      LoDTensor* tensor_o =
-          pipeline_scopes_[i]->Var(name + "_")->GetMutable<LoDTensor>();
-      tensor_o->mutable_data<float>(nccl_ctx_map_->DevCtx(i)->GetPlace());
-      TensorCopy(*static_cast<const Tensor*>(tensor),
-                 nccl_ctx_map_->DevCtx(i)->GetPlace(),
-                 *nccl_ctx_map_->DevCtx(i), static_cast<Tensor*>(tensor_o));
-      nccl_ctx_map_->DevCtx(i)->Wait();
-
       paddle::framework::AttributeMap attrs;
       attrs.insert({"scale", static_cast<float>(1. / rank_num_)});
-      auto scale_op = framework::OpRegistry::CreateOp(
-          "scale", {{"X", {name + "_"}}}, {{"Out", {name}}}, attrs);
+      auto scale_op = framework::OpRegistry::CreateOp("scale", {{"X", {name}}},
+                                                      {{"Out", {name}}}, attrs);
       scale_op->Run(*(pipeline_scopes_[i]),
                     nccl_ctx_map_->DevCtx(i)->GetPlace());
-
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           data, data, numel, ncclFloat, ncclSum, nccl_ctx.comm(),
           nccl_ctx.stream()));
