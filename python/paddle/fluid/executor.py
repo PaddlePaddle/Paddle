@@ -313,7 +313,7 @@ class Executor(object):
 
           use_cuda = True
           place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
+          exe = fluid.Executor(lace)
 
           train_program = fluid.Program()
           startup_program = fluid.Program()
