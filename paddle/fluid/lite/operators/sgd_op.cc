@@ -30,13 +30,14 @@ bool SGDOpLite::CheckShape() const {
 
 bool SGDOpLite::InferShape() const {
   auto lr_dims = param_.LearningRate->dims().data();
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
   CHECK_EQ_OR_FALSE(framework::product(lr_dims), 1);
+#endif
   param_.ParamOut->Resize(param_.Param->dims());
   return true;
 }
 
 bool SGDOpLite::AttachImpl(const OpDesc& opdesc, lite::Scope* scope) {
-  CHECK_EQ(opdesc.Inputs().size(), 3UL);
   auto Param_name = opdesc.Input("Param").front();
   auto LearningRate_name = opdesc.Input("LearningRate").front();
   auto Grad_name = opdesc.Input("Grad").front();

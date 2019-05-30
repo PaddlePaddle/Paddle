@@ -31,16 +31,18 @@ bool MulOpLite::CheckShape() const {
   CHECK_GT_OR_FALSE(x_dims.size(), static_cast<size_t>(param_.x_num_col_dims));
   CHECK_GT_OR_FALSE(y_dims.size(), static_cast<size_t>(param_.y_num_col_dims));
 
-  // auto x_mat_dims =
-  //     framework::flatten_to_2d(x_dims.data(), param_.x_num_col_dims);
-  // auto y_mat_dims =
-  //     framework::flatten_to_2d(y_dims.data(), param_.y_num_col_dims);
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+  auto x_mat_dims =
+      framework::flatten_to_2d(x_dims.data(), param_.x_num_col_dims);
+  auto y_mat_dims =
+      framework::flatten_to_2d(y_dims.data(), param_.y_num_col_dims);
 
-  // PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
-  //                   "First matrix's width must be equal with second matrix's
-  //                   "
-  //                   "height. %s, %s",
-  //                   x_mat_dims[1], y_mat_dims[0]);
+  PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
+                    "First matrix's width must be equal with second matrix's"
+                    "height. %s, %s",
+                    x_mat_dims[1], y_mat_dims[0]);
+#endif
+
   return true;
 }
 
