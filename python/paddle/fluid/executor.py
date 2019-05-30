@@ -701,8 +701,8 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
-        cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         if use_program_cache:
+            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
             cached_program = self._get_program_cache(cache_key)
             cached_ctx = self._get_ctx_cache(cache_key)
             cached_scope = self._get_scope_cache(cache_key)
