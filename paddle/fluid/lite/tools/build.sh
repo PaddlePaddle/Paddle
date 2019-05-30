@@ -47,10 +47,11 @@ function test_mobile {
     local file=$1
 }
 
-# Build the code and run lite server tests.
+# Build the code and run lite server tests. This is executed in the CI system.
 function build_test_server {
     mkdir -p ./build
     cd ./build
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/*/lib"
     cmake_x86
     build $TESTS_FILE
     test_lite $TESTS_FILE
