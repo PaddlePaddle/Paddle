@@ -5854,6 +5854,7 @@ def hsigmoid(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='int64')
             out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
@@ -8700,6 +8701,7 @@ def pow(x, factor=1.0, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.pow(x, factor=2.0)
     """
@@ -8763,6 +8765,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
