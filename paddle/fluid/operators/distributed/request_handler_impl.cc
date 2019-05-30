@@ -100,6 +100,12 @@ bool RequestGetHandler::Handle(const std::string& varname,
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(1) << "SYNC: Recv FETCH_BARRIER_MESSAGE with Trainer=" << trainer_id;
       rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    } else if (varname == BATCH_BARRIER_MESSAGE) {
+      VLOG(1) << "SYNC: Recv BATCH_BARRIER_MESSAGE with Trainer=" << trainer_id;
+      rpc_server_->IncreaseBatchBarrier(kRequestSend);
+    } else if (varname == COMPLETE_MESSAGE) {
+      VLOG(1) << "SYNC: Recv COMPLETE_MESSAGE with Trainer=" << trainer_id;
+      rpc_server_->Complete();
     } else {
       VLOG(1) << "SYNC: processing sending var=" << varname
               << " wait condition begin";
