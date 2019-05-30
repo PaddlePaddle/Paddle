@@ -107,9 +107,11 @@ struct Instruct {
   Instruct(const std::shared_ptr<OpLite>& op,
            std::unique_ptr<KernelBase>&& kernel)
       : op_(op), kernel_(std::move(kernel)) {
+#ifdef LITE_WITH_PROFILE
     profile_id_ = profile::BasicProfiler<profile::BasicTimer>::Global()
                       .NewRcd(kernel_->SerializedKernelType())
                       .id();
+#endif  // LITE_WITH_PROFILE
   }
 
   void Run() {

@@ -8,6 +8,10 @@ function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
+function cmake_x86_for_CI {
+    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE
+}
+
 function cmake_gpu {
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
 }
@@ -51,7 +55,7 @@ function build_test_server {
     mkdir -p ./build
     cd ./build
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
-    cmake_x86
+    cmake_x86_for_CI
     build $TESTS_FILE
     test_lite $TESTS_FILE
 }

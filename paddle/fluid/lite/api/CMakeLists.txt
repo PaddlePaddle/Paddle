@@ -32,7 +32,7 @@ set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
 
 if(WITH_TESTING)
 lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
-# add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
+add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif(WITH_TESTING)
 
 # lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
