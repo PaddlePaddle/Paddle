@@ -19,7 +19,7 @@ endif()
 
 proto_library(framework_proto_lite SRCS framework.proto)
 
-cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite)
+cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite)
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
 cc_library(scope_lite SRCS scope.cc DEPS ${tensor_lite})
