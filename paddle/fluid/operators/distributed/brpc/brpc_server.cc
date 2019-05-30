@@ -66,11 +66,11 @@ class BRPCServiceImpl : public SendRecvService {
           rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
     }
 
-    it = rpc_call_map.find(distributed::kBatchBarrierRPC);
+    it = rpc_call_map.find(distributed::kSendBarrier);
     if (it != rpc_call_map.end()) {
       request_send_barrier_h_ = it->second;
       send_barrier_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kBatchBarrierRPC)));
+          rpc_server_->GetThreadNum(distributed::kSendBarrier)));
     }
 
     it = rpc_call_map.find(distributed::kRequestGetMonomerVariable);
