@@ -21,6 +21,7 @@ add_subdirectory(jit)
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
     add_subdirectory(distributed_ops)
+    add_subdirectory(collective)
 endif()
 
 add_subdirectory(reader)
