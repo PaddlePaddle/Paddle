@@ -20,9 +20,6 @@ set(ARMLINUX TRUE)
 add_definitions(-DLITE_WITH_LINUX)
 set(CMAKE_SYSTEM_NAME Linux)
 
-# TODO(TJ): support v7 later
-set(ARM_TARGET_ARCH_ABI "arm64-v8a")
-
 if(ARM_TARGET_ARCH_ABI STREQUAL "arm64-v8a")
     set(CMAKE_SYSTEM_PROCESSOR aarch64)
     set(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc")
@@ -33,6 +30,12 @@ if(ARM_TARGET_ARCH_ABI STREQUAL "arm64-v8a")
     message(STATUS "NEON is enabled on arm64-v8a")
 endif()
 
+if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a"
+    OR ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a-hf")
+    message(FATAL_ERROR "Not supported building arm linux arm-v7 yet")
+endif()
+
+# TODO(TJ): make sure v7 works
 if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a")
     set(CMAKE_SYSTEM_PROCESSOR arm)
     set(CMAKE_C_COMPILER "arm-linux-gnueabi-gcc")

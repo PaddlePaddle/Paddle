@@ -44,8 +44,6 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
         set(ARCH_ABI "arm64-v8a" CACHE STRING "Choose android platform")
     endif()
     
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
     include(cross_compiling/host)
     include(cross_compiling/armlinux)
     include(cross_compiling/android)

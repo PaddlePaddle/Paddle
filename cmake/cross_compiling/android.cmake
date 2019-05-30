@@ -35,6 +35,11 @@ if(NOT DEFINED ANDROID_STL_TYPE)
     set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type")
 endif()
 
+# TODO(TJ): enable me
+if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a-hf")
+    message(FATAL_ERROR "Not supported building android armeabi-v7a-hf yet")
+endif()
+
 set(ANDROID_ARCH_ABI ${ARM_TARGET_ARCH_ABI} CACHE STRING "Choose Android Arch ABI")
 
 if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a-softfp")
