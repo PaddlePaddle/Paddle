@@ -4601,21 +4601,24 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
+            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
             fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
 
-            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
-            fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
+            fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
     helper = LayerHelper('reduce_sum', **locals())
@@ -4658,22 +4661,24 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
+            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
-            fluid.layers.reduce_mean(
-                x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
 
-            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_mean(x, dim=[1, 2]) # [2.5, 6.5]
-            fluid.layers.reduce_mean(x, dim=[0, 1]) # [4.0, 5.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
+            fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4714,21 +4719,24 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
+            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_max(x)  # [0.9]
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
             fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
 
-            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_max(x, dim=[1, 2]) # [4.0, 8.0]
-            fluid.layers.reduce_max(x, dim=[0, 1]) # [7.0, 8.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
+            fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4769,21 +4777,24 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
+            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_min(x)  # [0.1]
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
             fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
 
-            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_min(x, dim=[1, 2]) # [1.0, 5.0]
-            fluid.layers.reduce_min(x, dim=[0, 1]) # [1.0, 2.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
+            fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4824,22 +4835,25 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
+            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
             fluid.layers.reduce_prod(x, dim=1,
                                      keep_dim=True)  # [[0.027], [0.0084]]
 
-            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_prod(x, dim=[1, 2]) # [24.0, 1680.0]
-            fluid.layers.reduce_prod(x, dim=[0, 1]) # [105.0, 384.0]
+            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
+            fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4980,16 +4994,21 @@ def split(input, num_or_sections, dim=-1, name=None):
     Examples:
         .. code-block:: python
 
-            # x is a Tensor variable with shape [3, 9, 5]:
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
-            x0.shape  # [3, 3, 5]
-            x1.shape  # [3, 3, 5]
-            x2.shape  # [3, 3, 5]
-            x0, x1, x2 = fluid.layers.split(
-                x, num_or_sections=[2, 3, 4], dim=1)
-            x0.shape  # [3, 2, 5]
-            x1.shape  # [3, 3, 5]
-            x2.shape  # [3, 4, 5]
+            import paddle.fluid as fluid
+
+            # input is a variable which shape is [-1, 3, 9, 5]
+            input = fluid.layers.data(
+                 name="input", shape=[3, 9, 5], dtype="float32")
+
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=2)
+            # x0.shape [-1, 3, 3, 5]
+            # x1.shape [-1, 3, 3, 5]
+            # x2.shape [-1, 3, 3, 5]
+
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
+            # x0.shape [-1, 3, 2, 5]
+            # x1.shape [-1, 3, 3, 5]
+            # x2.shape [-1, 3, 4, 5]
     """
     helper = LayerHelper('split', **locals())
     input_shape = input.shape
@@ -6407,11 +6426,13 @@ def sampled_softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
-            logits = fluid.layers.data(name='data', shape=[256], dtype='float32')
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(name='data', shape=[256], dtype='float32')
             label = fluid.layers.data(name='label', shape=[5], dtype='int64')
-            fc = fluid.layers.fc(input=data, size=100)
+            fc = fluid.layers.fc(input=input, size=100)
             out = fluid.layers.sampled_softmax_with_cross_entropy(
-                logits=fc, label=label, num_samples=25)
+                      logits=fc, label=label, num_samples=25)
     """
     helper = LayerHelper('sample_logits', **locals())
     samples = helper.create_variable_for_type_inference(dtype='int64')
@@ -7863,8 +7884,13 @@ def scatter(input, index, updates, name=None):
 
         .. code-block:: python
 
-            output = fluid.layers.scatter(input, index, updates)
+            import paddle.fluid as fluid
 
+            input = fluid.layers.data(name='data', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+            index = fluid.layers.data(name='index', shape=[3], dtype='int64', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+
+            output = fluid.layers.scatter(input, index, updates)
     """
     helper = LayerHelper('scatter', **locals())
     dtype = helper.input_dtype()
@@ -8079,8 +8105,12 @@ def selu(x, scale=None, alpha=None, name=None):
     Examples:
 
         .. code-block:: python
-
-            output = fluid.layers.selu(x)
+             
+            import paddle.fluid as fluid
+          
+            input = fluid.layers.data(
+                 name="input", shape=[3, 9, 5], dtype="float32")
+            output = fluid.layers.selu(input)
     """
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -8907,9 +8937,11 @@ def soft_relu(x, threshold=40.0, name=None):
 
     Examples:
 
-        .. code-block:: python
-
-            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
+        .. code-block:: python 
+ 
+            import paddle.fluid as fluid
+   
+            x = fluid.layers.data(name="x", shape=[3,16,16], dtype="float32")
             y = fluid.layers.soft_relu(x, threshold=20.0)
     """
     helper = LayerHelper('soft_relu', **locals())
@@ -9528,14 +9560,16 @@ def slice(input, axes, starts, ends):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+ 
             starts = [1, 0, 2]
             ends = [3, 3, 4]
             axes = [0, 1, 2]
 
-            input = layers.data(
+            input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
@@ -9567,9 +9601,11 @@ def shape(input):
     Examples:
         .. code-block:: python
 
-            input = layers.data(
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
-            out = layers.shape(input)
+            out = fluid.layers.shape(input)
     """
 
     helper = LayerHelper('shape', **locals())
@@ -9650,6 +9686,14 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name="X", shape=[1, 2, 5, 5], dtype='float32')
+            y = fluid.layers.scale(x, scale = 2.0, bias = 1.0)
     """
 
     helper = LayerHelper('scale', **locals())
@@ -9725,6 +9769,43 @@ for func in [
             "act (basestring|None): Activation applied to the output.",
             "name (basestring|None): Name of the output."
         ])
+    func.__doc__ = func.__doc__ + """
+
+Examples:
+  .. code-block:: python
+    
+    import paddle.fluid as fluid
+    # example 1: shape(x) = (2, 3, 4, 5), shape(y) = (2, 3, 4, 5)
+    x0 = fluid.layers.data(name="x0", shape=[2, 3, 4, 5], dtype='float32')
+    y0 = fluid.layers.data(name="y0", shape=[2, 3, 4, 5], dtype='float32')
+    z0 = fluid.layers.%s(x0, y0)
+
+    # example 2: shape(X) = (2, 3, 4, 5), shape(Y) = (5)
+    x1 = fluid.layers.data(name="x1", shape=[2, 3, 4, 5], dtype='float32')
+    y1 = fluid.layers.data(name="y1", shape=[5], dtype='float32')
+    z1 = fluid.layers.%s(x1, y1)
+
+    # example 3: shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+    x2 = fluid.layers.data(name="x2", shape=[2, 3, 4, 5], dtype='float32')
+    y2 = fluid.layers.data(name="y2", shape=[4, 5], dtype='float32')
+    z2 = fluid.layers.%s(x2, y2, axis=2)
+
+    # example 4: shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+    x3 = fluid.layers.data(name="x3", shape=[2, 3, 4, 5], dtype='float32')
+    y3 = fluid.layers.data(name="y3", shape=[3, 4], dtype='float32')
+    z3 = fluid.layers.%s(x3, y3, axis=1)
+
+    # example 5: shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+    x4 = fluid.layers.data(name="x4", shape=[2, 3, 4, 5], dtype='float32')
+    y4 = fluid.layers.data(name="y4", shape=[2], dtype='float32')
+    z4 = fluid.layers.%s(x4, y4, axis=0)
+
+    # example 6: shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+    x5 = fluid.layers.data(name="x5", shape=[2, 3, 4, 5], dtype='float32')
+    y5 = fluid.layers.data(name="y5", shape=[2], dtype='float32')
+    z5 = fluid.layers.%s(x5, y5, axis=0)
+    """ % (func.__name__, func.__name__, func.__name__, func.__name__,
+           func.__name__, func.__name__)
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
