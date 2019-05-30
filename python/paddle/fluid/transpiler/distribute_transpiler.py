@@ -396,11 +396,7 @@ class DistributeTranspiler(object):
             return
 
         self.trainer_num = trainers
-
-        if self.config.sync_mode is None:
-            self.sync_mode = sync_mode
-        else:
-            self.sync_mode = self.config.sync_mode
+        self.sync_mode = sync_mode
 
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
