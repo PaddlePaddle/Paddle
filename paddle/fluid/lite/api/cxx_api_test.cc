@@ -81,7 +81,7 @@ TEST(CXXApi, save_model) {
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-TEST(CXXTrainer, train) {
+/*TEST(CXXTrainer, train) {
   Place prefer_place({TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)});
   std::vector<Place> valid_places({prefer_place});
   auto scope = std::make_shared<lite::Scope>();
@@ -111,7 +111,7 @@ TEST(CXXTrainer, train) {
   data0[0] = 0;
 
   exe.Run();
-}
+}*/
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 }  // namespace lite
