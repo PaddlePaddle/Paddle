@@ -30,7 +30,7 @@ class BRPCServiceImpl : public SendRecvService {
   explicit BRPCServiceImpl(const HandlerMap& rpc_call_map,
                            distributed::RPCServer* rpc_server)
       : rpc_server_(rpc_server) {
-    VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map.size();
+    VLOG(1) << "BRPCServiceImpl size: " << rpc_call_map.size();
     auto it = rpc_call_map.find(distributed::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_send_h_ = it->second;
@@ -339,14 +339,14 @@ class BRPCServiceImpl : public SendRecvService {
   }
 
   void SendBarrier(google::protobuf::RpcController* cntl_butil,
-                   const VariableMessage* request, VoidMessage* response,
+                   const VariableMessage* request, VariableMessage* response,
                    google::protobuf::Closure* done) override {
     send_barrier_threads_->Run(
         [=] { _SendBarrier(cntl_butil, request, response, done); });
   }
 
   void _SendBarrier(google::protobuf::RpcController* cntl_butil,
-                    const VariableMessage* request, VoidMessage* response,
+                    const VariableMessage* request, VariableMessage* response,
                     google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_send_barrier_h_ != nullptr,
                    "RequestGet handler should be registed first!");
