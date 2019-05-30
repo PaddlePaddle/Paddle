@@ -1,6 +1,11 @@
-## Paddle-lite-mobile交叉编译指导
+
+# Paddle-lite-mobile交叉编译指导
 
 Paddle-lite-mobile开发环境目前推荐在Docker容器里，在容器里进行交叉编译安卓版本的Native C/C++代码，然后将可执行程序`adb push`到安卓手机上进行调试。
+## Android
+
+TBD
+
 ### 1. 拉取代码创建容器
 
 ```shell
@@ -8,7 +13,7 @@ $ git clone --recursive https://github.com/PaddlePaddle/Paddle.git
 $ git checkout incubate/lite
 ```
 
-先根据仓库下的`Dockerfile.android`文件生成对应的环境镜像。
+先根据仓库下的`Dockerfile.cross_compile`文件生成对应的环境镜像。
 
 ```shell
 $ cd <paddle-repo>
@@ -37,7 +42,6 @@ $ ddocker run -v <your-directory-path>:<your-directory-path> -tdi paddle/paddle-
 $ docker exec -it <container_id> bash
 $ cd <paddle-repo>
 ```
-
 ### 2. 交叉编译Paddle-lite-mobile的Native C/C++程序
 
 创建名为`make_paddle_lite_mobile.sh`的文件：
@@ -66,8 +70,10 @@ cmake .. \
   -DLITE_WITH_CUDA=OFF \
   -DWITH_TESTING=ON
 
-# fc层单测make test_fc_compute_arm -j
-# 小模型单测#make cxx_api_lite_bin
+# fc层单测
+make test_fc_compute_arm -j
+# 小模型单测
+#make cxx_api_lite_bin
 
 ```
 
@@ -82,24 +88,33 @@ $ adb push ./build/paddle/fluid/lite/api/test_cxx_api_lite /data/local/tmp/
 $ adb shell # 若多台手机设备先用命令adb devices查看目标手机的序列码
 $ cd /data/local/tmp
 
-# 执行编译的程序$ ./test_cxx_api_lite
+# 执行编译的程序
+$ ./test_cxx_api_lite
 ```
+## ARM Linux
 
-# runtime
+# 在模拟器中运行
 
 TBD
+## Android
+
+## ARM Linux
 
 
-### Q&A
+
+# Q&A
 
 #### 1. adb命令找不到：adb: command not found  
 解决：`sudo apt install -y adb`   
 
 #### 2. 明明手机USB连接电脑却显示找不到设备：`error: device not found`  
-解决：第一步`lsusb`命令查看插上拔下手机前后usb设备的变化情况，确定手机设备的ID。  假设`lsusb`命令执行显示`Bus 003 Device 011: ID 2717:9039  `，则ID是`0x2717`；  
+解决：
+第一步`lsusb`命令查看插上拔下手机前后usb设备的变化情况，确定手机设备的ID。  假设`lsusb`命令执行显示`Bus 003 Device 011: ID 2717:9039  `，则ID是`0x2717`；  
 第二步：创建`adb_usb.ini`文件并追加写入ID：`echo 0x2717 >> ~/.android/adb_usb.ini`；  
-第三步：给手机添加权限`sudo vim /etc/udev/rules.d/70-android.rules`，根据第一步骤取得的`ATTRS{idVendor}`和`ATTRS{idProduct}`这两个属性值，在该文件加入该设备信息： `SUBSYSTEM=="usb", ATTRS{idVendor}=="2717", ATTRS{idProduct}=="9039",MODE="0666"`；  
-第四步：重启USB服务：```shell
+第三步：给手机添加权限`sudo vim /etc/udev/rules.d/70-android.rules`，根据第一步骤取得的`ATTRS{idVendor}`和`ATTRS{idProduct}`这两个属性值，在该文件加入该设备信息：
+ `SUBSYSTEM=="usb", ATTRS{idVendor}=="2717", ATTRS{idProduct}=="9039",MODE="0666"`；  
+第四步：重启USB服务：
+```shell
 $ sudo chmod a+rx /etc/udev/rules.d/70-android.rules
 $ sudo service udev restart
 ```
