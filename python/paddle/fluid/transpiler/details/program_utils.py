@@ -157,29 +157,33 @@ def op_to_code(op):
     return op_str
 
 
-def block_to_code(block, block_idx):
+def block_to_code(block, block_idx, fout=None):
     indent = 0
 
-    print("{0}{1} // block {2}".format(
-        get_indent_space(indent), '{', block_idx))
+    print(
+        "{0}{1} // block {2}".format(get_indent_space(indent), '{', block_idx),
+        file=fout)
 
     indent += 1
     # sort all vars
     all_vars = sorted(six.iteritems(block.vars), key=lambda x: x[0])
     for var in all_vars:
-        print("{}{}".format(get_indent_space(indent), variable_to_code(var[1])))
+        print(
+            "{}{}".format(get_indent_space(indent), variable_to_code(var[1])),
+            file=fout)
 
     if len(all_vars) > 0:
-        print("")
+        print("", file=fout)
 
     for op in block.ops:
-        print("{}{}".format(get_indent_space(indent), op_to_code(op)))
+        print(
+            "{}{}".format(get_indent_space(indent), op_to_code(op)), file=fout)
     indent -= 1
 
-    print("{0}{1}".format(get_indent_space(indent), '}'))
+    print("{0}{1}".format(get_indent_space(indent), '}'), file=fout)
 
 
-def program_to_code(prog):
+def program_to_code(prog, fout=None):
     """
     Print readable codes of fluid program.
 
@@ -191,5 +195,5 @@ def program_to_code(prog):
     """
     block_idx = 0
     for block in prog.blocks:
-        block_to_code(block, block_idx)
+        block_to_code(block, block_idx, fout)
         block_idx += 1
