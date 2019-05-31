@@ -48,21 +48,36 @@ class BackWardOpDepsPass : public ir::Pass {
   void ApplyImpl(ir::Graph* graph) const override {
     // NOTE: The operator nodes should be in topology order.
     std::vector<details::OpHandleBase*> backward_op_handles;
-    std::vector<ir::Node*> opt_nodes;
+    std::vector<details::OpHandleBase*> all_opt_handles;
+    details::ParamsAndGrads params_grads;
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(*graph);
     for (auto& node : topo_nodes) {
       // node->Wrapper<details::OpHandleBase>().DebugString();
       if (!node->Op()) continue;
 
-      GetBackWardOpHandles(node, &backward_op_handles);
-      GetOptHandles(node, &opt_nodes);
+      GetBackWardOpHandles(node, &backward_op_handles, &params_grads);
+      GetOptHandles(node, &all_opt_handles);
     }
 
     VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
-             << ", opt_handles size:" << opt_nodes.size();
-    if (backward_op_handles.size() <= 1 || opt_nodes.size() <= 1) {
+             << ", opt_handles size:" << all_opt_handles.size();
+
+    if (backward_op_handles.size() <= 1 || all_opt_handles.size() <= 1) {
       VLOG(10) << "need not backward_op_deps_pass";
       return;
+    }
+
+    std::vector<details::OpHandleBase*> head_opt_handles;
+    GetHeadOptHandles(all_opt_handles, &head_opt_handles);
+
+    if (head_opt_handles.size() <= 1) {
+      VLOG(10) << "need not backward_op_deps_pass";
+      return;
+    }
+
+    VLOG(10) << "add optimize deps";
+    for (size_t i = 1; i < head_opt_handles.size(); ++i) {
+      AddDep(graph, head_opt_handles[i - 1], head_opt_handles[i]);
     }
 
     VLOG(10) << "add backward deps";
@@ -70,18 +85,46 @@ class BackWardOpDepsPass : public ir::Pass {
       AddDep(graph, backward_op_handles[i - 1], backward_op_handles[i]);
     }
 
-    std::vector<details::OpHandleBase*> opt_handles;
-    TravelOptGraph(opt_nodes, &opt_handles);
-    PADDLE_ENFORCE_EQ(opt_nodes.size(), opt_handles.size());
-
-    VLOG(10) << "add optimize deps";
-    for (size_t i = 1; i < opt_handles.size(); ++i) {
-      AddDep(graph, opt_handles[i - 1], opt_handles[i]);
-    }
-
     VLOG(10) << "add deps between backward and optimze:";
     AddDep(graph, backward_op_handles[backward_op_handles.size() - 1],
-           opt_handles[0]);
+           head_opt_handles[0]);
+  }
+
+  // get only deps backwards ops
+  /*
+  void GetHeadOptHandles(const std::vector<details::OpHandleBase*>& ops,
+          std::vector<details::OpHandleBase*>* r,
+          details::ParamsAndGrads *params_grads) const{
+      for(auto op:ops){
+          for(auto var:op->Inputs()){
+              auto gen_op = var->GeneratedOp();
+
+              if(!gen_op) continue;
+
+              if(gen_op->Name() == "all_reduce"
+                      || gen_op->Name() == "fused_all_reduce"){
+                  r->emplace_back(op);
+                  break;
+              }
+          }
+      }
+
+      int order=0;
+      std::unordered_map<std::string,int> grad_set;
+      for(auto& p_g:params_grads){
+          grad_set[p_g.second] = order++;
+      }
+
+      for(
+  }
+  */
+
+  void GetHeadOptHandles(ir::Graph* graph,
+                         std::vector<details::OpHandleBase*>* r) {}
+
+  /*
+  // get the ops by depth
+  void GetDescendants(details:OpHandleBase* op){
   }
 
   void TravelOptGraph(const std::vector<ir::Node*>& nodes,
@@ -129,10 +172,11 @@ class BackWardOpDepsPass : public ir::Pass {
       VisitNode(o, visit, v_arr, order);
     }
   }
+*/
 
   void GetBackWardOpHandles(
-      ir::Node* node,
-      std::vector<details::OpHandleBase*>* backward_op_handles) const {
+      ir::Node* node, std::vector<details::OpHandleBase*>* backward_op_handles,
+      details::ParamsAndGrads* params_grads) const {
     try {
       bool is_bk_op =
           static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -150,12 +194,20 @@ class BackWardOpDepsPass : public ir::Pass {
 
       backward_op_handles->emplace_back(
           &node->Wrapper<details::OpHandleBase>());
+
+      for (size_t i = 0; i < backward_vars.size(); i += 2) {
+        VLOG(10) << "Trainable parameter: " << backward_vars[i]
+                 << ", gradient: " << backward_vars[i + 1];
+
+        params_grads->emplace_back(std::make_pair(
+            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
+      }
     } catch (boost::bad_get e) {
     }
   }
 
   void GetOptHandles(ir::Node* node,
-                     std::vector<ir::Node*>* opt_handles) const {
+                     std::vector<details::OpHandleBase*>* opt_handles) const {
     try {
       bool is_opt_op =
           static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -163,7 +215,7 @@ class BackWardOpDepsPass : public ir::Pass {
                             static_cast<int>(OpRole::kOptimize));
       if (!is_opt_op) return;
 
-      opt_handles->emplace_back(node);
+      opt_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
     } catch (boost::bad_get e) {
     }
   }
