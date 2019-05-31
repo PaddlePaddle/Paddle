@@ -31,7 +31,7 @@ class SumLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   const std::vector<const framework::Tensor*>& inputs,
                   framework::Tensor* output) {
     size_t in_num = inputs.size();
-    PADDLE_ENFORCE_LE(in_num, 2UL,
+    PADDLE_ENFORCE_GE(in_num, 2UL,
                       "The number of inputs should be not less than 2.");
 
     bool in_place = (output == inputs[0]) ? true : false;

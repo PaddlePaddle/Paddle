@@ -14,10 +14,14 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/sum.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
+
 constexpr char kInputs[] = "inputs";
 constexpr char kInitialStates[] = "initial_states";
 constexpr char kParameters[] = "parameters";
@@ -344,6 +348,49 @@ class RecurrentOp : public RecurrentBase {
   }
 };
 
+struct AccumulateFunctor {
+  AccumulateFunctor(const platform::Place &place,
+                    const std::vector<const framework::Tensor *> &inputs,
+                    framework::Tensor *output)
+      : place_(place), inputs_(inputs), output_(output) {}
+
+  template <typename T>
+  void apply() const {
+    if (std::is_same<T, bool>::value || std::is_same<T, int8_t>::value ||
+        std::is_same<T, uint8_t>::value || std::is_same<T, int16_t>::value) {
+      PADDLE_THROW("Type %s is not supported for sum.", typeid(T).name());
+    } else {
+      if (inputs_.size() > 0) {
+        output_->mutable_data<T>(inputs_[0]->dims(), place_);
+#ifdef PADDLE_WITH_CUDA
+        if (platform::is_gpu_place(place_)) {
+          auto *dev_ctx = reinterpret_cast<platform::CUDADeviceContext *>(
+              platform::DeviceContextPool::Instance().Get(place_));
+          math::SumLoDTensorFunctor<platform::CUDADeviceContext, T> sum_functor;
+          sum_functor(*dev_ctx, inputs_, output_);
+          return;
+        }
+#endif
+        if (!std::is_same<T, platform::float16>::value) {
+          if (platform::is_cpu_place(place_)) {
+            auto *dev_ctx = reinterpret_cast<platform::CPUDeviceContext *>(
+                platform::DeviceContextPool::Instance().Get(place_));
+            math::SumLoDTensorFunctor<platform::CPUDeviceContext, T>
+                sum_functor;
+            sum_functor(*dev_ctx, inputs_, output_);
+          }
+        } else {
+          PADDLE_THROW("Type float16 is not supported for sum on CPU.");
+        }
+      }
+    }
+  }
+
+  platform::Place place_;
+  const std::vector<const framework::Tensor *> inputs_;
+  framework::Tensor *output_;
+};
+
 class RecurrentGradOp : public RecurrentBase {
  public:
   RecurrentGradOp(const std::string &type,
@@ -372,6 +419,8 @@ class RecurrentGradOp : public RecurrentBase {
         *program, block->ID(), std::vector<std::string>() /*skip_ref_cnt_vars*/,
         true /*force_disable_gc*/);
 
+    std::vector<std::vector<const framework::Tensor *>> inside_grad_tensors;
+    std::vector<framework::Tensor *> outside_grad_tensors;
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
       VLOG(3) << "Recurrent backward operate at the time step " << seq_offset;
@@ -436,14 +485,19 @@ class RecurrentGradOp : public RecurrentBase {
 
       auto local_var_names = LocalVarNames(cur_scope);
 
-      // Accumulate params
-      //   if (step == 0):
-      //      outside::param_grad = 0.0
-      //   outside::param_grad += inside::param_grad
+      // Record the inside and outside parameter_gards.
       {
         auto &pg_names = Outputs(kParamGrads);
         auto &p_names = Inputs(kParameters);
         PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
+
+        if (step_id == 0) {
+          inside_grad_tensors.resize(pg_names.size());
+          outside_grad_tensors.resize(pg_names.size());
+        } else {
+          PADDLE_ENFORCE_EQ(inside_grad_tensors.size(), pg_names.size());
+          PADDLE_ENFORCE_EQ(outside_grad_tensors.size(), pg_names.size());
+        }
 
         for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
           auto inside_grad_name = framework::GradVarName(p_names[param_id]);
@@ -454,34 +508,19 @@ class RecurrentGradOp : public RecurrentBase {
             continue;
           }
 
-          // zero gradient variable in step 0
-          if (step_id == 0) {
-            auto &inside_tensor = cur_scope.FindVar(inside_grad_name)
-                                      ->Get<framework::LoDTensor>();
-            framework::AttributeMap attrs;
-            attrs["dtype"] = inside_tensor.type();
-            attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
-            attrs["value"] = 0.0f;
-
-            auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", framework::VariableNameMap{},
-                {{"Out", {pg_names[param_id]}}}, attrs);
-            zero_op->Run(scope, place);
+          auto &inside_tensor =
+              cur_scope.FindVar(inside_grad_name)->Get<framework::LoDTensor>();
+          if (inside_tensor.numel() > 0) {
+            inside_grad_tensors[param_id].push_back(&inside_tensor);
           }
 
-          auto new_inside_name = cur_scope.Rename(inside_grad_name);
-
-          // sum gradient
-          auto sum_op = framework::OpRegistry::CreateOp(
-              "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-              {{"Out", {pg_names[param_id]}}},
-              framework::AttributeMap{{"use_mkldnn", {false}}});
-          sum_op->Run(cur_scope, place);
-
-          cur_scope.Rename(new_inside_name, inside_grad_name);
+          if (step_id == 0) {
+            auto *outside_tensor = scope.FindVar(pg_names[param_id])
+                                       ->GetMutable<framework::LoDTensor>();
+            outside_grad_tensors[param_id] = outside_tensor;
+          }
         }
       }
-      VLOG(5) << "Accumulate Parameter finished ";
 
       // Copy input gradient from inside to outside
       //   outside::input_grad[seq_offset: seq_offset + 1] = inside::input_grad
@@ -522,6 +561,15 @@ class RecurrentGradOp : public RecurrentBase {
       }
       scopes.Next();
     }
+
+    // Accumulate params
+    for (size_t i = 0; i < outside_grad_tensors.size(); ++i) {
+      framework::VisitDataType(inside_grad_tensors[i][0]->type(),
+                               AccumulateFunctor(place, inside_grad_tensors[i],
+                                                 outside_grad_tensors[i]));
+    }
+    VLOG(5) << "Accumulate Parameter finished ";
+
     // Delete the scope of StepScopes
     auto *var = scope.FindVar(Input(kStepScopes));
     PADDLE_ENFORCE(var != nullptr);
@@ -554,6 +602,7 @@ class RecurrentGradOp : public RecurrentBase {
       const framework::Scope &scope) const {
     return this->List2Set(scope.LocalVarNames());
   }
+
   static std::vector<std::string> GradVarLists(
       const std::vector<std::string> &var_names) {
     std::vector<std::string> retv;

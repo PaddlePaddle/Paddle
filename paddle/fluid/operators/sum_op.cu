@@ -26,37 +26,6 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <class T>
-__global__ void Sum2CUDAKernel(const T *in_0, const T *in_1, T *out,
-                               int64_t N) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  while (id < N) {
-    out[id] = in_0[id] + in_1[id];
-    id += blockDim.x * gridDim.x;
-  }
-}
-
-template <class T>
-__global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
-                                   bool read_dst) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  while (id < N) {
-    T total(0);
-    for (int i = 0; i < in_size; ++i) {
-      const T *tmp = in[i];
-      if (tmp) {
-        total += tmp[id];
-      }
-    }
-    if (read_dst) {
-      out[id] += total;
-    } else {
-      out[id] = total;
-    }
-    id += blockDim.x * gridDim.x;
-  }
-}
-
-template <class T>
 __global__ void SumSelectedRowsCUDAKernel(T **sr_in_out, int64_t N,
                                           size_t rows) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
