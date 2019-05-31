@@ -36,69 +36,98 @@ namespace ir {
 
 class BackWardOpDepsPass : public ir::Pass {
  protected:
+  void AddDep(ir::Graph* graph, details::OpHandleBase* l,
+              details::OpHandleBase* r) const {
+    auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
+    graph->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
+    l->AddOutput(dep_var);
+    r->AddInput(dep_var);
+    VLOG(10) << "add deps:" << l->DebugString() << " and " << r->DebugString();
+  }
+
   void ApplyImpl(ir::Graph* graph) const override {
     // NOTE: The operator nodes should be in topology order.
     std::vector<details::OpHandleBase*> backward_op_handles;
-    std::vector<details::OpHandleBase*> opt_handles;
+    std::vector<ir::Node*> opt_nodes;
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(*graph);
     for (auto& node : topo_nodes) {
-      // if(node->Name() == "square"){
-      // VLOG(10) << "node:" <<
       // node->Wrapper<details::OpHandleBase>().DebugString();
-      // }
-
-      /*
-      VLOG(10) << "Name:" << node->Name()
-          << ", type:" << static_cast<int>(node->NodeType())
-          << ", op_desc:" << node->Op();
-      */
-
       if (!node->Op()) continue;
 
-      /*
-      auto& attrs = node->Op()->GetAttrMap();
-      VLOG(10) << "attr_map:" << attrs.size();
-      */
-
       GetBackWardOpHandles(node, &backward_op_handles);
-      GetOptHandles(node, &opt_handles);
+      GetOptHandles(node, &opt_nodes);
     }
 
     VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
-             << ", opt_handles size:" << opt_handles.size();
-    if (backward_op_handles.size() <= 1 || opt_handles.size() <= 1) {
+             << ", opt_handles size:" << opt_nodes.size();
+    if (backward_op_handles.size() <= 1 || opt_nodes.size() <= 1) {
       VLOG(10) << "need not backward_op_deps_pass";
       return;
     }
 
+    VLOG(10) << "add backward deps";
     for (size_t i = 1; i < backward_op_handles.size(); ++i) {
-      auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
-      graph->Get<details::GraphDepVars>(details::kGraphDepVars)
-          .emplace(dep_var);
-      backward_op_handles[i - 1]->AddOutput(dep_var);
-      backward_op_handles[i]->AddInput(dep_var);
-      VLOG(10) << "add deps:" << backward_op_handles[i - 1]->DebugString()
-               << " -> " << backward_op_handles[i]->DebugString();
+      AddDep(graph, backward_op_handles[i - 1], backward_op_handles[i]);
     }
 
+    std::vector<details::OpHandleBase*> opt_handles;
+    TravelOptGraph(opt_nodes, &opt_handles);
+    PADDLE_ENFORCE_EQ(opt_nodes.size(), opt_handles.size());
+
+    VLOG(10) << "add optimize deps";
     for (size_t i = 1; i < opt_handles.size(); ++i) {
-      auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
-      graph->Get<details::GraphDepVars>(details::kGraphDepVars)
-          .emplace(dep_var);
-      opt_handles[i - 1]->AddOutput(dep_var);
-      opt_handles[i]->AddInput(dep_var);
-      VLOG(10) << "add deps:" << opt_handles[i - 1]->DebugString() << " -> "
-               << opt_handles[i]->DebugString();
+      AddDep(graph, opt_handles[i - 1], opt_handles[i]);
     }
 
-    auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
-    graph->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
-    backward_op_handles[backward_op_handles.size() - 1]->AddOutput(dep_var);
-    opt_handles[0]->AddInput(dep_var);
+    VLOG(10) << "add deps between backward and optimze:";
+    AddDep(graph, backward_op_handles[backward_op_handles.size() - 1],
+           opt_handles[0]);
+  }
 
-    VLOG(10) << "add deps:"
-             << opt_handles[backward_op_handles.size() - 1]->DebugString()
-             << " -> " << opt_handles[0]->DebugString();
+  void TravelOptGraph(const std::vector<ir::Node*>& nodes,
+                      std::vector<details::OpHandleBase*>* handles) const {
+    std::unordered_set<ir::Node*> v_set;
+    std::vector<std::vector<ir::Node*>> result;
+    for (auto n : nodes) {
+      int order = 0;
+      // auto& arr = result.emplace();
+      std::vector<ir::Node*> arr;
+      VisitNode(n, &v_set, &arr, &order);
+      result.emplace_back(arr);
+    }
+
+    int idx = 0;
+    for (auto& a : result) {
+      idx++;
+      if (a.size() == 0) continue;
+
+      VLOG(10) << "depth first no:" << idx << ", size:" << a.size();
+
+      for (auto& n : a) {
+        handles->emplace_back(&n->Wrapper<details::OpHandleBase>());
+        VLOG(10) << n->Wrapper<details::OpHandleBase>().DebugString();
+      }
+    }
+  }
+  void VisitNode(ir::Node* node, std::unordered_set<ir::Node*>* visit,
+                 std::vector<ir::Node*>* v_arr, int* order) const {
+    if (visit->find(node) != visit->end()) return;
+
+    visit->insert(node);
+    v_arr->emplace_back(node);
+
+    if (order != 0 && node->inputs.size() > 1) {
+      for (auto input : node->inputs) {
+        if (visit->find(input) == visit->end()) {
+          return;
+        }
+      }
+    }
+
+    (*order) += 1;
+    for (auto o : node->outputs) {
+      VisitNode(o, visit, v_arr, order);
+    }
   }
 
   void GetBackWardOpHandles(
@@ -126,7 +155,7 @@ class BackWardOpDepsPass : public ir::Pass {
   }
 
   void GetOptHandles(ir::Node* node,
-                     std::vector<details::OpHandleBase*>* opt_handles) const {
+                     std::vector<ir::Node*>* opt_handles) const {
     try {
       bool is_opt_op =
           static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -134,7 +163,7 @@ class BackWardOpDepsPass : public ir::Pass {
                             static_cast<int>(OpRole::kOptimize));
       if (!is_opt_op) return;
 
-      opt_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
+      opt_handles->emplace_back(node);
     } catch (boost::bad_get e) {
     }
   }
