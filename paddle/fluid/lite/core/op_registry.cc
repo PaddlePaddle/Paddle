@@ -91,6 +91,10 @@ KernelRegistry::KernelRegistry()
   INIT_FOR(kHost, kAny, kNCHW);
   INIT_FOR(kHost, kAny, kAny);
 
+  INIT_FOR(kX86, kFloat, kNCHW);
+  INIT_FOR(kX86, kAny, kNCHW);
+  INIT_FOR(kX86, kAny, kAny);
+
   INIT_FOR(kARM, kFloat, kNCHW);
   INIT_FOR(kARM, kAny, kNCHW);
   INIT_FOR(kARM, kAny, kAny);

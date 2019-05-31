@@ -95,7 +95,11 @@ struct CUDAContext {
 #ifdef LITE_WITH_X86
 struct X86Context {
   // overall information
-
+  X86Context() {
+    x86_device_context.reset(new ::paddle::platform::CPUDeviceContext);
+    x86_execution_context.reset(
+        new ::paddle::framework::ExecutionContext(*x86_device_context));
+  }
   // kernel information
 
   // legacy info.

@@ -1,106 +1,98 @@
 
-# Paddle-lite-mobile交叉编译指导
+# Paddle-lite-mobile开发指南
 
-Paddle-lite-mobile开发环境目前推荐在Docker容器里，在容器里进行交叉编译安卓版本的Native C/C++代码，然后将可执行程序`adb push`到安卓手机上进行调试。
-## Android
+## 交叉编译
 
-TBD
+Paddle-lite-mobile 推荐在我们的Docker环境下交叉编译，减少环境配置上的不必要问题。
 
 ### 1. 拉取代码创建容器
 
 ```shell
-$ git clone --recursive https://github.com/PaddlePaddle/Paddle.git
+$ git clone https://github.com/PaddlePaddle/Paddle.git
 $ git checkout incubate/lite
 ```
 
-先根据仓库下的`Dockerfile.cross_compile`文件生成对应的环境镜像。
+编译docker环境:
+`docker build --file paddle/fluid/lite/tools/Dockerfile.mobile --tag paddle-lite-mobile:latest . `
+
+### 主要cmake选项
+                
+- `ARM_TARGET_OS` 代表目标操作系统， 目前支持 "android" "armlinux"， 模型是Android
+- `ARM_TARGET_ARCH_ABI` 代表ARCH， 目前支持 "arm64-v8a" "armeabi-v7a"。 模型是arm64-v8a
+
+### 编译
+
+基于`paddle-lite-mobile`镜像创建容器，并在容器内外建立目录映射关系：
 
 ```shell
-$ cd <paddle-repo>
-$ mkdir android-docker
-$ cp Dockerfile.android ./android-docker/Dockerfile
-$ cd android-docker
-$ docker build -t paddle/paddle-lite-mobile .
+$ docker run -it --name <yourname> --net=host --privileged -v <your-directory-path>:<your-directory-path> paddle-lite-mobile bash
 ```
 
-完成后，可以看到：
-```shell
-$ docker images
-REPOSITORY                        TAG            IMAGE ID            CREATED             SIZE
-paddle/paddle-lite-mobile         latest       9c2000469891        5 hours ago         3.88GB
-```
+参考build.sh下的 cmake arm编译需要的平台。
 
-基于`paddle/paddle-lite`镜像创建容器，并在容器内外建立目录映射关系：
+参考示例：
 
 ```shell
-$ ddocker run -v <your-directory-path>:<your-directory-path> -tdi paddle/paddle-lite-mobile
-# 启动成功会显示container_id
-```
-
-进入容器并切换到Paddle仓库目录：
-```shell
-$ docker exec -it <container_id> bash
-$ cd <paddle-repo>
-```
-### 2. 交叉编译Paddle-lite-mobile的Native C/C++程序
-
-创建名为`make_paddle_lite_mobile.sh`的文件：
-
-```shell
-$ touch make_paddle_lite_mobile.sh
-$ chmod +x make_paddle_lite_mobile.sh
-```
-
-打开`make_paddle_lite_mobile.sh`文件然后将以下内容复制到该文件中，保存并退出：
-```shell
-#!/usr/bin/env bash
-
-# build mobile
-mkdir build
-cd build
-
-# cross-compile native cpp
+#!/bin/bash
 cmake .. \
-  -DWITH_GPU=OFF \
-  -DWITH_MKL=OFF \
-  -DWITH_LITE=ON \
-  -DLITE_WITH_X86=OFF \
-  -DLITE_WITH_ARM=ON \
-  -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-  -DLITE_WITH_CUDA=OFF \
-  -DWITH_TESTING=ON
+    -DWITH_GPU=OFF \
+    -DWITH_LITE=ON \
+    -DLITE_WITH_CUDA=OFF \
+    -DLITE_WITH_X86=OFF \
+    -DLITE_WITH_ARM=ON \
+    -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+    -DWITH_TESTING=ON \
+    -DWITH_MKL=OFF \
+    -DARM_TARGET_OS="android" -DARM_TARGET_ARCH_ABI="arm64-v8a"
 
 # fc层单测
 make test_fc_compute_arm -j
-# 小模型单测
-#make cxx_api_lite_bin
 
 ```
+### 在Android上执行
 
-### 3. 上传编译文件到手机上
+#### 1. 创建模拟器（如果使用真机则跳过此步骤）
+
+```shell
+# 创建Android avd (armv8)
+$ echo n | avdmanager create avd -f -n myarmv8 -k "system-images;android-24;google_apis;arm64-v8a"
+# 启动Android armv8 emulator
+$ ${ANDROID_HOME}/emulator/emulator -avd myarmv8  -noaudio -no-window -gpu off -verbose &
+
+# armv7版本如下：
+# $ echo n | avdmanager create avd -f -n myarmv7 -k "system-images;android-24;google_apis;armeabi-v7a"
+# $ ${ANDROID_HOME}/emulator/emulator -avd myarmv7 -noaudio -no-window -gpu off -verbose &
+```
+#### 2. 上传编译文件到手机上
 
 键盘上`crtl+q+p`同时摁下，切换到容器外（容器还在后台运行），将刚刚编译出的程序`adb push`到手机上。USB线连接手机，确保`adb devices`可以找到手机设备。
 ```shell
 $ cd <paddle-repo>
-$ adb push ./build/paddle/fluid/lite/api/test_cxx_api_lite /data/local/tmp/
+$ adb push ./build/paddle/fluid/lite/kernels/arm/test_fc_compute_arm /data/local/tmp/
 
 # 进入手机
 $ adb shell # 若多台手机设备先用命令adb devices查看目标手机的序列码
 $ cd /data/local/tmp
 
 # 执行编译的程序
-$ ./test_cxx_api_lite
+$ ./test_fc_compute_arm
 ```
-## ARM Linux
 
-# 在模拟器中运行
+### 在ARM LINUX下执行
 
-TBD
-## Android
-
-## ARM Linux
-
-
+拉取Linux arm64镜像
+```shell
+$ docker pull multiarch/ubuntu-core:arm64-bionic
+```
+运行容器并在内外建立目录映射关系
+```shell
+$ docker run -it --name <yourname> -v <your-directory-path>:<your-directory-path> multiarch/ubuntu-core:arm64-bionic
+```
+进入bin目录，并运行并文件
+```shell
+$ cd <bin-dir>
+$ ./test_fc_compute_arm
+```
 
 # Q&A
 
@@ -128,4 +120,3 @@ $ adb devices
 List of devices attached
 5cb00b6 device
 ```
-#
