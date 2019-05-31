@@ -1245,6 +1245,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
+#ifdef WIN32
+            if (self.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+              LOG_FIRST_N(WARNING, 1) << "Windows support AllReduce only.";
+              self.reduce_ = BuildStrategy::ReduceStrategy::kAllReduce;
+            }
+#endif
           },
           R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
                 'AllReduce' and 'Reduce'. If you want that all the parameters'
@@ -1341,8 +1347,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
             if (std::abs(num_trainers) > 1) {
-              VLOG(1) << "Windows has no support to distribute mode, "
-                         "num_trainers would be forced to 1.";
+              LOG_FIRST_N(WARNING, 1)
+                  << "Windows has no support to distribute mode, "
+                     "num_trainers would be forced to 1.";
               num_trainers = 1;
             }
 #endif
@@ -1493,8 +1500,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) {
 #ifdef WIN32
-            VLOG(1) << "Windows has no support to distribute mode, "
-                       "is_distribution would be forced to false.";
+            LOG_FIRST_N(WARNING, 1)
+                << "Windows has no support to distribute mode, "
+                   "is_distribution would be forced to false.";
             self.is_distribution_ = false;
 #else
             self.is_distribution_ = b;
