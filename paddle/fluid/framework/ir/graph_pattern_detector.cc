@@ -904,6 +904,10 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
 
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
+  // Input
+  auto *input_var = pattern->NewNode(input_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("fc", "Input");
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
@@ -920,7 +924,8 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
-  fc_op->LinksFrom({x, fc_weight_var, fc_bias_var}).LinksTo({fc_out_var});
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
+      .LinksTo({fc_out_var});
   return fc_out_var;
 }
 

@@ -49,6 +49,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
@@ -60,7 +61,6 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     desc->SetAttr("use_mkldnn", true);
-    PADDLE_ENFORCE(subgraph.count(x));
 
     found_fc_count++;
   };
