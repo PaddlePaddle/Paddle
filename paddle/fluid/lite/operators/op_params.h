@@ -102,6 +102,17 @@ struct SoftmaxParam {
   int axis{-1};
 };
 
+// For Reshape and Reshape2 Op
+struct ReshapeParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* actual_shape{nullptr};
+  lite::Tensor* output{};
+  lite::Tensor* xshape{};
+
+  std::vector<int> shape{};
+  bool inplace{false};
+};
+
 /// ----------------------- element wise operators ----------------------
 struct ElementwiseParam {
   const lite::Tensor* X{};

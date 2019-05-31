@@ -33,7 +33,8 @@ namespace paddle {
 namespace lite {
 namespace pb {
 
-using Attribute = variant<int, float, bool, std::vector<std::string>>;
+using Attribute =
+    variant<int, float, bool, std::vector<std::string>, std::vector<int>>;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 /*
@@ -62,6 +63,10 @@ class OpDesc {
     return GetArguments(desc_.inputs(), param);
   }
 
+  bool HasInput(const std::string &param) const {
+    return HasArgument(desc_.inputs(), param);
+  }
+
   std::vector<std::string> InputArgumentNames() const {
     return GetArgumentNames(desc_.inputs());
   }
@@ -69,6 +74,10 @@ class OpDesc {
   void SetInput(const std::string &param,
                 const std::vector<std::string> &args) {
     SetArgument(desc_.mutable_inputs(), param, args);
+  }
+
+  bool HasOutput(const std::string &param) const {
+    return HasArgument(desc_.outputs(), param);
   }
 
   std::vector<std::string> Output(const std::string &param) const {
@@ -152,7 +161,6 @@ class OpDesc {
 
     Attribute res;
     CHECK(it != xs.end());
-
     switch (it->type()) {
       case framework::proto::INT:
         res.set<int>(it->i());
@@ -166,6 +174,13 @@ class OpDesc {
       case framework::proto::BOOLEAN:
         res.set<bool>(it->b());
         break;
+      case framework::proto::INTS: {
+        std::vector<int> values;
+        const auto &ys = it->ints();
+        std::transform(ys.begin(), ys.end(), std::back_inserter(values),
+                       [](const int &x) { return x; });
+        res.set<std::vector<int>>(values);
+      } break;
 
       default:
         LOG(FATAL) << "unsupported attr type";
@@ -175,6 +190,17 @@ class OpDesc {
   }
 
  private:
+  bool HasArgument(const google::protobuf::RepeatedPtrField<
+                       framework::proto::OpDesc_Var> &xs,
+                   const std::string &param) const {
+    auto it = std::find_if(xs.begin(), xs.end(),
+                           [&](const framework::proto::OpDesc_Var &it) {
+                             return it.parameter() == param;
+                           });
+
+    return it != xs.end() && it->arguments_size() > 0;
+  }
+
   std::vector<std::string> GetArguments(
       const google::protobuf::RepeatedPtrField<framework::proto::OpDesc_Var>
           &xs,
@@ -230,6 +256,10 @@ class OpDesc {
 template <>
 void OpDesc::SetAttr<std::string>(const std::string &name,
                                   const std::string &v);
+
+template <>
+void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
+                                       const std::vector<int> &v);
 
 }  // namespace pb
 }  // namespace lite
