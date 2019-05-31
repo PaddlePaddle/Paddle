@@ -83,9 +83,10 @@ class TransformForMkldnnPass(object):
 
     def apply(self, graph):
         """
-        Quantize the graph for running MKL-DNN INT8 inference. According 
-        to activation quantization type, the graph will transform fake 
-        quantize ops to quantize ops and remove the fake dequantize ops.
+        Quantize the graph for MKL-DNN inference process. According to 
+        weight and activation quantization type, the graph will transform 
+        fake quantize operators to quantize operators and remove the fake 
+        dequantize operators.
       
         Args:
             graph(IrGraph): the applied graph.
