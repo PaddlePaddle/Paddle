@@ -35,7 +35,7 @@ class ReluOp : public OpLite {
   bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-  std::string DebugString() const override { return "tanh"; }
+  std::string DebugString() const override { return "relu"; }
 
  private:
   mutable ReluParam param_;

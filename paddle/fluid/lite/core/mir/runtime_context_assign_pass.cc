@@ -34,9 +34,13 @@ class RuntimeContextAssignPass : public StmtPass {
       auto& inst = node.AsStmt();
       switch (inst.picked_kernel().target()) {
         case TARGET(kHost):
-        case TARGET(kX86):
           inst.picked_kernel().SetContext(NewHostContext());
           break;
+#ifdef LITE_WITH_X86
+        case TARGET(kX86):
+          inst.picked_kernel().SetContext(NewX86Context());
+          break;
+#endif
 #ifdef LITE_WITH_CUDA
         case TARGET(kCUDA):
           inst.picked_kernel().SetContext(NewCudaContext());
@@ -61,6 +65,13 @@ class RuntimeContextAssignPass : public StmtPass {
 
     return ctx;
   }
+#ifdef LITE_WITH_X86
+  std::unique_ptr<KernelContext> NewX86Context() {
+    std::unique_ptr<KernelContext> ctx(new KernelContext);
+    ctx->As<X86Context>();
+    return ctx;
+  }
+#endif
 
 #ifdef LITE_WITH_ARM
   std::unique_ptr<KernelContext> NewARMContext() {
