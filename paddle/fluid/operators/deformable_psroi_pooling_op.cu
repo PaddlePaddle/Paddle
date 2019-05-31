@@ -40,8 +40,8 @@ inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-T bilinear_interpolation(const T* data, const T x, const T y, const int width,
-                         const int height) {
+__device__ T bilinear_interpolation(const T* data, const T x, const T y,
+                                    const int width, const int height) {
   int x1 = floor(x);
   int x2 = ceil(x);
   int y1 = floor(y);
