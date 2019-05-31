@@ -51,7 +51,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
 
     def on_compression_begin(self, context):
         """
-	Prepare the data and quantify the model
+        Prepare the data and quantify the model
         """
 
         super(MKLDNNPostTrainingQuantStrategy,

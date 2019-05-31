@@ -8,4 +8,4 @@ compressor:
     epoch: 0
     checkpoint_path: ''
     strategies:
-        - mkldnn_post_training_strategy 
+        - mkldnn_post_training_strategy
