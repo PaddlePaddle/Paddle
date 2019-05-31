@@ -17,21 +17,51 @@ function cmake_gpu {
 }
 
 function cmake_arm {
-    cmake .. \
-          -DWITH_GPU=OFF \
-          -DWITH_LITE=ON \
-          -DLITE_WITH_X86=OFF \
-          -DLITE_WITH_CUDA=OFF \
-          -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-          -DWITH_TESTING=ON \
-          -DWITH_MKL=OFF \
-          -DWITH_MKLDNN=OFF
+    # ARM_TARGET_OS="android" , "armlinux"
+    # ARM_TARGET_ARCH_ABI = "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
+    for os in "android" "armlinux" ; do
+        for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
+            if [[ ${abi} == "armeabi-v7a-hf" ]]; then
+                echo "armeabi-v7a-hf is not supported on both android and armlinux"
+                continue
+            fi
+
+            if [[ ${os} == "armlinux" && ${abi} == "armeabi-v7a" ]]; then
+                echo "armeabi-v7a is not supported on armlinux yet"
+                continue
+            fi
+
+            echo "Build for ${os} ${abi}"
+
+            build_dir=build.lite.${os}.${abi}
+            mkdir -p $build_dir
+            cd $build_dir
+
+            cmake .. \
+                -DWITH_GPU=OFF \
+                -DWITH_LITE=ON \
+                -DLITE_WITH_CUDA=OFF \
+                -DLITE_WITH_X86=OFF \
+                -DLITE_WITH_ARM=ON \
+                -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+                -DWITH_TESTING=ON \
+                -DWITH_MKL=OFF \
+                -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} 
+
+            make test_fc_compute_arm -j
+            make test_softmax_compute_arm -j
+            make cxx_api_lite_bin -j
+            cd -
+
+        done
+    done
+
 }
 
 function build {
     file=$1
     for _test in $(cat $file); do
-        make $_test -j8
+        make $_test -j$(expr $(nproc) - 2)
     done
 }
 
