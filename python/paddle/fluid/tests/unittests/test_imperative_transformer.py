@@ -1069,19 +1069,22 @@ class TestDygraphTransformer(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
 
+        dy_avg_cost_numpy = dy_avg_cost.numpy()
+        dy_sum_cost_numpy = dy_sum_cost.numpy()
+        dy_predict_numpy = dy_predict.numpy()
+        dy_token_num_numpy = dy_token_num.numpy()
+
+        self.assertTrue(np.allclose(static_avg_cost_value, dy_avg_cost_numpy))
+        self.assertTrue(np.allclose(static_sum_cost_value, dy_sum_cost_numpy))
         self.assertTrue(
-            np.array_equal(static_avg_cost_value, dy_avg_cost.numpy()))
-        self.assertTrue(
-            np.array_equal(static_sum_cost_value, dy_sum_cost.numpy()))
-        self.assertTrue(
-            np.array_equal(static_predict_value, dy_predict.numpy()))
-        self.assertTrue(
-            np.array_equal(static_token_num_value, dy_token_num.numpy()))
+            np.allclose(
+                static_predict_value, dy_predict_numpy, atol=1e-5))
+        self.assertTrue(np.allclose(static_token_num_value, dy_token_num_numpy))
 
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.array_equal(value, dy_param_init[key]))
+            self.assertTrue(np.allclose(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+            self.assertTrue(np.allclose(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':

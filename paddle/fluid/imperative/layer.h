@@ -52,12 +52,12 @@ class VarBase {
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
   const framework::Variable& GradVar() const {
-    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist");
+    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
     return grad_var_->var_;
   }
 
   framework::Variable* MutableGradVar() {
-    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist");
+    PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
     return &(grad_var_->var_);
   }
 
