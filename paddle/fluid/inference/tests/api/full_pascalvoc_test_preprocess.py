@@ -11,28 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#import image_util
-#from paddle.utils.image_util import *
+import xml.etree.ElementTree as ET
 from PIL import Image
 import numpy as np
-import xml.etree.ElementTree
 import os
-import time
-import six
+import sys
+from paddle.dataset.common import download
+import tarfile
+import StringIO
+import hashlib
+import tarfile
 
-DATA_DIR = "~/data/pascalvoc/"
-FILE_LIST = "test.txt"
-# cd /home/li/data/pascalvoc/./VOCdevkit/VOC2007/JPEGImages/ pass
-
-label_file = "label_list"
+DATA_URL = "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"
+DATA_DIR = os.path.expanduser("~/.cache/paddle/dataset/pascalvoc/")
+TAR_FILE = "VOCtest_06-Nov-2007.tar"
+TAR_PATH = os.path.join(DATA_DIR, TAR_FILE)
 RESIZE_H = 300
 RESIZE_W = 300
 mean_value = [127.5, 127.5, 127.5]
 ap_version = '11point'
-IMAGE_OUT = 'pascalvoc.bin'
-
-DATA_DIR = os.path.expanduser(DATA_DIR)
+DATA_OUT = 'pascalvoc_full.bin'
+DATA_OUT_PATH = os.path.join(DATA_DIR, DATA_OUT)
+BIN_TARGETHASH = "f6546cadc42f5ff13178b84ed29b740b"
+TAR_TARGETHASH = "b6e924de25625d8de591ea690078ad9f"
+TEST_LIST_KEY = "VOCdevkit/VOC2007/ImageSets/Main/test.txt"
+BIN_FULLSIZE = 5348678856
 
 
 def preprocess(img):
@@ -54,33 +57,54 @@ def preprocess(img):
     return img
 
 
-def pascalvoc():
-    label_list = []
-    label_fpath = os.path.join(DATA_DIR, label_file)
-    for line in open(label_fpath):
-        label_list.append(line.strip())
+def print_processbar(done_percentage):
+    done_filled = done_percentage * '='
+    empty_filled = (100 - done_percentage) * ' '
+    sys.stdout.write("\r[%s%s]%d%%" %
+                     (done_filled, empty_filled, done_percentage))
+    sys.stdout.flush()
 
-    file_list_path = os.path.join(DATA_DIR, FILE_LIST)
-    flist = open(file_list_path)
-    lines = [line.strip() for line in flist]
 
-    image_out_path = os.path.join(DATA_DIR, IMAGE_OUT)
-    f1 = open(image_out_path, "w+b")
-    f1.seek(0)
-    line_len = len(lines)
-    f1.write(np.array(line_len).astype('int64').tobytes())
-
+def convert_pascalvoc(tar_path, data_out_path):
+    print("Start converting ...\n")
+    images = {}
+    gt_labels = {}
     boxes = []
     lbls = []
     difficults = []
     object_nums = []
 
-    for line in lines:
-        image_path, label_path = line.split()
-        image_path = os.path.join(DATA_DIR, image_path)
-        label_path = os.path.join(DATA_DIR, label_path)
+    # map label to number (index)
+    label_list = [
+        "background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
+        "car", "cat", "chair", "cow", "diningtable", "dog", "horse",
+        "motorbike", "person", "pottedplant", "sheep", "sofa", "train",
+        "tvmonitor"
+    ]
+    print_processbar(0)
+    #read from tar file and write to bin
+    tar = tarfile.open(tar_path, "r")
+    f_test = tar.extractfile(TEST_LIST_KEY).read()
+    lines = f_test.split('\n')
+    del lines[-1]
+    line_len = len(lines)
+    per_percentage = line_len / 100
 
-        im = Image.open(image_path)
+    f1 = open(data_out_path, "w+b")
+    f1.seek(0)
+    f1.write(np.array(line_len).astype('int64').tobytes())
+    for tarInfo in tar:
+        if tarInfo.isfile():
+            tmp_filename = tarInfo.name
+            name_arr = tmp_filename.split('/')
+            name_prefix = name_arr[-1].split('.')[0]
+            if name_arr[-2] == 'JPEGImages' and name_prefix in lines:
+                images[name_prefix] = tar.extractfile(tarInfo).read()
+            if name_arr[-2] == 'Annotations' and name_prefix in lines:
+                gt_labels[name_prefix] = tar.extractfile(tarInfo).read()
+
+    for line_idx, name_prefix in enumerate(lines):
+        im = Image.open(StringIO.StringIO(images[name_prefix]))
         if im.mode == 'L':
             im = im.convert('RGB')
         im_width, im_height = im.size
@@ -91,7 +115,7 @@ def pascalvoc():
 
         # layout: label | xmin | ymin | xmax | ymax | difficult
         bbox_labels = []
-        root = xml.etree.ElementTree.parse(label_path).getroot()
+        root = ET.fromstring(gt_labels[name_prefix])
 
         objects = root.findall('object')
         objects_size = len(objects)
@@ -99,7 +123,6 @@ def pascalvoc():
 
         for object in objects:
             bbox_sample = []
-            # start from 1
             bbox_sample.append(
                 float(label_list.index(object.find('name').text)))
             bbox = object.find('bndbox')
@@ -113,23 +136,52 @@ def pascalvoc():
 
         bbox_labels = np.array(bbox_labels)
         if len(bbox_labels) == 0: continue
-
         lbls.extend(bbox_labels[:, 0])
         boxes.extend(bbox_labels[:, 1:5])
         difficults.extend(bbox_labels[:, -1])
 
-    # Until here, image size is 5348160008
-    # num of lods
+        if line_idx % per_percentage:
+            print_processbar(line_idx / per_percentage)
+
     f1.write(np.array(object_nums).astype('uint64').tobytes())
-    # num of labels
     f1.write(np.array(lbls).astype('int64').tobytes())
-    print(np.array(lbls).astype('int64'))
     f1.write(np.array(boxes).astype('float32').tobytes())
-
     f1.write(np.array(difficults).astype('int64').tobytes())
-
     f1.close()
+    print_processbar(100)
+    print("Conversion finished!\n")
+
+
+def download_pascalvoc(data_url, data_dir, tar_targethash, tar_path):
+    print("Downloading pascalvcoc test set...")
+    download(data_url, data_dir, tar_targethash)
+    if not os.path.exists(tar_path):
+        print("Failed in downloading pascalvoc test set. URL %s\n" % data_url)
+    else:
+        tmp_hash = hashlib.md5(open(tar_path, 'rb').read()).hexdigest()
+        if tmp_hash != tar_targethash:
+            print("Downloaded test set is broken, removing ...\n")
+        else:
+            print("Downloaded successfully. Path: %s\n" % tar_path)
+
+
+def run_convert():
+    try_limit = 2
+    retry = 0
+    while not (os.path.exists(DATA_OUT_PATH) and
+               os.path.getsize(DATA_OUT_PATH) == BIN_FULLSIZE and BIN_TARGETHASH
+               == hashlib.md5(open(DATA_OUT_PATH, 'rb').read()).hexdigest()):
+        if os.path.exists(DATA_OUT_PATH):
+            sys.stderr.write(
+                "The existing binary file is broken. It is being removed...\n")
+            os.remove(DATA_OUT_PATH)
+        if retry < try_limit:
+            retry = retry + 1
+        else:
+            download_pascalvoc(DATA_URL, DATA_DIR, TAR_TARGETHASH, TAR_PATH)
+            convert_pascalvoc(TAR_PATH, DATA_OUT_PATH)
+    print("Success! \nThe binary file can be found at %s\n" % DATA_OUT_PATH)
 
 
 if __name__ == "__main__":
-    pascalvoc()
+    run_convert()
