@@ -33,6 +33,7 @@ cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
 add_subdirectory(mir)
+add_subdirectory(profile)
 
 # for mobile, unnecessary to compile the following testings.
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
