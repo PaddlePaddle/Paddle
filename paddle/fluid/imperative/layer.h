@@ -126,7 +126,7 @@ class VarBase {
   }
 
   // Python interface
-  VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
+  VarBase(const std::string& name, const framework::proto::VarType::Type& dtype,
           const std::vector<int64_t>& shape, const platform::Place& place,
           bool stop_gradient, bool persistable)
       : name_(name),

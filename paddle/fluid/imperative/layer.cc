@@ -259,6 +259,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
     const detail::BackwardStrategy& bck_stratedy) {
   PADDLE_ENFORCE(!grad_op_descs_.empty(), "%s has no backward implementation",
                  Type());
+
   VLOG(3) << "apply op grad: " << Type();
   std::vector<VarBasePtrMap> tmp_grad_outputs;
   const size_t grad_op_count = grad_op_descs_.size();

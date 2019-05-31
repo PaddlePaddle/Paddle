@@ -21,11 +21,14 @@
 #include <utility>
 
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-
+#ifdef WITH_GPERFTOOLS
+#include "gperftools/profiler.h"
+#endif
 namespace paddle {
 namespace imperative {
 
@@ -140,7 +143,15 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                                     framework::AttributeMap attrs_map,
                                     const platform::Place expected_place,
                                     const bool stop_gradient) {
+#ifdef WITH_GPERFTOOLS
+  if (EnableProfile()) {
+    ProfilerFlush();
+  }
+#endif
+
   platform::RecordEvent record_event(op->type_);
+  std::unique_ptr<platform::RecordEvent> event_1(
+      new platform::RecordEvent(op->type_ + "_forward"));
   framework::VariableValueMap invars_map;
   framework::VariableValueMap outvars_map;
 
@@ -223,9 +234,13 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
                                   prepared_op.ctx, prepared_op.kernel_configs));
 
+  event_1.reset(nullptr);
+
   // construct backward op
   std::set<std::string> vars_saved_for_backward;
   if (!stop_gradient) {
+    std::unique_ptr<platform::RecordEvent> event_2(
+        new platform::RecordEvent(op->type_ + "_backward"));
     VLOG(5) << "start construct backward op";
 
     // construct grad op descs

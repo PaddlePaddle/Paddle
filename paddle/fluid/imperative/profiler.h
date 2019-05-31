@@ -21,5 +21,7 @@ extern void StartProfile();
 
 extern void StopProfile();
 
+extern bool EnableProfile();
+
 }  // namespace imperative
 }  // namespace paddle

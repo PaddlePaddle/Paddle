@@ -58,5 +58,12 @@ void StopProfile() {
 #endif
 }
 
+bool EnableProfile() {
+#ifdef WITH_GPERFTOOLS
+  return gTracerProfilerStarted;
+#endif
+  return false;
+}
+
 }  // namespace imperative
 }  // namespace paddle

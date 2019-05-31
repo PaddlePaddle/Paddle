@@ -73,14 +73,14 @@ void BindImperative(pybind11::module *m_ptr) {
   m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
-      .def(
-          py::init<const std::string &, paddle::framework::proto::VarType::Type,
-                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
-                   bool, bool>())
-      .def(
-          py::init<const std::string &, paddle::framework::proto::VarType::Type,
-                   const std::vector<int64_t>,
-                   const paddle::platform::CUDAPlace, bool, bool>())
+      .def(py::init<const std::string &,
+                    const paddle::framework::proto::VarType::Type &,
+                    const std::vector<int64_t> &,
+                    const paddle::platform::CPUPlace &, bool, bool>())
+      .def(py::init<const std::string &,
+                    const paddle::framework::proto::VarType::Type &,
+                    const std::vector<int64_t> &,
+                    const paddle::platform::CUDAPlace &, bool, bool>())
       .def("_run_backward",
            [](imperative::VarBase &self,
               const imperative::detail::BackwardStrategy &bckst) {

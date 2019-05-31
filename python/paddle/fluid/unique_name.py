@@ -91,11 +91,16 @@ def generate(key):
 # would save model in static graph mode, and load it in dygraph
 # mode. Therefore, we keep the variable name of Parameter currently.
 # 
-# Please fix me if a better method is found.        
+# Please fix me if a better method is found.
+__tmp_var_idx__ = -1
+
+
 def generate_with_ignorable_key(key):
+    global __tmp_var_idx__
     from .framework import in_dygraph_mode
     if in_dygraph_mode():
-        key = "tmp"
+        __tmp_var_idx__ += 1
+        return "tmp_" + "_" + str(__tmp_var_idx__)
 
     return generator(key)
 

@@ -5006,9 +5006,9 @@ def split(input, num_or_sections, dim=-1, name=None):
         assert len(num_or_sections) <= input_shape[
             dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
+    dtype = helper.input_dtype()
     outs = [
-        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-        for i in range(num)
+        helper.create_variable_for_type_inference(dtype) for i in range(num)
     ]
     helper.append_op(
         type='split',
