@@ -678,8 +678,9 @@ bool ParallelExecutor::EnableParallelGraphExecution(
   }
 
 #ifdef WIN32
-  VLOG(1) << "Windows has no support to parallel graph, enable_parallel_graph "
-             "would be forced to false.";
+  LOG_FIRST_N(WARNING, 1)
+      << "Windows has no support to parallel graph, enable_parallel_graph "
+         "would be forced to false.";
   enable_parallel_graph = false;
 #endif
 
