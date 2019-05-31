@@ -57,11 +57,11 @@ make test_fc_compute_arm -j
 # 创建Android avd (armv8)
 $ echo n | avdmanager create avd -f -n paddle-armv8 -k "system-images;android-24;google_apis;arm64-v8a"
 # 启动Android armv8 emulator
-$ ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8  -noaudio -no-window -gpu off -verbose
+$ ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8 -noaudio -no-window -gpu off -verbose &
 
 # 如果需要执行armv7版本，如下：
 # $ echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
-# $ ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose
+# $ ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose &
 
 # 退出所有模拟器
 adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done

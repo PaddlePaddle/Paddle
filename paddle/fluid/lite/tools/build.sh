@@ -43,30 +43,36 @@ function test_lite {
     done
 }
 
+port_armv8=5554
+port_armv7=5556
+
 # Run test on android
 function test_lite_android {
     local file=$1
     local adb_abi=$2
+    local port=
+    if [[ ${adb_abi} == "armeabi-v7a" ]]; then
+        port=${port_armv7}
+    fi
 
-    # stop all emulator
-    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
-
-    # start android emulator
-    echo n | avdmanager create avd -f -n paddle_${adb_abi} -k "system-images;android-24;google_apis;${adb_abi}"
-    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle_${adb_abi} -noaudio -no-window -gpu off -verbose &
-    sleep 30
+    if [[ ${adb_abi} == "arm64-v8a" ]]; then
+        port=${port_armv8}
+    fi
+    if [[ "${port}x" == "x" ]]; then
+        echo "Port can not be empty"
+        exit 1
+    fi
 
     echo "file: ${file}"
     # push all to adb and test
     adb_work_dir="/data/local/tmp"
+    skip_list="test_model_parser_lite"
     for _test in $(cat $file); do
-        if [[ ${_test} == *"_arm" ]]; then
-            # since some test have args so only test arm kernels yet
-            testpath=$(find ./paddle/fluid -name ${_test})
-            adb push ${testpath} ${adb_work_dir}
-            adb shell chmod +x "${adb_work_dir}/${_test}"
-            adb shell "./${adb_work_dir}/${_test}"
-        fi
+        [[ $skip_list =~ (^|[[:space:]])$_test($|[[:space:]]) ]] && continue || echo 'skip $_test'
+        testpath=$(find ./paddle/fluid -name ${_test})
+        adb -s emulator-${port} push ${testpath} ${adb_work_dir}
+        adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${_test}"
+        adb -s emulator-${port} shell "./${adb_work_dir}/${_test}"
     done
 }
 
@@ -82,6 +88,15 @@ function build_test_server {
 
 # Build the code and run lite server tests. This is executed in the CI system.
 function build_test_arm {
+    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+    # start android arm64-v8a armeabi-v7a emulators first
+    echo n | avdmanager create avd -f -n paddle-armv8 -k "system-images;android-24;google_apis;arm64-v8a"
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8 -noaudio -no-window -gpu off -verbose -port ${port_armv8} &
+    sleep 1m
+    echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
+    sleep 1m
+
     for os in "android" "armlinux" ; do
         for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
             if [[ ${abi} == "armeabi-v7a-hf" ]]; then
@@ -106,12 +121,18 @@ function build_test_arm {
                 if [[ ${adb_abi} == "armeabi-v7a-hf" ]]; then
                     adb_abi="armeabi-v7a"
                 fi
+                if [[ ${adb_abi} == "armeabi-v7a" ]]; then
+                    # skip v7 tests
+                    continue
+                fi
                 test_lite_android $TESTS_FILE ${adb_abi}
                 # armlinux need in another docker
             fi
             cd -
         done
     done
+    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+    echo "Done"
 }
 
 ############################# MAIN #################################
