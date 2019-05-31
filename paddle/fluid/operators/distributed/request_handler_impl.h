@@ -69,19 +69,12 @@ class RequestGetHandler final : public RequestHandler {
 
 class RequestSendBarrierHandler final : public RequestHandler {
  public:
-  explicit RequestSendBarrierHandler(bool sync_mode,
-                                     bool enable_dc_asgd = false)
-      : RequestHandler(sync_mode) {
-    enable_dc_asgd_ = enable_dc_asgd;
-  }
+  RequestSendBarrierHandler() : RequestHandler(true) {}
   virtual ~RequestSendBarrierHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
               const int trainer_id, const std::string& out_var_name = "",
               const std::string& table_name = "") override;
-
- private:
-  bool enable_dc_asgd_;
 };
 
 class RequestGetNoBarrierHandler final : public RequestHandler {
