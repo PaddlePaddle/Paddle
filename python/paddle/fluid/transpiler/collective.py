@@ -27,6 +27,7 @@ import numpy as np
 from ..core import VarDesc
 from ..framework import Program, \
         default_main_program, default_startup_program
+from ..unique_name import generate
 
 from .details import wait_server_ready
 
@@ -102,7 +103,9 @@ class Collective(object):
 
         block = program.global_block()
         nccl_id_var = block.create_var(
-            persistable=True, type=VarDesc.VarType.RAW)
+            name=generate('nccl_id'),
+            persistable=True,
+            type=VarDesc.VarType.RAW)
         block.append_op(
             type='c_gen_nccl_id',
             inputs={},
@@ -191,9 +194,8 @@ class LocalSGD(Collective):
 
         block = self.startup_program.global_block()
         for param in block.iter_parameters():
-            snapshot_name = param.name + self.snapshot_key
             snapshot = block.create_var(
-                name=snapshot_name,
+                name=self.snapshot_name(param.name),
                 shape=param.shape,
                 persistable=True,
                 stop_gradient=True)
