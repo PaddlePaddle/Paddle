@@ -19,6 +19,7 @@ from parallel_executor_test_base import TestParallelExecutorBase
 import numpy as np
 import unittest
 
+
 def simple_fc_net(use_feed):
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -32,6 +33,7 @@ def simple_fc_net(use_feed):
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)
     return loss
+
 
 class TestParallelExecutorStrategy(TestParallelExecutorBase):
     def _init_data(self):
@@ -56,7 +58,7 @@ class TestParallelExecutorStrategy(TestParallelExecutorBase):
 
         for use_cuda in [True, False]:
             if use_cuda and not fluid.core.is_compiled_with_cuda():
-                    return
+                return
 
             img, label = self._init_data()
             self.check_network_convergence(
@@ -120,7 +122,8 @@ class TestParallelExecutorStrategy(TestParallelExecutorBase):
 
     def test_enable_sequential_execution(self):
         for enable_sequential_execution in [True, False]:
-            self._run_options(enable_sequential_execution=enable_sequential_execution)
+            self._run_options(
+                enable_sequential_execution=enable_sequential_execution)
 
 
 if __name__ == '__main__':
