@@ -6,7 +6,8 @@ cc_library(memcpy SRCS memcpy.cc DEPS place)
 cc_library(memory
         DEPS
         malloc
-        memcpy)
+        memcpy
+        )
 #if (WITH_GPU)
 #   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)
 #endif()

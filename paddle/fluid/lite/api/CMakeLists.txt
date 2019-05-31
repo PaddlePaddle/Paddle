@@ -25,10 +25,14 @@ set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inferenc
 set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
         "A path setting inference demo download directories.")
 
-# lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
-#   DEPS cxx_api_lite model_parser_lite target_wrapper_host
-#   ${ops_lite} ${host_kernels} ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
-#         --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
+   DEPS cxx_api_lite model_parser_lite target_wrapper_host
+   ${ops_lite} ${host_kernels} ${x86_kernels}
+   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
+        --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
+endif(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
 
 if(WITH_TESTING)
 lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")

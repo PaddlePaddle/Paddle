@@ -57,10 +57,16 @@ TEST(fc_op_lite, test) {
 
   FcOpLite fc("fc");
 
-  fc.SetValidPlaces({Place{TARGET(kHost), PRECISION(kFloat)}});
+  fc.SetValidPlaces({Place{TARGET(kX86), PRECISION(kFloat)}});
   fc.Attach(desc, &scope);
+  auto kernels = fc.CreateKernels({Place{TARGET(kX86), PRECISION(kFloat)}});
+  ASSERT_FALSE(kernels.empty());
 }
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
+#ifdef LITE_WITH_X86
+
+USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
+#endif

@@ -43,9 +43,8 @@ class ElementwiseOp : public OpLite {
 
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Y = GetVar<lite::Tensor>(scope, Y_name);
-    param_.Out = GetMutableVar<Tensor>(scope, Out_name);
-    param_.axis = GetAttr<int>(opdesc.GetAttr("axis"));
-
+    param_.Out = GetMutableVar<lite::Tensor>(scope, Out_name);
+    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
     return true;
   }
 
@@ -110,3 +109,4 @@ REGISTER_LITE_OP(elementwise_sub, paddle::lite::operators::ElementwiseOp);
 REGISTER_LITE_OP(elementwise_sub_grad,
                  paddle::lite::operators::ElementwiseGradExplicitOp);
 #endif
+REGISTER_LITE_OP(elementwise_add, paddle::lite::operators::ElementwiseOp);

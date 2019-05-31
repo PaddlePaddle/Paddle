@@ -25,7 +25,6 @@ bool ReluOp::InferShape() const {
   CHECK_OR_FALSE(param_.output);
   // TODO(Superjomn) Enable data sharing.
   param_.output->Resize(param_.input->dims());
-  // param_.output->ShareDataWith(*param_.input);
   // share lod
   // param_.output->set_lod(param_.input->lod());
   return true;
@@ -42,8 +41,8 @@ bool ReluOp::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
   return true;
 }
 
-REGISTER_LITE_OP(relu, ReluOp);
-
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
+
+REGISTER_LITE_OP(relu, paddle::lite::operators::ReluOp);

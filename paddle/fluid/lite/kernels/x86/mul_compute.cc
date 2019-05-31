@@ -30,7 +30,7 @@ class MulCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   using param_t = operators::MulParam;
 
   void Run() override {
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::MulParam>();
     CHECK(context.x86_device_context);
 
@@ -68,7 +68,7 @@ template <typename T>
 class MulGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   void Run() override {
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::MulGradParam>();
     CHECK(context.x86_device_context);
 
