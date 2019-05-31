@@ -18,7 +18,6 @@ function cmake_arm {
     cmake .. \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
-        -DWITH_MKLDNN=OFF \
         -DWITH_LITE=ON \
         -DLITE_WITH_CUDA=OFF \
         -DLITE_WITH_X86=OFF \
@@ -44,10 +43,32 @@ function test_lite {
     done
 }
 
-# Run test on mobile
-function test_mobile {
-    # TODO(XXX) Implement this
+# Run test on android
+function test_lite_android {
     local file=$1
+    local adb_abi=$2
+
+    # stop all emulator
+    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+
+    # start android emulator
+    echo n | avdmanager create avd -f -n paddle_${adb_abi} -k "system-images;android-24;google_apis;${adb_abi}"
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle_${adb_abi} -noaudio -no-window -gpu off -verbose &
+    sleep 30
+
+    echo "file: ${file}"
+    # push all to adb
+    adb_work_dir="/data/local/tmp"
+    for _test in $(cat $file); do
+        testpath=$(find ./paddle/fluid -name ${_test})
+        adb push ${testpath} ${adb_work_dir}
+    done
+
+    # then test all
+    for _test in $(cat $file); do
+        adb shell chmod +x "${adb_work_dir}/${_test}"
+        adb shell "./${adb_work_dir}/${_test}"
+    done
 }
 
 # Build the code and run lite server tests. This is executed in the CI system.
@@ -80,8 +101,15 @@ function build_test_arm {
 
             cmake_arm ${os} ${abi}
             build $TESTS_FILE
-            test_lite $TESTS_FILE
-            
+
+            if [[ ${os} == "android" ]]; then
+                adb_abi=${abi}
+                if [[ ${adb_abi} == "armeabi-v7a-hf" ]]; then
+                    adb_abi="armeabi-v7a"
+                fi
+                test_lite_android $TESTS_FILE ${adb_abi}
+                # armlinux need in another docker
+            fi
             cd -
         done
     done
