@@ -57,17 +57,16 @@ function test_lite_android {
     sleep 30
 
     echo "file: ${file}"
-    # push all to adb
+    # push all to adb and test
     adb_work_dir="/data/local/tmp"
     for _test in $(cat $file); do
-        testpath=$(find ./paddle/fluid -name ${_test})
-        adb push ${testpath} ${adb_work_dir}
-    done
-
-    # then test all
-    for _test in $(cat $file); do
-        adb shell chmod +x "${adb_work_dir}/${_test}"
-        adb shell "./${adb_work_dir}/${_test}"
+        if [[ ${_test} == *"_arm" ]]; then
+            # since some test have args so only test arm kernels yet
+            testpath=$(find ./paddle/fluid -name ${_test})
+            adb push ${testpath} ${adb_work_dir}
+            adb shell chmod +x "${adb_work_dir}/${_test}"
+            adb shell "./${adb_work_dir}/${_test}"
+        fi
     done
 }
 
