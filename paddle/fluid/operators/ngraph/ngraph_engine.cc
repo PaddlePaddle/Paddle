@@ -571,6 +571,11 @@ void NgraphEngine::Run(const framework::Scope& scope,
 
   auto m_parameters = ng_func->get_parameters();
   auto m_results = ng_func->get_results();
+  // Due to optimization backend may produce results in other layouts,
+  // make sure we get default layout for results.
+  for (auto& r : m_results) {
+    r->set_needs_default_layout(true);
+  }
   if (is_test && use_cache &&
       t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
     p_t_in = &(t_in_cache_[func_cache_key_]);
