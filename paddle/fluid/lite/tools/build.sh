@@ -13,45 +13,19 @@ function cmake_gpu {
 }
 
 function cmake_arm {
-    # ARM_TARGET_OS="android" , "armlinux"
-    # ARM_TARGET_ARCH_ABI = "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
-    for os in "android" "armlinux" ; do
-        for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
-            if [[ ${abi} == "armeabi-v7a-hf" ]]; then
-                echo "armeabi-v7a-hf is not supported on both android and armlinux"
-                continue
-            fi
-
-            if [[ ${os} == "armlinux" && ${abi} == "armeabi-v7a" ]]; then
-                echo "armeabi-v7a is not supported on armlinux yet"
-                continue
-            fi
-
-            echo "Build for ${os} ${abi}"
-
-            build_dir=build.lite.${os}.${abi}
-            mkdir -p $build_dir
-            cd $build_dir
-
-            cmake .. \
-                -DWITH_GPU=OFF \
-                -DWITH_LITE=ON \
-                -DLITE_WITH_CUDA=OFF \
-                -DLITE_WITH_X86=OFF \
-                -DLITE_WITH_ARM=ON \
-                -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-                -DWITH_TESTING=ON \
-                -DWITH_MKL=OFF \
-                -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} 
-
-            make test_fc_compute_arm -j
-            make test_softmax_compute_arm -j
-            make cxx_api_lite_bin -j
-            cd -
-
-        done
-    done
-
+    # $1: ARM_TARGET_OS in "android" , "armlinux"
+    # $2: ARM_TARGET_ARCH_ABI in "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
+    cmake .. \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_MKLDNN=OFF \
+        -DWITH_LITE=ON \
+        -DLITE_WITH_CUDA=OFF \
+        -DLITE_WITH_X86=OFF \
+        -DLITE_WITH_ARM=ON \
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+        -DWITH_TESTING=ON \
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
 }
 
 function build {
@@ -84,6 +58,33 @@ function build_test_server {
     cmake_x86
     build $TESTS_FILE
     test_lite $TESTS_FILE
+}
+
+# Build the code and run lite server tests. This is executed in the CI system.
+function build_test_arm {
+    for os in "android" "armlinux" ; do
+        for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
+            if [[ ${abi} == "armeabi-v7a-hf" ]]; then
+                echo "armeabi-v7a-hf is not supported on both android and armlinux"
+                continue
+            fi
+
+            if [[ ${os} == "armlinux" && ${abi} == "armeabi-v7a" ]]; then
+                echo "armeabi-v7a is not supported on armlinux yet"
+                continue
+            fi
+
+            build_dir=build.lite.${os}.${abi}
+            mkdir -p $build_dir
+            cd $build_dir
+
+            cmake_arm ${os} ${abi}
+            build $TESTS_FILE
+            test_lite $TESTS_FILE
+            
+            cd -
+        done
+    done
 }
 
 ############################# MAIN #################################
@@ -137,6 +138,10 @@ function main {
                 ;;
             build_test_server)
                 build_test_server
+                shift
+                ;;
+            build_test_arm)
+                build_test_arm
                 shift
                 ;;
             *)
