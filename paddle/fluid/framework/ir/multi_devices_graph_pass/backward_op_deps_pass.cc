@@ -42,6 +42,17 @@ class BackWardOpDepsPass : public ir::Pass {
     std::vector<details::OpHandleBase*> opt_handles;
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(*graph);
     for (auto& node : topo_nodes) {
+      if (!node->Op()) return;
+
+      /*
+      VLOG(10) << "Name:" << node->Name()
+          << ", type:" << static_cast<int>(node->NodeType())
+          << ", op_desc:" << node->Op();
+
+      auto& attrs = node->Op()->GetAttrMap();
+      VLOG(10) << "attr_map:" << attrs.size();
+      */
+
       GetBackWardOpHandles(node, &backward_op_handles);
       GetOptHandles(node, &opt_handles);
     }
@@ -61,6 +72,8 @@ class BackWardOpDepsPass : public ir::Pass {
           .emplace(dep_var);
       backward_op_handles[i - 1]->AddOutput(dep_var);
       backward_op_handles[i]->AddInput(dep_var);
+      VLOG(10) << "add deps:" << backward_op_handles[i - 1]->DebugString()
+               << " -> " << backward_op_handles[i]->DebugString();
     }
 
     for (size_t i = 1; i < opt_handles.size(); ++i) {
@@ -69,12 +82,18 @@ class BackWardOpDepsPass : public ir::Pass {
           .emplace(dep_var);
       opt_handles[i - 1]->AddOutput(dep_var);
       opt_handles[i]->AddInput(dep_var);
+      VLOG(10) << "add deps:" << opt_handles[i - 1]->DebugString() << " -> "
+               << opt_handles[i]->DebugString();
     }
 
     auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
     graph->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
     backward_op_handles[backward_op_handles.size() - 1]->AddOutput(dep_var);
     opt_handles[0]->AddInput(dep_var);
+
+    VLOG(10) << "add deps:"
+             << opt_handles[backward_op_handles.size() - 1]->DebugString()
+             << " -> " << opt_handles[0]->DebugString();
   }
 
   void GetBackWardOpHandles(
