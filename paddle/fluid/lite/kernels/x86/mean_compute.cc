@@ -37,7 +37,7 @@ class MeanCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     CHECK(context.x86_device_context);
 
     param.Out->template mutable_data<T>();
@@ -59,7 +59,7 @@ class MeanGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     CHECK_EQ(param.Out_grad->raw_tensor().numel(), 1);
     CHECK(context.x86_device_context);
 

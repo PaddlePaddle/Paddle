@@ -32,7 +32,8 @@ namespace lite {
 TEST(CXXApi, test) {
   lite::ExecutorLite predictor;
 #ifndef LITE_WITH_CUDA
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kX86), PRECISION(kFloat)}});
 #else
   std::vector<Place> valid_places({
       Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
@@ -44,7 +45,8 @@ TEST(CXXApi, test) {
   });
 #endif
 
-  predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
+  predictor.Build(FLAGS_model_dir,
+                  Place{TARGET(kX86), PRECISION(kFloat)},  // origin cuda
                   valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
@@ -69,7 +71,8 @@ TEST(CXXApi, test) {
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
   lite::ExecutorLite predictor;
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kX86), PRECISION(kFloat)}});
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
                   valid_places);
 
@@ -78,7 +81,7 @@ TEST(CXXApi, save_model) {
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-TEST(CXXTrainer, train) {
+/*TEST(CXXTrainer, train) {
   Place prefer_place({TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)});
   std::vector<Place> valid_places({prefer_place});
   auto scope = std::make_shared<lite::Scope>();
@@ -108,7 +111,7 @@ TEST(CXXTrainer, train) {
   data0[0] = 0;
 
   exe.Run();
-}
+}*/
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 }  // namespace lite
@@ -116,12 +119,30 @@ TEST(CXXTrainer, train) {
 
 USE_LITE_OP(mul);
 USE_LITE_OP(fc);
+USE_LITE_OP(relu);
 USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
+USE_LITE_OP(elementwise_add)
+USE_LITE_OP(elementwise_sub)
+USE_LITE_OP(square)
+USE_LITE_OP(softmax)
+USE_LITE_OP(dropout)
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
+
+#ifdef LITE_WITH_X86
+USE_LITE_KERNEL(relu, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(square, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(elementwise_sub, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(elementwise_add, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(softmax, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(dropout, kX86, kFloat, kNCHW, def);
+#endif
 
 #ifdef LITE_WITH_CUDA
 USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
