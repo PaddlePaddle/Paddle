@@ -62,10 +62,10 @@ class SquareCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   void Run() override {
     auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::ActivationParam>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
 
     param.Out->template mutable_data<T>();
-    Activate<paddle::operators::SquareFunctor<T>>(*context.x86_device_context,
+    Activate<paddle::operators::SquareFunctor<T>>(*context.X86DeviceContext(),
                                                   &param.X->raw_tensor(),
                                                   &param.Out->raw_tensor());
   }
@@ -81,11 +81,11 @@ class SquareGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   void Run() override {
     auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::ActivationGradParam>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
     param.X_grad->template mutable_data<T>();
 
     ActivateGrad<paddle::operators::SquareGradFunctor<T>>(
-        *context.x86_device_context, &param.X->raw_tensor(),
+        *context.X86DeviceContext(), &param.X->raw_tensor(),
         &param.Out->raw_tensor(), &param.Out_grad->raw_tensor(),
         &param.X_grad->raw_tensor());
   }

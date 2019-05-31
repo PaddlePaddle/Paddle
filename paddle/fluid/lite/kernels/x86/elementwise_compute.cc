@@ -44,12 +44,12 @@ class ElementwiseSubCompute
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
     auto& context = ctx_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
 
     param.Out->template mutable_data<T>();
     paddle::operators::ElementwiseComputeEx<SubFunctor<T>,
                                             platform::CPUDeviceContext, T>(
-        *context.x86_execution_context, &param.X->raw_tensor(),
+        *context.X86ExecutionContext(), &param.X->raw_tensor(),
         &param.Y->raw_tensor(), param.axis, SubFunctor<T>(),
         &param.Out->raw_tensor());
   }
@@ -75,7 +75,7 @@ class ElementwiseSubGradCompute
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
     auto& context = ctx_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
 
     param.X_grad->template mutable_data<T>();
     param.Y_grad->template mutable_data<T>();
@@ -86,7 +86,7 @@ class ElementwiseSubGradCompute
     auto& skip = dout;
     paddle::operators::ElemwiseExplicitGradCompute<
         platform::CPUDeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-        *context.x86_execution_context, skip, skip, skip, dout, param.axis, &dx,
+        *context.X86ExecutionContext(), skip, skip, skip, dout, param.axis, &dx,
         &dy, SubGradDX<T>(), SubGradDY<T>());
   }
 
@@ -101,11 +101,11 @@ class ElementwiseAddCompute
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
     auto& context = ctx_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
     param.Out->template mutable_data<T>();
     paddle::operators::ElementwiseComputeEx<AddFunctor<T>,
                                             platform::CPUDeviceContext, T>(
-        *context.x86_execution_context, &param.X->raw_tensor(),
+        *context.X86ExecutionContext(), &param.X->raw_tensor(),
         &param.Y->raw_tensor(), param.axis, AddFunctor<T>(),
         &param.Out->raw_tensor());
   }

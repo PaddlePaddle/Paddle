@@ -32,7 +32,7 @@ class MulCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   void Run() override {
     auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::MulParam>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
 
     param.output->template mutable_data<T>();
 
@@ -53,7 +53,7 @@ class MulCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     }
 
     auto blas = paddle::operators::math::GetBlas<platform::CPUDeviceContext, T>(
-        *context.x86_device_context);
+        *context.X86DeviceContext());
 
     blas.MatMul(x_matrix, y_matrix, z);
     if (z_dim.size() != 2) {
@@ -70,7 +70,7 @@ class MulGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   void Run() override {
     auto& context = ctx_->As<X86Context>();
     auto& param = *param_.get_mutable<operators::MulGradParam>();
-    CHECK(context.x86_device_context);
+    CHECK(context.X86DeviceContext());
 
     auto* x = &param.x->raw_tensor();
     auto* y = &param.y->raw_tensor();
@@ -99,7 +99,7 @@ class MulGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     }
 
     auto blas = paddle::operators::math::GetBlas<platform::CPUDeviceContext, T>(
-        *context.x86_device_context);
+        *context.X86DeviceContext());
     if (dx) {
       // dx->mutable_data<T>(context.x86_device_context->GetPlace());
       param.x_grad->template mutable_data<T>();
