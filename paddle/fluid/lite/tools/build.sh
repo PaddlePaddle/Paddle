@@ -9,7 +9,7 @@ function cmake_x86 {
 }
 
 function cmake_x86_for_CI {
-    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE
+    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=ON
 }
 
 function cmake_gpu {
