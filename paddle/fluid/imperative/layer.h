@@ -183,11 +183,6 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    if (grads_) {
-      delete grads_;
-      grads_ = nullptr;
-    }
-
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
     VLOG(2) << "destruct varbase: " << name_;
@@ -230,6 +225,7 @@ class VarBase {
 
   inline void SetPersistable(bool persistable) { persistable_ = persistable; }
   inline bool IsPersistable() const { return persistable_; }
+  inline void SetPreOp(OpBase* op) { pre_op_ = op; }
   inline platform::Place GetPlace() { return place_; }
   inline OpBase* PreOp() const { return pre_op_; }
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
@@ -290,7 +286,7 @@ class VarBase {
   platform::Place place_;
 
   std::unique_ptr<framework::Variable> var_;
-  VarBase* grads_;
+  std::shared_ptr<VarBase> grads_;
 
  private:
   framework::proto::VarType::Type dtype_;
@@ -315,21 +311,13 @@ class PYBIND11_HIDDEN OpBase {
 
   virtual ~OpBase() {
     // TODO(minqiyang): remove op_desc from block_desc in tracer
-    //
-    // reset all output vars' pre op
-    for (auto iter : output_vars_) {
-      for (VarBase* var : iter.second) {
-        var->ResetPreOp(this);
-      }
-    }
-
     // release resource
     for (framework::OpDesc* desc : grad_op_descs_) {
       delete desc;
     }
   }
 
-  std::map<std::string, std::vector<VarBase*>> ApplyGrad(
+  std::vector<VarBasePtrMap> ApplyGrad(
       BackwardSumMap* bck_map, GradientRef* grad_ref,
       const detail::BackwardStrategy& bck_stratedy);
 
@@ -343,12 +331,13 @@ class PYBIND11_HIDDEN OpBase {
 
   void InvokeBackwardHooks();
 
-  void TrackPreOp(const std::string& inp_name,
-                  const std::vector<VarBase*>& inputs) {
+  void TrackPreOp(
+      const std::string& inp_name,
+      const std::vector<std::shared_ptr<imperative::VarBase>>& inputs) {
     auto& pre_ops_list = pre_ops_[inp_name];
     pre_ops_list.reserve(inputs.size());
     auto& pre_ops_out_idx_list = pre_ops_out_idx_[inp_name];
-    for (VarBase* inp_var : inputs) {
+    for (std::shared_ptr<imperative::VarBase> inp_var : inputs) {
       if (inp_var->PreOp() && !inp_var->IsStopGradient()) {
         VLOG(3) << "add pre op " << inp_var->PreOp()->Type() << " in slot "
                 << inp_name;
@@ -371,8 +360,6 @@ class PYBIND11_HIDDEN OpBase {
 
   platform::Place place_;
 
-  VarBasePtrMap input_vars_;
-  VarBasePtrMap output_vars_;
   OpBasePtrMap pre_ops_;
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
@@ -390,8 +377,9 @@ class Layer {
  public:
   virtual ~Layer() {}
 
-  virtual std::vector<VarBase*> Forward(const std::vector<VarBase*>& inputs) {
-    std::vector<VarBase*> vars;
+  virtual std::vector<std::shared_ptr<VarBase>> Forward(
+      const std::vector<std::shared_ptr<VarBase>>& inputs) {
+    std::vector<std::shared_ptr<VarBase>> vars;
     return vars;
   }
 };
@@ -412,7 +400,7 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
         var_set_() {
     input_names_.reserve(inputs_->size());
     for (auto& it : *inputs_) {
-      for (imperative::VarBase* var : it.second) {
+      for (std::shared_ptr<imperative::VarBase> var : it.second) {
         input_names_[it.first].emplace_back(var->Name());
         var_set_[var->Name()] = var;
       }
@@ -420,7 +408,7 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
 
     output_names_.reserve(outputs_->size());
     for (auto& it : *outputs_) {
-      for (imperative::VarBase* var : it.second) {
+      for (std::shared_ptr<imperative::VarBase> var : it.second) {
         output_names_[it.first].emplace_back(var->Name());
         var_set_[var->Name()] = var;
       }
@@ -516,7 +504,8 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
   const framework::AttributeMap* attrs_;
   std::unordered_map<std::string, std::vector<std::string>> input_names_;
   std::unordered_map<std::string, std::vector<std::string>> output_names_;
-  std::unordered_map<std::string, imperative::VarBase*> var_set_;
+  std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
+      var_set_;
 };
 
 }  // namespace imperative
