@@ -194,6 +194,7 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         val_reader = paddle.batch(
             self._reader_creator(data_path, False), batch_size=batch_size)
         fp32_model_result = self._predict(val_reader, fp32_model_path)
+
         _logger.info('--- comparing outputs ---')
         _logger.info('Avg top1 INT8 accuracy: {0:.4f}'.format(int8_model_result[
             0]))
