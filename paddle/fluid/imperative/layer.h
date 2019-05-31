@@ -167,9 +167,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     return grad_op_descs_;
   }
 
-  const std::unordered_set<OpBase*>& PrecedingOps() const {
-    return preceding_ops_;
-  }
+  const std::vector<OpBase*>& PrecedingOps() const { return preceding_ops_; }
 
   const std::vector<NameVarBaseMap>& BackwardInputs() const { return bwd_ins_; }
 
@@ -202,7 +200,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   // Not need to be std::weak_ptr, because op is binded to a certain Tracer,
   // and would not be used by a Tracer that does not create itself.
-  std::unordered_set<OpBase*> preceding_ops_;
+  std::vector<OpBase*> preceding_ops_;
 
   std::vector<std::unique_ptr<framework::OpDesc>> grad_op_descs_;
   std::vector<NameVarBaseMap> bwd_ins_;

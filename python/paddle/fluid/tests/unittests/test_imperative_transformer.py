@@ -1076,9 +1076,7 @@ class TestDygraphTransformer(unittest.TestCase):
 
         self.assertTrue(np.allclose(static_avg_cost_value, dy_avg_cost_numpy))
         self.assertTrue(np.allclose(static_sum_cost_value, dy_sum_cost_numpy))
-        self.assertTrue(
-            np.allclose(
-                static_predict_value, dy_predict_numpy, atol=1e-5))
+        self.assertTrue(np.allclose(static_predict_value, dy_predict_numpy))
         self.assertTrue(np.allclose(static_token_num_value, dy_token_num_numpy))
 
         for key, value in six.iteritems(static_param_init):

@@ -440,6 +440,8 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
   bwd_ins_.resize(grad_op_num);
   bwd_outs_.resize(grad_op_num);
 
+  std::unordered_set<OpBase*> visited_preceding_ops;
+
   for (size_t i = 0; i < grad_op_num; ++i) {
     for (auto& grad_ins : grad_op_descs_[i]->Inputs()) {
       if (grad_ins.second.empty()) continue;
@@ -492,12 +494,16 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
 
         auto* preceding_op = (*(fwd_var_iter->second))->GeneratedOp();
 
-        if (preceding_op) {
-          preceding_ops_.insert(preceding_op);
+        if (!preceding_op || visited_preceding_ops.count(preceding_op) > 0) {
+          continue;
         }
+
+        visited_preceding_ops.insert(preceding_op);
+        preceding_ops_.emplace_back(preceding_op);
       }
     }
   }
+  std::reverse(preceding_ops_.begin(), preceding_ops_.end());
 }
 
 void OpBase::ClearBackwardTrace() {
