@@ -51,14 +51,14 @@ class DropoutOpLite : public OpLite {
     param_.output = GetMutableVar<lite::Tensor>(scope, out);
     param_.mask = GetMutableVar<lite::Tensor>(scope, Mask);
 
-    param_.dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
+    param_.dropout_prob = GetAttr<float>(op_desc.GetAttr("dropout_prob"));
     if (op_desc.HasAttr("axis")) {
-      param_.is_test = boost::get<bool>(op_desc.GetAttr("is_test"));
+      param_.is_test = GetAttr<bool>(op_desc.GetAttr("is_test"));
     }
-    param_.fix_seed = boost::get<bool>(op_desc.GetAttr("fix_seed"));
-    param_.seed = boost::get<int>(op_desc.GetAttr("seed"));
+    param_.fix_seed = GetAttr<bool>(op_desc.GetAttr("fix_seed"));
+    param_.seed = GetAttr<int>(op_desc.GetAttr("seed"));
     param_.dropout_implementation =
-        boost::get<int>(op_desc.GetAttr("dropout_implementation"));
+        GetAttr<int>(op_desc.GetAttr("dropout_implementation"));
     return true;
   }
 

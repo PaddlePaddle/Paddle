@@ -44,7 +44,7 @@ class ElementwiseOp : public OpLite {
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Y = GetVar<lite::Tensor>(scope, Y_name);
     param_.Out = GetMutableVar<lite::Tensor>(scope, Out_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+    param_.axis = GetAttr<int>(opdesc.GetAttr("axis"));
     return true;
   }
 
@@ -84,7 +84,7 @@ class ElementwiseGradExplicitOp : public OpLite {
     param_.Out_grad = GetVar<lite::Tensor>(scope, Out_name);
     param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_name);
     param_.Y_grad = GetMutableVar<Tensor>(scope, Y_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+    param_.axis = GetAttr<int>(opdesc.GetAttr("axis"));
 
     return true;
   }
