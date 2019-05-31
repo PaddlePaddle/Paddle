@@ -42,13 +42,20 @@ class BackWardOpDepsPass : public ir::Pass {
     std::vector<details::OpHandleBase*> opt_handles;
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(*graph);
     for (auto& node : topo_nodes) {
-      if (!node->Op()) return;
+      // if(node->Name() == "square"){
+      // VLOG(10) << "node:" <<
+      // node->Wrapper<details::OpHandleBase>().DebugString();
+      // }
 
       /*
       VLOG(10) << "Name:" << node->Name()
           << ", type:" << static_cast<int>(node->NodeType())
           << ", op_desc:" << node->Op();
+      */
 
+      if (!node->Op()) continue;
+
+      /*
       auto& attrs = node->Op()->GetAttrMap();
       VLOG(10) << "attr_map:" << attrs.size();
       */
@@ -57,12 +64,10 @@ class BackWardOpDepsPass : public ir::Pass {
       GetOptHandles(node, &opt_handles);
     }
 
+    VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
+             << ", opt_handles size:" << opt_handles.size();
     if (backward_op_handles.size() <= 1 || opt_handles.size() <= 1) {
-      VLOG(10) << string::Sprintf(
-          "backward_op_handles size:%d, opt_handles:%d, so need not to add "
-          "deps between them",
-          static_cast<int>(backward_op_handles.size()),
-          static_cast<int>(opt_handles.size()));
+      VLOG(10) << "need not backward_op_deps_pass";
       return;
     }
 
