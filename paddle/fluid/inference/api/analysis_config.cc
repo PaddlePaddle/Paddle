@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
+extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -105,6 +106,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
+  CP_MEMBER(trt_use_calib_mode_);
+  // NGRAPH related.
+  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -116,6 +120,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_max_batchsize_);
   CP_MEMBER(anakin_max_input_shape_);
   CP_MEMBER(anakin_min_subgraph_size_);
+  CP_MEMBER(anakin_precision_mode_);
+  CP_MEMBER(anakin_auto_config_layout_);
+  CP_MEMBER(anakin_passes_filter_);
+  CP_MEMBER(anakin_ops_filter_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -164,6 +172,16 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
+void AnalysisConfig::EnableNgraph() {
+#ifdef PADDLE_WITH_NGRAPH
+  pass_builder()->EnableNgraph();
+  use_ngraph_ = true;
+#else
+  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+  use_ngraph_ = false;
+#endif
+}
+
 std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
     const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
@@ -173,7 +191,8 @@ std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
 
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
-    AnalysisConfig::Precision precision_mode, bool use_static) {
+    AnalysisConfig::Precision precision_mode, bool use_static,
+    bool use_calib_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -186,6 +205,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
+  trt_use_calib_mode_ = use_calib_mode;
 
   Update();
 #else
@@ -224,14 +244,24 @@ void AnalysisConfig::Update() {
   }
 
   if (use_tensorrt_) {
-    const auto &passes = pass_builder_->AllPasses();
-    if (std::find(passes.begin(), passes.end(), "tensorrt_subgraph_pass") ==
-        std::end(passes)) {
-      // Append after the Affine_channel_conv_fuse pass.
-      pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kTRTSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
     }
-    pass_builder()->DeletePass("runtime_context_cache_pass");
-    pass_builder()->DeletePass("expected_kernel_cache_pass");
+  }
+
+  if (use_ngraph_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableNgraph() only works when IR optimization is enabled.";
+    }
+#ifdef PADDLE_WITH_NGRAPH
+    pass_builder()->EnableNgraph();
+    use_ngraph_ = true;
+#else
+    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+    use_ngraph_ = false;
+#endif
   }
 
   if (use_mkldnn_) {
@@ -269,13 +299,18 @@ void AnalysisConfig::Update() {
     PADDLE_ENFORCE(!use_tensorrt_,
                    "Anakin sub-graph and TensorRT sub-graph are not allowed to "
                    "run at the same time!");
-    PADDLE_ENFORCE(
-        use_gpu_,
-        "Anakin sub-graph engine need gpu, please use the EnableGpu API.");
+    if (use_gpu_) {
+      LOG(INFO) << "Run Anakin GPU mode";
+    } else {
+      LOG(INFO) << "Run Anakin CPU mode";
+    }
 
     pass_builder()->ClearPasses();
     for (const auto &pass : kAnakinSubgraphPasses) {
-      pass_builder()->AppendPass(pass);
+      if (std::find(anakin_passes_filter_.begin(), anakin_passes_filter_.end(),
+                    pass) == anakin_passes_filter_.end()) {
+        pass_builder()->AppendPass(pass);
+      }
     }
   }
 
@@ -302,6 +337,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << enable_memory_optim_;
   ss << static_memory_optim_;
   ss << static_memory_optim_force_update_;
+
+  ss << use_ngraph_;
 
   ss << use_mkldnn_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
@@ -390,11 +427,17 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 }
 void AnalysisConfig::EnableAnakinEngine(
     int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
-    int min_subgraph_size) {
+    int min_subgraph_size, AnalysisConfig::Precision precision_mode,
+    bool auto_config_layout, std::vector<std::string> passes_filter,
+    std::vector<std::string> ops_filter) {
   anakin_max_batchsize_ = max_batch_size;
   anakin_max_input_shape_ = max_input_shape;
   anakin_min_subgraph_size_ = min_subgraph_size;
+  anakin_passes_filter_ = passes_filter;
+  anakin_ops_filter_ = ops_filter;
   use_anakin_ = true;
+  anakin_precision_mode_ = precision_mode;
+  anakin_auto_config_layout_ = auto_config_layout;
   Update();
 }
 }  // namespace paddle

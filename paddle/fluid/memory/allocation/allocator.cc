@@ -19,24 +19,11 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
-Allocation::~Allocation() {}
-
-Allocator::~Allocator() {}
 
 bool Allocator::IsAllocThreadSafe() const { return false; }
 
-AllocationPtr Allocator::Allocate(size_t size, Allocator::Attr attr) {
-  auto ptr = AllocateImpl(size, attr);
-  ptr->set_allocator(this);
-  return AllocationPtr(ptr);
-}
-
-void Allocator::Free(Allocation* allocation) { delete allocation; }
-
-const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
-
-void AllocationDeleter::operator()(Allocation* allocation) const {
-  auto* allocator = allocation->allocator();
+void Allocator::FreeImpl(Allocation* allocation) {
+  Allocator* allocator = allocation->TopDecoratedAllocator();
   allocator->Free(allocation);
 }
 

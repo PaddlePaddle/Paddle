@@ -142,7 +142,8 @@ struct AnalysisConfig {
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
-                            bool use_static = false);
+                            bool use_static = false,
+                            bool use_calib_mode = false);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -152,7 +153,10 @@ struct AnalysisConfig {
   void EnableAnakinEngine(
       int max_batch_size = 1,
       std::map<std::string, std::vector<int>> max_input_shape = {},
-      int min_subgraph_size = 6);
+      int min_subgraph_size = 6, Precision precision = Precision::kFloat32,
+      bool auto_config_layout = false,
+      std::vector<std::string> passes_filter = {},
+      std::vector<std::string> ops_filter = {});
 
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
   */
@@ -164,6 +168,13 @@ struct AnalysisConfig {
    * each analysis pass applied.
    */
   void SwitchIrDebug(int x = true);
+
+  /** Turn on NGRAPH.
+   */
+  void EnableNgraph();
+  /** A boolean state telling whether to use the NGRAPH.
+   */
+  bool ngraph_enabled() const { return use_ngraph_; }
 
   /** Turn on MKLDNN.
    */
@@ -263,12 +274,14 @@ struct AnalysisConfig {
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_;
   bool trt_use_static_engine_;
+  bool trt_use_calib_mode_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool static_memory_optim_{false};
   bool static_memory_optim_force_update_{false};
 
+  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
@@ -291,6 +304,10 @@ struct AnalysisConfig {
   int anakin_max_batchsize_;
   int anakin_min_subgraph_size_{6};
   std::map<std::string, std::vector<int>> anakin_max_input_shape_;
+  Precision anakin_precision_mode_;
+  bool anakin_auto_config_layout_{false};
+  std::vector<std::string> anakin_passes_filter_;
+  std::vector<std::string> anakin_ops_filter_;
   std::map<std::string, std::string> engine_opt_info_;
 
   bool use_mkldnn_quantizer_{false};
