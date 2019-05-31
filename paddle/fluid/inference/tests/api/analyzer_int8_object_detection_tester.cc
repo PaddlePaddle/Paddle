@@ -17,11 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
-// lod in the python should be int, that will be better. Otherwise it will say
-// no matching function for call to ‘std::vector<std::vector<long unsigned int>
-// >::push_back(std::vector<long int>
-
-// num_images | images | num_images lod | labels | bboxes | difficulties |
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -42,13 +37,11 @@ std::vector<size_t> ReadObjectsNum(std::ifstream &file, size_t offset,
 
   file.clear();
   file.seekg(offset);
-  // How to copy from file to vector
   file.read(reinterpret_cast<char *>(num_objects.data()),
             total_images * sizeof(size_t));
 
   if (file.eof()) LOG(ERROR) << "Reached end of stream";
   if (file.fail()) throw std::runtime_error("Failed reading file.");
-  // Convert the int to size_t
   return num_objects;
 }
 
@@ -112,13 +105,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   auto difficult_beginning_offset =
       bbox_beginning_offset + sizeof(float) * sum_objects_num * 4;
 
-  std::cout << "image_beginning_offset: " << image_beginning_offset
-            << " lod_offset_in_file:" << lod_offset_in_file
-            << " labels_beginning_offset: " << labels_beginning_offset
-            << " bbox_beginning_offset:" << bbox_beginning_offset
-            << " difficult_beginning_offset:" << difficult_beginning_offset
-            << std::endl;
-
   TensorReader<float> image_reader(file, image_beginning_offset, "image");
   TensorReader<int64_t> label_reader(file, labels_beginning_offset, "gt_label");
   TensorReader<float> bbox_reader(file, bbox_beginning_offset, "gt_bbox");
@@ -168,21 +154,16 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   int batches = num_images / test_data_batch_size;
   int batch_remain = num_images % test_data_batch_size;
   size_t num_objects = 0UL;
-  //      test_data[0][1].lod[0][test_data_batch_size];  // first batch, label
   std::vector<size_t> accum_lod;
   accum_lod.push_back(0UL);
-  //  accum_lod.resize(num_images + 1);
-  //      test_data[0][1].lod[0]);  // lod itself is a vector
   int count = 0;
   for (int i = 0; i < batches; i++) {
-    // change the vector contents
     std::transform(test_data[i][1].lod[0].begin() + 1,
                    test_data[i][1].lod[0].end(), std::back_inserter(accum_lod),
                    [&num_objects](size_t lodtemp) -> size_t {
                      return lodtemp + num_objects;
                    });
-    num_objects +=
-        test_data[i][1].lod[0][test_data_batch_size];  // lod has batch_size + 1
+    num_objects += test_data[i][1].lod[0][test_data_batch_size];
     count = count + 1;
   }
   std::cout << "count: " << std::endl;
@@ -214,7 +195,7 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   difficult.name = "gt_difficult";
   difficult.shape = {static_cast<int>(num_objects), 1};
   difficult.dtype = PaddleDType::INT64;
-  difficult.data.Resize(sizeof(int64_t) * num_objects);  // till here
+  difficult.data.Resize(sizeof(int64_t) * num_objects);
   difficult.lod.push_back(accum_lod);
 
   size_t objects_accum = 0;
