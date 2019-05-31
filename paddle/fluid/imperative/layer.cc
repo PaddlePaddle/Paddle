@@ -168,7 +168,6 @@ static framework::VariableNameMap CreateVarNameMap(
     return {};
   }
 
-  VLOG(2) << "CreateVarNameMap " << is_input;
   framework::VariableNameMap result;
 
   for (auto& var :
@@ -187,8 +186,6 @@ static framework::VariableNameMap CreateVarNameMap(
       result[var.name()] = std::move(args);
     }
   }
-
-  VLOG(2) << "CreateVarNameMap " << is_input << " done";
   return result;
 }
 
@@ -363,8 +360,6 @@ OpBase::OpBase(Tracer* tracer, size_t id, const framework::OpDesc& op_desc,
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   auto* op_kernel = dynamic_cast<framework::OperatorWithKernel*>(op_.get());
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
-  VLOG(2) << "Create op " << Type() << " with input " << ins.size()
-          << " and output " << outs.size();
   auto& info = op_->Info();
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, op_->Attrs());
@@ -379,7 +374,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   }
 
   VLOG(3) << "Running Op " << Type();
-  VLOG(1) << DebugString(Type(), ins, outs);
+  VLOG(5) << DebugString(Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
@@ -388,8 +383,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   prepared_op.Run();
 
-  VLOG(3) << "Running Op " << Type() << " ends";
-  VLOG(1) << DebugString(Type(), ins, outs);
+  VLOG(4) << DebugString(Type(), ins, outs);
 }
 
 void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
@@ -413,7 +407,7 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
 
   size_t grad_op_num = grad_op_descs_.size();
 
-  VLOG(5) << "Create " << grad_op_num << " grad op desc(s) to op " << Type();
+  VLOG(3) << "Create " << grad_op_num << " grad op desc(s) to op " << Type();
 
   if (grad_op_num == 0) return;
 
@@ -472,8 +466,9 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
           bwd_in.emplace_back(*(fwd_var_iter->second));
         }
 
-        VLOG(2) << "Set backward input " << grad_ins.first << " of " << Type()
-                << " to be " << bwd_in.back()->Name();
+        VLOG(3) << "Set backward input " << grad_ins.first << " of " << Type()
+                << " to be "
+                << (bwd_in.back() ? bwd_in.back()->Name() : "nullptr");
       }
     }
 
@@ -491,7 +486,7 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
         PADDLE_ENFORCE(fwd_var_iter != name_to_var.end(),
                        "Cannot find forward variable named %s", iter->second);
         bwd_out.emplace_back((*(fwd_var_iter->second))->GradVarBase());
-        VLOG(2) << "Set backward output " << grad_outs.first << " of " << Type()
+        VLOG(3) << "Set backward output " << grad_outs.first << " of " << Type()
                 << " to be "
                 << (bwd_out.back() ? bwd_out.back()->Name() : "nullptr");
 

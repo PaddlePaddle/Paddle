@@ -113,7 +113,7 @@ void AutoGradFunctor::PrepareGradAccumulators(OpBase* op) {
 
         accumulator->IncreaseRefCnt();
 
-        VLOG(2) << "Prepare to acccumulate variable grad " << var->Name()
+        VLOG(3) << "Prepare to acccumulate variable grad " << var->Name()
                 << "with reference count " << accumulator->RefCnt();
       }
     }
@@ -133,11 +133,11 @@ void AutoGradFunctor::PrepareDeps() {
   while (!q.empty()) {
     auto* cur_op = q.front();
     q.pop();
-    VLOG(2) << "Checking grads of op " << cur_op->Type();
+    VLOG(3) << "Checking grads of op " << cur_op->Type();
 
     if (!CheckBackwardInputs(cur_op)) {
       // TODO(zjl): clear ops that do not need grad before running autograd
-      VLOG(2) << "Stop checking preceding ops of " << cur_op->Type()
+      VLOG(3) << "Stop checking preceding ops of " << cur_op->Type()
               << " because all of its backward inputs is stop_gradient=True";
       continue;
     }
@@ -200,28 +200,23 @@ void AutoGradFunctor::operator()() {
         }
       }
 
-      VLOG(2) << "Trace grad op " << grad_descs[i]->Type() << " starts";
+      VLOG(3) << "Start to trace grad op " << grad_descs[i]->Type();
       tracer_->TraceOp(*(grad_descs[i]), bwd_ins[i], tmp_outs, cur_op->place(),
                        false);
-      VLOG(2) << "Trace grad op " << grad_descs[i]->Type() << " ends";
-
       // Step 2: Sum Gradient
-      for (auto& var_pair : var_map) {
-        auto* dst_var = var_pair.first;
-        if (dst_var == nullptr) continue;
-        for (auto& src_var : var_pair.second) {
-          VLOG(2) << "Sum gradient of variable " << dst_var->Name()
-                  << " after op " << grad_descs[i]->Type();
-          SumGradient(cur_op, std::move(src_var), dst_var);
-          VLOG(2) << "Sum gradient ends of variable " << dst_var->Name()
-                  << " after op " << grad_descs[i]->Type();
+      {
+        platform::RecordEvent record_event("merge_grads");
+        for (auto& var_pair : var_map) {
+          auto* dst_var = var_pair.first;
+          if (dst_var == nullptr) continue;
+          for (auto& src_var : var_pair.second) {
+            VLOG(3) << "Sum gradient of variable " << dst_var->Name()
+                    << " after op " << grad_descs[i]->Type();
+            SumGradient(cur_op, std::move(src_var), dst_var);
+          }
         }
       }
     }
-
-    VLOG(2) << "Get preceding op number";
-    size_t num = cur_op->PrecedingOps().size();
-    VLOG(2) << "Preceding op number is " << num;
 
     // Step 3: Collect ready ops
     for (auto* preceding_op : cur_op->PrecedingOps()) {
@@ -231,20 +226,20 @@ void AutoGradFunctor::operator()() {
         continue;
       }
 
-      VLOG(2) << "Found preceding op of " << cur_op->Type();
+      VLOG(3) << "Found preceding op of " << cur_op->Type();
       if (--(iter->second) == 0) {
         q.push(preceding_op);
-        VLOG(2) << "Push preceding op " << preceding_op->Type()
+        VLOG(3) << "Push preceding op " << preceding_op->Type()
                 << " into queue";
       }
     }
 
     // Step 4: Delete op to collect unused variables
-    VLOG(2) << "Remove op after op " << cur_op->Type() << " runs";
+    VLOG(3) << "Remove op after op " << cur_op->Type() << " runs";
     tracer_->RemoveOp(cur_op);
   }
 
-  VLOG(2) << "Clear left op in tracer";
+  VLOG(3) << "Clear left op in tracer";
   tracer_->Clear();
 }
 
