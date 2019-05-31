@@ -23,12 +23,6 @@ from paddle.fluid import framework
 __all__ = ['Tracer']
 
 
-def release_op(op):
-    del framework._dygraph_tracer()._ops[op._trace_id].inputs
-    del framework._dygraph_tracer()._ops[op._trace_id].outputs
-    del framework._dygraph_tracer()._ops[op._trace_id].backward_refs
-
-
 class Tracer(core.Tracer):
     """
     Python wrapper of dygraph tracer
@@ -37,9 +31,7 @@ class Tracer(core.Tracer):
     def __init__(self, block):
         super(Tracer, self).__init__(block)
 
-        self._ops = defaultdict()
         self._vars = defaultdict()
-        self._trace_id = 0
         self._train_mode = True
 
     def trace_var(self, name, var):
@@ -50,8 +42,7 @@ class Tracer(core.Tracer):
                      if isinstance(item, framework.Parameter)))
 
     def _clear_ops(self):
-        self._ops = defaultdict()
-        self._trace_id = 0
+        self._clear()
 
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
         trace_backward = self._train_mode and not stop_gradient
@@ -72,7 +63,7 @@ class Tracer(core.Tracer):
                 for var in vars:
                     outs[k].append(var._ivar)
 
-        self.trace(op._op_type, inps, outs, op.attrs,
+        self.trace(op._type, inps, outs, op.attrs,
                    framework._current_expected_place(), trace_backward)
 
     def train_mode(self):

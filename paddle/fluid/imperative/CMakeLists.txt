@@ -1,5 +1,10 @@
 if(WITH_PYTHON)
-cc_library(layer SRCS layer.cc DEPS proto_desc operator device_context blas pybind profiler)
+cc_library(prepared_operator SRCS prepared_operator.cc DEPS proto_desc operator device_context lod_tensor selected_rows var_type_traits)
+cc_library(layer SRCS layer.cc DEPS prepared_operator math_function)
+cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows var_type_traits layer)
+cc_library(tracer SRCS tracer.cc DEPS layer)
+cc_library(autograd SRCS autograd.cc DEPS layer tracer gradient_accumulator)
+
 cc_library(engine SRCS engine.cc)
 cc_library(imperative_profiler SRCS profiler.cc)
 cc_library(nccl_context SRCS nccl_context.cc DEPS device_context)

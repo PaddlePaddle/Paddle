@@ -19,11 +19,16 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <utility>
-#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/imperative/autograd.h"
+#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/profiler.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
@@ -42,6 +47,16 @@ class Layer : public imperative::Layer {
                       Forward, inputs);  // NOLINT
   }
 };
+
+static std::string GetTypeName(const imperative::VarBase &var) {
+  if (var.Type() == framework::proto::VarType::RAW) {
+    return "RAW";
+  } else if (!var.Var().IsInitialized()) {
+    return "nullptr";
+  } else {
+    return framework::ToTypeName(var.Var().Type());
+  }
+}
 
 // Bind Methods
 void BindImperative(pybind11::module *m_ptr) {
@@ -71,33 +86,21 @@ void BindImperative(pybind11::module *m_ptr) {
       R"DOC()DOC")
       .def("__init__",
            [](imperative::VarBase &self, const std::string &name,
+              framework::proto::VarType::Type type,
               framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims, const platform::CPUPlace &place,
-              bool stop_gradient, bool persistable) {
+              const std::vector<int> &dims, bool stop_gradient,
+              bool persistable) {
              new (&self) imperative::VarBase();
              self.SetPersistable(persistable);
+             self.SetType(type);
              self.SetDataType(dtype);
              self.SetStopGradient(stop_gradient);
              self.SetName(name);
-             auto *tensor =
-                 self.MutableVar()->GetMutable<framework::LoDTensor>();
-             tensor->Resize(framework::make_ddim(dims));
-             tensor->mutable_data(place, dtype);
-           })
-      .def("__init__",
-           [](imperative::VarBase &self, const std::string &name,
-              framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims, const platform::CUDAPlace &place,
-              bool stop_gradient, bool persistable) {
-             new (&self) imperative::VarBase();
-             self.SetPersistable(persistable);
-             self.SetDataType(dtype);
-             self.SetStopGradient(stop_gradient);
-             self.SetName(name);
-             auto *tensor =
-                 self.MutableVar()->GetMutable<framework::LoDTensor>();
-             tensor->Resize(framework::make_ddim(dims));
-             tensor->mutable_data(place, dtype);
+             if (type == framework::proto::VarType::LOD_TENSOR) {
+               auto *tensor =
+                   self.MutableVar()->GetMutable<framework::LoDTensor>();
+               tensor->Resize(framework::make_ddim(dims));
+             }
            })
       .def("_run_backward",
            [](imperative::VarBase &self,
@@ -140,9 +143,16 @@ void BindImperative(pybind11::module *m_ptr) {
       .def_property_readonly(
           "shape",
           [](imperative::VarBase &self) {
-            return framework::vectorize2int(
-                self.Var().Get<framework::LoDTensor>().dims());
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return framework::vectorize2int(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else {
+              VLOG(2) << "It is meaningless to get shape of variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
           })
+      .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
@@ -157,7 +167,7 @@ void BindImperative(pybind11::module *m_ptr) {
              return self.Forward(inputs);
            });
 
-  py::class_<imperative::Tracer>(*m, "Tracer", "")
+  py::class_<imperative::Tracer>(m, "Tracer", "")
       .def("__init__",
            [](imperative::Tracer &self, framework::BlockDesc *root_block) {
              new (&self) imperative::Tracer(root_block);
@@ -169,19 +179,20 @@ void BindImperative(pybind11::module *m_ptr) {
               framework::AttributeMap attrs, const platform::CPUPlace &place,
               bool trace_backward) {
              py::gil_scoped_release release;
-             VLOG(2) << "Pybind trace";
              self.TraceOp(type, ins, outs, std::move(attrs), place,
                           trace_backward);
            })
-      .def("trace", [](imperative::Tracer &self, const std::string &type,
-                       const imperative::NameVarBaseMap &ins,
-                       const imperative::NameVarBaseMap &outs,
-                       framework::AttributeMap attrs,
-                       const platform::CUDAPlace &place, bool trace_backward) {
-        py::gil_scoped_release release;
-        VLOG(2) << "Pybind trace 2";
-        self.TraceOp(type, ins, outs, std::move(attrs), place, trace_backward);
-      });
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const imperative::NameVarBaseMap &ins,
+              const imperative::NameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CUDAPlace &place,
+              bool trace_backward) {
+             py::gil_scoped_release release;
+             self.TraceOp(type, ins, outs, std::move(attrs), place,
+                          trace_backward);
+           })
+      .def("_clear", &imperative::Tracer::Clear);
 
   // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(

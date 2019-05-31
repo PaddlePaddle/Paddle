@@ -440,9 +440,10 @@ class Variable(object):
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
                 self._ivar = core.VarBase(
-                    name, dtype if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [],
-                    _current_expected_place(), stop_gradient, True
+                    name, type
+                    if type else core.VarDesc.VarType.LOD_TENSOR, dtype
+                    if dtype else core.VarDesc.VarType.FP32,
+                    list(shape) if shape else [], stop_gradient, True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -564,9 +565,13 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s %s' % (
-                self.name, self.dtype, self.shape,
-                str(self._ivar.value().get_tensor()))
+            tensor = self._ivar.value().get_tensor()
+            if tensor._is_initialized():
+                return 'name %s, dtype: %s shape: %s %s' % (
+                    self.name, self.dtype, self.shape, str(tensor))
+            else:
+                return 'name %s, shape: %s, not inited' % (self.name,
+                                                           self.shape)
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -659,7 +664,7 @@ class Variable(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self._ivar.dtype
+            return self._ivar.type
         else:
             return self.desc.type()
 
@@ -981,10 +986,7 @@ class Operator(object):
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
-            self._op_type = type
-            # self.iop = core.OpBase(type)
-            # self.previous_ops = []
-
+            self._type = type
             self.attrs = attrs if attrs else {}
         else:
             self.block = block
@@ -1127,7 +1129,7 @@ class Operator(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self.iop.type
+            return self._type
         else:
             return self.desc.type()
 

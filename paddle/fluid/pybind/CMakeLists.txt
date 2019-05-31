@@ -1,5 +1,5 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper nccl_wrapper prune
-  feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
+  feed_fetch_method pass_builder parallel_executor profiler layer tracer autograd scope_pool
   analysis_predictor imperative_profiler nccl_context)
 
 if(WITH_PYTHON)
