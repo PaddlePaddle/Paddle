@@ -325,6 +325,8 @@ def assign(input, output=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
           out = fluid.layers.create_tensor(dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           fluid.layers.assign(hidden, out)
@@ -385,6 +387,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
 
@@ -438,7 +441,9 @@ def fill_constant_batch_size_like(input,
 
         .. code-block:: python
 
-             data = fluid.layers.fill_constant_batch_size_like(
+             import paddle.fluid as fluid
+             like = fluid.layers.data(name='like', shape=[1], dtype='float32')
+             data = fluid.lgyers.fill_constant_batch_size_like(
                          input=like, shape=[1], value=0, dtype='int64')
 
     """
@@ -596,6 +601,7 @@ def ones(shape, dtype, force_cpu=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
     assert isinstance(shape, list) or isinstance(
@@ -625,6 +631,7 @@ def zeros(shape, dtype, force_cpu=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())
@@ -648,9 +655,11 @@ def reverse(x, axis):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.reverse(x=in, axis=0)
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
+          out = fluid.layers.reverse(x=data, axis=0)
           # or:
-          out = fluid.layers.reverse(x=in, axis=[0,1])
+          out = fluid.layers.reverse(x=data, axis=[0,1])
     """
     if isinstance(axis, int):
         axis = [axis]
