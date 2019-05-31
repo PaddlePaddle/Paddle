@@ -614,11 +614,21 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
   for (auto pair : tensors) {
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
-    PADDLE_ENFORCE_EQ(
-        member_->places_.size(), lod_tensors.size(),
-        "The number of samples of current batch is less than the count of "
-        "devices, currently, it is not allowed. (%d vs %d)",
-        member_->places_.size(), lod_tensors.size());
+    if (member_->places_.size() != lod_tensors.size()) {
+      bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+      auto error_info = string::Sprintf(
+          "The number(%d) of samples of "
+          "current batch is less than the count(%d) of "
+          "devices(%s), currently, it is not allowed. ",
+          member_->places_.size(), lod_tensors.size(),
+          (is_cpu_place ? "CPU" : "GPU"));
+      if (is_cpu_place) {
+        error_info +=
+            "You should set the environment variable CPU_NUM in the system "
+            "to determine the number of devices you need.";
+      }
+      PADDLE_THROW(error_info);
+    }
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
       auto t =
