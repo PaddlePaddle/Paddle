@@ -275,7 +275,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       auto& outputs = tmp_grad_outputs[k][it.first];
       outputs.reserve(it.second.size());
       for (VarBase* origin_grad_var_base : it.second) {
-        if (!origin_grad_var_base->IsInitialize()) {
+        if (!origin_grad_var_base->IsInitializedBuffer()) {
           origin_grad_var_base->InitBuffer();
           ZeroGrads(origin_grad_var_base, place_);
         }
@@ -318,7 +318,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       for (VarBase* grad_inp : it.second) {
         PADDLE_ENFORCE_NOT_NULL(grad_inp->GetVar(), "op %s input %s nullptr",
                                 grad_op_desc->Type(), grad_inp->Name());
-        if (!grad_inp->IsInitialize()) {
+        if (!grad_inp->IsInitializedBuffer()) {
           grad_inp->InitBuffer();
           ZeroGrads(grad_inp, place_);
         }

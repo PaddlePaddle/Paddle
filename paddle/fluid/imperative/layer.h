@@ -129,8 +129,22 @@ class VarBase {
   VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
           const std::vector<int64_t>& shape, const platform::Place& place,
           bool stop_gradient, bool persistable)
-      : VarBase(name, dtype, framework::make_ddim(shape), place, stop_gradient,
-                persistable) {}
+      : name_(name),
+        type_(framework::proto::VarType::LOD_TENSOR),
+        place_(place),
+        var_(new framework::Variable()),
+        grads_(nullptr),
+        dtype_(dtype),
+        stop_gradient_(stop_gradient),
+        persistable_(persistable),
+        pre_op_(nullptr),
+        pre_op_out_name_(),
+        pre_op_out_idx_(-1) {
+    var_->GetMutable<framework::LoDTensor>()->Resize(
+        framework::make_ddim(shape));
+    VLOG(2) << "create varbase: " << name_ << " type: " << dtype_
+            << " place: " << place_;
+  }
 
   // Internal interface, create VarBase from with ddim
   VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
@@ -166,8 +180,7 @@ class VarBase {
     if (!var_) {
       var_.reset(new framework::Variable());
     }
-    tensor_ = var_->GetMutable<framework::LoDTensor>();
-    tensor_->Resize(shape);
+    var_->GetMutable<framework::LoDTensor>()->Resize(shape);
     VLOG(2) << "create varbase: " << name_ << " type: " << dtype_
             << " place: " << place_;
   }
@@ -188,7 +201,9 @@ class VarBase {
 
   inline std::string Name() const { return name_; }
 
-  inline bool IsInitialize() const { return tensor_->IsInitialized(); }
+  inline bool IsInitializedBuffer() const {
+    return var_->Get<framework::LoDTensor>().IsInitialized();
+  }
 
   inline std::vector<int64_t> Shape() const {
     if (var_->IsInitialized()) {
@@ -203,7 +218,7 @@ class VarBase {
 
   inline void SetDataType(framework::proto::VarType::Type dtype) {
     dtype_ = dtype;
-    tensor_->mutable_data(place_, dtype_);
+    var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
   }
   inline framework::proto::VarType::Type DataType() const { return dtype_; }
 
@@ -238,8 +253,8 @@ class VarBase {
   }
 
   void InitBuffer() {
-    if (!tensor_->IsInitialized()) {
-      tensor_->mutable_data(place_, dtype_);
+    if (!var_->Get<framework::LoDTensor>().IsInitialized()) {
+      var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
       VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype_
               << " place: " << place_;
     } else {
@@ -297,7 +312,6 @@ class VarBase {
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
-  framework::LoDTensor* tensor_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its

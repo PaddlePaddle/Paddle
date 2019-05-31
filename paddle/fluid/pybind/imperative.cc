@@ -107,6 +107,10 @@ void BindImperative(pybind11::module *m_ptr) {
       .def("value",
            [](const imperative::VarBase &self) { return self.GetVar(); },
            py::return_value_policy::reference)
+      .def("is_initialized_buffer",
+           [](const imperative::VarBase &self) {
+             return self.IsInitializedBuffer();
+           })
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property_readonly("shape", &imperative::VarBase::Shape)

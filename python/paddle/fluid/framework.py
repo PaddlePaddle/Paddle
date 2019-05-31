@@ -566,7 +566,8 @@ class Variable(object):
             # TODO(panyx0718): add more dygraph debug info.
             return 'name %s, dtype: %s shape: %s %s' % (
                 self.name, self.dtype, self.shape,
-                str(self._ivar.value().get_tensor()))
+                str(self._ivar.value().get_tensor())
+                if self._ivar.is_initialized_buffer() else "UnInitialized.")
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
