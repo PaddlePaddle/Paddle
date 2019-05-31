@@ -44,10 +44,14 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         if fp32_model_path is None:
             raise Exception("fp32_model_path is None")
         self.fp32_model_path = fp32_model_path
+        if 'FLAGS_OMP_NUM_THREADS' in os.environ:
+            self.omp_num_threads = int(os.environ['FLAGS_OMP_NUM_THREADS'])
+        else:
+            self.omp_num_threads = 1
 
     def on_compression_begin(self, context):
         """
-	    Prepare the data and quantify the model
+	Prepare the data and quantify the model
         """
 
         super(MKLDNNPostTrainingQuantStrategy,
@@ -60,6 +64,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         infer_config.disable_gpu()
         infer_config.set_model(self.fp32_model_path)
         infer_config.enable_mkldnn()
+        infer_config.set_cpu_math_library_num_threads(self.omp_num_threads)
 
         #Prepare the data for calculating the quantization scales
         warmup_reader = context.eval_reader()

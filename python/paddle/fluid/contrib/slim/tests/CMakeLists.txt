@@ -19,38 +19,36 @@ list(REMOVE_ITEM TEST_OPS test_distillation_strategy)
 # int8 image classification python api test
 if(LINUX AND WITH_MKLDNN)
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+  set(MKLDNN_INT8_TEST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/quantization/mkldnn_int8_quantization_strategy.py")
 
   #resnet50 int8
   set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #mobilenet int8
   set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #mobilenetv2 int8
   set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #resnet101 int8
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #vgg16 int8
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #vgg19 int8
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-  inference_analysis_python_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} test_mkldnn_int8_quantization_strategy.py)
+  inference_analysis_python_api_int8_test(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 endif()
-
-list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy)
-
 
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)

@@ -47,10 +47,10 @@ def parse_args():
         default=100,
         help='batch size for quantization warmup')
     parser.add_argument(
-        '--quantized_accuracy',
+        '--accuracy_diff_threshold',
         type=float,
         default=0.01,
-        help='Result Quantized Accuracy.')
+        help='Accepted accuracy drop threshold.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
 
@@ -173,7 +173,7 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         batch_size = test_case_args.batch_size
 
         warmup_batch_size = test_case_args.warmup_batch_size
-        quantized_accuracy = test_case_args.quantized_accuracy
+        accuracy_diff_threshold = test_case_args.accuracy_diff_threshold
 
         _logger.info(
             'FP32 & INT8 prediction run: batch_size {0}, warmup batch size {1}.'.
@@ -186,23 +186,23 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         config_path = self._update_config_file(fp32_model_path, int8_model_path)
         self._warmup(warmup_reader, config_path)
 
-        _logger.info('--- FP32 prediction start ---')
-        val_reader = paddle.batch(
-            self._reader_creator(data_path, False), batch_size=batch_size)
-        fp32_model_result = self._predict(val_reader, fp32_model_path)
         _logger.info('--- INT8 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, False), batch_size=batch_size)
         int8_model_result = self._predict(val_reader, int8_model_path)
+        _logger.info('--- FP32 prediction start ---')
+        val_reader = paddle.batch(
+            self._reader_creator(data_path, False), batch_size=batch_size)
+        fp32_model_result = self._predict(val_reader, fp32_model_path)
         _logger.info('--- comparing outputs ---')
-        _logger.info('Avg top1 INT8 accuracy: {0:.4}'.format(int8_model_result[
+        _logger.info('Avg top1 INT8 accuracy: {0:.4f}'.format(int8_model_result[
             0]))
-        _logger.info('Avg top1 FP32 accuracy: {0:.4}'.format(fp32_model_result[
+        _logger.info('Avg top1 FP32 accuracy: {0:.4f}'.format(fp32_model_result[
             0]))
         _logger.info('Accepted accuracy drop threshold: {0}'.format(
-            quantized_accuracy))
-        assert abs(int8_model_result[0] - fp32_model_result[
-            0]) <= quantized_accuracy
+            accuracy_diff_threshold))
+        assert fp32_model_result[0] - int8_model_result[
+            0] <= accuracy_diff_threshold
 
 
 if __name__ == '__main__':
