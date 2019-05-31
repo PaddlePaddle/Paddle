@@ -995,6 +995,19 @@ def shuffle(reader, buffer_size):
 
     Returns:
         callable: the new reader whose output is shuffled.
+
+    Examples:
+        .. code-block:: python
+
+            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
+                                                           './data2.recordio'],
+                                                    shapes=[(3,224,224), (1,)],
+                                                    lod_levels=[0, 0],
+                                                    dtypes=['float32', 'int64'],
+                                                    thread_num=2,
+                                                    buffer_size=2)
+            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
+            shuffle_reader = fluid.layers.shuffle(reader=batch_reader, buffer_size=5000)
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})

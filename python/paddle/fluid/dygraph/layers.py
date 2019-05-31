@@ -147,7 +147,8 @@ class Layer(core.Layer):
 
     def clear_gradients(self):
         for p in self.parameters():
-            p.clear_gradient()
+            if p.trainable:
+                p.clear_gradient()
 
     def build_once(self, *args):
         pass
