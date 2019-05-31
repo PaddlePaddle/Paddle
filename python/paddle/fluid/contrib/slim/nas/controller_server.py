@@ -33,7 +33,8 @@ class ControllerServer(object):
                  controller=None,
                  address=('', 0),
                  max_client_num=100,
-                 search_steps=None):
+                 search_steps=None,
+                 key=None):
         """
         Args:
             controller(slim.searcher.Controller): The controller used to generate tokens.
@@ -49,6 +50,7 @@ class ControllerServer(object):
         self._closed = False
         self._port = address[1]
         self._ip = address[0]
+        self._key = key
 
     def start(self):
         self._socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -86,7 +88,13 @@ class ControllerServer(object):
                 conn.send(tokens)
             else:
                 _logger.info("recv message from {}: [{}]".format(addr, message))
-                tokens, reward = message.strip('\n').split("\t")
+                messages = message.strip('\n').split("\t")
+                if (len(messages) < 3) or (messages[0] != self._key):
+                    _logger.info("recv noise from {}: [{}]".format(addr,
+                                                                   message))
+                    continue
+                tokens = messages[1]
+                reward = messages[2]
                 tokens = [int(token) for token in tokens.split(",")]
                 self._controller.update(tokens, float(reward))
                 tokens = self._controller.next_tokens()

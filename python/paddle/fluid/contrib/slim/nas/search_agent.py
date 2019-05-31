@@ -27,18 +27,19 @@ class SearchAgent(object):
     Search agent.
     """
 
-    def __init__(self, server_ip=None, server_port=None):
+    def __init__(self, server_ip=None, server_port=None, key=None):
         """
         """
         self.server_ip = server_ip
         self.server_port = server_port
         self.socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._key = key
 
     def update(self, tokens, reward):
         socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_client.connect((self.server_ip, self.server_port))
         tokens = ",".join([str(token) for token in tokens])
-        socket_client.send("{}\t{}".format(tokens, reward))
+        socket_client.send("{}\t{}\t{}".format(self._key, tokens, reward))
         tokens = socket_client.recv(1024).decode()
         tokens = [int(token) for token in tokens.strip("\n").split(",")]
         return tokens

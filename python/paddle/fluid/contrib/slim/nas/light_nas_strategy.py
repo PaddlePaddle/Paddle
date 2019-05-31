@@ -24,7 +24,8 @@ from .lock import lock, unlock, LOCK_EX
 
 __all__ = ['LightNASStrategy']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+logging.basicConfig(
+    format='LightNASStrategy-%(asctime)s-%(levelname)s: %(message)s')
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 
@@ -44,7 +45,8 @@ class LightNASStrategy(Strategy):
                  server_port=0,
                  is_server=False,
                  max_client_num=100,
-                 search_steps=None):
+                 search_steps=None,
+                 key="light-nas"):
         """
         """
         self.start_epoch = 0
@@ -60,6 +62,7 @@ class LightNASStrategy(Strategy):
         self._search_steps = search_steps
         self._max_client_num = max_client_num
         self._max_try_times = 300
+        self._key = key
 
         if self._server_ip is None:
             self._server_ip = self._get_host_ip()
@@ -96,7 +99,8 @@ class LightNASStrategy(Strategy):
                     controller=self._controller,
                     address=(self._server_ip, self._server_port),
                     max_client_num=self._max_client_num,
-                    search_steps=self._search_steps)
+                    search_steps=self._search_steps,
+                    key=self._key)
                 tid = self._server.start()
                 self._server_port = self._server.port()
                 socket_file.write(tid)
@@ -106,7 +110,8 @@ class LightNASStrategy(Strategy):
         _logger.info("self._server_ip: {}; self._server_port: {}".format(
             self._server_ip, self._server_port))
         # create client
-        self._search_agent = SearchAgent(self._server_ip, self._server_port)
+        self._search_agent = SearchAgent(
+            self._server_ip, self._server_port, key=self._key)
 
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
@@ -122,7 +127,7 @@ class LightNASStrategy(Strategy):
         _logger.info("light nas strategy on_epoch_begin")
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
-            (context.epoch_id - self.start_epoch) % self._retrain_epoch == 1):
+            (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
             _logger.info("Construct new program...")
             for _ in range(self._max_try_times):
                 startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
@@ -149,9 +154,12 @@ class LightNASStrategy(Strategy):
     def on_epoch_end(self, context):
         if context.epoch_id >= self.start_epoch and context.epoch_id < self.end_epoch and (
                 self._retrain_epoch == 0 or
-            (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
+            (context.epoch_id - self.start_epoch + 1
+             ) % self._retrain_epoch == 0):
 
             self._current_reward = context.eval_results[self._metric_name][-1]
             flops = context.eval_graph.flops()
+            _logger.info("reward: {}; flops: {}; tokens: {}".format(
+                self._current_reward, flops, self._current_tokens))
             self._current_tokens = self._search_agent.update(
                 self._current_tokens, self._current_reward)
