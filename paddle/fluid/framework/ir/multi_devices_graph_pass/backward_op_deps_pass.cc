@@ -48,36 +48,39 @@ class BackWardOpDepsPass : public ir::Pass {
   void ApplyImpl(ir::Graph* graph) const override {
     // NOTE: The operator nodes should be in topology order.
     std::vector<details::OpHandleBase*> backward_op_handles;
-    std::vector<details::OpHandleBase*> all_opt_handles;
+    std::vector<details::OpHandleBase*> op_handles;
     details::ParamsAndGrads params_grads;
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(*graph);
     for (auto& node : topo_nodes) {
       // node->Wrapper<details::OpHandleBase>().DebugString();
+      GetOptHandles(node, &op_handles);
+
       if (!node->Op()) continue;
 
       GetBackWardOpHandles(node, &backward_op_handles, &params_grads);
-      GetOptHandles(node, &all_opt_handles);
     }
 
     VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
-             << ", opt_handles size:" << all_opt_handles.size();
+             << ", opt_handles size:" << op_handles.size();
 
-    if (backward_op_handles.size() <= 1 || all_opt_handles.size() <= 1) {
+    if (backward_op_handles.size() <= 1 || op_handles.size() <= 1) {
       VLOG(10) << "need not backward_op_deps_pass";
       return;
     }
 
-    std::vector<details::OpHandleBase*> head_opt_handles;
-    GetHeadOptHandles(all_opt_handles, &head_opt_handles);
+    /*
+    std::vector<details::OpHandleBase*> op_handles;
+    GetHeadOptHandles(op_handles, &op_handles);
 
-    if (head_opt_handles.size() <= 1) {
+    if (op_handles.size() <= 1) {
       VLOG(10) << "need not backward_op_deps_pass";
       return;
     }
+    */
 
     VLOG(10) << "add optimize deps";
-    for (size_t i = 1; i < head_opt_handles.size(); ++i) {
-      AddDep(graph, head_opt_handles[i - 1], head_opt_handles[i]);
+    for (size_t i = 1; i < op_handles.size(); ++i) {
+      AddDep(graph, op_handles[i - 1], op_handles[i]);
     }
 
     VLOG(10) << "add backward deps";
@@ -87,7 +90,7 @@ class BackWardOpDepsPass : public ir::Pass {
 
     VLOG(10) << "add deps between backward and optimze:";
     AddDep(graph, backward_op_handles[backward_op_handles.size() - 1],
-           head_opt_handles[0]);
+           op_handles[0]);
   }
 
   // get only deps backwards ops
@@ -206,6 +209,34 @@ class BackWardOpDepsPass : public ir::Pass {
     }
   }
 
+  void GetOptHandles(ir::Node* graph_node,
+                     std::vector<details::OpHandleBase*>* opt_handles) const {
+    if (!graph_node->IsOp()) return;
+
+    auto op_handle = &graph_node->Wrapper<details::OpHandleBase>();
+    auto op_name = op_handle->Name();
+    if (op_name != "all_reduce" && op_name != "fused_all_reduce") return;
+
+    for (auto out : op_handle->Outputs()) {
+      for (auto* pending_op : out->PendingOps()) {
+        auto node = pending_op->Node();
+
+        if (!node || !node->Op()) continue;
+
+        bool is_opt_op =
+            static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                              static_cast<int>(OpRole::kOptimize));
+
+        if (!is_opt_op) continue;
+
+        opt_handles->emplace_back(pending_op);
+        break;
+      }
+    }
+  }
+
+  /*
   void GetOptHandles(ir::Node* node,
                      std::vector<details::OpHandleBase*>* opt_handles) const {
     try {
@@ -219,6 +250,7 @@ class BackWardOpDepsPass : public ir::Pass {
     } catch (boost::bad_get e) {
     }
   }
+  */
 };
 }  // namespace ir
 }  // namespace framework
