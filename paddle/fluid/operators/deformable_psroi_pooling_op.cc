@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include <iostream>
+#include <memory>
 #include <vector>
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -203,6 +204,30 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
   }
 };
 
+class DeformablePSROIPoolGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("deformable_psroi_pooling_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Trans", Input("Trans"));
+    op->SetInput("ROIs", Input("ROIs"));
+    op->SetInput("TopCount", Output("TopCount"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Trans"), InputGrad("Trans"));
+
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -234,7 +259,7 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(deformable_psroi_pooling, ops::DeformablePSROIPoolOp,
                   ops::DeformablePSROIPoolOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::DeformablePSROIPoolGradOpDescMaker);
 REGISTER_OPERATOR(deformable_psroi_pooling_grad,
                   ops::DeformablePSROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling,
