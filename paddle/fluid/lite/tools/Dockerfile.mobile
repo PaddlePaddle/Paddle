@@ -63,14 +63,14 @@ ENV NDK_ROOT /opt/android-ndk-r17c
 RUN cd /opt && unzip /tmp/android-ndk-r17c-linux-x86_64.zip
 
 # for android simulator
+ENV ANDROID_HOME /opt/android_sdk
+ENV PATH $PATH:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/tools/bin
 RUN wget "https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip" && \
     unzip sdk-tools-linux-4333796.zip -d /opt/android_sdk && \
     mkdir /root/.android && touch /root/.android/repositories.cfg && \
     echo y | sdkmanager "platform-tools" "emulator" && \
     echo y | sdkmanager "platforms;android-24" && \
     echo y | sdkmanager "system-images;android-24;google_apis;arm64-v8a" "system-images;android-24;google_apis;armeabi-v7a"
-ENV ANDROID_HOME /opt/android_sdk
-ENV PATH $PATH:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/tools/bin
 
 # this will install the ndk19c and only use clang to compile, then can replace the ndk17c
 # echo y | sdkmanager "ndk;19.2.5345600"
@@ -82,9 +82,9 @@ EXPOSE 5557
 EXPOSE 5900
 
 # clean
-RUN rm -rf /tmp/android-ndk-r17c-linux-x86_64.zip /cmake-3.10.3-Linux-x86_64.tar.gz
-RUN apt-get autoremove -y && apt-get clean
 RUN ln -s clang-format-3.8 /usr/bin/clang-format
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wheel
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pre-commit
+RUN apt-get autoremove -y && apt-get clean
+RUN rm -rf /sdk-tools-linux-4333796.zip /tmp/android-ndk-r17c-linux-x86_64.zip /cmake-3.10.3-Linux-x86_64.tar.gz
