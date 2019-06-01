@@ -117,10 +117,11 @@ class BackWardOpDepsPass : public ir::Pass {
     for (auto op : *r) {
       int order = 0;
       for (auto input : op->Inputs()) {
-        if (dynamic_cast<details::DummyVarHandle*>(input) != nullptr) continue;
+        if (dynamic_cast<details::VarHandle*>(input) == nullptr) continue;
 
         if (pg_order.find(input->Name()) == pg_order.end()) {
-          PADDLE_ENFORCE(false, "not find %s in grad", input->Name());
+          LOG(WARNING) << "not find input " << input->Name() << " in grad";
+          continue;
         }
 
         if (order < pg_order.at(input->Name())) {
@@ -205,9 +206,11 @@ class BackWardOpDepsPass : public ir::Pass {
     } catch (boost::bad_get e) {
     }
 
+    /*
     for (size_t i = 0; i < opt_handles->size(); i++) {
-      VLOG(10) << "GetOptHandles op:" << (*opt_handles)[i]->DebugString();
+      VLOG(10) << "get all_opt_handles:" << (*opt_handles)[i]->DebugString();
     }
+    */
   }
 };
 }  // namespace ir
