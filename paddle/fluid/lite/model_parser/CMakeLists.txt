@@ -1,11 +1,14 @@
 #cc_library(runtime_lite SRCS runtime.cc)
 
-lite_cc_test(test_model_parser_lite SRCS model_parser_test.cc
-  DEPS model_parser_lite framework_proto_lite
-  ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model)
-if(WITH_TESTING)
-add_dependencies(test_model_parser_lite extern_lite_download_lite_naive_model_tar_gz)
-endif(WITH_TESTING)
+#TODO(Superjomn) enable it again.
+if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    lite_cc_test(test_model_parser_lite SRCS model_parser_test.cc
+      DEPS model_parser_lite framework_proto_lite
+      ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model)
+    if(WITH_TESTING)
+        add_dependencies(test_model_parser_lite extern_lite_download_lite_naive_model_tar_gz)
+    endif(WITH_TESTING)
+endif()
 
 
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

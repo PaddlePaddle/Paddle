@@ -31,6 +31,7 @@ set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
 #   ${ops_lite} ${host_kernels} ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
 #         --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
+
 if((NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) AND WITH_TESTING)
     lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
       DEPS cxx_api_lite model_parser_lite target_wrapper_host
@@ -38,9 +39,11 @@ if((NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) AND WITH_TESTING)
       PROFILE_DEPS basic_profiler_lite
       ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
             --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+
     lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
     add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif()
+
 
 lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     DEPS

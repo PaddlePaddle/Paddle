@@ -66,7 +66,11 @@ TEST(fc_op_lite, test) {
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
-#ifdef LITE_WITH_X86
 
+#ifdef LITE_WITH_X86
 USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
+#endif
+
+#ifdef LITE_WITH_ARM
+USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
 #endif
