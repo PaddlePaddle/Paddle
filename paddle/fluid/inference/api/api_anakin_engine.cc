@@ -33,6 +33,10 @@
 namespace paddle {
 
 using paddle::contrib::AnakinConfig;
+template <typename Target>
+extern std::mutex PaddleInferenceAnakinPredictor<Target>::mutex_;
+template <typename Target>
+extern std::once_flag PaddleInferenceAnakinPredictor<Target>::init_anakin_;
 
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
@@ -52,8 +56,26 @@ PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
 }
 #endif
 template <typename Target>
+bool PaddleInferenceAnakinPredictor<Target>::InitEnv() {
+  std::call_once(init_anakin_, [this]() {
+    anakin::Env<Target>::env_init(config_.max_stream);
+  });
+  return true;
+}
+template <typename Target>
+bool PaddleInferenceAnakinPredictor<Target>::InitNet() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (executor_p_ == nullptr) {
+    executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
+                                  ::anakin::OpRunType::ASYNC>(*graph_p_, true);
+  }
+  return true;
+}
+template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Init() {
-  anakin::Env<Target>::env_init(config_.max_stream);
+  if (!InitEnv()) {
+    return false;
+  }
   if (!ctx_p_) {
     ctx_p_ = std::make_shared<anakin::Context<Target>>(
         config_.device_id, config_.data_stream_id, config_.compute_stream_id);
@@ -80,11 +102,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Init() {
   if (!(graph_p_->Optimize())) {
     return false;
   }
-  // construct executer
-  if (executor_p_ == nullptr) {
-    executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
-                                  ::anakin::OpRunType::ASYNC>(*graph_p_, true);
-  }
+  InitNet();
   return true;
 }
 
@@ -209,9 +227,7 @@ bool PaddleInferenceAnakinPredictor<Target>::RunImpl(
       if (config_.re_allocable) {
         graph_p_->Reshape(input.name, input.shape);
         delete executor_p_;
-        executor_p_ =
-            new anakin::Net<Target, anakin::Precision::FP32,
-                            ::anakin::OpRunType::ASYNC>(*graph_p_, true);
+        InitNet();
         d_tensor_in_p = executor_p_->get_in(input.name);
       } else {
         LOG(INFO) << "Run failed because Anakin was expected not to reallocate "
@@ -311,8 +327,7 @@ anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>
   graph_p_ = graph_p;
   ctx_p_ = std::make_shared<anakin::Context<Target>>(
       config_.device_id, config_.data_stream_id, config_.compute_stream_id);
-  executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
-                                ::anakin::OpRunType::ASYNC>(*graph_p_, true);
+  InitNet();
   return *executor_p_;
 }
 
@@ -322,7 +337,6 @@ template <typename Target>
 std::unique_ptr<PaddlePredictor>
 PaddleInferenceAnakinPredictor<Target>::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
-  std::unique_lock<std::mutex> lock(mutex_);
   std::unique_ptr<PaddlePredictor> cls(
       new PaddleInferenceAnakinPredictor<Target>());
   // construct executer from other graph
@@ -366,12 +380,10 @@ CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
     std::unique_ptr<PaddlePredictor> x(
         new PaddleInferenceAnakinPredictor<anakin::X86>(config));
     return x;
-#else
-  } else {
-    LOG(INFO) << "Anakin Predictor create on unknown platform.";
-    return nullptr;
 #endif
   }
+  LOG(INFO) << "Anakin Predictor create on unknown platform.";
+  return nullptr;
 }
 
 #ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER

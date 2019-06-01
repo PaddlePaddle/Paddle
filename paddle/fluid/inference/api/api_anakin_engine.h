@@ -35,7 +35,7 @@ using contrib::AnakinConfig;
 template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
-  PaddleInferenceAnakinPredictor() : config_() {}
+  PaddleInferenceAnakinPredictor() : config_() { InitEnv(); }
 
   explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
@@ -56,9 +56,12 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
  private:
   bool Init();
+  bool InitEnv();
+  bool InitNet();
   bool RunImpl(const std::vector<PaddleTensor>& inputs,
                std::vector<PaddleTensor>* output_data);
-  std::mutex mutex_;
+  static std::mutex mutex_;
+  static std::once_flag init_anakin_;
   AnakinConfig config_;
   std::shared_ptr<anakin::Context<Target>> ctx_p_;
   std::shared_ptr<anakin::graph::Graph<Target, anakin::Precision::FP32>>
