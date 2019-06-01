@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef LITE_WITH_X86
+#include "paddle/fluid/framework/operator.h"
+#endif
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -36,16 +39,56 @@ class ActivationOp : public OpLite {
 
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Out = GetMutableVar<Tensor>(scope, Out_name);
+    return true;
   }
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
+  std::string DebugString() const override { return "activation_op"; }
+
  private:
   mutable ActivationParam param_;
 };
+
+#ifdef LITE_WITH_X86
+class ActivationGradOp : public OpLite {
+ public:
+  explicit ActivationGradOp(const std::string& type) : OpLite(type) {}
+
+  bool CheckShape() const override {
+    CHECK_OR_FALSE(param_.X_grad);
+    CHECK_OR_FALSE(param_.Out_grad);
+    return true;
+  }
+
+  bool InferShape() const override {
+    param_.X_grad->Resize(param_.Out_grad->dims());
+    return true;
+  }
+
+  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
+    auto Out_grad_name = opdesc.Input(framework::GradVarName("Out")).front();
+    auto X_grad_name = opdesc.Output(framework::GradVarName("X")).front();
+
+    param_.Out_grad = GetVar<lite::Tensor>(scope, Out_grad_name);
+    param_.X_grad = GetMutableVar<Tensor>(scope, X_grad_name);
+    return true;
+  }
+
+  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
+
+  std::string DebugString() const override { return "activation_grad_op"; }
+
+ private:
+  mutable ActivationGradParam param_;
+};
+#endif
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
 REGISTER_LITE_OP(square, paddle::lite::operators::ActivationOp);
+#ifdef LITE_WITH_X86
+REGISTER_LITE_OP(square_grad, paddle::lite::operators::ActivationGradOp);
+#endif

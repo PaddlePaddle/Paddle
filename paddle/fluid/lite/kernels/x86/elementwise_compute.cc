@@ -31,14 +31,19 @@ struct SubFunctor {
 };
 
 template <typename T>
+struct AddFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
+};
+
+template <typename T>
 class ElementwiseSubCompute
-    : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
+    : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ElementwiseParam;
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     CHECK(context.x86_device_context);
 
     param.Out->template mutable_data<T>();
@@ -49,10 +54,63 @@ class ElementwiseSubCompute
         &param.Out->raw_tensor());
   }
 
-  // TargetType target() const override;
-  // PrecisionType precision() const override;
-
   virtual ~ElementwiseSubCompute() = default;
+};
+
+template <typename T>
+struct SubGradDX {
+  T operator()(T x, T y, T out, T dout) const { return dout; }
+};
+
+template <typename T>
+struct SubGradDY {
+  T operator()(T x, T y, T out, T dout) const { return -dout; }
+};
+
+template <typename T>
+class ElementwiseSubGradCompute
+    : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
+ public:
+  using param_t = operators::ElementwiseGradParam;
+  void Run() override {
+    auto& param = *param_.get_mutable<param_t>();
+    auto& context = ctx_->As<X86Context>();
+    CHECK(context.x86_device_context);
+
+    param.X_grad->template mutable_data<T>();
+    param.Y_grad->template mutable_data<T>();
+    // skip out, x, y
+    auto dout = param.Out_grad->raw_tensor();
+    auto dx = param.X_grad->raw_tensor();
+    auto dy = param.Y_grad->raw_tensor();
+    auto& skip = dout;
+    paddle::operators::ElemwiseExplicitGradCompute<
+        platform::CPUDeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+        *context.x86_execution_context, skip, skip, skip, dout, param.axis, &dx,
+        &dy, SubGradDX<T>(), SubGradDY<T>());
+  }
+
+  virtual ~ElementwiseSubGradCompute() = default;
+};
+
+template <typename T>
+class ElementwiseAddCompute
+    : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
+ public:
+  using param_t = operators::ElementwiseParam;
+  void Run() override {
+    auto& param = *param_.get_mutable<param_t>();
+    auto& context = ctx_->As<X86Context>();
+    CHECK(context.x86_device_context);
+    param.Out->template mutable_data<T>();
+    paddle::operators::ElementwiseComputeEx<AddFunctor<T>,
+                                            platform::CPUDeviceContext, T>(
+        *context.x86_execution_context, &param.X->raw_tensor(),
+        &param.Y->raw_tensor(), param.axis, AddFunctor<T>(),
+        &param.Out->raw_tensor());
+  }
+
+  virtual ~ElementwiseAddCompute() = default;
 };
 
 }  // namespace x86
@@ -61,8 +119,27 @@ class ElementwiseSubCompute
 }  // namespace paddle
 
 // float
-REGISTER_LITE_KERNEL(square, kHost, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(elementwise_sub, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::ElementwiseSubCompute<float>,
+                     def)
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(elementwise_sub_grad, kX86, kFloat, kNCHW,
+                     paddle::lite::kernels::x86::ElementwiseSubCompute<float>,
+                     def)
+    .BindInput(paddle::framework::GradVarName("Out"),
+               {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput(paddle::framework::GradVarName("X"),
+                {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput(paddle::framework::GradVarName("Y"),
+                {LiteType::GetTensorTy(TARGET(kX86))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(elementwise_add, kX86, kFloat, kNCHW,
+                     paddle::lite::kernels::x86::ElementwiseAddCompute<float>,
                      def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput("Y", {LiteType::GetTensorTy(TARGET(kX86))})

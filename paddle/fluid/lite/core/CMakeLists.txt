@@ -19,11 +19,12 @@ endif()
 
 proto_library(framework_proto_lite SRCS framework.proto)
 
-cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite)
+cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite)
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
-cc_library(scope_lite SRCS scope.cc)
-cc_library(context_lite SRCS context.cc DEPS any_lite)
+cc_library(scope_lite SRCS scope.cc DEPS ${tensor_lite})
+cc_library(cpu_info_lite SRCS cpu_info.cc)
+cc_library(context_lite SRCS context.cc DEPS ${tensor_lite} any_lite cpu_info_lite)
 cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_pb_lite target_wrapper_lite ${tensor_lite})
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
@@ -32,6 +33,7 @@ cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
 add_subdirectory(mir)
+add_subdirectory(profile)
 
 # for mobile, unnecessary to compile the following testings.
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

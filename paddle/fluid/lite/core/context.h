@@ -26,6 +26,8 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include "paddle/fluid/lite/core/cpu_info.h"
+#include "paddle/fluid/lite/core/lite_tensor.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
@@ -34,7 +36,44 @@ namespace lite {
 struct HostContext {};
 
 #ifdef LITE_WITH_ARM
-struct ARMContext {};
+
+struct ARMContext {
+ public:
+  ARMContext();
+  ARMContext(PowerMode mode, int threads);
+  ARMContext(const ARMContext& ctx);
+
+  ARMContext& operator=(const ARMContext& ctx);
+
+  void SetRunMode(PowerMode mode, int threads);
+  void SetCache(int l1size, int l2size, int l3size);
+  void SetArch(ARMArch arch);
+  void BindDev();
+
+  PowerMode mode() const;
+  int threads() const;
+  ARMArch arch() const;
+
+  template <typename T>
+  T* workspace_data() {
+    return workspace_.mutable_data<T>();
+  }
+
+  int l1_cache_size() const;
+  int l2_cache_size() const;
+  int l3_cache_size() const;
+  bool ExtendWorkspace(DDimLite dims);
+
+ private:
+  // LITE_POWER_HIGH stands for using big cores,
+  // LITE_POWER_LOW stands for using small core,
+  // LITE_POWER_FULL stands for using all cores
+  ARMArch arch_;
+  PowerMode mode_;
+  std::vector<int> active_ids_;
+  TensorLite workspace_;
+  int64_t count_{0};
+};
 #endif
 
 #ifdef LITE_WITH_CUDA
@@ -56,7 +95,11 @@ struct CUDAContext {
 #ifdef LITE_WITH_X86
 struct X86Context {
   // overall information
-
+  X86Context() {
+    x86_device_context.reset(new ::paddle::platform::CPUDeviceContext);
+    x86_execution_context.reset(
+        new ::paddle::framework::ExecutionContext(*x86_device_context));
+  }
   // kernel information
 
   // legacy info.

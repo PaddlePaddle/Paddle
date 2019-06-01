@@ -32,15 +32,23 @@ class RuntimeContextAssignPass : public StmtPass {
       if (!node.IsStmt()) continue;
 
       auto& inst = node.AsStmt();
-
       switch (inst.picked_kernel().target()) {
         case TARGET(kHost):
-        case TARGET(kX86):
           inst.picked_kernel().SetContext(NewHostContext());
           break;
+#ifdef LITE_WITH_X86
+        case TARGET(kX86):
+          inst.picked_kernel().SetContext(NewX86Context());
+          break;
+#endif
 #ifdef LITE_WITH_CUDA
         case TARGET(kCUDA):
           inst.picked_kernel().SetContext(NewCudaContext());
+          break;
+#endif
+#ifdef LITE_WITH_ARM
+        case TARGET(kARM):
+          inst.picked_kernel().SetContext(NewARMContext());
           break;
 #endif
         default:
@@ -54,9 +62,25 @@ class RuntimeContextAssignPass : public StmtPass {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
     ctx->As<HostContext>();
     // Some initialization here.
+
     return ctx;
   }
+#ifdef LITE_WITH_X86
+  std::unique_ptr<KernelContext> NewX86Context() {
+    std::unique_ptr<KernelContext> ctx(new KernelContext);
+    ctx->As<X86Context>();
+    return ctx;
+  }
+#endif
 
+#ifdef LITE_WITH_ARM
+  std::unique_ptr<KernelContext> NewARMContext() {
+    DeviceInfo::Init();
+    std::unique_ptr<KernelContext> ctx(new KernelContext);
+    ctx->As<ARMContext>();
+    return ctx;
+  }
+#endif
 #ifdef LITE_WITH_CUDA
   std::unique_ptr<KernelContext> NewCudaContext() {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
@@ -66,9 +90,7 @@ class RuntimeContextAssignPass : public StmtPass {
     cuda.blas_fp32 = cublas_fp32_;
     return ctx;
   }
-#endif
 
-#ifdef LITE_WITH_CUDA
   void InitCudaBlas() {
     cublas_fp32_ = std::make_shared<lite::cuda::Blas<float>>();
   }

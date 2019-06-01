@@ -28,9 +28,19 @@ bool MulOpLite::CheckShape() const {
   const auto x_dims = param_.x->dims();
   const auto y_dims = param_.y->dims();
 
-  CHECK_EQ_OR_FALSE(y_dims.size(), 2UL);
   CHECK_GT_OR_FALSE(x_dims.size(), static_cast<size_t>(param_.x_num_col_dims));
+  CHECK_GT_OR_FALSE(y_dims.size(), static_cast<size_t>(param_.y_num_col_dims));
 
+  // auto x_mat_dims =
+  //     framework::flatten_to_2d(x_dims.data(), param_.x_num_col_dims);
+  // auto y_mat_dims =
+  //     framework::flatten_to_2d(y_dims.data(), param_.y_num_col_dims);
+
+  // PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
+  //                   "First matrix's width must be equal with second matrix's
+  //                   "
+  //                   "height. %s, %s",
+  //                   x_mat_dims[1], y_mat_dims[0]);
   return true;
 }
 
@@ -39,11 +49,16 @@ bool MulOpLite::InferShape() const {
   const auto y_dims = param_.y->dims();
 
   // Set output dims
-  std::vector<int64_t> out_dims(param_.x_num_col_dims + 1, 0);
+  std::vector<int64_t> out_dims(
+      param_.x_num_col_dims + y_dims.size() - param_.y_num_col_dims, 0);
   for (int i = 0; i < param_.x_num_col_dims; ++i) {
     out_dims[i] = x_dims[i];
   }
-  out_dims.back() = y_dims[1];
+
+  for (auto i = static_cast<size_t>(param_.y_num_col_dims); i < y_dims.size();
+       ++i) {
+    out_dims[i] = y_dims[i];
+  }
 
   param_.output->Resize(lite::DDim(out_dims));
 
@@ -51,6 +66,41 @@ bool MulOpLite::InferShape() const {
   // param_.output->set_lod(param_.input->lod());
   return true;
 }
+
+#ifdef LITE_WITH_X86
+
+bool MulGradOpLite::CheckShape() const {
+  CHECK_OR_FALSE(param_.x);
+  CHECK_OR_FALSE(param_.y);
+  CHECK_OR_FALSE(param_.output_grad);
+  CHECK_OR_FALSE(param_.x_grad);
+  CHECK_OR_FALSE(param_.y_grad);
+
+  return true;
+}
+
+bool MulGradOpLite::InferShape() const {
+  param_.x_grad->Resize(param_.x->dims());
+  param_.y_grad->Resize(param_.y->dims());
+  return true;
+}
+
+bool MulGradOpLite::AttachImpl(const OpDesc &op_desc, lite::Scope *scope) {
+  auto X_name = op_desc.Input("X").front();
+  auto Y_name = op_desc.Input("Y").front();
+  auto Out_grad_name = op_desc.Output(framework::GradVarName("Out")).front();
+  auto X_grad_name = op_desc.Output(framework::GradVarName("X")).front();
+  auto Y_grad_name = op_desc.Output(framework::GradVarName("Y")).front();
+
+  param_.x = GetVar<lite::Tensor>(scope, X_name);
+  param_.y = GetVar<lite::Tensor>(scope, Y_name);
+  param_.output_grad = GetVar<lite::Tensor>(scope, Out_grad_name);
+  param_.x_grad = GetMutableVar<lite::Tensor>(scope, X_grad_name);
+  param_.y_grad = GetMutableVar<lite::Tensor>(scope, Y_grad_name);
+
+  return true;
+}
+#endif
 
 }  // namespace operators
 }  // namespace lite

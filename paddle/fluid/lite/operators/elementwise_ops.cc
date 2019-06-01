@@ -31,31 +31,82 @@ class ElementwiseOp : public OpLite {
   }
 
   bool InferShape() const override {
-    CHECK_OR_FALSE(param_.X->dims() == param_.Y->dims());
+    CHECK_OR_FALSE(param_.X->dims().size() >= param_.Y->dims().size());
     param_.Out->Resize(param_.X->dims());
     return true;
   }
 
   bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 2UL);
     auto X_name = opdesc.Input("X").front();
     auto Y_name = opdesc.Input("Y").front();
     auto Out_name = opdesc.Output("Out").front();
 
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Y = GetVar<lite::Tensor>(scope, Y_name);
-    param_.Out = GetMutableVar<Tensor>(scope, Out_name);
+    param_.Out = GetMutableVar<lite::Tensor>(scope, Out_name);
     param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+    return true;
   }
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
+  std::string DebugString() const override { return "elementwise_op"; }
+
  private:
   mutable operators::ElementwiseParam param_;
 };
+
+#ifdef LITE_WITH_X86
+class ElementwiseGradExplicitOp : public OpLite {
+ public:
+  explicit ElementwiseGradExplicitOp(const std::string& type) : OpLite(type) {}
+
+  bool CheckShape() const override {
+    CHECK_OR_FALSE(param_.Y);
+    CHECK_OR_FALSE(param_.X_grad);
+    CHECK_OR_FALSE(param_.Y_grad);
+    CHECK_OR_FALSE(param_.Out_grad);
+    return true;
+  }
+
+  bool InferShape() const override {
+    param_.X_grad->Resize(param_.Out_grad->dims());
+    param_.Y_grad->Resize(param_.Y->dims());
+    return true;
+  }
+
+  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
+    CHECK_EQ(opdesc.Inputs().size(), 1UL);
+    auto Out_name = opdesc.Input(framework::GradVarName("Out")).front();
+    auto X_name = opdesc.Output(framework::GradVarName("X")).front();
+    auto Y_name = opdesc.Output(framework::GradVarName("Y")).front();
+
+    param_.Out_grad = GetVar<lite::Tensor>(scope, Out_name);
+    param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_name);
+    param_.Y_grad = GetMutableVar<Tensor>(scope, Y_name);
+    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+
+    return true;
+  }
+
+  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
+
+  std::string DebugString() const override {
+    return "elementwise_grad_explicit_op";
+  }
+
+ private:
+  mutable operators::ElementwiseGradParam param_;
+};
+#endif
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
 REGISTER_LITE_OP(elementwise_sub, paddle::lite::operators::ElementwiseOp);
+#ifdef LITE_WITH_X86
+REGISTER_LITE_OP(elementwise_sub_grad,
+                 paddle::lite::operators::ElementwiseGradExplicitOp);
+#endif
+REGISTER_LITE_OP(elementwise_add, paddle::lite::operators::ElementwiseOp);
