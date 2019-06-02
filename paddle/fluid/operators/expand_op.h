@@ -59,17 +59,10 @@ inline std::vector<int> get_expand_times(
       auto tensor = list_expand_times_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
-        auto place = platform::CUDAPlace();
-        auto& dev_ctx = *pool.Get(place);
-        framework::TensorCopy(*tensor, platform::CPUPlace(), dev_ctx, &temp);
-        dev_ctx.Wait();
-
-        vec_epxand_times.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_times.push_back(*temp.data<int32_t>());
       } else {
-        vec_epxand_times.push_back(
-            static_cast<int32_t>(*tensor->data<int32_t>()));
+        vec_epxand_times.push_back(*tensor->data<int32_t>());
       }
     }
 
