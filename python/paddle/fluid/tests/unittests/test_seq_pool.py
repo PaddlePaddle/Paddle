@@ -64,8 +64,8 @@ class TestSeqAvgPool(OpTest):
         return x, offset, out
 
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "AVERAGE"}
-        compute_seqpool_avg(x, offset, out)
+        self.attrs = {"pad_value": 0.0, 'pooltype': "AVERAGE"}
+        compute_seqpool_avg(x, offset, out, self.attrs["pad_value"])
 
     def setUp(self):
         x, offset, out = self.set_data()
@@ -88,8 +88,8 @@ class TestSeqAvgPoolLen0(TestSeqAvgPool):
 
 class TestSeqSumPool(TestSeqAvgPool):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "SUM"}
-        compute_seqpool_sum(x, offset, out)
+        self.attrs = {"pad_value": 0.1, 'pooltype': "SUM"}
+        compute_seqpool_sum(x, offset, out, self.attrs["pad_value"])
 
 
 class TestSeqSumPool(TestSeqSumPool):
@@ -118,7 +118,7 @@ class TestSeqMaxPool(TestSeqAvgPool):
         return x, offset, out
 
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "MAX", "pad_value": 0.0}
+        self.attrs = {"pad_value": 0.5, 'pooltype': "MAX"}
         for i in range(len(offset[0]) - 1):
             if offset[0][i] == offset[0][i + 1]:
                 out[i] = 0.0
@@ -129,13 +129,13 @@ class TestSeqMaxPool(TestSeqAvgPool):
 
 class TestSeqSqrtPool(TestSeqAvgPool):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "SQRT"}
-        compute_seqpool_sqrt(x, offset, out)
+        self.attrs = {"pad_value": 0.0, 'pooltype': "SQRT"}
+        compute_seqpool_sqrt(x, offset, out, self.attrs["pad_value"])
 
 
 class TestSeqLastPool(TestSeqAvgPool):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "LAST"}
+        self.attrs = {"pad_value": 0.0, 'pooltype': "LAST"}
         for i in range(len(offset[0]) - 1):
             sub_x = x[offset[0][i]:offset[0][i + 1], :]
             out[i] = sub_x[-1, :]
@@ -143,7 +143,7 @@ class TestSeqLastPool(TestSeqAvgPool):
 
 class TestSeqFirstPool(TestSeqAvgPool):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "FIRST"}
+        self.attrs = {"pad_value": 0.3, 'pooltype': "FIRST"}
         for i in range(len(offset[0]) - 1):
             sub_x = x[offset[0][i]:offset[0][i + 1], :]
             out[i] = sub_x[0, :]
@@ -163,7 +163,7 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
         return x, offset, out
 
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "AVERAGE"}
+        self.attrs = {"pad_value": 0.0, 'pooltype': "AVERAGE"}
         for i in range(len(offset[0]) - 1):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 17))
@@ -172,7 +172,7 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
 
 class TestSeqSumPool2D(TestSeqAvgPool2D):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "SUM"}
+        self.attrs = {"pad_value": 0.2, 'pooltype': "SUM"}
         for i in range(len(offset[0]) - 1):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 17))
@@ -181,7 +181,7 @@ class TestSeqSumPool2D(TestSeqAvgPool2D):
 
 class TestSeqSqrtPool2D(TestSeqAvgPool2D):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "SQRT"}
+        self.attrs = {"pad_value": 0.0, 'pooltype': "SQRT"}
         for i in range(len(offset[0]) - 1):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 17))
@@ -216,7 +216,7 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
         return x, offset, out
 
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "MAX"}
+        self.attrs = {"pad_value": 0.0, 'pooltype': "MAX"}
         for i in range(len(offset[0]) - 1):
             if offset[0][i] == offset[0][i + 1]:
                 continue
@@ -232,7 +232,7 @@ class TestSeqMaxPool2DLen0(TestSeqMaxPool2D):
 
 class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "MAX", 'is_test': True}
+        self.attrs = {"pad_value": 1.0, 'pooltype': "MAX", 'is_test': True}
         for i in range(len(offset[0]) - 1):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 11))
@@ -246,7 +246,7 @@ class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
 
 class TestSeqLastPool2D(TestSeqAvgPool2D):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "LAST"}
+        self.attrs = {"pad_value": 0.0, 'pooltype': "LAST"}
         for i in range(len(offset[0]) - 1):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 17))
@@ -255,7 +255,7 @@ class TestSeqLastPool2D(TestSeqAvgPool2D):
 
 class TestSeqFirstPool2D(TestSeqAvgPool2D):
     def compute(self, x, offset, out):
-        self.attrs = {'pooltype': "FIRST"}
+        self.attrs = {"pad_value": 0.0, 'pooltype': "FIRST"}
         for i in range(len(offset[0]) - 1):
             sub_x = np.reshape(x[offset[0][i]:offset[0][i + 1], :],
                                (-1, 3 * 17))
