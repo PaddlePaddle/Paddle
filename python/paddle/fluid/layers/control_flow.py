@@ -629,18 +629,20 @@ class While(object):
 
     Examples:
           .. code-block:: python
+            
+            import paddle.fluid as fluid
+            
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            d0 = fluid.layers.data("d0", shape=[10], dtype='float32')
+            data_array = fluid.layers.array_write(x=d0, i=i)
+            array_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=3)
 
-            d0 = layers.data("d0", shape=[10], dtype='float32')
-            data_array = layers.array_write(x=d0, i=i)
-            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
-
-            cond = layers.less_than(x=i, y=array_len)
-            while_op = layers.While(cond=cond)
+            cond = fluid.layers.less_than(x=i, y=array_len)
+            while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                d = layers.array_read(array=data_array, i=i)
-                i = layers.increment(x=i, in_place=True)
-                layers.array_write(result, i=i, array=d)
-                layers.less_than(x=i, y=array_len, cond=cond)
+                d = fluid.layers.array_read(array=data_array, i=i)
+                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                fluid.layers.less_than(x=i, y=array_len, cond=cond)            
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -880,6 +882,7 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[1], dtype='float32',
                                    append_batch_size=False)
           data = fluid.layers.increment(x=data, value=3.0, in_place=True)
@@ -920,9 +923,10 @@ def array_write(x, i, array=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_write(tmp, i=i)
+          arr = fluid.layers.array_write(tmp, i=i)
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
@@ -1128,6 +1132,9 @@ def equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          label = fluid.layers.data(name="label", shape=[3,10,32,32], dtype="float32")
+          limit = fluid.layers.data(name="limit", shape=[3,10,32,32], dtype="float32")
           less = fluid.layers.equal(x=label, y=limit)
     """
     helper = LayerHelper("equal", **locals())
@@ -1198,6 +1205,7 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           item = fluid.layers.array_read(array, i)
@@ -1272,6 +1280,7 @@ def array_length(array):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
@@ -1409,23 +1418,30 @@ class Switch(object):
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid as fluid
 
-            lr = fluid.layers.tensor.create_global_var(
+            lr = fluid.layers.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype='float32',
                 persistable=True,
                 name="learning_rate")
-            one_var = tensor.fill_constant(
+            zero_var = fluid.layers.fill_constant(
+                 shape=[1], dtype='float32', value=0.0)
+            one_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
-            two_var = tensor.fill_constant(
-                shape=[1], dtype='float32', value=2.0)
+            two_var = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=2.0) 
+
+            global_step = fluid.layers.autoincreased_step_counter(
+                   counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.tensor.assign(input=one_var, output=lr)
+                    fluid.layers.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.tensor.assign(input=two_var, output=lr)
+                    fluid.layers.assign(input=two_var, output=lr)
 
     """
 
@@ -1435,8 +1451,6 @@ class Switch(object):
         self.pre_not_conditions = []
 
     def case(self, condition):
-        """create a new block for this condition
-        """
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
 
@@ -1458,9 +1472,6 @@ class Switch(object):
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
-        """
-        create a default case for this switch
-        """
         pre_cond_num = len(self.pre_not_conditions)
         if pre_cond_num == 0:
             raise ValueError("there should be at least one condition")
@@ -1529,8 +1540,12 @@ class IfElse(object):
     Examples:
           .. code-block:: python
 
+            import paddle.fluid as fluid
+
+            image = fluid.layers.data(name="X", shape=[2, 5, 5], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             limit = fluid.layers.fill_constant_batch_size_like(
-                input=label, dtype='int64', shape=[1], value=5.0)
+                 input=label, dtype='int64', shape=[1], value=5.0)
             cond = fluid.layers.less_than(x=label, y=limit)
             ie = fluid.layers.IfElse(cond)
             with ie.true_block():
