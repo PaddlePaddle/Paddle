@@ -6564,11 +6564,24 @@ def one_hot(input, depth):
             one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
+
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
+
+    if in_dygraph_mode():
+        inputs = {'X': input}
+        attrs = {'depth': depth}
+    else:
+        if not isinstance(depth, Variable):
+            # user attribute 
+            inputs = {'X': input}
+            attrs = {'depth': depth}
+        else:
+            inputs = {'X': input, 'depth_tensor': depth}
+            attrs = {}
     helper.append_op(
         type="one_hot",
-        inputs={'X': input},
-        attrs={'depth': depth},
+        inputs=inputs,
+        attrs=attrs,
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
