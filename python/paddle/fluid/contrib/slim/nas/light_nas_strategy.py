@@ -20,7 +20,7 @@ import re
 import logging
 import functools
 import socket
-from .lock import lock, unlock, LOCK_EX
+from .lock import lock, unlock
 
 __all__ = ['LightNASStrategy']
 
@@ -61,7 +61,7 @@ class LightNASStrategy(Strategy):
         self._retrain_epoch = retrain_epoch
         self._search_steps = search_steps
         self._max_client_num = max_client_num
-        self._max_try_times = 300
+        self._max_try_times = 1
         self._key = key
 
         if self._server_ip is None:
@@ -91,7 +91,7 @@ class LightNASStrategy(Strategy):
                  'a').close()
             socket_file = open(
                 "./slim_LightNASStrategy_controller_server.socket", 'r+')
-            lock(socket_file, LOCK_EX)
+            lock(socket_file)
             tid = socket_file.readline()
             if tid == '':
                 _logger.info("start controller server...")
@@ -159,6 +159,8 @@ class LightNASStrategy(Strategy):
 
             self._current_reward = context.eval_results[self._metric_name][-1]
             flops = context.eval_graph.flops()
+            if flops > self._max_flops:
+                self._current_reward = 0.0
             _logger.info("reward: {}; flops: {}; tokens: {}".format(
                 self._current_reward, flops, self._current_tokens))
             self._current_tokens = self._search_agent.update(

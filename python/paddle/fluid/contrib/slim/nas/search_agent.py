@@ -39,7 +39,8 @@ class SearchAgent(object):
         socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_client.connect((self.server_ip, self.server_port))
         tokens = ",".join([str(token) for token in tokens])
-        socket_client.send("{}\t{}\t{}".format(self._key, tokens, reward))
+        socket_client.send("{}\t{}\t{}".format(self._key, tokens, reward)
+                           .encode())
         tokens = socket_client.recv(1024).decode()
         tokens = [int(token) for token in tokens.strip("\n").split(",")]
         return tokens
@@ -47,7 +48,7 @@ class SearchAgent(object):
     def next_tokens(self):
         socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_client.connect((self.server_ip, self.server_port))
-        socket_client.send("next_tokens")
+        socket_client.send("next_tokens".encode())
         tokens = socket_client.recv(1024).decode()
         tokens = [int(token) for token in tokens.strip("\n").split(",")]
         return tokens

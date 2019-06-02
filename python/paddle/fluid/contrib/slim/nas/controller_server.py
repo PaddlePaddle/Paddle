@@ -85,7 +85,7 @@ class ControllerServer(object):
             if message.strip("\n") == "next_tokens":
                 tokens = self._controller.next_tokens()
                 tokens = ",".join([str(token) for token in tokens])
-                conn.send(tokens)
+                conn.send(tokens.encode())
             else:
                 _logger.info("recv message from {}: [{}]".format(addr, message))
                 messages = message.strip('\n').split("\t")
@@ -99,7 +99,7 @@ class ControllerServer(object):
                 self._controller.update(tokens, float(reward))
                 tokens = self._controller.next_tokens()
                 tokens = ",".join([str(token) for token in tokens])
-                conn.send(tokens)
+                conn.send(tokens.encode())
                 _logger.info("send message to {}: [{}]".format(addr, tokens))
             conn.close()
         self._socket_server.close()

@@ -13,26 +13,20 @@
 # limitations under the License.
 
 import os
-__All__ = ['lock', 'unlock', 'LOCK_EX', 'LOCK_SH', 'LOCK_NB']
+__All__ = ['lock', 'unlock']
 if os.name == 'nt':
-    import win32con, win32file, pywintypes
-    LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
-    LOCK_SH = 0  # The default value
-    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
-    __overlapped = pywintypes.OVERLAPPED()
 
-    def lock(file, flags):
-        hfile = win32file._get_osfhandle(file.fileno())
-        win32file.LockFileEx(hfile, flags, 0, 0xffff0000, __overlapped)
+    def lock(file):
+        raise NotImplementedError('Windows is not supported.')
 
     def unlock(file):
-        hfile = win32file._get_osfhandle(file.fileno())
-        win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
-elif os.name == 'posix':
-    from fcntl import flock, LOCK_EX, LOCK_SH, LOCK_NB, LOCK_UN
+        raise NotImplementedError('Windows is not supported.')
 
-    def lock(file, flags):
-        flock(file.fileno(), flags)
+elif os.name == 'posix':
+    from fcntl import flock, LOCK_EX, LOCK_UN
+
+    def lock(file):
+        flock(file.fileno(), LOCK_EX)
 
     def unlock(file):
         flock(file.fileno(), LOCK_UN)

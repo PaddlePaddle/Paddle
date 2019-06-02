@@ -107,6 +107,8 @@ class SAController(EvolutionaryController):
             self._best_tokens = tokens
         _logger.info("iter: {}; max_reward: {}; best_tokens: {}".format(
             self._iter, self._max_reward, self._best_tokens))
+        _logger.info("current_reward: {}; current tokens: {}".format(
+            self._reward, self._tokens))
 
     def next_tokens(self):
         tokens = self._tokens

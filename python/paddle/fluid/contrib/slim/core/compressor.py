@@ -29,6 +29,7 @@ import logging
 import sys
 import pickle
 import functools
+import traceback
 
 __all__ = ['Context', 'Compressor']
 
@@ -522,14 +523,18 @@ class Compressor(object):
         start = context.epoch_id
         for epoch in range(start, self.epoch):
             context.epoch_id = epoch
-            for strategy in self.strategies:
-                strategy.on_epoch_begin(context)
-            self._train_one_epoch(context)
-            if self.eval_epoch and epoch % self.eval_epoch == 0:
-                self._eval(context)
-            self._save_checkpoint(context)
-            for strategy in self.strategies:
-                strategy.on_epoch_end(context)
+            try:
+                for strategy in self.strategies:
+                    strategy.on_epoch_begin(context)
+                self._train_one_epoch(context)
+                if self.eval_epoch and epoch % self.eval_epoch == 0:
+                    self._eval(context)
+                self._save_checkpoint(context)
+                for strategy in self.strategies:
+                    strategy.on_epoch_end(context)
+            except Exception:
+                _logger.error(traceback.print_exc())
+                continue
         for strategy in self.strategies:
             strategy.on_compression_end(context)
         return context.eval_graph
