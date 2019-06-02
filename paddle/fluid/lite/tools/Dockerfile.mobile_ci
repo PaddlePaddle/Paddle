@@ -34,22 +34,13 @@ RUN apt-get install -y --no-install-recommends \
         iptables \
         openjdk-8-jre
 
-# turn off the proxy temporarily for that the followings are downloaded from local
-ENV http_proxy_bk=${http_proxy}
-ENV https_proxy_bk=${https_proxy}
-#RUN unset http_proxy
-#RUN unset https_proxy
-ENV http_proxy=''
-ENV https_proxy=''
 # for cmake 3.10
-RUN curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
+RUN unset http_proxy && unset https_proxy && \
+curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
         tar xzf cmake-3.10.3-Linux-x86_64.tar.gz && \
         mv cmake-3.10.3-Linux-x86_64 /opt/cmake-3.10 && \
         mv /usr/bin/cmake /usr/bin/cmake.bak && ln -s /opt/cmake-3.10/bin/cmake /usr/bin/cmake && \
         mv /usr/bin/ccmake /usr/bin/ccmake.bak && ln -s /opt/cmake-3.10/bin/ccmake /usr/bin/ccmake
-# recover the proxy
-ENV http_proxy=${http_proxy_bk}
-ENV https_proxy=${https_proxy_bk}
 
 # for arm linux compile
 RUN apt-get install -y --no-install-recommends \
