@@ -34,14 +34,6 @@ RUN apt-get install -y --no-install-recommends \
         iptables \
         openjdk-8-jre
 
-# for cmake 3.10
-RUN unset http_proxy && unset https_proxy && \
-curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
-        tar xzf cmake-3.10.3-Linux-x86_64.tar.gz && \
-        mv cmake-3.10.3-Linux-x86_64 /opt/cmake-3.10 && \
-        mv /usr/bin/cmake /usr/bin/cmake.bak && ln -s /opt/cmake-3.10/bin/cmake /usr/bin/cmake && \
-        mv /usr/bin/ccmake /usr/bin/ccmake.bak && ln -s /opt/cmake-3.10/bin/ccmake /usr/bin/ccmake
-
 # for arm linux compile
 RUN apt-get install -y --no-install-recommends \
         g++-arm-linux-gnueabi \
@@ -50,6 +42,15 @@ RUN apt-get install -y --no-install-recommends \
         gcc-arm-linux-gnueabihf \
         gcc-aarch64-linux-gnu \
         g++-aarch64-linux-gnu 
+
+# for cmake 3.10
+RUN unset http_proxy && unset https_proxy && \
+curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
+        tar xzf cmake-3.10.3-Linux-x86_64.tar.gz && \
+        mv cmake-3.10.3-Linux-x86_64 /opt/cmake-3.10 && \
+        mv /usr/bin/cmake /usr/bin/cmake.bak && ln -s /opt/cmake-3.10/bin/cmake /usr/bin/cmake && \
+        mv /usr/bin/ccmake /usr/bin/ccmake.bak && ln -s /opt/cmake-3.10/bin/ccmake /usr/bin/ccmake
+
 
 # for android ndk17c
 RUN cd /tmp && curl -O https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
