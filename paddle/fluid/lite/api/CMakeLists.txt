@@ -29,6 +29,7 @@ if((NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) AND WITH_TESTING)
     lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
        DEPS cxx_api_lite model_parser_lite target_wrapper_host
        ${ops_lite} ${host_kernels} ${x86_kernels}
+       PROFILE_DEPS basic_profiler_lite
        ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
             --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
