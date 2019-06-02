@@ -44,11 +44,11 @@ RUN apt-get install -y --no-install-recommends \
         g++-aarch64-linux-gnu 
 
 # for cmake 3.10
-RUN curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
-        tar xzf cmake-3.10.3-Linux-x86_64.tar.gz && \
-        mv cmake-3.10.3-Linux-x86_64 /opt/cmake-3.10 && \
-        mv /usr/bin/cmake /usr/bin/cmake.bak && ln -s /opt/cmake-3.10/bin/cmake /usr/bin/cmake && \
-        mv /usr/bin/ccmake /usr/bin/ccmake.bak && ln -s /opt/cmake-3.10/bin/ccmake /usr/bin/ccmake
+#RUN curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
+        #tar xzf cmake-3.10.3-Linux-x86_64.tar.gz && \
+        #mv cmake-3.10.3-Linux-x86_64 /opt/cmake-3.10 && \
+        #mv /usr/bin/cmake /usr/bin/cmake.bak && ln -s /opt/cmake-3.10/bin/cmake /usr/bin/cmake && \
+        #mv /usr/bin/ccmake /usr/bin/ccmake.bak && ln -s /opt/cmake-3.10/bin/ccmake /usr/bin/ccmake
 
 
 # for android ndk17c
