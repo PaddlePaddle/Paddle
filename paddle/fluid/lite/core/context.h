@@ -37,19 +37,16 @@
 namespace paddle {
 namespace lite {
 
-// Context types
-enum class ContextType : int { kUNK = 0, kHost, kX86, kCUDA, kARM, NUM };
-
-template <ContextType Type>
+template <TargetType Type>
 class Context;
 
-using HostContext = Context<ContextType::kHost>;
-using X86Context = Context<ContextType::kX86>;
-using CUDAContext = Context<ContextType::kCUDA>;
-using ARMContext = Context<ContextType::kARM>;
+using HostContext = Context<TargetType::kHost>;
+using X86Context = Context<TargetType::kX86>;
+using CUDAContext = Context<TargetType::kCUDA>;
+using ARMContext = Context<TargetType::kARM>;
 
 template <>
-class Context<ContextType::kHost> {
+class Context<TargetType::kHost> {
  public:
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {}
@@ -62,7 +59,7 @@ class Context<ContextType::kHost> {
 #ifdef LITE_WITH_ARM
 
 template <>
-class Context<ContextType::kARM> {
+class Context<TargetType::kARM> {
  public:
   Context();
   Context(PowerMode mode, int threads);
@@ -111,7 +108,7 @@ class Context<ContextType::kARM> {
 #ifdef LITE_WITH_CUDA
 // Only works with CUDA kernels.
 template <>
-class Context<ContextType::kCUDA> {
+class Context<TargetType::kCUDA> {
  public:
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {
@@ -120,28 +117,28 @@ class Context<ContextType::kCUDA> {
 
   void CopyShared(const CUDAContext* ctx) {
     CHECK(ctx);
-    CHECK(blas_fp32_) << "cublas_fp32 should be set first";
+    CHECK(cublas_fp32_) << "cublas_fp32 should be set first";
     ctx->cublas_fp32_ = cublas_fp32_;
   }
 
-  const cudaStream_t GetExecStream() { return exec_stream_; }
+  const cudaStream_t exec_stream() { return exec_stream_; }
   void SetExecStream(cudaStream_t stream) { exec_stream_ = stream; }
 
-  const cudaStream_t GetIoStream() { return io_stream_; }
+  const cudaStream_t io_stream() { return io_stream_; }
   void SetIoStream(cudaStream_t stream) { io_stream_ = stream; }
 
-  std::shared_ptr<cuda::Blas<float>> GetCuBlasFP32() { return cublas_fp32_; }
+  std::shared_ptr<cuda::Blas<float>> cublas_fp32() { return cublas_fp32_; }
   void SetCuBlasFP32(std::shared_ptr<cuda::Blas<float>> cublas_fp32) {
     cublas_fp32_ = cublas_fp32;
   }
 
-  const std::vector<cudaEvent_t>& GetInputEvents() { return input_events_; }
+  const std::vector<cudaEvent_t>& input_events() { return input_events_; }
   void SetInputEvents(const std::vector<cudaEvent_t>& input_events) {
     input_events_.clear();
     input_events_.assign(input_events.begin(), input_events.end());
   }
 
-  const std::vector<cudaEvent_t>& GetOutputEvents() { return output_events_; }
+  const std::vector<cudaEvent_t>& output_events() { return output_events_; }
   void SetOutputEvents(const std::vector<cudaEvent_t>& output_events) {
     output_events_.clear();
     output_events_.assign(output_events.begin(), output_events.end());
@@ -165,7 +162,7 @@ class Context<ContextType::kCUDA> {
 
 #ifdef LITE_WITH_X86
 template <>
-class Context<ContextType::kX86> {
+class Context<TargetType::kX86> {
  public:
   using device_ctx_t = ::paddle::platform::CPUDeviceContext;
   using execution_ctx_t = ::paddle::framework::ExecutionContext;
@@ -181,12 +178,12 @@ class Context<ContextType::kX86> {
 
   void CopyShared(const X86Context* ctx) {}
 
-  const device_ctx_t* X86DeviceContext() { return x86_device_context_.get(); }
+  const device_ctx_t* x86_device_context() { return x86_device_context_.get(); }
   void SetX86DeviceContext(std::unique_ptr<device_ctx_t>&& ctx) {
     x86_device_context_ = std::move(ctx);
   }
 
-  const execution_ctx_t* X86ExecutionContext() {
+  const execution_ctx_t* x86_execution_context() {
     return x86_execution_context_.get();
   }
   void SetX86ExecutionContext(std::unique_ptr<execution_ctx_t>&& ctx) {
@@ -234,24 +231,24 @@ class ContextScheduler {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
     switch (target) {
       case TARGET(kHost):
-        kernel_contexts_[ContextType::kHost].As<HostContext>().CopyShared(
+        kernel_contexts_[TargetType::kHost].As<HostContext>().CopyShared(
             &ctx->As<HostContext>());
         break;
 #ifdef LITE_WITH_X86
       case TARGET(kX86):
-        kernel_contexts_[ContextType::kX86].As<X86Context>().CopyShared(
+        kernel_contexts_[TargetType::kX86].As<X86Context>().CopyShared(
             &ctx->As<X86Context>());
         break;
 #endif
 #ifdef LITE_WITH_CUDA
       case TARGET(kCUDA):
-        kernel_contexts_[ContextType::kCUDA].As<CUDAContext>().CopyShared(
+        kernel_contexts_[TargetType::kCUDA].As<CUDAContext>().CopyShared(
             &ctx->As<CUDAContext>());
         break;
 #endif
 #ifdef LITE_WITH_ARM
       case TARGET(kARM):
-        kernel_contexts_[ContextType::kARM].As<ARMContext>().CopyShared(
+        kernel_contexts_[TargetType::kARM].As<ARMContext>().CopyShared(
             &ctx->As<ARMContext>());
         break;
 #endif
@@ -262,26 +259,26 @@ class ContextScheduler {
   }
 
  private:
-  template <ContextType Type, typename ContextT>
+  template <TargetType Type, typename ContextT>
   void InitContext() {
     kernel_contexts_[Type].As<ContextT>().InitOnce();
   }
 
   ContextScheduler() {
-    InitContext<ContextType::kHost, HostContext>();
+    InitContext<TargetType::kHost, HostContext>();
 #ifdef LITE_WITH_X86
-    InitContext<ContextType::kX86, X86Context>();
+    InitContext<TargetType::kX86, X86Context>();
 #endif
 #ifdef LITE_WITH_CUDA
-    InitContext<ContextType::kCUDA, CUDAContext>();
+    InitContext<TargetType::kCUDA, CUDAContext>();
 #endif
 #ifdef LITE_WITH_ARM
-    InitContext<ContextType::kARM, ARMContext>();
+    InitContext<TargetType::kARM, ARMContext>();
 #endif
   }
 
  private:
-  std::map<ContextType, KernelContext> kernel_contexts_;
+  std::map<TargetType, KernelContext> kernel_contexts_;
 };
 
 }  // namespace lite

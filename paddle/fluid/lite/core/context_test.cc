@@ -30,13 +30,13 @@ TEST(ContextScheduler, NewContext) {
   ASSERT_EQ(ctx1.name(), "X86Context");
   ASSERT_EQ(ctx2.name(), "X86Context");
 
-  ASSERT_FALSE(ctx1.X86DeviceContext() == nullptr ||
-               ctx2.X86DeviceContext() == nullptr);
-  ASSERT_FALSE(ctx1.X86ExecutionContext() == nullptr ||
-               ctx2.X86ExecutionContext() == nullptr);
+  ASSERT_FALSE(ctx1.x86_device_context() == nullptr ||
+               ctx2.x86_device_context() == nullptr);
+  ASSERT_FALSE(ctx1.x86_execution_context() == nullptr ||
+               ctx2.x86_execution_context() == nullptr);
 
-  ASSERT_TRUE(ctx1.X86DeviceContext() != ctx2.X86DeviceContext());
-  ASSERT_TRUE(ctx1.X86ExecutionContext() != ctx2.X86ExecutionContext());
+  ASSERT_TRUE(ctx1.x86_device_context() != ctx2.x86_device_context());
+  ASSERT_TRUE(ctx1.x86_execution_context() != ctx2.x86_execution_context());
 
   using device_ctx_t = ::paddle::platform::CPUDeviceContext;
   using exec_ctx_t = ::paddle::framework::ExecutionContext;
