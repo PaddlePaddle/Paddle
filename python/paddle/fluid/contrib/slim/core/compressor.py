@@ -18,6 +18,7 @@ from .... import io
 from .... import profiler
 from .... import scope_guard
 from ....data_feeder import DataFeeder
+from ....log_helper import get_logger
 from ..graph import *
 from .config import ConfigFactory
 import numpy as np
@@ -31,9 +32,8 @@ import functools
 
 __all__ = ['Context', 'Compressor']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def cached_reader(reader, sampled_rate, cache_path, cached_id):
