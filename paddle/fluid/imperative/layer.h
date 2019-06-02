@@ -171,21 +171,21 @@ class VarBase {
     if (need_initialize) {
       tensor->mutable_data(place, dtype);
       is_initialized_ = true;
-      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype
+      VLOG(3) << "initialized varbase: " << name_ << " type: " << dtype
               << " place: " << place;
     } else {
       is_initialized_ = false;
-      VLOG(2) << "not initialized varbase: " << name_;
+      VLOG(3) << "not initialized varbase: " << name_;
     }
     VLOG(2) << "create varbase: " << name_ << " type: " << dtype
-            << " place: " << place;
+            << " place: " << place << "Stop gradient: " << stop_gradient_;
   }
 
  public:
   virtual ~VarBase() {
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
-    VLOG(2) << "destruct varbase: " << name_;
+    VLOG(3) << "destruct varbase: " << name_;
   }
 
   inline void SetName(const std::string& name) { name_ = name; }
@@ -220,6 +220,9 @@ class VarBase {
 
   inline void SetStopGradient(bool stop_gradient) {
     stop_gradient_ = stop_gradient;
+    if (grads_) {
+      grads_->stop_gradient_ = stop_gradient;
+    }
   }
   inline bool IsStopGradient() const { return stop_gradient_; }
 
@@ -244,10 +247,10 @@ class VarBase {
     if (!is_initialized_) {
       var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
       is_initialized_ = true;
-      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype_
+      VLOG(3) << "initialized varbase: " << name_ << " type: " << dtype_
               << " place: " << place_;
     } else {
-      VLOG(2) << "var: " << name_ << " has already been initialized ";
+      VLOG(3) << "var: " << name_ << " has already been initialized ";
     }
   }
 
