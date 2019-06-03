@@ -197,10 +197,14 @@ class Layer(core.Layer):
             the parameter passed in.
         """
         assert isinstance(parameter, framework.Parameter)
-        self._parameters[name] = parameter
+
         if parameter.name in self._loaddict_holder:
-            self._parameters[name] = self._loaddict_holder[parameter.name]
-            parameter = self._loaddict_holder[parameter.name]
+            var = parameter._ivar.value()
+            tensor = var.get_tensor()
+            tensor.set(self._loaddict_holder[parameter.name].numpy(),
+                       framework._current_expected_place())
+
+        self._parameters[name] = parameter
         return parameter
 
     def __getattr__(self, name):
@@ -216,9 +220,11 @@ class Layer(core.Layer):
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
             if value.name in self._loaddict_holder:
-                params[name] = self._loaddict_holder[value.name]
-            else:
-                params[name] = value
+                var = value._ivar.value()
+                tensor = var.get_tensor()
+                tensor.set(self._loaddict_holder[value.name].numpy(),
+                           framework._current_expected_place())
+            params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
             if layers is None:
