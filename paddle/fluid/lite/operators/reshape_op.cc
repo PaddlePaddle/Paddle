@@ -40,7 +40,9 @@ bool ReshapeOp::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
   CHECK(output_var);
   param_.x = const_cast<lite::Tensor *>(&(x_var->Get<lite::Tensor>()));
   param_.output = output_var->GetMutable<lite::Tensor>();
-  if (opdesc.HasInput("Shape")) {
+  std::vector<std::string> input_arg_names = opdesc.InputArgumentNames();
+  if (std::find(input_arg_names.begin(), input_arg_names.end(), "Shape") !=
+      input_arg_names.end()) {
     auto actual_shape_var = scope->FindVar(opdesc.Input("Shape").front());
     if (actual_shape_var != nullptr) {
       param_.actual_shape =
@@ -86,7 +88,7 @@ bool Reshape2Op::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
 
 DDim ValidateShape(const std::vector<int> &shape, const DDim &input_dims) {
   const DDim::value_type input_size = input_dims.production();
-  auto input_shape = input_dims.data();
+  auto input_shape = input_dims.Vectorize();
   bool all_positive = std::all_of(input_shape.cbegin(), input_shape.cend(),
                                   [](DDim::value_type i) { return i > 0; });
   // only one dimension can be set to -1, whose size will be automatically

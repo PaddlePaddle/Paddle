@@ -63,10 +63,6 @@ class OpDesc {
     return GetArguments(desc_.inputs(), param);
   }
 
-  bool HasInput(const std::string &param) const {
-    return HasArgument(desc_.inputs(), param);
-  }
-
   std::vector<std::string> InputArgumentNames() const {
     return GetArgumentNames(desc_.inputs());
   }
@@ -74,10 +70,6 @@ class OpDesc {
   void SetInput(const std::string &param,
                 const std::vector<std::string> &args) {
     SetArgument(desc_.mutable_inputs(), param, args);
-  }
-
-  bool HasOutput(const std::string &param) const {
-    return HasArgument(desc_.outputs(), param);
   }
 
   std::vector<std::string> Output(const std::string &param) const {
@@ -190,17 +182,6 @@ class OpDesc {
   }
 
  private:
-  bool HasArgument(const google::protobuf::RepeatedPtrField<
-                       framework::proto::OpDesc_Var> &xs,
-                   const std::string &param) const {
-    auto it = std::find_if(xs.begin(), xs.end(),
-                           [&](const framework::proto::OpDesc_Var &it) {
-                             return it.parameter() == param;
-                           });
-
-    return it != xs.end() && it->arguments_size() > 0;
-  }
-
   std::vector<std::string> GetArguments(
       const google::protobuf::RepeatedPtrField<framework::proto::OpDesc_Var>
           &xs,
