@@ -13,23 +13,34 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_registry.h"
+#include <string>
+#include <vector>
+#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
-namespace kernels {
-namespace arm {
+namespace operators {
 
-class SoftmaxCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class ScaleOp : public OpLite {
  public:
-  void Run() override;
+  ScaleOp() {}
+  explicit ScaleOp(const std::string &op_type) : OpLite(op_type) {}
 
-  virtual ~SoftmaxCompute() = default;
+  bool CheckShape() const override;
+
+  bool InferShape() const override;
+
+  bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) override;
+
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+  std::string DebugString() const override { return "scale"; }
+
+ private:
+  mutable ScaleParam param_;
 };
 
-}  // namespace arm
-}  // namespace kernels
+}  // namespace operators
 }  // namespace lite
 }  // namespace paddle

@@ -13,23 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
-namespace kernels {
 namespace arm {
+namespace math {
 
-class SoftmaxCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
- public:
-  void Run() override;
+template <typename T>
+void scale(const T* din, T* dout, int num, float scale, float bias);
 
-  virtual ~SoftmaxCompute() = default;
-};
-
+}  // namespace math
 }  // namespace arm
-}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

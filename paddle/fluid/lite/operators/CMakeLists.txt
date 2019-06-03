@@ -5,6 +5,7 @@ cc_library(relu_op_lite SRCS relu_op.cc DEPS ${op_DEPS})
 cc_library(mul_op_lite SRCS mul_op.cc DEPS ${op_DEPS})
 cc_library(scale_op_lite SRCS scale_op.cc DEPS ${op_DEPS})
 cc_library(softmax_op_lite SRCS softmax_op.cc DEPS ${op_DEPS})
+cc_library(reshape_op_lite SRCS reshape_op.cc DEPS ${op_DEPS} )
 cc_library(feed_op_lite SRCS feed_op.cc DEPS ${op_DEPS})
 cc_library(fetch_op_lite SRCS fetch_op.cc DEPS ${op_DEPS})
 cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
@@ -22,6 +23,7 @@ set(ops_lite
         mul_op_lite
         scale_op_lite
         softmax_op_lite
+        reshape_op_lite
         feed_op_lite
         fetch_op_lite
         io_copy_op_lite
@@ -35,5 +37,7 @@ set(ops_lite
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
              DEPS fc_op_lite memory_lite 
              X86_DEPS fc_compute_x86
-	         ARM_DEPS fc_compute_arm)
+                 ARM_DEPS fc_compute_arm)
+lite_cc_test(test_scale_op_lite SRCS scale_op_test.cc DEPS scale_op_lite memory_lite)
 lite_cc_test(test_softmax_op_lite SRCS softmax_op_test.cc DEPS softmax_op_lite memory_lite)
+lite_cc_test(test_reshape_op_lite SRCS reshape_op_test.cc DEPS reshape_op_lite memory_lite)
