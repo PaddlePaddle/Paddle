@@ -191,7 +191,7 @@ class VarBase {
   inline void SetName(const std::string& name) { name_ = name; }
   inline std::string Name() const { return name_; }
   inline bool IsInitialize() const { return is_initialized_; }
-
+  inline void SetInitialize(bool inited) { is_initialized_ = inited; }
   inline std::vector<int64_t> Shape() const {
     if (var_->IsInitialized()) {
       return framework::vectorize(var_->Get<framework::LoDTensor>().dims());
@@ -209,10 +209,7 @@ class VarBase {
     auto tensor = var_->GetMutable<framework::LoDTensor>();
     tensor->mutable_data(tensor->place(), type);
   }
-  inline framework::proto::VarType::Type DataType() const {
-    auto tensor = var_->Get<framework::LoDTensor>();
-    return tensor.type();
-  }
+  inline framework::proto::VarType::Type DataType() const { return dtype_; }
 
   // tensor type. e.g.. LoDTensor
   inline void SetType(framework::proto::VarType::Type type) { type_ = type; }

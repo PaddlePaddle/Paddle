@@ -78,24 +78,35 @@ class TensorAddToFunctor : public boost::static_visitor<> {
 
 }  // namespace detail
 
-void AddTo(Variable* src, Variable* dst, platform::Place place) {
-  framework::Tensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
-  framework::Tensor* src_tensor = src->GetMutable<framework::LoDTensor>();
-
-  // FIXME(minqiyang): loss_grad op will pass a zero grad of label
-  // ugly fix for it
-  if (src_tensor->numel() == 0) {
+void AddTo(std::shared_ptr<VarBase> src, std::shared_ptr<VarBase> dst,
+           platform::Place place) {
+  if (!dst->IsInitialize()) {
+    VLOG(2) << "im here1";
+    PADDLE_ENFORCE(src->IsInitialize(), "Using uninitialized VarBase");
+    dst->var_ = std::move(src->var_);
+    dst->SetInitialize(true);
     return;
+  } else {
+    framework::Tensor* dst_tensor =
+        dst->var_->GetMutable<framework::LoDTensor>();
+    framework::Tensor* src_tensor =
+        src->var_->GetMutable<framework::LoDTensor>();
+
+    // FIXME(minqiyang): loss_grad op will pass a zero grad of label
+    // ugly fix for it
+    if (src_tensor->numel() == 0) {
+      return;
+    }
+
+    PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(),
+                   "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
+                   src_tensor->numel());
+
+    detail::TensorAddToFunctor<float> func(
+        src_tensor->numel(), src_tensor->data<float>(),
+        dst_tensor->mutable_data<float>(place));
+    boost::apply_visitor(func, place);
   }
-
-  PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(),
-                 "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
-                 src_tensor->numel());
-
-  detail::TensorAddToFunctor<float> func(
-      src_tensor->numel(), src_tensor->data<float>(),
-      dst_tensor->mutable_data<float>(place));
-  boost::apply_visitor(func, place);
 }
 
 void ZeroGrads(const std::shared_ptr<imperative::VarBase> vb,
@@ -119,12 +130,10 @@ void AddGradBySort(BackwardSumMap* bck_map,
               return a.first > b.first;
             });
   for (auto& var_pair : current.second) {
-    Variable* origin_grad = target->var_.get();
-    Variable* grad_to_add = var_pair.second->var_.get();
     VLOG(10) << "add origin_grad: " << target->Name();
     VLOG(10) << "added grad: " << var_pair.second->Name()
              << " trace id is: " << var_pair.first;
-    AddTo(grad_to_add, origin_grad, current.first);
+    AddTo(var_pair.second, target, current.first);
     var_pair.second.reset();
   }
 }
@@ -277,10 +286,6 @@ std::vector<VarBasePtrMap> OpBase::ApplyGrad(
       outputs.reserve(it.second.size());
       for (const std::shared_ptr<imperative::VarBase>& origin_grad_var_base :
            it.second) {
-        if (!origin_grad_var_base->IsInitialize()) {
-          origin_grad_var_base->InitBuffer();
-          ZeroGrads(origin_grad_var_base, place_);
-        }
         // Allocate a new variable
         std::shared_ptr<imperative::VarBase> tmp_grad_var_base(new VarBase(
             string::Sprintf("%s@IGrad", origin_grad_var_base->Name()),
@@ -388,12 +393,10 @@ std::vector<VarBasePtrMap> OpBase::ApplyGrad(
             grad_ref->at(origin_outputs[i].get())--;
           }
         } else {
-          framework::Variable* grad = outputs[i]->var_.get();
-          framework::Variable* orig_grad = origin_outputs[i]->var_.get();
           VLOG(10) << "AddTo Called with orig_grad is: "
                    << origin_outputs[i]->name_ << " Grad to be added is "
                    << outputs[i]->name_;
-          AddTo(grad, orig_grad, place_);
+          AddTo(outputs[i], origin_outputs[i], place_);
           outputs[i].reset();
         }
       }
