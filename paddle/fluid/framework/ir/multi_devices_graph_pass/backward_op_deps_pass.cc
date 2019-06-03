@@ -60,6 +60,12 @@ class BackWardOpDepsPass : public ir::Pass {
       GetOptHandles(node, &all_opt_handles);
     }
 
+    /*
+    for (size_t i = 0; i < all_opt_handles.size(); i++) {
+      VLOG(10) << "get all_opt_handles:" << all_opt_handles[i]->DebugString();
+    }
+    */
+
     VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
              << ", opt_handles size:" << all_opt_handles.size();
 
@@ -81,10 +87,12 @@ class BackWardOpDepsPass : public ir::Pass {
       AddDep(graph, opt_handles[i - 1], opt_handles[i]);
     }
 
+    /*
     VLOG(10) << "add backward deps";
     for (size_t i = 1; i < backward_op_handles.size(); ++i) {
       AddDep(graph, backward_op_handles[i - 1], backward_op_handles[i]);
     }
+    */
 
     VLOG(10) << "add deps between backward and optimze:";
     AddDep(graph, backward_op_handles[backward_op_handles.size() - 1],
@@ -96,10 +104,17 @@ class BackWardOpDepsPass : public ir::Pass {
                          const details::ParamsAndGrads& params_grads) const {
     std::unordered_set<details::OpHandleBase*> visit;
     for (auto op : ops) {
-      if (visit.find(op) != visit.end()) continue;
+      int order = 0;
+      if (visit.find(op) != visit.end()) {
+        VLOG(10) << "visited all_opt_handles:" << op->DebugString();
+        continue;
+      } else {
+        VLOG(10) << "visiting all_opt_handles:" << op->DebugString();
+      }
 
       r->emplace_back(op);
-      VisitChildrens(op, &visit);
+      visit.insert(op);
+      VisitChildrens(op, &visit, &order);
     }
 
     for (size_t i = 0; i < r->size(); i++) {
@@ -148,15 +163,22 @@ class BackWardOpDepsPass : public ir::Pass {
   }
 
   void VisitChildrens(details::OpHandleBase* op,
-                      std::unordered_set<details::OpHandleBase*>* visit) const {
+                      std::unordered_set<details::OpHandleBase*>* visit,
+                      int* order) const {
     for (auto out : op->Outputs()) {
       for (auto* pending_op : out->PendingOps()) {
         if (visit->find(pending_op) != visit->end()) {
+          VLOG(10) << "order:" << *order
+                   << " visited:" << pending_op->DebugString();
           continue;
         }
 
+        VLOG(10) << "order:" << *order
+                 << " visiting:" << pending_op->DebugString();
+
         visit->insert(pending_op);
-        VisitChildrens(pending_op, visit);
+        (*order)++;
+        VisitChildrens(pending_op, visit, order);
       }
     }
   }
@@ -205,12 +227,6 @@ class BackWardOpDepsPass : public ir::Pass {
       opt_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
     } catch (boost::bad_get e) {
     }
-
-    /*
-    for (size_t i = 0; i < opt_handles->size(); i++) {
-      VLOG(10) << "get all_opt_handles:" << (*opt_handles)[i]->DebugString();
-    }
-    */
   }
 };
 }  // namespace ir
