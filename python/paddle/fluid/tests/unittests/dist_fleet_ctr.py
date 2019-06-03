@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import shutil
+import tempfile
 import time
 
 import paddle.fluid as fluid
@@ -99,8 +101,19 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         self.feeds = datas
         self.train_file_path = train_file_path
         self.avg_cost = avg_cost
+        self.predict = predict
 
         return avg_cost
+
+    def check_model_right(self, dirname):
+        model_filename = os.path.join(dirname, "__model__")
+
+        with open(model_filename, "rb") as f:
+            program_desc_str = f.read()
+
+        program = fluid.Program.parse_from_string(program_desc_str)
+        with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
+            wn.write(str(program))
 
     def do_training(self, fleet):
         dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
@@ -138,6 +151,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 debug=False)
             pass_time = time.time() - pass_start
 
+        model_dir = tempfile.mkdtemp()
+        fleet.save_inference_model(
+            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
+        self.check_model_right(model_dir)
+        shutil.rmtree(model_dir)
         fleet.stop_worker()
 
 
