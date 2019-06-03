@@ -64,10 +64,6 @@ void SoftmaxCompute::Run() {
   }
 }
 
-TargetType SoftmaxCompute::target() const { return TARGET(kARM); }
-
-PrecisionType SoftmaxCompute::precision() const { return PRECISION(kFloat); }
-
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite

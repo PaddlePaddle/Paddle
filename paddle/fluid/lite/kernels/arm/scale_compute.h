@@ -25,9 +25,6 @@ class ScaleCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
-
   virtual ~ScaleCompute() = default;
 };
 

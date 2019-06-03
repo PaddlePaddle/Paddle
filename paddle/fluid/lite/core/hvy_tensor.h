@@ -102,7 +102,7 @@ class TensorHvy : public TensorBase<TensorHvy> {
     data_.ShareDataWith(other.data_);
   }
   void CopyDataFrom(const TensorHvy& other) {
-    data_.ShareDataWith(other.data_);
+    TensorCopySync(other.data_, data_.place(), &data_);
   }
 
   DDimT dims() const { return DDimT(framework::vectorize(data_.dims())); }

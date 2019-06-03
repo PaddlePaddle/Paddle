@@ -27,9 +27,6 @@ class ReshapeCompute
  public:
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
-
   virtual ~ReshapeCompute() = default;
 };
 

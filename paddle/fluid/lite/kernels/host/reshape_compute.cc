@@ -52,10 +52,6 @@ void ReshapeCompute::Run() {
   output->Resize(output_dims);
 }
 
-TargetType ReshapeCompute::target() const { return TARGET(kHost); }
-
-PrecisionType ReshapeCompute::precision() const { return PRECISION(kAny); }
-
 }  // namespace host
 }  // namespace kernels
 }  // namespace lite

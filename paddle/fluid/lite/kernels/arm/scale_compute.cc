@@ -34,10 +34,6 @@ void ScaleCompute::Run() {
   lite::arm::math::scale(x_data, output_data, x_dims.production(), scale, bias);
 }
 
-TargetType ScaleCompute::target() const { return TARGET(kARM); }
-
-PrecisionType ScaleCompute::precision() const { return PRECISION(kFloat); }
-
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite
