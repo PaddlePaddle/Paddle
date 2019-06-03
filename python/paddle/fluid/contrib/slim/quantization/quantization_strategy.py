@@ -24,7 +24,7 @@ from ....framework import IrGraph, Variable, Program
 from ....log_helper import get_logger
 from ..core.strategy import Strategy
 from .quantization_pass import *
-
+from .quantization_mkldnn_pass import *
 __all__ = ['QuantizationStrategy']
 
 _logger = get_logger(
@@ -42,6 +42,7 @@ class QuantizationStrategy(Strategy):
                  float_model_save_path=None,
                  mobile_model_save_path=None,
                  int8_model_save_path=None,
+                 mkldnn_int8_model_save_path=None,
                  activation_bits=8,
                  weight_bits=8,
                  activation_quantize_type='abs_max',
@@ -246,4 +247,27 @@ class QuantizationStrategy(Strategy):
                     model_filename='model',
                     params_filename='weights',
                     export_for_deployment=True)
+
+            # save the model for mkldnn int8 inference
+            if self.mkldnn_int8_model_save_path:
+                if not self.int8_model_save_path:
+                    # convert the weights as int8_t type
+                    convert_int8_pass = ConvertToInt8Pass(
+                        scope=context.scope, place=context.place)
+                    convert_int8_pass.apply(test_ir_graph)
+                mkldnn_int8_pass = TransformForMkldnnPass(
+                    scope=context.scope, place=context.place)
+                mkldnn_int8_pass.apply(test_ir_graph)
+
+                executor = Executor(context.place)
+                io.save_inference_model(
+                    self.mkldnn_int8__model_save_path,
+                    in_vars,
+                    out_vars,
+                    executor,
+                    main_program=test_ir_graph.to_program(),
+                    model_filename='model',
+                    params_filename='weights',
+                    export_for_deployment=True)
+
             _logger.info('Finish QuantizationStrategy::on_epoch_end')
