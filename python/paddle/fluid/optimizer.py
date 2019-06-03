@@ -55,6 +55,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
+    @imperative_base.no_grad
     def __init__(self, learning_rate, regularization=None, name=None):
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
@@ -472,6 +473,7 @@ class Optimizer(object):
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
+    @imperative_base.no_grad
     def minimize(self,
                  loss,
                  startup_program=None,
