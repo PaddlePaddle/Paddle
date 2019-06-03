@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.framework import IrGraph, Variable, Program
-import paddle
+from .... import core
+from ....framework import IrGraph
+from ....framework import IrNode
+
+__all__ = ['TransformForMkldnnPass']
 
 
 class TransformForMkldnnPass(object):
@@ -104,17 +105,17 @@ class TransformForMkldnnPass(object):
         weight = self._load_param(self._scope, weight_name)
         w_fp32 = np.divide(
             np.multiply(weight, 127),
-            self.max_range[op_node.output("Output")[0]])
+            self.max_range[output_name])
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
         input_var_node = graph._find_node_by_name(op_node.inputs,
                                                   op_node.input("Input")[0])
         weight_var_node = graph._find_node_by_name(op_node.inputs,
-                                                   op_node.input("Filter")[0])
+                                                   weight_name)
 
         output_var_node = graph._find_node_by_name(
             graph.all_var_nodes(),
-            self.conv_new_output[op_node.output("Output")[0]])
+            self.conv_new_output[output_name])
         attrs = {
             name: op_node.op().attr(name)
             for name in op_node.op().attr_names()

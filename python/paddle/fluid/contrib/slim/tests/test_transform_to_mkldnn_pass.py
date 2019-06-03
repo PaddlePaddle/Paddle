@@ -1,4 +1,4 @@
-#   copyright (c) 2018 paddlepaddle authors. all rights reserved.
+#   copyright (c) 2019 paddlepaddle authors. all rights reserved.
 #
 # licensed under the apache license, version 2.0 (the "license");
 # you may not use this file except in compliance with the license.
@@ -20,8 +20,9 @@ import paddle.fluid as fluid
 import six
 import paddle
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
+from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
+from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass 
 from paddle.fluid import core
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -73,7 +74,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         main_graph = IrGraph(core.Graph(main.desc), for_test=False)
         test_graph = IrGraph(core.Graph(test_program.desc), for_test=True)
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
@@ -85,20 +86,6 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
             weight_quantize_type=weight_quant_type)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
-        dev_name = '_gpu_' if use_cuda else '_cpu_'
-        if not for_ci:
-            marked_nodes = set()
-            for op in main_graph.all_op_nodes():
-                if op.name().find('quantize') > -1:
-                    marked_nodes.add(op)
-            main_graph.draw('.', 'main' + dev_name + activation_quant_type + '_'
-                            + weight_quant_type, marked_nodes)
-            marked_nodes = set()
-            for op in test_graph.all_op_nodes():
-                if op.name().find('quantize') > -1:
-                    marked_nodes.add(op)
-            test_graph.draw('.', 'test' + dev_name + activation_quant_type + '_'
-                            + weight_quant_type, marked_nodes)
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.memory_optimize = False
@@ -119,57 +106,15 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-        loss_v = exe.run(binary,
+                loss_v = exe.run(binary,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
-                if not for_ci:
-                    print('{}: {}'.format('loss' + dev_name +
-                                          activation_quant_type + '_' +
-                                          weight_quant_type, loss_v))
 
-        test_data = next(test_reader())
-        with fluid.program_guard(quantized_test_program):
-            w_var = fluid.framework._get_var('conv2d_1.w_0.quantized',
-                                             quantized_test_program)
-        # Testing
-        with fluid.scope_guard(scope):
-            test_loss1, w_quant = exe.run(program=quantized_test_program,
-                                          feed=feeder.feed(test_data),
-                                          fetch_list=[loss, w_var])
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.
         freeze_pass = QuantizationFreezePass(
             scope=scope, place=place, weight_quantize_type=weight_quant_type)
         freeze_pass.apply(test_graph)
-        if not for_ci:
-            marked_nodes = set()
-            for op in test_graph.all_op_nodes():
-                if op.name().find('quantize') > -1:
-                    marked_nodes.add(op)
-            test_graph.draw('.', 'test_freeze' + dev_name +
-                            activation_quant_type + '_' + weight_quant_type,
-                            marked_nodes)
-         server_program = test_graph.to_program()
-        with fluid.scope_guard(scope):
-            test_loss2, = exe.run(program=server_program,
-                                  feed=feeder.feed(test_data),
-                                  fetch_list=[loss])
-        self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
-        if not for_ci:
-            print(
-                '{}: {}'.format('test_loss1' + dev_name + activation_quant_type
-                                + '_' + weight_quant_type, test_loss1))
-            print(
-                '{}: {}'.format('test_loss2' + dev_name + activation_quant_type
-                                + '_' + weight_quant_type, test_loss2))
-        w_freeze = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        # Maybe failed, this is due to the calculation precision
-        # self.assertAlmostEqual(np.sum(w_freeze), np.sum(w_quant))
-        if not for_ci:
-            print('{}: {}'.format('w_freeze' + dev_name + activation_quant_type
-                                  + '_' + weight_quant_type, np.sum(w_freeze)))
-            print('{}: {}'.format('w_quant' + dev_name + activation_quant_type +
-                                  '_' + weight_quant_type, np.sum(w_quant)))
 
        # Transform quantized graph for MKL-DNN INT8 inference
         mkldnn_int8_pass = TransformForMkldnnPass(
@@ -185,8 +130,9 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                             marked_nodes)
         server_program = test_graph.to_program()
         w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        self.assertFalse(
-            w_mkldnn.is_integer())
+        self.assertFalse(w_mkldnn.is_integer())
+        check_program(server_program)
+        dev_name = '_gpu_' if use_cuda else '_cpu_'
         if not for_ci:
             print('{}: {}'.format('w_mkldnn' + dev_name + activation_quant_type +
                                   '_' + weight_quant_type, np.sum(w_mkldnn)))
