@@ -19,7 +19,12 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
 
-__all__ = ['enabled', 'no_grad', 'guard', 'to_variable']
+__all__ = [
+    'enabled',
+    'no_grad',
+    'guard',
+    'to_variable',
+]
 
 
 def enabled():
