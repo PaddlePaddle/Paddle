@@ -30,35 +30,43 @@ class SumLoDTensorFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const std::vector<const framework::Tensor*>& inputs,
                   framework::Tensor* output) {
-    size_t in_num = inputs.size();
-    PADDLE_ENFORCE_GE(in_num, 2UL,
-                      "The number of inputs should be not less than 2.");
-
     bool in_place = (output == inputs[0]) ? true : false;
-    int start = in_place ? 1 : 0;
+
+    std::vector<const framework::Tensor*> actual_inputs;
+    int64_t length = 0;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      if (inputs[i]->numel() > 0) {
+        actual_inputs.push_back(inputs[i]);
+        if (length == 0) {
+          length = inputs[i]->numel();
+        } else {
+          PADDLE_ENFORCE_EQ(length, inputs[i]->numel());
+        }
+      }
+    }
+
+    size_t in_num = actual_inputs.size();
+    if (in_num == 1) {
+      // Copy actual_inputs[0] -> output
+      framework::TensorCopy(*actual_inputs[0], context.GetPlace(), context,
+                            output);
+      return;
+    }
 
     auto result = framework::EigenVector<T>::Flatten(*output);
     auto& place = *context.eigen_device();
 
+    int start = in_place ? 1 : 0;
     if (!in_place) {
-      if (inputs[0]->numel() && inputs[1]->numel()) {
-        auto in_0_e = framework::EigenVector<T>::Flatten(*inputs[0]);
-        auto in_1_e = framework::EigenVector<T>::Flatten(*inputs[1]);
-        result.device(place) = in_0_e + in_1_e;
-        start = 2;
-      }
-      if (start != 2) {
-        math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
-        constant_functor(context, output, static_cast<T>(0));
-      }
+      auto in_0_e = framework::EigenVector<T>::Flatten(*actual_inputs[0]);
+      auto in_1_e = framework::EigenVector<T>::Flatten(*actual_inputs[1]);
+      result.device(place) = in_0_e + in_1_e;
+      start = 2;
     }
 
     // If in_place, just skip the first tensor
     for (size_t i = start; i < in_num; i++) {
-      if (inputs[i]->numel() == 0) {
-        continue;
-      }
-      auto in = framework::EigenVector<T>::Flatten(*inputs[i]);
+      auto in = framework::EigenVector<T>::Flatten(*actual_inputs[i]);
       result.device(place) = result + in;
     }
   }

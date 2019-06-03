@@ -61,41 +61,38 @@ class SumLoDTensorFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext &context,
                   const std::vector<const framework::Tensor *> &inputs,
                   framework::Tensor *output) {
-    size_t in_num = inputs.size();
-    PADDLE_ENFORCE_GE(in_num, 2UL,
-                      "The number of inputs should be not less than 2.");
-
     bool in_place = (inputs[0] == output) ? true : false;
 
-    if (in_num == 2) {
-      if (inputs[0]->numel() > 0 && inputs[1]->numel() > 0) {
-        PADDLE_ENFORCE_EQ(inputs[0]->numel(), inputs[1]->numel());
-        auto &place = *context.eigen_device();
-
-        auto result = framework::EigenVector<T>::Flatten(*output);
-        auto in_0_e = framework::EigenVector<T>::Flatten(*inputs[0]);
-        auto in_1_e = framework::EigenVector<T>::Flatten(*inputs[1]);
-        result.device(place) = in_0_e + in_1_e;
-      } else if (inputs[0]->numel() == 0) {
-        // Copy inputs[1] -> output
-        framework::TensorCopy(*inputs[1], context.GetPlace(), context, output);
-      } else if (inputs[1]->numel() == 0) {
-        // Copy inputs[0] -> output
-        framework::TensorCopy(*inputs[0], context.GetPlace(), context, output);
+    std::vector<const framework::Tensor *> actual_inputs;
+    int64_t length = 0;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      if (inputs[i]->numel() > 0) {
+        actual_inputs.push_back(inputs[i]);
+        if (length == 0) {
+          length = inputs[i]->numel();
+        } else {
+          PADDLE_ENFORCE_EQ(length, inputs[i]->numel());
+        }
       }
+    }
+
+    size_t in_num = actual_inputs.size();
+    if (in_num == 1) {
+      // Copy actual_inputs[0] -> output
+      framework::TensorCopy(*actual_inputs[0], context.GetPlace(), context,
+                            output);
+    } else if (in_num == 2) {
+      auto &place = *context.eigen_device();
+
+      auto result = framework::EigenVector<T>::Flatten(*output);
+      auto in_0_e = framework::EigenVector<T>::Flatten(*actual_inputs[0]);
+      auto in_1_e = framework::EigenVector<T>::Flatten(*actual_inputs[1]);
+      result.device(place) = in_0_e + in_1_e;
     } else {
       size_t start = in_place ? 1 : 0;
       std::vector<const T *> in_data;
-      int64_t length = 0;
       for (size_t i = start; i < in_num; ++i) {
-        if (inputs[i]->numel() > 0) {
-          in_data.emplace_back(inputs[i]->data<T>());
-          if (length == 0) {
-            length = inputs[i]->numel();
-          } else {
-            PADDLE_ENFORCE_EQ(length, inputs[i]->numel());
-          }
-        }
+        in_data.emplace_back(actual_inputs[i]->data<T>());
       }
 
       if (in_data.size() > 0) {
