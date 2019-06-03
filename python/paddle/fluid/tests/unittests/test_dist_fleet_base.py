@@ -55,7 +55,7 @@ class FleetDistRunnerBase(object):
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
 
-        avg_cost = self.net(batch_size=args.batch_size)
+        avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
@@ -79,7 +79,7 @@ class FleetDistRunnerBase(object):
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
 
-        avg_cost = self.net(batch_size=args.batch_size)
+        avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
