@@ -23,8 +23,11 @@ class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
         self.config()
-        xnp = np.random.random(self.x_shape).astype("float32")
-        self.inputs = {'X': xnp, 'Index': np.array(self.index).astype("int32")}
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {
+            'X': xnp,
+            'Index': np.array(self.index).astype(self.index_type)
+        }
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
@@ -34,14 +37,46 @@ class TestGatherOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def config(self):
+        """
+        For multi-dimension input
+        """
         self.x_shape = (10, 20)
+        self.x_type = "float32"
         self.index = [1, 3, 5]
+        self.index_type = "int32"
 
 
 class TestCase1(TestGatherOp):
     def config(self):
+        """
+        For one dimension input
+        """
         self.x_shape = (10)
+        self.x_type = "float32"
         self.index = [1, 3, 5]
+        self.index_type = "int32"
+
+
+class TestCase2(TestGatherOp):
+    def config(self):
+        """
+        For int64_t index type
+        """
+        self.x_shape = (10)
+        self.x_type = "float32"
+        self.index = [1, 3, 5]
+        self.index_type = "int64"
+
+
+class TestCase3(TestGatherOp):
+    def config(self):
+        """
+        For other input type
+        """
+        self.x_shape = (10, 20)
+        self.x_type = "double"
+        self.index = [1, 3, 5]
+        self.index_type = "int64"
 
 
 if __name__ == "__main__":

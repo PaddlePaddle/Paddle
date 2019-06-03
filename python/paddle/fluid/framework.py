@@ -564,8 +564,9 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (
+                self.name, self.dtype, self.shape,
+                str(self._ivar.value().get_tensor()))
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -2764,6 +2765,10 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._nccl_comm_num = 1
+        self._use_hierarchical_allreduce = False
+        self._hierarchical_allreduce_inter_nranks = 0
+        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
@@ -2967,12 +2972,15 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will not do any prune on program here, So if you just want an
+          forward program for testing, please use :code:`clone` before using
+          :code:`Opimizer.minimize`
 
-        Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please. E.g.
 
         .. code-block:: python
 
@@ -2989,7 +2997,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3683,8 +3696,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3712,9 +3725,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
-            None means do not change startup program.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

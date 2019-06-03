@@ -96,7 +96,7 @@ if(CUDNN_FOUND)
         endif()
 
         message(STATUS "Current cuDNN header is ${CUDNN_INCLUDE_DIR}/cudnn.h. "
-            "Current cuDNN version is v${CUDNN_MAJOR_VERSION}. ")
+            "Current cuDNN version is v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}. ")
 
     endif()
 endif()
