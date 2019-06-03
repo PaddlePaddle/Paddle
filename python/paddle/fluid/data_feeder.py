@@ -491,7 +491,7 @@ class ListTensorProvider(object):
             if len(item) == len(self.places):
                 yield list(self._readData(item, self.places))
                 item = []
-        if not drop_last and len(item) != 0:
+        if not self.drop_last and len(item) != 0:
             raise ValueError(
                 "The data batch which cannot fit for devices will be "
                 "dropped is not implementation. Other strategies are "
