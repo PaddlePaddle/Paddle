@@ -123,9 +123,12 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  // Cudnn pool performance poor, only use cudnn for fp16
+  if (platform::CanCUDNNBeUsed(ctx) &&
+      ctx.Input<Tensor>("X")->type() == framework::proto::VarType::FP16) {
     library_ = framework::LibraryType::kCUDNN;
   }
+
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
