@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
@@ -84,6 +85,7 @@ class LightPredictor {
                                return it->alias() == alias;
                              });
       CHECK(it != kernels.end());
+      (*it)->SetContext(ContextScheduler::Global().NewContext((*it)->target()));
       insts.emplace_back(op, std::move(*it));
     }
     program_.reset(new RuntimeProgram(std::move(insts)));
