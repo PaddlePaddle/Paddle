@@ -13,11 +13,11 @@ if(NOT WITH_FAST_MATH)
 endif()
 
 if(WIN32)
-    set(PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h.txt
-            ${EIGEN_INCLUDE_DIR}/Eigen/src/Core/arch/CUDA/Half.h)
+    set(EIGEN_GIT_REPOSITORY https://github.com/wopeizl/eigen-git-mirror)
+    set(EIGEN_GIT_TAG support_cuda9_win)
 else()
-    set(PATCH_COMMAND "")
+    set(EIGEN_GIT_REPOSITORY https://github.com/eigenteam/eigen-git-mirror)
+    set(EIGEN_GIT_TAG 917060c364181f33a735dc023818d5a54f60e54c)
 endif()
 if(WITH_AMD_GPU)
     ExternalProject_Add(
@@ -36,16 +36,15 @@ else()
     ExternalProject_Add(
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY  "https://github.com/eigenteam/eigen-git-mirror"
+        GIT_REPOSITORY  "${EIGEN_GIT_REPOSITORY}"
         # eigen on cuda9.1 missing header of math_funtions.hpp
         # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
-        GIT_TAG         917060c364181f33a735dc023818d5a54f60e54c
+        GIT_TAG         ${EIGEN_GIT_TAG}
         PREFIX          ${EIGEN_SOURCE_DIR}
         DOWNLOAD_NAME   "eigen"
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
-        PATCH_COMMAND     ${PATCH_COMMAND}
         INSTALL_COMMAND   ""
         TEST_COMMAND      ""
     )
