@@ -43,6 +43,9 @@ class Collective(object):
         self.rank = None
         self.startup_program = None
         self.main_program = None
+        self.op_maker = core.op_proto_and_checker_maker
+        self.op_role_key = self.op_maker.kOpRoleAttrName()
+        self.collective_role = slef.op_maker.OpRole.Collective
 
     def transpile(self, startup_program, main_program, rank, endpoints,
                   current_endpoint, wait_port):
@@ -110,15 +113,19 @@ class Collective(object):
             attrs={
                 'rank': rank,
                 'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints
+                'other_endpoints': other_endpoints,
+                self.op_role_key: self.collective_role
             })
         block.append_op(
             type='c_comm_init',
             inputs={'X': nccl_id_var},
             outputs={},
-            attrs={'nranks': nranks,
-                   'rank': rank,
-                   'ring_id': ring_id})
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': ring_id,
+                self.op_role_key: self.collective_role
+            })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
@@ -127,10 +134,17 @@ class Collective(object):
                 type='c_broadcast',
                 inputs={'X': var},
                 outputs={'Out': var},
-                attrs={'ring_id': self.global_ring_id,
-                       'root': 0})
+                attrs={
+                    'ring_id': self.global_ring_id,
+                    'root': 0,
+                    self.op_role_key: self.collective_role
+                })
         block.append_op(
-            type='c_sync_comm_stream', attrs={'ring_id': self.global_ring_id})
+            type='c_sync_comm_stream',
+            attrs={
+                'ring_id': self.global_ring_id,
+                self.op_role_key: self.collective_role
+            })
 
     def _is_update_op(self, op):
         return 'Param' in op.input_names and 'Grad' in op.input_names and \
@@ -174,13 +188,19 @@ class SGD(Collective):
             for name in op.output_arg_names:
                 if name in grad2param:
                     grad = block.vars[name]
-                    block._insert_op(idx + 1, type='c_sync_compute_stream')
+                    block._insert_op(
+                        idx + 1,
+                        type='c_sync_compute_stream',
+                        attrs={self.op_role_key: self.collective_role})
                     block._insert_op(
                         idx + 2,
                         type='c_allreduce',
                         inputs={'X': [grad]},
                         outputs={'Out': [grad]},
-                        attrs={'reduce_type': 0})
+                        attrs={
+                            'reduce_type': 0,
+                            self.op_role_key: self.collective_role
+                        })
                     del grad2param[name]
 
         for idx, op in enumerate(block.ops):
@@ -188,7 +208,10 @@ class SGD(Collective):
                 block._insert_op(
                     idx,
                     type='c_sync_comm_stream',
-                    attrs={'ring_id': self.global_ring_id})
+                    attrs={
+                        'ring_id': self.global_ring_id,
+                        self.op_role_key: self.collective_role
+                    })
                 break
 
 
@@ -213,7 +236,8 @@ class LocalSGD(Collective):
             block.append_op(
                 type='assign',
                 inputs={'X': [param]},
-                outputs={'Out': [snapshot]})
+                outputs={'Out': [snapshot]},
+                attrs={self.op_role_key: self.collective_role})
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
@@ -235,19 +259,30 @@ class LocalSGD(Collective):
                     type='elementwise_sub',
                     inputs={'X': [snapshot],
                             'Y': [param]},
-                    outputs={'Out': [param]})
-                block._insert_op(idx + 2, type='c_sync_compute_stream')
+                    outputs={'Out': [param]},
+                    attrs={self.op_role_key: self.collective_role})
+                block._insert_op(
+                    idx + 2,
+                    type='c_sync_compute_stream',
+                    attrs={self.op_role_key: self.collective_role})
                 block._insert_op(
                     idx + 3,
                     type='c_allreduce',
                     inputs={'X': [param]},
                     outputs={'Out': [param]},
-                    attrs={'reduce_type': 0})
+                    attrs={
+                        'reduce_type': 0,
+                        self.op_role_key: self.collective_role
+                    })
 
                 ordered_param_snapshot.append((param, snapshot))
 
         block.append_op(
-            type='c_sync_comm_stream', attrs={'ring_id': self.global_ring_id})
+            type='c_sync_comm_stream',
+            attrs={
+                'ring_id': self.global_ring_id,
+                self.op_role_key: self.collective_role
+            })
 
         for param_snapshot in reversed(ordered_param_snapshot):
             param = param_snapshot[0]
@@ -256,13 +291,18 @@ class LocalSGD(Collective):
                 type='scale',
                 inputs={'X': [param]},
                 outputs={'Out': [param]},
-                attrs={'scale': 1.0 / self.nranks})
+                attrs={
+                    'scale': 1.0 / self.nranks,
+                    self.op_role_key: self.collective_role
+                })
             block.append_op(
                 type='elementwise_sub',
                 inputs={'X': [snapshot],
                         'Y': [param]},
-                outputs={'Out': [param]})
+                outputs={'Out': [param]},
+                attrs={self.op_role_key: self.collective_role})
             block.append_op(
                 type='assign',
                 inputs={'X': [param]},
-                outputs={'Out': [snapshot]})
+                outputs={'Out': [snapshot]},
+                attrs={self.op_role_key: self.collective_role})
