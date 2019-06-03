@@ -46,7 +46,7 @@ void CreateGradOp(const framework::OpDesc& op_desc,
   }
 }
 
-void InitGrad(VarBase* var, platform::DeviceContext* dev_ctx) {
+void CreateNoBuffuerGrad(VarBase* var, platform::DeviceContext* dev_ctx) {
   PADDLE_ENFORCE_NOT_NULL(var, "Could not get valid var base");
   PADDLE_ENFORCE_NOT_NULL(dev_ctx,
                           "Could not get valid device from forward op");
@@ -55,9 +55,7 @@ void InitGrad(VarBase* var, platform::DeviceContext* dev_ctx) {
     auto& var_t = var->var_->Get<framework::LoDTensor>();
     var->grads_ = new VarBase(var->GradName(), framework::proto::VarType::FP32,
                               framework::vectorize(var_t.dims()),
-                              dev_ctx->GetPlace(), true, false);
-    auto grad_t = var->grads_->var_->GetMutable<framework::LoDTensor>();
-    operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+                              dev_ctx->GetPlace(), true, false, false);
   }
 }
 
@@ -261,7 +259,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             grad_in_vars.emplace_back(fwd_var_it->second);
           } else {
             VarBase* var = current_vars_map[var_it->second];
-            InitGrad(var, prepared_op.GetDeviceContext());
+            CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
             // Douts.
             grad_in_vars.emplace_back(var->grads_);
           }
@@ -279,7 +277,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                          "operator %s's stop gradient be True",
                          op->Type());
           VarBase* var = current_vars_map[var_it->second];
-          InitGrad(var, prepared_op.GetDeviceContext());
+          CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
           grad_out_vars.push_back(var->grads_);
           VLOG(3) << "grads output var name: " << var->name_;
         }
@@ -289,57 +287,5 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
   return vars_saved_for_backward;
 }
-
-std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
-                                      const std::vector<VarBase*>& inputs,
-                                      bool stop_gradient) {
-  VLOG(3) << "py_trace " << op->Type();
-
-  op->input_vars_[PyLayer::kFwdInp] = inputs;
-
-  std::vector<std::unique_ptr<framework::Variable>> ret_vars =
-      PyLayer::Apply(op->forward_id_, inputs);
-  op->TrackPreOp(PyLayer::kFwdInp, inputs);
-
-  std::vector<VarBase*>& outputs = op->output_vars_[PyLayer::kFwdOut];
-  outputs.reserve(ret_vars.size());
-  for (size_t i = 0U; i != ret_vars.size(); ++i) {
-    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i),
-                               std::move(ret_vars[i]), nullptr, stop_gradient);
-    outputs.emplace_back(out);
-    out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
-  }
-
-  if (!stop_gradient) {
-    VLOG(5) << "start construct backward op";
-    op->grad_input_vars_.resize(1);
-    op->grad_output_vars_.resize(1);
-    auto& grad_input_vars =
-        op->grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)];
-    auto& grad_output_vars =
-        op->grad_output_vars_[0][framework::GradVarName(PyLayer::kFwdOut)];
-
-    for (VarBase* inp : inputs) {
-      grad_input_vars.push_back(inp);
-    }
-    for (VarBase* out : outputs) {
-      grad_input_vars.push_back(out);
-    }
-
-    // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
-    platform::CPUPlace place;
-    for (VarBase* out : outputs) {
-      InitGrad(out, platform::DeviceContextPool::Instance().Get(place));
-      grad_input_vars.push_back(out->grads_);
-    }
-
-    for (VarBase* inp : inputs) {
-      InitGrad(inp, platform::DeviceContextPool::Instance().Get(place));
-      grad_output_vars.push_back(inp->grads_);
-    }
-  }
-  return outputs;
-}
-
 }  // namespace imperative
 }  // namespace paddle
