@@ -177,7 +177,7 @@ function main {
                 shift
                 ;;
             cmake_arm)
-                cmake_arm
+                cmake_arm $2 $3
                 shift
                 ;;
             test_server)
