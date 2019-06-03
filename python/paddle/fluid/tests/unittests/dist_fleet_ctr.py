@@ -16,15 +16,11 @@ from __future__ import print_function
 
 import time
 
-import paddle
 import paddle.fluid as fluid
 import os
 
 import ctr_dataset_reader
-from test_dist_fleet_base import FleetTestBase, runtime_main, FleetDistRunnerBase
-
-IS_SPARSE = True
-os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
+from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -122,7 +118,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(128)
+        dataset.set_batch_size(4)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
         dataset.set_pipe_command(pipe_command)

@@ -97,58 +97,6 @@ class FleetDistRunnerBase(object):
             "do_training should be implemented by child classes.")
 
 
-#
-# class FleetTestBase(unittest.TestCase):
-#     def setUp(self):
-#         self.trainer_id = 0
-#         self.trainers = 2
-#         self.pservers = 2
-#         # NOTE: we do not actually bind this port
-#         self.pserver_eps = ["127.0.0.1:6174", "127.0.0.1:6175"]
-#         self.pserver1_ep = "127.0.0.1:6174"
-#         self.pserver2_ep = "127.0.0.1:6175"
-#         self.sync_mode = True
-#         self.transpiler = None
-#
-#     def get_reader(self):
-#         raise NotImplementedError("net_conf should be implement by user.")
-#
-#         # x = np.random.randint(1000, size=np.random.randint(20))
-#         # y = np.random.random_sample()
-#         # return x, y
-#
-#     def net_conf(self):
-#         raise NotImplementedError("net_conf should be implement by user.")
-#
-#         # x = fluid.layers.data(name='x', shape=[1], lod_level=1, dtype='int64')
-#         # y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-#         #
-#         # embed = fluid.layers.embedding(input=x, is_sparse=True, size=[1000, 8])
-#         # cnn = fluid.layers.sequence_pool(input=embed, pool_type='sum')
-#         #
-#         # y_predict = fluid.layers.fc(input=cnn,
-#         #                             size=1000,
-#         #                             act=None,
-#         #                             param_attr=fluid.ParamAttr(name='fc_w'),
-#         #                             bias_attr=fluid.ParamAttr(name='fc_b'))
-#         #
-#         # cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-#         # avg_cost = fluid.layers.mean(cost)
-#         # sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-#         # sgd_optimizer.minimize(avg_cost)
-#
-#     def _run_instance(self, role):
-#         main = fluid.Program()
-#         main.random_seed = 1
-#         with fluid.program_guard(main):
-#             self.net_conf()
-#         self.origin_prog = main.clone()
-#         return main
-#
-#     def _run_instance_2X2(self):
-#         pass
-
-
 class TestFleetBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
@@ -180,7 +128,7 @@ class TestFleetBase(unittest.TestCase):
                 self._port_set.add(port)
                 return port
 
-    def start_pserver(self, cmd, required_envs):
+    def _start_pserver(self, cmd, required_envs):
         ps0_cmd, ps1_cmd = cmd.format(0), cmd.format(1)
 
         print(ps0_cmd)
@@ -226,15 +174,19 @@ class TestFleetBase(unittest.TestCase):
         env = {'CPU_NUM': '1'}
         env.update(envs)
 
-        cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
+            self._python_interp, model, self._ps_endpoints, self._trainers)
+
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}".format(
             self._python_interp, model, self._ps_endpoints, self._trainers)
 
         if self._sync_mode:
-            cmd += " --sync_mode"
+            tr_cmd += " --sync_mode"
+            ps_cmd += " --sync_mode"
 
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model, cmd, env)
-        tr0, tr1, tr0_pipe, tr1_pipe = self._start_trainer(model, cmd, env)
+        ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
+        tr0, tr1, tr0_pipe, tr1_pipe = self._start_trainer(tr_cmd, env)
 
         # Wait until trainer process terminate
         while True:
@@ -301,10 +253,8 @@ def runtime_main(test_class):
     parser.add_argument(
         '--role', type=str, required=True, choices=['pserver', 'trainer'])
     parser.add_argument('--endpoints', type=str, required=False, default="")
-    parser.add_argument('--trainer_id', type=int, required=False, default=0)
+    parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
-    parser.add_argument(
-        '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
 
     args = parser.parse_args()
