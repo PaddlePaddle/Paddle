@@ -8817,14 +8817,19 @@ def prelu(x, mode, param_attr=None, name=None):
     .. math::
         y = \max(0, x) + \\alpha * \min(0, x)
 
+    There are three modes for the activation:
+
+    .. code-block:: text
+
+        all: all elements share same alpha
+        channel: elements in same channel share same alpha
+        element: All element has the same alpha
+
     Args:
         x (Variable): The input tensor.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha).
-        mode (string): The mode for weight sharing. It supports all, channel
-          and element. all: all elements share same weight
-          channel:elements in a channel share same weight
-          element:each element has a weight
+          weight (alpha), it can be create by ParamAttr.
+        mode (string): The mode for weight sharing. 
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -8835,9 +8840,12 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            from paddle.fluid.param_attr import ParamAttr
+            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
             mode = 'channel'
-            output = fluid.layers.prelu(x,mode)
+            output = fluid.layers.prelu(
+                     x,mode,param_attr=ParamAttr(name='alpha'))
+
     """
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
