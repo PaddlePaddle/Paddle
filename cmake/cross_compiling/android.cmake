@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT ANDROID)
+if(NOT ARM_TARGET_OS STREQUAL "android")
     return()
 endif()
 
-add_definitions(-DLITE_WITH_ANDROID)
+set(ANDROID TRUE)
+add_definitions(-DLITE_WITH_LINUX)
 
 if(NOT DEFINED ANDROID_NDK)
     set(ANDROID_NDK $ENV{NDK_ROOT})
@@ -25,9 +26,6 @@ if(NOT DEFINED ANDROID_NDK)
     endif()
 endif()
 
-if(NOT DEFINED ANDROID_ARCH_ABI)
-    set(ANDROID_ARCH_ABI "arm64-v8a" CACHE STRING "Choose android platform")
-endif()
 
 if(NOT DEFINED ANDROID_API_LEVEL)
     set(ANDROID_API_LEVEL "22")
@@ -37,16 +35,35 @@ if(NOT DEFINED ANDROID_STL_TYPE)
     set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type")
 endif()
 
+# TODO(TJ): enable me
+if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a-hf")
+    message(FATAL_ERROR "Not supported building android armeabi-v7a-hf yet")
+endif()
+
+set(ANDROID_ARCH_ABI ${ARM_TARGET_ARCH_ABI} CACHE STRING "Choose Android Arch ABI")
+
+if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a-softfp")
+    set(ANDROID_ARCH_ABI "armeabi-v7a")
+endif()
+
 set(ANDROID_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v6" "armeabi"
-    "mips" "mips64" "x86" "x86_64")
+    "mips" "mips64" "x86" "x86_64" "armeabi-v7a-hf")
 set_property(CACHE ANDROID_ARCH_ABI PROPERTY STRINGS ${ANDROID_ARCH_ABI_LIST})
-if (NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
+if(NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
     message(FATAL_ERROR "ANDROID_ARCH_ABI must be in one of ${ANDROID_ARCH_ABI_LIST}")
 endif()
 
 if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
+    message(STATUS "armeabi-v7a default use softfp")
     set(CMAKE_ANDROID_ARM_NEON ON)
     message(STATUS "NEON is enabled on arm-v7a with softfp")
+endif()
+
+if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a-hf")
+    set(ANDROID_ARCH_ABI "armeabi-v7a")
+    set(CMAKE_CXX_FLAGS "-std=c++11 -march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 ${CMAKE_CXX_FLAGS}" )
+    set(CMAKE_C_FLAGS "-march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 ${CMAKE_C_FLAGS}" )
+    message(STATUS "NEON is enabled on arm-v7a with hard float")
 endif()
 
 set(ANDROID_STL_TYPE_LITS "gnustl_static" "c++_static")
@@ -55,4 +72,8 @@ if (NOT ANDROID_STL_TYPE IN_LIST ANDROID_STL_TYPE_LITS)
     message(FATAL_ERROR "ANDROID_STL_TYPE must be in one of ${ANDROID_STL_TYPE_LITS}")
 endif()
 
-set(ANDROID_PIE TRUE)
+set(CMAKE_SYSTEM_NAME Android)
+set(CMAKE_SYSTEM_VERSION ${ANDROID_API_LEVEL})
+set(CMAKE_ANDROID_ARCH_ABI ${ANDROID_ARCH_ABI})
+set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
+set(CMAKE_ANDROID_STL_TYPE ${ANDROID_STL_TYPE})

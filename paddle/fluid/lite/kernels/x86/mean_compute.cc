@@ -37,14 +37,14 @@ class MeanCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    auto& context = ctx_->As<X86Context>();
+    CHECK(context.x86_device_context());
 
     param.Out->template mutable_data<T>();
 
     auto X = EigenVector<T>::Flatten(param.X->raw_tensor());
     auto y = EigenScalar<T>::From(param.Out->raw_tensor());
-    const auto& place = *(context.x86_device_context->eigen_device());
+    const auto& place = *(context.x86_device_context()->eigen_device());
 
     y.device(place) = X.mean();
   }
@@ -59,15 +59,15 @@ class MeanGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
+    auto& context = ctx_->As<X86Context>();
     CHECK_EQ(param.Out_grad->raw_tensor().numel(), 1);
-    CHECK(context.x86_device_context);
+    CHECK(context.x86_device_context());
 
     param.X_grad->template mutable_data<T>();
     T x_grad_size = static_cast<T>(param.X_grad->raw_tensor().numel());
     Eigen::DSizes<int, 1> bcast(static_cast<int>(x_grad_size));
     EigenVector<T>::Flatten(param.X_grad->raw_tensor())
-        .device(*(context.x86_device_context->eigen_device())) =
+        .device(*(context.x86_device_context()->eigen_device())) =
         (EigenVector<T>::From(param.Out_grad->raw_tensor()) / x_grad_size)
             .broadcast(bcast);
   }

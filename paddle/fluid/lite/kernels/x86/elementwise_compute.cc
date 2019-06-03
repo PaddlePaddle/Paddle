@@ -31,6 +31,11 @@ struct SubFunctor {
 };
 
 template <typename T>
+struct AddFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
+};
+
+template <typename T>
 class ElementwiseSubCompute
     : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
@@ -39,12 +44,12 @@ class ElementwiseSubCompute
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
     auto& context = ctx_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    CHECK(context.x86_device_context());
 
     param.Out->template mutable_data<T>();
     paddle::operators::ElementwiseComputeEx<SubFunctor<T>,
                                             platform::CPUDeviceContext, T>(
-        *context.x86_execution_context, &param.X->raw_tensor(),
+        *context.x86_execution_context(), &param.X->raw_tensor(),
         &param.Y->raw_tensor(), param.axis, SubFunctor<T>(),
         &param.Out->raw_tensor());
   }
@@ -67,11 +72,10 @@ class ElementwiseSubGradCompute
     : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
   using param_t = operators::ElementwiseGradParam;
-
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    auto& context = ctx_->As<X86Context>();
+    CHECK(context.x86_device_context());
 
     param.X_grad->template mutable_data<T>();
     param.Y_grad->template mutable_data<T>();
@@ -82,11 +86,31 @@ class ElementwiseSubGradCompute
     auto& skip = dout;
     paddle::operators::ElemwiseExplicitGradCompute<
         platform::CPUDeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-        *context.x86_execution_context, skip, skip, skip, dout, param.axis, &dx,
-        &dy, SubGradDX<T>(), SubGradDY<T>());
+        *context.x86_execution_context(), skip, skip, skip, dout, param.axis,
+        &dx, &dy, SubGradDX<T>(), SubGradDY<T>());
   }
 
   virtual ~ElementwiseSubGradCompute() = default;
+};
+
+template <typename T>
+class ElementwiseAddCompute
+    : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
+ public:
+  using param_t = operators::ElementwiseParam;
+  void Run() override {
+    auto& param = *param_.get_mutable<param_t>();
+    auto& context = ctx_->As<X86Context>();
+    CHECK(context.x86_device_context());
+    param.Out->template mutable_data<T>();
+    paddle::operators::ElementwiseComputeEx<AddFunctor<T>,
+                                            platform::CPUDeviceContext, T>(
+        *context.x86_execution_context(), &param.X->raw_tensor(),
+        &param.Y->raw_tensor(), param.axis, AddFunctor<T>(),
+        &param.Out->raw_tensor());
+  }
+
+  virtual ~ElementwiseAddCompute() = default;
 };
 
 }  // namespace x86
@@ -112,4 +136,12 @@ REGISTER_LITE_KERNEL(elementwise_sub_grad, kX86, kFloat, kNCHW,
                 {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput(paddle::framework::GradVarName("Y"),
                 {LiteType::GetTensorTy(TARGET(kX86))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(elementwise_add, kX86, kFloat, kNCHW,
+                     paddle::lite::kernels::x86::ElementwiseAddCompute<float>,
+                     def)
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();

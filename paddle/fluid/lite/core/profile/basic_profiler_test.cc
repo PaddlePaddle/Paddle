@@ -12,30 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/core/profile/basic_profiler.h"
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <chrono>  // NOLINT
+#include <thread>  // NOLINT
 
 namespace paddle {
 namespace lite {
-namespace mir {
+namespace profile {
 
-class RuntimeContextAssignPass : public StmtPass {
- public:
-  RuntimeContextAssignPass() {}
+TEST(basic_record, init) {
+  BasicTimer timer;
+  timer.SetKey("hello");
+}
 
-  void Apply(const std::unique_ptr<SSAGraph>& graph) override {
-    for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsStmt()) continue;
-      auto& inst = node.AsStmt();
-      inst.picked_kernel().SetContext(
-          ContextScheduler::Global().NewContext(inst.picked_kernel().target()));
-    }
+TEST(basic_profile, init) {
+  auto& rcd = BasicProfiler<BasicTimer>::Global().NewRcd("fc");
+  for (int i = 11; i < 100; i++) {
+    rcd.Log(i);
   }
-};
 
-}  // namespace mir
+  LOG(INFO) << BasicProfiler<BasicTimer>::Global().basic_repr();
+}
+
+TEST(basic_profile, real_latency) {
+  LITE_PROFILE_ONE(test0);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+}
+
+}  // namespace profile
 }  // namespace lite
 }  // namespace paddle
-
-REGISTER_MIR_PASS(runtime_context_assign_pass,
-                  paddle::lite::mir::RuntimeContextAssignPass);

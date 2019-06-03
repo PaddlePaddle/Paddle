@@ -37,9 +37,9 @@ class MulCompute : public KernelLite<TARGET(kCUDA), PRECISION(kFloat)> {
   void Run() override {
     CHECK(ctx_) << "running context should be set first";
     auto& context = ctx_->As<CUDAContext>();
-    CHECK(context.blas_fp32) << "blas should init first";
+    CHECK(context.cublas_fp32()) << "blas should init first";
     /*
-    auto& blas = *context.blas_fp32;
+    auto& blas = *context.cublas_fp32();
     CHECK(param.x->target() == TARGET(kCUDA));
     auto* x = param.x->data<float>();
     int x_h = param.x->dims()[0];

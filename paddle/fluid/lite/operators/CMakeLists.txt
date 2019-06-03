@@ -14,8 +14,9 @@ cc_library(elementwise_ops_lite SRCS elementwise_ops.cc DEPS ${op_DEPS})
 cc_library(mean_op_lite SRCS mean_op.cc DEPS ${op_DEPS})
 cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
 #cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
-
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
+cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
+
 set(ops_lite
         fc_op_lite
         relu_op_lite
@@ -29,9 +30,14 @@ set(ops_lite
         elementwise_ops_lite
         mean_op_lite
         fill_constant_op_lite
+        activation_ops_lite
+        dropout_op_lite
         PARENT_SCOPE)
 
-lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite memory_lite)
+lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
+             DEPS fc_op_lite memory_lite 
+             X86_DEPS fc_compute_x86
+                 ARM_DEPS fc_compute_arm)
 lite_cc_test(test_scale_op_lite SRCS scale_op_test.cc DEPS scale_op_lite memory_lite)
 lite_cc_test(test_softmax_op_lite SRCS softmax_op_test.cc DEPS softmax_op_lite memory_lite)
 lite_cc_test(test_reshape_op_lite SRCS reshape_op_test.cc DEPS reshape_op_lite memory_lite)

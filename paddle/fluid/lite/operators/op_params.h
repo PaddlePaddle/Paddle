@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/framework.pb.h"
@@ -94,11 +95,10 @@ struct ScaleParam {
   bool bias_after_scale{true};
 };
 
-// For Softmax Op
+// For Softmax op
 struct SoftmaxParam {
   lite::Tensor* x{};
   lite::Tensor* output{};
-
   int axis{-1};
 };
 
@@ -111,6 +111,60 @@ struct ReshapeParam {
 
   std::vector<int> shape{};
   bool inplace{false};
+};
+
+// For Convolution op
+struct ConvParam {
+  lite::Tensor* x{};
+  lite::Tensor* filter{};
+  lite::Tensor* bias{};
+  lite::Tensor* residualData{};
+  lite::Tensor* output{};
+  std::vector<int> strides{1, 1};
+  std::vector<int> paddings{0, 0};
+  int groups{1};
+  std::vector<int> dilations{1, 1};
+  bool fuse_relu_before_depthwise_conv{false};
+  bool use_mkldnn{false};
+  bool fuse_relu{false};  // only used in mkldnn kernel
+  bool use_quantizer{
+      false};  // set true for op that should be quantized, only used for cpu
+  bool fuse_residual_connection{false};
+  float scale_in{1.0f};           // only used with mkl-dnn int8
+  float scale_out{1.0f};          // only used with mkl-dnn int8
+  float scale_in_eltwise{1.0f};   // only used with mkl-dnn int8
+  float scale_weights{1.0f};      // only used with mkl-dnn int8
+  bool force_fp32_output{false};  // only used in mkl-dnn int8
+  std::string data_format{"Anylayout"};
+};
+
+// For Pooling op
+struct PoolParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+  std::string pooling_type{""};
+  std::vector<int> ksize{};
+  bool global_pooling{
+      false};  // if true, knernel size and paddings will be ignored
+  std::vector<int> strides{1, 1};
+  std::vector<int> paddings{0, 0};
+  bool exclusive{true};
+  bool adaptive{false};
+  bool ceil_mode{false};
+  bool use_quantizer{false};
+  std::string data_format{"AnyLayout"};
+};
+
+// For Dropout op
+struct DropoutParam {
+  const lite::Tensor* x{};
+  lite::Tensor* output{};
+  lite::Tensor* mask{};
+  float dropout_prob{.5f};
+  bool is_test{false};
+  bool fix_seed{false};
+  int seed{0};
+  std::string dropout_implementation{"downgrade_in_infer"};
 };
 
 /// ----------------------- element wise operators ----------------------

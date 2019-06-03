@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <Eigen/Core>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/lite/core/type_system.h"
+#include "paddle/fluid/lite/operators/relu_op.h"
 
 namespace paddle {
 namespace lite {
@@ -25,22 +27,21 @@ namespace kernels {
 namespace x86 {
 
 template <typename T>
-class FillConstantCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
+class ReluCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
-  using param_t = operators::FillConstantParam;
+  using param_t = operators::ReluParam;
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = ctx_->As<X86Context>();
-    CHECK(context.x86_device_context());
-
-    param.Out->template mutable_data<T>();
-
-    paddle::operators::math::set_constant(
-        *context.x86_device_context(), &param.Out->raw_tensor(), param.value);
+    auto n = param.input->dims().production();
+    const float* input = param.input->data<float>();
+    float* output = param.output->mutable_data<float>();
+    for (int i = 0; i < n; i++) {
+      output[i] = std::max(0.f, input[i]);
+    }
   }
 
-  virtual ~FillConstantCompute() = default;
+  virtual ~ReluCompute() = default;
 };
 
 }  // namespace x86
@@ -48,9 +49,8 @@ class FillConstantCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 }  // namespace lite
 }  // namespace paddle
 
-// float
-REGISTER_LITE_KERNEL(fill_constant, kX86, kFloat, kNCHW,
-                     paddle::lite::kernels::x86::FillConstantCompute<float>,
-                     def)
+REGISTER_LITE_KERNEL(relu, kX86, kFloat, kNCHW,
+                     paddle::lite::kernels::x86::ReluCompute<float>, def)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
