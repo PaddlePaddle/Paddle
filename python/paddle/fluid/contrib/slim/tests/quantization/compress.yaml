@@ -11,6 +11,8 @@
 #int8_model_save_path(str): The path to save model with int8_t weight.
 #                None means it doesn't save int8 model. defalut: None.
 #
+#mkldnn_int8_model_save_path:(str): The path to save the model for MKL-DNN INT8 inference.
+#                 None means it doesn't save MKL-DNN int8 model. default: None
 #activation_bits(int): quantization bit number for activation. default: 8.
 #
 #weight_bits(int): quantization bit number for weights. The bias is not quantized.
@@ -37,6 +39,7 @@ strategies:
         float_model_save_path: './output/float'
         mobile_model_save_path: './output/mobile'
         int8_model_save_path: './output/int8'
+        mkldnn_int8_model_save_path: './output/mkldnn_int8'
         weight_bits: 8
         activation_bits: 8
         weight_quantize_type: 'abs_max'
