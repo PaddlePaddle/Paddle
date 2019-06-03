@@ -154,7 +154,7 @@ def seq_to_seq_net():
     return avg_cost, prediction
 
 
-def train(use_cuda, save_dirname=None):
+def train(use_cuda, save_dirname=None, use_program_cache=False):
     [avg_cost, prediction] = seq_to_seq_net()
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
@@ -181,7 +181,8 @@ def train(use_cuda, save_dirname=None):
         for data in train_data():
             outs = exe.run(framework.default_main_program(),
                            feed=feeder.feed(data),
-                           fetch_list=[avg_cost])
+                           fetch_list=[avg_cost],
+                           use_program_cache=use_program_cache)
 
             avg_cost_val = np.array(outs[0])
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
@@ -198,7 +199,7 @@ def train(use_cuda, save_dirname=None):
             batch_id += 1
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_program_cache=False):
     if save_dirname is None:
         return
 
@@ -242,7 +243,8 @@ def infer(use_cuda, save_dirname=None):
                               feed_target_names[1]: trg_word,
                           },
                           fetch_list=fetch_targets,
-                          return_numpy=False)
+                          return_numpy=False,
+                          use_program_cache=use_program_cache)
         print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference shape: ", np_data.shape)
@@ -255,9 +257,10 @@ def main(use_cuda):
 
     # Directory for saving the trained model
     save_dirname = "rnn_encoder_decoder.inference.model"
+    use_program_cache = True
 
-    train(use_cuda, save_dirname)
-    infer(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, use_program_cache)
+    infer(use_cuda, save_dirname, use_program_cache)
 
 
 class TestRnnEncoderDecoder(unittest.TestCase):

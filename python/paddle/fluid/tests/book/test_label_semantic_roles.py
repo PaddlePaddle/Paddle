@@ -117,7 +117,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     return feature_out
 
 
-def train(use_cuda, save_dirname=None, is_local=True):
+def train(use_cuda, save_dirname=None, is_local=True, use_program_cache=False):
     # define network topology
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1)
@@ -187,7 +187,8 @@ def train(use_cuda, save_dirname=None, is_local=True):
             for data in train_data():
                 cost = exe.run(main_program,
                                feed=feeder.feed(data),
-                               fetch_list=[avg_cost])
+                               fetch_list=[avg_cost],
+                               use_program_cache=use_program_cache)
                 cost = cost[0]
 
                 if batch_id % 10 == 0:
@@ -237,7 +238,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_program_cache=False):
     if save_dirname is None:
         return
 
@@ -338,7 +339,8 @@ def infer(use_cuda, save_dirname=None):
                               feed_target_names[7]: mark
                           },
                           fetch_list=fetch_targets,
-                          return_numpy=False)
+                          return_numpy=False,
+                          use_program_cache=use_program_cache)
         print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
@@ -350,9 +352,10 @@ def main(use_cuda, is_local=True):
 
     # Directory for saving the trained model
     save_dirname = "label_semantic_roles.inference.model"
+    use_program_cache = True
 
-    train(use_cuda, save_dirname, is_local)
-    infer(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, is_local, use_program_cache)
+    infer(use_cuda, save_dirname, use_program_cache)
 
 
 class TestLabelSemanticRoles(unittest.TestCase):

@@ -24,7 +24,7 @@ import sys
 import os
 
 
-def train(use_cuda, save_dirname, is_local):
+def train(use_cuda, save_dirname, is_local, use_program_cache=False):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -56,7 +56,8 @@ def train(use_cuda, save_dirname, is_local):
             for data in train_reader():
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
-                                          fetch_list=[avg_cost])
+                                          fetch_list=[avg_cost],
+                                          use_program_cache=use_program_cache)
                 print(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
@@ -93,7 +94,7 @@ def train(use_cuda, save_dirname, is_local):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_program_cache=False):
     if save_dirname is None:
         return
 
@@ -125,7 +126,8 @@ def infer(use_cuda, save_dirname=None):
         assert feed_target_names[0] == 'x'
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: numpy.array(test_feat)},
-                          fetch_list=fetch_targets)
+                          fetch_list=fetch_targets,
+                          use_program_cache=use_program_cache)
         print("infer shape: ", results[0].shape)
         print("infer results: ", results[0])
         print("ground truth: ", test_label)
@@ -137,9 +139,10 @@ def main(use_cuda, is_local=True):
 
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
+    use_program_cache = True
 
-    train(use_cuda, save_dirname, is_local)
-    infer(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, is_local, use_program_cache)
+    infer(use_cuda, save_dirname, use_program_cache)
 
 
 class TestFitALine(unittest.TestCase):

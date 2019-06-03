@@ -24,7 +24,12 @@ import math
 import sys
 
 
-def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
+def train(use_cuda,
+          is_sparse,
+          is_parallel,
+          save_dirname,
+          is_local=True,
+          use_program_cache=False):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -104,7 +109,8 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
             for data in train_reader():
                 avg_cost_np = exe.run(main_program,
                                       feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
+                                      fetch_list=[avg_cost],
+                                      use_program_cache=use_program_cache)
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, [
@@ -141,7 +147,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_program_cache=False):
     if save_dirname is None:
         return
 
@@ -194,7 +200,8 @@ def infer(use_cuda, save_dirname=None):
                               feed_target_names[3]: fourth_word
                           },
                           fetch_list=fetch_targets,
-                          return_numpy=False)
+                          return_numpy=False,
+                          use_program_cache=use_program_cache)
 
         def to_infer_tensor(lod_tensor):
             infer_tensor = fluid.core.PaddleTensor()
@@ -231,9 +238,15 @@ def main(use_cuda, is_sparse, is_parallel):
         save_dirname = "word2vec.inference.model"
     else:
         save_dirname = None
+    use_program_cache = True
 
-    train(use_cuda, is_sparse, is_parallel, save_dirname)
-    infer(use_cuda, save_dirname)
+    train(
+        use_cuda,
+        is_sparse,
+        is_parallel,
+        save_dirname,
+        use_program_cache=use_program_cache)
+    infer(use_cuda, save_dirname, use_program_cache)
 
 
 FULL_TEST = os.getenv('FULL_TEST',

@@ -100,7 +100,7 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def train(net_type, use_cuda, save_dirname, is_local):
+def train(net_type, use_cuda, save_dirname, is_local, use_program_cache=False):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -147,15 +147,19 @@ def train(net_type, use_cuda, save_dirname, is_local):
         loss = 0.0
         for pass_id in range(PASS_NUM):
             for batch_id, data in enumerate(train_reader()):
-                exe.run(main_program, feed=feeder.feed(data))
+                exe.run(main_program,
+                        feed=feeder.feed(data),
+                        use_program_cache=use_program_cache)
 
                 if (batch_id % 10) == 0:
                     acc_list = []
                     avg_loss_list = []
                     for tid, test_data in enumerate(test_reader()):
-                        loss_t, acc_t = exe.run(program=test_program,
-                                                feed=feeder.feed(test_data),
-                                                fetch_list=[avg_cost, acc])
+                        loss_t, acc_t = exe.run(
+                            program=test_program,
+                            feed=feeder.feed(test_data),
+                            fetch_list=[avg_cost, acc],
+                            use_program_cache=use_program_cache)
                         if math.isnan(float(loss_t)):
                             sys.exit("got NaN loss, training failed.")
                         acc_list.append(float(acc_t))
@@ -200,7 +204,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_program_cache=False):
     if save_dirname is None:
         return
 
@@ -230,11 +234,13 @@ def infer(use_cuda, save_dirname=None):
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
+                          fetch_list=fetch_targets,
+                          use_program_cache=use_program_cache)
 
         transpiler_results = exe.run(inference_transpiler_program,
                                      feed={feed_target_names[0]: tensor_img},
-                                     fetch_list=fetch_targets)
+                                     fetch_list=fetch_targets,
+                                     use_program_cache=use_program_cache)
 
         assert len(results[0]) == len(transpiler_results[0])
         for i in range(len(results[0])):
@@ -254,9 +260,10 @@ def main(net_type, use_cuda, is_local=True):
 
     # Directory for saving the trained model
     save_dirname = "image_classification_" + net_type + ".inference.model"
+    use_program_cache = True
 
-    train(net_type, use_cuda, save_dirname, is_local)
-    infer(use_cuda, save_dirname)
+    train(net_type, use_cuda, save_dirname, is_local, use_program_cache)
+    infer(use_cuda, save_dirname, use_program_cache)
 
 
 class TestImageClassification(unittest.TestCase):

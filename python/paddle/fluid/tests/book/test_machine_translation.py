@@ -163,7 +163,7 @@ def decoder_decode(context, is_sparse):
     return translation_ids, translation_scores
 
 
-def train_main(use_cuda, is_sparse, is_local=True):
+def train_main(use_cuda, is_sparse, is_local=True, use_program_cache=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -205,7 +205,8 @@ def train_main(use_cuda, is_sparse, is_local=True):
             for data in train_data():
                 outs = exe.run(main_program,
                                feed=feeder.feed(data),
-                               fetch_list=[avg_cost])
+                               fetch_list=[avg_cost],
+                               use_program_cache=use_program_cache)
                 avg_cost_val = np.array(outs[0])
                 print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                       " avg_cost=" + str(avg_cost_val))
@@ -238,7 +239,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
             train_loop(t.get_trainer_program())
 
 
-def decode_main(use_cuda, is_sparse):
+def decode_main(use_cuda, is_sparse, use_program_cache=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -283,7 +284,8 @@ def decode_main(use_cuda, is_sparse):
             framework.default_main_program(),
             feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
-            return_numpy=False)
+            return_numpy=False,
+            use_program_cache=use_program_cache)
         print(result_ids.recursive_sequence_lengths())
         break
 
@@ -302,25 +304,28 @@ def scope_prog_guard():
             yield
 
 
-def inject_test_train(use_cuda, is_sparse):
+def inject_test_train(use_cuda, is_sparse, use_program_cache=False):
     f_name = 'test_{0}_{1}_train'.format('cuda' if use_cuda else 'cpu', 'sparse'
                                          if is_sparse else 'dense')
 
     def f(*args):
         with scope_prog_guard():
-            train_main(use_cuda, is_sparse)
+            train_main(use_cuda, is_sparse, use_program_cache)
 
     setattr(TestMachineTranslation, f_name, f)
 
 
-def inject_test_decode(use_cuda, is_sparse, decorator=None):
+def inject_test_decode(use_cuda,
+                       is_sparse,
+                       decorator=None,
+                       use_program_cache=False):
     f_name = 'test_{0}_{1}_decode'.format('cuda'
                                           if use_cuda else 'cpu', 'sparse'
                                           if is_sparse else 'dense')
 
     def f(*args):
         with scope_prog_guard():
-            decode_main(use_cuda, is_sparse)
+            decode_main(use_cuda, is_sparse, use_program_cache)
 
     if decorator is not None:
         f = decorator(f)
@@ -328,9 +333,10 @@ def inject_test_decode(use_cuda, is_sparse, decorator=None):
     setattr(TestMachineTranslation, f_name, f)
 
 
+use_program_cache = True
 for _use_cuda_ in (False, True):
     for _is_sparse_ in (False, True):
-        inject_test_train(_use_cuda_, _is_sparse_)
+        inject_test_train(_use_cuda_, _is_sparse_, use_program_cache)
 
 for _use_cuda_ in (False, True):
     for _is_sparse_ in (False, True):
@@ -341,7 +347,10 @@ for _use_cuda_ in (False, True):
                 reason='Beam Search does not support CUDA!')
 
         inject_test_decode(
-            is_sparse=_is_sparse_, use_cuda=_use_cuda_, decorator=_decorator_)
+            is_sparse=_is_sparse_,
+            use_cuda=_use_cuda_,
+            decorator=_decorator_,
+            use_program_cache)
 
 if __name__ == '__main__':
     unittest.main()

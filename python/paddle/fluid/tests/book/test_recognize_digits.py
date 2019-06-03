@@ -69,7 +69,8 @@ def train(nn_type,
           save_full_dirname=None,
           model_filename=None,
           params_filename=None,
-          is_local=True):
+          is_local=True,
+          use_program_cache=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
@@ -117,7 +118,8 @@ def train(nn_type,
                         acc_np, avg_loss_np = exe.run(
                             program=test_program,
                             feed=feeder.feed(test_data),
-                            fetch_list=[acc, avg_loss])
+                            fetch_list=[acc, avg_loss],
+                            use_program_cache=use_program_cache)
                         acc_set.append(float(acc_np))
                         avg_loss_set.append(float(avg_loss_np))
                     # get test acc and loss
@@ -176,7 +178,8 @@ def train(nn_type,
 def infer(use_cuda,
           save_dirname=None,
           model_filename=None,
-          params_filename=None):
+          params_filename=None,
+          use_program_cache=False):
     if save_dirname is None:
         return
 
@@ -203,7 +206,8 @@ def infer(use_cuda,
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
+                          fetch_list=fetch_targets,
+                          use_program_cache=use_program_cache)
         print("infer results: ", results[0])
 
 
@@ -219,6 +223,8 @@ def main(use_cuda, parallel, nn_type, combine):
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
 
+    use_program_cache = True
+
     # call train() with is_local argument to run distributed train
     train(
         nn_type=nn_type,
@@ -227,12 +233,14 @@ def main(use_cuda, parallel, nn_type, combine):
         save_dirname=save_dirname,
         save_full_dirname=save_full_dirname,
         model_filename=model_filename,
-        params_filename=params_filename)
+        params_filename=params_filename,
+        use_program_cache=use_program_cache)
     infer(
         use_cuda=use_cuda,
         save_dirname=save_dirname,
         model_filename=model_filename,
-        params_filename=params_filename)
+        params_filename=params_filename,
+        use_program_cache=use_program_cache)
 
 
 class TestRecognizeDigits(unittest.TestCase):
