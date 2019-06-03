@@ -24,11 +24,8 @@ import logging
 
 import numpy as np
 
-from ..core import VarDesc
-from ..framework import Program, \
-        default_main_program, default_startup_program
-from ..unique_name import generate
-
+from .. import core, unique_name
+from ..framework import Program, default_main_program, default_startup_program
 from .details import wait_server_ready
 
 __all__ = ['SGD', 'LocalSGD']
@@ -103,9 +100,9 @@ class Collective(object):
 
         block = program.global_block()
         nccl_id_var = block.create_var(
-            name=generate('nccl_id'),
+            name=unique_name.generate('nccl_id'),
             persistable=True,
-            type=VarDesc.VarType.RAW)
+            type=core.VarDesc.VarType.RAW)
         block.append_op(
             type='c_gen_nccl_id',
             inputs={},
@@ -135,8 +132,20 @@ class Collective(object):
         block.append_op(
             type='c_sync_comm_stream', attrs={'ring_id': self.global_ring_id})
 
+    def _is_update_op(self, op):
+        return 'Param' in op.input_names and 'Grad' in op.input_names and \
+                "LearningRate" in op.input_names
+
     def _is_optimizer_op(self, op):
-        return 'Param' in op.input_names and 'Grad' in op.input_names
+        '''
+        depend on op_role to find out whether this op is for optimize
+        '''
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
 
 
 class SGD(Collective):
@@ -154,12 +163,14 @@ class SGD(Collective):
 
         grad2param = {}
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_optimizer_op(op):
+            if self._is_update_op(op):
                 param = block.vars[op.input('Param')[0]]
                 grad2param[op.input('Grad')[0]] = param
                 continue
 
-            # TODO(liuyi05): use kBackward op tpe to check?
+            if self._is_optimizer_op(op):
+                continue
+
             for name in op.output_arg_names:
                 if name in grad2param:
                     grad = block.vars[name]
@@ -211,7 +222,7 @@ class LocalSGD(Collective):
         block = self.main_program.global_block()
         ordered_param_snapshot = []
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_optimizer_op(op):
+            if self._is_update_op(op):
                 param = block.vars[op.input('Param')[0]]
                 snapshot = block.create_var(
                     name=self.snapshot_name(param.name),
