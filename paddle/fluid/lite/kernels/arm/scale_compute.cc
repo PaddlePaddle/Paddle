@@ -12,38 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <Eigen/Core>
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/lite/core/types.h"
+#include "paddle/fluid/lite/kernels/arm/scale_compute.h"
+#include "paddle/fluid/lite/arm/math/funcs.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-template <typename T>
-void scale_compute(const T* x, T* out, int size, float scale, float bias,
-                   bool bias_before) {
-  if (bias_before) bias *= scale;
-  for (int i = 0; i < size; i++) {
-    out[i] = x[i] * scale + bias;
+void ScaleCompute::Run() {
+  auto& param = Param<operators::ScaleParam>();
+  const float* x_data = param.x->data<float>();
+  float* output_data = param.output->mutable_data<float>();
+  DDim x_dims = param.x->dims();
+  bool bias_after_scale = param.bias_after_scale;
+  float scale = param.scale;
+  float bias = param.bias;
+  if (!bias_after_scale) {
+    bias *= scale;
   }
+  lite::arm::math::scale(x_data, output_data, x_dims.production(), scale, bias);
 }
 
-class ScaleCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
- public:
-  using param_t = operators::MulParam;
+TargetType ScaleCompute::target() const { return TARGET(kARM); }
 
-  void Run() override {
-    auto& param = Param<operators::ScaleParam>();
-    scale_compute(param.x->data<float>(), param.output->mutable_data<float>(),
-                  param.x->dims().production(), param.scale, param.bias,
-                  param.bias_after_scale);
-  }
-
-  virtual ~ScaleCompute() = default;
-};
+PrecisionType ScaleCompute::precision() const { return PRECISION(kFloat); }
 
 }  // namespace arm
 }  // namespace kernels

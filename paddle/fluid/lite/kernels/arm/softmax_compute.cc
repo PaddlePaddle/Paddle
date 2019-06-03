@@ -24,15 +24,15 @@ void SoftmaxCompute::Run() {
   auto& param = Param<operators::SoftmaxParam>();
   const float* din = param.x->data<float>();
   float* dout = param.output->mutable_data<float>();
-  auto dim_x = param.x->dims();
-  auto rank_x = dim_x.size();
+  auto x_dims = param.x->dims();
+  auto x_rank = x_dims.size();
   int axis = param.axis;
   if (axis < 0) {
-    axis += rank_x;
+    axis += x_rank;
   }
-  int outer_num = dim_x.Slice(0, axis).production();
-  int inner_num = dim_x.Slice(axis + 1, rank_x).production();
-  int axis_size = dim_x[axis];
+  int outer_num = x_dims.Slice(0, axis).production();
+  int inner_num = x_dims.Slice(axis + 1, x_rank).production();
+  int axis_size = x_dims[axis];
   if (inner_num == 1) {
     if (axis_size >= 4) {
       lite::arm::math::softmax_inner1_large_axis(din, dout, outer_num,
