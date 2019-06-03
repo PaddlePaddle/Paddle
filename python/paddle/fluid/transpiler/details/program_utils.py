@@ -90,7 +90,7 @@ def variable_to_code(var):
     return var_str
 
 
-def op_to_code(op):
+def op_to_code(op, skip_op_callstack=False):
     """
     Get readable codes of fluid operator.
 
@@ -124,6 +124,8 @@ def op_to_code(op):
     attrs_str = ""
     for i in range(0, len(attr_names)):
         name = attr_names[i]
+        if skip_op_callstack and name == "op_callstack":
+            continue
 
         attr_type = op.desc.attr_type(name)
         if attr_type == core.AttrType.BLOCK:
@@ -157,7 +159,7 @@ def op_to_code(op):
     return op_str
 
 
-def block_to_code(block, block_idx, fout=None):
+def block_to_code(block, block_idx, fout=None, skip_op_callstack=False):
     indent = 0
 
     print(
@@ -177,13 +179,15 @@ def block_to_code(block, block_idx, fout=None):
 
     for op in block.ops:
         print(
-            "{}{}".format(get_indent_space(indent), op_to_code(op)), file=fout)
+            "{}{}".format(
+                get_indent_space(indent), op_to_code(op, skip_op_callstack)),
+            file=fout)
     indent -= 1
 
     print("{0}{1}".format(get_indent_space(indent), '}'), file=fout)
 
 
-def program_to_code(prog, fout=None):
+def program_to_code(prog, fout=None, skip_op_callstack=False):
     """
     Print readable codes of fluid program.
 
@@ -195,5 +199,5 @@ def program_to_code(prog, fout=None):
     """
     block_idx = 0
     for block in prog.blocks:
-        block_to_code(block, block_idx, fout)
+        block_to_code(block, block_idx, fout, skip_op_callstack)
         block_idx += 1
