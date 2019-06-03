@@ -118,7 +118,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(4)
+        dataset.set_batch_size(128)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
         dataset.set_pipe_command(pipe_command)
@@ -126,7 +126,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dataset.set_filelist(filelist)
         dataset.set_thread(thread_num)
 
-        for epoch_id in range(10):
+        for epoch_id in range(2):
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(

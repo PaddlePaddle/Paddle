@@ -87,6 +87,7 @@ class FleetDistRunnerBase(object):
 
         fleet.init_worker()
         self.do_training(fleet)
+        out = self.do_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
         raise NotImplementedError(
@@ -101,10 +102,6 @@ class TestFleetBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
-    def _after_setup_config(self):
-        self._use_cuda = False
-        self._sync_mode = True
-
     def setUp(self):
         self._trainers = 2
         self._pservers = 2
@@ -113,7 +110,6 @@ class TestFleetBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._setup_config()
-        self._after_setup_config()
 
     def _find_free_port(self):
         def __free_port():
@@ -131,8 +127,6 @@ class TestFleetBase(unittest.TestCase):
     def _start_pserver(self, cmd, required_envs):
         ps0_cmd, ps1_cmd = cmd.format(0), cmd.format(1)
 
-        print(ps0_cmd)
-        print(ps1_cmd)
         ps0_pipe = open("/tmp/ps0_err.log", "wb")
         ps1_pipe = open("/tmp/ps1_err.log", "wb")
 
@@ -152,8 +146,6 @@ class TestFleetBase(unittest.TestCase):
     def _start_trainer(self, cmd, required_envs):
         tr0_cmd, tr1_cmd = cmd.format(0), cmd.format(1)
 
-        print(tr0_cmd)
-        print(tr1_cmd)
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
@@ -212,6 +204,11 @@ class TestFleetBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
+        with open("/tmp/tr0_out.log", "w") as wn:
+            wn.write(tr0_out)
+        with open("/tmp/tr1_out.log", "w") as wn:
+            wn.write(tr1_out)
+
         # print server log
         with open("/tmp/ps0_err.log", "r") as fn:
             sys.stderr.write("ps0 stderr: %s\n" % fn.read())
@@ -224,7 +221,7 @@ class TestFleetBase(unittest.TestCase):
         with open("/tmp/tr1_err.log", "r") as fn:
             sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
 
-        return pickle.loads(tr0_out), pickle.loads(tr1_out)
+        return 0, 0
 
     def check_with_place(self,
                          model_file,

@@ -19,10 +19,11 @@ from test_dist_fleet_base import TestFleetBase
 
 class TestDistMnist2x2(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = True
+        self._sync_mode = False
 
     def test_dist_train(self):
-        self.check_with_place("dist_fleet_ctr.py", delta=1e-5)
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
 if __name__ == "__main__":
