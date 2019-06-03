@@ -1,5 +1,6 @@
 set(op_DEPS ${tensor_lite} op_lite op_params_lite)
 
+cc_library(conv_op_lite SRCS conv_op.cc DEPS ${op_DEPS})
 cc_library(fc_op_lite SRCS fc_op.cc DEPS ${op_DEPS})
 cc_library(relu_op_lite SRCS relu_op.cc DEPS ${op_DEPS})
 cc_library(mul_op_lite SRCS mul_op.cc DEPS ${op_DEPS})
@@ -18,6 +19,7 @@ cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framewo
 cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 
 set(ops_lite
+        conv_op_lite
         fc_op_lite
         relu_op_lite
         mul_op_lite
