@@ -165,12 +165,14 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     op->TrackPreOp(it.first, it.second);
   }
 
-  for (auto it : *outputs) {
+  for (const auto& it : *outputs) {
     auto& outvars = outvars_map[it.first];
     const std::vector<std::shared_ptr<imperative::VarBase>>& outputs_tmp =
         it.second;
     outvars.reserve(outputs_tmp.size());
     for (size_t i = 0U; i < outputs_tmp.size(); ++i) {
+      // Add weak_ptr to track outputs
+      op->outputs_ref[it.first].emplace_back(outputs_tmp[i]);
       std::shared_ptr<imperative::VarBase> out = outputs_tmp[i];
       outvars.emplace_back(out->var_.get());
       out->TrackPreOp(op, it.first, i, stop_gradient);

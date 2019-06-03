@@ -29,6 +29,8 @@ class OpBase;
 
 typedef std::map<std::string, std::vector<std::shared_ptr<VarBase>>>
     VarBasePtrMap;
+typedef std::map<std::string, std::vector<std::weak_ptr<VarBase>>>
+    VarBaseWeakPtrMap;
 typedef std::map<std::string, std::vector<const std::shared_ptr<VarBase>>>
     ConstVarBasePtrMap;
 typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;

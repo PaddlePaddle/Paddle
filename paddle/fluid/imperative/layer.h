@@ -171,13 +171,13 @@ class VarBase {
     if (need_initialize) {
       tensor->mutable_data(place, dtype);
       is_initialized_ = true;
-      VLOG(3) << "initialized varbase: " << name_ << " type: " << dtype
+      VLOG(8) << "initialized varbase: " << name_ << " type: " << dtype
               << " place: " << place;
     } else {
       is_initialized_ = false;
-      VLOG(3) << "not initialized varbase: " << name_;
+      VLOG(8) << "not initialized varbase: " << name_;
     }
-    VLOG(2) << "create varbase: " << name_ << " type: " << dtype
+    VLOG(8) << "create varbase: " << name_ << " type: " << dtype
             << " place: " << place << "Stop gradient: " << stop_gradient_;
   }
 
@@ -185,7 +185,7 @@ class VarBase {
   virtual ~VarBase() {
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
-    VLOG(3) << "destruct varbase: " << name_;
+    VLOG(8) << "destruct varbase: " << name_;
   }
 
   inline void SetName(const std::string& name) { name_ = name; }
@@ -247,10 +247,10 @@ class VarBase {
     if (!is_initialized_) {
       var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
       is_initialized_ = true;
-      VLOG(3) << "initialized varbase: " << name_ << " type: " << dtype_
+      VLOG(8) << "initialized varbase: " << name_ << " type: " << dtype_
               << " place: " << place_;
     } else {
-      VLOG(3) << "var: " << name_ << " has already been initialized ";
+      VLOG(8) << "var: " << name_ << " has already been initialized ";
     }
   }
 
@@ -313,6 +313,15 @@ class PYBIND11_HIDDEN OpBase {
         backward_hooks_() {}
 
   virtual ~OpBase() {
+    for (const auto& iter : outputs_ref) {
+      for (const auto& var : iter.second) {
+        auto vb = var.lock();
+        if (vb) {
+          VLOG(3) << "Op reset by" << vb->name_;
+          vb->ResetPreOp(this);
+        }
+      }
+    }
     // TODO(minqiyang): remove op_desc from block_desc in tracer
     // release resource
     for (framework::OpDesc* desc : grad_op_descs_) {
@@ -366,6 +375,7 @@ class PYBIND11_HIDDEN OpBase {
   OpBasePtrMap pre_ops_;
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
+  VarBaseWeakPtrMap outputs_ref;
   // Inputs to a vector of bwd ops.
   std::vector<VarBasePtrMap> grad_input_vars_;
   // Outputs to a vector of bwd ops.
