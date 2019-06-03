@@ -132,7 +132,7 @@ TEST(reshape2_op_lite, test) {
         auto xshape_dims = xshape->dims();
         CHECK_EQ(xshape_dims.size(), x_dims.size() + 1);
         CHECK_EQ(xshape_dims[0], 0);
-        for (int i = 0; i < xshape_dims.size(); i++) {
+        for (int i = 0; i < x_dims.size(); i++) {
           CHECK_EQ(xshape_dims[i + 1], x_dims[i]);
         }
       }
