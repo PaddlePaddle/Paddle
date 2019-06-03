@@ -20,16 +20,17 @@
 namespace paddle {
 namespace lite {
 namespace kernels {
-namespace arm {
+namespace host {
 
-class SoftmaxCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class ReshapeCompute
+    : public KernelLite<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   void Run() override;
 
-  virtual ~SoftmaxCompute() = default;
+  virtual ~ReshapeCompute() = default;
 };
 
-}  // namespace arm
+}  // namespace host
 }  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

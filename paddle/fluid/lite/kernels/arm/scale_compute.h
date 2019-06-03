@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -22,11 +21,11 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-class SoftmaxCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class ScaleCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
   void Run() override;
 
-  virtual ~SoftmaxCompute() = default;
+  virtual ~ScaleCompute() = default;
 };
 
 }  // namespace arm
