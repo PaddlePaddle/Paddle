@@ -66,15 +66,15 @@ void ConvCompute::Run() {
              no_dilation) {
     if (ic >= 32 && oc >= 32 && oh > 16 && ow > 16) {
       // winograd conv impl
-      impl_ = new SaberWinogradConv<AK_FLOAT>;
+      //   impl_ = new WinogradConv<AK_FLOAT>;
     } else {
       // direct conv impl
-      impl_ = new SaberDirectConv<AK_FLOAT>;
+      impl_ = new DirectConv<kFloat>;
     }
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
-    impl_ = new SaberDirectConv<AK_FLOAT>;
+    impl_ = new DirectConv<AK_FLOAT>;
   } else {
     impl_ = new SaberGemmLikeConv<AK_FLOAT>;
   }
@@ -83,7 +83,7 @@ void ConvCompute::Run() {
   if (impl_ != nullptr) {
     impl_->run(inputs, outputs, param);
   } else {
-    return SaberUnImplError;
+    return false;
   }
 
   if (this->act_ != nullptr) {
