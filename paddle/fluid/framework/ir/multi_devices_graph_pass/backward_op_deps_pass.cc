@@ -120,7 +120,7 @@ class BackWardOpDepsPass : public ir::Pass {
         if (dynamic_cast<details::VarHandle*>(input) == nullptr) continue;
 
         if (pg_order.find(input->Name()) == pg_order.end()) {
-          LOG(WARNING) << "not find input " << input->Name() << " in grad";
+          VLOG(10) << "not find input " << input->Name() << " in grad";
           continue;
         }
 
