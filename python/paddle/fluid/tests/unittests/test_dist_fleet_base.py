@@ -85,7 +85,6 @@ class FleetDistRunnerBase(object):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        fleet.init_worker()
         self.do_training(fleet)
         out = self.do_training(fleet)
 
@@ -99,6 +98,10 @@ class FleetDistRunnerBase(object):
 
 
 class TestFleetBase(unittest.TestCase):
+    def __init__(self, methodName='runTest'):
+        super(TestFleetBase, self).__init__(methodName='runTest')
+        self._sync_mode = True
+
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
