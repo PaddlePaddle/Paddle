@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import sys
 import logging
 
 __all__ = ['get_logger']
@@ -43,7 +42,7 @@ def get_logger(name, level, fmt=None):
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler()
 
     if fmt:
         formatter = logging.Formatter(fmt=fmt)
