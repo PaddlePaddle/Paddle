@@ -361,10 +361,18 @@ class Executor(object):
         self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
+        self.scope_caches = dict()
+        self.var_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+
+    def _get_var_cache(self, program_cache_key):
+        return self.var_caches.get(program_cache_key, None)
+
+    def _get_scope_cache(self, program_cache_key):
+        return self.scope_caches.get(program_cache_key, None)
 
     def _get_ctx_cache(self, program_cache_key):
         return self.ctx_caches.get(program_cache_key, None)
@@ -377,6 +385,12 @@ class Executor(object):
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
+
+    def _add_scope_cache(self, scope_cache_key, scope):
+        self.scope_caches[scope_cache_key] = scope
+
+    def _add_var_cache(self, var_cache_key, var):
+        self.var_caches[var_cache_key] = var
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
                             fetch_var_name):
@@ -689,10 +703,12 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
-        cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         if use_program_cache:
+            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
             cached_program = self._get_program_cache(cache_key)
             cached_ctx = self._get_ctx_cache(cache_key)
+            cached_scope = self._get_scope_cache(cache_key)
+            cached_var = self._get_var_cache(cache_key)
             if cached_program is None:
                 cached_program = self._add_feed_fetch_ops(
                     program=program,
@@ -701,13 +717,25 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
                 self._add_program_cache(cache_key, cached_program)
+                fetch_list_str = list(map(_to_name_str, fetch_list))
                 cached_ctx = self._default_executor.prepare_ctx_cache(
-                    cached_program.desc, 0, fetch_list, False)
+                    cached_program.desc, 0, fetch_list_str, False)
+                cached_var = self._default_executor.create_variables(
+                    cached_program.desc, scope, 0)
+                # currently, we cache program, vars, sub_scope here
+                # we suppose that in a life cycle of training, a user
+                # will not create many programs. So, here the basic
+                # rule of caching is to cache all unseen (program, var, scope)
+                # when a user use use_program_cache.
+                cached_scope = scope.new_scope()
                 self._add_ctx_cache(cache_key, cached_ctx)
+                self._add_var_cache(cache_key, cached_var)
+                self._add_scope_cache(cache_key, cached_scope)
             program = cached_program
             ctx = cached_ctx
+            scope = cached_scope
+            var = cached_var
         else:
-            self.program_caches.pop(cache_key, None)
             program = self._add_feed_fetch_ops(
                 program=program,
                 feed=feed,
@@ -719,7 +747,7 @@ class Executor(object):
         if not use_program_cache:
             exe.run(program.desc, scope, 0, True, True, fetch_var_name)
         else:
-            exe.run_cached_prepared_ctx(ctx, scope, True, True, False)
+            exe.run_cached_prepared_ctx(ctx, scope, False, False, False)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
