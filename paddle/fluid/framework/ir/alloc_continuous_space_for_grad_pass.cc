@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-DEFINE_uint64(fuse_parameter_memory_size, 0,  // 0 KB
+DEFINE_uint64(fuse_parameter_memory_size, 0,  // Bytes
               "fuse_parameter_memory_size is up limited memory size "
               "of one group parameters' gradient which is the input "
               "of communication calling(e.g NCCLAllReduce). "

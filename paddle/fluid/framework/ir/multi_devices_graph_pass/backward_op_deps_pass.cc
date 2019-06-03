@@ -52,19 +52,11 @@ class BackWardOpDepsPass : public ir::Pass {
     details::ParamsAndGrads params_grads;
     std::vector<ir::Node*> topo_nodes = ir::TopologySortOperations(*graph);
     for (auto& node : topo_nodes) {
-      // node->Wrapper<details::OpHandleBase>().DebugString();
-
       if (!node->Op()) continue;
 
       GetBackWardOpHandles(node, &backward_op_handles, &params_grads);
       GetOptHandles(node, &all_opt_handles);
     }
-
-    /*
-    for (size_t i = 0; i < all_opt_handles.size(); i++) {
-      VLOG(10) << "get all_opt_handles:" << all_opt_handles[i]->DebugString();
-    }
-    */
 
     VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
              << ", opt_handles size:" << all_opt_handles.size();
@@ -86,13 +78,6 @@ class BackWardOpDepsPass : public ir::Pass {
     for (size_t i = 1; i < opt_handles.size(); ++i) {
       AddDep(graph, opt_handles[i - 1], opt_handles[i]);
     }
-
-    /*
-    VLOG(10) << "add backward deps";
-    for (size_t i = 1; i < backward_op_handles.size(); ++i) {
-      AddDep(graph, backward_op_handles[i - 1], backward_op_handles[i]);
-    }
-    */
 
     VLOG(10) << "add deps between backward and optimze:";
     AddDep(graph, backward_op_handles[backward_op_handles.size() - 1],
