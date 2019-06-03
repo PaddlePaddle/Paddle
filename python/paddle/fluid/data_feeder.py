@@ -437,6 +437,7 @@ class DataFeeder(object):
 class NumpyToLoDTensorConverter(object):
     def __init__(self, place):
         self.place = place
+        self.data = []
         self._reset()
 
     def _reset(self):
@@ -454,23 +455,44 @@ class NumpyToLoDTensorConverter(object):
 
 
 class ListTensorProvider(object):
-    def __init__(self, generator, place):
+    def __init__(self, generator, places, drop_last=True):
         self.generator = generator
+        self.drop_last = drop_last
         self.converters = []
-        self.place = place
+        self.places = []
+        if places:
+            if not isinstance(places, (list, tuple)):
+                places = [places]
+            for place in places:
+                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
+                    self.places.append(place)
+                else:
+                    raise ValueError(
+                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
+                    )
+        if len(self.places) == 0:
+            self.places.append(core.CPUPlace())
 
-    def _done(self):
-        return [c.done() for c in self.converters]
+    def _readData(self, iterable, places):
+        for place, each_sample in six.moves.zip(places, iterable):
+            for item in each_sample:
+                if len(self.converters) < len(item):
+                    for i in item:
+                        self.converters.append(NumpyToLoDTensorConverter(place))
+                for each_converter, each_slot in six.moves.zip(self.converters,
+                                                               item):
+                    each_converter.feed(each_slot)
+            yield [c.done() for c in self.converters]
 
     def __call__(self):
-        for iterable in self.generator():
-            for each_sample in iterable:
-                if len(self.converters) < len(each_sample):
-                    for item in each_sample:
-                        self.converters.append(
-                            NumpyToLoDTensorConverter(place=self.place))
-                for each_converter, each_slot in six.moves.zip(self.converters,
-                                                               each_sample):
-                    each_converter.feed(each_slot)
-
-            yield self._done()
+        item = []
+        for batch in self.generator():
+            item.append(batch)
+            if len(item) == len(self.places):
+                yield list(self._readData(item, self.places))
+                item = []
+        if not self.drop_last and len(item) != 0:
+            raise ValueError(
+                "The data batch which cannot fit for devices will be "
+                "dropped is not implementation. Other strategies are "
+                "not implemented")

@@ -336,7 +336,7 @@ class TestImperativeResneXt(unittest.TestCase):
             import random
             random.seed = seed
 
-            batch_py_reader = fluid.io.PyReader()
+            batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
                     self.reader_decorator(

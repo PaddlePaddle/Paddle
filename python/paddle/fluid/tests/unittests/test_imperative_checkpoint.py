@@ -120,7 +120,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
 
-            batch_py_reader = fluid.io.PyReader()
+            batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
                     self.reader_decorator(paddle.dataset.mnist.train()),

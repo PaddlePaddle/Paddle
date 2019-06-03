@@ -14,6 +14,7 @@
 
 from . import core, dygraph
 import six
+import warnings
 import numpy as np
 import threading
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
@@ -179,15 +180,20 @@ class PyReader(object):
 
     def __init__(self,
                  feed_list=None,
-                 capacity=1,
+                 capacity=None,
                  use_double_buffer=True,
-                 iterable=False,
+                 iterable=True,
                  return_list=False):
         self._tensor_reader = None
         self._thread = None
         self._feed_list = feed_list
+        if not capacity:
+            raise ValueError("Please give value to capacity.")
         # force to use iterable mode under dygraph mode
         if in_dygraph_mode():
+            if not iterable:
+                warnings.warn(
+                    "Please NOTE: dygraph can support iterable mode only.")
             self._iterable = True
             self._return_list = True
         else:
@@ -297,7 +303,6 @@ class PyReader(object):
 
             def next(self):
                 if not in_dygraph_mode():
-                    ret = None
                     if self._return_list:
                         ret = self._reader.read_next_list()
                         ret = ret[0] if ret is not None and len(
@@ -482,27 +487,35 @@ class PyReader(object):
     
         '''
         assert batch_size > 0, "batch_size must be larger than 0"
-        has_lod = False
-        for f in self._feed_list:
-            if f.lod_level != 0:
-                has_lod = True
-                break
+        if not in_dygraph_mode():
+            has_lod = False
+            for f in self._feed_list:
+                if f.lod_level != 0:
+                    has_lod = True
+                    break
 
-        if has_lod:
+            if has_lod:
+                self.decorate_sample_list_generator(
+                    paddle.batch(
+                        sample_generator,
+                        batch_size=batch_size,
+                        drop_last=drop_last),
+                    places=places)
+            else:
+                reader = BatchedTensorProvider(
+                    feed_list=self._feed_list,
+                    place=core.CPUPlace(),
+                    batch_size=batch_size,
+                    generator=sample_generator,
+                    drop_last=drop_last)
+                self.decorate_batch_generator(reader, places=places)
+        else:
             self.decorate_sample_list_generator(
                 paddle.batch(
                     sample_generator,
                     batch_size=batch_size,
                     drop_last=drop_last),
                 places=places)
-        else:
-            reader = BatchedTensorProvider(
-                feed_list=self._feed_list,
-                place=core.CPUPlace(),
-                batch_size=batch_size,
-                generator=sample_generator,
-                drop_last=drop_last)
-            self.decorate_batch_generator(reader, places=places)
 
     def decorate_sample_list_generator(self, reader, places=None):
         '''
@@ -566,11 +579,11 @@ class PyReader(object):
                 for slots in paddle_reader():
                     yield [slots[var.name] for var in self._feed_list]
         else:
-            provider = ListTensorProvider(reader, place=core.CPUPlace())
+            provider = ListTensorProvider(reader, places)
 
             def __tensor_reader_impl__():
                 for slots in provider():
-                    yield slots
+                    yield slots[0]
 
         self.decorate_batch_generator(__tensor_reader_impl__, places)
 
