@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign
+from .tensor import concat, assign, fill_constant
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -6690,6 +6690,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python list or tuple.")
+
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -6698,7 +6699,12 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     # Validate the shape
     unk_dim_idx = -1
+    contain_var = False
     for dim_idx, dim_size in enumerate(shape):
+        if isinstance(dim_size, Variable):
+            contain_var = True
+            continue
+
         if dim_size == -1:
             assert unk_dim_idx == -1, (
                 "Only one dimension in shape can be unknown.")
@@ -6712,13 +6718,34 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'shape': shape}
+    else:
+        if contain_var:
+            new_shape_tensor = []
+            for dim in shape:
+                if isinstance(dim, Variable):
+                    new_shape_tensor.append(dim)
+                else:
+                    assert (isinstance(dim, int))
+                    temp_out = helper.create_variable_for_type_inference(
+                        'int32')
+                    fill_constant(
+                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    new_shape_tensor.append(temp_out)
+            inputs['shape_tensor'] = new_shape_tensor
+            attrs = {}
+
+        else:
+            attrs = {'shape': shape}
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
-        attrs={"shape": shape},
+        attrs=attrs,
         outputs={"Out": out,
                  "XShape": x_shape})
 
