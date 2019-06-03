@@ -9547,8 +9547,39 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    ${comment}
+    Slice Operator.
 
+    Produces a slice of the input tensor along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
+    end dimension for each axis in the list of axes, it uses this information
+    to slice the input data tensor. If a negative value is passed for any of
+    the start or end indices, it represents number of elements before the end
+    of that dimension. If the value passed to start or end is larger than
+    the n (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
+    Following examples will explain how slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+            Then:
+                result = [ [2, 3, 4], ]
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
