@@ -94,7 +94,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(expand_times).");
     AddAttr<std::vector<int>>("expand_times",
                               "Expand times number for each dimension.")
-        .SetDefault(std::vector<int>());
+        .SetDefault({});
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
