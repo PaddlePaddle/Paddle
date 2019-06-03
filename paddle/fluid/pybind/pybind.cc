@@ -943,6 +943,8 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
            py::call_guard<py::gil_scoped_release>())
+      .def("create_variables", &Executor::CreateVariables,
+           py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
