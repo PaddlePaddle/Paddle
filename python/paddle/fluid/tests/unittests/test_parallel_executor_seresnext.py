@@ -389,7 +389,7 @@ class TestResnet(TestParallelExecutorBase):
             use_cuda=True,
             rm_drop_out=True,
             rm_bn=True,
-            delta2=1e-3)
+            delta2=1e-2)
 
 
 if __name__ == '__main__':

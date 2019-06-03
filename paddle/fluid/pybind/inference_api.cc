@@ -16,6 +16,7 @@
 #include <pybind11/stl.h>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -228,7 +229,16 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = true)
+           py::arg("use_static") = true, py::arg("use_calib_mode") = false)
+      .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
+           py::arg("max_batch_size") = 1,
+           py::arg("max_input_shape") =
+               std::map<std::string, std::vector<int>>(),
+           py::arg("min_subgraph_size") = 6,
+           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
+           py::arg("auto_config_layout") = false,
+           py::arg("passes_filter") = std::vector<std::string>(),
+           py::arg("ops_filter") = std::vector<std::string>())
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)

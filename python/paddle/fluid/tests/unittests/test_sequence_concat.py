@@ -20,25 +20,58 @@ from op_test import OpTest
 
 
 class TestSequenceConcat(OpTest):
+    def setLoD(self):
+        self.lod1 = [7, 3]
+        self.lod2 = [12, 8]
+        self.out_lod = [19, 11]
+
     def setUp(self):
         x1 = np.random.random(size=(10, 80))
-        lod1 = [7, 3]
         x2 = np.random.random(size=(20, 80))
-        lod2 = [12, 8]
+        self.setLoD()
 
-        out = np.concatenate((x1[0:lod1[0]], x2[0:lod2[0]], x1[lod1[0]:],
-                              x2[lod2[0]:]))
-        out_lod = [19, 11]
+        out = np.concatenate((x1[0:self.lod1[0]], x2[0:self.lod2[0]],
+                              x1[self.lod1[0]:], x2[self.lod2[0]:]))
 
         self.op_type = "sequence_concat"
-        self.inputs = {'X': [("x1", (x1, [lod1])), ("x2", (x2, [lod2]))]}
-        self.outputs = {"Out": (out, [out_lod])}
+        self.inputs = {
+            'X': [("x1", (x1, [self.lod1])), ("x2", (x2, [self.lod2]))]
+        }
+        self.outputs = {"Out": (out, [self.out_lod])}
 
     def test_output(self):
         self.check_output(1e-3)
 
     def test_dx(self):
         self.check_grad(inputs_to_check=['x1', 'x2'], output_names="Out")
+
+
+class TestSequenceConcatCase2(TestSequenceConcat):
+    def setLoD(self):
+        self.lod1 = [10, 0]
+        self.lod2 = [12, 8]
+        self.out_lod = [22, 8]
+
+
+class TestSequenceConcatCase3(TestSequenceConcat):
+    def setLoD(self):
+        self.lod1 = [10, 0]
+        self.lod2 = [20, 0]
+        self.out_lod = [30, 0]
+
+
+class TestSequenceConcatCase4(TestSequenceConcat):
+    def setLoD(self):
+        self.lod1 = [0, 10]
+        self.lod2 = [0, 20]
+        self.out_lod = [0, 30]
+
+
+class TestSequenceConcatCase5(TestSequenceConcat):
+    def setLoD(self):
+        self.lod1 = [0, 10]
+        self.lod2 = [20, 0]
+        self.out_lod = [20, 10]
 
 
 if __name__ == '__main__':

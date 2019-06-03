@@ -97,8 +97,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     staircase=True))
             parameters, optimizers = fluid.dygraph.load_persistables("save_dir")
             mlp_load.load_dict(parameters)
-            optimizer_load1.load_dict(optimizers)
-            optimizer_load2.load_dict(optimizers)
+            optimizer_load1.load(optimizers)
+            optimizer_load2.load(optimizers)
 
         self.assertTrue(optimizer._learning_rate.__dict__ ==
                         optimizer_load1._learning_rate.__dict__)

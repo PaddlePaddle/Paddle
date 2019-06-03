@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include <map>            // NOLINT
+#include <memory>         // NOLINT
+#include <string>         // NOLINT
+#include <unordered_map>  // NOLINT
+#include <utility>
+#include <vector>  // NOLINT
+
 // clang-format off
 #include "paddle/fluid/framework/python_headers.h"
 // clang-format on
-
-#include <map>            // NOLINT
-#include <string>         // NOLINT
-#include <vector>         // NOLINT
-#include <memory>         // NOLINT
-#include <unordered_map>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
@@ -31,7 +32,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/operators/math/math_function.h"
-
+#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -115,12 +116,14 @@ class OpBase;
 class VarBase {
  public:
   // Internal interface, create VarBase from exist variable
-  VarBase(const std::string& name, framework::Variable* var, VarBase* grad,
-          bool stop_gradient)
+  VarBase(const std::string& name, std::unique_ptr<framework::Variable> var,
+          VarBase* grad, bool stop_gradient)
       : VarBase(name, var->Get<framework::LoDTensor>().type(),
                 var->Get<framework::LoDTensor>().dims(),
-                var->Get<framework::LoDTensor>().place(), var, grad,
-                stop_gradient, false) {}
+                var->Get<framework::LoDTensor>().place(), nullptr, grad,
+                stop_gradient, false, true) {
+    var_ = std::move(var);
+  }
 
   // Python interface
   VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
@@ -134,40 +137,52 @@ class VarBase {
           const framework::DDim& shape, const platform::Place& place,
           bool stop_gradient, bool persistable)
       : VarBase(name, dtype, shape, place, nullptr, nullptr, stop_gradient,
-                persistable) {}
+                persistable, true) {}
+
+  // Grad used constructor
+  VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
+          const std::vector<int64_t>& shape, const platform::Place& place,
+          bool stop_gradient, bool persistable, bool need_initialize)
+      : VarBase(name, dtype, framework::make_ddim(shape), place, nullptr,
+                nullptr, stop_gradient, persistable, need_initialize) {}
 
  private:
   // TODO(minqiyang): need support SelectedRows
   VarBase(const std::string& name, framework::proto::VarType::Type dtype,
           const framework::DDim& shape, const platform::Place& place,
-          framework::Variable* var, VarBase* grad, bool stop_gradient,
-          bool persistable)
+          std::unique_ptr<framework::Variable> var, VarBase* grad,
+          bool stop_gradient, bool persistable, bool need_initialize)
       : name_(name),
         type_(framework::proto::VarType::LOD_TENSOR),
-        var_(var),
+        place_(place),
+        var_(std::move(var)),
         grads_(grad),
+        dtype_(dtype),
         stop_gradient_(stop_gradient),
         persistable_(persistable),
         pre_op_(nullptr),
         pre_op_out_name_(),
         pre_op_out_idx_(-1) {
     if (!var_) {
-      var_ = new framework::Variable();
+      var_.reset(new framework::Variable());
     }
     auto tensor = var_->GetMutable<framework::LoDTensor>();
     tensor->Resize(shape);
-    tensor->mutable_data(place, dtype);
-    VLOG(10) << "create varbase: " << name_ << " type: " << dtype
-             << " place: " << place;
+    if (need_initialize) {
+      tensor->mutable_data(place, dtype);
+      is_initialized_ = true;
+      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype
+              << " place: " << place;
+    } else {
+      is_initialized_ = false;
+      VLOG(2) << "not initialized varbase: " << name_;
+    }
+    VLOG(2) << "create varbase: " << name_ << " type: " << dtype
+            << " place: " << place;
   }
 
  public:
   virtual ~VarBase() {
-    if (var_) {
-      delete var_;
-      var_ = nullptr;
-    }
-
     if (grads_) {
       delete grads_;
       grads_ = nullptr;
@@ -175,10 +190,12 @@ class VarBase {
 
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
+    VLOG(2) << "destruct varbase: " << name_;
   }
 
   inline void SetName(const std::string& name) { name_ = name; }
   inline std::string Name() const { return name_; }
+  inline bool IsInitialize() const { return is_initialized_; }
 
   inline std::vector<int64_t> Shape() const {
     if (var_->IsInitialized()) {
@@ -213,17 +230,28 @@ class VarBase {
 
   inline void SetPersistable(bool persistable) { persistable_ = persistable; }
   inline bool IsPersistable() const { return persistable_; }
-
+  inline platform::Place GetPlace() { return place_; }
   inline OpBase* PreOp() const { return pre_op_; }
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
-  void RunBackward();
+  void RunBackward(const detail::BackwardStrategy& bck_stratedy);
 
   inline void ResetPreOp(OpBase* op) {
     if (op == pre_op_) {
       // clear pre_op info when op equals to var's pre_op
       pre_op_ = nullptr;
       pre_op_out_idx_ = -1;
+    }
+  }
+
+  void InitBuffer() {
+    if (!is_initialized_) {
+      var_->GetMutable<framework::LoDTensor>()->mutable_data(place_, dtype_);
+      is_initialized_ = true;
+      VLOG(2) << "initialized varbase: " << name_ << " type: " << dtype_
+              << " place: " << place_;
+    } else {
+      VLOG(2) << "var: " << name_ << " has already been initialized ";
     }
   }
 
@@ -261,13 +289,14 @@ class VarBase {
   framework::proto::VarType::Type type_;
   platform::Place place_;
 
-  framework::Variable* var_;
+  std::unique_ptr<framework::Variable> var_;
   VarBase* grads_;
 
  private:
+  framework::proto::VarType::Type dtype_;
   bool stop_gradient_;
   bool persistable_;
-
+  bool is_initialized_;
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
@@ -281,8 +310,6 @@ class PYBIND11_HIDDEN OpBase {
   OpBase(const std::string& type)
       : type_(type),
         trace_id_(-1),
-        forward_id_(-1),
-        backward_id_(-1),
         place_(platform::CPUPlace()),
         backward_hooks_() {}
 
@@ -302,7 +329,9 @@ class PYBIND11_HIDDEN OpBase {
     }
   }
 
-  std::map<std::string, std::vector<VarBase*>> ApplyGrad();
+  std::map<std::string, std::vector<VarBase*>> ApplyGrad(
+      BackwardSumMap* bck_map, GradientRef* grad_ref,
+      const detail::BackwardStrategy& bck_stratedy);
 
   inline std::string Type() const { return type_; }
   inline std::string GradOpType(size_t index) const {
@@ -335,16 +364,10 @@ class PYBIND11_HIDDEN OpBase {
   }
 
   std::string type_;
-  // One of `trace_id_` or `forward_id_` is set, not both.
-  // For pure python PyLayer, use `forward_id_`, otherwise, use trace_id_.
   int trace_id_;
-  int forward_id_;
 
-  // When has backward, one of `grad_op_descs_` or `backward_id_` is set,
-  // not both.
   // Note: each fwd op corresponds to a vector of bwd ops.
   std::vector<framework::OpDesc*> grad_op_descs_;
-  int backward_id_;
 
   platform::Place place_;
 
@@ -367,32 +390,10 @@ class Layer {
  public:
   virtual ~Layer() {}
 
-  virtual std::vector<VarBase> Forward(const std::vector<VarBase>& inputs) {
-    std::vector<VarBase> vars;
+  virtual std::vector<VarBase*> Forward(const std::vector<VarBase*>& inputs) {
+    std::vector<VarBase*> vars;
     return vars;
   }
-};
-
-class PyLayer {
- public:
-  virtual ~PyLayer() {}
-
-  static const char* kFwdInp;
-  static const char* kFwdOut;
-
-  static void RegisterFunc(int func_id, const py::object& py_func);
-
-  static int NumFuncs();
-
-  static std::vector<framework::Variable*> Apply(
-      int func_id, const std::vector<VarBase*>& inputs);
-
-  static std::vector<VarBase*> ApplyGrad(int func_id,
-                                         const std::vector<VarBase*>& inputs);
-
- private:
-  static std::vector<framework::Variable*> CallPythonFunc(
-      const py::object& callable, const std::vector<VarBase*>& ins);
 };
 
 // infer var type context for imperative mode

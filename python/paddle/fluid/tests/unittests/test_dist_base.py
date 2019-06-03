@@ -27,8 +27,11 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+import paddle.fluid.dygraph as dygraph
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.parallel import DataParallel
 
-RUN_STEP = 10
+RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
 
 
@@ -48,10 +51,14 @@ class TestDistRunnerBase(object):
                        trainers,
                        sync_mode,
                        dc_asgd=False,
-                       current_endpoint=None):
+                       current_endpoint=None,
+                       nccl_comm_num=1):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
+        config.sync_mode = sync_mode
+        if nccl_comm_num > 1:
+            config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
@@ -59,7 +66,6 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
-            sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
 
@@ -103,6 +109,7 @@ class TestDistRunnerBase(object):
             # transpile for nccl2
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
+            config.nccl_comm_num = args.nccl_comm_num
             nccl2_t = fluid.DistributeTranspiler(config=config)
             nccl2_t.transpile(
                 args.trainer_id,
@@ -110,6 +117,7 @@ class TestDistRunnerBase(object):
                 startup_program=fluid.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint)
+
             trainer_prog = fluid.default_main_program()
         else:
             trainer_prog = fluid.default_main_program()
@@ -187,6 +195,72 @@ class TestDistRunnerBase(object):
             sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
+class TestParallelDyGraphRunnerBase(object):
+    def get_model(self):
+        raise NotImplementedError(
+            "get_model should be implemented by child classes.")
+
+    def run_one_loop(self, model, opt, data):
+        raise NotImplementedError(
+            "train_one_loop should be implemented by the child classes.")
+
+    def run_trainer(self, args):
+
+        seed = 90
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+
+        def _get_data(batch):
+            if args.update_method != "local":
+                new_batch = []
+                for offset, item in enumerate(batch):
+                    if offset % 2 == args.trainer_id:
+                        new_batch.append(item)
+                return new_batch
+            else:
+                return batch
+
+        with fluid.dygraph.guard(place):
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            np.random.seed(seed)
+            import random
+            random.seed = seed
+            model, train_reader, opt = self.get_model()
+            nranks = len(args.endpoints.split(",")) if args.endpoints else 1
+
+            if args.update_method == "nccl2":
+                strategy = dygraph.parallel.ParallelStrategy()
+                strategy.nranks = nranks
+                strategy.local_rank = args.trainer_id
+                strategy.trainer_endpoints = args.endpoints.split(",")
+                strategy.current_endpoint = args.current_endpoint
+                dygraph.parallel.prepare_context(strategy)
+                model = dygraph.parallel.DataParallel(model, strategy)
+            out_losses = []
+            for step_id, data in enumerate(train_reader()):
+                data = _get_data(data)
+                if step_id == RUN_STEP:
+                    break
+                loss = self.run_one_loop(model, opt, data)
+                out_losses.append(loss.numpy())
+
+                # FIXME(Yancey1989): scale the loss inplace
+                if args.update_method == "nccl2":
+                    loss = model.scale_loss(loss)
+
+                loss.backward()
+                if args.update_method == "nccl2":
+                    model.apply_collective_grads()
+
+                opt.minimize(loss)
+                model.clear_gradients()
+            if six.PY2:
+                print(pickle.dumps(out_losses))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(out_losses))
+
+
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run dist test.')
     parser.add_argument(
@@ -199,6 +273,7 @@ def runtime_main(test_class):
         choices=["pserver", "nccl2", "local", "nccl2_reduce_layer"])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
+    parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
@@ -275,6 +350,8 @@ class TestDistBase(unittest.TestCase):
         self._nccl2_reduce_layer = False
         self._lr = 0.001
         self._use_dgc = False
+        self._dygraph = False
+        self._nccl_comm_num = 1
         self._setup_config()
         self._after_setup_config()
 
@@ -520,6 +597,11 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr0_cmd += " --use_dgc"
             tr1_cmd += " --use_dgc"
+
+        if self._nccl_comm_num > 1:
+            tr0_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+            tr1_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+
         if self._mp_mode:
             env0 = {"FLAGS_selected_gpus": "0"}
             env1 = {"FLAGS_selected_gpus": "1"}

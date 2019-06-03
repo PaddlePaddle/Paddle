@@ -161,11 +161,13 @@ class Conv2D(layers.Layer):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
         self._num_channels = num_channels
-        if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
-            self._l_type = 'depthwise_conv2d'
-        else:
-            self._l_type = 'conv2d'
+        # if (self._num_channels == self._groups and
+        #         num_filters % self._num_channels == 0 and not self._use_cudnn):
+        #     self._l_type = 'depthwise_conv2d'
+        # else:
+        # TODO(jiabin): recover the usage of depthwise_conv2d when it's
+        #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17275
+        self._l_type = 'conv2d'
 
         if groups is None:
             num_filter_channels = num_channels
@@ -227,15 +229,17 @@ class Conv2D(layers.Layer):
                 'use_mkldnn': False,
             })
 
-        pre_act = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
-
-        self._helper.append_op(
-            type='elementwise_add',
-            inputs={'X': [pre_bias],
-                    'Y': [self._bias_param]},
-            outputs={'Out': [pre_act]},
-            attrs={'axis': 1})
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_act, act=self._act)
@@ -1052,7 +1056,7 @@ class BatchNorm(layers.Layer):
                  use_global_stats=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
-        self._param_attr = bias_attr
+        self._bias_attr = bias_attr
         self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
@@ -1074,7 +1078,7 @@ class BatchNorm(layers.Layer):
             self._scale.stop_gradient = True
 
         self._bias = self.create_parameter(
-            attr=self._param_attr,
+            attr=self._bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
@@ -1457,8 +1461,8 @@ class GRUUnit(layers.Layer):
             sigmoid=1,
             tanh=2,
             relu=3, )
-        activation = activation_dict[activation]
-        gate_activation = activation_dict[gate_activation]
+        self.activation = activation_dict[activation]
+        self.gate_activation = activation_dict[gate_activation]
 
         self._dtype = dtype
         size = size // 3
@@ -1490,8 +1494,8 @@ class GRUUnit(layers.Layer):
                 'Hidden': updated_hidden,
             },
             attrs={
-                'activation': 2,  # tanh
-                'gate_activation': 1,  # sigmoid
+                'activation': self.activation,
+                'gate_activation': self.gate_activation,
             })
 
         return updated_hidden, reset_hidden_pre, gate
@@ -2049,7 +2053,7 @@ class Conv2DTranspose(layers.Layer):
             self._filter_size = [filter_size_h, filter_size_w]
         else:
             self._filter_size = utils.convert_to_list(
-                self._output_size, 2, 'conv2d_transpose.filter_size')
+                self._filter_size, 2, 'conv2d_transpose.filter_size')
 
         if self._output_size is None:
             self._output_size = []
