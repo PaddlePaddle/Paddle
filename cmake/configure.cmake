@@ -176,6 +176,10 @@ if (LITE_WITH_ARM)
     add_definitions("-DLITE_WITH_ARM")
 endif()
 
+if (LITE_WITH_CL)
+    add_definitions("-DLITE_WITH_CL")
+endif()
+
 if (LITE_WITH_PROFILE)
     add_definitions("-DLITE_WITH_PROFILE")
 endif()
