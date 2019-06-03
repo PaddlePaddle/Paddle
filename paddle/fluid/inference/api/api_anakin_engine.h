@@ -55,11 +55,15 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   ~PaddleInferenceAnakinPredictor() override;
 
  private:
-  bool Init();
-  bool InitEnv();
-  bool InitNet();
+  void InitPredictor();
+  void InitEnv();
+  void InitGraph();
+  void OptimizeGraph();
+  void InitNet();
+  void SetContext();
   bool RunImpl(const std::vector<PaddleTensor>& inputs,
                std::vector<PaddleTensor>* output_data);
+  void Predict();
   static std::mutex mutex_;
   static std::once_flag init_anakin_;
   AnakinConfig config_;
