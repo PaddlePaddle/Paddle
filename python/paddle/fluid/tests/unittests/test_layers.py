@@ -1221,10 +1221,25 @@ class TestBook(LayerTest):
             y = self._get_data(name='label', shape=[1], dtype='int64')
             loss, softmax = layers.softmax_with_cross_entropy(
                 x, y, return_softmax=True)
-            return (loss)
-            return (softmax)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
+
             loss = layers.softmax_with_cross_entropy(x, y)
-            return (loss)
+            self.assertIsNotNone(loss)
+
+            x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
+            y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
+            y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
+            y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
+            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
+            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
+            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
+            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            self.assertIsNotNone(loss1)
+            self.assertIsNotNone(loss2)
+            self.assertIsNotNone(loss3)
+            self.assertIsNotNone(loss4)
+            return (loss4)
 
     def make_smooth_l1(self):
         with program_guard(fluid.default_main_program(),
@@ -1251,6 +1266,12 @@ class TestBook(LayerTest):
                 dtype='float32')
             out = layers.scatter(input=x, index=idx, updates=updates)
             return (out)
+
+    def make_one_hot(self):
+        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
+            label = self._get_data(name="label", shape=[1], dtype="int32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            return (one_hot_label)
 
     def make_label_smooth(self):
         # TODO(minqiyang): support gpu ut
@@ -1941,6 +1962,34 @@ class TestBook(LayerTest):
             out = layers.linspace(20, 10, 5, 'float64')
             self.assertIsNotNone(out)
         print(str(program))
+
+    def test_deformable_conv(self):
+        if core.is_compiled_with_cuda():
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                input = layers.data(
+                    name='input',
+                    append_batch_size=False,
+                    shape=[2, 3, 32, 32],
+                    dtype="float32")
+                offset = layers.data(
+                    name='offset',
+                    append_batch_size=False,
+                    shape=[2, 18, 32, 32],
+                    dtype="float32")
+                mask = layers.data(
+                    name='mask',
+                    append_batch_size=False,
+                    shape=[2, 9, 32, 32],
+                    dtype="float32")
+                out = layers.deformable_conv(
+                    input=input,
+                    offset=offset,
+                    mask=mask,
+                    num_filters=2,
+                    filter_size=3,
+                    padding=1)
+                return (out)
 
 
 if __name__ == '__main__':

@@ -420,7 +420,7 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
     framework::OpDesc empty_desc;
-    empty_desc.SetType("anakin_engine");
+    empty_desc.SetType(name_);
     auto *block_node = graph_->CreateOpNode(&empty_desc);
     Agent(block_node).set_subgraph({});
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);

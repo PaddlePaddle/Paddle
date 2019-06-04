@@ -121,6 +121,7 @@ packages=['paddle',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
+          'paddle.fluid.contrib.layers',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
@@ -164,6 +165,10 @@ if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
     package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
+    # mklml has dependency to vs runtime library
+    if os.name == 'nt':
+        shutil.copy('${MKLML_SHARED_LIB_DEPS}', libs_path)
+        package_data['paddle.libs'] += ['msvcr120.dll']
 else:
     if os.name == 'nt':
         # copy the openblas.dll

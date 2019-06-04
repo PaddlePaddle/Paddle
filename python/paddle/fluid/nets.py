@@ -100,6 +100,7 @@ def simple_img_conv_pool(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
@@ -191,7 +192,6 @@ def img_conv_group(input,
 
             img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
-                                                  num_channels=3,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
                                                   conv_filter_size=3,
@@ -279,10 +279,11 @@ def sequence_conv_pool(input,
     Examples:
         .. code-block:: python
 
-            input_dim = len(word_dict)
+            import paddle.fluid as fluid
+            input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = fluid.layers.data( ame="words", shape=[1], dtype="int64", lod_level=1)
+            data = fluid.layers.data(name="words", shape=[1], dtype="int64", lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
             seq_conv = fluid.nets.sequence_conv_pool(input=emb,
                                                      num_filters=hid_dim,
@@ -327,8 +328,10 @@ def glu(input, dim=-1):
     Examples:
         .. code-block:: python
 
-            data = fluid.layers.data(name="words", shape=[3, 6, 9], dtype="float32")
-            output = fluid.nets.glu(input=data, dim=1)  # shape of output: [3, 3, 9]
+            data = fluid.layers.data(
+                name="words", shape=[-1, 6, 3, 9], dtype="float32")
+            # shape of output: [-1, 3, 3, 9]
+            output = fluid.nets.glu(input=data, dim=1)
     """
 
     a, b = layers.split(input, num_or_sections=2, dim=dim)
@@ -386,6 +389,8 @@ def scaled_dot_product_attention(queries,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             queries = fluid.layers.data(name="queries",
                                         shape=[3, 5, 9],
@@ -513,7 +518,7 @@ def scaled_dot_product_attention(queries,
 
     key_dim_per_head = keys.shape[-1] // num_heads
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = layers.matmul(x=k, y=scaled_q, transpose_y=True)
+    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     weights = layers.reshape(
         x=layers.reshape(

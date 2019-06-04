@@ -18,8 +18,11 @@ limitations under the License. */
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <memory>
 
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
@@ -28,77 +31,186 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+class Layer : public imperative::Layer {
+ public:
+  using imperative::Layer::Layer;  // Inherit constructors
+
+  std::vector<std::shared_ptr<imperative::VarBase>> Forward(
+      const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
+      override {
+    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
+                      Forward,
+                      inputs);  // NOLINT
+  }
+};
+
+class PYBIND11_HIDDEN PyOpBase : public imperative::OpBase {
+ public:
+  using imperative::OpBase::OpBase;  // Inherit constructors
+
+  PyOpBase(const std::string &name) : OpBase(name) {}
+};
+
 // Bind Methods
-void BindImperative(pybind11::module* m) {
-  pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
+void BindImperative(pybind11::module *m_ptr) {
+  namespace py = ::pybind11;
+
+  auto &m = *m_ptr;
+
+  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
+      m, "BackwardStrategy", R"DOC()DOC");
+  backward_strategy.def(py::init())
+      .def_property("sort_sum_gradient",
+                    [](const imperative::detail::BackwardStrategy &self) {
+                      return self.sorted_sum_gradient_;
+                    },
+                    [](imperative::detail::BackwardStrategy &self,
+                       bool sorted_sum_gradient) {
+                      self.sorted_sum_gradient_ = sorted_sum_gradient;
+                    });
+
+  m.def("start_imperative_gperf_profiler",
+        []() { imperative::StartProfile(); });
+
+  m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
+
+  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
+      m, "VarBase", R"DOC()DOC")
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
+                   bool, bool>())
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>,
+                   const paddle::platform::CUDAPlace, bool, bool>())
+      .def("_run_backward",
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst) {
+             self.RunBackward(bckst);
+           })
+      .def("_grad_name", &imperative::VarBase::GradName)
+      .def("_grad_value", &imperative::VarBase::GradValue)
+      .def("_clear_gradient", &imperative::VarBase::ClearGradient)
+      .def("_grad_ivar",
+           [](const imperative::VarBase &self) { return self.grads_; },
+           py::return_value_policy::reference)
+      .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::CPUPlace &place,
+              bool blocking) {
+             return self.NewVarBase(place, blocking).release();
+           },
+           py::return_value_policy::take_ownership)
+      .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
+              bool blocking) {
+             return self.NewVarBase(place, blocking).release();
+           },
+           py::return_value_policy::take_ownership)
+      .def("value",
+           [](const imperative::VarBase &self) { return self.var_.get(); },
+           py::return_value_policy::reference)
+      .def_property("name", &imperative::VarBase::Name,
+                    &imperative::VarBase::SetName)
+      .def_property_readonly("shape", &imperative::VarBase::Shape)
+      .def_property_readonly("dtype", &imperative::VarBase::DataType)
+      .def_property("persistable", &imperative::VarBase::IsPersistable,
+                    &imperative::VarBase::SetPersistable)
+      .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
+                    &imperative::VarBase::SetStopGradient);
+
+  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
+      .def(py::init<const std::string &>())
+      .def("register_backward_hooks",
+           [](imperative::OpBase &self, const py::object &callable) {
+             self.RegisterBackwardHooks(callable);
+           })
+      .def_property("_trace_id",
+                    [](const imperative::OpBase &self) {
+                      py::gil_scoped_release release;
+                      return self.trace_id_;
+                    },
+                    [](imperative::OpBase &self, int trace_id) {
+                      py::gil_scoped_release release;
+                      self.trace_id_ = trace_id;
+                    },
+                    py::return_value_policy::reference)
+      .def_property_readonly("type", &imperative::OpBase::Type);
+
+  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
+  layer.def(py::init<>())
+      .def("forward",
+           [](imperative::Layer &self,
+              const std::vector<std::shared_ptr<imperative::VarBase>> &inputs) {
+             return self.Forward(inputs);
+           });
+
+  py::class_<imperative::Tracer>(*m, "Tracer", "")
       .def("__init__",
-           [](imperative::Tracer& self, framework::BlockDesc* root_block) {
+           [](imperative::Tracer &self, framework::BlockDesc *root_block) {
              new (&self) imperative::Tracer(root_block);
            })
       .def("trace",
-           [](imperative::Tracer& self, imperative::OpBase* op,
-              const imperative::VarBasePtrMap& inputs,
-              imperative::VarBasePtrMap* outputs,
+           [](imperative::Tracer &self, imperative::OpBase *op,
+              const imperative::VarBasePtrMap &inputs,
+              imperative::VarBasePtrMap *outputs,
               framework::AttributeMap attrs_map,
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
-             pybind11::gil_scoped_release release;
-             return self.Trace(op, inputs, outputs, attrs_map, expected_place,
-                               stop_gradient);
+             py::gil_scoped_release release;
+             self.Trace(op, inputs, outputs, attrs_map, expected_place,
+                        stop_gradient);
            })
-      .def("trace",
-           [](imperative::Tracer& self, imperative::OpBase* op,
-              const imperative::VarBasePtrMap& inputs,
-              imperative::VarBasePtrMap* outputs,
-              framework::AttributeMap attrs_map,
-              const platform::CUDAPlace expected_place,
-              const bool stop_gradient = false) {
-             pybind11::gil_scoped_release release;
-             return self.Trace(op, inputs, outputs, attrs_map, expected_place,
-                               stop_gradient);
-           })
-      .def("py_trace", &imperative::Tracer::PyTrace,
-           pybind11::return_value_policy::take_ownership);
+      .def("trace", [](imperative::Tracer &self, imperative::OpBase *op,
+                       const imperative::VarBasePtrMap &inputs,
+                       imperative::VarBasePtrMap *outputs,
+                       framework::AttributeMap attrs_map,
+                       const platform::CUDAPlace expected_place,
+                       const bool stop_gradient = false) {
+        py::gil_scoped_release release;
+        self.Trace(op, inputs, outputs, attrs_map, expected_place,
+                   stop_gradient);
+      });
 
   // define parallel context
-  pybind11::class_<imperative::ParallelStrategy> parallel_strategy(
-      *m, "ParallelStrategy", "");
-  parallel_strategy.def(pybind11::init())
+  py::class_<imperative::ParallelStrategy> parallel_strategy(
+      m, "ParallelStrategy", "");
+  parallel_strategy.def(py::init())
       .def_property(
           "nranks",
-          [](const imperative::ParallelStrategy& self) { return self.nranks_; },
-          [](imperative::ParallelStrategy& self, int nranks) {
+          [](const imperative::ParallelStrategy &self) { return self.nranks_; },
+          [](imperative::ParallelStrategy &self, int nranks) {
             self.nranks_ = nranks;
           })
       .def_property("local_rank",
-                    [](const imperative::ParallelStrategy& self) {
+                    [](const imperative::ParallelStrategy &self) {
                       return self.local_rank_;
                     },
-                    [](imperative::ParallelStrategy& self, int local_rank) {
+                    [](imperative::ParallelStrategy &self, int local_rank) {
                       self.local_rank_ = local_rank;
                     })
       .def_property(
           "trainer_endpoints",
-          [](const imperative::ParallelStrategy& self) {
+          [](const imperative::ParallelStrategy &self) {
             return self.trainer_endpoints_;
           },
-          [](imperative::ParallelStrategy& self, std::vector<std::string> eps) {
+          [](imperative::ParallelStrategy &self, std::vector<std::string> eps) {
             self.trainer_endpoints_ = eps;
           })
       .def_property("current_endpoint",
-                    [](const imperative::ParallelStrategy& self) {
+                    [](const imperative::ParallelStrategy &self) {
                       return self.current_endpoint_;
                     },
-                    [](imperative::ParallelStrategy& self,
-                       const std::string& ep) { self.current_endpoint_ = ep; });
+                    [](imperative::ParallelStrategy &self,
+                       const std::string &ep) { self.current_endpoint_ = ep; });
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  pybind11::class_<imperative::NCCLParallelContext> nccl_ctx(
-      *m, "NCCLParallelContext");
+  py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
+                                                       "NCCLParallelContext");
 
   nccl_ctx
-      .def(pybind11::init<const imperative::ParallelStrategy&,
-                          const platform::CUDAPlace&>())
-      .def("init", [](imperative::NCCLParallelContext& self) { self.Init(); });
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CUDAPlace &>())
+      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
 #endif
 }
 

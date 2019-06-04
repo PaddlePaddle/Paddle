@@ -22,7 +22,9 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class DensityPriorBoxOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class DensityPriorBoxOpConverter
+    : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   DensityPriorBoxOpConverter() = default;
 
