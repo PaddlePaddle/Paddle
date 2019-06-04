@@ -311,7 +311,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
                 raise ValueError("current_id must be gather or equal 0")
             self._current_id = current_id
 
-        if role != Role.WORKER or role != Role.SERVER:
+        if role != Role.WORKER and role != Role.SERVER:
             raise TypeError("role must be as Role")
         else:
             self._role = role

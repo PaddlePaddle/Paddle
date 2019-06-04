@@ -98,14 +98,11 @@ class FleetDistRunnerBase(object):
 
 
 class TestFleetBase(unittest.TestCase):
-    def __init__(self, methodName='runTest'):
-        super(TestFleetBase, self).__init__(methodName='runTest')
-        self._sync_mode = True
-
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
     def setUp(self):
+        self._sync_mode = True
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
