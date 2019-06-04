@@ -20,6 +20,8 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <memory>
+#include <unordered_map>
+#include <utility>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/imperative/layer.h"
