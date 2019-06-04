@@ -172,7 +172,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor). The output tensor of reshape operator.");
     AddAttr<std::vector<int>>(
         "shape", "(std::vector<int>) Target shape of reshape operator.")
-        .SetDefault(std::vector<int>());
+        .SetDefault({});
     AddComment(R"DOC(
 Reshape Operator.
 
