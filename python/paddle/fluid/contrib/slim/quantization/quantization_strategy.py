@@ -23,6 +23,8 @@ from ....compiler import BuildStrategy
 from ....framework import IrGraph, Variable, Program
 from ..core.strategy import Strategy
 from .quantization_pass import *
+from .quantization_mkldnn_pass import *
+
 __all__ = ['QuantizationStrategy']
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
