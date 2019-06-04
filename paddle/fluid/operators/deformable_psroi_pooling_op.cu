@@ -157,8 +157,6 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     Tensor* top_count = ctx.Output<Tensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
-    PADDLE_ENFORCE_EQ(top_count->dims(), out->dims(),
-                      "number of rois should be same with number of output");
     auto no_trans = ctx.Attr<int>("no_trans");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto output_dim = ctx.Attr<int>("output_dim");

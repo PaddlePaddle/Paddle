@@ -150,9 +150,6 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     const int num_rois = rois->dims()[0];
     PADDLE_ENFORCE_EQ(num_rois, out->dims()[0],
                       "number of rois should be same with number of output");
-    PADDLE_ENFORCE_EQ(
-        top_count->dims(), out->dims(),
-        "number of top_count should be same with number of output");
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     int* roi_batch_id_data =
