@@ -35,11 +35,11 @@ if((NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) AND WITH_TESTING)
 
     lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
     add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
-endif(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+endif()
 
 if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
-endif(WITH_TESTING)
+endif()
 
 # if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
 #     lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
