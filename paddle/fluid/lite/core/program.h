@@ -22,6 +22,7 @@
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/model_parser/compatible_pb.h"
 #ifdef LITE_WITH_PROFILE
 #include "paddle/fluid/lite/core/profile/basic_profiler.h"
 #endif  // LITE_WITH_PROFILE
@@ -67,7 +68,7 @@ struct Program {
     CHECK(ops.empty()) << "Executor duplicate Build found";
     // Create operators.
     for (const auto& proto_op_desc : program.blocks(0).ops()) {
-      lite::OpDesc op_desc(proto_op_desc);
+      pb::OpDesc op_desc(proto_op_desc);
       auto op_type = op_desc.Type();
       // if (op_type == "feed" || op_type == "fetch") continue;
       VLOG(4) << "create Op [" << op_type << "]";
@@ -75,7 +76,10 @@ struct Program {
       auto op = LiteOpRegistry::Global().Create(op_type);
       CHECK(op) << "no Op found for " << op_type;
       ops.emplace_back(std::move(op));
-      ops.back()->Attach(op_desc, exec_scope);
+
+      cpp::OpDesc cpp_op_desc;
+      TransformOpDescPbToCpp(op_desc, &cpp_op_desc);
+      ops.back()->Attach(cpp_op_desc, exec_scope);
     }
   }
 

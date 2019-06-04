@@ -29,14 +29,14 @@ bool ScaleOp::InferShape() const {
   return true;
 }
 
-bool ScaleOp::AttachImpl(const OpDesc &op_desc, lite::Scope *scope) {
+bool ScaleOp::AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) {
   auto x = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
   param_.x = scope->FindVar(x)->GetMutable<Tensor>();
   param_.output = scope->FindVar(output)->GetMutable<Tensor>();
-  param_.scale = GetAttr<float>(op_desc.GetAttr("scale"));
-  param_.bias = GetAttr<float>(op_desc.GetAttr("bias"));
-  param_.bias_after_scale = GetAttr<bool>(op_desc.GetAttr("bias_after_scale"));
+  param_.scale = op_desc.GetAttr<float>("scale");
+  param_.bias = op_desc.GetAttr<float>("bias");
+  param_.bias_after_scale = op_desc.GetAttr<bool>("bias_after_scale");
   CHECK(param_.x);
   CHECK(param_.output);
   return true;
