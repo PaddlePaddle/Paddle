@@ -119,7 +119,8 @@ void HandleBarrierResponse(brpc::Controller *cntl,
 
   VLOG(1) << "HandleBarrier " << var_h->name()
           << " Response from: " << cntl->remote_side()
-          << ",  latency: " << cntl->latency_us() << "us";
+          << ",  latency: " << cntl->latency_us() << "us"
+          << " Count: " << cls->req_count_;
 }
 
 void HandleGetResponse(brpc::Controller *cntl,
