@@ -87,9 +87,13 @@ static T PyObjectCast(PyObject *obj) {
 // Unlike py::object, py::handle does not change reference count of PyObject *.
 static std::vector<std::shared_ptr<imperative::VarBase>>
 GetVarBaseListFromPyHandle(const py::handle &handle) {
-  const char *kIVarField = "_ivar";
-
   PyObject *py_obj = handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    return {};
+  }
+
+  const char *kIVarField = "_ivar";
   PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
   std::vector<std::shared_ptr<imperative::VarBase>> result;
 
@@ -121,10 +125,13 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
     }
   } else {
     PADDLE_THROW(
-        "unknown type, must be Variable, List[Variable] or tuple[Variable]");
+        "unsupported type %s, must be Variable, List[Variable] or "
+        "tuple[Variable]",
+        py::str(handle));
   }
 
-  PADDLE_ENFORCE(PyErr_Occurred() == nullptr, "Unexpected exception");
+  PADDLE_ENFORCE(PyErr_Occurred() == nullptr,
+                 py::str(py::handle(PyErr_Occurred())));
 
   return result;
 }
@@ -135,7 +142,10 @@ static imperative::VarBasePtrMap ConvertToVarBasePtrMap(
     const PyVarBaseMap &map) {
   imperative::VarBasePtrMap result;
   for (auto &pair : map) {
-    result.emplace(pair.first, GetVarBaseListFromPyHandle(pair.second));
+    auto var_vec = GetVarBaseListFromPyHandle(pair.second);
+    if (!var_vec.empty()) {
+      result.emplace(pair.first, std::move(var_vec));
+    }
   }
   return result;
 }
