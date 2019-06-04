@@ -16,15 +16,21 @@ import os
 
 
 def train():
+    selected_gpus = os.getenv("FLAGS_selected_gpus")
     trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
     worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env.split(",")
     trainers_num = len(worker_endpoints)
 
-    print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
-              trainer_id:{}"
-          .format(worker_endpoints, trainers_num, current_endpoint, trainer_id))
+    name = (
+        "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"
+        .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,
+                trainer_id))
+
+    print(name)
+    with open("multi_process.check.log", "wb") as f:
+        f.write(name)
 
 
 if __name__ == '__main__':
