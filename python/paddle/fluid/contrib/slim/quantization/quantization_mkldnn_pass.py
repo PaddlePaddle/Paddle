@@ -133,31 +133,16 @@ class TransformForMkldnnPass(object):
         # Convert int8 range weights to fp32 range weights 
         weight = self._load_param(self._scope, weight_name)
         w_fp32 = np.divide(
-<<<<<<< ebf6316fd6af926b47f05d4e9b6879b463bd8502
             np.multiply(weight, 127), self.max_range[output_name])
-=======
-            np.multiply(weight, 127),
-            self.max_range[output_name])
->>>>>>> fix the 1 bug for running unit test
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
         input_var_node = graph._find_node_by_name(op_node.inputs,
                                                   op_node.input("Input")[0])
-<<<<<<< ebf6316fd6af926b47f05d4e9b6879b463bd8502
         weight_var_node = graph._find_node_by_name(op_node.inputs, weight_name)
-=======
-        weight_var_node = graph._find_node_by_name(op_node.inputs,
-                                                   weight_name)
->>>>>>> fix the 1 bug for running unit test
 
         # Set fake_dequantize_abs_max's output as new output of conv2d
         output_var_node = graph._find_node_by_name(
-<<<<<<< ebf6316fd6af926b47f05d4e9b6879b463bd8502
             graph.all_var_nodes(), self.conv_new_output[output_name])
-=======
-            graph.all_var_nodes(),
-            self.conv_new_output[output_name])
->>>>>>> fix the 1 bug for running unit test
         attrs = {
             name: op_node.op().attr(name)
             for name in op_node.op().attr_names()
