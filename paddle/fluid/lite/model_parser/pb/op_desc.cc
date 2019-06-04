@@ -18,10 +18,9 @@ namespace paddle {
 namespace lite {
 namespace pb {
 
-template <>
-void OpDesc::SetAttr<std::string>(const std::string &name,
-                                  const std::string &v) {
-  auto &xs = *desc_.mutable_attrs();
+google::protobuf::internal::RepeatedPtrIterator<framework::proto::OpDesc_Attr>
+FindAttr(framework::proto::OpDesc *desc, const std::string &name) {
+  auto &xs = *desc->mutable_attrs();
   auto it = std::find_if(
       xs.begin(), xs.end(),
       [&](const framework::proto::OpDesc_Attr &x) { return x.name() == name; });
@@ -33,33 +32,59 @@ void OpDesc::SetAttr<std::string>(const std::string &name,
                         return x.name() == name;
                       });
   }
-
-  it->set_type(framework::proto::STRING);
-  it->set_s(v.c_str());
+  return it;
 }
+
+#define SET_IMPL_ONE(T, ty__, pb_f__)                            \
+  template <>                                                    \
+  void OpDesc::SetAttr<T>(const std::string &name, const T &v) { \
+    auto it = FindAttr(&desc_, name);                            \
+    it->set_type(framework::proto::ty__);                        \
+    it->set_##pb_f__(v);                                         \
+  }
+SET_IMPL_ONE(int, INT, i);
+SET_IMPL_ONE(float, FLOAT, f);
 
 template <>
 void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
                                        const std::vector<int> &v) {
-  auto &xs = *desc_.mutable_attrs();
-  auto it = std::find_if(
-      xs.begin(), xs.end(),
-      [&](const framework::proto::OpDesc_Attr &x) { return x.name() == name; });
-  if (it == xs.end()) {
-    auto *attr = xs.Add();
-    attr->set_name(name);
-    it = std::find_if(xs.begin(), xs.end(),
-                      [&](const framework::proto::OpDesc_Attr &x) {
-                        return x.name() == name;
-                      });
-  }
-
+  auto it = FindAttr(&desc_, name);
   it->set_type(framework::proto::INTS);
   it->clear_ints();
   for (auto &i : v) {
     it->add_ints(i);
   }
 }
+
+template <>
+void OpDesc::SetAttr<std::vector<float>>(const std::string &name,
+                                         const std::vector<float> &v) {
+  auto it = FindAttr(&desc_, name);
+  it->set_type(framework::proto::FLOATS);
+  it->clear_floats();
+  for (auto &i : v) {
+    it->add_floats(i);
+  }
+}
+
+google::protobuf::internal::RepeatedPtrIterator<
+    const framework::proto::OpDesc_Attr>
+GetFindAttr(const framework::proto::OpDesc &desc, const std::string &name) {
+  auto &xs = desc.attrs();
+  auto it = std::find_if(
+      xs.begin(), xs.end(),
+      [&](const framework::proto::OpDesc_Attr &x) { return x.name() == name; });
+  return it;
+}
+
+#define GET_ATTR_IMPL(T, pb_f__)                        \
+  template <>                                           \
+  T OpDesc::GetAttr<T>(const std::string &name) const { \
+    auto it = GetFindAttr(desc_, name);                 \
+    return it->pb_f__();                                \
+  }
+GET_ATTR_IMPL(int32_t, i);
+GET_ATTR_IMPL(float, f);
 
 }  // namespace pb
 }  // namespace lite
