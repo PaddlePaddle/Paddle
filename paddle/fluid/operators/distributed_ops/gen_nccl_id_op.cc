@@ -124,8 +124,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
         ss << trainers[i];
       }
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
-      std::string nccl_var_name = platform::GetHierarchicalInterNCCLVarName();
-      GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, inter_endpoints);
+      for (int i = 0; i < nccl_comm_num; i++) {
+        std::string nccl_var_name =
+            platform::GetHierarchicalInterNCCLVarName(i);
+        GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, inter_endpoints);
+      }
     }
 
     // hierarchical exter ncclid
@@ -208,12 +211,14 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     if (use_hierarchical_allreduce) {
       if (inter_trainer_id > 0) {
-        rpc_service->SetCond(distributed::kRequestSend);
-        VLOG(3) << "trainer_id:" << trainer_id
-                << ", inter_trainer_id:" << inter_trainer_id
-                << " start getting nccl id from inter_trainer 0";
-        rpc_service->WaitBarrier(distributed::kRequestSend);
-        rpc_service->ResetBarrierCounter();
+        for (int i = 0; i < nccl_comm_num; i++) {
+          rpc_service->SetCond(distributed::kRequestSend);
+          VLOG(3) << "trainer_id:" << trainer_id
+                  << ", inter_trainer_id:" << inter_trainer_id
+                  << " start getting nccl id from inter_trainer:" << i;
+          rpc_service->WaitBarrier(distributed::kRequestSend);
+          rpc_service->ResetBarrierCounter();
+        }
       }
 
       if (exter_trainer_id > 0) {
