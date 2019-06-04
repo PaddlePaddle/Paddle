@@ -88,12 +88,12 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                     opt.minimize(loss)
         return [img, label], loss
 
-    def freeze_graph(self,
-                     use_cuda,
-                     seed,
-                     activation_quant_type,
-                     weight_quant_type='abs_max',
-                     for_ci=False):
+    def mkldnn_based_freeze_graph(self,
+                                  use_cuda,
+                                  seed,
+                                  activation_quant_type,
+                                  weight_quant_type='abs_max',
+                                  for_ci=False):
         random.seed(0)
         np.random.seed(0)
 
@@ -164,23 +164,25 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                             marked_nodes)
         mkldnn_program = test_graph.to_program()
         w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        for i, value in enumerate(w_mkldnn):
-            if value.all() != 0:
-                self.assertFalse(self.isinteger(value))
+        # Check if weights are still integer
+        self.assertFalse(self.isinteger(np.sum(w_mkldnn)))
+
+        # Check if the conv2d output is rightly linked to fake_dequantize's 
+        # output
         self.check_program(mkldnn_program)
         if not for_ci:
             print('{}: {}'.format('w_mkldnn' + dev_name + activation_quant_type
                                   + '_' + weight_quant_type, np.sum(w_mkldnn)))
 
-    def test_freeze_graph_cpu_static(self):
+    def test_mkldnn_graph_cpu_static(self):
         with fluid.unique_name.guard():
-            self.freeze_graph(
+            self.mkldnn_based_freeze_graph(
                 False,
                 seed=2,
                 activation_quant_type='range_abs_max',
                 weight_quant_type='abs_max',
                 for_ci=True)
-            self.freeze_graph(
+            self.mkldnn_based_freeze_graph(
                 False,
                 seed=2,
                 activation_quant_type='moving_average_abs_max',
