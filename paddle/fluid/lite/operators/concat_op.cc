@@ -54,7 +54,7 @@ bool ConcatOpLite::InferShape() const {
 }
 
 // TODO(Superjomn) replace framework::OpDesc with a lite one.
-bool ConcatOpLite::AttachImpl(const OpDesc &op_desc, lite::Scope *scope) {
+bool ConcatOpLite::AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) {
   auto inputs = op_desc.Input("X");
   auto out = op_desc.Output("Out").front();
 
@@ -63,7 +63,7 @@ bool ConcatOpLite::AttachImpl(const OpDesc &op_desc, lite::Scope *scope) {
   }
   CHECK(scope->FindVar(out));
   param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
-  param_.axis = GetAttr<int>(op_desc.GetAttr("axis"));
+  param_.axis = op_desc.GetAttr<int>("axis");
 
   return true;
 }
