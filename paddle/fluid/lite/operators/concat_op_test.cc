@@ -42,7 +42,7 @@ TEST(concat_op_lite, test) {
   }
 
   // prepare op desc
-  lite::OpDesc desc;
+  cpp::OpDesc desc;
   desc.SetType("concat");
   desc.SetInput("X", {"x0", "x1"});
   desc.SetOutput("Out", {"output"});
