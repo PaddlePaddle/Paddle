@@ -24,6 +24,8 @@ from ....framework import IrGraph, Variable, Program
 from ....log_helper import get_logger
 from ..core.strategy import Strategy
 from .quantization_pass import *
+from .quantization_mkldnn_pass import *
+
 __all__ = ['QuantizationStrategy']
 
 _logger = get_logger(
