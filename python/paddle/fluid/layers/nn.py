@@ -10594,8 +10594,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 2]
         input.data = [
-            [[1], [2]],
-            [[3], [4]],
+            [[1, 2],
+             [3, 4]],
         ]
 
         input.lod = [[0, 2]]
@@ -10612,8 +10612,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 4]
         output.data = [
-            [[9662], [9217], [1129], [8487]],
-            [[8310], [1327], [1654], [4567]],
+            [[9662, 9217, 1129, 8487],
+             [8310, 1327, 1654, 4567]],
         ]
 
         output.lod = [[0, 2]]
@@ -10632,8 +10632,24 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
-           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
+
+            place = fluid.core.CPUPlace()
+            exece = fluid.Executor(place)
+            exece.run(fluid.default_startup_program()) 
+
+            # Init Tensor
+            tensor = fluid.core.LoDTensor() 
+            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
+            # Set LoD
+            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
+
+            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
