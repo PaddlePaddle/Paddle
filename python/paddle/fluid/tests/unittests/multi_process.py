@@ -23,13 +23,11 @@ def train():
     worker_endpoints = worker_endpoints_env.split(",")
     trainers_num = len(worker_endpoints)
 
-    name = (
-        "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"
-        .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,
-                trainer_id))
+    name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
+        .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
 
     print(name)
-    with open("multi_process.check.log", "wb") as f:
+    with open("multi_process.check.log", "w") as f:
         f.write(name)
 
 
