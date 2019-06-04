@@ -4,6 +4,7 @@ strategies:
         class: 'MKLDNNPostTrainingQuantStrategy'
         int8_model_save_path: 'OUTPUT_PATH'
         fp32_model_path: 'MODEL_PATH'
+        omp_num_threads: 4
 compressor:
     epoch: 0
     checkpoint_path: ''

@@ -6,8 +6,8 @@ function(inference_analysis_python_api_int8_test target model_dir data_dir filen
         ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
         ARGS --infer_model ${model_dir}/model
              --infer_data ${data_dir}/data.bin
-             --int8_model_save_path int8_models/${target} 
-             --warmup_batch_size 100
+             --int8_model_save_path int8_models/${target}
+             --warmup_batch_size 10
              --batch_size 50)
 endfunction()
 
@@ -19,15 +19,19 @@ list(REMOVE_ITEM TEST_OPS test_distillation_strategy)
 # int8 image classification python api test
 if(LINUX AND WITH_MKLDNN)
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-  set(MKLDNN_INT8_TEST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/quantization/mkldnn_int8_quantization_strategy.py")
+  set(MKLDNN_INT8_TEST_FILE "test_mkldnn_int8_quantization_strategy.py")
 
-  #resnet50 int8
-  set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
-  inference_analysis_python_api_int8_test(test_slim_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
+  #googlenet int8
+  set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
+  inference_analysis_python_api_int8_test(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #mobilenet int8
   set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
   inference_analysis_python_api_int8_test(test_slim_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
+
+  #resnet50 int8
+  set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
+  inference_analysis_python_api_int8_test(test_slim_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   #mobilenetv2 int8
   set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
@@ -44,11 +48,11 @@ if(LINUX AND WITH_MKLDNN)
   #vgg19 int8
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
   inference_analysis_python_api_int8_test(test_slim_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
-
-  #googlenet int8
-  set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-  inference_analysis_python_api_int8_test(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 endif()
+
+# Remove test_mkldnn_int8_quantization_strategy since it has been tested before
+# or current CI not support for testing
+list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy)
 
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)

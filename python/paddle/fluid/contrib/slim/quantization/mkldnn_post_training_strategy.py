@@ -31,12 +31,19 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
     The strategy for Post Training quantization strategy.
     """
 
-    def __init__(self, int8_model_save_path=None, fp32_model_path=None):
+    def __init__(self,
+                 int8_model_save_path=None,
+                 fp32_model_path=None,
+                 omp_num_threads=1):
         """
         Args:
-            int8_model_save_path(str): The path to save int8 model with fp32 weights.
-                            None means it doesn't save int8 model. defalut: None.
-            fp32_model_path(str): The path to model with fp32 weight. defalut: None.
+            int8_model_save_path(str): The path to save model for MKL-DNN int8 inference.
+                            None means it doesn't save model. defalut: None.
+            fp32_model_path(str): The path of fp32 model to be converted to int8 model
+                            None means it doesn't have fp32 model. defalut: None.
+            omp_num_threads(int): The num of omp threads user want 
+                            MKLDNNPostTrainingQuantStrategy to use. defalut: 1.
+                            1 means only use one omp thread.
         """
 
         super(MKLDNNPostTrainingQuantStrategy, self).__init__(0, 0)
@@ -44,10 +51,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         if fp32_model_path is None:
             raise Exception("fp32_model_path is None")
         self.fp32_model_path = fp32_model_path
-        if 'FLAGS_OMP_NUM_THREADS' in os.environ:
-            self.omp_num_threads = int(os.environ['FLAGS_OMP_NUM_THREADS'])
-        else:
-            self.omp_num_threads = 1
+        self.omp_num_threads = omp_num_threads
 
     def on_compression_begin(self, context):
         """
@@ -74,6 +78,8 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         if six.PY3:
             data = warmup_reader.__next__()
 
+        # TODO (Intel) Remove limits that MKLDNNPostTrainingQuantStrategy
+        # only support image classification
         num_images = len(data)
         images = core.PaddleTensor()
         images.name = "x"

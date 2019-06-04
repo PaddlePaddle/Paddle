@@ -62,7 +62,10 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
     Test API of Post Training quantization strategy for int8 with MKLDNN.
     """
 
-    def _reader_creator(self, data_file='data.bin', cycle=False):
+    def _reader_creator(self,
+                        data_file='data.bin',
+                        cycle=False,
+                        predict_num=100):
         def reader():
             with open(data_file, 'rb') as fp:
                 num = fp.read(8)
@@ -89,6 +92,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                     label = struct.unpack('q', label)[0]
                     yield img, int(label)
                     step += 1
+                    if predict_num == step:
+                        break
                     if cycle and step == num:
                         step = 0
 
