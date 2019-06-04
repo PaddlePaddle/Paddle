@@ -31,8 +31,10 @@ limitations under the License. */
 namespace paddle {
 
 using contrib::AnakinConfig;
+using anakin::Precision;
+using anakin::OpRunType;
 
-template <typename Target>
+template <typename T, Precision P, OpRunType R>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
   PaddleInferenceAnakinPredictor() : config_() { InitEnv(); }
@@ -47,10 +49,8 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
   bool ResetConfig(const AnakinConfig& config);
-  anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>&
-  ResetExecuter(
-      std::shared_ptr<anakin::graph::Graph<Target, anakin::Precision::FP32>>
-          graph_p);
+  anakin::Net<T, P, R>& ResetExecuter(
+      std::shared_ptr<anakin::graph::Graph<T, P>> graph_p);
 
   ~PaddleInferenceAnakinPredictor() override;
 
@@ -67,11 +67,9 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   static std::mutex mutex_;
   static std::once_flag init_anakin_;
   AnakinConfig config_;
-  std::shared_ptr<anakin::Context<Target>> ctx_p_;
-  std::shared_ptr<anakin::graph::Graph<Target, anakin::Precision::FP32>>
-      graph_p_;
-  anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>*
-      executor_p_{nullptr};
+  std::shared_ptr<anakin::Context<T>> ctx_p_;
+  std::shared_ptr<anakin::graph::Graph<T, P>> graph_p_;
+  anakin::Net<T, P, R>* executor_p_{nullptr};
 };
 
 }  // namespace paddle
