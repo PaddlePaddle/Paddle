@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign
+from .tensor import concat, assign, fill_constant
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -9329,11 +9329,38 @@ def expand(x, expand_times, name=None):
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
+    # check expand_times have tensor
+
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'expand_times': expand_times}
+    else:
+
+        def contain_tensor(expand_times):
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        if contain_tensor(expand_times):
+            new_expand_times = []
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    new_expand_times.append(ele)
+                else:
+                    assert (isinstance(ele, int))
+                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    fill_constant(
+                        [1], 'int32', ele, force_cpu=True, out=temp_out)
+                    new_expand_times.append(temp_out)
+            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
+            attrs = {}
+        else:
+            inputs = {'X': x}
+            attrs = {'expand_times': expand_times}
+
     helper.append_op(
-        type='expand',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'expand_times': expand_times})
+        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
