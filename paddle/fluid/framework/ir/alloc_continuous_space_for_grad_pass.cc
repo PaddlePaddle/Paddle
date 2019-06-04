@@ -226,7 +226,9 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         gps_size += size;
         out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
       }
-      VLOG(10) << out.str() << ", group memory size:" << gps_size;
+      VLOG(10) << out.str()
+               << ", group size:" << group_grads_params->at(i).size()
+               << ", group memory size:" << gps_size;
     }
   }
 
