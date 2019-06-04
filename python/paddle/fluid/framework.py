@@ -1013,7 +1013,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1036,7 +1036,6 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1046,13 +1045,17 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
+                                )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
