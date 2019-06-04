@@ -11,18 +11,47 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import contextlib
 import numpy as np
 
 from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
 
-__all__ = ['enabled', 'guard', 'to_variable']
+__all__ = [
+    'enabled',
+    'no_grad',
+    'guard',
+    'to_variable',
+]
 
 
 def enabled():
     return framework.in_dygraph_mode()
+
+
+@contextlib.contextmanager
+def _switch_tracer_mode_guard_(is_train=True):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        mode = tracer._train_mode
+        tracer._train_mode = is_train
+        yield
+        tracer._train_mode = mode
+    else:
+        yield
+
+
+def _no_grad_(func):
+    def __impl__(*args, **kwargs):
+        with _switch_tracer_mode_guard_(is_train=False):
+            return func(*args, **kwargs)
+
+    return __impl__
+
+
+no_grad = wrap_decorator(_no_grad_)
 
 
 @signature_safe_contextmanager
