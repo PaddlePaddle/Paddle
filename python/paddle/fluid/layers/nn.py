@@ -8840,6 +8840,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             from paddle.fluid.param_attr import ParamAttr
             x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
             mode = 'channel'
