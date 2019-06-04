@@ -35,9 +35,11 @@ class Layer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
 
-  std::vector<imperative::VarBase *> Forward(
-      const std::vector<imperative::VarBase *> &inputs) override {
-    PYBIND11_OVERLOAD(std::vector<imperative::VarBase *>, Layer, Forward,
+  std::vector<std::shared_ptr<imperative::VarBase>> Forward(
+      const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
+      override {
+    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
+                      Forward,
                       inputs);  // NOLINT
   }
 };
@@ -72,7 +74,8 @@ void BindImperative(pybind11::module *m_ptr) {
 
   m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
-  py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
+  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
+      m, "VarBase", R"DOC()DOC")
       .def(
           py::init<const std::string &, paddle::framework::proto::VarType::Type,
                    const std::vector<int64_t>, const paddle::platform::CPUPlace,
@@ -136,10 +139,11 @@ void BindImperative(pybind11::module *m_ptr) {
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
-      .def("forward", [](imperative::Layer &self,
-                         const std::vector<imperative::VarBase *> &inputs) {
-        return self.Forward(inputs);
-      });
+      .def("forward",
+           [](imperative::Layer &self,
+              const std::vector<std::shared_ptr<imperative::VarBase>> &inputs) {
+             return self.Forward(inputs);
+           });
 
   py::class_<imperative::Tracer>(*m, "Tracer", "")
       .def("__init__",
@@ -154,8 +158,8 @@ void BindImperative(pybind11::module *m_ptr) {
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
              py::gil_scoped_release release;
-             return self.Trace(op, inputs, outputs, attrs_map, expected_place,
-                               stop_gradient);
+             self.Trace(op, inputs, outputs, attrs_map, expected_place,
+                        stop_gradient);
            })
       .def("trace", [](imperative::Tracer &self, imperative::OpBase *op,
                        const imperative::VarBasePtrMap &inputs,
@@ -164,8 +168,8 @@ void BindImperative(pybind11::module *m_ptr) {
                        const platform::CUDAPlace expected_place,
                        const bool stop_gradient = false) {
         py::gil_scoped_release release;
-        return self.Trace(op, inputs, outputs, attrs_map, expected_place,
-                          stop_gradient);
+        self.Trace(op, inputs, outputs, attrs_map, expected_place,
+                   stop_gradient);
       });
 
   // define parallel context

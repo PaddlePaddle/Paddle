@@ -704,7 +704,7 @@ set +x
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 1;
+            exit 8;
         fi
 set -ex
     fi
