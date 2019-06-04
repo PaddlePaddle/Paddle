@@ -193,11 +193,11 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
 
         _logger.info('--- INT8 prediction start ---')
         val_reader = paddle.batch(
-            self._reader_creator(data_path, False), batch_size=batch_size)
+            self._reader_creator(data_path, False, 10), batch_size=batch_size)
         int8_model_result = self._predict(val_reader, int8_model_path)
         _logger.info('--- FP32 prediction start ---')
         val_reader = paddle.batch(
-            self._reader_creator(data_path, False), batch_size=batch_size)
+            self._reader_creator(data_path, False, 10), batch_size=batch_size)
         fp32_model_result = self._predict(val_reader, fp32_model_path)
 
         _logger.info('--- comparing outputs ---')

@@ -34,14 +34,14 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
     def __init__(self,
                  int8_model_save_path=None,
                  fp32_model_path=None,
-                 omp_num_threads=1):
+                 cpu_math_library_num_threads=1):
         """
         Args:
             int8_model_save_path(str): The path to save model for MKL-DNN int8 inference.
                             None means it doesn't save model. defalut: None.
             fp32_model_path(str): The path of fp32 model to be converted to int8 model
                             None means it doesn't have fp32 model. defalut: None.
-            omp_num_threads(int): The num of omp threads user want 
+            cpu_math_library_num_threads(int): The num of omp threads user want 
                             MKLDNNPostTrainingQuantStrategy to use. defalut: 1.
                             1 means only use one omp thread.
         """
@@ -51,7 +51,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         if fp32_model_path is None:
             raise Exception("fp32_model_path is None")
         self.fp32_model_path = fp32_model_path
-        self.omp_num_threads = omp_num_threads
+        self.cpu_math_library_num_threads = cpu_math_library_num_threads
 
     def on_compression_begin(self, context):
         """
@@ -68,7 +68,8 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         infer_config.disable_gpu()
         infer_config.set_model(self.fp32_model_path)
         infer_config.enable_mkldnn()
-        infer_config.set_cpu_math_library_num_threads(self.omp_num_threads)
+        infer_config.set_cpu_math_library_num_threads(
+            self.cpu_math_library_num_threads)
 
         #Prepare the data for calculating the quantization scales
         warmup_reader = context.eval_reader()

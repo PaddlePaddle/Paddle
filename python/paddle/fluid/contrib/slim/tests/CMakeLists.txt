@@ -7,7 +7,7 @@ function(inference_analysis_python_api_int8_test target model_dir data_dir filen
         ARGS --infer_model ${model_dir}/model
              --infer_data ${data_dir}/data.bin
              --int8_model_save_path int8_models/${target}
-             --warmup_batch_size 10
+             --warmup_batch_size 100
              --batch_size 50)
 endfunction()
 
