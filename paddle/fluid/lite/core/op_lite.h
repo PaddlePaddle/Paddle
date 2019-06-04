@@ -201,43 +201,5 @@ class OpInfo : public cpp::OpDesc {
   }
 };
 
-/*
-class OpInfo {
- public:
-  // To avoid the bugs from legancy framework::OpDesc, we use the ProtoBuf
-  // message instead.
-  void Build(const framework::proto::OpDesc &desc);
-
-  const framework::proto::OpDesc &desc() const;
-  framework::proto::OpDesc *mutable_desc() { return desc_.get(); }
-  const std::list<std::string> &input_names() const { return input_names_; }
-  const std::list<std::string> &output_names() const { return output_names_; }
-  const std::map<std::string, std::list<std::string>> &input_argument() const;
-  const std::map<std::string, std::list<std::string>> &output_argument() const;
-  bool GetInputArgname(const std::string &value_name, std::string *out) const;
-  bool GetOutputArgname(const std::string &value_name, std::string *out) const;
-
-  const std::list<std::string> &input_argnames() const;
-  const std::list<std::string> &output_argnames() const;
-
- private:
-  void ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc);
-
-  void CollectInputAndOutputArgnames(const framework::proto::OpDesc &opdesc);
-
-  void CollectArguments(const framework::proto::OpDesc &opdesc);
-
- private:
-  std::list<std::string> input_names_;
-  std::list<std::string> output_names_;
-  std::list<std::string> input_argnames_;
-  std::list<std::string> output_argnames_;
-  std::map<std::string, std::list<std::string>> input_argument_;
-  std::map<std::string, std::list<std::string>> output_argument_;
-  // NOTE too heavy.
-  std::unique_ptr<framework::proto::OpDesc> desc_;
-};
- */
-
 }  // namespace lite
 }  // namespace paddle
