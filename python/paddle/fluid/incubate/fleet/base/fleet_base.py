@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import abc
-from enum import Enum
 
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
@@ -26,12 +25,12 @@ from role_maker import RoleMakerBase
 from role_maker import UserDefinedRoleMaker
 
 
-class Mode(Enum):
+class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
-    TRANSPILER = 1,
-    PSLIB = 2,
+    TRANSPILER = 1
+    PSLIB = 2
     COLLECTIVE = 3
 
 

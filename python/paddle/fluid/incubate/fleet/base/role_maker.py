@@ -13,15 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-from enum import Enum
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker'
 ]
 
 
-class Role(Enum):
-    WORKER = 1,
+class Role:
+    WORKER = 1
     SERVER = 2
 
 
