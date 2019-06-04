@@ -24,7 +24,10 @@ import warnings
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(model_dict, optimizer, dirname, filename=None):
+def save_persistables(model_dict,
+                      optimizer=None,
+                      dirname='save_dir',
+                      filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -77,7 +80,7 @@ def save_persistables(model_dict, optimizer, dirname, filename=None):
         _save_var_to_file(model_dict, optimizer, dirname, filename)
 
 
-def load_persistables(dirname):
+def load_persistables(dirname='save_dir'):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -88,7 +91,7 @@ def load_persistables(dirname):
     the file name.
 
     Args:
-        dirname(str): The directory path.
+        dirname(str): The directory path. default is save_dir
         optimizer(Optimizer): Optimizer to be save
 
     Returns:
@@ -131,11 +134,17 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
     for optimizer in optimizers:
         if isinstance(optimizer._learning_rate,
                       learning_rate_scheduler.LearningRateDecay):
-            f = open(
-                os.path.join(file_dir, "optimizers",
-                             os.path.normpath(str(optimizer._name))), "wb")
-            pickle.dump(optimizer._learning_rate, f, 2)
-            f.close()
+            try:
+                f = open(
+                    os.path.join(file_dir, "optimizers",
+                                 os.path.normpath(str(optimizer._name))), "wb")
+                pickle.dump(optimizer._learning_rate, f, 2)
+                f.close()
+            except ():
+                raise IOError("Can't load %s",
+                              os.path.join(
+                                  file_dir, "optimizers",
+                                  os.path.normpath(str(optimizer._name))))
         else:
             warnings.warn(
                 "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
@@ -194,9 +203,15 @@ def _load_var_from_file(file_dir):
     opt_path = os.path.join(file_dir, "optimizers")
     for _, _, optimizers in os.walk(opt_path):
         for optimizer in optimizers:
-            f = open(os.path.join(opt_path, optimizer), "rb")
-            load_optimizer_map[optimizer] = pickle.load(f)
-            f.close()
+            try:
+                f = open(os.path.join(opt_path, optimizer), "rb")
+                load_optimizer_map[optimizer] = pickle.load(f)
+                f.close()
+            except IOError:
+                raise IOError("Can't load %s",
+                              os.path.join(
+                                  file_dir, "optimizers",
+                                  os.path.normpath(str(optimizer._name))))
     if len(load_optimizer_map) == 0:
         warnings.warn("No optimizer loaded")
 

@@ -102,6 +102,9 @@ class Optimizer(object):
         """
         load optimizer with learning rate decay in dygraph mode
         :return: None
+
+        Args:
+            stat_dict: the dict load by load_persistable method
         """
         if framework.in_dygraph_mode():
             self._learning_rate = stat_dict[self._name]
