@@ -47,7 +47,7 @@ TEST(reshape_op_lite, test) {
     for (auto& has_actual_shape : {true, false}) {
       for (auto& inplace : {true, false}) {
         // prepare op desc
-        lite::OpDesc desc;
+        cpp::OpDesc desc;
         desc.SetType("reshape");
         desc.SetInput("X", {"x"});
         if (has_actual_shape) {
@@ -68,7 +68,7 @@ TEST(reshape_op_lite, test) {
         // check output dims
         auto output_dims = output->dims();
         CHECK_EQ(output_dims.size(), shape.second.size());
-        for (int i = 0; i < output_dims.size(); i++) {
+        for (size_t i = 0; i < output_dims.size(); i++) {
           CHECK_EQ(output_dims[i], shape.second[i]);
         }
       }
@@ -102,7 +102,7 @@ TEST(reshape2_op_lite, test) {
     for (auto& has_actual_shape : {true, false}) {
       for (auto& inplace : {true, false}) {
         // prepare op desc
-        lite::OpDesc desc;
+        cpp::OpDesc desc;
         desc.SetType("reshape");
         desc.SetInput("X", {"x"});
         if (has_actual_shape) {
@@ -132,7 +132,7 @@ TEST(reshape2_op_lite, test) {
         auto xshape_dims = xshape->dims();
         CHECK_EQ(xshape_dims.size(), x_dims.size() + 1);
         CHECK_EQ(xshape_dims[0], 0);
-        for (int i = 0; i < x_dims.size(); i++) {
+        for (size_t i = 0; i < x_dims.size(); i++) {
           CHECK_EQ(xshape_dims[i + 1], x_dims[i]);
         }
       }
