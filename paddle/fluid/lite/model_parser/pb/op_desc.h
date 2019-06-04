@@ -33,7 +33,8 @@ namespace paddle {
 namespace lite {
 namespace pb {
 
-using Attribute = variant<int, float, bool, std::vector<std::string>>;
+using Attribute =
+    variant<int, float, bool, std::vector<std::string>, std::vector<int>>;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 /*
@@ -152,7 +153,6 @@ class OpDesc {
 
     Attribute res;
     CHECK(it != xs.end());
-
     switch (it->type()) {
       case framework::proto::INT:
         res.set<int>(it->i());
@@ -166,6 +166,13 @@ class OpDesc {
       case framework::proto::BOOLEAN:
         res.set<bool>(it->b());
         break;
+      case framework::proto::INTS: {
+        std::vector<int> values;
+        const auto &ys = it->ints();
+        std::transform(ys.begin(), ys.end(), std::back_inserter(values),
+                       [](const int &x) { return x; });
+        res.set<std::vector<int>>(values);
+      } break;
 
       default:
         LOG(FATAL) << "unsupported attr type";
@@ -230,6 +237,10 @@ class OpDesc {
 template <>
 void OpDesc::SetAttr<std::string>(const std::string &name,
                                   const std::string &v);
+
+template <>
+void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
+                                       const std::vector<int> &v);
 
 }  // namespace pb
 }  // namespace lite

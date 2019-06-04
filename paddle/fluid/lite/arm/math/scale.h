@@ -12,30 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
 
 namespace paddle {
 namespace lite {
-namespace mir {
+namespace arm {
+namespace math {
 
-class RuntimeContextAssignPass : public StmtPass {
- public:
-  RuntimeContextAssignPass() {}
+template <typename T>
+void scale(const T* din, T* dout, int num, float scale, float bias);
 
-  void Apply(const std::unique_ptr<SSAGraph>& graph) override {
-    for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsStmt()) continue;
-      auto& inst = node.AsStmt();
-      inst.picked_kernel().SetContext(
-          ContextScheduler::Global().NewContext(inst.picked_kernel().target()));
-    }
-  }
-};
-
-}  // namespace mir
+}  // namespace math
+}  // namespace arm
 }  // namespace lite
 }  // namespace paddle
-
-REGISTER_MIR_PASS(runtime_context_assign_pass,
-                  paddle::lite::mir::RuntimeContextAssignPass);

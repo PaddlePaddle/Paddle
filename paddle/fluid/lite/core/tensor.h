@@ -48,7 +48,7 @@ class DDimBase {
 
   explicit DDimBase(const std::vector<int64_t> &x) { self()->ConstructFrom(x); }
   value_type operator[](int offset) const { return (*self())[offset]; }
-  std::vector<int64_t> Vectorize() { return self()->Vectorize(); }
+  std::vector<int64_t> Vectorize() const { return self()->Vectorize(); }
   size_t size() const { return const_self()->size(); }
   bool empty() const { return const_self()->empty(); }
 

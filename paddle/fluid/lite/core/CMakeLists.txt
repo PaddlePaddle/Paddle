@@ -54,3 +54,4 @@ lite_cc_test(test_type_system SRCS type_system_test.cc DEPS type_system utils_li
 #lite_cc_test(test_optimizer_lite SRCS optimizer_test.cc DEPS mir_pass_manager program_fake_utils mir_passes optimizer_lite fc_op_lite)
 lite_cc_test(test_types_lite SRCS types_test.cc DEPS types_lite)
 lite_cc_test(test_memory_lite SRCS memory_test.cc DEPS memory_lite)
+lite_cc_test(test_context_lite SRCS context_test.cc DEPS context_lite X86_DEPS operator)

@@ -38,6 +38,29 @@ void OpDesc::SetAttr<std::string>(const std::string &name,
   it->set_s(v.c_str());
 }
 
+template <>
+void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
+                                       const std::vector<int> &v) {
+  auto &xs = *desc_.mutable_attrs();
+  auto it = std::find_if(
+      xs.begin(), xs.end(),
+      [&](const framework::proto::OpDesc_Attr &x) { return x.name() == name; });
+  if (it == xs.end()) {
+    auto *attr = xs.Add();
+    attr->set_name(name);
+    it = std::find_if(xs.begin(), xs.end(),
+                      [&](const framework::proto::OpDesc_Attr &x) {
+                        return x.name() == name;
+                      });
+  }
+
+  it->set_type(framework::proto::INTS);
+  it->clear_ints();
+  for (auto &i : v) {
+    it->add_ints(i);
+  }
+}
+
 }  // namespace pb
 }  // namespace lite
 }  // namespace paddle

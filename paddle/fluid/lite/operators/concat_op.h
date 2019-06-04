@@ -12,30 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+#include <string>
+#include <vector>
+#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {
+namespace operators {
 
-class RuntimeContextAssignPass : public StmtPass {
+class ConcatOpLite : public OpLite {
  public:
-  RuntimeContextAssignPass() {}
+  ConcatOpLite() {}
+  explicit ConcatOpLite(const std::string &op_type) : OpLite(op_type) {}
 
-  void Apply(const std::unique_ptr<SSAGraph>& graph) override {
-    for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsStmt()) continue;
-      auto& inst = node.AsStmt();
-      inst.picked_kernel().SetContext(
-          ContextScheduler::Global().NewContext(inst.picked_kernel().target()));
-    }
-  }
+  bool CheckShape() const override;
+
+  bool InferShape() const override;
+
+  bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) override;
+
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+  std::string DebugString() const override { return "concat"; }
+
+ private:
+  mutable ConcatParam param_;
 };
 
-}  // namespace mir
+}  // namespace operators
 }  // namespace lite
 }  // namespace paddle
-
-REGISTER_MIR_PASS(runtime_context_assign_pass,
-                  paddle::lite::mir::RuntimeContextAssignPass);

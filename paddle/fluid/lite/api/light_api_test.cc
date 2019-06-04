@@ -44,3 +44,18 @@ USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
+
+USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
+USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
+
+#ifdef LITE_WITH_X86
+USE_LITE_KERNEL(relu, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(square, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(elementwise_sub, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(elementwise_add, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(softmax, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(dropout, kX86, kFloat, kNCHW, def);
+#endif

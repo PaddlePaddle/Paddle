@@ -12,30 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+#include <algorithm>
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {
+namespace kernels {
+namespace host {
 
-class RuntimeContextAssignPass : public StmtPass {
+class ReshapeCompute
+    : public KernelLite<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
-  RuntimeContextAssignPass() {}
+  void Run() override;
 
-  void Apply(const std::unique_ptr<SSAGraph>& graph) override {
-    for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsStmt()) continue;
-      auto& inst = node.AsStmt();
-      inst.picked_kernel().SetContext(
-          ContextScheduler::Global().NewContext(inst.picked_kernel().target()));
-    }
-  }
+  virtual ~ReshapeCompute() = default;
 };
 
-}  // namespace mir
+}  // namespace host
+}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle
-
-REGISTER_MIR_PASS(runtime_context_assign_pass,
-                  paddle::lite::mir::RuntimeContextAssignPass);

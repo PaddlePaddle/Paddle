@@ -22,9 +22,9 @@ namespace operators {
 bool SoftmaxOp::CheckShape() const {
   CHECK_OR_FALSE(param_.x);
   CHECK_OR_FALSE(param_.output);
-  auto dim_x = param_.x->dims();
-  auto rank_x = dim_x.size();
-  CHECK_OR_FALSE(param_.axis >= -rank_x && param_.axis < rank_x);
+  auto x_dims = param_.x->dims();
+  auto x_rank = x_dims.size();
+  CHECK_OR_FALSE(param_.axis >= -x_rank && param_.axis < x_rank);
   return true;
 }
 

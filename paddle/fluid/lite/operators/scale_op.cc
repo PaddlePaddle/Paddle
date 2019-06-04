@@ -12,58 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <vector>
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/operators/scale_op.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/operators/op_params.h"
-#include "paddle/fluid/lite/utils/all.h"
-
 namespace paddle {
 namespace lite {
 namespace operators {
 
-class ScaleOp : public OpLite {
- public:
-  ScaleOp() {}
+bool ScaleOp::CheckShape() const {
+  CHECK_OR_FALSE(param_.x);
+  CHECK_OR_FALSE(param_.output);
+  return true;
+}
 
-  explicit ScaleOp(const std::string &type) : OpLite(type) {}
+bool ScaleOp::InferShape() const {
+  param_.output->Resize(param_.x->dims());
+  return true;
+}
 
-  bool CheckShape() const override {
-    CHECK_OR_FALSE(param_.x);
-    CHECK_OR_FALSE(param_.output);
-    return true;
-  }
-
-  bool InferShape() const override {
-    param_.output->Resize(param_.x->dims());
-    return true;
-  }
-
-  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-
-  // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override {
-    auto x = op_desc.Input("X").front();
-    auto out = op_desc.Output("Out").front();
-
-    param_.x = scope->FindVar(x)->GetMutable<Tensor>();
-    CHECK(scope->FindVar(out));
-    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.scale = GetAttr<float>(op_desc.GetAttr("scale"));
-    param_.bias = GetAttr<float>(op_desc.GetAttr("bias"));
-    param_.bias_after_scale =
-        GetAttr<bool>(op_desc.GetAttr("bias_after_scale"));
-    return true;
-  }
-
-  std::string DebugString() const override { return op_type_; }
-
- private:
-  mutable ScaleParam param_;
-};
+bool ScaleOp::AttachImpl(const OpDesc &op_desc, lite::Scope *scope) {
+  auto x = op_desc.Input("X").front();
+  auto output = op_desc.Output("Out").front();
+  param_.x = scope->FindVar(x)->GetMutable<Tensor>();
+  param_.output = scope->FindVar(output)->GetMutable<Tensor>();
+  param_.scale = GetAttr<float>(op_desc.GetAttr("scale"));
+  param_.bias = GetAttr<float>(op_desc.GetAttr("bias"));
+  param_.bias_after_scale = GetAttr<bool>(op_desc.GetAttr("bias_after_scale"));
+  CHECK(param_.x);
+  CHECK(param_.output);
+  return true;
+}
 
 }  // namespace operators
 }  // namespace lite
