@@ -17,6 +17,7 @@ import six
 import warnings
 import numpy as np
 import threading
+import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider

@@ -69,10 +69,10 @@ class TestPyReader(unittest.TestCase):
                     use_double_buffer=True,
                     return_list=return_list)
                 user_defined_reader = reader_creator_random_image(784, 784)
-                batch_py_reader.decorate_sample_list_generator(
-                    paddle.batch(
-                        user_defined_reader, batch_size=self.batch_size),
-                    fluid.core.CPUPlace())
+                batch_py_reader.decorate_sample_generator(
+                    user_defined_reader,
+                    batch_size=self.batch_size,
+                    places=fluid.core.CPUPlace())
 
                 for epoch in range(self.epoch_num):
                     for _, data in enumerate(batch_py_reader()):
