@@ -669,7 +669,7 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
 struct ConvBias : public PatternBase {
   ConvBias(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bias") {}
-  PDNode* operator()(PDNode* conv_input, bool is_conv3d = false);
+  PDNode* operator()(PDNode* conv_input, std::string conv_type = "conv2d");
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(eltwise);

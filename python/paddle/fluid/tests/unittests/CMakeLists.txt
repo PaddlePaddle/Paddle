@@ -8,6 +8,8 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_simple_dist_transpiler)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_nccl)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_lars)
     LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     LIST(REMOVE_ITEM TEST_OPS test_dist_ctr)
     LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
@@ -28,6 +30,7 @@ list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
+
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -82,6 +85,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -137,7 +141,6 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1)
-
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -146,6 +149,8 @@ if(WITH_DISTRIBUTE)
     endif()
     if(NOT APPLE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
+        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 200)
+        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
