@@ -32,7 +32,7 @@ class ReshapeOp : public OpLite {
 
   bool InferShape() const override;
 
-  bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) override;
+  bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   std::string DebugString() const override { return "reshape"; }
@@ -50,7 +50,7 @@ class Reshape2Op : public ReshapeOp {
 
   bool InferShape() const override;
 
-  bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) override;
+  bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   std::string DebugString() const override { return "reshape2"; }

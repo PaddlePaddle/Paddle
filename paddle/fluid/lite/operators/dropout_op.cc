@@ -42,7 +42,7 @@ class DropoutOpLite : public OpLite {
 
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const OpDesc& op_desc, lite::Scope* scope) override {
+  bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override {
     auto input = op_desc.Input("X").front();
     auto out = op_desc.Output("Out").front();
     auto Mask = op_desc.Output("Mask").front();
@@ -51,14 +51,14 @@ class DropoutOpLite : public OpLite {
     param_.output = GetMutableVar<lite::Tensor>(scope, out);
     param_.mask = GetMutableVar<lite::Tensor>(scope, Mask);
 
-    param_.dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
+    param_.dropout_prob = op_desc.GetAttr<float>("dropout_prob");
     if (op_desc.HasAttr("axis")) {
-      param_.is_test = boost::get<bool>(op_desc.GetAttr("is_test"));
+      param_.is_test = op_desc.GetAttr<bool>("is_test");
     }
-    param_.fix_seed = boost::get<bool>(op_desc.GetAttr("fix_seed"));
-    param_.seed = boost::get<int>(op_desc.GetAttr("seed"));
+    param_.fix_seed = op_desc.GetAttr<bool>("fix_seed");
+    param_.seed = op_desc.GetAttr<int>("seed");
     param_.dropout_implementation =
-        boost::get<int>(op_desc.GetAttr("dropout_implementation"));
+        op_desc.GetAttr<int>("dropout_implementation");
     return true;
   }
 

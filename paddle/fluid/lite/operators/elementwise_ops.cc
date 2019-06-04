@@ -36,7 +36,7 @@ class ElementwiseOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
     auto X_name = opdesc.Input("X").front();
     auto Y_name = opdesc.Input("Y").front();
     auto Out_name = opdesc.Output("Out").front();
@@ -44,7 +44,7 @@ class ElementwiseOp : public OpLite {
     param_.X = GetVar<lite::Tensor>(scope, X_name);
     param_.Y = GetVar<lite::Tensor>(scope, Y_name);
     param_.Out = GetMutableVar<lite::Tensor>(scope, Out_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+    param_.axis = opdesc.GetAttr<int>("axis");
     return true;
   }
 
@@ -75,8 +75,8 @@ class ElementwiseGradExplicitOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 1UL);
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
+    CHECK_EQ(opdesc.InputArgumentNames().size(), 1UL);
     auto Out_name = opdesc.Input(framework::GradVarName("Out")).front();
     auto X_name = opdesc.Output(framework::GradVarName("X")).front();
     auto Y_name = opdesc.Output(framework::GradVarName("Y")).front();
@@ -84,7 +84,7 @@ class ElementwiseGradExplicitOp : public OpLite {
     param_.Out_grad = GetVar<lite::Tensor>(scope, Out_name);
     param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_name);
     param_.Y_grad = GetMutableVar<Tensor>(scope, Y_name);
-    param_.axis = boost::get<int>(opdesc.GetAttr("axis"));
+    param_.axis = opdesc.GetAttr<int>("axis");
 
     return true;
   }

@@ -37,7 +37,7 @@ TEST(softmax_op_lite, test) {
   }
 
   // prepare op desc
-  lite::OpDesc desc;
+  cpp::OpDesc desc;
   desc.SetType("softmax");
   desc.SetInput("X", {"x"});
   desc.SetOutput("Out", {"output"});

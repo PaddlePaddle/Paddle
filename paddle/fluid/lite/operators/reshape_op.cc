@@ -33,7 +33,7 @@ bool ReshapeOp::InferShape() const {
   return true;
 }
 
-bool ReshapeOp::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
+bool ReshapeOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   auto x_var = scope->FindVar(opdesc.Input("X").front());
   auto output_var = scope->FindVar(opdesc.Output("Out").front());
   CHECK(x_var);
@@ -49,9 +49,9 @@ bool ReshapeOp::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
           const_cast<lite::Tensor *>(&(actual_shape_var->Get<lite::Tensor>()));
     }
   }
-  param_.shape = GetAttr<std::vector<int>>(opdesc.GetAttr("shape"));
+  param_.shape = (opdesc.GetAttr<std::vector<int>>("shape"));
   if (opdesc.HasAttr("inplace")) {
-    param_.inplace = GetAttr<bool>(opdesc.GetAttr("inplace"));
+    param_.inplace = opdesc.GetAttr<bool>("inplace");
   }
   CHECK(param_.x) << "Input(X) of ReshapeOp should not be null.";
   CHECK(param_.output) << "Output(Out) of ReshapeOp should not be null.";
@@ -70,14 +70,14 @@ bool Reshape2Op::InferShape() const {
   ReshapeOp::InferShape();
   auto x_dims = param_.x->dims();
   std::vector<DDim::value_type> xshape_dims(x_dims.size() + 1, 0);
-  for (int i = 0; i < x_dims.size(); i++) {
+  for (size_t i = 0; i < x_dims.size(); i++) {
     xshape_dims[i + 1] = x_dims[i];
   }
   param_.xshape->Resize(DDim(xshape_dims));
   return true;
 }
 
-bool Reshape2Op::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
+bool Reshape2Op::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   ReshapeOp::AttachImpl(opdesc, scope);
   auto xshape_var = scope->FindVar(opdesc.Output("XShape").front());
   CHECK(xshape_var);
