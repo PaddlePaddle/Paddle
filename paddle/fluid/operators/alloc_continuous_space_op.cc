@@ -219,8 +219,11 @@ REGISTER_OPERATOR(alloc_continuous_space,
                   paddle::operators::AllocContinuousSpaceOp,
                   paddle::operators::AllocContinuousSpaceOpMaker);
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CPU_KERNEL(
     alloc_continuous_space,
+    ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext,
+                                    plat::float16>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext,
@@ -229,6 +232,8 @@ REGISTER_OP_CPU_KERNEL(
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     alloc_continuous_space,
+    ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext,
+                                    plat::float16>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext, int>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext,

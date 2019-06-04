@@ -46,7 +46,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
       // Atomic Operation to avoid concurrent write error.
       paddle::platform::CudaAtomicAdd(
           tensor_out_ptr + index,
-          -1.0 * learning_rate[0] * selected_rows_ptr[index]);
+          -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
     }
   }
 }
@@ -122,5 +122,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(sgd, ops::SGDOpCUDAKernel<float>,
-                        ops::SGDOpCUDAKernel<double>);
+                        ops::SGDOpCUDAKernel<double>,
+                        ops::SGDOpCUDAKernel<plat::float16>);
