@@ -455,9 +455,8 @@ class NumpyToLoDTensorConverter(object):
 
 
 class ListTensorProvider(object):
-    def __init__(self, generator, places, drop_last=True):
+    def __init__(self, generator, places):
         self.generator = generator
-        self.drop_last = drop_last
         self.converters = []
         self.places = []
         if places:
@@ -491,8 +490,3 @@ class ListTensorProvider(object):
             if len(item) == len(self.places):
                 yield list(self._readData(item, self.places))
                 item = []
-        if not self.drop_last and len(item) != 0:
-            raise ValueError(
-                "The data batch which cannot fit for devices will be "
-                "dropped is not implementation. Other strategies are "
-                "not implemented")
