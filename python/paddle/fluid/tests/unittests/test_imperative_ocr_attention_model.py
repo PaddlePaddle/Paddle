@@ -459,7 +459,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         #    place = fluid.CUDAPlace(0)
         #else:
         #    place = fluid.CPUPlace()
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             backward_strategy = fluid.dygraph.BackwardStrategy()
