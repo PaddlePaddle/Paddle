@@ -9588,8 +9588,39 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    ${comment}
+    Slice Operator.
 
+    Produces a slice of the input tensor along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
+    end dimension for each axis in the list of axes, it uses this information
+    to slice the input data tensor. If a negative value is passed for any of
+    the start or end indices, it represents number of elements before the end
+    of that dimension. If the value passed to start or end is larger than
+    the n (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
+    Following examples will explain how slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+            Then:
+                result = [ [2, 3, 4], ]
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
@@ -10564,8 +10595,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 2]
         input.data = [
-            [[1], [2]],
-            [[3], [4]],
+            [[1, 2],
+             [3, 4]],
         ]
 
         input.lod = [[0, 2]]
@@ -10582,8 +10613,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 4]
         output.data = [
-            [[9662], [9217], [1129], [8487]],
-            [[8310], [1327], [1654], [4567]],
+            [[9662, 9217, 1129, 8487],
+             [8310, 1327, 1654, 4567]],
         ]
 
         output.lod = [[0, 2]]
@@ -10602,8 +10633,24 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
-           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
+
+            place = fluid.core.CPUPlace()
+            exece = fluid.Executor(place)
+            exece.run(fluid.default_startup_program()) 
+
+            # Init Tensor
+            tensor = fluid.core.LoDTensor() 
+            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
+            # Set LoD
+            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
+
+            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
