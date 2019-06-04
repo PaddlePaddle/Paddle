@@ -18,22 +18,25 @@ process on each trainning node for gpu trainning.
 Usage:
     In both of single node training or multiple node training, this module 
 launch a process on each of the given gpu card.
+
+    1. for single node trainning with [0,8) cards
+       python -m paddle.distributed.launch \
+         your_training_py (arg1 arg2 and all others)
     
-    1. for single node four cards training
-       python -m torch.distributed.launch --selected_gpus="0,1,2,3,4" \
+    2. for single node trainning with [0,4) cards
+       python -m paddle.distributed.launch --selected_gpus="0,1,2,3" \
          your_training_py (arg1 arg2 and all others)
 
-    2. for mulitple node training such as two node:192.168.0.16, 192.168.0.17
+    3. for mulitple node training such as two node:192.168.0.16, 192.168.0.17
         on 192.168.0.16:
-            python -m torch.distributed.launch --node_ips="192.168.0.16, 192.168.0.17" \
+            python -m paddle.distributed.launch --node_ips="192.168.0.16,192.168.0.17" \
                 --node_id=0 \
                 your_training_py (arg1 arg2 and all others)
 
         on 192.168.0.17:
-            python -m torch.distributed.launch --node_ips="192.168.0.16, 192.168.0.17" 
+            python -m paddle.distributed.launch --node_ips="192.168.0.16,192.168.0.17" \
                 --node_id=1 \
                 your_training_py (arg1 arg2 and all others)
-
 """
 
 from __future__ import print_function
