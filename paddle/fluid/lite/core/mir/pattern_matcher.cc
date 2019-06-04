@@ -344,8 +344,8 @@ PMNode *PMNode::assert_is_op() {
 PMNode *PMNode::assert_is_op(const std::string &op_type) {
   asserts_.emplace_back([op_type](const Node *x) {
     if (x && x->IsStmt()) {
-      auto op_desc = pb::OpDesc(x->stmt()->op_info()->desc());
-      return op_desc.Type() == op_type;
+      auto *op_info = x->stmt()->op_info();
+      return op_info->Type() == op_type;
     } else {
       return false;
     }
@@ -375,8 +375,8 @@ PMNode *PMNode::assert_is_op_output(const std::string &op_type) {
   asserts_.emplace_back([=](const Node *x) {
     for (auto *op : x->inlinks) {
       if (op && op->IsStmt()) {
-        auto op_desc = pb::OpDesc(x->stmt()->op_info()->desc());
-        if (op_desc.Type() == op_type) return true;
+        auto *op_info = x->stmt()->op_info();
+        if (op_info->Type() == op_type) return true;
       }
     }
     return false;
@@ -389,8 +389,8 @@ PMNode *PMNode::assert_is_op_input(const std::string &op_type) {
   asserts_.emplace_back([=](const Node *x) {
     for (auto *op : x->outlinks) {
       if (op && op->IsStmt()) {
-        auto op_desc = pb::OpDesc(op->stmt()->op_info()->desc());
-        if (op_desc.Type() == op_type) {
+        auto *op_info = op->stmt()->op_info();
+        if (op_info->Type() == op_type) {
           return true;
         }
       }

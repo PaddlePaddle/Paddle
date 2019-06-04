@@ -109,9 +109,9 @@ struct PMNode {
   PMNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {
       if (x && x->IsStmt()) {
-        auto op_desc = pb::OpDesc(x->stmt()->op_info()->desc());
-        return op_desc.HasAttr(attr_name) &&
-               op_desc.GetAttr(attr_name).get<T>() == attr;
+        auto* op_info = x->stmt()->op_info();
+        return op_info->HasAttr(attr_name) &&
+               op_info->GetAttr<T>(attr_name) == attr;
       } else {
         return false;
       }
