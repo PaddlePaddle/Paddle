@@ -8821,15 +8821,15 @@ def prelu(x, mode, param_attr=None, name=None):
 
     .. code-block:: text
 
-        all: all elements share same alpha
-        channel: elements in same channel share same alpha
-        element: All element has the same alpha
+        all: All elements share same alpha.
+        channel: Elements in same channel share same alpha.
+        element: All elements do not share alpha. Each element has its own alpha.
 
     Args:
         x (Variable): The input tensor.
+        mode (string): The mode for weight sharing. 
         param_attr(ParamAttr|None): The parameter attribute for the learnable
           weight (alpha), it can be create by ParamAttr.
-        mode (string): The mode for weight sharing. 
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
