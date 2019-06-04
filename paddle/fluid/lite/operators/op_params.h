@@ -111,6 +111,13 @@ struct ReshapeParam {
 
   std::vector<int> shape{};
   bool inplace{false};
+}
+
+// For Concat op
+struct ConcatParam {
+  std::vector<lite::Tensor*> x{};
+  lite::Tensor* output{};
+  int axis{0};
 };
 
 // For Convolution op
