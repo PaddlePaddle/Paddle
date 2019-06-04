@@ -209,6 +209,33 @@ class QuantizationStrategy(Strategy):
                     params_filename='weights',
                     export_for_deployment=True)
 
+            # save the model for mkldnn int8 inference
+            if self.mkldnn_int8_model_save_path:
+                if not self.float_model_save_path:
+                    # convert the weights as int8_t type
+                    freeze_pass = QuantizationFreezePass(
+                        scope=context.scope,
+                        place=context.place,
+                        weight_bits=self.weight_bits,
+                        activation_bits=self.activation_bits,
+                        weight_quantize_type=self.weight_quantize_type)
+                    freeze_pass.apply(test_ir_graph)
+
+                mkldnn_int8_pass = TransformForMkldnnPass(
+                    scope=context.scope, place=context.place)
+                mkldnn_int8_pass.apply(test_ir_graph)
+
+                executor = Executor(context.place)
+                io.save_inference_model(
+                    self.mkldnn_int8__model_save_path,
+                    in_vars,
+                    out_vars,
+                    executor,
+                    main_program=test_ir_graph.to_program(),
+                    model_filename='model',
+                    params_filename='weights',
+                    export_for_deployment=True)
+
             # save int8 model
             if self.int8_model_save_path:
                 convert_int8_pass = ConvertToInt8Pass(
@@ -239,28 +266,6 @@ class QuantizationStrategy(Strategy):
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.mobile_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
-
-            # save the model for mkldnn int8 inference
-            if self.mkldnn_int8_model_save_path:
-                if not self.int8_model_save_path:
-                    # convert the weights as int8_t type
-                    convert_int8_pass = ConvertToInt8Pass(
-                        scope=context.scope, place=context.place)
-                    convert_int8_pass.apply(test_ir_graph)
-                mkldnn_int8_pass = TransformForMkldnnPass(
-                    scope=context.scope, place=context.place)
-                mkldnn_int8_pass.apply(test_ir_graph)
-
-                executor = Executor(context.place)
-                io.save_inference_model(
-                    self.mkldnn_int8__model_save_path,
                     in_vars,
                     out_vars,
                     executor,
