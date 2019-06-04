@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
+#include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/conv_op.h"
 
@@ -33,7 +35,7 @@ class ConvCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
   virtual ~ConvCompute() = default;
 
  private:
-  // impl_
+  ImplBase<TARGET(kARM), PRECISION(kFloat), param_t> impl_;
 };
 
 }  // namespace arm

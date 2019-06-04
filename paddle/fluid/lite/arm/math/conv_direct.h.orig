@@ -37,16 +37,14 @@ class DirectConv : public ImplBase<TARGET(kARM), Ptype, operators::ConvParam> {
   typedef void (*conv_direct_int8_impl)(
       const int8_t* din, int32_t* dout, int num, int chout, int hout, int wout,
       int chin, int hin, int win, const int8_t* weights, const int32_t* bias,
-      const operators::ConvParam& param, Context<TARGET(kARM)>* ctx,
-      PrecisionType out_type, const float* scale);
+      const operators::ConvParam& param, Context<TARGET(kARM)>* ctx, Ptype out_type,
+      const float* scale);
   DirectConv() = default;
   ~DirectConv() {}
 
-  virtual bool init(const operators::ConvParam& param,
-                    Context<TARGET(kARM)>* ctx);
+  virtual bool init(const operators::ConvParam& param, Context<TARGET(kARM)>* ctx);
 
-  virtual bool create(const operators::ConvParam& param,
-                      Context<TARGET(kARM)>* ctx);
+  virtual bool create(const operators::ConvParam& param, Context<TARGET(kARM)>* ctx);
 
   virtual bool run(const operators::ConvParam& param);
 

@@ -56,7 +56,7 @@ void FcCompute::Run() {
   } else {
     // use sgemmv
     // sgemv((const float*)weights, (const float*)din, (float*)dout,
-    //       false, n, x_w, _param->_flag_bias, (float*)bias, false);
+    //       false, n, x_w, param_->_flag_bias, (float*)bias, false);
   }
 }
 

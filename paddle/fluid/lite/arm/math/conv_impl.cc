@@ -12,15 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "saber/funcs/impl/arm/neon/impl/conv_arm_depthwise.h"
-#include "saber/funcs/impl/arm/neon/impl/conv_arm_impl.h"
-#include "saber/funcs/impl/arm/neon/impl/gemm_prepacked_int8.h"
-#include "saber/funcs/impl/arm/neon/impl/gemv_arm_int8.h"
-#include "saber/funcs/impl/arm/neon/impl/sgemm_prepacked.h"
-#include "saber/funcs/impl/arm/neon/impl/sgemv_arm.h"
+// #include "saber/funcs/impl/arm/neon/impl/conv_arm_depthwise.h"
+// #include "saber/funcs/impl/arm/neon/impl/conv_arm_impl.h"
+// #include "saber/funcs/impl/arm/neon/impl/gemm_prepacked_int8.h"
+// #include "saber/funcs/impl/arm/neon/impl/gemv_arm_int8.h"
+// #include "saber/funcs/impl/arm/neon/impl/sgemv_arm.h"
 
-namespace anakin {
-namespace saber {
+#include "paddle/fluid/lite/arm/math/conv_impl.h"
+#include <arm_neon.h>
+#include "paddle/fluid/lite/arm/math/packed_sgemm.h"
+#include "paddle/fluid/lite/core/context.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
+#include "paddle/fluid/lite/operators/op_params.h"
+
+namespace paddle {
+namespace lite {
+namespace arm {
+namespace math {
 
 /**
  * \brief neon implementation to add bias
@@ -230,25 +238,25 @@ void im2col3x3(const Dtype* data_im, const int channels, const int height,
  */
 void conv1x1s1_gemm(const float* din, float* dout, int num, int chout, int hout,
                     int wout, int chin, int hin, int win, const float* weights,
-                    const float* bias, ConvParam<ARM>& param, Context<ARM>* ctx,
-                    const int* idx_ptr) {
+                    const float* bias, operators::ConvParam& param,
+                    ARMContext* ctx, const int* idx_ptr) {
   int channel_size_out = wout * hout;
   int channel_size_in = win * hin;
 
-  const int group = param.group;
+  const int group = param.groups;
   const int m = chout / group;
   const int n = hout * wout;
   const int k = chin / group;
 
   bool flag_relu = false;
-  bool flag_bias = param.bias()->size() > 0;
-  if (param.activation_param.has_active) {
-    if (param.activation_param.active == Active_relu &&
-        fabs(param.activation_param.negative_slope) < 1e-6f) {
-      flag_relu = true;
-    }
-  }
-  int hblock = get_hblock(ctx->get_arch());
+  bool flag_bias = param.bias != nullptr;
+  // if (param.activation_param.has_active) {
+  //   if (param.activation_param.active == Active_relu &&
+  //       fabs(param.activation_param.negative_slope) < 1e-6f) {
+  //     flag_relu = true;
+  //   }
+  // }
+  int hblock = get_hblock(ctx->arch());
   int m_roundup = hblock * ((m + hblock - 1) / hblock);
   int weights_size_per_group = m * k;
   if (n > 1) {
@@ -283,16 +291,16 @@ void conv1x1s1_gemm(const float* din, float* dout, int num, int chout, int hout,
 void conv1x1s1_gemm_int8(const int8_t* din, int32_t* dout, int num, int chout,
                          int hout, int wout, int chin, int hin, int win,
                          const int8_t* weights, const int32_t* bias,
-                         ConvParam<ARM>& param, Context<ARM>* ctx,
+                         operators::ConvParam& param, ARMContext* ctx,
                          DataType out_type, const float* scale,
                          const int32_t* idx_ptr) {
-  int group = param.group;
+  int group = param.groups;
   int channel_size_out = wout * hout;
   int channel_size_in = win * hin;
   const int m = chout / group;
   const int n = hout * wout;
   const int k = chin / group;
-  int hblock = get_hblock_int8(ctx->get_arch());
+  int hblock = get_hblock_int8(ctx->arch());
   int k_roundup = ROUNDUP(k, KBLOCK_INT8);
   int m_roundup = ROUNDUP(m, hblock);
   int weights_size_per_group = m * k;
@@ -357,9 +365,9 @@ void conv1x1s1_gemm_int8(const int8_t* din, int32_t* dout, int num, int chout,
 void conv_im2col_gemm(const float* din, float* dout, int num, int chout,
                       int hout, int wout, int chin, int hin, int win,
                       const float* weights, const float* bias,
-                      ConvParam<ARM>& param, Context<ARM>* ctx,
+                      operators::ConvParam& param, ARMContext* ctx,
                       const int* idx_ptr) {
-  const int group = param.group;
+  const int group = param.groups;
   const int kernel_h = param.weight()->height();
   const int kernel_w = param.weight()->width();
   const int m = chout / group;
@@ -376,7 +384,7 @@ void conv_im2col_gemm(const float* din, float* dout, int num, int chout,
       flag_relu = true;
     }
   }
-  int hblock = get_hblock(ctx->get_arch());
+  int hblock = get_hblock(ctx->arch());
   int m_roundup = hblock * ((m + hblock - 1) / hblock);
   int weights_size_per_group = m * k;
   if (n > 1) {
@@ -423,10 +431,10 @@ void conv_im2col_gemm(const float* din, float* dout, int num, int chout,
 void conv_im2col_gemm_int8(const int8_t* din, int32_t* dout, int num, int chout,
                            int hout, int wout, int chin, int hin, int win,
                            const int8_t* weights, const int32_t* bias,
-                           ConvParam<ARM>& param, Context<ARM>* ctx,
+                           operators::ConvParam& param, ARMContext* ctx,
                            DataType out_type, const float* scale,
                            const int32_t* idx_ptr) {
-  int group = param.group;
+  int group = param.groups;
   int kernel_h = param.weight()->height();
   int kernel_w = param.weight()->width();
   int stride_h = param.stride_h;
@@ -449,7 +457,7 @@ void conv_im2col_gemm_int8(const int8_t* din, int32_t* dout, int num, int chout,
       flag_relu = true;
     }
   }
-  int hblock = get_hblock_int8(ctx->get_arch());
+  int hblock = get_hblock_int8(ctx->arch());
   int k_roundup = ROUNDUP(k, KBLOCK_INT8);
   int m_roundup = ROUNDUP(m, hblock);
   int weights_size_per_group = m * k;
@@ -522,7 +530,7 @@ void conv_im2col_gemm_int8(const int8_t* din, int32_t* dout, int num, int chout,
 void conv_depthwise_3x3(const float* din, float* dout, int num, int chout,
                         int hout, int wout, int chin, int hin, int win,
                         const float* weights, const float* bias,
-                        ConvParam<ARM>& param, Context<ARM>* ctx) {
+                        operators::ConvParam& param, ARMContext* ctx) {
   int pad = param.pad_w;
   int stride = param.stride_w;
   bool flag_relu = false;
@@ -547,7 +555,7 @@ void conv_depthwise_3x3(const float* din, float* dout, int num, int chout,
 void conv_depthwise_5x5(const float* din, float* dout, int num, int chout,
                         int hout, int wout, int chin, int hin, int win,
                         const float* weights, const float* bias,
-                        ConvParam<ARM>& param, Context<ARM>* ctx) {
+                        operators::ConvParam& param, ARMContext* ctx) {
   int pad = param.pad_w;
   int stride = param.stride_w;
   bool flag_relu = false;
@@ -569,5 +577,7 @@ void conv_depthwise_5x5(const float* din, float* dout, int num, int chout,
   }
 }
 
-}  // namespace saber
-}  // namespace anakin
+}  // namespace math
+}  // namespace arm
+}  // namespace lite
+}  // namespace paddle

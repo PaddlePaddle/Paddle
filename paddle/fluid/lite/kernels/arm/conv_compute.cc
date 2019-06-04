@@ -23,7 +23,7 @@ namespace kernels {
 namespace arm {
 
 void ConvCompute::Run() {
-  auto& param = this->Param<operators::ConvParam>();
+  auto& param = this->Param<param_t>();
   auto x_dims = param.x->dims();
   auto w_dims = param.filter->dims();
   auto o_dims = param.output->dims();
@@ -61,12 +61,12 @@ void ConvCompute::Run() {
   // select conv impl
   if (param.groups == ic && ic == oc && kps_equal && no_dilation && flag_dw) {
     // dw conv impl
-    impl_ = new lite::arm::math::prepackA<AK_FLOAT>;
+    impl_ = new lite::arm::math::prepackA<kFloat>;
   } else if (param.groups == 1 && kw == 3 && stride == 1 && kps_equal &&
              no_dilation) {
     if (ic >= 32 && oc >= 32 && oh > 16 && ow > 16) {
       // winograd conv impl
-      //   impl_ = new WinogradConv<AK_FLOAT>;
+      //   impl_ = new WinogradConv<kFloat>;
     } else {
       // direct conv impl
       impl_ = new DirectConv<kFloat>;
@@ -74,21 +74,18 @@ void ConvCompute::Run() {
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
-    impl_ = new DirectConv<AK_FLOAT>;
+    impl_ = new DirectConv<kFloat>;
   } else {
-    impl_ = new SaberGemmLikeConv<AK_FLOAT>;
+    // impl_ = new GemmLikeConv<kFloat>;
   }
-  this->impl_->create(inputs, outputs, param, ctx);
+  this->impl_->create(param, &ctx);
 
-  if (impl_ != nullptr) {
-    impl_->run(inputs, outputs, param);
-  } else {
-    return false;
-  }
+  CHECK(impl_);
+  impl_->run(param);
 
-  if (this->act_ != nullptr) {
-    this->act_->run(outputs, outputs, param.activation_param);
-  }
+  // if (this->act_ != nullptr) {
+  //   this->act_->run(outputs, outputs, param.activation_param);
+  // }
 }
 
 TargetType ConvCompute::target() const { return TARGET(kARM); }
