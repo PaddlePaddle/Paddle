@@ -99,6 +99,10 @@ class Optimizer(object):
         self._opti_name_list = []
 
     def load(self, stat_dict):
+        """
+        load optimizer with learning rate decay in dygraph mode
+        :return: None
+        """
         if framework.in_dygraph_mode():
             self._learning_rate = stat_dict[self._name]
         else:
