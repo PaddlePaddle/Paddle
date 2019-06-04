@@ -111,7 +111,7 @@ struct ReshapeParam {
 
   std::vector<int> shape{};
   bool inplace{false};
-}
+};
 
 // For Concat op
 struct ConcatParam {
