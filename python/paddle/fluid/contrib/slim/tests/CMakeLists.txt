@@ -7,6 +7,9 @@ function(inference_qat_int8_test target model_dir data_dir test_script use_mkldn
 	    	 FLAGS_use_mkldnn=${use_mkldnn}
             ARGS --qat_model ${model_dir}/model
                  --infer_data ${data_dir}/data.bin
+		 --batch_size 50
+		 --batch_num 2
+		 --acc_diff_threshold 0.01
 		 --out_diff_threshold 1e-05)
 endfunction()
 

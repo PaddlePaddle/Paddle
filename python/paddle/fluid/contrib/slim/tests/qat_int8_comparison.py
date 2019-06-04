@@ -33,9 +33,18 @@ _logger.setLevel(logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--batch_size', type = int, default = 1,
+                        help = 'Batch size.')
     parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
+    parser.add_argument('--batch_num', type=int, default=1,
+                        help='Number of batches to process. 0 or less means all.')
+    parser.add_argument(
+        '--acc_diff_threshold',
+        type=float,
+        default=0.01,
+        help='Accepted accuracy difference threshold.')
     parser.add_argument(
         '--out_diff_threshold',
         type=float,
@@ -49,8 +58,7 @@ def parse_args():
 
 class TestQatInt8Comparison(unittest.TestCase):
     """
-    Test for output comparison of QAT FP32 and INT8 inference with MKLDNN.
-    Performed on the first image from the dataset.
+    Test for output and accuracy comparison of QAT FP32 and INT8 inference.
     """
 
     def _reader_creator(self, data_file='data.bin'):
@@ -64,20 +72,45 @@ class TestQatInt8Comparison(unittest.TestCase):
                 img_h = 224
                 img_pixel_size = 4
                 img_size = img_ch * img_h * img_w * img_pixel_size
+                label_size = 8
+                labels_offset = imgs_offset + num * img_size
 
-                fp.seek(imgs_offset)
-                img = fp.read(img_size)
-                img = struct.unpack_from('{}f'.format(img_ch * img_w * img_h),
-                                         img)
-                img = np.array(img)
-                img.shape = (img_ch, img_w, img_h)
-                yield img
+                step = 0
+                while step < num:
+                    fp.seek(imgs_offset + img_size * step)
+                    img = fp.read(img_size)
+                    img = struct.unpack_from('{}f'.format(img_ch * img_w * img_h), img)
+                    img = np.array(img)
+                    img.shape = (img_ch, img_w, img_h)
+                    fp.seek(labels_offset + label_size * step)
+                    label = fp.read(label_size)
+                    label = struct.unpack('q', label)[0]
+                    yield img, int(label)
+                    step += 1
 
         return reader
+
+    def _get_batch_accuracy(self, batch_output = None, labels = None):
+        total = 0
+        correct = 0
+        correct_5 = 0
+        for n, result in enumerate(batch_output):
+            index = result.argsort()
+            top_1_index = index[-1]
+            top_5_index = index[-5:]
+            total += 1
+            if top_1_index == labels[n]:
+                correct += 1
+            if labels[n] in top_5_index:
+                correct_5 += 1
+        acc1 = float(correct) / float(total)
+        acc5 = float(correct_5) / float(total)
+        return acc1, acc5
 
     def _predict(self,
                  test_reader=None,
                  model_path=None,
+                 batch_num=1,
                  transform_to_int8=False):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -100,17 +133,55 @@ class TestQatInt8Comparison(unittest.TestCase):
                 inference_program = graph.to_program()
 
             dshape = [3, 224, 224]
-            for data in test_reader():
+            outputs = []
+            total_samples = 0
+            top1 = 0.0
+            top5 = 0.0
+            for i, data in enumerate(test_reader()):
+                if batch_num > 0 and i >= batch_num:
+                    break
                 if six.PY2:
-                    images = map(lambda x: x.reshape(dshape), data)
+                    images = map(lambda x: x[0].reshape(dshape), data)
                 if six.PY3:
-                    images = list(map(lambda x: x.reshape(dshape), data))
+                    images = list(map(lambda x: x[0].reshape(dshape), data))
                 images = np.array(images).astype('float32')
+                labels = np.array([x[1] for x in data]).astype('int64')
                 out = exe.run(inference_program,
                               feed={feed_target_names[0]: images},
                               fetch_list=fetch_targets)
+                batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0], labels)
+                _logger.info('batch {0}, acc1: {1}, acc5: {2}'.format(i, batch_acc1, batch_acc5))
+                top1 += batch_acc1 * len(data)
+                top5 += batch_acc5 * len(data)
+                total_samples += len(data)
+                outputs.append(out[0])
 
-            return out[0][0]
+            acc1 = top1 / total_samples
+            acc5 = top5 / total_samples
+            return outputs, acc1, acc5
+
+    def _compare_outputs(self, tensorA, tensorB, threshold = 1e-05):
+        A = np.array(tensorA).flatten()
+        B = np.array(tensorB).flatten()
+
+        no_of_values = np.prod(A.shape)
+        no_of_different_vales = no_of_values - np.sum(
+            np.isclose(A, B, rtol = 0, atol = threshold))
+        max_abs_diff = np.max(
+            np.absolute(
+                np.array(A) - np.array(B)))
+        _logger.info('Accepted output diff threshold: {0}'.format(threshold))
+        _logger.info('Number of values: {0}'.format(no_of_values))
+        _logger.info('Number of different values: {0}'.format(
+            no_of_different_vales))
+        _logger.info('Max absolute diff: {0}'.format(max_abs_diff))
+        assert np.allclose(A, B, rtol = 0, atol = threshold)
+
+    def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5, threshold):
+        _logger.info('Accepted acc1 diff threshold: {0}'.format(threshold))
+        _logger.info('FP32: avg acc1: {0}, avg acc5: {1}'.format(fp32_acc1, fp32_acc5))
+        _logger.info('INT8: avg acc1: {0}, avg acc5: {1}'.format(int8_acc1, int8_acc5))
+        assert np.abs(fp32_acc1 - int8_acc1) <= threshold
 
     def test_graph_transformation(self):
         if not fluid.core.is_compiled_with_mkldnn():
@@ -118,46 +189,34 @@ class TestQatInt8Comparison(unittest.TestCase):
 
         qat_model_path = test_case_args.qat_model
         data_path = test_case_args.infer_data
+        batch_size = test_case_args.batch_size
+        batch_num = test_case_args.batch_num
+        acc_diff_threshold = test_case_args.acc_diff_threshold
         out_diff_threshold = test_case_args.out_diff_threshold
 
         _logger.info('QAT FP32 & INT8 prediction run.')
         _logger.info('QAT model: {0}'.format(qat_model_path))
         _logger.info('Dataset: {0}'.format(data_path))
+        _logger.info('Batch size: {0}'.format(batch_size))
+        _logger.info('Batch number: {0}'.format(batch_num))
+        _logger.info('Accuracy diff threshold: {0}.'.format(acc_diff_threshold))
         _logger.info('Output diff threshold: {0}.'.format(out_diff_threshold))
 
         _logger.info('--- QAT FP32 prediction start ---')
-        val_reader = paddle.batch(self._reader_creator(data_path), batch_size=1)
-        fp32_model_result = self._predict(
-            val_reader, qat_model_path, transform_to_int8=False)
-        #  _logger.info('out fp32: {0}'.format(fp32_model_result))
+        val_reader = paddle.batch(self._reader_creator(data_path), batch_size=batch_size)
+        fp32_output, fp32_acc1, fp32_acc5 = self._predict(
+            val_reader, qat_model_path, batch_num, transform_to_int8=False)
 
         _logger.info('--- QAT INT8 prediction start ---')
-        val_reader = paddle.batch(self._reader_creator(data_path), batch_size=1)
-        int8_model_result = self._predict(
-            val_reader, qat_model_path, transform_to_int8=True)
-        #  _logger.info('out int8: {0}'.format(int8_model_result))
+        val_reader = paddle.batch(self._reader_creator(data_path), batch_size=batch_size)
+        int8_output, int8_acc1, int8_acc5 = self._predict(
+            val_reader, qat_model_path, batch_num, transform_to_int8=True)
+
+        _logger.info('--- Comparing accuracy ---')
+        self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5, acc_diff_threshold)
 
         _logger.info('--- Comparing outputs ---')
-        no_of_values = len(fp32_model_result)
-        no_of_different_vales = no_of_values - np.sum(
-            np.isclose(
-                fp32_model_result,
-                int8_model_result,
-                rtol=0,
-                atol=out_diff_threshold))
-        max_abs_diff = np.max(
-            np.absolute(
-                np.array(fp32_model_result) - np.array(int8_model_result)))
-        _logger.info('Accepted diff threshold: {0}'.format(out_diff_threshold))
-        _logger.info('Number of values: {0}'.format(no_of_values))
-        _logger.info('Number of different values: {0}'.format(
-            no_of_different_vales))
-        _logger.info('Max absolute diff: {0}'.format(max_abs_diff))
-        assert np.allclose(
-            fp32_model_result,
-            int8_model_result,
-            rtol=0,
-            atol=out_diff_threshold)
+        self._compare_outputs(fp32_output, int8_output, out_diff_threshold)
 
 
 if __name__ == '__main__':
