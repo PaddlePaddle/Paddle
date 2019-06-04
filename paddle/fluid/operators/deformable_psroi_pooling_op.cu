@@ -35,7 +35,7 @@ using LoDTensor = framework::LoDTensor;
        i += blockDim.x * gridDim.x)
 
 const int CUDA_NUM_THREADS = 1024;
-inline int GET_BLOCKS(const int N) {
+static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
@@ -46,8 +46,8 @@ __device__ T bilinear_interpolation(const T* data, const T x, const T y,
   int x2 = ceil(x);
   int y1 = floor(y);
   int y2 = ceil(y);
-  T dist_x = (T)(x - x1);
-  T dist_y = (T)(y - y1);
+  T dist_x = static_cast<T>(x - x1);
+  T dist_y = static_cast<T>(y - y1);
   T value11 = data[y1 * width + x1];
   T value12 = data[y2 * width + x1];
   T value21 = data[y1 * width + x2];

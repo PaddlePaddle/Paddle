@@ -26,7 +26,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input",
              "(Tensor), "
              "the input of Deformable PSROIPooling. "
-             "The format of input tensor is NCHW. Where N is batch size, "
+             "The shape of input tensor is [N,C,H,W]. Where N is batch size, "
              "C is number of input channels, "
              "H is height of the feature, and "
              "W is the width of the feature.");
@@ -48,7 +48,8 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("no_trans",
                  "(int), "
                  "whether add offset to get new value or not while roi "
-                 "pooling, which value is 0 or 1");
+                 "pooling, which value is 0 or 1")
+        .SetDefault(0);
     AddAttr<float>("spatial_scale",
                    "(float), "
                    "ratio of input feature map height (or width) to "

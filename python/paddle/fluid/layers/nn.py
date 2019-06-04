@@ -12004,8 +12004,6 @@ def deformable_psroi_pooling(input,
     Examples:
 
             input = fluid.layers.data(name="input",
-
-            input = fluid.layers.data(name="input",
                                       shape=[2, 3, 64, 64], 
                                       dtype='float32', 
                                       append_batch_size=False)                   

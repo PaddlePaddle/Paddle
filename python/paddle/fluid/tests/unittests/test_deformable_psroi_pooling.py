@@ -18,34 +18,156 @@ import numpy as np
 from op_test import OpTest
 
 
+def set_input(input, rois, trans):
+    inputs = {'Input': input, "ROIs": rois, "Trans": trans}
+    return inputs
+
+
+def set_attrs(no_trans, spatial_scale, output_channels, group_size,
+              pooled_height, pooled_width, part_size, sample_per_part,
+              trans_std):
+    attrs = {
+        'no_trans': no_trans,
+        'spatial_scale': spatial_scale,
+        'output_dim': output_channels,
+        'group_size': group_size,
+        'pooled_height': pooled_height,
+        'pooled_width': pooled_width,
+        'part_size': part_size,
+        'sample_per_part': sample_per_part,
+        'trans_std': trans_std
+    }
+    return attrs
+
+
+def set_outputs(output, top_count):
+    outputs = {
+        'Output': output.astype('float32'),
+        'TopCount': top_count.astype('float32')
+    }
+    return outputs
+
+
 class TestDeformablePSROIPoolOp(OpTest):
     def set_data(self):
-        self.init_test_case()
+        self.start_test1()
+        self.start_test2()
+        self.start_test3()
+        self.start_test4()
+
+    def start_test1(self):
+        self.init_test_case1()
         self.make_rois()
         self.calc_deformable_psroi_pooling()
-        self.inputs = {
-            'Input': self.input,
-            "ROIs": (self.rois[:, 1:5], self.rois_lod),
-            "Trans": self.trans
-        }
-        self.attrs = {
-            'no_trans': self.no_trans,
-            'spatial_scale': self.spatial_scale,
-            'output_dim': self.output_channels,
-            'group_size': self.group_size,
-            'pooled_height': self.pooled_height,
-            'pooled_width': self.pooled_width,
-            'part_size': self.part_size,
-            'sample_per_part': self.sample_per_part,
-            'trans_std': self.trans_std
-        }
 
-        self.outputs = {
-            'Output': self.out.astype('float32'),
-            'TopCount': self.top_count.astype('float32')
-        }
+        inputs = self.input
+        rois = (self.rois[:, 1:5], self.rois_lod)
+        trans = self.trans
+        self.inputs = set_input(inputs, rois, trans)
 
-    def init_test_case(self):
+        no_trans = self.no_trans
+        spatial_scale = self.spatial_scale
+        output_channels = self.output_channels
+        group_size = self.group_size
+        pooled_height = self.pooled_height
+        pooled_width = self.pooled_width
+        part_size = self.part_size
+        sample_per_part = self.sample_per_part
+        trans_std = self.trans_std
+
+        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
+                               group_size, pooled_height, pooled_width,
+                               part_size, sample_per_part, trans_std)
+
+        output = self.out.astype('float32')
+        top_count = self.top_count.astype('float32')
+        self.outputs = set_outputs(output, top_count)
+
+    def start_test2(self):
+        self.init_test_case2()
+        self.make_rois()
+        self.calc_deformable_psroi_pooling()
+
+        inputs = self.input
+        rois = (self.rois[:, 1:5], self.rois_lod)
+        trans = self.trans
+        self.inputs = set_input(inputs, rois, trans)
+
+        no_trans = self.no_trans
+        spatial_scale = self.spatial_scale
+        output_channels = self.output_channels
+        group_size = self.group_size
+        pooled_height = self.pooled_height
+        pooled_width = self.pooled_width
+        part_size = self.part_size
+        sample_per_part = self.sample_per_part
+        trans_std = self.trans_std
+
+        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
+                               group_size, pooled_height, pooled_width,
+                               part_size, sample_per_part, trans_std)
+
+        output = self.out.astype('float32')
+        top_count = self.top_count.astype('float32')
+        self.outputs = set_outputs(output, top_count)
+
+    def start_test3(self):
+        self.init_test_case3()
+        self.make_rois()
+        self.calc_deformable_psroi_pooling()
+
+        inputs = self.input
+        rois = (self.rois[:, 1:5], self.rois_lod)
+        trans = self.trans
+        self.inputs = set_input(inputs, rois, trans)
+
+        no_trans = self.no_trans
+        spatial_scale = self.spatial_scale
+        output_channels = self.output_channels
+        group_size = self.group_size
+        pooled_height = self.pooled_height
+        pooled_width = self.pooled_width
+        part_size = self.part_size
+        sample_per_part = self.sample_per_part
+        trans_std = self.trans_std
+
+        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
+                               group_size, pooled_height, pooled_width,
+                               part_size, sample_per_part, trans_std)
+
+        output = self.out.astype('float32')
+        top_count = self.top_count.astype('float32')
+        self.outputs = set_outputs(output, top_count)
+
+    def start_test4(self):
+        self.init_test_case4()
+        self.make_rois()
+        self.calc_deformable_psroi_pooling()
+
+        inputs = self.input
+        rois = (self.rois[:, 1:5], self.rois_lod)
+        trans = self.trans
+        self.inputs = set_input(inputs, rois, trans)
+
+        no_trans = self.no_trans
+        spatial_scale = self.spatial_scale
+        output_channels = self.output_channels
+        group_size = self.group_size
+        pooled_height = self.pooled_height
+        pooled_width = self.pooled_width
+        part_size = self.part_size
+        sample_per_part = self.sample_per_part
+        trans_std = self.trans_std
+
+        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
+                               group_size, pooled_height, pooled_width,
+                               part_size, sample_per_part, trans_std)
+
+        output = self.out.astype('float32')
+        top_count = self.top_count.astype('float32')
+        self.outputs = set_outputs(output, top_count)
+
+    def init_test_case1(self):
         self.batch_size = 3
         self.channels = 3 * 2 * 2
         self.height = 12
@@ -53,16 +175,72 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.input_dim = [
             self.batch_size, self.channels, self.height, self.width
         ]
-        self.no_trans = 1
+        self.no_trans = 0
         self.spatial_scale = 1.0 / 4.0
         self.output_channels = 12
         self.group_size = [1, 1]
         self.pooled_height = 4
         self.pooled_width = 4
-        #self.pooled_size=4
         self.part_size = [4, 4]
         self.sample_per_part = 2
         self.trans_std = 0.1
+        self.input = np.random.random(self.input_dim).astype('float32')
+
+    def init_test_case2(self):
+        self.batch_size = 2
+        self.channels = 3 * 2 * 2
+        self.height = 12
+        self.width = 12
+        self.input_dim = [
+            self.batch_size, self.channels, self.height, self.width
+        ]
+        self.no_trans = 1
+        self.spatial_scale = 1.0 / 2.0
+        self.output_channels = 12
+        self.group_size = [1, 1]
+        self.pooled_height = 7
+        self.pooled_width = 7
+        self.part_size = [7, 7]
+        self.sample_per_part = 4
+        self.trans_std = 0.1
+        self.input = np.random.random(self.input_dim).astype('float32')
+
+    def init_test_case3(self):
+        self.batch_size = 2
+        self.channels = 3 * 2 * 2
+        self.height = 12
+        self.width = 12
+        self.input_dim = [
+            self.batch_size, self.channels, self.height, self.width
+        ]
+        self.no_trans = 0
+        self.spatial_scale = 1.0 / 4.0
+        self.output_channels = 12
+        self.group_size = [1, 1]
+        self.pooled_height = 3
+        self.pooled_width = 3
+        self.part_size = [3, 3]
+        self.sample_per_part = 3
+        self.trans_std = 0.2
+        self.input = np.random.random(self.input_dim).astype('float32')
+
+    def init_test_case4(self):
+        self.batch_size = 2
+        self.channels = 3 * 2 * 2
+        self.height = 12
+        self.width = 12
+        self.input_dim = [
+            self.batch_size, self.channels, self.height, self.width
+        ]
+        self.no_trans = 1
+        self.spatial_scale = 1.0 / 2.0
+        self.output_channels = 12
+        self.group_size = [1, 1]
+        self.pooled_height = 6
+        self.pooled_width = 2
+        self.part_size = [6, 6]
+        self.sample_per_part = 6
+        self.trans_std = 0.4
         self.input = np.random.random(self.input_dim).astype('float32')
 
     def make_rois(self):
@@ -154,7 +332,6 @@ class TestDeformablePSROIPoolOp(OpTest):
             g_h = np.floor(p_h * self.group_size[1] / self.pooled_width)
             g_w = min(max(g_w, 0), self.group_size[0] - 1)
             g_h = min(max(g_h, 0), self.group_size[1] - 1)
-            #print(input[n, 1])
             input_i = self.input[roi_batch_id]
             for i_w in range(self.sample_per_part):
                 for i_h in range(self.sample_per_part):
