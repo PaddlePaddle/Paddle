@@ -242,8 +242,13 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
       VLOG(10) << out.str()
                << ", group size:" << group_grads_params->at(i).size()
+<<<<<<< 25372659875b04c5a08dd3a528129d6af6fe6fee
                << ", group memory size:" << static_cast<double>(gps_size) / kMB
                << "(MB)";
+=======
+               << ", group memory size:"
+               << static_cast<double>(gps_size) / 1048576.0 << "(MB)";
+>>>>>>> fix python3_CI bug, test=develop
     }
   }
 
@@ -284,7 +289,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
           break;
         }
 
+<<<<<<< 25372659875b04c5a08dd3a528129d6af6fe6fee
         if (static_cast<double>(local_group_memory_size) / kMB >=
+=======
+        if (static_cast<double>(local_group_memory_size) / 1048576.0 >=
+>>>>>>> fix python3_CI bug, test=develop
             group_memory_size) {
           break;
         }

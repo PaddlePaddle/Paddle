@@ -180,7 +180,11 @@ def start_procs(args):
             "PADDLE_CURRENT_ENDPOINT":
             "%s:%d" % (current_node_ip, args.started_port + i),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
-            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
+            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints,
+            # paddle broadcast ncclUniqueId use socket, and
+            # proxy maybe make trainers unreachable, so set them to ""
+            "http_proxy": "",
+            "https_proxy": ""
         })
 
         cmd = [sys.executable, "-u", args.training_script

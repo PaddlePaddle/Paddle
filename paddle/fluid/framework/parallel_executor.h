@@ -87,6 +87,16 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
+<<<<<<< 25372659875b04c5a08dd3a528129d6af6fe6fee
+=======
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  // used for compatible with syncbatch norm op
+  std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs_;
+  platform::NCCLContextMap *GetNCCLContextForSyncbatchNomrOp(
+      framework::Scope *scope);
+#endif
+>>>>>>> fix python3_CI bug, test=develop
 };
 }  // namespace framework
 }  // namespace paddle

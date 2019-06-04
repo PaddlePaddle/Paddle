@@ -14,12 +14,21 @@
 
 import logging
 import socket
+<<<<<<< 25372659875b04c5a08dd3a528129d6af6fe6fee
 from ....log_helper import get_logger
 
 __all__ = ['SearchAgent']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+=======
+
+__all__ = ['SearchAgent']
+
+logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
+>>>>>>> fix python3_CI bug, test=develop
 
 
 class SearchAgent(object):
