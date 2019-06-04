@@ -58,6 +58,8 @@ class QuantizationStrategy(Strategy):
                             None means it doesn't save mobile model. defalut: None.
             int8_model_save_path(str): The path to save model with int8_t weight.
                             None means it doesn't save int8 model. defalut: None.
+            mkldnn_int8_model_save_path:(str): The path to save the model for MKL-DNN INT8 inference.
+                            None means it doesn't save MKL-DNN int8 model. default: None
             activation_bits(int): quantization bit number for activation. default: 8.
             weight_bits(int): quantization bit number for weights. The bias is not quantized.
                               default: 8.
@@ -81,6 +83,7 @@ class QuantizationStrategy(Strategy):
         self.float_model_save_path = float_model_save_path
         self.mobile_model_save_path = mobile_model_save_path
         self.int8_model_save_path = int8_model_save_path
+        self.mkldnn_int8_model_save_path = mkldnn_int8_model_save_path
         self.activation_bits = activation_bits
         self.weight_bits = weight_bits
         self.activation_quantize_type = activation_quantize_type
