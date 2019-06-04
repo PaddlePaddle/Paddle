@@ -29,7 +29,11 @@ namespace cpp {
  * imprementation should use it, not the pb::OpDesc.
  */
 class OpDesc : public OpDescAPI {
- private:
+ public:
+  using attrs_t = std::map<std::string, Any>;
+  using attr_types_t = std::map<std::string, AttrType>;
+
+ protected:
   std::string type_;
   std::map<std::string, std::vector<std::string>> inputs_;
   std::map<std::string, std::vector<std::string>> outputs_;
@@ -42,11 +46,17 @@ class OpDesc : public OpDescAPI {
   std::string Type() const override { return type_; }
   void SetType(const std::string& x) override { type_ = x; }
 
-  std::map<std::string, std::vector<std::string>> inputs() const {
+  const std::map<std::string, std::vector<std::string>>& inputs() const {
     return inputs_;
   }
-  std::map<std::string, std::vector<std::string>> outputs() const {
+  const std::map<std::string, std::vector<std::string>>& outputs() const {
     return outputs_;
+  }
+  std::map<std::string, std::vector<std::string>>* mutable_inputs() {
+    return &inputs_;
+  }
+  std::map<std::string, std::vector<std::string>>* mutable_outputs() {
+    return &outputs_;
   }
   std::vector<std::string> Input(const std::string& param) const override {
     auto it = inputs_.find(param);
@@ -105,7 +115,10 @@ class OpDesc : public OpDescAPI {
   template <typename T>
   T GetAttr(const std::string& name) const;
 
-  std::map<std::string, Any> attrs() const { return attrs_; }
+  const std::map<std::string, Any>& attrs() const { return attrs_; }
+  const std::map<std::string, AttrType>& attr_types() const {
+    return attr_types_;
+  }
 };
 
 }  // namespace cpp

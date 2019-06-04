@@ -52,8 +52,27 @@ void AttrsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
       case AttrType::FLOAT:
         cpp_desc->SetAttr<float>(name, pb_desc.GetAttr<float>(name));
         break;
+      case AttrType::STRING:
+        cpp_desc->SetAttr<std::string>(name,
+                                       pb_desc.GetAttr<std::string>(name));
+        break;
+      case AttrType::INTS:
+        cpp_desc->SetAttr<std::vector<int>>(
+            name, pb_desc.GetAttr<std::vector<int>>(name));
+        break;
+      case AttrType::FLOATS:
+        cpp_desc->SetAttr<std::vector<float>>(
+            name, pb_desc.GetAttr<std::vector<float>>(name));
+        break;
+      case AttrType::BOOLEAN:
+        cpp_desc->SetAttr<bool>(name, pb_desc.GetAttr<bool>(name));
+        break;
+      case AttrType::STRINGS:
+        cpp_desc->SetAttr<std::vector<std::string>>(
+            name, pb_desc.GetAttr<std::vector<std::string>>(name));
+        break;
       default:
-        LOG(FATAL) << "Unsupported attr type found";
+        LOG(FATAL) << "Unsupported attr type found " << static_cast<int>(type);
     }
   };
 
@@ -67,16 +86,22 @@ void AttrsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
   using AttrType = OpDescAPI::AttrType;
   auto set_attr = [&](const std::string &name, AttrType type) {
     switch (type) {
-      case AttrType::INT:
-        pb_desc->SetAttr<int32_t>(name, cpp_desc.GetAttr<int32_t>(name));
-        break;
-      case AttrType::FLOAT:
-        pb_desc->SetAttr<float>(name, cpp_desc.GetAttr<float>(name));
-        break;
+#define IMPL_ONE(type__, T)                               \
+  case AttrType::type__:                                  \
+    pb_desc->SetAttr<T>(name, cpp_desc.GetAttr<T>(name)); \
+    break;
+      IMPL_ONE(INT, int32_t);
+      IMPL_ONE(FLOAT, float);
+      IMPL_ONE(STRING, std::string);
+      IMPL_ONE(STRINGS, std::vector<std::string>);
+      IMPL_ONE(FLOATS, std::vector<float>);
+      IMPL_ONE(INTS, std::vector<int>);
+      IMPL_ONE(BOOLEAN, bool);
       default:
-        LOG(FATAL) << "Unsupported attr type found";
+        LOG(FATAL) << "Unsupported attr type found: " << static_cast<int>(type);
     }
   };
+#undef IMPL_ONE
   for (const auto &attr_name : cpp_desc.AttrNames()) {
     auto type = cpp_desc.GetAttrType(attr_name);
     set_attr(attr_name, type);
@@ -84,12 +109,14 @@ void AttrsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
 }
 
 void TransformOpDescPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
+  cpp_desc->SetType(pb_desc.Type());
   InputsPbToCpp(pb_desc, cpp_desc);
   OutputsPbToCpp(pb_desc, cpp_desc);
   AttrsPbToCpp(pb_desc, cpp_desc);
 }
 
 void TransformOpDescCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
+  pb_desc->SetType(cpp_desc.Type());
   InputsCppToPb(cpp_desc, pb_desc);
   OutputsCppToPb(cpp_desc, pb_desc);
   AttrsCppToPb(cpp_desc, pb_desc);

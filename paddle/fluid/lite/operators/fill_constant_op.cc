@@ -33,14 +33,14 @@ class FillConstantOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
     auto Out_name = opdesc.Output("Out").front();
 
     param_.Out = GetMutableVar<Tensor>(scope, Out_name);
-    param_.dtype = GetAttr<int>(opdesc.GetAttr("dtype"));
-    param_.shape = GetAttr<std::vector<int64_t>>(opdesc.GetAttr("shape"));
-    param_.value = GetAttr<float>(opdesc.GetAttr("value"));
-    param_.force_cpu = GetAttr<bool>(opdesc.GetAttr("force_cpu"));
+    param_.dtype = opdesc.GetAttr<int>("dtype");
+    param_.shape = opdesc.GetAttr<std::vector<int64_t>>("shape");
+    param_.value = opdesc.GetAttr<float>("value");
+    param_.force_cpu = opdesc.GetAttr<bool>("force_cpu");
     return true;
   }
 

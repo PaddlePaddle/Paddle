@@ -68,13 +68,13 @@ bool OpLite::Run() {
   return true;
 }
 
-bool OpLite::Attach(const OpDesc &opdesc, lite::Scope *scope) {
+bool OpLite::Attach(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   // valid_places_.clear();
   CHECK(scope != nullptr);
   // CHECK(!op_info_.get());
   scope_ = scope;
-  op_info_.reset(new OpInfo);  // Force clean the out-of-date infomation.
-  op_info_->Build(opdesc.ReadonlyProto());
+  op_info_.reset(
+      new OpInfo(opdesc));  // Force clean the out-of-date infomation.
   return AttachImpl(opdesc, scope);
 }
 
@@ -92,6 +92,7 @@ Tensor *OpLite::GetMutableTensor(lite::Scope *scope,
   return var->GetMutable<lite::Tensor>();
 }
 
+/*
 bool OpInfo::GetInputArgname(const std::string &value_name,
                              std::string *out) const {
   for (auto &item : input_argument_) {
@@ -180,6 +181,7 @@ const framework::proto::OpDesc &OpInfo::desc() const {
   CHECK(desc_) << "desc has't set";
   return *desc_;
 }
+ */
 
 }  // namespace lite
 }  // namespace paddle

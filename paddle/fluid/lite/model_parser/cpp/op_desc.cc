@@ -19,36 +19,47 @@ namespace paddle {
 namespace lite {
 namespace cpp {
 
-template <>
-void OpDesc::SetAttr<int32_t>(const std::string& name, const int32_t& v) {
-  attr_types_[name] = AttrType::INT;
-  attrs_[name].set<int>(v);
-}
-template <>
-void OpDesc::SetAttr<float>(const std::string& name, const float& v) {
-  attr_types_[name] = AttrType::FLOAT;
-  attrs_[name].set<float>(v);
+#define SET_ATTR_IMPL(T, repr__)                                 \
+  template <>                                                    \
+  void OpDesc::SetAttr<T>(const std::string& name, const T& v) { \
+    attr_types_[name] = AttrType::repr__;                        \
+    attrs_[name].set<T>(v);                                      \
+  }
+
+SET_ATTR_IMPL(int32_t, INT);
+SET_ATTR_IMPL(float, FLOAT);
+SET_ATTR_IMPL(std::string, STRING);
+SET_ATTR_IMPL(bool, BOOLEAN);
+SET_ATTR_IMPL(std::vector<int>, INTS);
+SET_ATTR_IMPL(std::vector<float>, FLOATS);
+SET_ATTR_IMPL(std::vector<std::string>, STRINGS);
+
+std::pair<OpDesc::attrs_t::const_iterator, OpDesc::attr_types_t::const_iterator>
+FindAttr(const cpp::OpDesc& desc, const std::string& name) {
+  auto it = desc.attrs().find(name);
+  CHECK(it != desc.attrs().end()) << "No attributes called " << name
+                                  << " found";
+  auto attr_it = desc.attr_types().find(name);
+  CHECK(attr_it != desc.attr_types().end());
+  return std::make_pair(it, attr_it);
 }
 
-template <>
-int32_t OpDesc::GetAttr<int32_t>(const std::string& name) const {
-  auto it = attrs_.find(name);
-  CHECK(it != attrs_.end()) << "No attributes called " << name << " found";
-  auto attr_it = attr_types_.find(name);
-  CHECK(attr_it != attr_types_.end());
-  CHECK(attr_it->second == AttrType::INT);
-  return it->second.get<int32_t>();
-}
+#define GET_IMPL_ONE(T, repr__)                         \
+  template <>                                           \
+  T OpDesc::GetAttr<T>(const std::string& name) const { \
+    auto pair = FindAttr(*this, name);                  \
+    CHECK(pair.second->second == AttrType::repr__);     \
+    return pair.first->second.get<T>();                 \
+  }
 
-template <>
-float OpDesc::GetAttr<float>(const std::string& name) const {
-  auto it = attrs_.find(name);
-  CHECK(it != attrs_.end()) << "No attributes called " << name << " found";
-  auto attr_it = attr_types_.find(name);
-  CHECK(attr_it != attr_types_.end());
-  CHECK(attr_it->second == AttrType::INT);
-  return it->second.get<float>();
-}
+GET_IMPL_ONE(int32_t, INT);
+GET_IMPL_ONE(float, FLOAT);
+GET_IMPL_ONE(std::string, STRING);
+GET_IMPL_ONE(bool, BOOLEAN);
+GET_IMPL_ONE(std::vector<int64_t>, LONGS);
+GET_IMPL_ONE(std::vector<float>, FLOATS);
+GET_IMPL_ONE(std::vector<int>, INTS);
+GET_IMPL_ONE(std::vector<std::string>, STRINGS);
 
 }  // namespace cpp
 }  // namespace lite
