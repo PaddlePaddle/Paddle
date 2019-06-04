@@ -19,7 +19,7 @@ Usage:
     In both of single node training or multiple node training, this module 
 launch a process on each of the given gpu card.
 
-    1. for single node trainning with [0,8) cards
+    1. for single node trainning with all visible gpu cards:
        python -m paddle.distributed.launch \
          your_training_py (arg1 arg2 and all others)
     
@@ -29,13 +29,13 @@ launch a process on each of the given gpu card.
 
     3. for mulitple node training such as two node:192.168.0.16, 192.168.0.17
         on 192.168.0.16:
-            python -m paddle.distributed.launch --node_ips="192.168.0.16,192.168.0.17" \
-                --node_id=0 \
+            python -m paddle.distributed.launch --cluster_node_ips="192.168.0.16,192.168.0.17" \
+                --node_ip=192.168.0.16 \
                 your_training_py (arg1 arg2 and all others)
 
         on 192.168.0.17:
-            python -m paddle.distributed.launch --node_ips="192.168.0.16,192.168.0.17" \
-                --node_id=1 \
+            python -m paddle.distributed.launch --cluster_node_ips="192.168.0.16,192.168.0.17" \
+                --node_ip=192.168.0.17 \
                 your_training_py (arg1 arg2 and all others)
 """
 
@@ -47,6 +47,7 @@ import os
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
+import paddle.fluid as fluid
 
 
 def _print_arguments(args):
@@ -77,17 +78,22 @@ POD_IP (current node ip address, not needed for local training)
 
     # Optional arguments for the launch helper
     parser.add_argument(
-        "--node_ips",
+        "--cluster_node_ips",
         type=str,
         default="127.0.0.1",
-        help="Paddle trainer ips, such as 192.168.0.16,192.168.0.17..")
+        help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
 
     parser.add_argument(
-        "--node_id",
+        "--node_ip",
+        type=str,
+        default="127.0.0.1",
+        help="The current node ip. ")
+
+    parser.add_argument(
+        "--started_port",
         type=int,
-        default=0,
-        help="The trainer id of the node for multi-node distributed "
-        "training")
+        default=6170,
+        help="The trainer's started port on a single node")
 
     parser.add_argument(
         "--print_config",
@@ -98,12 +104,16 @@ POD_IP (current node ip address, not needed for local training)
     parser.add_argument(
         "--selected_gpus",
         type=str,
-        default="0,1,2,3,4,5,6,7",
+        default=None,
         help="It's for gpu trainning and the trainning process will run on the selected_gpus,"
-        "each process is bound to a single GPU.")
+        "each process is bound to a single GPU. And if it's not setted, this module will use all the gpu cards for training."
+    )
 
     parser.add_argument(
-        "--split_log_path", type=str, help="The splited log path.")
+        "--log_dir",
+        type=str,
+        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
+    )
 
     # positional
     parser.add_argument(
@@ -127,14 +137,16 @@ def start_procs(args):
 
     default_env = os.environ.copy()
 
-    node_id = args.node_id
-    node_ips = [x.strip() for x in args.node_ips.split(',')]
-    assert node_id >= 0 and node_id < len(node_ips), \
-            "node_id:{} must be in range of the node_ips:{}".format(node_id, node_ips)
-
-    current_node_ip = node_ips[node_id]
+    current_node_ip = args.node_ip
+    node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
+    node_id = node_ips.index(current_node_ip)
     num_nodes = len(node_ips)
-    selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
+
+    if args.selected_gpus is None:
+        gpus_num = fluid.core.get_cuda_device_count()
+        selected_gpus = [str(x) for x in range(0, gpus_num)]
+    else:
+        selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
     selected_gpus_num = len(selected_gpus)
 
     trainers_endpoints = ""
@@ -158,7 +170,8 @@ def start_procs(args):
         current_env.update({
             "FLAGS_selected_gpus": "%s" % selected_gpus[i],
             "PADDLE_TRAINER_ID": "%d" % (node_id * selected_gpus_num + i),
-            "PADDLE_CURRENT_ENDPOINT": "%s:%d" % (current_node_ip, 6170 + i),
+            "PADDLE_CURRENT_ENDPOINT":
+            "%s:%d" % (current_node_ip, args.started_port + i),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
@@ -168,8 +181,8 @@ def start_procs(args):
 
         cmds.append(cmd)
 
-        if args.split_log_path is not None:
-            fn = open("%s/workerlog.%d" % (args.split_log_path, i), "w")
+        if args.log_dir is not None:
+            fn = open("%s/workerlog.%d" % (args.log_dir, i), "w")
             log_fns.append(fn)
 
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
