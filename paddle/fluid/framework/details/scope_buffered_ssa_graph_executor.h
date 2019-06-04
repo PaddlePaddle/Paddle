@@ -16,6 +16,7 @@
 #include <ThreadPool.h>
 #include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -50,9 +51,13 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   void DropLocalExeScopes();
 
+  void CleanLocalExeScopes();
+
   bool NeedCreateLocalExeScope();
 
   void PrepareLocalExeScopes();
+
+  void SyncDevices() const;
 
  private:
   size_t drop_scope_counter_{0};
@@ -61,6 +66,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope*> local_scopes_;
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+  std::vector<std::set<std::string>> local_scopes_var_name_;
+  bool init_variable{true};
 };
 }  // namespace details
 }  // namespace framework

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -35,9 +36,10 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
-  if (drop_scope_counter_ == 0) {
+  if (init_variable) {
     platform::RecordEvent e("InitLocalExeScopes");
     PrepareLocalExeScopes();
+    init_variable = false;
   }
 
   std::vector<framework::LoDTensor> fetch_data;
@@ -50,7 +52,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 
   ++drop_scope_counter_;
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    DropLocalExeScopes();
+    CleanLocalExeScopes();
   }
   if (eptr) {
     std::rethrow_exception(eptr);
@@ -59,12 +61,45 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   }
 }
 
+void ScopeBufferedSSAGraphExecutor::CleanLocalExeScopes() {
+  platform::RecordEvent drop_scope_event("CleanLocalExeScopes");
+  drop_scope_counter_ = 0;
+  SyncDevices();
+
+  for (size_t scope_idx = 0; scope_idx < local_scopes_.size(); ++scope_idx) {
+    auto &scope = local_scopes_.at(scope_idx);
+    auto &local_scope =
+        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
+    local_scope->DropKids();
+
+    {
+      auto local_var_names = local_scope->LocalVarNames();
+      std::set<std::string> local_var_set(local_var_names.begin(),
+                                          local_var_names.end());
+      std::vector<std::string> result;
+      auto &origin_local_vars = local_scopes_var_name_.at(scope_idx);
+      result.reserve(origin_local_vars.size());
+      std::set_intersection(local_var_set.begin(), local_var_set.end(),
+                            origin_local_vars.begin(), origin_local_vars.end(),
+                            std::back_inserter(result));
+      // the intersection of the two set should be origin_local_vars.
+      PADDLE_ENFORCE_EQ(result.size(), origin_local_vars.size());
+      result.clear();
+      std::set_difference(local_var_set.begin(), local_var_set.end(),
+                          origin_local_vars.begin(), origin_local_vars.end(),
+                          std::back_inserter(result));
+      local_scope->EraseVars(result);
+    }
+    VLOG(3) << "Clean local execution scope: " << local_scope;
+  }
+}
+
 void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   platform::RecordEvent drop_scope_event("DropLocalExeScopes");
   drop_scope_counter_ = 0;
-  for (auto p : places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
-  }
+  init_variable = true;
+  SyncDevices();
+
   for (auto &scope : local_scopes_) {
     auto &local_scope =
         *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
@@ -73,9 +108,19 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   }
 }
 
+void ScopeBufferedSSAGraphExecutor::SyncDevices() const {
+  for (auto p : places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+}
+
 void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
   // Create local scopes.
-  for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
+  local_scopes_var_name_.clear();
+  local_scopes_var_name_.resize(local_scopes_.size());
+  size_t idx = local_scopes_.size() - 1;
+  for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend();
+       ++it, --idx) {
     auto &scope = *it;
     Scope &local_scope = scope->NewScope();
     *scope->Var(kLocalExecScopeName)->GetMutable<Scope *>() = &local_scope;
@@ -90,6 +135,9 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
         InitializeVariable(local_scope.Var(info.name_), info.type_);
       }
     }
+    auto local_var_names = local_scope.LocalVarNames();
+    local_scopes_var_name_.at(idx).insert(local_var_names.begin(),
+                                          local_var_names.end());
   }
 }
 
