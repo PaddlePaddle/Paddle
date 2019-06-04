@@ -22,54 +22,86 @@ import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass 
+from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
 from paddle.fluid import core
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
 
 
+def conv_net(img, label):
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        act="relu")
+    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_loss = fluid.layers.mean(loss)
+    return avg_loss
+
+
 class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
+    def setUp(self):
+        self.quantizable_op_and_inputs = {
+            'conv2d': ['Input', 'Filter'],
+            'depthwise_conv2d': ['Input', 'Filter'],
+            # Mul int8 op is under internal test
+            # TODO Update this when mul op is merged
+            #'mul': ['X', 'Y']
+        }
+
+    def check_program(self, program):
+        for block in program.blocks:
+            for op in block.ops:
+                if op.type in self.quantizable_op_and_inputs:
+                    for arg_name in op.output_arg_names:
+                        # Check quantizable op's output is linked to
+                        # fake_dequantize's output
+                        self.assertTrue(arg_name.endswith('.dequantized'))
+
+    def isinteger(self, x):
+        return np.equal(np.mod(x, 1), 0)
+
+    def build_program(self, main, startup, is_test, seed):
+        main.random_seed = seed
+        startup.random_seed = seed
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, startup):
+                img = fluid.layers.data(
+                    name='image', shape=[1, 28, 28], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                loss = conv_net(img, label)
+                if not is_test:
+                    opt = fluid.optimizer.Adam(learning_rate=0.001)
+                    opt.minimize(loss)
+        return [img, label], loss
+
     def freeze_graph(self,
                      use_cuda,
                      seed,
                      activation_quant_type,
                      weight_quant_type='abs_max',
                      for_ci=False):
-        def build_program(main, startup, is_test):
-            main.random_seed = seed
-            startup.random_seed = seed
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
-                    img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32')
-                    label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64')
-                    loss = conv_net(img, label)
-                    if not is_test:
-                        opt = fluid.optimizer.Adam(learning_rate=0.001)
-                        opt.minimize(loss)
-            return [img, label], loss
-            
-        def check_program(self, transform_pass, program):
-            for block in program.blocks:
-                for op in block.ops:
-                    if op.type in self.quantizable_op_and_inputs:
-                        for arg_name in op.output_arg_names:
-                            # Check quantizable op's output is linked to 
-                            # fake_dequantize's output
-                            self.assertTrue(
-                                arg_name.endswith('.dequantized'))
-
-
         random.seed(0)
         np.random.seed(0)
 
         main = fluid.Program()
         startup = fluid.Program()
         test_program = fluid.Program()
-        feeds, loss = build_program(main, startup, False)
-        build_program(test_program, startup, True)
+        feeds, loss = self.build_program(main, startup, False, seed)
+        self.build_program(test_program, startup, True, seed)
         test_program = test_program.clone(for_test=True)
         main_graph = IrGraph(core.Graph(main.desc), for_test=False)
         test_graph = IrGraph(core.Graph(test_program.desc), for_test=True)
@@ -79,6 +111,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup)
+        # Apply the QAT QuantizationTransformPass
         transform_pass = QuantizationTransformPass(
             scope=scope,
             place=place,
@@ -103,6 +136,8 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
+
+        # Training the model to get the weights value
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
@@ -110,36 +145,34 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
 
-
         # Freeze graph for inference, but the weight of fc/conv is still float type.
         freeze_pass = QuantizationFreezePass(
             scope=scope, place=place, weight_quantize_type=weight_quant_type)
         freeze_pass.apply(test_graph)
 
-       # Transform quantized graph for MKL-DNN INT8 inference
-        mkldnn_int8_pass = TransformForMkldnnPass(
-            scope=scope, place=place)
+        # Transform quantized graph for MKL-DNN INT8 inference
+        mkldnn_int8_pass = TransformForMkldnnPass(scope=scope, place=place)
         mkldnn_int8_pass.apply(test_graph)
+        dev_name = '_cpu_'
         if not for_ci:
             marked_nodes = set()
             for op in test_graph.all_op_nodes():
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
-            test_graph.draw('.', 'test_freeze' + dev_name +
+            test_graph.draw('.', 'test_mkldnn' + dev_name +
                             activation_quant_type + '_' + weight_quant_type,
                             marked_nodes)
-        server_program = test_graph.to_program()
+        mkldnn_program = test_graph.to_program()
         w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        self.assertFalse(w_mkldnn.is_integer())
-        check_program(server_program)
-        dev_name = '_gpu_' if use_cuda else '_cpu_'
+        for i, value in enumerate(w_mkldnn):
+            if value.all() != 0:
+                self.assertFalse(self.isinteger(value))
+        self.check_program(mkldnn_program)
         if not for_ci:
-            print('{}: {}'.format('w_mkldnn' + dev_name + activation_quant_type +
-                                  '_' + weight_quant_type, np.sum(w_mkldnn)))
-        
+            print('{}: {}'.format('w_mkldnn' + dev_name + activation_quant_type
+                                  + '_' + weight_quant_type, np.sum(w_mkldnn)))
 
-
-def test_freeze_graph_cpu_static(self):
+    def test_freeze_graph_cpu_static(self):
         with fluid.unique_name.guard():
             self.freeze_graph(
                 False,
@@ -153,7 +186,6 @@ def test_freeze_graph_cpu_static(self):
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='abs_max',
                 for_ci=True)
-
 
 
 if __name__ == '__main__':
