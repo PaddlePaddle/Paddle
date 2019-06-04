@@ -325,6 +325,8 @@ def assign(input, output=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
           out = fluid.layers.create_tensor(dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           fluid.layers.assign(hidden, out)
@@ -599,6 +601,7 @@ def ones(shape, dtype, force_cpu=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
     assert isinstance(shape, list) or isinstance(
@@ -628,6 +631,7 @@ def zeros(shape, dtype, force_cpu=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())
@@ -651,9 +655,11 @@ def reverse(x, axis):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.reverse(x=in, axis=0)
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
+          out = fluid.layers.reverse(x=data, axis=0)
           # or:
-          out = fluid.layers.reverse(x=in, axis=[0,1])
+          out = fluid.layers.reverse(x=data, axis=[0,1])
     """
     if isinstance(axis, int):
         axis = [axis]

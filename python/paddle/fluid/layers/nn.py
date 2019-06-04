@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign
+from .tensor import concat, assign, fill_constant
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -202,6 +202,7 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
+    'deformable_conv',
 ]
 
 kIgnoreIndex = -100
@@ -5853,6 +5854,7 @@ def hsigmoid(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='int64')
             out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
@@ -6562,11 +6564,24 @@ def one_hot(input, depth):
             one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
+
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
+
+    if in_dygraph_mode():
+        inputs = {'X': input}
+        attrs = {'depth': depth}
+    else:
+        if not isinstance(depth, Variable):
+            # user attribute 
+            inputs = {'X': input}
+            attrs = {'depth': depth}
+        else:
+            inputs = {'X': input, 'depth_tensor': depth}
+            attrs = {}
     helper.append_op(
         type="one_hot",
-        inputs={'X': input},
-        attrs={'depth': depth},
+        inputs=inputs,
+        attrs=attrs,
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
@@ -8699,6 +8714,7 @@ def pow(x, factor=1.0, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.pow(x, factor=2.0)
     """
@@ -8762,6 +8778,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
@@ -9312,11 +9329,38 @@ def expand(x, expand_times, name=None):
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
+    # check expand_times have tensor
+
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'expand_times': expand_times}
+    else:
+
+        def contain_tensor(expand_times):
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        if contain_tensor(expand_times):
+            new_expand_times = []
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    new_expand_times.append(ele)
+                else:
+                    assert (isinstance(ele, int))
+                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    fill_constant(
+                        [1], 'int32', ele, force_cpu=True, out=temp_out)
+                    new_expand_times.append(temp_out)
+            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
+            attrs = {}
+        else:
+            inputs = {'X': x}
+            attrs = {'expand_times': expand_times}
+
     helper.append_op(
-        type='expand',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'expand_times': expand_times})
+        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9543,8 +9587,39 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    ${comment}
+    Slice Operator.
 
+    Produces a slice of the input tensor along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
+    end dimension for each axis in the list of axes, it uses this information
+    to slice the input data tensor. If a negative value is passed for any of
+    the start or end indices, it represents number of elements before the end
+    of that dimension. If the value passed to start or end is larger than
+    the n (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
+    Following examples will explain how slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+            Then:
+                result = [ [2, 3, 4], ]
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
@@ -11745,3 +11820,175 @@ def sign(x):
     helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
 
     return out
+
+
+def deformable_conv(input,
+                    offset,
+                    mask,
+                    num_filters,
+                    filter_size,
+                    stride=1,
+                    padding=0,
+                    dilation=1,
+                    groups=None,
+                    deformable_groups=None,
+                    im2col_step=None,
+                    param_attr=None,
+                    bias_attr=None,
+                    name=None):
+    """
+    **Deformable Convolution Layer**
+
+    Compute 2-D deformable convolution on 4-D input.
+    Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
+    
+    .. math::
+
+        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
+    
+    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, respectively.
+    Refer to `Deformable ConvNets v2: More Deformable, Better Results
+    <https://arxiv.org/abs/1811.11168v2>`_ .
+    
+    Example:
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+
+          Offset shape: :math:`(N, 2 * deformable\_groups * H_f * H_w, H_{in}, W_{in})`
+
+          Mask shape: :math:`(N, deformable\_groups * H_f * H_w, H_{in}, W_{in})`
+
+        - Output:
+
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+
+    Args:
+        input (Variable): The input image with [N, C, H, W] format.
+        offset (Variable): The input coord offset of deformable convolution layer.
+        Mask (Variable): The input mask of deformable covolution layer.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        padding (int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups (int): The groups number of the deformable conv layer. According to
+            grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1.
+        deformable_groups (int): The number of deformable group partitions.
+            Default: deformable_groups = 1.
+        im2col_step (int): Maximum number of images per im2col computation; 
+            The total batch size should be divisable by this value or smaller
+            than this value; if you face out of memory problem, you can try
+            to use a smaller value here.
+            Default: im2col_step = 64.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of deformable conv. If it is set to None or one attribute of ParamAttr,
+            deformable conv will create ParamAttr as param_attr.
+            If the Initializer of the param_attr is not set, the parameter is
+            initialized with :math:`Normal(0.0, std)`, and the 
+            :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of
+            deformable conv layer. If it is set to False, no bias will be added
+            to the output units. If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None
+    Returns:
+        Variable: The tensor variable storing the deformable convolution \
+                  result.
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
+          mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
+          out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
+                                             num_filters=2, filter_size=3, padding=1)
+    """
+
+    num_channels = input.shape[1]
+    assert param_attr is not False, "param_attr should not be False here."
+
+    helper = LayerHelper('deformable_conv', **locals())
+    dtype = helper.input_dtype()
+
+    if not isinstance(input, Variable):
+        raise TypeError("Input of deformable_conv must be Variable")
+    if not isinstance(offset, Variable):
+        raise TypeError("Input Offset of deformable_conv must be Variable")
+    if not isinstance(mask, Variable):
+        raise TypeError("Input Mask of deformable_conv must be Variable")
+
+    if groups is None:
+        num_filter_channels = num_channels
+    else:
+        if num_channels % groups != 0:
+            raise ValueError("num_channels must be divisible by groups.")
+        num_filter_channels = num_channels // groups
+
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+    padding = utils.convert_to_list(padding, 2, 'padding')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+
+    input_shape = input.shape
+    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+
+    def _get_default_param_initializer():
+        filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        std = (2.0 / filter_elem_num)**0.5
+        return Normal(0.0, std, 0)
+
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        default_initializer=_get_default_param_initializer())
+
+    pre_bias = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='deformable_conv',
+        inputs={
+            'Input': input,
+            'Filter': filter_param,
+            'Offset': offset,
+            'Mask': mask,
+        },
+        outputs={"Output": pre_bias},
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'deformable_groups': deformable_groups,
+            'im2col_step': im2col_step,
+        })
+
+    output = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    return output
