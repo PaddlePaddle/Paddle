@@ -300,7 +300,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // This name will be used as key when referring info from device context
     const std::string key = CreateKey(ctx, diff_src_tz, pooling_type, ksize,
                                       strides, paddings, memory::data_type::f32,
-                                      in_x_grad_format, ctx.op().Input("Out"));
+                                      in_x->format(), ctx.op().Input("Out"));
     const std::string key_pool_bwd_p = key + "@pool_bwd_p";
     const std::string key_pool_diff_src_mem_p = key + "@pool_diff_src_mem_p";
     const std::string key_pool_diff_dst_mem_p = key + "@pool_diff_dst_mem_p";
