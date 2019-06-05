@@ -422,7 +422,36 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string &ep) {
 
 VarHandlePtr BRPCClient::AsyncSendComplete(const std::string &ep,
                                            int64_t time_out) {
-  return AsyncSendMessage(ep, kSendCompleteRPC, COMPLETE_MESSAGE, time_out);
+  auto ch_ptr = GetChannel(ep);
+  auto ch_ctx = ch_ptr->Pop();
+
+  brpc::Controller *cntl = new brpc::Controller();
+  sendrecv::VariableMessage *response = new sendrecv::VariableMessage();
+  cntl->set_timeout_ms(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(COMPLETE_MESSAGE);
+  req.set_trainer_id(trainer_id_);
+
+  const std::string method = kSendCompleteRPC;
+  // var handle
+  VarHandlePtr var_h(
+      new VarHandle(ep, method, COMPLETE_MESSAGE, nullptr, nullptr));
+
+  platform::RecordRPCEvent record_event(method);
+
+  google::protobuf::Closure *done = brpc::NewCallback(
+      &HandleBarrierResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
+
+  ch_ctx->stub->SendBarrier(cntl, &req, response, done);
+
+  req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    var_h->Wait();
+  }
+
+  return var_h;
 }
 
 void BRPCClient::SendComplete() {
