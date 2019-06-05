@@ -186,8 +186,6 @@ class TestQatInt8Comparison(unittest.TestCase):
             fpses = fpses[skip_batch_num:]
             fps_avg = np.average(fpses)
             infer_total_time = time.time() - infer_start_time
-            infer_accs1 = infer_accs1[skip_batch_num:]
-            infer_accs5 = infer_accs5[skip_batch_num:]
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
             _logger.info('Total inference run time: {:.2f} s'.format(infer_total_time))
