@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.base import to_variable
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope, param_attr=None, bias_attr=None):
+    def __init__(self, name_scope):
         super(MLP, self).__init__(name_scope)
 
         self._fc1 = FC(self.full_name(), 10)
