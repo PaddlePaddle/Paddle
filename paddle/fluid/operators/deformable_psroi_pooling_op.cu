@@ -165,6 +165,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     Tensor* top_count = ctx.Output<Tensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
+
     auto no_trans = ctx.Attr<int>("no_trans");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto output_dim = ctx.Attr<int>("output_dim");
@@ -178,6 +179,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     auto part_width = part_size[1];
     auto sample_per_part = ctx.Attr<int>("sample_per_part");
     auto trans_std = ctx.Attr<float>("trans_std");
+
     const int batch = static_cast<int>(input->dims()[0]);
     const int channels = static_cast<int>(input->dims()[1]);
     const int height = static_cast<int>(input->dims()[2]);
@@ -192,9 +194,11 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
         no_trans ? output_dim : output_dim / num_classes;
     PADDLE_ENFORCE(channels_each_class >= 1,
                    "channels_each must greater than 1");
+
     const T* bottom_data = input->data<T>();
     const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
+
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
@@ -212,6 +216,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
         roi_batch_id_data[i] = n;
       }
     }
+
     auto& dev_ctx = ctx.cuda_device_context();
     auto& allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
@@ -221,8 +226,10 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
+
     T* top_data = out->mutable_data<T>(ctx.GetPlace());
     T* top_count_data = top_count->mutable_data<T>(ctx.GetPlace());
+
     DeformablePSROIPoolForwardKernel<<<GET_BLOCKS(count), CUDA_NUM_THREADS, 0,
                                        dev_ctx.stream()>>>(
         count, bottom_data, (T)spatial_scale, channels, height, width,
@@ -402,6 +409,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
         ctx.Input<Tensor>(framework::GradVarName("Output"));
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
+
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.cuda_device_context();
     if (input_grad) {
@@ -412,6 +420,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
       trans_grad->mutable_data<T>(ctx.GetPlace());
       set_zero(dev_ctx, trans_grad, static_cast<T>(0));
     }
+
     auto no_trans = ctx.Attr<int>("no_trans");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto output_dim = ctx.Attr<int>("output_dim");
@@ -425,6 +434,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     auto part_width = part_size[1];
     auto sample_per_part = ctx.Attr<int>("sample_per_part");
     auto trans_std = ctx.Attr<float>("trans_std");
+
     const int batch = static_cast<int>(input->dims()[0]);
     const int channels = static_cast<int>(input->dims()[1]);
     const int height = static_cast<int>(input->dims()[2]);
@@ -435,10 +445,12 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     const int num_classes = no_trans ? 1 : channels_trans / 2;
     const int channels_each_class =
         no_trans ? output_dim : output_dim / num_classes;
+
     const T* top_diff = output_grad->data<T>();
     const T* bottom_data = input->data<T>();
     const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
+
     T* bottom_data_diff = NULL;
     T* bottom_trans_diff = NULL;
     if (input_grad) {
@@ -448,6 +460,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
       bottom_trans_diff =
           no_trans ? NULL : trans_grad->mutable_data<T>(ctx.GetPlace());
     }
+
     const T* top_count_data = top_count->data<T>();
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
@@ -458,14 +471,17 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         rois_batch_size, batch,
         "The rois_batch_size and imgs batch_size must be the same.");
+
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
                       "The rois_num from input and lod must be the same.");
+
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
       }
     }
+
     auto& allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     int bytes = roi_batch_id_list.numel() * sizeof(int);
@@ -474,6 +490,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
+
     DeformablePSROIPoolBackwardAccKernel<<<GET_BLOCKS(count), CUDA_NUM_THREADS,
                                            0, dev_ctx.stream()>>>(
         count, top_diff, top_count_data, num_rois, (T)spatial_scale, channels,
