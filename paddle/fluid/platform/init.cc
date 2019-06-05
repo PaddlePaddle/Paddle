@@ -206,9 +206,6 @@ void InitGLOG(const std::string &prog_name) {
   // glog will not hold the ARGV[0] inside.
   // Use strdup to alloc a new string.
   google::InitGoogleLogging(strdup(prog_name.c_str()));
-#ifndef _WIN32
-  google::InstallFailureSignalHandler();
-#endif
 }
 
 #if defined(PADDLE_WITH_DGC)
