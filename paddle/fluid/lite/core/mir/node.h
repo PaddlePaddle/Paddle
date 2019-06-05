@@ -93,6 +93,16 @@ class Node {
     return x;
   }
 
+  Stmt* stmt() const {
+    CHECK(IsStmt());
+    return stmt_.get();
+  }
+
+  Arg* arg() const {
+    CHECK(IsArg());
+    return arg_.get();
+  }
+
   // Set roles.
   Arg& AsArg() {
     if (role_ != Role::kUnk) {

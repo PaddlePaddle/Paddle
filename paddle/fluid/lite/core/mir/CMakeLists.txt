@@ -48,5 +48,8 @@ if (LITE_WITH_CUDA)
 endif()
 cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_test.cc DEPS
         ${test_variable_place_infrence_pass_DEPS})
+
+cc_library(pattern_matcher_lite SRCS pattern_matcher.cc DEPS mir_node mir_ssa_graph op_lite)
+cc_test(test_pattern_matcher_lite SRCS pattern_matcher_tester.cc DEPS pattern_matcher_lite)
  
  
