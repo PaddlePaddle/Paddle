@@ -22,9 +22,9 @@ from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
-from ...base.fleet_base import DistributedOptimizer
-from ...base.fleet_base import Fleet
-from ...base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 
 
 class DistributedTranspiler(Fleet):
