@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ def load_persistables(dirname='save_dir'):
 
     Args:
         dirname(str): The directory path. default is save_dir
-        optimizer(Optimizer): Optimizer to be save
+        optimizer(Optimizer): Optimizer to be saved
 
     Returns:
         dict: The parameter-dict resumed from file
