@@ -23,7 +23,6 @@ from ....compiler import BuildStrategy
 from ....framework import IrGraph, Variable, Program
 from ..core.strategy import Strategy
 from .quantization_pass import *
-from .quantization_mkldnn_pass import *
 
 __all__ = ['QuantizationStrategy']
 
@@ -43,7 +42,6 @@ class QuantizationStrategy(Strategy):
                  float_model_save_path=None,
                  mobile_model_save_path=None,
                  int8_model_save_path=None,
-                 mkldnn_int8_model_save_path=None,
                  activation_bits=8,
                  weight_bits=8,
                  activation_quantize_type='abs_max',
@@ -60,8 +58,6 @@ class QuantizationStrategy(Strategy):
                             None means it doesn't save mobile model. defalut: None.
             int8_model_save_path(str): The path to save model with int8_t weight.
                             None means it doesn't save int8 model. defalut: None.
-            mkldnn_int8_model_save_path:(str): The path to save the model for MKL-DNN INT8 inference.
-                            None means it doesn't save MKL-DNN int8 model. default: None
             activation_bits(int): quantization bit number for activation. default: 8.
             weight_bits(int): quantization bit number for weights. The bias is not quantized.
                               default: 8.
@@ -85,7 +81,6 @@ class QuantizationStrategy(Strategy):
         self.float_model_save_path = float_model_save_path
         self.mobile_model_save_path = mobile_model_save_path
         self.int8_model_save_path = int8_model_save_path
-        self.mkldnn_int8_model_save_path = mkldnn_int8_model_save_path
         self.activation_bits = activation_bits
         self.weight_bits = weight_bits
         self.activation_quantize_type = activation_quantize_type
@@ -214,33 +209,6 @@ class QuantizationStrategy(Strategy):
                     params_filename='weights',
                     export_for_deployment=True)
 
-            # save the model for mkldnn int8 inference
-            if self.mkldnn_int8_model_save_path:
-                if not self.float_model_save_path:
-                    # convert the weights as int8_t type
-                    freeze_pass = QuantizationFreezePass(
-                        scope=context.scope,
-                        place=context.place,
-                        weight_bits=self.weight_bits,
-                        activation_bits=self.activation_bits,
-                        weight_quantize_type=self.weight_quantize_type)
-                    freeze_pass.apply(test_ir_graph)
-
-                mkldnn_int8_pass = TransformForMkldnnPass(
-                    scope=context.scope, place=context.place)
-                mkldnn_int8_pass.apply(test_ir_graph)
-
-                executor = Executor(context.place)
-                io.save_inference_model(
-                    self.mkldnn_int8__model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
-
             # save int8 model
             if self.int8_model_save_path:
                 convert_int8_pass = ConvertToInt8Pass(
@@ -278,5 +246,4 @@ class QuantizationStrategy(Strategy):
                     model_filename='model',
                     params_filename='weights',
                     export_for_deployment=True)
-
             _logger.info('Finish QuantizationStrategy::on_epoch_end')
