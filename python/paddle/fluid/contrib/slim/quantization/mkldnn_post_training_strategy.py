@@ -37,17 +37,17 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
                  cpu_math_library_num_threads=1):
         """
         Args:
-            int8_model_save_path(str): The path to save an int8 programdesc with fp32 weights for
-                        MKL-DNN int8 inference. For post training quantization,
-                        MKLDNNPostTrainingQuantStrategy only support to convert a fp32 programdesc
-                        with fp32 weights to a int8 programdesc with fp32 weights now. The saved
-                        int8 programdesc with fp32 weights only can be executed with MKL-DNN enabled.
-                        None means it doesn't save model. default: None.
-            fp32_model_path(str): The path to the original fp32 programdesc with fp32 weights.
-                        None means it doesn't have a fp32 programdesc with fp32 weights. default: None.
-            cpu_math_library_num_threads(int): The number of cpu math library threads are used on 
+            int8_model_save_path(str): int8_model_save_path is used to save an int8 ProgramDesc
+                        with fp32 weights which is used for MKL-DNN int8 inference. For post training quantization,
+                        MKLDNNPostTrainingQuantStrategy only supports converting a fp32 ProgramDesc
+                        with fp32 weights to an int8 ProgramDesc with fp32 weights now. The saved
+                        int8 ProgramDesc with fp32 weights only can be executed with MKL-DNN enabled.
+                        None means it doesn't save int8 ProgramDesc with fp32 weights. default: None.
+            fp32_model_path(str): fp32_model_path is used to load an original fp32 ProgramDesc with fp32 weights.
+                        None means it doesn't have a fp32 ProgramDesc with fp32 weights. default: None.
+            cpu_math_library_num_threads(int): The number of cpu math library threads which is used on
                         MKLDNNPostTrainingQuantStrategy. 1 means it only uses one cpu math library
-                        thread. default: 1 
+                        thread. default: 1
         """
 
         super(MKLDNNPostTrainingQuantStrategy, self).__init__(0, 0)

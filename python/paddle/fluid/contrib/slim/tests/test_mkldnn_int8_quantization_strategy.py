@@ -37,13 +37,14 @@ def parse_args():
         '--infer_model',
         type=str,
         default='',
-        help='path to fp32 programdesc with fp32 weights')
+        help='infer_model is used to load an original fp32 ProgramDesc with fp32 weights'
+    )
     parser.add_argument('--infer_data', type=str, default='', help='data file')
     parser.add_argument(
         '--int8_model_save_path',
         type=str,
         default='./output',
-        help='path to save int8 programdesc with fp32 weights')
+        help='infer_data is used to save an int8 ProgramDesc with fp32 weights')
     parser.add_argument(
         '--warmup_batch_size',
         type=int,
@@ -196,11 +197,11 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
 
         _logger.info('--- INT8 prediction start ---')
         val_reader = paddle.batch(
-            self._reader_creator(data_path, False, 10), batch_size=batch_size)
+            self._reader_creator(data_path, False), batch_size=batch_size)
         int8_model_result = self._predict(val_reader, int8_model_path)
         _logger.info('--- FP32 prediction start ---')
         val_reader = paddle.batch(
-            self._reader_creator(data_path, False, 10), batch_size=batch_size)
+            self._reader_creator(data_path, False), batch_size=batch_size)
         fp32_model_result = self._predict(val_reader, fp32_model_path)
 
         _logger.info('--- comparing outputs ---')
