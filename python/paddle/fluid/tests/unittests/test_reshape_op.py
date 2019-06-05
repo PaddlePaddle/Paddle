@@ -95,7 +95,7 @@ class TestReshapeOp_attr_tensor(OpTest):
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
-            'shape_tensor': shape_tensor
+            'ShapeTensor': shape_tensor
         }
         self.attrs = {}
         self.outputs = {
