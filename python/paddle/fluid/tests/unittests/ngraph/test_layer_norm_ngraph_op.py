@@ -17,5 +17,14 @@ import unittest, sys
 sys.path.append("../")
 from test_layer_norm_op import TestLayerNormdOp
 
+
+class TestLayerNormNGRAPHOp(TestLayerNormdOp):
+    def setUp(self):
+        super(TestLayerNormNGRAPHOp, self).setUp()
+        self.use_cudnn = False
+
+
+del TestLayerNormdOp
+
 if __name__ == "__main__":
     unittest.main()

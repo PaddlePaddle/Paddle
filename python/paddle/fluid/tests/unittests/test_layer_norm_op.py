@@ -73,14 +73,10 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
 
 class TestLayerNormdOp(unittest.TestCase):
     def setUp(self):
-        self.use_cudnn = False
-        self.init_test_case()
+        self.use_cudnn = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
-
-    def init_test_case(self):
-        self.use_cudnn = False
 
     def check_forward_backward(self, shape, begin_norm_axis):
         def test_with_place(place, shape, begin_norm_axis):
@@ -177,11 +173,6 @@ class TestLayerNormdOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
-
-
-class TestLayerNormdCudnnOp(TestLayerNormdOp):
-    def init_test_case(self):
-        self.use_cudnn = True
 
 
 if __name__ == '__main__':
