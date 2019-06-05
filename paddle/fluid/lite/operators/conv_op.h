@@ -38,7 +38,7 @@ class ConvOpLite : public OpLite {
   bool InferShape() const override;
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override {
+  bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
     auto input = op_desc.Input("Input").front();
     auto filter = op_desc.Input("Filter").front();
     auto bias = op_desc.Input("Bias").front();
