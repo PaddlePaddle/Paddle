@@ -55,6 +55,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
+    @imperative_base.no_grad
     def __init__(self, learning_rate, regularization=None, name=None):
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
@@ -463,6 +464,8 @@ class Optimizer(object):
         if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
+                params_grads = append_regularization_ops(params_grads,
+                                                         self.regularization)
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
             program = loss.block.program
@@ -470,11 +473,13 @@ class Optimizer(object):
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
+    @imperative_base.no_grad
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 grad_clip=None):
         """
         Add operations to minimize `loss` by updating `parameter_list`.
 
@@ -487,6 +492,7 @@ class Optimizer(object):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+            grad_clip (GradClipBase|None) : Gradient clip strategy
 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
@@ -497,6 +503,11 @@ class Optimizer(object):
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+        if grad_clip is not None and framework.in_dygraph_mode():
+            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
+            params_grads = grad_clip(params_grads)
+
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
@@ -2136,22 +2147,45 @@ class ModelAverage(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+
     Examples:
 
       .. code-block:: python
 
-        optimizer = fluid.optimizer.Momentum()
-        optimizer.minimize(cost)
-        model_average = fluid.optimizer.ModelAverage(0.15,
-                                                min_average_window=10000,
-                                                max_average_window=20000)
-        for pass_id in range(args.pass_num):
-            for data in train_reader():
-                exe.run(fluid.default_main_program()...)
+        import paddle.fluid as fluid
+        import numpy
 
+        # First create the Executor.
+        place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            # build net
+            data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer.minimize(loss)
+
+            # build ModelAverage optimizer
+            model_average = fluid.optimizer.ModelAverage(0.15,
+                                                         min_average_window=10000,
+                                                         max_average_window=20000)
+
+            exe.run(startup_program)
+            x = numpy.random.random(size=(10, 1)).astype('float32')
+            outs = exe.run(program=train_program,
+                           feed={'X': x},
+                           fetch_list=[loss.name])
+
+            # apply ModelAverage
             with model_average.apply(exe):
-                for data in test_reader():
-                    exe.run(inference_program...)
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                exe.run(program=train_program,
+                        feed={'X': x},
+                        fetch_list=[loss.name])
     """
 
     def __init__(self,
@@ -2266,6 +2300,10 @@ class ModelAverage(Optimizer):
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
+
+        Args:
+            executor(fluid.Executor): current executor.
+            need_restore(bool): If you finally need to do restore, set it to True. Default is True.
         """
         executor.run(self.apply_program)
         try:
@@ -2276,6 +2314,9 @@ class ModelAverage(Optimizer):
 
     def restore(self, executor):
         """Restore parameter values of current model.
+        
+        Args:
+            executor(fluid.Executor): current executor.
         """
         executor.run(self.restore_program)
 
@@ -2292,10 +2333,10 @@ class ExponentialMovingAverage(object):
 
 	\\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
 
-    The average results will be saved in temporary variables which are created 
-    and maintained by the object, and can be applied to parameters of current 
-    model by calling **apply()** method. And the **restore()** method is used to 
-    restore the parameters.
+    The average results calculated by **update()** method will be saved in 
+    temporary variables which are created and maintained by the object, and can 
+    be applied to parameters of current model by calling **apply()** method. And 
+    the **restore()** method is used to restore the parameters.
 
     **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be 
     zero biased, which can be corrected by divided by a factor 
@@ -2341,6 +2382,7 @@ class ExponentialMovingAverage(object):
 
              global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
              ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+             ema.update()
 
 	     # pseudo code
 	     for pass_id in range(args.pass_num):
@@ -2366,7 +2408,7 @@ class ExponentialMovingAverage(object):
         self._name = name if name is not None else ''
         self._decay_var = self._get_ema_decay()
 
-        self.params_tmps = []
+        self._params_tmps = []
         for param in default_main_program().global_block().all_parameters():
             if param.do_model_average != False:
                 tmp = param.block.create_var(
@@ -2375,22 +2417,22 @@ class ExponentialMovingAverage(object):
                     dtype=param.dtype,
                     persistable=False,
                     stop_gradient=True)
-                self.params_tmps.append((param, tmp))
+                self._params_tmps.append((param, tmp))
 
-        ema_vars = {}
-        for param, tmp in self.params_tmps:
+        self._ema_vars = {}
+        for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
-                ema_vars[param.name] = self._append_ema_ops(param)
+                self._ema_vars[param.name] = self._create_ema_vars(param)
 
         self.apply_program = Program()
         block = self.apply_program.global_block()
         with program_guard(main_program=self.apply_program):
             decay_pow = self._get_decay_pow(block)
-            for param, tmp in self.params_tmps:
+            for param, tmp in self._params_tmps:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
-                ema = block._clone_variable(ema_vars[param.name])
+                ema = block._clone_variable(self._ema_vars[param.name])
                 layers.assign(input=param, output=tmp)
                 # bias correction
                 ema = ema / (1.0 - decay_pow)
@@ -2399,7 +2441,7 @@ class ExponentialMovingAverage(object):
         self.restore_program = Program()
         block = self.restore_program.global_block()
         with program_guard(main_program=self.restore_program):
-            for param, tmp in self.params_tmps:
+            for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
                 layers.assign(input=tmp, output=param)
@@ -2431,7 +2473,7 @@ class ExponentialMovingAverage(object):
         decay_pow_acc = layers.elementwise_pow(decay_var, global_steps + 1)
         return decay_pow_acc
 
-    def _append_ema_ops(self, param):
+    def _create_ema_vars(self, param):
         param_ema = layers.create_global_var(
             name=unique_name.generate(self._name + param.name + '_ema'),
             shape=param.shape,
@@ -2439,9 +2481,20 @@ class ExponentialMovingAverage(object):
             dtype=param.dtype,
             persistable=True)
 
-        ema_t = param_ema * self._decay_var + param * (1 - self._decay_var)
-        layers.assign(input=ema_t, output=param_ema)
         return param_ema
+
+    def update(self):
+        """ 
+        Update Exponential Moving Average. Should only call this method in 
+        train program.
+        """
+        for param, tmp in self._params_tmps:
+            with param.block.program._optimized_guard(
+                [param, tmp]), name_scope('moving_average'):
+                param_ema = self._ema_vars[param.name]
+                ema_t = param_ema * self._decay_var + param * (1 -
+                                                               self._decay_var)
+                layers.assign(input=ema_t, output=param_ema)
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):

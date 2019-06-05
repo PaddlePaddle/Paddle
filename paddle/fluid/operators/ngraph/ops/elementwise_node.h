@@ -61,6 +61,7 @@ void BuildElementwiseCompareNode(
   auto out = std::make_shared<T>(x, y);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
+
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
@@ -72,3 +73,5 @@ REGISTER_NG_OP(elementwise_sub,
                BuildElementwiseBinaryNode<ngraph::op::Subtract>);
 REGISTER_NG_OP(elementwise_min,
                BuildElementwiseBinaryNode<ngraph::op::Minimum>);
+REGISTER_NG_OP(less_than, BuildElementwiseCompareNode<ngraph::op::Less>);
+REGISTER_NG_OP(elementwise_div, BuildElementwiseBinaryNode<ngraph::op::Divide>);

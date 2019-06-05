@@ -157,9 +157,14 @@ class ParallelExecutorPrivate {
                             bst.trainer_id_);
 
     if (bst.use_hierarchical_allreduce_) {
-      std::string var_name = platform::GetHierarchicalInterNCCLVarName();
-      auto nccl_id_var = scope->FindVar(var_name);
-      auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+      std::vector<ncclUniqueId *> inter_nccl_ids;
+      for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
+        std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
+        auto nccl_id_var = scope->FindVar(var_name);
+        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+        auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        inter_nccl_ids.push_back(inter_nccl_id);
+      }
 
       std::vector<ncclUniqueId *> exter_nccl_ids;
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
@@ -169,7 +174,8 @@ class ParallelExecutorPrivate {
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
-      nccl_ctxs_.InitHierarchicalCtxs(places_, inter_nccl_id, exter_nccl_ids,
+
+      nccl_ctxs_.InitHierarchicalCtxs(places_, inter_nccl_ids, exter_nccl_ids,
                                       bst.num_trainers_, bst.trainer_id_,
                                       bst.hierarchical_allreduce_inter_nranks_,
                                       bst.hierarchical_allreduce_exter_nranks_);
@@ -580,6 +586,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
   platform::RecordBlock b(0);
   if (member_->HasGarbageCollectors()) {
+    platform::RecordEvent event("PrepareGarbageCollectors");
     member_->ResetRuntimeReferenceCount(fetch_tensors, fetched_var_name);
   }
 
@@ -608,11 +615,21 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
   for (auto pair : tensors) {
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
-    PADDLE_ENFORCE_EQ(
-        member_->places_.size(), lod_tensors.size(),
-        "The number of samples of current batch is less than the count of "
-        "devices, currently, it is not allowed. (%d vs %d)",
-        member_->places_.size(), lod_tensors.size());
+    if (member_->places_.size() != lod_tensors.size()) {
+      bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+      auto error_info = string::Sprintf(
+          "The number(%d) of samples of "
+          "current batch is less than the count(%d) of "
+          "devices(%s), currently, it is not allowed. ",
+          member_->places_.size(), lod_tensors.size(),
+          (is_cpu_place ? "CPU" : "GPU"));
+      if (is_cpu_place) {
+        error_info +=
+            "You should set the environment variable CPU_NUM in the system "
+            "to determine the number of devices you need.";
+      }
+      PADDLE_THROW(error_info);
+    }
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
       auto t =
