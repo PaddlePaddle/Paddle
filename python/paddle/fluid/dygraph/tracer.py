@@ -52,27 +52,10 @@ class Tracer(core.Tracer):
         self._trace_id = 0
 
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
-        # TODO(hy): previous version will cause memory failed
-        inps = defaultdict(list)
-        for k, vars in six.iteritems(inputs):
-            if isinstance(vars, framework.Variable):
-                inps[k].append(vars._ivar)
-            elif isinstance(vars, list) or isinstance(vars, tuple):
-                for var in vars:
-                    inps[k].append(var._ivar)
-
-        outs = defaultdict(list)
-        for k, vars in six.iteritems(outputs):
-            if isinstance(vars, framework.Variable):
-                outs[k].append(vars._ivar)
-            elif isinstance(vars, list) or isinstance(vars, tuple):
-                for var in vars:
-                    outs[k].append(var._ivar)
-
         # record op's trace id
         op.iop._trace_id = self._trace_id
 
-        self.trace(op.iop, inps, outs, op.attrs,
+        self.trace(op.iop, inputs, outputs, op.attrs,
                    framework._current_expected_place(), stop_gradient)
 
         if not stop_gradient and self._train_mode:
