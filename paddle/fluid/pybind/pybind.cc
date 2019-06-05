@@ -1348,7 +1348,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
-            PADDLE_THROW("Windows has NO support to distribute mode.";
+            PADDLE_THROW("Windows has NO support to distribute mode.");
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -1498,7 +1498,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) {
 #ifdef WIN32
             if (b) {
-              PADDLE_THROW("Windows has NO support to distribute mode.";
+              PADDLE_THROW("Windows has NO support to distribute mode.");
             }
 #else
             self.is_distribution_ = b;
