@@ -196,6 +196,9 @@ class PyReader(object):
                 warnings.warn(
                     "Please NOTE: dygraph can support iterable mode only.")
             self._iterable = True
+            if not return_list:
+                warnings.warn(
+                    "Please NOTE: dygraph can support return as list only.")
             self._return_list = True
         else:
             self._iterable = iterable

@@ -21,7 +21,7 @@ import six
 from six.moves import zip, range, xrange
 import multiprocessing
 
-from .framework import Variable, default_main_program
+from .framework import Variable, default_main_program, _current_expected_place
 
 __all__ = ['DataFeeder']
 
@@ -462,6 +462,8 @@ class ListTensorProvider(object):
         if places:
             if not isinstance(places, (list, tuple)):
                 places = [places]
+            assert len(
+                places) == 1, "dygraph mode CAN NOT specify multiple places."
             for place in places:
                 if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
                     self.places.append(place)
@@ -470,7 +472,7 @@ class ListTensorProvider(object):
                         "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
                     )
         if len(self.places) == 0:
-            self.places.append(core.CPUPlace())
+            self.places.append(_current_expected_place())
 
     def _readData(self, iterable, places):
         for place, each_sample in six.moves.zip(places, iterable):
