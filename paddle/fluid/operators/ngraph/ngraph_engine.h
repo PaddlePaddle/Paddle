@@ -107,8 +107,6 @@ class NgraphEngine {
   void GetNgInputShape();
   // Call ngraph bridge to map ops
   void BuildNgNodes();
-  // run paddle RuntimeInferShape to get the tensor shape
-  void RunInferShape();
   // build ngraph function call
   std::shared_ptr<ngraph::Function> BuildNgFunction(
       const framework::ExecutionContext& ctx);
