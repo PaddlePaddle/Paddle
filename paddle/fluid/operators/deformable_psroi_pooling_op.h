@@ -62,24 +62,30 @@ void DeformablePSROIPoolForwardCPUKernel(
     int ctop = (ix / pooled_width / pooled_height) % output_dim;
     int n = ix / pooled_width / pooled_height / output_dim;
     const T* offset_bottom_rois = bottom_rois + n * 4;
+
     int roi_batch_ind = roi_batch_id_data[n];
     T roi_start_w = (T)(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
     T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
     T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
     T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
+
     //  width and height of roi
     T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));
     T roi_height = std::max(roi_end_h - roi_start_h, T(0.1));
+
     //  width and height of each bin
     T bin_size_h = roi_height / (T)(pooled_height);
     T bin_size_w = roi_width / (T)(pooled_width);
+
     //  sampling interval in each bin
     T sub_bin_size_h = bin_size_h / (T)(sample_per_part);
     T sub_bin_size_w = bin_size_w / (T)(sample_per_part);
+
     //  obtain offset of roi
     int part_h = floor((T)(ph) / pooled_height * part_height);
     int part_w = floor((T)(pw) / pooled_width * part_width);
     int class_id = ctop / channels_each_class;
+
     T trans_x =
         no_trans
             ? (T)(0)
@@ -96,6 +102,7 @@ void DeformablePSROIPoolForwardCPUKernel(
                                        part_width +
                                    part_w] *
                           (T)trans_std;
+
     //  location of start after adding offset
     T wstart = (T)(pw)*bin_size_w + roi_start_w;
     wstart += trans_x * roi_width;
@@ -109,6 +116,7 @@ void DeformablePSROIPoolForwardCPUKernel(
     gh = std::min(std::max(gh, 0), group_height - 1);
     const T* offset_bottom_data =
         bottom_data + (roi_batch_ind * channels) * height * width;
+
     //  sampling in each bin
     for (int ih = 0; ih < sample_per_part; ih++) {
       for (int iw = 0; iw < sample_per_part; iw++) {
