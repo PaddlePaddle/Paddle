@@ -22,6 +22,20 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 
+class DistributedOptimizerFactory(object):
+    def strategy_to_optimizer_map(self):
+        pattern = {}
+        pattern["fp16"] = [
+            MixedPrecisionOptimizer, MixedPrecisionLocalSGDOptimizer
+        ]
+        pattern["fp32"] = [LocalSGDOptimizer]
+        pattern[
+            "localsgd"] = [MixedPrecisionLocalSGDOptimizer, LocalSGDOptimizer]
+
+    def create_by_strategy(self, strategy):
+        pass
+
+
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
@@ -48,25 +62,9 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        if strategy == None:
-            self._optimizer = CollectiveOptimizer(optimizer, strategy)
-            return self._optimizer
-        if strategy.collecitve_op_based:
-            if strategy.use_fp16:
-                self._optmizer = \
-                    MixedPrecisionOptimizer(optmizer, strategy)
-            else:
-                self._optimizer = \
-                    FullPrecisionOptimizer(optmizer, strategy)
-        if strategy.local_sgd:
-            if strategy.use_fp16:
-                # should have an independent optimizer inherited from
-                # CollectiveOpBasedOptimizer
-                pass
-            else:
-                # should have an independent optimizer inherited from
-                # CollectiveOpBasedOptimizer
-                pass
+        self._optmizer = DistributedOptimizerFactory.create_by_strategy(
+            strategy)
+        return self._optimizer
 
     def save_inference_model(self,
                              executor,
