@@ -130,6 +130,7 @@ USE_LITE_OP(square)
 USE_LITE_OP(softmax)
 USE_LITE_OP(dropout)
 USE_LITE_OP(concat)
+USE_LITE_OP(pool)
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
 
