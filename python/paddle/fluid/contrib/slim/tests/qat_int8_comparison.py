@@ -110,6 +110,35 @@ class TestQatInt8Comparison(unittest.TestCase):
         acc5 = float(correct_5) / float(total)
         return acc1, acc5
 
+    def _prepare_for_fp32_mkldnn(self, graph):
+        ops = graph.all_op_nodes()
+        for op_node in ops:
+            name = op_node.name()
+            if name in ['depthwise_conv2d']:
+                input_var_node = graph._find_node_by_name(op_node.inputs,
+                    op_node.input("Input")[0])
+                weight_var_node = graph._find_node_by_name(op_node.inputs, op_node.input("Filter")[0])
+                output_var_node = graph._find_node_by_name(
+                    graph.all_var_nodes(), op_node.output("Output")[0])
+                attrs = {
+                    name: op_node.op().attr(name)
+                        for name in op_node.op().attr_names()
+                }
+
+                conv_op_node = graph.create_op_node(
+                    op_type='conv2d',
+                    attrs=attrs,
+                    inputs={'Input': input_var_node,
+                        'Filter': weight_var_node},
+                    outputs={'Output': output_var_node})
+
+                graph.link_to(input_var_node, conv_op_node)
+                graph.link_to(weight_var_node, conv_op_node)
+                graph.link_to(conv_op_node, output_var_node)
+                graph.safe_remove_nodes(op_node)
+
+        return graph
+
     def _predict(self,
                  test_reader=None,
                  model_path=None,
@@ -128,13 +157,15 @@ class TestQatInt8Comparison(unittest.TestCase):
                  fetch_targets] = fluid.io.load_inference_model(
                      model_path, exe, 'model', 'params')
 
+            graph = IrGraph(
+                core.Graph(inference_program.desc), for_test=True)
             if (transform_to_int8):
-                graph = IrGraph(
-                    core.Graph(inference_program.desc), for_test=True)
                 mkldnn_int8_pass = TransformForMkldnnPass(
                     scope=inference_scope, place=place)
                 mkldnn_int8_pass.apply(graph)
-                inference_program = graph.to_program()
+            else:
+                graph = self._prepare_for_fp32_mkldnn(graph)
+            inference_program = graph.to_program()
 
             dshape = [3, 224, 224]
             outputs = []
@@ -213,7 +244,9 @@ class TestQatInt8Comparison(unittest.TestCase):
         _logger.info('Accepted acc1 diff threshold: {0}'.format(threshold))
         _logger.info('FP32: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(fp32_acc1, fp32_acc5))
         _logger.info('INT8: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(int8_acc1, int8_acc5))
-        assert np.abs(fp32_acc1 - int8_acc1) <= threshold
+        assert fp32_acc1 > 0.0
+        assert int8_acc1 > 0.0
+        assert fp32_acc1 - int8_acc1 <= threshold
 
     def test_graph_transformation(self):
         if not fluid.core.is_compiled_with_mkldnn():
@@ -232,8 +265,12 @@ class TestQatInt8Comparison(unittest.TestCase):
         _logger.info('Dataset: {0}'.format(data_path))
         _logger.info('Batch size: {0}'.format(batch_size))
         _logger.info('Batch number: {0}'.format(batch_num))
-        _logger.info('Accuracy diff threshold: {0}.'.format(acc_diff_threshold))
-        _logger.info('Output diff threshold: {0}.'.format(out_diff_threshold))
+        _logger.info('Accuracy diff threshold: {0}. '
+                     '(condition: (fp32_acc - int8_acc) <= threshold)'
+                     .format(acc_diff_threshold))
+        _logger.info('Output diff threshold: {0}. '
+                     '(condition: abs(fp32_value - int8_value) <= threshold'
+                     .format(out_diff_threshold))
 
         _logger.info('--- QAT FP32 prediction start ---')
         val_reader = paddle.batch(self._reader_creator(data_path), batch_size=batch_size)
