@@ -274,6 +274,8 @@ class Compressor(object):
                                  this optimizer is used to minimize the combined loss of student-net and
                                  teacher-net while train_optimizer is used to minimize loss of
                                  student-net in fine-tune stage. 
+            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherite
+                              slim.nas.SearchSpace class and overwrite the abstract methods.
 
         """
         assert train_feed_list is None or isinstance(

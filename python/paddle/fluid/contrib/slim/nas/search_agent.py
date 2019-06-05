@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,10 @@ class SearchAgent(object):
 
     def __init__(self, server_ip=None, server_port=None, key=None):
         """
+        Args:
+            server_ip(str): The ip that controller server listens on. None means getting the ip automatically. Default: None.
+            server_port(int): The port that controller server listens on. 0 means getting usable port automatically. Default: 0.
+            key(str): The key used to identify legal agent for controller server. Default: "light-nas"
         """
         self.server_ip = server_ip
         self.server_port = server_port
@@ -36,6 +40,12 @@ class SearchAgent(object):
         self._key = key
 
     def update(self, tokens, reward):
+        """
+        Update the controller according to latest tokens and reward.
+        Args:
+            tokens(list<int>): The tokens generated in last step.
+            reward(float): The reward of tokens.
+        """
         socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_client.connect((self.server_ip, self.server_port))
         tokens = ",".join([str(token) for token in tokens])
@@ -46,6 +56,9 @@ class SearchAgent(object):
         return tokens
 
     def next_tokens(self):
+        """
+        Get next tokens.
+        """
         socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_client.connect((self.server_ip, self.server_port))
         socket_client.send("next_tokens".encode())

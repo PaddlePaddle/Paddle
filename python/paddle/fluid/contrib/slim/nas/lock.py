@@ -26,9 +26,11 @@ elif os.name == 'posix':
     from fcntl import flock, LOCK_EX, LOCK_UN
 
     def lock(file):
+        """Lock the file in local file system."""
         flock(file.fileno(), LOCK_EX)
 
     def unlock(file):
+        """Unlock the file in local file system."""
         flock(file.fileno(), LOCK_UN)
 else:
     raise RuntimeError("File Locker only support NT and Posix platforms!")

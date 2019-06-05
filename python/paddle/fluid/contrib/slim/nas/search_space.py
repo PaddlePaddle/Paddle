@@ -33,12 +33,11 @@ class SearchSpace(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def create_train_net(self, tokens):
-        """Create a network for training by tokens.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def create_eval_net(self, tokens):
-        """Create a network for evaluation by tokens.
+    def create_net(self, tokens):
+        """Create networks for training and evaluation according to tokens.
+        Args:
+            tokens(list<int>): The tokens which represent a network.
+        Return:
+            (tuple): startup_program, train_program, evaluation_program, train_metrics, test_metrics
         """
         raise NotImplementedError('Abstract method.')
