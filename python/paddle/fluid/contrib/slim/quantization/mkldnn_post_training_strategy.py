@@ -28,7 +28,7 @@ _logger.setLevel(logging.INFO)
 
 class MKLDNNPostTrainingQuantStrategy(Strategy):
     """
-    The strategy for Post Training quantization strategy.
+    The strategy for MKL-DNN Post Training quantization strategy.
     """
 
     def __init__(self,
@@ -37,13 +37,17 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
                  cpu_math_library_num_threads=1):
         """
         Args:
-            int8_model_save_path(str): The path to save model for MKL-DNN int8 inference.
-                            None means it doesn't save model. defalut: None.
-            fp32_model_path(str): The path of fp32 model to be converted to int8 model
-                            None means it doesn't have fp32 model. defalut: None.
-            cpu_math_library_num_threads(int): The num of omp threads user want 
-                            MKLDNNPostTrainingQuantStrategy to use. defalut: 1.
-                            1 means only use one omp thread.
+            int8_model_save_path(str): The path to save an int8 programdesc with fp32 weights for
+                        MKL-DNN int8 inference. For post training quantization,
+                        MKLDNNPostTrainingQuantStrategy only support to convert a fp32 programdesc
+                        with fp32 weights to a int8 programdesc with fp32 weights now. The saved
+                        int8 programdesc with fp32 weights only can be executed with MKL-DNN enabled.
+                        None means it doesn't save model. default: None.
+            fp32_model_path(str): The path to the original fp32 programdesc with fp32 weights.
+                        None means it doesn't have a fp32 programdesc with fp32 weights. default: None.
+            cpu_math_library_num_threads(int): The number of cpu math library threads are used on 
+                        MKLDNNPostTrainingQuantStrategy. 1 means it only uses one cpu math library
+                        thread. default: 1 
         """
 
         super(MKLDNNPostTrainingQuantStrategy, self).__init__(0, 0)
@@ -62,7 +66,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
               self).on_compression_begin(context)
         _logger.info('InferQuantStrategy::on_compression_begin')
 
-        #Prepare the Analysis Config
+        # Prepare the Analysis Config
         infer_config = core.AnalysisConfig("AnalysisConfig")
         infer_config.switch_ir_optim(True)
         infer_config.disable_gpu()
@@ -71,7 +75,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         infer_config.set_cpu_math_library_num_threads(
             self.cpu_math_library_num_threads)
 
-        #Prepare the data for calculating the quantization scales
+        # Prepare the data for calculating the quantization scales
         warmup_reader = context.eval_reader()
         if six.PY2:
             data = warmup_reader.next()
@@ -100,12 +104,12 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
 
         warmup_data = [images, labels]
 
-        #Enable the int8 quantization
+        # Enable the INT8 Quantization
         infer_config.enable_quantizer()
         infer_config.quantizer_config().set_quant_data(warmup_data)
         infer_config.quantizer_config().set_quant_batch_size(num_images)
 
-        #Run INT8 MKL-DNN Quantization
+        # Run INT8 MKL-DNN Quantization
         predictor = core.create_paddle_predictor(infer_config)
         if self.int8_model_save_path:
             if not os.path.exists(self.int8_model_save_path):

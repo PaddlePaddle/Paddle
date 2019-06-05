@@ -34,13 +34,16 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=1, help='batch size')
     parser.add_argument(
-        '--infer_model', type=str, default='', help='model path')
+        '--infer_model',
+        type=str,
+        default='',
+        help='path to fp32 programdesc with fp32 weights')
     parser.add_argument('--infer_data', type=str, default='', help='data file')
     parser.add_argument(
         '--int8_model_save_path',
         type=str,
         default='./output',
-        help='path to save int8 model with fp32 weights')
+        help='path to save int8 programdesc with fp32 weights')
     parser.add_argument(
         '--warmup_batch_size',
         type=int,
@@ -50,7 +53,7 @@ def parse_args():
         '--accuracy_diff_threshold',
         type=float,
         default=0.01,
-        help='Accepted accuracy drop threshold.')
+        help='accepted accuracy drop threshold.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
 
@@ -59,7 +62,7 @@ def parse_args():
 
 class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
     """
-    Test API of Post Training quantization strategy for int8 with MKLDNN.
+    Test API of Post Training quantization strategy for int8 with MKL-DNN.
     """
 
     def _reader_creator(self,
