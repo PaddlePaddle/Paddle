@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,34 +14,14 @@
 
 from __future__ import print_function
 
+import os
 import paddle.fluid as fluid
 from parallel_executor_test_base import TestParallelExecutorBase
-import numpy as np
+from simple_nets import simple_fc_net, init_data
 import unittest
 
 
-def simple_fc_net(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = fluid.layers.fc(
-        img,
-        size=200,
-        act='tanh',
-        bias_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=1.0)))
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
-
-
 class TestParallelExecutorStrategy(TestParallelExecutorBase):
-    def _init_data(self):
-        np.random.seed(5)
-        img = np.random.random(size=[32, 784]).astype(np.float32)
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
-
     def _run_options(self,
                      memory_opt=True,
                      batch_size=None,
@@ -60,7 +40,7 @@ class TestParallelExecutorStrategy(TestParallelExecutorBase):
             if use_cuda and not fluid.core.is_compiled_with_cuda():
                 return
 
-            img, label = self._init_data()
+            img, label = init_data()
             self.check_network_convergence(
                 simple_fc_net,
                 feed_dict={"image": img,
@@ -89,7 +69,12 @@ class TestParallelExecutorStrategy(TestParallelExecutorBase):
             self._run_options(allow_op_delay=allow_op_delay)
 
     def test_use_reduce(self):
-        for use_reduce in [True, False]:
+        if os.name == 'nt' and fluid.core.is_compiled_with_cuda():
+            # windows can support single GPU thus reduce(cuda) would not be supported
+            use_reduces = [False]
+        else:
+            use_reduces = [True, False]
+        for use_reduce in use_reduces:
             self._run_options(use_reduce=use_reduce)
 
     def test_use_ir_memory_optimize(self):
