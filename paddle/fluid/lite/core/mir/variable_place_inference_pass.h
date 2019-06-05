@@ -65,7 +65,7 @@ class VariablePlaceInferencePass : public DebugPass {
         // check if inputs's place is set, if not set, update them with the
         // kernel's declaration.
         auto type = inst.picked_kernel().GetInputDeclType(arg_name);
-        auto arg_names = inst.op_info()->input_argument().at(arg_name);
+        auto arg_names = inst.op_info()->inputs().at(arg_name);
 
         for (auto& arg_name : arg_names) {
           VLOG(3) << "--- var " << arg_name;
@@ -82,7 +82,7 @@ class VariablePlaceInferencePass : public DebugPass {
       for (auto& arg_name : inst.op_info()->output_argnames()) {
         VLOG(3) << "-- output arg_name " << arg_name;
         auto type = inst.picked_kernel().GetOutputDeclType(arg_name);
-        auto arg_names = inst.op_info()->output_argument().at(arg_name);
+        auto arg_names = inst.op_info()->outputs().at(arg_name);
         // check if outputs's place is set, if not set, update them with the
         // kernel's declaration.
         for (auto& arg_name : arg_names) {

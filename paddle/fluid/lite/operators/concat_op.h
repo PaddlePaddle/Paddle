@@ -23,10 +23,10 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class ScaleOp : public OpLite {
+class ConcatOpLite : public OpLite {
  public:
-  ScaleOp() {}
-  explicit ScaleOp(const std::string &op_type) : OpLite(op_type) {}
+  ConcatOpLite() {}
+  explicit ConcatOpLite(const std::string &op_type) : OpLite(op_type) {}
 
   bool CheckShape() const override;
 
@@ -35,10 +35,10 @@ class ScaleOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-  std::string DebugString() const override { return "scale"; }
+  std::string DebugString() const override { return "concat"; }
 
  private:
-  mutable ScaleParam param_;
+  mutable ConcatParam param_;
 };
 
 }  // namespace operators
