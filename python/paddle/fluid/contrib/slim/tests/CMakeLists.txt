@@ -33,7 +33,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_RESNET50_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_RESNET50_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "ResNet50_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_resnet50_no_mkldnn ${QAT_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_resnet50_mkldnn ${QAT_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 	# ResNet101
@@ -41,7 +40,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_RESNET101_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "ResNet101_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_resnet101_no_mkldnn ${QAT_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_resnet101_mkldnn ${QAT_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 	# GoogleNet
@@ -49,7 +47,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_GOOGLENET_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "GoogleNet_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_googlenet_no_mkldnn ${QAT_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_googlenet_mkldnn ${QAT_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 	# MobileNetV1
@@ -57,7 +54,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_MOBILENETV1_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_MOBILENETV1_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "MobileNetV1_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_mobilenetv1_no_mkldnn ${QAT_MOBILENETV1_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_mobilenetv1_mkldnn ${QAT_MOBILENETV1_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 	# MobileNetV2
@@ -65,7 +61,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_MOBILENETV2_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "MobileNetV2_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_mobilenetv2_no_mkldnn ${QAT_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_mobilenetv2_mkldnn ${QAT_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 	# VGG16
@@ -73,7 +68,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_VGG16_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "VGG16_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_vgg16_no_mkldnn ${QAT_VGG16_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_vgg16_mkldnn ${QAT_VGG16_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 	# VGG19
@@ -81,7 +75,6 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_VGG19_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8/qat" "VGG19_qat_model.tar.gz" )
 	endif()
-	inference_qat_int8_test(test_qat_int8_vgg19_no_mkldnn ${QAT_VGG19_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} false)
 	inference_qat_int8_test(test_qat_int8_vgg19_mkldnn ${QAT_VGG19_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_QAT_TEST_FILE} true)
 
 endif()
