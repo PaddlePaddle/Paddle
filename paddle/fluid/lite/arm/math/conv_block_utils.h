@@ -24,7 +24,7 @@ namespace lite {
 namespace arm {
 namespace math {
 
-#define AKMAX(a, b) ((a) > (b) ? (a) : (b))
+#define LITEMAX(a, b) ((a) > (b) ? (a) : (b))
 
 inline void fill_packed_biasc4(float* dout, const float* bias, int size) {
   float32x4_t vb = vld1q_f32(bias);
@@ -255,7 +255,7 @@ inline bool write_to_output_c1_fp32(const float* din, float* dout, int cs,
       int j = we - w4;
       if (flag_relu) {
         for (; j < width; ++j) {
-          *(doutc0_ptr++) = AKMAX(din_hei_ptr[0], 0.f);
+          *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0], 0.f);
           din_hei_ptr++;
         }
       } else {
@@ -435,8 +435,8 @@ inline bool write_to_output_c2_fp32(const float* din, float* dout, int cs,
       int j = we - w4;
       if (flag_relu) {
         for (; j < width; ++j) {
-          *(doutc0_ptr++) = AKMAX(din_hei_ptr[0], 0.f);
-          *(doutc1_ptr++) = AKMAX(din_hei_ptr[1], 0.f);
+          *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0], 0.f);
+          *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1], 0.f);
           din_hei_ptr += 2;
         }
       } else {
@@ -641,10 +641,10 @@ inline bool write_to_output_c4_fp32(const float* din, float* dout, int cs,
       int j = we - w4;
       if (flag_relu) {
         for (; j < width; ++j) {
-          *(doutc0_ptr++) = AKMAX(din_hei_ptr[0], 0.f);
-          *(doutc1_ptr++) = AKMAX(din_hei_ptr[1], 0.f);
-          *(doutc2_ptr++) = AKMAX(din_hei_ptr[2], 0.f);
-          *(doutc3_ptr++) = AKMAX(din_hei_ptr[3], 0.f);
+          *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0], 0.f);
+          *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1], 0.f);
+          *(doutc2_ptr++) = LITEMAX(din_hei_ptr[2], 0.f);
+          *(doutc3_ptr++) = LITEMAX(din_hei_ptr[3], 0.f);
           din_hei_ptr += w4;
         }
       } else {
@@ -862,14 +862,14 @@ inline bool write_to_output_c8_fp32(const float* din, float* dout, int ch_n,
         din_hei_ptr = ptr_din + offset;
         int i = we - 4;
         for (; i < width; ++i) {
-          *(doutc0_ptr++) = AKMAX(din_hei_ptr[0], 0.f);
-          *(doutc1_ptr++) = AKMAX(din_hei_ptr[1], 0.f);
-          *(doutc2_ptr++) = AKMAX(din_hei_ptr[2], 0.f);
-          *(doutc3_ptr++) = AKMAX(din_hei_ptr[3], 0.f);
-          *(doutc4_ptr++) = AKMAX(din_hei_ptr[4], 0.f);
-          *(doutc5_ptr++) = AKMAX(din_hei_ptr[5], 0.f);
-          *(doutc6_ptr++) = AKMAX(din_hei_ptr[6], 0.f);
-          *(doutc7_ptr++) = AKMAX(din_hei_ptr[7], 0.f);
+          *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0], 0.f);
+          *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1], 0.f);
+          *(doutc2_ptr++) = LITEMAX(din_hei_ptr[2], 0.f);
+          *(doutc3_ptr++) = LITEMAX(din_hei_ptr[3], 0.f);
+          *(doutc4_ptr++) = LITEMAX(din_hei_ptr[4], 0.f);
+          *(doutc5_ptr++) = LITEMAX(din_hei_ptr[5], 0.f);
+          *(doutc6_ptr++) = LITEMAX(din_hei_ptr[6], 0.f);
+          *(doutc7_ptr++) = LITEMAX(din_hei_ptr[7], 0.f);
           din_hei_ptr += 8;
         }
       }
@@ -1164,10 +1164,10 @@ inline bool write_to_output_c4_int32(const int* din, int* dout, int ch_n,
         din_hei_ptr = ptr_din + offset;
         int i = we - 4;
         for (; i < width; ++i) {
-          *(doutc0_ptr++) = AKMAX(din_hei_ptr[0], 0);
-          *(doutc1_ptr++) = AKMAX(din_hei_ptr[1], 0);
-          *(doutc2_ptr++) = AKMAX(din_hei_ptr[2], 0);
-          *(doutc3_ptr++) = AKMAX(din_hei_ptr[3], 0);
+          *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0], 0);
+          *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1], 0);
+          *(doutc2_ptr++) = LITEMAX(din_hei_ptr[2], 0);
+          *(doutc3_ptr++) = LITEMAX(din_hei_ptr[3], 0);
           din_hei_ptr += 4;
         }
       }
@@ -1437,10 +1437,10 @@ inline bool write_to_output_c4_int32_1(const int* din, dtype* dout, int ch_n,
           din_hei_ptr = ptr_din + offset;
           int j = we - 4;
           for (; j < width; ++j) {
-            *(doutc0_ptr++) = AKMAX(din_hei_ptr[0] * scale[0], 0);
-            *(doutc1_ptr++) = AKMAX(din_hei_ptr[1] * scale[1], 0);
-            *(doutc2_ptr++) = AKMAX(din_hei_ptr[2] * scale[2], 0);
-            *(doutc3_ptr++) = AKMAX(din_hei_ptr[3] * scale[3], 0);
+            *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0] * scale[0], 0);
+            *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1] * scale[1], 0);
+            *(doutc2_ptr++) = LITEMAX(din_hei_ptr[2] * scale[2], 0);
+            *(doutc3_ptr++) = LITEMAX(din_hei_ptr[3] * scale[3], 0);
             din_hei_ptr += 4;
           }
         }
@@ -1754,13 +1754,13 @@ inline bool write_to_output_c4_int32_1(const int* din, dtype* dout, int ch_n,
           int j = we - 4;
           for (; j < width; ++j) {
             *(doutc0_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[0], 0) * scale[0]));
+                roundf(LITEMAX(din_hei_ptr[0], 0) * scale[0]));
             *(doutc1_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[1], 0) * scale[1]));
+                roundf(LITEMAX(din_hei_ptr[1], 0) * scale[1]));
             *(doutc2_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[2], 0) * scale[2]));
+                roundf(LITEMAX(din_hei_ptr[2], 0) * scale[2]));
             *(doutc3_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[3], 0) * scale[3]));
+                roundf(LITEMAX(din_hei_ptr[3], 0) * scale[3]));
             din_hei_ptr += 4;
           }
         }
@@ -2149,14 +2149,14 @@ inline bool write_to_output_c8_int32(const int* din, int* dout, int ch_n,
         din_hei_ptr = ptr_din + offset;
         int i = we - 4;
         for (; i < width; ++i) {
-          *(doutc0_ptr++) = AKMAX(din_hei_ptr[0], 0);
-          *(doutc1_ptr++) = AKMAX(din_hei_ptr[1], 0);
-          *(doutc2_ptr++) = AKMAX(din_hei_ptr[2], 0);
-          *(doutc3_ptr++) = AKMAX(din_hei_ptr[3], 0);
-          *(doutc4_ptr++) = AKMAX(din_hei_ptr[4], 0);
-          *(doutc5_ptr++) = AKMAX(din_hei_ptr[5], 0);
-          *(doutc6_ptr++) = AKMAX(din_hei_ptr[6], 0);
-          *(doutc7_ptr++) = AKMAX(din_hei_ptr[7], 0);
+          *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0], 0);
+          *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1], 0);
+          *(doutc2_ptr++) = LITEMAX(din_hei_ptr[2], 0);
+          *(doutc3_ptr++) = LITEMAX(din_hei_ptr[3], 0);
+          *(doutc4_ptr++) = LITEMAX(din_hei_ptr[4], 0);
+          *(doutc5_ptr++) = LITEMAX(din_hei_ptr[5], 0);
+          *(doutc6_ptr++) = LITEMAX(din_hei_ptr[6], 0);
+          *(doutc7_ptr++) = LITEMAX(din_hei_ptr[7], 0);
           din_hei_ptr += 8;
         }
       }
@@ -2568,14 +2568,14 @@ static bool write_to_output_c8_int32_1(const int* din, dtype* dout, int ch_n,
           din_hei_ptr = ptr_din + offset;
           int i = we - 4;
           for (; i < width; ++i) {
-            *(doutc0_ptr++) = AKMAX(din_hei_ptr[0] * scale[0], 0);
-            *(doutc1_ptr++) = AKMAX(din_hei_ptr[1] * scale[1], 0);
-            *(doutc2_ptr++) = AKMAX(din_hei_ptr[2] * scale[2], 0);
-            *(doutc3_ptr++) = AKMAX(din_hei_ptr[3] * scale[3], 0);
-            *(doutc4_ptr++) = AKMAX(din_hei_ptr[4] * scale[4], 0);
-            *(doutc5_ptr++) = AKMAX(din_hei_ptr[5] * scale[5], 0);
-            *(doutc6_ptr++) = AKMAX(din_hei_ptr[6] * scale[6], 0);
-            *(doutc7_ptr++) = AKMAX(din_hei_ptr[7] * scale[7], 0);
+            *(doutc0_ptr++) = LITEMAX(din_hei_ptr[0] * scale[0], 0);
+            *(doutc1_ptr++) = LITEMAX(din_hei_ptr[1] * scale[1], 0);
+            *(doutc2_ptr++) = LITEMAX(din_hei_ptr[2] * scale[2], 0);
+            *(doutc3_ptr++) = LITEMAX(din_hei_ptr[3] * scale[3], 0);
+            *(doutc4_ptr++) = LITEMAX(din_hei_ptr[4] * scale[4], 0);
+            *(doutc5_ptr++) = LITEMAX(din_hei_ptr[5] * scale[5], 0);
+            *(doutc6_ptr++) = LITEMAX(din_hei_ptr[6] * scale[6], 0);
+            *(doutc7_ptr++) = LITEMAX(din_hei_ptr[7] * scale[7], 0);
             din_hei_ptr += 8;
           }
         }
@@ -3113,21 +3113,21 @@ static bool write_to_output_c8_int32_1(const int* din, dtype* dout, int ch_n,
           int i = we - 4;
           for (; i < width; ++i) {
             *(doutc0_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[0] * scale[0], 0)));
+                roundf(LITEMAX(din_hei_ptr[0] * scale[0], 0)));
             *(doutc1_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[1] * scale[1], 0)));
+                roundf(LITEMAX(din_hei_ptr[1] * scale[1], 0)));
             *(doutc2_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[2] * scale[2], 0)));
+                roundf(LITEMAX(din_hei_ptr[2] * scale[2], 0)));
             *(doutc3_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[3] * scale[3], 0)));
+                roundf(LITEMAX(din_hei_ptr[3] * scale[3], 0)));
             *(doutc4_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[4] * scale[4], 0)));
+                roundf(LITEMAX(din_hei_ptr[4] * scale[4], 0)));
             *(doutc5_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[5] * scale[5], 0)));
+                roundf(LITEMAX(din_hei_ptr[5] * scale[5], 0)));
             *(doutc6_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[6] * scale[6], 0)));
+                roundf(LITEMAX(din_hei_ptr[6] * scale[6], 0)));
             *(doutc7_ptr++) = saturate_cast<signed char>(
-                roundf(AKMAX(din_hei_ptr[7] * scale[7], 0)));
+                roundf(LITEMAX(din_hei_ptr[7] * scale[7], 0)));
             din_hei_ptr += 8;
           }
         }
@@ -3507,7 +3507,7 @@ static bool write_to_output_numc(const dtype* din, dtype* dout, int ch_n,
       for (int i = 0; i < ch_n; i++) {
         dtype* dout_ptr = out_array[i] + h * width;
         for (int k = 0; k < width; k++) {
-          *(dout_ptr++) = AKMAX(din_ptr[k], 0);
+          *(dout_ptr++) = LITEMAX(din_ptr[k], 0);
         }
         din_ptr += size_w;
       }
@@ -3572,7 +3572,7 @@ static bool write2_to_output_numc(const ditype* din, dotype* dout, int ch_n,
         float const ws = scales[(i + cs) % ch_n];
         dotype* dout_ptr = out_array[i] + h * width;
         for (int k = 0; k < width; k++) {
-          *(dout_ptr++) = AKMAX(din_ptr[k] * ws, 0);
+          *(dout_ptr++) = LITEMAX(din_ptr[k] * ws, 0);
         }
         din_ptr += size_w;
       }

@@ -22,8 +22,8 @@ namespace arm {
 namespace math {
 
 template <>
-bool DirectConv<kFloat>::create(const operators::ConvParam& param,
-                                ARMContext* ctx) {
+bool DirectConv<PRECISION(kFloat)>::create(const operators::ConvParam& param,
+                                           ARMContext* ctx) {
   this->ctx_ = ctx;
   auto x_dims = param.x->dims();
   auto w_dims = param.filter->dims();
@@ -66,14 +66,14 @@ bool DirectConv<kFloat>::create(const operators::ConvParam& param,
 }
 
 template <>
-bool DirectConv<kFloat>::init(const operators::ConvParam& param,
-                              Context<TARGET(kARM)>* ctx) {
-  this->ctx_ = &ctx;
-  return create(inputs, outputs, param, ctx);
+bool DirectConv<PRECISION(kFloat)>::init(const operators::ConvParam& param,
+                                         Context<TARGET(kARM)>* ctx) {
+  this->ctx_ = ctx;
+  return create(param, ctx);
 }
 
 template <>
-bool DirectConv<kFloat>::run(const operators::ConvParam& param) {
+bool DirectConv<PRECISION(kFloat)>::run(const operators::ConvParam& param) {
   // start timer
   const auto* i_data = param.x->data<float>();
   const auto* w_data = param.filter->data<float>();
@@ -95,7 +95,7 @@ bool DirectConv<kFloat>::run(const operators::ConvParam& param) {
   int ow = o_dims[3];
   int oc = o_dims[1];
 
-  impl_(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, bias, param,
+  impl_(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, b_data, param,
         this->ctx_);
 
   // timer end
@@ -104,7 +104,8 @@ bool DirectConv<kFloat>::run(const operators::ConvParam& param) {
 
 // template <>
 // bool DirectConv<kInt8>::create(const
-//                                  operators::ConvParam& param, Context<TARGET(kARM)>&
+//                                  operators::ConvParam& param,
+//                                  Context<TARGET(kARM)>&
 //                                  ctx) {
 //   this->ctx_ = &ctx;
 //   int kw = param.weight()->width();
@@ -116,7 +117,7 @@ bool DirectConv<kFloat>::run(const operators::ConvParam& param) {
 //   _w_scale = param.weight()->get_scale();
 //   //! update weights scale
 //   const DataType out_type = outputs[0]->get_dtype();
-//   if (out_type == kFloat || out_type == kInt8) {
+//   if (out_type == PRECISION(kFloat) || out_type == kInt8) {
 //     CHECK_EQ(_w_scale.size(), oc) << "weights scale size must be oc";
 //     float input_scale = inputs[0]->get_scale()[0];
 //     for (auto& ws : _w_scale) {
@@ -175,7 +176,8 @@ bool DirectConv<kFloat>::run(const operators::ConvParam& param) {
 
 // template <>
 // bool DirectConv<kInt8>::init(const
-//                                operators::ConvParam& param, Context<TARGET(kARM)>&
+//                                operators::ConvParam& param,
+//                                Context<TARGET(kARM)>&
 //                                ctx) {
 //   this->ctx_ = &ctx;
 //   return create(inputs, outputs, param, ctx);

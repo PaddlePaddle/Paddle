@@ -14,90 +14,91 @@
 
 #include "paddle/fluid/lite/arm/math/conv_block_utils.h"
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
+#include "paddle/fluid/lite/core/context.h"
 
 namespace paddle {
 namespace lite {
 namespace arm {
 namespace math {
 
-void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
-                            int hout, int wout, int chin, int hin, int win,
+void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
+                            int oh, int ow, int ic, int ih, int win,
                             const float* weights, const float* bias,
-                            ConvParam& param, Context<ARM>* ctx) {
+                            operators::ConvParam& param, ARMContext* ctx) {
   //! 3x3s2 convolution, implemented by direct algorithm
   //! prepack input to tmp buffer
   //! write output to tmp buffer
-  const int threads = ctx->get_threads();
-  int l2_size = ctx->get_l2_cache_size() / sizeof(float);
-  const int pad_w = param.pad_w;
-  const int pad_h = param.pad_h;
+  const int threads = ctx->threads();
+  int l2_size = ctx->l2_cache_size() / sizeof(float);
+  const int pad_w = param.paddings[1];
+  const int pad_h = param.paddings[0];
   const int hout_c_block = 4;
   const int hout_r_kernel = 2;
   const int wout_block = 4;
-  const int wout_round = ((wout + wout_block - 1) / wout_block) * wout_block;
+  const int wout_round = ((ow + wout_block - 1) / wout_block) * wout_block;
   const int win_round = wout_round * 2 /*stride_w*/ + 1;
   bool flag_relu = false;
-  bool flag_bias = param.bias()->size() > 0;
-  if (param.activation_param.has_active) {
-    if (param.activation_param.active == Active_relu &&
-        fabs(param.activation_param.negative_slope) < 1e-6f) {
-      flag_relu = true;
-    }
-  }
+  bool flag_bias = param.bias != nullptr;
+  // if (param.activation_param.has_active) {
+  //   if (param.activation_param.active == Active_relu &&
+  //       fabs(param.activation_param.negative_slope) < 1e-6f) {
+  //     flag_relu = true;
+  //   }
+  // }
   //! get h block
-  //! win_round * chin * hin_r_block + wout_round * hout_c_block * hout_r_block
+  //! win_round * ic * hin_r_block + wout_round * hout_c_block * hout_r_block
   //! * threads = l2_size
   //! win_round = 2 * wout_round + 1
   //! hin_r_block = 2 * hout_r_block + 1
   int hout_r_block =
-      (l2_size - 2 * wout_round * chin - chin) /
-      ((4 * wout_round + 2) * chin + wout_round * hout_c_block * threads);
-  hout_r_block = hout_r_block > hout ? hout : hout_r_block;
+      (l2_size - 2 * wout_round * ic - ic) /
+      ((4 * wout_round + 2) * ic + wout_round * hout_c_block * threads);
+  hout_r_block = hout_r_block > oh ? oh : hout_r_block;
   hout_r_block = (hout_r_block / hout_r_kernel) * hout_r_kernel;
   hout_r_block = hout_r_block < hout_r_kernel ? hout_r_kernel : hout_r_block;
 
   const int hin_r_block = hout_r_block * 2 /*stride_h*/ + 1;
 
-  float* tmp_work_space = static_cast<float*>(ctx->get_work_space());
+  float* tmp_work_space = ctx->workspace_data<float>();
   float ptr_zero[win_round];
   memset(ptr_zero, 0, sizeof(float) * win_round);
   float ptr_write[wout_round];
 
-  int in_len = win_round * chin;
+  int in_len = win_round * ic;
   int pre_in_size = hin_r_block * in_len;
   int pre_out_size = hout_c_block * hout_r_block * wout_round;
 
   //! l2_cache start
   float* pre_din = tmp_work_space;
 
-  int size_in_channel = win * hin;
-  int size_out_channel = wout * hout;
-  int w_stride = chin * 9;               /*kernel_w * kernel_h*/
+  int size_in_channel = win * ih;
+  int size_out_channel = ow * oh;
+  int w_stride = ic * 9;                 /*kernel_w * kernel_h*/
   int w_stride_chin = hout_c_block * 9;  // kernel_w * kernel_h *
 
   int ws = -pad_w;
   int we = ws + win_round;
   int w_loop = wout_round / 4;
 
-  int c_remain = chout - (chout / hout_c_block) * hout_c_block;
-  int c_round_down = (chout / hout_c_block) * hout_c_block;
+  int c_remain = oc - (oc / hout_c_block) * hout_c_block;
+  int c_round_down = (oc / hout_c_block) * hout_c_block;
 
   int out_row_stride = hout_c_block * wout_round;
 
-  for (int n = 0; n < num; ++n) {
-    const float* din_batch = din + n * chin * size_in_channel;
-    float* dout_batch = dout + n * chout * size_out_channel;
-    for (int h = 0; h < hout; h += hout_r_block) {
+  for (int n = 0; n < bs; ++n) {
+    const float* din_batch = i_data + n * ic * size_in_channel;
+    float* dout_batch = o_data + n * oc * size_out_channel;
+    for (int h = 0; h < oh; h += hout_r_block) {
       int h_kernel = hout_r_block;
-      if (h + hout_r_block > hout) {
-        h_kernel = hout - h;
+      if (h + hout_r_block > oh) {
+        h_kernel = oh - h;
       }
 
       int hs = h * 2 /*stride_h*/ - pad_h;
       int he = hs + h_kernel * 2 /*stride_h*/ + 1;
 
-      prepack_input_nxw(din_batch, pre_din, 0, chin, hs, he, ws, we, chin, win,
-                        hin, ptr_zero);
+      prepack_input_nxw(din_batch, pre_din, 0, ic, hs, he, ws, we, ic, win, ih,
+                        ptr_zero);
 
       const float* cblock_inr0 = pre_din;
       const float* cblock_inr1 = cblock_inr0 + in_len;
@@ -139,7 +140,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
           float* pre_out0 = pre_out + hk * out_row_stride;
           float* pre_out1 = pre_out0 + out_row_stride;
 #ifdef __aarch64__
-          for (int i = 0; i < chin; ++i) {
+          for (int i = 0; i < ic; ++i) {
             float* ptr_out0 = pre_out0;
             float* ptr_out1 = pre_out1;
 
@@ -333,7 +334,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
             inr4 += win_round;
           }
 #else   // not __aarch64__
-          for (int i = 0; i < chin; ++i) {
+          for (int i = 0; i < ic; ++i) {
             const float* wc0 = weight_c + i * w_stride_chin;
 
             float* ptr_out0 = pre_out0;
@@ -619,7 +620,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
         }
 
         write_to_output_c4_fp32(pre_out, dout_batch, c, c + hout_c_block, h,
-                                h + h_kernel, 0, wout_round, chout, hout, wout,
+                                h + h_kernel, 0, wout_round, oc, oh, ow,
                                 flag_relu, ptr_write);
       }
 
@@ -660,7 +661,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
           float* pre_out0 = pre_out + hk * wout_round;
           float* pre_out1 = pre_out0 + wout_round;
 #ifdef __aarch64__
-          for (int i = 0; i < chin; ++i) {
+          for (int i = 0; i < ic; ++i) {
             float* ptr_out0 = pre_out0;
             float* ptr_out1 = pre_out1;
 
@@ -813,7 +814,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
             inr4 += win_round;
           }
 #else   // not __aarch64__
-          for (int i = 0; i < chin; ++i) {
+          for (int i = 0; i < ic; ++i) {
             float* ptr_out0 = pre_out0;
             float* ptr_out1 = pre_out1;
 
@@ -994,7 +995,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
                   : "cc", "memory", "q3", "q4", "q5", "q6", "q7", "q8", "q9",
                     "q10", "q11", "q12", "q13", "q14", "q15");
             }
-            //! deal with remain wout
+            //! deal with remain ow
             if (w_loop & 1) {
               ptr_out0[0] +=
                   r0[0] * w_tmp[0] + r0[1] * w_tmp[1] + r0[2] * w_tmp[2] +
@@ -1053,8 +1054,7 @@ void conv_3x3s2_direct_fp32(const float* din, float* dout, int num, int chout,
         }
         write_to_output_c1_fp32(pre_out, dout_batch, c + c_round_down,
                                 c + c_round_down + 1, h, h + h_kernel, 0,
-                                wout_round, chout, hout, wout, flag_relu,
-                                ptr_write);
+                                wout_round, oc, oh, ow, flag_relu, ptr_write);
       }
     }
   }

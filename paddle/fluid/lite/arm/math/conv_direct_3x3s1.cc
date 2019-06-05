@@ -27,12 +27,12 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
                             int oh, int ow, int ic, int ih, int win,
                             const float* weights, const float* bias,
                             const operators::ConvParam& param,
-                            Context<ARM>* ctx) {
+                            ARMContext* ctx) {
   const int threads = ctx->threads();
   int l2_size = ctx->l2_cache_size() / sizeof(float);
 
-  const int pad_w = param.pad_w;
-  const int pad_h = param.pad_h;
+  const int pad_h = param.paddings[0];
+  const int pad_w = param.paddings[1];
   const int hout_c_block = 4;
   const int hout_r_kernel = 2;
   const int wout_block = 4;

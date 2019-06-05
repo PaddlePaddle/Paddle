@@ -10,6 +10,7 @@ cc_library(math_arm SRCS
     packed_sgemm.cc 
     softmax.cc 
     scale.cc
+    sgemv.cc
     conv_impl.cc
     conv_direct.cc
     conv_direct_3x3s1.cc
