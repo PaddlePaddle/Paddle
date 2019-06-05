@@ -51,10 +51,10 @@ class ConvOpLite : public OpLite {
     param_.bias = scope->FindVar(bias)->GetMutable<lite::Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
-    param_.strides = GetAttr<std::vector<int>>(op_desc.GetAttr("strides"));
-    param_.paddings = GetAttr<std::vector<int>>(op_desc.GetAttr("paddings"));
-    param_.groups = GetAttr<int>(op_desc.GetAttr("groups"));
-    param_.dilations = GetAttr<std::vector<int>>(op_desc.GetAttr("dilations"));
+    param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
+    param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
+    param_.groups = op_desc.GetAttr<int>("groups");
+    param_.dilations = op_desc.GetAttr<std::vector<int>>("dilations");
 
     return true;
   }
