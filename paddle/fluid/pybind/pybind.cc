@@ -1348,12 +1348,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
-            if (std::abs(num_trainers) > 1) {
-              LOG_FIRST_N(WARNING, 1)
-                  << "Windows has no support to distribute mode, "
-                     "num_trainers would be forced to 1.";
-              num_trainers = 1;
-            }
+            PADDLE_THROW("Windows has NO support to distribute mode.";
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -1502,10 +1497,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) {
 #ifdef WIN32
-            LOG_FIRST_N(WARNING, 1)
-                << "Windows has no support to distribute mode, "
-                   "is_distribution would be forced to false.";
-            self.is_distribution_ = false;
+            if (b) {
+              PADDLE_THROW("Windows has NO support to distribute mode.";
+            }
 #else
             self.is_distribution_ = b;
 #endif
