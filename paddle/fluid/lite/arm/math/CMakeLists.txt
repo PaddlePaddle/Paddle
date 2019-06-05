@@ -12,8 +12,8 @@ cc_library(math_arm SRCS
     scale.cc
     sgemv.cc
     conv_impl.cc
-    conv_direct.cc
     conv_direct_3x3s1.cc
     conv_direct_3x3s2.cc
+    conv_direct.cc
     DEPS ${lite_kernel_deps} eigen3)
  

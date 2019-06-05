@@ -24,7 +24,8 @@ namespace math {
 void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
                             int oh, int ow, int ic, int ih, int win,
                             const float* weights, const float* bias,
-                            operators::ConvParam& param, ARMContext* ctx) {
+                            const operators::ConvParam& param,
+                            ARMContext* ctx) {
   //! 3x3s2 convolution, implemented by direct algorithm
   //! prepack input to tmp buffer
   //! write output to tmp buffer
@@ -60,9 +61,9 @@ void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
   const int hin_r_block = hout_r_block * 2 /*stride_h*/ + 1;
 
   float* tmp_work_space = ctx->workspace_data<float>();
-  float ptr_zero[win_round];
+  float ptr_zero[win_round];  // NOLINT
   memset(ptr_zero, 0, sizeof(float) * win_round);
-  float ptr_write[wout_round];
+  float ptr_write[wout_round];  // NOLINT
 
   int in_len = win_round * ic;
   int pre_in_size = hin_r_block * in_len;
@@ -611,7 +612,7 @@ void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
             inr3 += win_round;
             inr4 += win_round;
           }
-#endif  //__aarch64__
+#endif  // __aarch64__
           block_inr0 = block_inr4;
           block_inr1 = block_inr0 + in_len;
           block_inr2 = block_inr1 + in_len;
@@ -1045,7 +1046,7 @@ void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
             inr3 += win_round;
             inr4 += win_round;
           }
-#endif  //__aarch64__
+#endif  // __aarch64__
           block_inr0 = block_inr4;
           block_inr1 = block_inr0 + in_len;
           block_inr2 = block_inr1 + in_len;

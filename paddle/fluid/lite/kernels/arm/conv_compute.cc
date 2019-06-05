@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/conv_compute.h"
+#include "paddle/fluid/lite/arm/math/conv_direct.h"
 #include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
@@ -37,7 +38,6 @@ void ConvCompute::Run() {
   int ow = o_dims[3];
   int oh = o_dims[2];
   int oc = o_dims[1];
-  int pad = param.pad_w;
   int kh = w_dims[2];  // oihw
   int kw = w_dims[3];
   int pad = param.paddings[0];
@@ -59,24 +59,25 @@ void ConvCompute::Run() {
   bool flag_dw = flag_dw_3x3 || flag_dw_5x5;
 
   // select conv impl
+  // TODO(xxx): enable more
   if (param.groups == ic && ic == oc && kps_equal && no_dilation && flag_dw) {
     // dw conv impl
-    impl_ = new lite::arm::math::prepackA<kFloat>;
+    // impl_ = new lite::arm::math::prepackA<PRECISION(kFloat)>;
   } else if (param.groups == 1 && kw == 3 && stride == 1 && kps_equal &&
              no_dilation) {
     if (ic >= 32 && oc >= 32 && oh > 16 && ow > 16) {
       // winograd conv impl
-      //   impl_ = new WinogradConv<kFloat>;
+      // impl_ = new lite::arm::math::WinogradConv<PRECISION(kFloat)>;
     } else {
       // direct conv impl
-      impl_ = new DirectConv<kFloat>;
+      impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
     }
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
-    impl_ = new DirectConv<kFloat>;
+    impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
   } else {
-    // impl_ = new GemmLikeConv<kFloat>;
+    // impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
   }
   this->impl_->create(param, &ctx);
 

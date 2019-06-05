@@ -35,7 +35,7 @@ class ConvCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
   virtual ~ConvCompute() = default;
 
  private:
-  ImplBase<TARGET(kARM), PRECISION(kFloat), param_t> impl_;
+  lite::arm::math::ImplBase<TARGET(kARM), PRECISION(kFloat), param_t>* impl_;
 };
 
 }  // namespace arm
