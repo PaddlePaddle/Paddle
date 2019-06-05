@@ -15,10 +15,12 @@
 #pragma once
 
 #include <atomic>
+#include <future>  // NOLINT
 #include <memory>
 #include <string>
 #include <unordered_map>
 
+#include "ThreadPool.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
 

@@ -109,11 +109,12 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
 void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                    size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  if (dst_var->IsInitialized()) {
-    TensorAdd(var->Var(), dst_var);
-  } else {
+  if (cur_cnt_ == 0) {
     *dst_var = std::move(*(var->MutableVar()));
+  } else {
+    TensorAdd(var->Var(), dst_var);
   }
+  ++cur_cnt_;
 }
 
 void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
@@ -128,7 +129,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 
     tmp_grad_vars_.emplace_back(std::move(var), trace_id);
 
-    if (tmp_grad_vars_.size() != RefCnt()) {
+    if (tmp_grad_vars_.size() != ref_cnt_) {
       return;
     }
 

@@ -14,12 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/imperative.h"
 
+#include <Python.h>
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <utility>
@@ -36,6 +38,8 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+namespace py = ::pybind11;
+
 class Layer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
@@ -48,6 +52,100 @@ class Layer : public imperative::Layer {
   }
 };
 
+// Function like obj.attr_name in Python.
+static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
+  // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
+  // is not inside obj, but it would also set the error flag of Python.
+  // If the error flag is set in C++, C++ code would not raise Exception,
+  // but Python would raise Exception once C++ call ends.
+  // To avoid unexpected Exception raised in Python, we check whether
+  // attribute exists before calling PyObject_GetAttrString.
+  //
+  // Caution: PyObject_GetAttrString would increase reference count of PyObject.
+  // Developer should call Py_DECREF manually after the attribute is not used.
+  if (PyObject_HasAttrString(obj, attr_name)) {
+    return PyObject_GetAttrString(obj, attr_name);
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
+// NOTE(zjl): py::handle is a very light wrapper of PyObject *.
+// Unlike py::object, py::handle does not change reference count of PyObject *.
+static std::vector<std::shared_ptr<imperative::VarBase>>
+GetVarBaseListFromPyHandle(const py::handle &handle) {
+  PyObject *py_obj = handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    return {};
+  }
+
+  const char *kIVarField = "_ivar";
+  PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
+  std::vector<std::shared_ptr<imperative::VarBase>> result;
+
+  if (py_ivar) {  // Variable
+    result.emplace_back(
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    Py_DECREF(py_ivar);
+  } else if (PyList_Check(py_obj)) {  // List of Variable
+    size_t len = PyList_GET_SIZE(py_obj);
+    result.reserve(len);
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_ivar =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kIVarField);
+      PADDLE_ENFORCE_NOT_NULL(py_ivar);
+      result.emplace_back(
+          PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+      Py_DECREF(py_ivar);
+    }
+  } else if (PyTuple_Check(py_obj)) {  // Tuple of Variable
+    size_t len = PyTuple_GET_SIZE(py_obj);
+    result.reserve(len);
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_ivar =
+          PyObject_GetAttrString(PyTuple_GET_ITEM(py_obj, i), kIVarField);
+      PADDLE_ENFORCE_NOT_NULL(py_ivar);
+      result.emplace_back(
+          PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+      Py_DECREF(py_ivar);
+    }
+  } else {
+    PADDLE_THROW(
+        "unsupported type %s, must be Variable, list[Variable] or "
+        "tuple[Variable]",
+        py::str(handle));
+  }
+
+  return result;
+}
+
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+
+static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
+    const PyNameVarBaseMap &map) {
+  imperative::NameVarBaseMap result;
+  for (auto &pair : map) {
+    auto var_vec = GetVarBaseListFromPyHandle(pair.second);
+    if (!var_vec.empty()) {
+      result.emplace(pair.first, std::move(var_vec));
+    }
+  }
+
+  PADDLE_ENFORCE(PyErr_Occurred() == nullptr,
+                 py::str(py::handle(PyErr_Occurred())));
+  return result;
+}
+
 static std::string GetTypeName(const imperative::VarBase &var) {
   if (var.Type() == framework::proto::VarType::RAW) {
     return "RAW";
@@ -59,9 +157,7 @@ static std::string GetTypeName(const imperative::VarBase &var) {
 }
 
 // Bind Methods
-void BindImperative(pybind11::module *m_ptr) {
-  namespace py = ::pybind11;
-
+void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
@@ -111,9 +207,6 @@ void BindImperative(pybind11::module *m_ptr) {
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",
            [](imperative::VarBase &self) {
-             PADDLE_ENFORCE(self.HasGradVar(),
-                            "Gradient of variable %s does not exist",
-                            self.Name());
              return self.MutableGradVar()->Get<framework::LoDTensor>();
            },
            py::return_value_policy::reference)
@@ -174,23 +267,29 @@ void BindImperative(pybind11::module *m_ptr) {
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
-              const imperative::NameVarBaseMap &ins,
-              const imperative::NameVarBaseMap &outs,
-              framework::AttributeMap attrs, const platform::CPUPlace &place,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CUDAPlace &place,
               bool trace_backward) {
-             py::gil_scoped_release release;
-             self.TraceOp(type, ins, outs, std::move(attrs), place,
-                          trace_backward);
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
-              const imperative::NameVarBaseMap &ins,
-              const imperative::NameVarBaseMap &outs,
-              framework::AttributeMap attrs, const platform::CUDAPlace &place,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CPUPlace &place,
               bool trace_backward) {
-             py::gil_scoped_release release;
-             self.TraceOp(type, ins, outs, std::move(attrs), place,
-                          trace_backward);
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
            })
       .def("_clear", &imperative::Tracer::Clear);
 

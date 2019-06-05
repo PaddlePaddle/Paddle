@@ -162,16 +162,16 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 };
 
 static framework::VariableNameMap CreateVarNameMap(
-    const framework::OpInfo* op_info, const std::string& op_type,
+    const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
-  if (op_info == nullptr || op_info->proto_ == nullptr) {
+  if (op_info.proto_ == nullptr) {
     return {};
   }
 
   framework::VariableNameMap result;
 
   for (auto& var :
-       is_input ? op_info->Proto().inputs() : op_info->Proto().outputs()) {
+       is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
     auto it = varbase_map.find(var.name());
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE(var.dispensable());
@@ -335,11 +335,11 @@ OpBase::OpBase(Tracer* tracer, size_t id, const std::string& type,
                const NameVarBaseMap& ins, const NameVarBaseMap& outs,
                framework::AttributeMap attrs, const platform::Place& place)
     : holded_tracer_(tracer), id_(id), place_(place) {
-  auto* info = &(framework::OpInfoMap::Instance().Get(type));
+  const auto& info = framework::OpInfoMap::Instance().Get(type);
 
   // Step 1: Run forward
-  if (info->Checker() != nullptr) {
-    info->Checker()->Check(&attrs);
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&attrs);
   }
 
   auto input_name_map = CreateVarNameMap(info, type, ins, true);
@@ -409,7 +409,9 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
 
   VLOG(3) << "Create " << grad_op_num << " grad op desc(s) to op " << Type();
 
-  if (grad_op_num == 0) return;
+  if (grad_op_num == 0) {
+    return;
+  }
 
   // Build a map to record var_name -> std::shared_ptr<VarBase>*,
   // so that we can find suitable var in grad op descs
@@ -494,16 +496,16 @@ void OpBase::TraceBackward(const framework::OpDesc& fwd_op,
 
         auto* preceding_op = (*(fwd_var_iter->second))->GeneratedOp();
 
-        if (!preceding_op || visited_preceding_ops.count(preceding_op) > 0) {
-          continue;
+        if (preceding_op && visited_preceding_ops.count(preceding_op) == 0) {
+          visited_preceding_ops.insert(preceding_op);
+          preceding_ops_.emplace_back(preceding_op);
         }
-
-        visited_preceding_ops.insert(preceding_op);
-        preceding_ops_.emplace_back(preceding_op);
       }
     }
   }
-  std::reverse(preceding_ops_.begin(), preceding_ops_.end());
+  // To ensure numeric stability as static graph
+  std::sort(preceding_ops_.begin(), preceding_ops_.end(),
+            [](OpBase* op1, OpBase* op2) { return op1->id() > op2->id(); });
 }
 
 void OpBase::ClearBackwardTrace() {

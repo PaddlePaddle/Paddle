@@ -44,6 +44,9 @@ class EagerGradientAccumulator : public GradientAccumulator {
   using GradientAccumulator::GradientAccumulator;
 
   void Add(std::shared_ptr<VarBase> var, size_t trace_id) override;
+
+ private:
+  size_t cur_cnt_{0};
 };
 
 class SortedGradientAccumulator : public GradientAccumulator {

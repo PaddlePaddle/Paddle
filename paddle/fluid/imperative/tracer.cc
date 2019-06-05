@@ -31,9 +31,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   op->Run(ins, outs);
 
   if (trace_backward) {
-    framework::OpDesc fwd_op(op->Type(), op->InputNameMap(),
-                             op->OutputNameMap(), op->Attrs());
-    op->TraceBackward(std::move(fwd_op), ins, outs);
+    op->TraceBackward(framework::OpDesc(op->Type(), op->InputNameMap(),
+                                        op->OutputNameMap(), op->Attrs()),
+                      ins, outs);
     ops_.emplace(op_id, std::move(op));
   }
 }

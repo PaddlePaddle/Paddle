@@ -1679,10 +1679,12 @@ class Block(object):
                 # eval mode
                 attrs['is_test'] = True
 
+            type = kwargs.get("type", None)
+
             op = Operator(
                 block=self,
                 desc=None,
-                type=kwargs.get("type", None),
+                type=type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs)
@@ -1691,9 +1693,9 @@ class Block(object):
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in dygraph mode.
-            _dygraph_tracer().trace_op(op,
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs,
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
@@ -1754,17 +1756,14 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         if in_dygraph_mode():
+            type = kwargs.get("type", None)
+            attrs = kwargs.get("attrs", {})
             op = Operator(
-                self,
-                None,
-                type=kwargs.get("type", None),
-                inputs=None,
-                outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                self, None, type=type, inputs=None, outputs=None, attrs=attrs)
 
-            _dygraph_tracer().trace_op(op,
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs,
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
