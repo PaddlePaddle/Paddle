@@ -108,7 +108,6 @@ __global__ void DeformablePSROIPoolForwardKernel(
                                part_width +
                            part_w] *
                   (T)trans_std;
-
     T trans_y = no_trans
                     ? (T)(0)
                     : bottom_trans[(((n * num_classes + class_id) * 2 + 1) *
