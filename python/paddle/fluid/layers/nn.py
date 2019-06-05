@@ -6747,7 +6747,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                     fill_constant(
                         [1], 'int32', dim, force_cpu=True, out=temp_out)
                     new_shape_tensor.append(temp_out)
-            inputs['shape_tensor'] = new_shape_tensor
+            inputs['ShapeTensor'] = new_shape_tensor
             attrs = {}
 
         else:

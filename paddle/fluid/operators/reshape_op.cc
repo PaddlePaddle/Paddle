@@ -53,9 +53,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ReshapeOp should not be null.");
 
-    if (ctx->HasInputs("shape_tensor")) {
+    if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
-      auto inputs_name = ctx->Inputs("shape_tensor");
+      auto inputs_name = ctx->Inputs("ShapeTensor");
       PADDLE_ENFORCE(inputs_name.size() > 0, "shape tensor size can't be zero");
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
@@ -146,7 +146,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "shape_tensor") {
+    if (var_name == "ShapeTensor") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
@@ -164,9 +164,10 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
              "the shape attribute, while the shape attribute still should be "
              "set correctly to gurantee shape inference in compile time.")
         .AsDispensable();
-    AddInput("shape_tensor",
+    AddInput("ShapeTensor",
              "(Tensor<int32>, optional). If provided, reshape will use this"
-             "it have top prioroty than Input(Shape) and attr(shape)")
+             "it has the highest priority compare with Input(Shape) and "
+             "attr(shape).")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out", "(Tensor). The output tensor of reshape operator.");
@@ -249,7 +250,7 @@ class ReshapeKernel {
     framework::DDim out_dims = out->dims();
 
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("shape_tensor");
+        ctx.MultiInput<framework::Tensor>("ShapeTensor");
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
       auto new_shape = get_new_shape(list_new_shape_tensor);
@@ -343,7 +344,7 @@ class Reshape2GradMaker : public framework::SingleGradOpDescMaker {
     auto *grad_op = new framework::OpDesc();
     grad_op->SetType("reshape2_grad");
     grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput("shape_tensor", Input("shape_tensor"));
+    grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
@@ -380,7 +381,7 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "shape_tensor") {
+    if (var_name == "ShapeTensor") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
