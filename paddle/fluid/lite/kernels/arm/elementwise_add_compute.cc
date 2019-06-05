@@ -29,12 +29,6 @@ void ElementwiseAddCompute::Run() {
   lite::arm::math::elementwise_add(x_data, y_data, out_data, n);
 }
 
-TargetType ElementwiseAddCompute::target() const { return TARGET(kARM); }
-
-PrecisionType ElementwiseAddCompute::precision() const {
-  return PRECISION(kFloat);
-}
-
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite

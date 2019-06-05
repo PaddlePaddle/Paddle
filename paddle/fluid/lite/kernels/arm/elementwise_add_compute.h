@@ -27,9 +27,6 @@ class ElementwiseAddCompute
  public:
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
-
   virtual ~ElementwiseAddCompute() = default;
 };
 
