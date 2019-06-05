@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/operators/softmax_op.h"
+#include "paddle/fluid/lite/operators/concat_op.h"
 #include <gtest/gtest.h>
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -20,17 +20,22 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-TEST(softmax_op_lite, test) {
+TEST(concat_op_lite, test) {
   // prepare variables
-  Scope scope;
-  auto* x = scope.Var("x")->GetMutable<Tensor>();
-  auto* output = scope.Var("output")->GetMutable<Tensor>();
-  x->Resize(DDim(std::vector<int64_t>({10, 20})));
-  output->Resize(DDim(std::vector<int64_t>{10, 20}));
+  lite::Scope scope;
+  auto* x0 = scope.Var("x0")->GetMutable<lite::Tensor>();
+  auto* x1 = scope.Var("x1")->GetMutable<lite::Tensor>();
+  auto* output = scope.Var("output")->GetMutable<lite::Tensor>();
+  x0->Resize(lite::DDim(std::vector<int64_t>({10, 20})));
+  x1->Resize(lite::DDim(std::vector<int64_t>({10, 20})));
+  output->Resize(lite::DDim(std::vector<int64_t>{20, 20}));
 
   // set data
   for (int i = 0; i < 10 * 20; i++) {
-    x->mutable_data<float>()[i] = i;
+    x0->mutable_data<float>()[i] = i;
+  }
+  for (int i = 0; i < 10 * 20; i++) {
+    x1->mutable_data<float>()[i] = i;
   }
   for (int i = 0; i < 10 * 20; i++) {
     output->mutable_data<float>()[i] = 0.;
@@ -38,15 +43,15 @@ TEST(softmax_op_lite, test) {
 
   // prepare op desc
   cpp::OpDesc desc;
-  desc.SetType("softmax");
-  desc.SetInput("X", {"x"});
+  desc.SetType("concat");
+  desc.SetInput("X", {"x0", "x1"});
   desc.SetOutput("Out", {"output"});
-  desc.SetAttr("axis", static_cast<int>(-1));
+  desc.SetAttr("axis", static_cast<int>(0));
 
-  SoftmaxOp softmax("softmax");
+  ConcatOpLite concat("concat");
 
-  softmax.SetValidPlaces({Place{TARGET(kHost), PRECISION(kFloat)}});
-  softmax.Attach(desc, &scope);
+  concat.SetValidPlaces({Place{TARGET(kX86), PRECISION(kFloat)}});
+  concat.Attach(desc, &scope);
 }
 
 }  // namespace operators

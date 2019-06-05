@@ -37,7 +37,7 @@ class MeanOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
     auto X_name = opdesc.Input("X").front();
     auto Out_name = opdesc.Output("Out").front();
 
@@ -72,8 +72,8 @@ class MeanGradOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 3UL);
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
+    CHECK_EQ(opdesc.InputArgumentNames().size(), 3UL);
     auto X_name = opdesc.Input("X").front();
     auto Out_grad_name = opdesc.Input(framework::GradVarName("Out")).front();
     auto X_grad_name = opdesc.Output(framework::GradVarName("X")).front();

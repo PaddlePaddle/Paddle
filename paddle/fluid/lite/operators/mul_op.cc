@@ -85,7 +85,7 @@ bool MulGradOpLite::InferShape() const {
   return true;
 }
 
-bool MulGradOpLite::AttachImpl(const OpDesc &op_desc, lite::Scope *scope) {
+bool MulGradOpLite::AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) {
   auto X_name = op_desc.Input("X").front();
   auto Y_name = op_desc.Input("Y").front();
   auto Out_grad_name = op_desc.Output(framework::GradVarName("Out")).front();

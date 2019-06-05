@@ -29,7 +29,7 @@ TEST(scale_op_lite, test) {
   output->Resize(DDim(std::vector<int64_t>{1, 1}));
 
   // prepare op desc
-  lite::OpDesc desc;
+  cpp::OpDesc desc;
   desc.SetType("scale");
   desc.SetInput("X", {"x"});
   desc.SetOutput("Out", {"output"});
@@ -48,7 +48,7 @@ TEST(scale_op_lite, test) {
   auto x_dims = x->dims();
   auto output_dims = output->dims();
   CHECK_EQ(output_dims.size(), x_dims.size());
-  for (int i = 0; i < output_dims.size(); i++) {
+  for (size_t i = 0; i < output_dims.size(); i++) {
     CHECK_EQ(output_dims[i], x_dims[i]);
   }
 }
