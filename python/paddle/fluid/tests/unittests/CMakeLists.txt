@@ -141,6 +141,9 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_imperative_resnet test_imperative_resnet_sorted_gradient test_imperative_se_resnext  PROPERTIES RUN_SERIAL TRUE)
+set_tests_properties(test_imperative_mnist test_imperative_mnist_sorted_gradient  PROPERTIES RUN_SERIAL TRUE)
+
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -151,9 +154,14 @@ if(WITH_DISTRIBUTE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 200)
+
+        set_tests_properties(test_dist_mnist_nccl test_dist_mnist test_dist_mnist_lars  PROPERTIES RUN_SERIAL TRUE)
+
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
+        set_tests_properties(test_dist_se_resnext test_dist_se_resnext_nccl PROPERTIES RUN_SERIAL TRUE)
+
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
