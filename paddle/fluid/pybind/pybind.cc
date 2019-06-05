@@ -1245,12 +1245,6 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
             PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
-#ifdef WIN32
-            if (self.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-              LOG_FIRST_N(WARNING, 1) << "Windows support AllReduce only.";
-              self.reduce_ = BuildStrategy::ReduceStrategy::kAllReduce;
-            }
-#endif
           },
           R"DOC(The type is STR, there are two reduce strategies in ParallelExecutor,
                 'AllReduce' and 'Reduce'. If you want that all the parameters'

@@ -291,11 +291,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
-  if (!member_->use_all_reduce_) {
-    LOG_FIRST_N(WARNING, 1)
-        << "Please NOTE: Windows can support single GPU only"
-        << ", parallelExecutor would be forced to use allreduce.";
-    member_->use_all_reduce_ = true;
+  if (member_->use_cuda_) {
+    PADDLE_ENFORCE(places.size() == 1, "Windows can support Single GPU only.");
   }
 #endif
   if (!member_->use_all_reduce_) {
@@ -344,8 +341,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
-#if defined(PADDLE_WITH_CUDA)
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     member_->InitNCCLCtxs(scope, build_strategy);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -364,7 +360,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           member_->nccl_ctxs_.DefaultFlatCtx()->at(member_->places_[dev_id]);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
-#endif
 #endif
   }
   // broadcast parameters from the 0th device to others:
@@ -514,8 +509,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA)
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
@@ -547,7 +541,6 @@ void ParallelExecutor::BCastParamsToDevices(
         }
         nccl_ctxs->WaitAll();
       }
-#endif
 #endif
     } else {
       platform::CPUPlace cpu;
