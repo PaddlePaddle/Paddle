@@ -65,11 +65,14 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   for (auto p : places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
+
   for (auto &scope : local_scopes_) {
-    auto &local_scope =
-        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-    scope->DeleteScope(local_scope);
-    VLOG(3) << "Drop local execution scope: " << local_scope;
+    auto *local_scope_var = scope->FindLocalVar(details::kLocalExecScopeName);
+    if (local_scope_var != nullptr) {
+      auto &local_scope = *local_scope_var->GetMutable<Scope *>();
+      scope->DeleteScope(local_scope);
+      VLOG(3) << "Drop local execution scope: " << local_scope;
+    }
   }
 }
 

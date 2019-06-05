@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign
+from .tensor import concat, assign, fill_constant
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -6564,11 +6564,24 @@ def one_hot(input, depth):
             one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
+
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
+
+    if in_dygraph_mode():
+        inputs = {'X': input}
+        attrs = {'depth': depth}
+    else:
+        if not isinstance(depth, Variable):
+            # user attribute 
+            inputs = {'X': input}
+            attrs = {'depth': depth}
+        else:
+            inputs = {'X': input, 'depth_tensor': depth}
+            attrs = {}
     helper.append_op(
         type="one_hot",
-        inputs={'X': input},
-        attrs={'depth': depth},
+        inputs=inputs,
+        attrs=attrs,
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
@@ -8817,14 +8830,19 @@ def prelu(x, mode, param_attr=None, name=None):
     .. math::
         y = \max(0, x) + \\alpha * \min(0, x)
 
+    There are three modes for the activation:
+
+    .. code-block:: text
+
+        all: All elements share same alpha.
+        channel: Elements in same channel share same alpha.
+        element: All elements do not share alpha. Each element has its own alpha.
+
     Args:
         x (Variable): The input tensor.
+        mode (string): The mode for weight sharing. 
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha).
-        mode (string): The mode for weight sharing. It supports all, channel
-          and element. all: all elements share same weight
-          channel:elements in a channel share same weight
-          element:each element has a weight
+          weight (alpha), it can be create by ParamAttr.
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -8835,9 +8853,13 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            import paddle.fluid as fluid
+            from paddle.fluid.param_attr import ParamAttr
+            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
             mode = 'channel'
-            output = fluid.layers.prelu(x,mode)
+            output = fluid.layers.prelu(
+                     x,mode,param_attr=ParamAttr(name='alpha'))
+
     """
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
@@ -9316,11 +9338,38 @@ def expand(x, expand_times, name=None):
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
+    # check expand_times have tensor
+
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'expand_times': expand_times}
+    else:
+
+        def contain_tensor(expand_times):
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        if contain_tensor(expand_times):
+            new_expand_times = []
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    new_expand_times.append(ele)
+                else:
+                    assert (isinstance(ele, int))
+                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    fill_constant(
+                        [1], 'int32', ele, force_cpu=True, out=temp_out)
+                    new_expand_times.append(temp_out)
+            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
+            attrs = {}
+        else:
+            inputs = {'X': x}
+            attrs = {'expand_times': expand_times}
+
     helper.append_op(
-        type='expand',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'expand_times': expand_times})
+        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9547,8 +9596,39 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    ${comment}
+    Slice Operator.
 
+    Produces a slice of the input tensor along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
+    end dimension for each axis in the list of axes, it uses this information
+    to slice the input data tensor. If a negative value is passed for any of
+    the start or end indices, it represents number of elements before the end
+    of that dimension. If the value passed to start or end is larger than
+    the n (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
+    Following examples will explain how slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+            Then:
+                result = [ [2, 3, 4], ]
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
@@ -10523,8 +10603,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 2]
         input.data = [
-            [[1], [2]],
-            [[3], [4]],
+            [[1, 2],
+             [3, 4]],
         ]
 
         input.lod = [[0, 2]]
@@ -10541,8 +10621,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 4]
         output.data = [
-            [[9662], [9217], [1129], [8487]],
-            [[8310], [1327], [1654], [4567]],
+            [[9662, 9217, 1129, 8487],
+             [8310, 1327, 1654, 4567]],
         ]
 
         output.lod = [[0, 2]]
@@ -10561,8 +10641,24 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
-           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
+
+            place = fluid.core.CPUPlace()
+            exece = fluid.Executor(place)
+            exece.run(fluid.default_startup_program()) 
+
+            # Init Tensor
+            tensor = fluid.core.LoDTensor() 
+            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
+            # Set LoD
+            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
+
+            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
