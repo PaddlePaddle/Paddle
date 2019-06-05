@@ -79,7 +79,7 @@ class Collective(Fleet):
     def distributed_optimizer(self, optimizer, strategy=None):
         #self._optmizer = DistributedOptimizerFactory.create_by_strategy(
         #strategy)
-        self._optimizer = FullPrecisionOptimizer()
+        self._optimizer = FullPrecisionOptimizer(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
@@ -105,15 +105,19 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
     TBA
     """
 
+    def __init__(self, optimizer, strategy=None):
+        super(CollectiveOpBasedOptimizer, self).__init__(optimizer, strategy)
+
     def _transpile_program(self, startup_program=None):
         startup_program = startup_program if startup_program else \
-                          fluid.framework.default_startup_program
+                          fluid.framework.default_startup_program()
         worker_endpoints = fleet.worker_endpoints()
         trainer_id = fleet.worker_index()
         current_endpoint = fleet.worker_endpoints()[trainer_id]
         # call transpiler
         config = dist_transpiler.DistributeTranspilerConfig()
         config.mode = "collective"
+        config.collective_mode = "sgd"
         t = dist_transpiler.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id,
@@ -151,6 +155,9 @@ class FullPrecisionOptimizer(CollectiveOpBasedOptimizer):
     """
     TBA
     """
+
+    def __init__(self, optimizer, strategy=None):
+        super(FullPrecisionOptimizer, self).__init__(optimizer, strategy)
 
     def minimize(self,
                  loss,
