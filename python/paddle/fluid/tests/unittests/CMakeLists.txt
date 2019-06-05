@@ -19,6 +19,8 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
 endif(NOT WITH_DISTRIBUTE)
 
+LIST(REMOVE_ITEM TEST_OPS test_launch)
+
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
@@ -66,6 +68,29 @@ function(py_test_modules TARGET_NAME)
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
 endfunction()
+
+function(bash_test_modules TARGET_NAME)
+    if(NOT WITH_TESTING)
+        return()
+    endif()
+
+    set(options SERIAL)
+    set(oneValueArgs "")
+    set(multiValueArgs MODULES DEPS ENVS)
+    cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
+
+    add_test(NAME ${TARGET_NAME}
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${bash_test_modules_ENVS}
+        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (bash_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    endif()
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+endfunction()
+
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -154,6 +179,7 @@ if(WITH_DISTRIBUTE)
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
+        bash_test_modules(test_launch MODULES test_launch.sh)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
