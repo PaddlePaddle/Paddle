@@ -1461,8 +1461,8 @@ class GRUUnit(layers.Layer):
             sigmoid=1,
             tanh=2,
             relu=3, )
-        activation = activation_dict[activation]
-        gate_activation = activation_dict[gate_activation]
+        self.activation = activation_dict[activation]
+        self.gate_activation = activation_dict[gate_activation]
 
         self._dtype = dtype
         size = size // 3
@@ -1494,8 +1494,8 @@ class GRUUnit(layers.Layer):
                 'Hidden': updated_hidden,
             },
             attrs={
-                'activation': 2,  # tanh
-                'gate_activation': 1,  # sigmoid
+                'activation': self.activation,
+                'gate_activation': self.gate_activation,
             })
 
         return updated_hidden, reset_hidden_pre, gate
@@ -2053,7 +2053,7 @@ class Conv2DTranspose(layers.Layer):
             self._filter_size = [filter_size_h, filter_size_w]
         else:
             self._filter_size = utils.convert_to_list(
-                self._output_size, 2, 'conv2d_transpose.filter_size')
+                self._filter_size, 2, 'conv2d_transpose.filter_size')
 
         if self._output_size is None:
             self._output_size = []

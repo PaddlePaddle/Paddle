@@ -234,6 +234,11 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
   }
   tensor_array_batch_cleaner_.ResetNoTensorVars();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+
   return true;
 }
 
@@ -586,6 +591,11 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+
   return true;
 }
 
