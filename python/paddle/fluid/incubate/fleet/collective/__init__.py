@@ -22,6 +22,21 @@ from ..base.fleet_base import Mode
 from ..base.fleet_base import DistributedOptimizer
 
 
+class DistributedStrategy(object):
+    def __init__(self):
+        self.use_fp16 = False
+        self.use_fp32 = False
+        self.local_sgd = False
+        self.dgc = False
+        self.hierachical_allreduce = False
+
+    def build(self):
+        if self.use_fp32 and self.use_fp16:
+            self.use_fp16 = False
+        if self.local_sgd and self.dgc:
+            self.local_sgd = False
+
+
 class DistributedOptimizerFactory(object):
     def strategy_to_optimizer_map(self):
         pattern = {}
@@ -62,8 +77,9 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        self._optmizer = DistributedOptimizerFactory.create_by_strategy(
-            strategy)
+        #self._optmizer = DistributedOptimizerFactory.create_by_strategy(
+        #strategy)
+        self._optimizer = FullPrecisionOptimizer()
         return self._optimizer
 
     def save_inference_model(self,
