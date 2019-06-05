@@ -45,7 +45,7 @@ class Collective(object):
         self.main_program = None
         self.op_maker = core.op_proto_and_checker_maker
         self.op_role_key = self.op_maker.kOpRoleAttrName()
-        self.collective_role = slef.op_maker.OpRole.Collective
+        self.collective_role = self.op_maker.OpRole.Collective
 
     def transpile(self, startup_program, main_program, rank, endpoints,
                   current_endpoint, wait_port):
@@ -245,6 +245,8 @@ class LocalSGD(Collective):
     def _transpile_main_program(self):
         block = self.main_program.global_block()
         ordered_param_snapshot = []
+        # FIXME(liuyi05): how to deal with parameters updated in
+        # non-optimization ops such as batch_norm
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_update_op(op):
                 param = block.vars[op.input('Param')[0]]
