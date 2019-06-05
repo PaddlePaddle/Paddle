@@ -37,6 +37,7 @@ class DDimLite : public DDimBase<DDimLite> {
   void ConstructFrom(const std::vector<value_type> &x) { data_ = x; }
 
   value_type operator[](int offset) const { return data_[offset]; }
+  value_type &operator[](int offset) { return data_[offset]; }
   std::vector<int64_t> Vectorize() const { return data_; }
 
   size_t size() const { return data_.size(); }

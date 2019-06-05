@@ -23,7 +23,7 @@ if (LITE_WITH_CUDA)
 endif()
 cc_library(model_parser_lite SRCS model_parser.cc DEPS ${model_parser_deps})
 
-cc_test(test_op_desc_lite SRCS op_desc_test.cc DEPS cpp_op_desc_lite any_lite op_desc_lite compatible_pb_lite)
+lite_cc_test(test_op_desc_lite SRCS op_desc_test.cc DEPS cpp_op_desc_lite op_desc_lite compatible_pb_lite)
 
 add_subdirectory(pb)
 add_subdirectory(cpp)
