@@ -34,15 +34,21 @@ _logger.setLevel(logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=1,
-                        help='Batch size.')
-    parser.add_argument('--skip_batch_num', type=int, default=0,
-                        help='Number of the first minibatches to skip in performance statistics.')
+    parser.add_argument('--batch_size', type=int, default=1, help='Batch size.')
+    parser.add_argument(
+        '--skip_batch_num',
+        type=int,
+        default=0,
+        help='Number of the first minibatches to skip in performance statistics.'
+    )
     parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
-    parser.add_argument('--batch_num', type=int, default=1,
-                        help='Number of batches to process. 0 or less means all.')
+    parser.add_argument(
+        '--batch_num',
+        type=int,
+        default=1,
+        help='Number of batches to process. 0 or less means all.')
     parser.add_argument(
         '--acc_diff_threshold',
         type=float,
@@ -82,7 +88,8 @@ class TestQatInt8Comparison(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from('{}f'.format(img_ch * img_w * img_h), img)
+                    img = struct.unpack_from('{}f'.format(img_ch * img_w *
+                                                          img_h), img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -115,21 +122,24 @@ class TestQatInt8Comparison(unittest.TestCase):
         for op_node in ops:
             name = op_node.name()
             if name in ['depthwise_conv2d']:
-                input_var_node = graph._find_node_by_name(op_node.inputs,
-                    op_node.input("Input")[0])
-                weight_var_node = graph._find_node_by_name(op_node.inputs, op_node.input("Filter")[0])
+                input_var_node = graph._find_node_by_name(
+                    op_node.inputs, op_node.input("Input")[0])
+                weight_var_node = graph._find_node_by_name(
+                    op_node.inputs, op_node.input("Filter")[0])
                 output_var_node = graph._find_node_by_name(
                     graph.all_var_nodes(), op_node.output("Output")[0])
                 attrs = {
                     name: op_node.op().attr(name)
-                        for name in op_node.op().attr_names()
+                    for name in op_node.op().attr_names()
                 }
 
                 conv_op_node = graph.create_op_node(
                     op_type='conv2d',
                     attrs=attrs,
-                    inputs={'Input': input_var_node,
-                        'Filter': weight_var_node},
+                    inputs={
+                        'Input': input_var_node,
+                        'Filter': weight_var_node
+                    },
                     outputs={'Output': output_var_node})
 
                 graph.link_to(input_var_node, conv_op_node)
@@ -157,8 +167,7 @@ class TestQatInt8Comparison(unittest.TestCase):
                  fetch_targets] = fluid.io.load_inference_model(
                      model_path, exe, 'model', 'params')
 
-            graph = IrGraph(
-                core.Graph(inference_program.desc), for_test=True)
+            graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (transform_to_int8):
                 mkldnn_int8_pass = TransformForMkldnnPass(
                     scope=inference_scope, place=place)
@@ -197,7 +206,8 @@ class TestQatInt8Comparison(unittest.TestCase):
                               fetch_list=fetch_targets)
                 batch_time = time.time() - start
                 outputs.append(out[0])
-                batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0], labels)
+                batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
+                                                                  labels)
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
                 samples = len(data)
@@ -207,9 +217,10 @@ class TestQatInt8Comparison(unittest.TestCase):
                 fpses.append(fps)
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
-                _logger.info('batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
-                             'batch latency: {3:.4f} s, batch fps: {4:.2f}'.format(iters,
-                                batch_acc1, batch_acc5, batch_time, fps, appx))
+                _logger.info(
+                    'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
+                    'batch latency: {3:.4f} s, batch fps: {4:.2f}'.format(
+                        iters, batch_acc1, batch_acc5, batch_time, fps, appx))
 
             # Postprocess benchmark data
             latencies = batch_times[skip_batch_num:]
@@ -219,7 +230,8 @@ class TestQatInt8Comparison(unittest.TestCase):
             infer_total_time = time.time() - infer_start_time
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
-            _logger.info('Total inference run time: {:.2f} s'.format(infer_total_time))
+            _logger.info('Total inference run time: {:.2f} s'.format(
+                infer_total_time))
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
@@ -229,21 +241,23 @@ class TestQatInt8Comparison(unittest.TestCase):
 
         no_of_values = np.prod(A.shape)
         no_of_different_vales = no_of_values - np.sum(
-            np.isclose(A, B, rtol=0, atol=threshold))
-        max_abs_diff = np.max(
-            np.absolute(
-                np.array(A) - np.array(B)))
+            np.isclose(
+                A, B, rtol=0, atol=threshold))
+        max_abs_diff = np.max(np.absolute(np.array(A) - np.array(B)))
         _logger.info('Accepted output diff threshold: {0}'.format(threshold))
         _logger.info('Number of values: {0}'.format(no_of_values))
         _logger.info('Number of different values: {0}'.format(
             no_of_different_vales))
         _logger.info('Max absolute diff: {0}'.format(max_abs_diff))
-        assert np.allclose(A, B, rtol = 0, atol = threshold)
+        assert np.allclose(A, B, rtol=0, atol=threshold)
 
-    def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5, threshold):
+    def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
+                          threshold):
         _logger.info('Accepted acc1 diff threshold: {0}'.format(threshold))
-        _logger.info('FP32: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(fp32_acc1, fp32_acc5))
-        _logger.info('INT8: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(int8_acc1, int8_acc5))
+        _logger.info('FP32: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(
+            fp32_acc1, fp32_acc5))
+        _logger.info('INT8: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(
+            int8_acc1, int8_acc5))
         assert fp32_acc1 > 0.0
         assert int8_acc1 > 0.0
         assert fp32_acc1 - int8_acc1 <= threshold
@@ -273,21 +287,34 @@ class TestQatInt8Comparison(unittest.TestCase):
                      .format(out_diff_threshold))
 
         _logger.info('--- QAT FP32 prediction start ---')
-        val_reader = paddle.batch(self._reader_creator(data_path), batch_size=batch_size)
+        val_reader = paddle.batch(
+            self._reader_creator(data_path), batch_size=batch_size)
         fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
-            val_reader, qat_model_path, batch_num, skip_batch_num, transform_to_int8=False)
+            val_reader,
+            qat_model_path,
+            batch_num,
+            skip_batch_num,
+            transform_to_int8=False)
 
         _logger.info('--- QAT INT8 prediction start ---')
-        val_reader = paddle.batch(self._reader_creator(data_path), batch_size=batch_size)
+        val_reader = paddle.batch(
+            self._reader_creator(data_path), batch_size=batch_size)
         int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
-            val_reader, qat_model_path, batch_num, skip_batch_num, transform_to_int8=True)
+            val_reader,
+            qat_model_path,
+            batch_num,
+            skip_batch_num,
+            transform_to_int8=True)
 
         _logger.info('--- Performance summary ---')
-        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} s'.format(fp32_fps, fp32_lat))
-        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} s'.format(int8_fps, int8_lat))
+        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} s'.format(
+            fp32_fps, fp32_lat))
+        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} s'.format(
+            int8_fps, int8_lat))
 
         _logger.info('--- Comparing accuracy ---')
-        self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5, acc_diff_threshold)
+        self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
+                               acc_diff_threshold)
 
         _logger.info('--- Comparing outputs ---')
         self._compare_outputs(fp32_output, int8_output, out_diff_threshold)
