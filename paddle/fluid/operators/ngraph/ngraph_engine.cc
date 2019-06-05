@@ -38,6 +38,10 @@ namespace operators {
 
 static ngraph::Shape Ddim2Shape(const framework::DDim& dims) {
   ngraph::Shape sp;
+  if (dims.size() == 1 && dims[0] == 0) {
+    sp.emplace_back(0);
+    return sp;
+  }
   for (int i = 0; i < dims.size(); ++i) {
     int k = dims[i];
     k = k == 0 ? 1 : k;
@@ -417,6 +421,15 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
       }
     }
   }
+  // remove output duplicates
+  std::unordered_set<std::string> var_out_set;
+  for (int i = static_cast<int>(var_out_.size()) - 1; i >= 0; --i) {
+    std::string var_name = var_out_.at(i);
+    if (var_out_set.count(var_name)) {
+      var_out_.erase(var_out_.begin() + i);
+    }
+    var_out_set.insert(var_name);
+  }
 }
 
 void NgraphEngine::GetNgInputShape() {
@@ -458,16 +471,8 @@ void NgraphEngine::BuildNgNodes() {
   }
 }
 
-void NgraphEngine::RunInferShape() {
-  for (auto& op : fused_ops_) {
-    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
-    op->RuntimeInferShape(scope_, place_, ctx);
-  }
-}
-
 void NgraphEngine::BuildNgFunction(const framework::ExecutionContext& ctx) {
   Prepare(ctx);
-  RunInferShape();
   GetNgInputShape();
   BuildNgNodes();
   ngraph_function_ = nullptr;
@@ -623,6 +628,21 @@ void NgraphEngine::Run(const framework::Scope& scope,
         ti->set_stale(false);
       }
       (*p_t_in).emplace_back(ti);
+    }
+  }
+
+  for (auto& op : fused_ops_) {
+    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+    if (op->Type() == "reshape2_grad") {
+      auto xshape_name = op->Inputs().at("XShape").at(0);
+      auto* xshape_var = scope_.FindVar(xshape_name);
+      auto* xshape_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*xshape_var);
+      auto& xshape_ddim = xshape_tensor->dims();
+      auto xgrad_name = op->Outputs().at(framework::GradVarName("X")).at(0);
+      auto* xgrad_var = scope_.FindVar(xgrad_name);
+      xgrad_var->GetMutable<framework::LoDTensor>()->Resize(xshape_ddim);
+    } else {
+      op->RuntimeInferShape(scope_, place_, ctx);
     }
   }
 

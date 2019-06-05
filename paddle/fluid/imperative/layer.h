@@ -166,6 +166,7 @@ class VarBase {
     if (!var_) {
       var_.reset(new framework::Variable());
     }
+
     auto tensor = var_->GetMutable<framework::LoDTensor>();
     tensor->Resize(shape);
     if (need_initialize) {
@@ -310,13 +311,11 @@ class PYBIND11_HIDDEN OpBase {
         backward_hooks_() {}
 
   virtual ~OpBase() {
-    for (const auto& iter : outputs_ref) {
-      for (const auto& var : iter.second) {
-        auto vb = var.lock();
-        if (vb) {
-          VLOG(3) << "Op reset by" << vb->name_;
-          vb->ResetPreOp(this);
-        }
+    for (const auto& it : outputs_ref) {
+      auto vb = it.lock();
+      if (vb) {
+        VLOG(3) << "Op reset by" << vb->name_;
+        vb->ResetPreOp(this);
       }
     }
     // TODO(minqiyang): remove op_desc from block_desc in tracer
@@ -372,7 +371,7 @@ class PYBIND11_HIDDEN OpBase {
   OpBasePtrMap pre_ops_;
   std::map<std::string, std::vector<int>> pre_ops_out_idx_;
 
-  VarBaseWeakPtrMap outputs_ref;
+  VarBaseWeakPtrList outputs_ref;
   // Inputs to a vector of bwd ops.
   std::vector<VarBasePtrMap> grad_input_vars_;
   // Outputs to a vector of bwd ops.
