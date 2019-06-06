@@ -41,9 +41,6 @@ def save_persistables(model_dict, dirname='save_dir', optimizers=None):
                                     will be deal.
         dirname(str): The directory path.
         optimizers(fluid.Optimizer|list(fluid.Optimizer)|None): The optimizers to be saved
-        filename(str|None): The file which saved all variables. If variables were
-                            saved in different files, set it to None.
-                            Default: None
 
     Returns:
 
@@ -55,7 +52,7 @@ def save_persistables(model_dict, dirname='save_dir', optimizers=None):
                 num_layers=num_layers,
                 num_steps=num_steps,
                 init_scale=init_scale)
-
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
             x_data = np.arange(12).reshape(4, 3).astype('int64')
             y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
             x_data = x_data.reshape((-1, num_steps, 1))
@@ -70,9 +67,11 @@ def save_persistables(model_dict, dirname='save_dir', optimizers=None):
             init_cell = to_variable(init_cell_data)
             dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                         init_cell)
+            dy_loss.backward()
+            sgd.minimize(dy_loss)
+            ptb_model.clear_gradient()
             param_path = "./my_paddle_model"
-            fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path,
-                                       layer=ptb_model)
+            fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path, sgd)
     """
     if isinstance(model_dict, collections.OrderedDict):
         _save_var_to_file(model_dict, optimizers, dirname, None)
