@@ -1043,7 +1043,7 @@ class BatchNorm(layers.Layer):
                  epsilon=1e-05,
                  param_attr=None,
                  bias_attr=None,
-                 dtype=core.VarDesc.VarType.FP32,
+                 dtype='float32',
                  data_layout='NCHW',
                  in_place=False,
                  moving_mean_name=None,
@@ -1058,8 +1058,8 @@ class BatchNorm(layers.Layer):
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
-        if dtype == core.VarDesc.VarType.FP16:
-            self._dtype = core.VarDesc.VarType.FP32
+        if dtype == "float16":
+            self._dtype = "float32"
         else:
             self._dtype = dtype
 
