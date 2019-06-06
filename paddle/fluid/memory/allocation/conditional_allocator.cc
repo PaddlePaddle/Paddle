@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/conditional_allocator.h"
+#include <memory>
 
 namespace paddle {
 namespace memory {
