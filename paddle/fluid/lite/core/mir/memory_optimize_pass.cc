@@ -40,8 +40,10 @@ void MemoryOptimizePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
   CollectVarMemorySize(ssa_graph, &space_table);
   CollectOverlapInfo(lifecycles, space_table, &mem_nodes);
   MakeReusePlan(ssa_graph, &node2cluster, &mem_nodes);
-  UpdateVarsByReuseTable(ssa_graph, node2cluster);
-  UpdateOpDescsByReuseTable(ssa_graph, node2cluster);
+  // For kernel runtime
+  UpdateScopeVarsByReuseTable(ssa_graph, node2cluster);
+  // For OpDesc and SSAGraph display
+  UpdateSSAGraphByReuseTable(ssa_graph, node2cluster);
 }
 
 void MemoryOptimizePass::CollectLifeCycle(
@@ -179,7 +181,7 @@ void MemoryOptimizePass::MemoryOptimizeGreedy(
   }
 }
 
-void MemoryOptimizePass::UpdateVarsByReuseTable(
+void MemoryOptimizePass::UpdateScopeVarsByReuseTable(
     SSAGraph* graph,
     const std::unordered_map<std::string, std::string>& reuse_table) const {
   for (auto& item : reuse_table) {
@@ -200,9 +202,37 @@ void MemoryOptimizePass::UpdateVarsByReuseTable(
   }
 }
 
-void MemoryOptimizePass::UpdateOpDescsByReuseTable(
+void MemoryOptimizePass::UpdateSSAGraphByReuseTable(
     SSAGraph* graph,
-    const std::unordered_map<std::string, std::string>& reuse_table) {
+    const std::unordered_map<std::string, std::string>& reuse_table) const {
+  UpdateVarNodesByReuseTable(graph, reuse_table);
+  UpdateOpNodesByReuseTable(graph, reuse_table);
+}
+
+void MemoryOptimizePass::UpdateVarNodesByReuseTable(
+    SSAGraph* graph,
+    const std::unordered_map<std::string, std::string>& reuse_table) const {
+  // Update SSAGraph VarNodes(IsArg() == true) for display
+  auto& graph_nodes = graph->mutable_nodes();
+  std::unordered_map<std::string, mir::Node::Arg*> name2node;
+  for (auto& node : graph_nodes) {
+    if (!node.IsArg()) continue;
+    auto& var = node.AsArg();
+    name2node.insert({var.name, &var});
+  }
+
+  for (auto& item : reuse_table) {
+    CHECK(name2node.count(item.first));
+    CHECK(name2node.count(item.second));
+    auto* tgt = name2node.at(item.first);
+    auto* src = name2node.at(item.second);
+    tgt->ShareDataWith(*src);
+  }
+}
+
+void MemoryOptimizePass::UpdateOpNodesByReuseTable(
+    SSAGraph* graph,
+    const std::unordered_map<std::string, std::string>& reuse_table) const {
   using op_data_t = std::map<std::string, std::vector<std::string>>;
   // Debug information.
   std::unordered_map<std::string, std::pair<std::string, std::string>>
