@@ -33,17 +33,25 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+extern std::once_flag
+    AnakinEngine<TargetT, PrecisionType, RunType>::init_anakin_;
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
     bool need_summary, int device, int max_batch_size,
     std::map<std::string, std::vector<int>> max_input_shape,
     std::vector<std::string> program_inputs, bool auto_config_layout)
-    : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
-      net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
-  device_ = device;
-  max_batch_size_ = max_batch_size;
-  max_input_shape_ = max_input_shape;
-  program_inputs_ = program_inputs;
-  auto_config_layout_ = auto_config_layout;
+    : device_(device),
+      max_batch_size_(max_batch_size),
+      max_input_shape_(max_input_shape),
+      program_inputs_(program_inputs),
+      auto_config_layout_(auto_config_layout) {
+  std::call_once(init_anakin_, [this]() {
+    ::anakin::TargetWrapper<TargetT>::set_device(device_);
+    ::anakin::Env<TargetT>::env_init();
+  });
+  graph_.reset(new AnakinGraphT<TargetT, PrecisionType>());
+  net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary));
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -102,7 +110,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
       anakin_input = net_->get_in(input.first);
     }
     anakin_input->reshape(fluid_input_shape);
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), device_,
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
