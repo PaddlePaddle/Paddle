@@ -52,10 +52,161 @@ __all__ = [
     'yolo_box',
     'box_clip',
     'multiclass_nms',
+    'retinanet_target_assign',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
     'collect_fpn_proposals',
 ]
+
+
+def retinanet_target_assign(bbox_pred,
+                            cls_logits,
+                            anchor_box,
+                            anchor_var,
+                            gt_boxes,
+                            gt_labels,
+                            is_crowd,
+                            im_info,
+                            num_classes=1,
+                            positive_overlap=0.5,
+                            negative_overlap=0.4):
+    """
+    **Target Assign Layer for Retinanet .**
+
+    This layer can be, for given the Intersection-over-Union (IoU) overlap
+    between anchors and ground truth boxes, to assign classification and
+    regression targets to each anchor, these target labels are used for training
+    retinanet. Every anchor is assigned with a length :attr:`num_classes`
+    one-hot vector of classification targets, and a 4-vector of box regression
+    targets. The positive anchors are two kinds of anchors: (i) the anchors
+    with the highest IoU overlap with a ground-truth box, or (ii) an anchor
+    that has an IoU overlap higher than positive_overlap(0.5) with any
+    ground-truth box. A negative anchor is when its IoU ratio is lower than
+    negative_overlap (0.4) for all ground-truth boxes. When a anchor is assgned
+    with a ground-truth box which is the i-th category, the i-th entry in its
+    :attr:`num_classes` label vector is set to 1 and all other entries is set to 0.
+    All entries of a negative anchor are set to 0. No other sampling strategy
+    is adopted to filter negative anchors because all negative labels along with
+    positive labels contribute to the classfication objective(focal loss). Only
+    positive anchors are delecated to regression loss. Anchors that are neither
+    positive nor negative do not contribute to the training objective. The regression
+    targets are the encoded ground-truth boxes associated with the positive anchors.
+
+    Args:
+        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax].
+        cls_logits(Variable): A 3-D Tensor with shape [N, M, 1] represents the
+            predicted confidence predictions. N is the batch size, 1 is the
+            frontground and background sigmoid, M is number of bounding boxes.
+        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+            each box is represented as [xmin, ymin, xmax, ymax],
+            [xmin, ymin] is the left top coordinate of the anchor box,
+            if the input is image feature map, they are close to the origin
+            of the coordinate system. [xmax, ymax] is the right bottom
+            coordinate of the anchor box.
+        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
+            variances of anchors.
+        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            bboxes of mini-batch input.
+        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+            3 is the height, width and scale.
+        num_classes(int32): The number of classes.
+        positive_overlap(float): Minimum overlap required between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a positive
+            example.
+        negative_overlap(float): Maximum overlap allowed between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a negative
+            examples.
+
+    Returns:
+        tuple:
+               A tuple(predicted_scores, predicted_location, target_label,
+               target_bbox, bbox_inside_weight. fg_num) is returned. The
+               predicted_scores and predicted_location is the predicted result
+               of the retinanet.The target_label and target_bbox is the ground
+               truth, respectively. The predicted_location is a 2D Tensor with
+               shape [F, 4], and the shape of target_bbox is same as the shape of
+               the predicted_location, F is the number of the foreground
+               anchors. The predicted_scores is a 2D Tensor with shape
+               [F + B, 1], and the shape of target_label is same as the shape
+               of the predicted_scores, B is the number of the background
+               anchors, the F and B is depends on the input of this operator.
+               Bbox_inside_weight represents whether the predicted loc is fake_fg
+               or not and the shape is [F, 4]. Fg_num is the foreground number
+               which is needed by focal loss.
+
+    Examples:
+        .. code-block:: python
+            
+    		import paddle.fluid as fluid
+            bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+                              append_batch_size=False, dtype='float32')
+            cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+                              append_batch_size=False, dtype='float32')
+            anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                              append_batch_size=False, dtype='float32')
+            gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+                              append_batch_size=False, dtype='float32')
+			is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
+						 	  append_batch_size=False, dtype='float32')
+			im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
+							  append_batch_size=False, dtype='float32')
+            loc_pred, score_pred, loc_target, score_target,
+			bbox_inside_weight, fg_num =
+                fluid.layers.retinanet_target_assign(bbox_pred, cls_logits,
+				anchor_box, gt_boxes, gt_labels)
+
+    """
+
+    helper = LayerHelper('retinanet_target_assign', **locals())
+    # Assign target label to anchors
+    loc_index = helper.create_variable_for_type_inference(dtype='int32')
+    score_index = helper.create_variable_for_type_inference(dtype='int32')
+    target_label = helper.create_variable_for_type_inference(dtype='int32')
+    target_bbox = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
+    bbox_inside_weight = helper.create_variable_for_type_inference(
+        dtype=anchor_box.dtype)
+    fg_num = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type="retinanet_target_assign",
+        inputs={
+            'Anchor': anchor_box,
+            'GtBoxes': gt_boxes,
+            'GtLabels': gt_labels,
+            'IsCrowd': is_crowd,
+            'ImInfo': im_info
+        },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+            'TargetBBox': target_bbox,
+            'BBoxInsideWeight': bbox_inside_weight,
+            'ForegroundNumber': fg_num
+        },
+        attrs={
+            'positive_overlap': positive_overlap,
+            'negative_overlap': negative_overlap
+        })
+
+    loc_index.stop_gradient = True
+    score_index.stop_gradient = True
+    target_label.stop_gradient = True
+    target_bbox.stop_gradient = True
+    bbox_inside_weight.stop_gradient = True
+    fg_num.stop_gradient = True
+
+    cls_logits = nn.reshape(x=cls_logits, shape=(-1, num_classes))
+    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = nn.gather(cls_logits, score_index)
+    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight, fg_num
 
 
 def rpn_target_assign(bbox_pred,
