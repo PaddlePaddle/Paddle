@@ -467,6 +467,10 @@ class Compressor(object):
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
+        if 'MKLDNNPostTrainingQuantStrategy' in [
+                i.__class__.__name__ for i in self.strategies
+        ]:
+            return None
         start = context.epoch_id
         self._eval(context)
         for epoch in range(start, self.epoch):
