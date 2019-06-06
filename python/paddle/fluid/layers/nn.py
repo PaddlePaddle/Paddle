@@ -12025,7 +12025,7 @@ def deformable_psroi_pooling(input,
                              trans_std=0.1,
                              name=None):
     """
-    deformable psroi pooling layer
+    Deformable PSROI Pooling Layer
     
     Args:
        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
@@ -12042,14 +12042,14 @@ def deformable_psroi_pooling(input,
        no_trans(integer): Whether add offset to get new value or not while roi pooling, which 
                           value is 0 or 1. Default: 0.
        spatial_scale(float): Ratio of input feature map height (or width) to raw image height (or width).
-                             Equals the reciprocal of total stride in convolutional layers., Default: 1.0.
+                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
        output_channels(integer): The number of output channels, which shoule be less than input channels.
                                  Deformable roi_pooling requires output_channels = input_channels, while 
                                  deformable psroi_pooling requires output_channels = input_channels *
                                  pooled_height * pooled_width. Default: 64.
        group_size(list): The number of groups which input channels are divided.(eg.number of input channels 
                          is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
-                         chanels. eg.(4, 6), which 4 is height of group and 6 is width of groupDefault: [1, 1].
+                         chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
        pooled_height(integer): The pooled output height. Default: 1.
        pooled_width(integer): The pooled output width. Default: 1.
        part_size(list): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
@@ -12059,7 +12059,7 @@ def deformable_psroi_pooling(input,
        name(str): Name of layer. Default: None.
     Returns:
         Variable: The output of Deformable PSROIPooling. The format is NCHW, where N is the number of ROIs,
-                  C is the number of output channels, H is the height of output, and W is thewidth of output.
+                  C is the number of output channels, H is the height of output, and W is the width of output.
 
     Examples:
 
