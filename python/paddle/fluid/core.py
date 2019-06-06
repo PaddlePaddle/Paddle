@@ -22,10 +22,10 @@ if cpuinfo.supports_avx:
     try:
         from .core_avx import *
     except ImportError as error:
-        print(
-            'WARNING: AVX is supported on local machine, you could build paddle '
-            'WITH_AVX=ON to get better performance.\n' +
-            error.__class__.__name__ + ": " + error.message)
+        print('WARNING: Error importing avx core. You may not build with AVX, '
+              'but AVX is supported on local machine, you could build paddle '
+              'WITH_AVX=ON to get better performance.\n' +
+              error.__class__.__name__ + ": " + error.message)
         load_noavx = True
 else:
     load_noavx = True

@@ -10,11 +10,15 @@ else()
   SET(PACKAGE_NAME "paddlepaddle")
 endif()
 
-set(CORE_NAME "core")
-if(WITH_AVX)
-  set(CORE_NAME "${CORE_NAME}_avx")
+set(FLUID_CORE_NAME "core")
+if(WITH_AVX AND AVX_FOUND)
+  set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_avx")
+  if(NOT DEFINED NOAVX_CORE_FILE)
+    message(WARNING "You are building AVX version without NOAVX core, \
+      and the wheel package may fail on NOAVX machine.")
+  endif()
 else()
-  set(CORE_NAME "${CORE_NAME}_noavx")
+  set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_noavx")
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
@@ -23,9 +27,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
 IF(WIN32)
     # Python would use the .pyd by default under Windows series platform
     set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
-    set(FLUID_CORE ${FLUID_DST_DIR}/${CORE_NAME}.pyd)
+    set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
 ELSE()
-    set(FLUID_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/${CORE_NAME}.so)
+    set(FLUID_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}.so)
 ENDIF()
 add_custom_command(OUTPUT ${FLUID_CORE}
         COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
