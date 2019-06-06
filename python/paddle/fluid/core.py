@@ -21,6 +21,15 @@ load_noavx = False
 if cpuinfo.supports_avx:
     try:
         from .core_avx import *
+        from .core_avx import __doc__, __file__, __name__, __package__
+        from .core_avx import __unittest_throw_exception__
+        from .core_avx import _append_python_callable_object_and_return_id
+        from .core_avx import _cleanup, _Scope
+        from .core_avx import _get_use_default_grad_op_desc_maker_ops
+        from .core_avx import _is_program_version_supported
+        from .core_avx import _set_eager_deletion_mode
+        from .core_avx import _set_fuse_parameter_group_size
+        from .core_avx import _set_fuse_parameter_memory_size
     except ImportError as error:
         print('WARNING: Error importing avx core. You may not build with AVX, '
               'but AVX is supported on local machine, you could build paddle '
@@ -32,7 +41,16 @@ else:
 
 if load_noavx:
     try:
-        from .core_avx import *
+        from .core_noavx import *
+        from .core_noavx import __doc__, __file__, __name__, __package__
+        from .core_noavx import __unittest_throw_exception__
+        from .core_noavx import _append_python_callable_object_and_return_id
+        from .core_noavx import _cleanup, _Scope
+        from .core_noavx import _get_use_default_grad_op_desc_maker_ops
+        from .core_noavx import _is_program_version_supported
+        from .core_noavx import _set_eager_deletion_mode
+        from .core_noavx import _set_fuse_parameter_group_size
+        from .core_noavx import _set_fuse_parameter_memory_size
     except ImportError as error:
         sys.exit("Error: Can not load core_noavx.* \n" +
                  error.__class__.__name__ + ": " + error.message)
