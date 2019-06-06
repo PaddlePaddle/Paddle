@@ -41,7 +41,23 @@ class KernelBase {
       const std::map<std::string, const Type*>& input_types,
       const std::string& out_arg)>;
 
+ protected:
+  /// Run some initialization before `Run`, it will invoke after `SetParam` and
+  /// `SetContext`, that is both the param_ and context_ are valid.
+  virtual void PrepareForRun() {}
+
+  /// Run the kernel. Before Run, both the param_ and context_ should be valid.
   virtual void Run() = 0;
+
+ public:
+  void Launch() {
+    if (is_first_epoch_) {
+      PrepareForRun();
+      is_first_epoch_ = false;
+    }
+
+    Run();
+  }
 
   void SetContext(std::unique_ptr<KernelContext>&& ctx) {
     ctx_ = std::move(ctx);
@@ -141,6 +157,7 @@ class KernelBase {
   // The extra identity to help defficiate a specific kernel, op_type_ + alias_
   // is the unique ID for the kernel.
   std::string alias_{};
+  bool is_first_epoch_{true};
 };
 
 // Light-weight kernel implementation.

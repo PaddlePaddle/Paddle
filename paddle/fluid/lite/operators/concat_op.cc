@@ -27,9 +27,9 @@ bool ConcatOpLite::CheckShape() const {
 }
 
 bool ConcatOpLite::InferShape() const {
-  std::vector<framework::DDim> input_dims;
+  std::vector<lite::DDim> input_dims;
   for (auto p : param_.x) {
-    input_dims.push_back(p->dims().data());
+    input_dims.push_back(p->dims());
   }
   size_t axis = static_cast<size_t>(param_.axis);
   const size_t n = input_dims.size();
