@@ -14,9 +14,26 @@
 
 from __future__ import print_function
 
+import sys
 from x86cpu import info as cpuinfo
 
+load_noavx = False
 if cpuinfo.supports_avx:
-    from .core_avx import *
+    try:
+        from .core_avx import *
+    except ImportError as error:
+        print(
+            'WARNING: AVX is supported on local machine, you could build paddle '
+            'WITH_AVX=ON to get better performance.\n' +
+            error.__class__.__name__ + ": " + error.message)
+        load_noavx = True
 else:
-    from .core_noavx import *
+    load_noavx = True
+
+if load_noavx:
+    try:
+        from .core_avx import *
+    except ImportError as error:
+        sys.exit("Error: Can not load core_noavx.* \n" +
+                 error.__class__.__name__ + ": " + error.message)
+        load_noavx = True
