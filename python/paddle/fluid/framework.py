@@ -3044,6 +3044,9 @@ class Program(object):
 
                     train_program = fluid.Program()
                     startup_program = fluid.Program()
+
+                    # startup_program is used to do some parameter init work,
+                    # and main program is used to hold the network
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             img = fluid.layers.data(name='image', shape=[784])
@@ -3055,6 +3058,9 @@ class Program(object):
                             avg_loss = fluid.layers.mean(loss)
                             test_program = train_program.clone(for_test=False)
                     print_prog(test_program)
+
+                    # Due to parameter sharing usage for train and test, so we need to use startup program of train
+                    # instead of using test startup program
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
