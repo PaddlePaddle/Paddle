@@ -45,9 +45,8 @@ using VarQuantScale =
 
 class AnalysisPredictor::MkldnnQuantizer {
  public:
-  explicit MkldnnQuantizer(
-      AnalysisPredictor& predictor,  // NOLINT
-      const std::shared_ptr<MkldnnQuantizerConfig>& qconfig)
+  explicit MkldnnQuantizer(AnalysisPredictor& predictor,  // NOLINT
+                           const MkldnnQuantizerConfig* qconfig)
       : predictor_(predictor), qconfig_(qconfig) {}
 
   // Execute full quantization procedure.
@@ -95,7 +94,7 @@ class AnalysisPredictor::MkldnnQuantizer {
 
  private:
   AnalysisPredictor& predictor_;
-  const std::shared_ptr<MkldnnQuantizerConfig> qconfig_;
+  const MkldnnQuantizerConfig* qconfig_;
 
   // A map: variable name -> scale
   VarQuantScale scales_;
