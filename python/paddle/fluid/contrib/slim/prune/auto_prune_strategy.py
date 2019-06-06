@@ -66,7 +66,7 @@ class AutoPruneStrategy(PruneStrategy):
 
     def on_compression_begin(self, context):
         """
-        Prepare some information for searching stategy.
+        Prepare some information for searching strategy.
         step 1: Find all the parameters to be pruned.
         step 2: Get initial tokens and setup controller.
         """

@@ -90,14 +90,14 @@ class LightNASNet(object):
             i += 1
             input = self.invresi_blocks(
                 input=input,
-                in_c=in_c,
-                t=t,
-                c=int(c * scale),
-                n=n,
-                s=s,
-                k=k,
-                ifshortcut=ifshortcut,
-                ifse=ifse,
+                in_channel=in_c,
+                expansion=t,
+                out_channel=int(c * scale),
+                num_layers=n,
+                stride=s,
+                filter_size=k,
+                shortcut=ifshortcut,
+                squeeze=ifse,
                 name='conv' + str(i))
             in_c = int(c * scale)
         #last_conv
@@ -230,15 +230,15 @@ class LightNASNet(object):
                                name=None):
         """Build inverted residual unit.
         Args:
-            input: Variable, input.
-            num_in_filter: int, number of in filters.
-            num_filters: int, number of filters.
-            ifshortcut: bool, whether using shortcut.
-            stride: int, stride.
-            filter_size: int, filter size.
-            padding: int, padding.
-            expansion_factor: float, expansion factor.
-            name: str, name.
+            input(Variable): Theinput.
+            num_in_filter(int): The number of input filters.
+            num_filters(int): The number of filters.
+            ifshortcut(bool): Whether to use shortcut.
+            stride(int): The stride.
+            filter_size(int): The filter size.
+            padding(int): The padding.
+            expansion_factor(float): Expansion factor.
+            name(str): The name.
         Returns:
             Variable, layers output.
         """
@@ -287,53 +287,53 @@ class LightNASNet(object):
 
     def invresi_blocks(self,
                        input,
-                       in_c,
-                       t,
-                       c,
-                       n,
-                       s,
-                       k,
-                       ifshortcut,
-                       ifse,
+                       in_channel,
+                       expansion,
+                       out_channel,
+                       num_layers,
+                       stride,
+                       filter_size,
+                       shortcut,
+                       squeeze,
                        name=None):
         """Build inverted residual blocks.
         Args:
-            input: Variable, input.
-            in_c: int, number of in filters.
-            t: float, expansion factor.
-            c: int, number of filters.
-            n: int, number of layers.
-            s: int, stride.
-            k: int, filter size.
-            ifshortcut: bool, if adding shortcut layers or not.
-            ifse: bool, if adding squeeze excitation layers or not.
-            name: str, name.
+            input(Variable): The input feture map.
+            in_channel(int): The number of input channel.
+            expansion(float): Expansion factor.
+            out_channel(int): The number of output channel.
+            num_layers(int): The number of layers.
+            stride(int): The stride.
+            filter_size(int): The size of filter.
+            shortcut(bool): Whether to add shortcut layers.
+            squeeze(bool): Whether to add squeeze excitation layers.
+            name(str): The name.
         Returns:
             Variable, layers output.
         """
         first_block = self.inverted_residual_unit(
             input=input,
-            num_in_filter=in_c,
-            num_filters=c,
+            num_in_filter=in_channel,
+            num_filters=out_channel,
             ifshortcut=False,
-            ifse=ifse,
-            stride=s,
-            filter_size=k,
-            expansion_factor=t,
+            ifse=squeeze,
+            stride=stride,
+            filter_size=filter_size,
+            expansion_factor=expansion,
             name=name + '_1')
 
         last_residual_block = first_block
-        last_c = c
+        last_c = out_channel
 
-        for i in range(1, n):
+        for i in range(1, num_layers):
             last_residual_block = self.inverted_residual_unit(
                 input=last_residual_block,
                 num_in_filter=last_c,
-                num_filters=c,
-                ifshortcut=ifshortcut,
-                ifse=ifse,
+                num_filters=out_channel,
+                ifshortcut=shortcut,
+                ifse=squeeze,
                 stride=1,
-                filter_size=k,
-                expansion_factor=t,
+                filter_size=filter_size,
+                expansion_factor=expansion,
                 name=name + '_' + str(i + 1))
         return last_residual_block

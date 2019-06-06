@@ -136,21 +136,20 @@ class LightNASStrategy(Strategy):
             return False
 
     def on_epoch_begin(self, context):
-        _logger.info("light nas strategy on_epoch_begin")
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-            _logger.info("Construct new program...")
+            _logger.info("light nas strategy on_epoch_begin")
             for _ in range(self._max_try_times):
                 startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
                     self._current_tokens)
+                _logger.info("try [{}]".format(self._current_tokens))
                 context.eval_graph.program = test_p
                 flops = context.eval_graph.flops()
                 if flops <= self._max_flops:
                     break
                 else:
                     self._current_tokens = self._search_agent.next_tokens()
-                    _logger.info("try [{}]".format(self._current_tokens))
 
             context.train_reader = train_reader
             context.eval_reader = test_reader
