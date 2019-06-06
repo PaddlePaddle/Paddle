@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -26,18 +27,52 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto inputs = context.MultiInput<framework::SelectedRows>("X");
-    auto* out = context.Output<framework::SelectedRows>("Out");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto inputs = ctx.MultiInput<framework::SelectedRows>("X");
+    auto* out = ctx.Output<framework::SelectedRows>("Out");
 
+    int64_t height = 0;
+    int64_t ids_num = 0;
+    int64_t width = 0;
     PADDLE_ENFORCE_GT(inputs.size(), 0);
+    height = inputs[0]->height();
+    width = inputs[0]->value().dims()[1];
+    for (auto& in : inputs) {
+      ids_num += in->GetIdToIndex().size();
+      PADDLE_ENFORCE_EQ(in->height(), height,
+                        "all input should have the same height");
+    }
+    T* out_data = out->mutable_value()->mutable_data<T>({height, width},
+                                                        platform::CPUPlace());
+    memset(out_data, 0, sizeof(T) * out->value().numel());
+    out->set_height(height);
 
-    std::unordered_map<int64_t, std::vecotr<std::pair<size_t, int64_t>>> inner;
-    for (auto* input : inputs) {
-      for (auto& iter : slr->GetIdToIndex()) {
-        inner
+    out->InitDataShards();
+
+    std::vector<int64_t> all_ids;
+    for (auto& in : inputs) {
+      auto& id_to_index = in->GetIdToIndex();
+      for (auto& iter : id_to_index) {
+        all_ids.push_back(iter.first);
       }
     }
+
+    std::vector<int64_t> indexes(all_ids.size());
+    out->GetIndexsByIds(all_ids, &indexes, true);
+
+    out->SyncBeforeSave();
+
+    auto& out_id_to_index = out->GetIdToIndex();
+
+    for (auto& in : inputs) {
+      auto& id_to_index = in->GetIdToIndex();
+      const T* in_data = in->value().data<T>();
+      for (auto& iter : id_to_index) {
+        memcpy(out_data + out->GetIdToIndex().at(iter.first) * width,
+               in_data + iter.second * width, sizeof(T) * width);
+      }
+    }
+    out->SetVersion(1);
   }
 };
 

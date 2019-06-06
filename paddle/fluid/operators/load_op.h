@@ -95,6 +95,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     auto &dev_ctx = *pool.Get(place);
     framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
     selectedRows->SyncAfterLoad();
+    // construct id to index
+    selectedRows->SyncBeforeSave();
   }
 };
 

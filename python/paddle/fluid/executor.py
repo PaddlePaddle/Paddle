@@ -639,7 +639,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        exe.run(program.desc, scope, 0, False, True, fetch_var_name)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
