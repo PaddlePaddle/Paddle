@@ -150,7 +150,7 @@ class DistributedTranspiler(Fleet):
                 feeded_var_names,
                 target_vars,
                 executor,
-                main_program,
+                self._origin_program,
                 None,
                 None,
                 export_for_deployment,
