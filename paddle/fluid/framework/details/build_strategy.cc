@@ -375,7 +375,7 @@ USE_PASS(multi_devices_print_pass);
 USE_PASS(memory_optimize_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
-USE_PASS(backward_op_deps_pass);
+USE_PASS(backward_optimizer_op_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
