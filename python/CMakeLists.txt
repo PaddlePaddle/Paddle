@@ -10,16 +10,15 @@ else()
   SET(PACKAGE_NAME "paddlepaddle")
 endif()
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-    ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-
 set(CORE_NAME "core")
-
 if(WITH_AVX)
   set(CORE_NAME "${CORE_NAME}_avx")
 else()
   set(CORE_NAME "${CORE_NAME}_noavx")
 endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+    ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 IF(WIN32)
     # Python would use the .pyd by default under Windows series platform
