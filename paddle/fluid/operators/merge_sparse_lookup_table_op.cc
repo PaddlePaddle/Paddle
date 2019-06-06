@@ -50,29 +50,6 @@ class MergeSparseLookupTableMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(
         R"DOC(
 Merge sparse lookup table(selected rows as parameter).
-
-MergeSelectedRows is used to merge the duplicated rows of the input. The
-output's row has no duplicated, and it's order is incremental.
-
-Example:
-  Input:
-    X.rows is [0, 5, 5, 4, 19]
-    X.height is 20
-    X.value is:
-        [[1, 1]
-         [2, 2]
-         [3, 3]
-         [4, 4]
-         [6, 6]]
-
-   Output:
-    Out.row is [0, 4, 5, 19]
-    Out.height is 20
-    Out.value is:
-        [[1, 1]
-         [4, 4]
-         [5, 5]
-         [6, 6]]
 )DOC");
   }
 };
