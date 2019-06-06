@@ -6739,6 +6739,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             new_shape_tensor = []
             for dim in shape:
                 if isinstance(dim, Variable):
+                    dim.stop_gradient = True
                     new_shape_tensor.append(dim)
                 else:
                     assert (isinstance(dim, int))
