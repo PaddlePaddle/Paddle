@@ -65,7 +65,7 @@ function(py_test_modules TARGET_NAME)
     if(WITH_COVERAGE)
       add_test(NAME ${TARGET_NAME}
           COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-          COVERAGE_FILE=${PADDLE_BINARY_DIR}/build/python-coverage.data
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           coverage run -a --branch ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()

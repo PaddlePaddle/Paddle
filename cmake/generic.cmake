@@ -708,7 +708,7 @@ function(py_test TARGET_NAME)
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
                FLAGS_cpu_deterministic=true FLAGS_limit_of_tmp_allocation=4294967296  # 4G
                PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-               COVERAGE_FILE=${PADDLE_BINARY_DIR}/build/python-coverage.data
+               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
                coverage run -a --branch ${py_test_SRCS} ${py_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
