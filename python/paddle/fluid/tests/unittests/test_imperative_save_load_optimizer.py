@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,22 +14,18 @@
 
 from __future__ import print_function
 
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer, Adam
 from paddle.fluid.dygraph.nn import FC
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope, param_attr=None, bias_attr=None):
+    def __init__(self, name_scope):
         super(MLP, self).__init__(name_scope)
 
         self._fc1 = FC(self.full_name(), 10)
@@ -48,117 +44,67 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def get_optimizer(self):
         raise NotImplementedError()
 
-    def reader_decorator(self, reader):
-        def _reader_imple():
-            for item in reader():
-                image = np.array(item[0]).reshape(1, 28, 28)
-                label = np.array(item[1]).astype('int64').reshape(1)
-                yield image, label
-
-        return _reader_imple
-
     def _check_mlp(self):
         seed = 90
-        batch_size = 128
-
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             mlp = MLP('mlp')
             optimizer = self.get_optimizer()
+            optimizer2 = SGDOptimizer(
+                learning_rate=fluid.layers.natural_exp_decay(
+                    learning_rate=0.1,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
-            batch_py_reader = fluid.io.PyReader(capacity=1)
-            batch_py_reader.decorate_sample_list_generator(
-                paddle.batch(
-                    self.reader_decorator(paddle.dataset.mnist.train()),
-                    batch_size=batch_size,
-                    drop_last=True),
-                places=fluid.CPUPlace())
+            for batch_id, data in enumerate(train_reader()):
+                dy_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    128, 1)
 
-            dy_param_init_value = {}
-            for batch_id, data in enumerate(batch_py_reader()):
-                if batch_id >= self.batch_num:
-                    break
-
-                img = data[0]
-                label = data[1]
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
                 label._stop_gradient = True
 
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)
-                dy_out = avg_loss.numpy()
-
-                if batch_id == 0:
-                    for param in mlp.parameters():
-                        dy_param_init_value[param.name] = param.numpy()
 
                 avg_loss.backward()
                 optimizer.minimize(avg_loss)
+                optimizer2.minimize(avg_loss)
                 mlp.clear_gradients()
-                dy_param_value = {}
-                for param in mlp.parameters():
-                    dy_param_value[param.name] = param.numpy()
+                fluid.dygraph.save_persistables(
+                    mlp.state_dict(), [optimizer, optimizer2], "save_dir_2")
+                if batch_id == 2:
+                    break
 
-        with new_program_scope():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            mlp_load = MLP('mlp')
+            optimizer_load1 = self.get_optimizer()
+            optimizer_load2 = SGDOptimizer(
+                learning_rate=fluid.layers.natural_exp_decay(
+                    learning_rate=0.1,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+            parameters, optimizers = fluid.dygraph.load_persistables(
+                "save_dir_2")
+            mlp_load.load_dict(parameters)
+            optimizer_load1.load(optimizers)
+            optimizer_load2.load(optimizers)
 
-            mlp = MLP('mlp')
-            optimizer = self.get_optimizer()
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
-
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            cost = mlp(img)
-            avg_loss = fluid.layers.reduce_mean(cost)
-            optimizer.minimize(avg_loss)
-
-            # initialize params and fetch them
-            static_param_init_value = {}
-            static_param_name_list = []
-            for param in mlp.parameters():
-                static_param_name_list.append(param.name)
-
-            out = exe.run(fluid.default_startup_program(),
-                          fetch_list=static_param_name_list)
-
-            for i in range(len(static_param_name_list)):
-                static_param_init_value[static_param_name_list[i]] = out[i]
-
-            for batch_id, data in enumerate(train_reader()):
-                if batch_id >= self.batch_num:
-                    break
-
-                static_x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    [128, 1])
-
-                fetch_list = [avg_loss.name]
-                fetch_list.extend(static_param_name_list)
-                out = exe.run(fluid.default_main_program(),
-                              feed={"pixel": static_x_data,
-                                    "label": y_data},
-                              fetch_list=fetch_list)
-
-                static_param_value = {}
-                static_out = out[0]
-                for i in range(1, len(out)):
-                    static_param_value[static_param_name_list[i - 1]] = out[i]
-
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
-
-        self.assertTrue(np.allclose(static_out, dy_out))
-
-        for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+        self.assertTrue(optimizer._learning_rate.__dict__ ==
+                        optimizer_load1._learning_rate.__dict__)
+        self.assertTrue(optimizer2._learning_rate.__dict__ ==
+                        optimizer_load2._learning_rate.__dict__)
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
