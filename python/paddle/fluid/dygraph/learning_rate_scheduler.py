@@ -337,7 +337,7 @@ class PolynomialDecay(LearningRateDecay):
           with fluid.dygraph.guard():
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.PolynomialDecay(
-                  start_lr, total_step, end_lr, power=1.0)
+                  start_lr, total_step, end_lr, power=1.0) )
 
     """
 
@@ -459,7 +459,7 @@ class NoamDecay(LearningRateDecay):
     Examples:
         .. code-block:: python
 
-          import padde.fluid as fluid
+          import paddle.fluid as fluid
           warmup_steps = 100
           learning_rate = 0.01
           with fluid.dygraph.guard():

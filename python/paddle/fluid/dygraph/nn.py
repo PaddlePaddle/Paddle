@@ -126,14 +126,20 @@ class Conv2D(layers.Layer):
     Examples:
         .. code-block:: python
           
-          from paddle.fluid.dygraph.base import to_variable
-          import paddle.fluid as fluid
-          import np as np
-          data = np.random.uniform( -1, 1, [10, 3, 32, 32] ).atype('float32')
           with fluid.dygraph.guard():
              conv2d = Conv2D( "conv2d", 2, 3)
              data = to_variable( data )
              conv = conv2d( data )
+          from paddle.fluid.dygraph.base import to_variable
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph import Conv2D
+          import numpy as np
+
+          data = np.random.uniform( -1, 1, [10, 3, 32, 32] ).astype('float32')
+          with fluid.dygraph.guard():
+              conv2d = Conv2D( "conv2d", 2, 3)
+              data = to_variable( data )
+              conv = conv2d( data )
 
     """
 
@@ -148,7 +154,8 @@ class Conv2D(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
-                 act=None):
+                 act=None,
+                 dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__(name_scope, dtype)
         self._groups = groups
@@ -159,7 +166,11 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
-        self._num_channels = num_channels
+        self._filter_size = filter_size
+        self._num_filters = num_filters
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._dtype = dtype
         # if (self._num_channels == self._groups and
         #         num_filters % self._num_channels == 0 and not self._use_cudnn):
         #     self._l_type = 'depthwise_conv2d'
@@ -169,24 +180,25 @@ class Conv2D(layers.Layer):
         self._l_type = 'conv2d'
 
     def build_once(self, input):
-        num_channels = input.shape[1]
-        self._dtype = self._helper.input_dtype(input)
-        if groups is None:
-            num_filter_channels = num_channels
+        self._num_channels = input.shape[1]
+        if self._groups is None:
+            num_filter_channels = self._num_channels
         else:
-            if num_channels % groups != 0:
+            if self._num_channels % self._groups != 0:
                 raise ValueError("num_channels must be divisible by groups.")
-            num_filter_channels = num_channels // groups
-        filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-        filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+            num_filter_channels = self._num_channels // self._groups
+        filter_size = utils.convert_to_list(self._filter_size, 2, 'filter_size')
+        filter_shape = [self._num_filters, int(num_filter_channels)
+                        ] + filter_size
 
         def _get_default_param_initializer():
-            filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+            filter_elem_num = filter_size[0] * filter_size[
+                1] * self._num_channels
             std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
-            attr=param_attr,
+            attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
@@ -206,8 +218,8 @@ class Conv2D(layers.Layer):
                 type=core.VarDesc.VarType.RAW)
 
         self._bias_param = self.create_parameter(
-            attr=bias_attr,
-            shape=[num_filters],
+            attr=self._bias_attr,
+            shape=[self._num_filters],
             dtype=self._dtype,
             is_bias=True)
 
@@ -839,17 +851,17 @@ class FC(layers.Layer):
 
     Examples:
         .. code-block:: python
+        
+          from paddle.fluid.dygraph.base import to_variable
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph import FC
+          import numpy as np
+          data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
+          with fluid.dygraph.guard():
+              fc = FC( "fc", 64, num_flatten_dims=2)
+              data = to_variable( data )
+              conv = fc( data )
 
-          # when input is single tensor
-          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-          fc = fluid.FC("fc", size=1000, act="tanh")
-          fc_res = fc(data)
-
-          # when input are multiple tensors
-          data_1 = fluid.layers.data(name="data_1", shape=[32, 32], dtype="float32")
-          data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
-          fc = fluid.FC("fc", size=1000, act="tanh")
-          fc_res = fc([data_1, data_2])
     """
 
     def __init__(self,
