@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <algorithm>
+#include <stdint.h>
 
 namespace paddle {
 namespace framework {
