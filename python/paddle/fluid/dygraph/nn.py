@@ -84,7 +84,7 @@ class Conv2D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, H, W] format.
+        name_scope(str) : The name for this class.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -118,12 +118,6 @@ class Conv2D(layers.Layer):
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None
-
-    Returns:
-        Variable: The tensor variable storing the convolution and \
-                  non-linearity activation result.
 
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
@@ -131,25 +125,30 @@ class Conv2D(layers.Layer):
 
     Examples:
         .. code-block:: python
+          
+          from paddle.fluid.dygraph.base import to_variable
+          import paddle.fluid as fluid
+          import np as np
+          data = np.random.uniform( -1, 1, [10, 3, 32, 32] ).atype('float32')
+          with fluid.dygraph.guard():
+             conv2d = Conv2D( "conv2d", 2, 3)
+             data = to_variable( data )
+             conv = conv2d( data )
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     def __init__(self,
                  name_scope,
-                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
                  padding=0,
                  dilation=1,
                  groups=None,
-                 use_cudnn=True,
-                 act=None,
                  param_attr=None,
                  bias_attr=None,
-                 dtype=core.VarDesc.VarType.FP32):
+                 use_cudnn=True,
+                 act=None):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__(name_scope, dtype)
         self._groups = groups
@@ -169,6 +168,9 @@ class Conv2D(layers.Layer):
         #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17275
         self._l_type = 'conv2d'
 
+    def build_once(self, input):
+        num_channels = input.shape[1]
+        self._dtype = self._helper.input_dtype(input)
         if groups is None:
             num_filter_channels = num_channels
         else:
@@ -653,14 +655,12 @@ class Conv3DTranspose(layers.Layer):
 
 
 class Pool2D(layers.Layer):
+    # TODO, should delete this class
     """
     ${comment}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCHW, where N is batch size, C is
-                          the number of channels, H is the height of the
-                          feature, and W is the width of the feature.
+        name_scope(str) : The name of this class.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
@@ -814,8 +814,7 @@ class FC(layers.Layer):
             out.shape = (1, 2)
 
     Args:
-        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
-            the input tensor(s) is at least 2.
+        name(str): The name of this class.
         size(int): The number of output units in this layer.
         num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
@@ -833,10 +832,6 @@ class FC(layers.Layer):
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
-        name (str, default None): The name of this layer.
-
-    Returns:
-        Variable: The transformation result.
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
@@ -859,11 +854,11 @@ class FC(layers.Layer):
     def __init__(self,
                  name_scope,
                  size,
+                 num_flatten_dims=1,
                  param_attr=None,
                  bias_attr=None,
-                 num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32,
-                 act=None):
+                 act=None,
+                 is_test=False):
         super(FC, self).__init__(name_scope, dtype)
 
         self._size = size
@@ -1440,6 +1435,7 @@ class GRUUnit(layers.Layer):
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
                                   Default: 'sigmoid'
+        dtype(string): The dtype of the layers
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values.
