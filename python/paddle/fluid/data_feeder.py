@@ -21,7 +21,7 @@ import six
 from six.moves import zip, range, xrange
 import multiprocessing
 
-from .framework import Variable, default_main_program
+from .framework import Variable, default_main_program, _current_expected_place
 
 __all__ = ['DataFeeder']
 
@@ -432,3 +432,63 @@ class DataFeeder(object):
                         "not implemented")
 
         return __reader_creator__
+
+
+class NumpyToLoDTensorConverter(object):
+    def __init__(self, place):
+        self.place = place
+        self.data = []
+        self._reset()
+
+    def _reset(self):
+        self.data = []
+
+    def feed(self, data):
+        self.data.append(data)
+
+    def done(self):
+        arr = numpy.array(self.data)
+        t = core.LoDTensor()
+        t.set(arr, self.place)
+        self._reset()
+        return t
+
+
+class ListTensorProvider(object):
+    def __init__(self, generator, places):
+        self.generator = generator
+        self.converters = []
+        self.places = []
+        if places:
+            if not isinstance(places, (list, tuple)):
+                places = [places]
+            assert len(
+                places) == 1, "dygraph mode CAN NOT specify multiple places."
+            for place in places:
+                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
+                    self.places.append(place)
+                else:
+                    raise ValueError(
+                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
+                    )
+        if len(self.places) == 0:
+            self.places.append(_current_expected_place())
+
+    def _readData(self, iterable, places):
+        for place, each_sample in six.moves.zip(places, iterable):
+            for item in each_sample:
+                if len(self.converters) < len(item):
+                    for i in item:
+                        self.converters.append(NumpyToLoDTensorConverter(place))
+                for each_converter, each_slot in six.moves.zip(self.converters,
+                                                               item):
+                    each_converter.feed(each_slot)
+            yield [c.done() for c in self.converters]
+
+    def __call__(self):
+        item = []
+        for batch in self.generator():
+            item.append(batch)
+            if len(item) == len(self.places):
+                yield list(self._readData(item, self.places))
+                item = []

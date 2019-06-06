@@ -1679,7 +1679,11 @@ class Block(object):
             attrs = kwargs.get("attrs", {})
             if _dygraph_tracer_._train_mode == False:
                 # eval mode
-                attrs['is_test'] = True
+                if ('trainable_statistics' not in attrs
+                    ) or not attrs['trainable_statistics']:
+                    attrs['is_test'] = True
+                else:
+                    attrs['is_test'] = False
 
             op = Operator(
                 block=self,

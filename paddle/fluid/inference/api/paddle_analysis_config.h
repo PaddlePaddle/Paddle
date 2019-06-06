@@ -210,7 +210,7 @@ struct AnalysisConfig {
   */
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
-  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
+  MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.
@@ -232,6 +232,8 @@ struct AnalysisConfig {
                          bool force_update_static_cache = false);
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
+  void SetInValid() const { is_valid_ = false; }
+  bool is_valid() const { return is_valid_; }
 
   friend class ::paddle::AnalysisPredictor;
 
@@ -239,6 +241,7 @@ struct AnalysisConfig {
    * Get a pass builder for customize the passes in IR analysis phase.
    */
   PassStrategy* pass_builder() const;
+  void PartiallyRelease();
 
  protected:
   // Update the config.
@@ -249,8 +252,8 @@ struct AnalysisConfig {
  protected:
   // Model pathes.
   std::string model_dir_;
-  std::string prog_file_;
-  std::string params_file_;
+  mutable std::string prog_file_;
+  mutable std::string params_file_;
 
   // GPU related.
   bool use_gpu_{false};
@@ -312,6 +315,11 @@ struct AnalysisConfig {
 
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+  // If the config is already used on a predictor, it becomes invalid.
+  mutable bool is_valid_{true};
+  // Any config can only be used with one predictor.
+  // Variables held by config can take up a lot of memory in some cases.
+  // So we release the memory when the predictor is set up.
 };
 
 }  // namespace paddle
