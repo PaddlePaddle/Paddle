@@ -83,7 +83,13 @@ no_grad = wrap_decorator(_no_grad_)
 @signature_safe_contextmanager
 def guard(place=None):
     """
-    This context will create a dygraph context for dygraph runing
+    This context will create a dygraph context for dygraph to run
+
+    Args:
+        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+
+    return:
+        None
 
     Examples:
 
@@ -100,9 +106,6 @@ def guard(place=None):
             ret = fc1(t)
             dy_ret = fc2(ret)
 
-
-    :param func
-    :return:
     """
     train = framework.Program()
     startup = framework.Program()
@@ -122,6 +125,29 @@ def guard(place=None):
 
 
 def to_variable(value, block=None, name=None):
+    """
+    This function will create a variable from ndarray
+
+    Args:
+        value(ndarray): the numpy value need to be convert
+        block(fluid.Block|None): which block this variable will be in
+        name(str|None): Name of Varaible
+
+    return:
+        None
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            y = fluid.dygraph.to_variable(x)
+
+    """
     if isinstance(value, np.ndarray):
         assert enabled(), "to_variable could only be called in dygraph mode"
 
