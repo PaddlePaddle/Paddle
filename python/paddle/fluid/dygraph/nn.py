@@ -372,7 +372,7 @@ class Conv3D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         num_channels = input.shape[1]
         self._dtype = self._helper.input_dtype(input)
 
@@ -579,7 +579,7 @@ class Conv3DTranspose(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         self._input_channel = input.shape[1]
 
@@ -883,7 +883,7 @@ class FC(layers.Layer):
         assert isinstance(value, Parameter)
         self.__w[i] = value
 
-    def build_once(self, input):
+    def _build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
                                                               self._param_attr):
@@ -1112,7 +1112,7 @@ class BatchNorm(layers.Layer):
         self._fuse_with_relu = fuse_with_relu
         self._use_global_stats = use_global_stats
 
-    def build_once(self, input):
+    def _build_once(self, input):
         pass
 
     def forward(self, input):
@@ -1189,6 +1189,7 @@ class Embedding(layers.Layer):
                   supplied inputs.
 
     Examples:
+
         .. code-block:: python
 
           dict_size = len(dataset.ids)
@@ -1316,7 +1317,7 @@ class LayerNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         input_shape = input.shape
         param_shape = [
@@ -1678,7 +1679,7 @@ class NCE(layers.Layer):
             'remote_prefetch': remote_prefetch
         }
 
-    def build_once(self, input, label, sample_weight=None):
+    def _build_once(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
@@ -1764,7 +1765,7 @@ class PRelu(layers.Layer):
             raise ValueError('mode should be one of all, channel, element.')
         self._alpha_shape = [1]
 
-    def build_once(self, input):
+    def _build_once(self, input):
         if self._mode == 'channel':
             self._alpha_shape = [1, input.shape[1], 1, 1]
         elif self._mode == 'element':
@@ -1842,7 +1843,7 @@ class BilinearTensorProduct(layers.Layer):
         self._name = name
         self._inputs = dict()
 
-    def build_once(self, x, y):
+    def _build_once(self, x, y):
         self._dtype = self._helper.input_dtype(x)
 
         param_shape = [self._size, x.shape[1], y.shape[1]]
@@ -2018,7 +2019,7 @@ class Conv2DTranspose(layers.Layer):
         self._output_size = output_size
         self._op_type = 'conv2d_transpose'
 
-    def build_once(self, input):
+    def _build_once(self, input):
         input_channel = input.shape[1]
         if (input_channel == self._groups and
                 self._num_filters == input_channel and not self._use_cudnn):
@@ -2142,7 +2143,7 @@ class SequenceConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
@@ -2179,7 +2180,7 @@ class RowConv(layers.Layer):
         self._param_attr = param_attr
         self._future_context_size = future_context_size
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
         self._filter_param = self.create_parameter(
@@ -2242,7 +2243,7 @@ class GroupNorm(layers.Layer):
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         param_shape = [input.shape[1]]
         if self._bias_attr:
@@ -2295,7 +2296,7 @@ class SpectralNorm(layers.Layer):
         self._eps = eps
         self._dim = dim
 
-    def build_once(self, weight):
+    def _build_once(self, weight):
         self._dtype = self._helper.input_dtype(weight)
         input_shape = weight.shape
         h = input_shape[self._dim]
@@ -2350,7 +2351,7 @@ class TreeConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, nodes_vector, edge_set):
+    def _build_once(self, nodes_vector, edge_set):
         assert isinstance(nodes_vector, Variable)
         assert isinstance(edge_set, Variable)
         self._dtype = self._helper.input_dtype(nodes_vector)
