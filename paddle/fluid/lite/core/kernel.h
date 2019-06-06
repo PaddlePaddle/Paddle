@@ -53,6 +53,7 @@ class KernelBase {
   void Launch() {
     if (is_first_epoch_) {
       PrepareForRun();
+      is_first_epoch_ = false;
     }
 
     Run();
