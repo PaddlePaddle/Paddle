@@ -121,32 +121,38 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
                     'file_path': os.path.join(file_dir,
                                               os.path.normpath(each_var.name))
                 })
-    if isinstance(optimizers, (list, tuple)):
-        optimizers = optimizers
-    else:
-        optimizers = [optimizers]
-    if os.path.exists(os.path.join(file_dir, os.path.normpath("optimizers"))):
-        pass
-    else:
-        os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
-    for optimizer in optimizers:
-        if isinstance(optimizer._learning_rate,
-                      learning_rate_scheduler.LearningRateDecay):
-            try:
-                f = open(
-                    os.path.join(file_dir, "optimizers",
-                                 os.path.normpath(str(optimizer._name))), "wb")
-                pickle.dump(optimizer._learning_rate, f, 2)
-                f.close()
-            except ():
-                raise IOError("Can't load %s",
-                              os.path.join(
-                                  file_dir, "optimizers",
-                                  os.path.normpath(str(optimizer._name))))
+
+    if optimizers is not None:
+        if isinstance(optimizers, (list, tuple)):
+            optimizers = optimizers
         else:
-            warnings.warn(
-                "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
-            )
+            optimizers = [optimizers]
+        if os.path.exists(
+                os.path.join(file_dir, os.path.normpath("optimizers"))):
+            pass
+        else:
+            os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
+        for optimizer in optimizers:
+            if isinstance(optimizer._learning_rate,
+                          learning_rate_scheduler.LearningRateDecay):
+                try:
+                    f = open(
+                        os.path.join(file_dir, "optimizers",
+                                     os.path.normpath(str(optimizer._name))),
+                        "wb")
+                    pickle.dump(optimizer._learning_rate, f, 2)
+                    f.close()
+                except ():
+                    raise IOError("Can't load %s",
+                                  os.path.join(
+                                      file_dir, "optimizers",
+                                      os.path.normpath(str(optimizer._name))))
+            else:
+                warnings.warn(
+                    "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
+                )
+    else:
+        pass
 
     if file_name is not None:
         save_var_list = []
@@ -211,7 +217,8 @@ def _load_var_from_file(file_dir):
                                   file_dir, "optimizers",
                                   os.path.normpath(str(optimizer._name))))
     if len(load_optimizer_map) == 0:
-        warnings.warn("No optimizer loaded")
+        pass
+        # warnings.warn("No optimizer loaded")
 
     return load_var_map, load_optimizer_map
 
