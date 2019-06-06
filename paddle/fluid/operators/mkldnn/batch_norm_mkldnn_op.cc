@@ -72,7 +72,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       dev_ctx_.SetBlob(key_batch_norm_fwd_pd, batch_norm_pd_);
     } else {
       batch_norm_pd_ = batch_norm_pd;
-      is_reusing_ = true;
     }
 
     return batch_norm_pd_;
@@ -86,9 +85,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     auto prim_key = key_ + "@batch_norm_p";
     auto batch_norm_p =
         std::static_pointer_cast<batch_norm_fwd>(dev_ctx_.GetBlob(prim_key));
-
-    PADDLE_ENFORCE((batch_norm_p != nullptr) || !is_reusing_,
-                   "Fail to find batch norm primitive in device context");
 
     if (batch_norm_p == nullptr) {
       if (is_test) {
@@ -104,8 +100,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       }
 
       dev_ctx_.SetBlob(prim_key, batch_norm_p);
-    } else {
-      is_reusing_ = true;
     }
 
     return batch_norm_p;

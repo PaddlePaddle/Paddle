@@ -65,7 +65,6 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
       dev_ctx_.SetBlob(key_softmax_pd, softmax_pd_);
     } else {
       softmax_pd_ = softmax_pd;
-      is_reusing_ = true;
     }
 
     return softmax_pd_;
@@ -79,15 +78,11 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
 
     auto softmax_p = std::static_pointer_cast<mkldnn::softmax_forward>(
         dev_ctx_.GetBlob(prim_key));
-    PADDLE_ENFORCE((softmax_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find softmax primitive in device context");
     if (softmax_p == nullptr) {
       softmax_p = std::make_shared<mkldnn::softmax_forward>(
           *softmax_pd_, *(static_cast<mkldnn::memory*>(src_memory_p.get())),
           *(static_cast<mkldnn::memory*>(dst_memory_p.get())));
       dev_ctx_.SetBlob(prim_key, softmax_p);
-    } else {
-      is_reusing_ = true;
     }
 
     return softmax_p;
@@ -100,16 +95,12 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     auto prim_key = key_ + "@softmax_bwd_p";
     auto softmax_bwd_p = std::static_pointer_cast<mkldnn::softmax_backward>(
         dev_ctx_.GetBlob(prim_key));
-    PADDLE_ENFORCE((softmax_bwd_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find softmax backward primitive in device context");
     if (softmax_bwd_p == nullptr) {
       softmax_bwd_p = std::make_shared<mkldnn::softmax_backward>(
           *softmax_bwd_pd_, *dst_memory_p, *diff_dst_memory_p,
           *diff_src_memory_p);
       dev_ctx_.SetBlob(prim_key, softmax_bwd_p);
-    } else {
-      is_reusing_ = true;
-    }
+    } 
 
     return softmax_bwd_p;
   }
