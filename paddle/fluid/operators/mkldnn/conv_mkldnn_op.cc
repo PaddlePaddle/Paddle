@@ -429,7 +429,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                // scale couldn't be calculated
         else
           output_shift_scale[i] =
-              scale_out_data / (scale_in_data * scale_weights_data[i]);
+              static_cast<float>(static_cast<double>(scale_out_data) /
+                                 (static_cast<double>(scale_in_data) *
+                                  static_cast<double>(scale_weights_data[i])));
       }
 
       auto user_src_md =
