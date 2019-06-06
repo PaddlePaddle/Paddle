@@ -44,6 +44,32 @@ def _switch_tracer_mode_guard_(is_train=True):
 
 
 def _no_grad_(func):
+    """
+    This Decorator will avoid the func being decorated creating backward network in dygraph mode
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        @fluid.dygraph.no_grad
+        def test_layer():
+            with fluid.dygraph.guard():
+                inp = np.ones([3, 32, 32], dtype='float32')
+                t = fluid.dygraph.base.to_variable(inp)
+                fc1 = fluid.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+                fc2 = fluid.FC('fc2', size=4)
+                ret = fc1(t)
+                dy_ret = fc2(ret)
+
+        test_layer()
+
+    :param func
+    :return:
+    """
+
     def __impl__(*args, **kwargs):
         with _switch_tracer_mode_guard_(is_train=False):
             return func(*args, **kwargs)
@@ -56,6 +82,28 @@ no_grad = wrap_decorator(_no_grad_)
 
 @signature_safe_contextmanager
 def guard(place=None):
+    """
+    This context will create a dygraph context for dygraph runing
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        with fluid.dygraph.guard():
+            inp = np.ones([3, 32, 32], dtype='float32')
+            t = fluid.dygraph.base.to_variable(inp)
+            fc1 = fluid.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            fc2 = fluid.FC('fc2', size=4)
+            ret = fc1(t)
+            dy_ret = fc2(ret)
+
+
+    :param func
+    :return:
+    """
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer(train.current_block().desc)
