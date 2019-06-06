@@ -34,14 +34,13 @@ std::shared_ptr<Allocator> AutoIncrementAllocator::CreateNewAllocator() {
       "bug.");
   return underlying_allocators_[old_size];
 }
-Allocation *AutoIncrementAllocator::AllocateImpl(size_t size,
-                                                 Allocator::Attr attr) {
+Allocation *AutoIncrementAllocator::AllocateImpl(size_t size) {
   auto cur = prev_success_allocator_.load();
   size_t retry_count = allocator_num_.load();
   size_t allocator_num = retry_count;
   while (retry_count-- > 0) {  // until there retry count is zero
     try {
-      auto res = underlying_allocators_[cur]->Allocate(size, attr);
+      auto res = underlying_allocators_[cur]->Allocate(size);
       prev_success_allocator_ = cur;
       return res.release();
     } catch (BadAlloc &) {
@@ -61,7 +60,7 @@ Allocation *AutoIncrementAllocator::AllocateImpl(size_t size,
   // the newly created allocator by the first allocation request.
   for (cur = allocator_num; cur < allocator_num_; ++cur) {
     try {
-      auto ret = underlying_allocators_[cur]->Allocate(size, attr);
+      auto ret = underlying_allocators_[cur]->Allocate(size);
       prev_success_allocator_ = cur;
       return ret.release();
     } catch (BadAlloc &) {
@@ -70,7 +69,7 @@ Allocation *AutoIncrementAllocator::AllocateImpl(size_t size,
     }
   }
   // No suitable allocator
-  return CreateNewAllocator()->Allocate(size, attr).release();
+  return CreateNewAllocator()->Allocate(size).release();
 }
 
 }  // namespace allocation

@@ -60,7 +60,7 @@ class AutoIncrementAllocator : public Allocator {
   std::shared_ptr<Allocator> CreateNewAllocator();
 
  protected:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+  Allocation* AllocateImpl(size_t size) override;
 
  private:
   AllocatorCreator creator_;

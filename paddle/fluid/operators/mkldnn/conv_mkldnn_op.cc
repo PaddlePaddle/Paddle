@@ -234,9 +234,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "same dimension sizes");
 
       if (residual_param->format() != handler.GetDstFormat()) {
-        auto output_data = output->mutable_data<T>(
-            ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
-            handler.GetDstMemorySize());
+        auto output_data =
+            output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
         auto residual_data_tz =
             paddle::framework::vectorize2int(residual_param->dims());
         auto residual_data_type =
@@ -256,9 +255,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
     } else {
-      auto output_data = output->mutable_data<T>(
-          ctx.GetPlace(), paddle::memory::Allocator::kDefault,
-          handler.GetDstMemorySize());
+      auto output_data =
+          output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
       dst_memory_p =
           handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
     }
@@ -891,8 +889,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
               user_diff_dst_memory_p, pipeline);
 
       const size_t size = handler.GetDiffWeightsMemorySize();
-      filter_grad_data = filter_grad->mutable_data<T>(
-          ctx.GetPlace(), paddle::memory::Allocator::kDefault, size);
+      filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace(), size);
 
       auto diff_weights_memory_p =
           handler.AcquireDiffWeightsMemoryFromWeightsPrimitive(
@@ -917,8 +914,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                                         pipeline);
 
       const size_t size = handler.GetDiffSourceMemorySize();
-      input_grad_data = input_grad->mutable_data<T>(
-          ctx.GetPlace(), paddle::memory::Allocator::kDefault, size);
+      input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace(), size);
 
       auto diff_src_memory_p = handler.AcquireDiffSrcMemoryFromDataPrimitive(
           reinterpret_cast<void*>(input_grad_data));
