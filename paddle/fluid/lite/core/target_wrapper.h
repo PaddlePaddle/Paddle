@@ -63,7 +63,8 @@ static const std::string& TargetToStr(TargetType target) {
 }
 
 static const std::string& PrecisionToStr(PrecisionType precision) {
-  static const std::string precision2string[] = {"unk", "float", "int8", "any"};
+  static const std::string precision2string[] = {"unk", "float", "int8_t",
+                                                 "any"};
   auto x = static_cast<int>(precision);
   CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
   return precision2string[x];
@@ -71,6 +72,29 @@ static const std::string& PrecisionToStr(PrecisionType precision) {
 
 static const std::string& DataLayoutToStr(DataLayoutType layout) {
   static const std::string datalayout2string[] = {"unk", "NCHW", "any"};
+  auto x = static_cast<int>(layout);
+  CHECK_LT(x, static_cast<int>(DATALAYOUT(NUM)));
+  return datalayout2string[x];
+}
+
+static const std::string& TargetRepr(TargetType target) {
+  static const std::string target2string[] = {"kUnk", "kHost", "kX86", "kCUDA",
+                                              "kAny"};
+  auto x = static_cast<int>(target);
+  CHECK_LT(x, static_cast<int>(TARGET(NUM)));
+  return target2string[x];
+}
+
+static const std::string& PrecisionRepr(PrecisionType precision) {
+  static const std::string precision2string[] = {"kUnk", "kFloat", "kInt8",
+                                                 "kAny"};
+  auto x = static_cast<int>(precision);
+  CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
+  return precision2string[x];
+}
+
+static const std::string& DataLayoutRepr(DataLayoutType layout) {
+  static const std::string datalayout2string[] = {"kUnk", "kNCHW", "kAny"};
   auto x = static_cast<int>(layout);
   CHECK_LT(x, static_cast<int>(DATALAYOUT(NUM)));
   return datalayout2string[x];
@@ -227,6 +251,21 @@ class TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t> {
                           IoDirection dir, const stream_t& stream);
 };
 #endif  // LITE_WITH_CUDA
+
+template <TargetType Target>
+void CopySync(void* dst, void* src, size_t size, IoDirection dir) {
+  switch (Target) {
+    case TARGET(kX86):
+    case TARGET(kHost):
+    case TARGET(kARM):
+      TargetWrapperX86::MemcpySync(dst, src, size, IoDirection::HtoH);
+      break;
+#ifdef LITE_WITH_CUDA
+    case TARGET(kCUDA):
+      TargetWrapperCuda::MemcpySync(dst, src, size, dir);
+#endif
+  }
+}
 
 }  // namespace lite
 }  // namespace paddle

@@ -60,6 +60,14 @@ class TensorLite : public TensorBase<TensorLite> {
 
   TensorLite() : buffer_(std::make_shared<Buffer>()) {}
 
+  template <typename DType, typename DimT, TargetType Target>
+  void Assign(DType *data, const DimT &dim) {
+    Resize(dim);
+    auto *dst = mutable_data<DType>(Target);
+    CopySync<Target>(dst, data, dim.product() * sizeof(DType),
+                     IoDirection::HtoD);
+  }
+
   template <typename T>
   const T *data() const {
     return static_cast<const T *>(buffer_->data());
