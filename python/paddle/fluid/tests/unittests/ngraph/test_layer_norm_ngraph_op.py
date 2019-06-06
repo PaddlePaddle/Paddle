@@ -11,15 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
 
-from . import quantization_pass
-from .quantization_pass import *
-from . import quantization_strategy
-from .quantization_strategy import *
-from . import mkldnn_post_training_strategy
-from .mkldnn_post_training_strategy import *
+import unittest, sys
+sys.path.append("../")
+from test_layer_norm_op import TestLayerNormdOp
 
-__all__ = quantization_pass.__all__ + quantization_strategy.__all__
-__all__ += mkldnn_post_training_strategy.__all__
+
+class TestLayerNormNGRAPHOp(TestLayerNormdOp):
+    def setUp(self):
+        super(TestLayerNormNGRAPHOp, self).setUp()
+        self.use_cudnn = False
+
+
+del TestLayerNormdOp
+
+if __name__ == "__main__":
+    unittest.main()

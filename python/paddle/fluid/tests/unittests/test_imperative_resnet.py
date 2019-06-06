@@ -227,6 +227,15 @@ class ResNet(fluid.Layer):
 
 
 class TestDygraphResnet(unittest.TestCase):
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                doc = np.array(item[0]).reshape(3, 224, 224)
+                label = np.array(item[1]).astype('int64').reshape(1)
+                yield doc, label
+
+        return _reader_imple
+
     def test_resnet_float32(self):
         seed = 90
 
@@ -242,25 +251,26 @@ class TestDygraphResnet(unittest.TestCase):
             np.random.seed(seed)
             import random
             random.seed = seed
-            train_reader = paddle.batch(
-                paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
+
+            batch_py_reader = fluid.io.PyReader(capacity=1)
+            batch_py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    self.reader_decorator(
+                        paddle.dataset.flowers.train(use_xmap=False)),
+                    batch_size=batch_size,
+                    drop_last=True),
+                places=fluid.CPUPlace())
 
             dy_param_init_value = {}
             for param in resnet.parameters():
                 dy_param_init_value[param.name] = param.numpy()
 
-            for batch_id, data in enumerate(train_reader()):
+            for batch_id, data in enumerate(batch_py_reader()):
                 if batch_id >= batch_num:
                     break
 
-                dy_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    batch_size, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = data[0]
+                label = data[1]
                 label.stop_gradient = True
 
                 out = resnet(img)
