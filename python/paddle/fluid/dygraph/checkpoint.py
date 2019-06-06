@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +16,18 @@ from __future__ import print_function
 
 import os
 import collections
-from .. import core
 from ..framework import Variable, default_main_program
+import pickle
+from . import learning_rate_scheduler
+import warnings
 
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(vardict, dirname, filename=None):
+def save_persistables(model_dict,
+                      optimizer=None,
+                      dirname='save_dir',
+                      filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -34,12 +39,12 @@ def save_persistables(vardict, dirname, filename=None):
     the file name.
 
     Args:
-        vardict(dict of Parameters): The parameters will
+        model_dict(dict of Parameters): The parameters will
                                     be saved. If it is None, nothing
                                     will be deal.
         dirname(str): The directory path.
         filename(str|None): The file which saved all variables. If variables were
-                            saved in differnet files, set it to None.
+                            saved in different files, set it to None.
                             Default: None
 
     Returns:
@@ -71,11 +76,11 @@ def save_persistables(vardict, dirname, filename=None):
             fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path,
                                        layer=ptb_model)
     """
-    if isinstance(vardict, collections.OrderedDict):
-        _save_var_to_file(vardict, dirname, filename)
+    if isinstance(model_dict, collections.OrderedDict):
+        _save_var_to_file(model_dict, optimizer, dirname, filename)
 
 
-def load_persistables(dirname):
+def load_persistables(dirname='save_dir'):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -86,7 +91,8 @@ def load_persistables(dirname):
     the file name.
 
     Args:
-        dirname(str): The directory path.
+        dirname(str): The directory path. default is save_dir
+        optimizer(Optimizer): Optimizer to be saved
 
     Returns:
         dict: The parameter-dict resumed from file
@@ -103,7 +109,7 @@ def load_persistables(dirname):
     return _load_var_from_file(dirname)
 
 
-def _save_var_to_file(stat_dict, file_dir, file_name):
+def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
     save_block = default_main_program().global_block()
     save_var_map = {}
     for var_key, each_var in stat_dict.items():
@@ -117,6 +123,32 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
                     'file_path': os.path.join(file_dir,
                                               os.path.normpath(each_var.name))
                 })
+    if isinstance(optimizers, (list, tuple)):
+        optimizers = optimizers
+    else:
+        optimizers = [optimizers]
+    if os.path.exists(os.path.join(file_dir, os.path.normpath("optimizers"))):
+        pass
+    else:
+        os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
+    for optimizer in optimizers:
+        if isinstance(optimizer._learning_rate,
+                      learning_rate_scheduler.LearningRateDecay):
+            try:
+                f = open(
+                    os.path.join(file_dir, "optimizers",
+                                 os.path.normpath(str(optimizer._name))), "wb")
+                pickle.dump(optimizer._learning_rate, f, 2)
+                f.close()
+            except ():
+                raise IOError("Can't load %s",
+                              os.path.join(
+                                  file_dir, "optimizers",
+                                  os.path.normpath(str(optimizer._name))))
+        else:
+            warnings.warn(
+                "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
+            )
 
     if file_name is not None:
         save_var_list = []
@@ -138,6 +170,8 @@ def _load_var_from_file(file_dir):
         var_name_list = []
         if os.path.exists(base_path):
             for dirpath, dirnames, filenames in os.walk(base_path):
+                if "optimizers" in dirpath:
+                    continue
                 pt = dirpath.replace(base_path, "", 1)
                 if pt.startswith("/") or pt.startswith("\\"):
                     pt = pt[1:]
@@ -152,6 +186,7 @@ def _load_var_from_file(file_dir):
 
     load_block = default_main_program().global_block()
     load_var_map = {}
+    load_optimizer_map = {}
     file_var_list = walk_filename(file_dir)
     for var_name in file_var_list:
         new_var = Variable(block=load_block, name=var_name)
@@ -165,8 +200,22 @@ def _load_var_from_file(file_dir):
             })
 
         load_var_map[new_var.name] = new_var
+    opt_path = os.path.join(file_dir, "optimizers")
+    for _, _, optimizers in os.walk(opt_path):
+        for optimizer in optimizers:
+            try:
+                f = open(os.path.join(opt_path, optimizer), "rb")
+                load_optimizer_map[optimizer] = pickle.load(f)
+                f.close()
+            except IOError:
+                raise IOError("Can't load %s",
+                              os.path.join(
+                                  file_dir, "optimizers",
+                                  os.path.normpath(str(optimizer._name))))
+    if len(load_optimizer_map) == 0:
+        warnings.warn("No optimizer loaded")
 
-    return load_var_map
+    return load_var_map, load_optimizer_map
 
 
 def _clone_var_in_block_(block, var):
