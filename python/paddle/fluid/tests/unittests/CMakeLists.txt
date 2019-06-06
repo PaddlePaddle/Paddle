@@ -58,6 +58,7 @@ endif()
 
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
+    set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -73,6 +74,10 @@ function(py_test_modules TARGET_NAME)
           COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
           ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    if (py_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)            
     endif()
 
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
@@ -165,17 +170,19 @@ py_test_modules(test_warpctc_op MODULES test_warpctc_op)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
-    FLAGS_cudnn_deterministic=1)
+    FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_resnet_sorted_gradient MODULES test_imperative_resnet_sorted_gradient ENVS
-        FLAGS_cudnn_deterministic=1)
+        FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mnist_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
-    FLAGS_cudnn_deterministic=1)
+    FLAGS_cudnn_deterministic=1 SERIAL)
+set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
