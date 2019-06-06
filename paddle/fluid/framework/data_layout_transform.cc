@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #endif
 
 namespace paddle {
@@ -145,7 +147,6 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
                  "Input tensor type is not supported: %s", in.type());
-  memory::data_type out_type = in_type;
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
@@ -156,14 +157,21 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
+    const std::string key = platform::ReorderMKLDNNHandler::GetHash(
+        in_tz, in_format, out_format, std::to_string(in_type));
 
-    auto in_memory =
-        memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
-    auto out_memory =
-        memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
+    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
+                                           cpu_engine, key);
 
-    platform::Reorder(in_memory, out_memory);
+    auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
+    auto reorder_dst_memory_p =
+        handler.AcquireDstMemory(out, out_format, expected_kernel_type.place_);
+    auto reorder_p =
+        handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+
+    std::vector<mkldnn::primitive> pipeline;
+    pipeline.push_back(*reorder_p);
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
   } else {
     out->ShareDataWith(in);
   }

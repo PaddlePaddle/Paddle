@@ -212,25 +212,29 @@ class MKLDNNHandler {
     dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
   }
 
-  static void AppendKey(std::string* key,
-                        const mkldnn::memory::dims& input_dims,
-                        const mkldnn::memory::dims& weights_dims,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& dilations, const int& groups,
-                        const mkldnn::memory::data_type& srcdt,
-                        const mkldnn::memory::format& format, const bool& relu,
-                        const bool& residual, const std::string& suffix) {
+  static void AppendKey(
+      std::string* key, const mkldnn::memory::dims& input_dims,
+      const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
+      const std::vector<int>& paddings, const std::vector<int>& dilations,
+      const int& groups, const mkldnn::memory::data_type& srcdt,
+      const mkldnn::memory::format& format, const bool& relu,
+      const bool& residual, const bool& brelu, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
+
     AppendKeyDims(key, weights_dims);
+
     AppendKeyVec(key, strides);
+
     AppendKeyVec(key, paddings);
+
     AppendKeyVec(key, dilations);
+
     AppendKey(key, std::to_string(groups));
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
     AppendKey(key, std::to_string(relu));
     AppendKey(key, std::to_string(residual));
+    AppendKey(key, std::to_string(brelu));
     AppendKey(key, suffix);
   }
 
@@ -394,6 +398,93 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
   std::vector<int> dims_;
   std::vector<int> axis_;
   std::vector<int> logical_axis_;
+};
+
+class ReorderMKLDNNHandler : public MKLDNNHandler {
+ public:
+  ReorderMKLDNNHandler(std::vector<int>& dims,  // NOLINT
+                       framework::proto::VarType::Type vtype,
+                       mkldnn::memory::data_type dtype,
+                       const platform::MKLDNNDeviceContext& dev_ctx,
+                       mkldnn::engine engine, const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
+        dims_(dims),
+        vtype_(vtype),
+        dtype_(dtype) {}
+
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const mkldnn::memory::format& fmt, void* ptr) {
+    auto local_key = key_ + "@user_src_mem_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   " find mem primitive in device context");
+    if (mem_p == nullptr) {
+      auto src_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
+      mem_p = std::make_shared<mkldnn::memory>(
+          mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      mem_p->set_data_handle(ptr);
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
+      framework::Tensor* output, const mkldnn::memory::format& fmt,
+      platform::Place place) {
+    auto local_key = key_ + "@user_dst_mem_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   " find mem primitive in device context");
+    if (mem_p == nullptr) {
+      auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
+      auto dst_mdp = mkldnn::memory::primitive_desc{dst_md, engine_};
+
+      auto dst_data = output->mutable_data(place, vtype_);
+
+      mem_p = std::make_shared<mkldnn::memory>(dst_mdp, dst_data);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      auto dst_data = output->mutable_data(place, vtype_);
+      mem_p->set_data_handle(dst_data);
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::reorder> AcquireReorder(
+      std::shared_ptr<mkldnn::memory> dst_memory_p,
+      std::shared_ptr<mkldnn::memory> src_memory_p) {
+    auto prim_key = key_ + "@reorder_p";
+    auto reorder_p =
+        std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(prim_key));
+    PADDLE_ENFORCE((reorder_p != nullptr) || (is_reusing_ == false),
+                   "Fail to find convolution primitive in device context");
+    if (reorder_p == nullptr) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
+      dev_ctx_.SetBlob(prim_key, reorder_p);
+    } else {
+      is_reusing_ = true;
+    }
+    return reorder_p;
+  }
+
+  static std::string GetHash(std::vector<int>& shape,  // NOLINT
+                             mkldnn::memory::format in_fmt,
+                             mkldnn::memory::format out_fmt,
+                             const std::string& suffix) {
+    return dims2str(shape) + std::to_string(in_fmt) + "->" +
+           std::to_string(out_fmt) + "#" + suffix;
+  }
+
+ private:
+  std::vector<int> dims_;
+  framework::proto::VarType::Type vtype_;
+  mkldnn::memory::data_type dtype_;
 };
 
 template <typename T>
@@ -562,8 +653,9 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                scale_data, mask);
   }
 
-  mkldnn::primitive_attr CreatePostOps(bool fuse_relu,
-                                       bool fuse_residual_conn = false) const {
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
+                                       bool fuse_brelu,
+                                       float fuse_brelu_threshold) const {
     mkldnn::primitive_attr conv_attr;
     mkldnn::post_ops post_operations;
     // Fusion with Elementwise layer relies on adding a sum post-operation with
@@ -583,6 +675,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
     }
+
+    if (fuse_brelu) {
+      constexpr float scale = 1.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale,
+                                     mkldnn::algorithm::eltwise_bounded_relu,
+                                     fuse_brelu_threshold, placeholder);
+    }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
@@ -594,6 +694,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       const mkldnn::memory::desc& dst, const std::vector<int>& strides,
       const std::vector<int>& paddings, const mkldnn::engine& engine,
       const bool fuse_relu, const bool fuse_residual_conn,
+      const bool fuse_brelu, const float fuse_brelu_threshold,
       mkldnn::prop_kind fwd_prop_kind) {
     const std::string key_conv_pd = key_ + "@conv_pd";
 
@@ -614,8 +715,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                      weights, dst, stride_dims, padding_dims, padding_dims,
                      mkldnn::padding_kind::zero);
 
-      mkldnn::primitive_attr conv_attr =
-          CreatePostOps(fuse_relu, fuse_residual_conn);
+      mkldnn::primitive_attr conv_attr = CreatePostOps(
+          fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
 
       conv_pd_.reset(
           new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
@@ -712,6 +813,22 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       is_reusing_ = true;
     }
     return conv_bwd_data_p;
+  }
+
+  // Generate keys for storing/retriving primitives for this operator
+  // TODO(jczaja): Make hashing function more optimial
+  static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
+                             mkldnn::memory::dims& weights_dims,  // NOLINT
+                             const bool& fuse_relu,               // NOLINT
+                             const bool& fuse_brelu,              // NOLINT
+                             std::vector<int>& strides,           // NOLINT
+                             std::vector<int>& paddings,          // NOLINT
+                             std::vector<int>& dilations,         // NOLINT
+                             int groups, const std::string& suffix) {
+    return dims2str(input_dims) + dims2str(weights_dims) +
+           std::to_string(fuse_relu) + std::to_string(fuse_brelu) +
+           dims2str(strides) + dims2str(paddings) + dims2str(dilations) +
+           std::to_string(groups) + suffix;
   }
 
   // Generate keys for storing/retriving primitives for this operator

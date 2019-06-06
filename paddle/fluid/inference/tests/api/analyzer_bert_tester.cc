@@ -152,6 +152,7 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
+    config.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -183,6 +184,7 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> inputs;

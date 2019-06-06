@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,20 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 
-#include <memory>
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace inference {
 
-class ExpectedKernelCachePass : public Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
+TEST(TensorRT_resnext50, compare) {
+  std::string model_dir = FLAGS_infer_model + "/resnext50";
+  compare(model_dir, /* use_tensorrt */ true);
+}
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace inference
 }  // namespace paddle

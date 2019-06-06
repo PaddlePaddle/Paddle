@@ -144,7 +144,8 @@ class ContextProjectFunctor {
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
         // add up trainable data
-        out_t.Resize({sequence_height * context_length, sequence_width});
+        out_t.Resize({static_cast<int64_t>(sequence_height) * context_length,
+                      sequence_width});
 
         if (up_pad > 0) {  // add up pad
           int padding_rows = std::min(
@@ -191,7 +192,8 @@ class ContextProjectFunctor {
                                   &out_t_sub);
           }
         }
-        out_t.Resize({sequence_height, context_length * sequence_width});
+        out_t.Resize({sequence_height,
+                      static_cast<int64_t>(context_length) * sequence_width});
       }
     }
   }
@@ -260,7 +262,8 @@ class ContextProjectGradFunctor {
                                     static_cast<int>(lod_level_0[i + 1]));
 
           sequence_height = static_cast<int>(out_t.dims()[0]);
-          out_t.Resize({sequence_height * context_length, sequence_width});
+          out_t.Resize({static_cast<int64_t>(sequence_height) * context_length,
+                        sequence_width});
 
           if (up_pad > 0) {
             int padding_rows = std::min(
@@ -308,7 +311,8 @@ class ContextProjectGradFunctor {
                         w_sub.data<T>());
             }
           }
-          out_t.Resize({sequence_height, context_length * sequence_width});
+          out_t.Resize({sequence_height,
+                        static_cast<int64_t>(context_length) * sequence_width});
         }
       }
     }
