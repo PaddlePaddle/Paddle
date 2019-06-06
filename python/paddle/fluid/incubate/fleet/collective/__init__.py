@@ -24,31 +24,57 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 class DistributedStrategy(object):
     def __init__(self):
+        # precision configs
         self.use_fp16 = False
-        self.use_fp32 = False
+        self.use_fp32 = True
+        # algorithmic communication
         self.local_sgd = False
         self.dgc = False
-        self.hierachical_allreduce = False
+        # communication topology configs
+        self.h_allreduce = False
 
     def build(self):
+        # make sure we set single precision config True
         if self.use_fp32 and self.use_fp16:
             self.use_fp16 = False
+        # make sure we set single algorithmic communication True
         if self.local_sgd and self.dgc:
             self.local_sgd = False
+        self.strategy_map["fp16"] = self.use_fp16
+        self.strategy_map["fp32"] = self.use_fp32
+        self.strategy_map["localsgd"] = self.local_sgd
+        self.strategy_map["dgc"] = self.dgc
+        self.strategy_map["h_allreduce"] = self.h_allreduce
 
 
 class DistributedOptimizerFactory(object):
     def strategy_to_optimizer_map(self):
         pattern = {}
         pattern["fp16"] = [
-            MixedPrecisionOptimizer, MixedPrecisionLocalSGDOptimizer
+            "MixedPrecisionOptimizer", "MixedPrecisionLocalSGDOptimizer"
         ]
-        pattern["fp32"] = [LocalSGDOptimizer]
-        pattern[
-            "localsgd"] = [MixedPrecisionLocalSGDOptimizer, LocalSGDOptimizer]
+        pattern["fp32"] = ["FullPrecisionOptimizer", "LocalSGDOptimizer"]
+        pattern["localsgd"] = [
+            "MixedPrecisionLocalSGDOptimizer", "LocalSGDOptimizer"
+        ]
+        pattern["h_allreduce"] = [
+            "FullPrecisionOptimizer",
+            "LocalSGDOptimizer",
+            "MixedPrecisionOptimizer",
+            "MixedPrecisionLocalSGDOptimizer",
+        ]
+        self.pattern = pattern
 
-    def create_by_strategy(self, strategy):
-        pass
+    def create_by_strategy(self, optimizer, strategy):
+        if strategy == None:
+            strategy = DistributedStrategy()
+        strategy.build()
+        strategy_list = []
+        for key in strategy.strategy_map:
+            if strategy.strategy_map[key]:
+                strategy_list.append(self.pattern[key])
+        classname = list(set.intersection(*map(set, strategy_list)))[0]
+        return globals()[classname](optimizer, strategy)
 
 
 class Collective(Fleet):
@@ -77,9 +103,8 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        #self._optmizer = DistributedOptimizerFactory.create_by_strategy(
-        #strategy)
-        self._optimizer = FullPrecisionOptimizer(optimizer, strategy)
+        self._optimizer = \
+            DistributedOptimizerFactory.create_by_strategy(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
@@ -166,8 +191,8 @@ class FullPrecisionOptimizer(CollectiveOpBasedOptimizer):
                  no_grad_set=None):
         self._transpile_program(startup_program)
 
-        param_grads = self.backward(loss, startup_program, parameter_list,
-                                    no_grad_set)
+        train_program = loss.block.program
+        param_grads = self.backward(loss)
         train_program.global_block().append_op(type='c_sync_compute_stream')
         data_parallel_param_grads = []
         for p, g in param_grads:
