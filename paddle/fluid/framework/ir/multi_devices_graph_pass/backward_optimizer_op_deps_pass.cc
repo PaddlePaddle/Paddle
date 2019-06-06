@@ -93,25 +93,23 @@ class BackWardOpDepsPass : public ir::Pass {
    */
   void GetOptimizerHandlesRoot(
       const std::vector<details::OpHandleBase*>& ops,
-      std::vector<details::OpHandleBase*>* r,
+      std::vector<details::OpHandleBase*>* result,
       const details::ParamsAndGrads& params_grads) const {
     std::unordered_set<details::OpHandleBase*> visit;
     for (auto op : ops) {
-      int order = 0;
       if (visit.find(op) != visit.end()) {
-        VLOG(10) << "visited all_opt_handles:" << op->DebugString();
         continue;
-      } else {
-        VLOG(10) << "visiting all_opt_handles:" << op->DebugString();
       }
 
-      r->emplace_back(op);
+      VLOG(10) << "visiting all_opt_handles:" << op->DebugString();
+
+      result->emplace_back(op);
       visit.insert(op);
-      VisitChildrens(op, &visit, &order);
+      VisitChildrens(op, &visit);
     }
 
-    for (size_t i = 0; i < r->size(); i++) {
-      VLOG(10) << "get potential head op:" << (*r)[i]->DebugString();
+    for (size_t i = 0; i < result->size(); i++) {
+      VLOG(10) << "get potential head op:" << (*result)[i]->DebugString();
     }
 
     // sort by param_grad order
@@ -122,7 +120,7 @@ class BackWardOpDepsPass : public ir::Pass {
     }
 
     std::vector<std::pair<details::OpHandleBase*, int>> op_handles;
-    for (auto op : *r) {
+    for (auto op : *result) {
       int order = 0;
       for (auto input : op->Inputs()) {
         if (dynamic_cast<details::VarHandle*>(input) == nullptr) continue;
@@ -145,33 +143,28 @@ class BackWardOpDepsPass : public ir::Pass {
            return left.second < right.second;
          });
 
-    r->clear();
+    result->clear();
     for (auto p : op_handles) {
-      r->emplace_back(p.first);
+      result->emplace_back(p.first);
     }
 
-    for (size_t i = 0; i < r->size(); i++) {
-      VLOG(10) << "get head op:" << (*r)[i]->DebugString();
+    for (size_t i = 0; i < result->size(); i++) {
+      VLOG(10) << "get head op:" << (*result)[i]->DebugString();
     }
   }
 
   void VisitChildrens(details::OpHandleBase* op,
-                      std::unordered_set<details::OpHandleBase*>* visit,
-                      int* order) const {
+                      std::unordered_set<details::OpHandleBase*>* visit) const {
     for (auto out : op->Outputs()) {
       for (auto* pending_op : out->PendingOps()) {
         if (visit->find(pending_op) != visit->end()) {
-          VLOG(10) << "order:" << *order
-                   << " visited:" << pending_op->DebugString();
           continue;
         }
 
-        VLOG(10) << "order:" << *order
-                 << " visiting:" << pending_op->DebugString();
+        VLOG(10) << "visiting:" << pending_op->DebugString();
 
         visit->insert(pending_op);
-        (*order)++;
-        VisitChildrens(pending_op, visit, order);
+        VisitChildrens(pending_op, visit);
       }
     }
   }
