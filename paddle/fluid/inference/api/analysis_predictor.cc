@@ -444,6 +444,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
+  // The config and argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
+  argument_.PartiallyRelease();
+  config_.PartiallyRelease();
   LOG(INFO) << "== optimize end ==";
 }
 
@@ -451,6 +455,8 @@ template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
+  PADDLE_ENFORCE(config.is_valid(),
+                 "Note: Each config can only be used for one predictor.");
   if (config.use_gpu()) {
     // 1. GPU memory
     PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
@@ -480,6 +486,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
+  // Each config can only be used for one predictor.
+  config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
 
   if (!predictor_p->Init(nullptr)) {
