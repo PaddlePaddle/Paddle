@@ -22,7 +22,7 @@ from .tracer import Tracer
 __all__ = [
     'enabled',
     'no_grad',
-    'dygraph_not_support',
+    'not_support',
     'guard',
     'to_variable',
 ]
@@ -62,7 +62,7 @@ def _no_grad_(func):
 
 
 no_grad = wrap_decorator(_no_grad_)
-dygraph_not_support = wrap_decorator(_dygraph_not_support_)
+not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
