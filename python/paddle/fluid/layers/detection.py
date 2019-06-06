@@ -40,6 +40,7 @@ __all__ = [
     'ssd_loss',
     'detection_map',
     'rpn_target_assign',
+    'sigmoid_focal_loss',
     'anchor_generator',
     'roi_perspective_transform',
     'generate_proposal_labels',
@@ -208,6 +209,60 @@ def rpn_target_assign(bbox_pred,
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
+
+
+def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        label(${label_type}): ${label_comment}
+        fg_num{${fg_num_type}}: ${fg_num_comment}
+
+        gamma(float): Hyper-parameter to balance the easy and hard examples.
+            Default value is set to 2.0
+        alpha(float): Hyper-parameter to balance the positive and negative example.
+            Default value is set to 0.25
+        num_classes(int): Number of classes (excluding background)
+
+
+    Returns:
+        out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(
+                name='data', shape=[10,80], dtype='float32')
+            label = fluid.layers.data(
+                name='label', shape=[10,1], dtype='int32')
+            fg_num = fluid.layers.data(
+                name='fg_num', shape=[1], dtype='int32')
+            loss = fluid.layers.sigmoid_focal_loss(x=input,
+                                                   label=label,
+                                                   fg_num=fg_num,
+                                                   gamma=2.,
+                                                   alpha=0.25,
+                                                   num_classes=80)
+    """
+
+    helper = LayerHelper("sigmoid_focal_loss", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="sigmoid_focal_loss",
+        inputs={"X": x,
+                "Label": label,
+                "FgNum": fg_num},
+        attrs={"gamma": gamma,
+               'alpha': alpha,
+               "num_classes": num_classes},
+        outputs={"Out": out})
+    return out
 
 
 def detection_output(loc,
