@@ -29,7 +29,7 @@ class TransformForMkldnnPass(object):
                the QuantizationFreezePass, to float32 range weights with float32 data type
                by using the corresponding scales. This conversion is because MKL-DNN INT8 
                conv2d kernel now only supports float32 weights input, will do weights
-               quantizationinside inside the kernel.
+               quantization inside the conv2d kernel.
             2. Create the new conv2d op with the converted weights and link its output
                to fake_dequantize_abs_max op's output and set conv2d's attribute "force_fp32
                _output" as true
@@ -73,7 +73,7 @@ class TransformForMkldnnPass(object):
         self.max_range = {}
         self.conv_new_output = {}
         self.s8_max = 127
-        # Temporary code for keeping the mul op fake quantization
+        # Temporary code for keeping the mul op as fake quantization
         #TODO Intel: Remove the following code when mul int8 mkldnn
         # kernel enabled 
         self.mul_input_id = []
