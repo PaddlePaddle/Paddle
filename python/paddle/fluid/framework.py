@@ -1013,7 +1013,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1036,7 +1036,6 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1046,13 +1045,17 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
+                                )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -2969,12 +2972,15 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will not do any prune on program here, So if you just want an
+          forward program for testing, please use :code:`clone` before using
+          :code:`Opimizer.minimize`
 
-        Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please. E.g.
 
         .. code-block:: python
 
@@ -2991,7 +2997,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3685,8 +3696,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3714,9 +3725,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
-            None means do not change startup program.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

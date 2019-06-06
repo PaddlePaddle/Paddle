@@ -8,6 +8,8 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_simple_dist_transpiler)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_nccl)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_lars)
     LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     LIST(REMOVE_ITEM TEST_OPS test_dist_ctr)
     LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
@@ -16,6 +18,8 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
 endif(NOT WITH_DISTRIBUTE)
+
+LIST(REMOVE_ITEM TEST_OPS test_launch)
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -28,6 +32,7 @@ list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
+
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -63,6 +68,29 @@ function(py_test_modules TARGET_NAME)
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
 endfunction()
+
+function(bash_test_modules TARGET_NAME)
+    if(NOT WITH_TESTING)
+        return()
+    endif()
+
+    set(options SERIAL)
+    set(oneValueArgs "")
+    set(multiValueArgs MODULES DEPS ENVS)
+    cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
+
+    add_test(NAME ${TARGET_NAME}
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${bash_test_modules_ENVS}
+        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (bash_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    endif()
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+endfunction()
+
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -82,6 +110,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -137,7 +166,6 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1)
-
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -146,9 +174,12 @@ if(WITH_DISTRIBUTE)
     endif()
     if(NOT APPLE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
+        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 200)
+        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
+        bash_test_modules(test_launch MODULES test_launch.sh)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
