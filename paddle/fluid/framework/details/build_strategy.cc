@@ -204,9 +204,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("all_reduce_deps_pass");
     }
 
-    if (strategy_.enable_backward_op_deps_) {
+    if (strategy_.enable_backward_optimizer_op_deps_) {
       VLOG(1) << "Add backward_op_deps_pass";
-      AppendPass("backward_op_deps_pass");
+      AppendPass("backward_optimizer_op_deps_pass");
     }
 
     if (strategy_.remove_unnecessary_lock_) {

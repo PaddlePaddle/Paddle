@@ -141,7 +141,7 @@ class TestDistRunnerBase(object):
         build_stra.memory_optimize = False
 
         if args.enable_backward_deps:
-            build_stra.enable_backward_op_deps = True
+            build_stra.enable_backward_optimizer_op_deps = True
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce

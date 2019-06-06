@@ -206,7 +206,9 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
 
     VLOG(10) << "SetGroupAccordingToLayers: ";
-    PrintGroupInfo(var_nodes, group_grads_params);
+    if (VLOG_IS_ON(10)) {
+      PrintGroupInfo(var_nodes, group_grads_params);
+    }
   }
 
   void PrintGroupInfo(
@@ -280,7 +282,9 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     VLOG(10) << string::Sprintf(
         "SetGroupAccordingToMemorySize(memory_size: %d):", group_memory_size);
 
-    PrintGroupInfo(var_nodes, group_grads_params);
+    if (VLOG_IS_ON(10)) {
+      PrintGroupInfo(var_nodes, group_grads_params);
+    }
   }
 
  private:

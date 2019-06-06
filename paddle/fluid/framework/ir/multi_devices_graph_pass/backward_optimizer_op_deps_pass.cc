@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -218,4 +218,5 @@ class BackWardOpDepsPass : public ir::Pass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(backward_op_deps_pass, paddle::framework::ir::BackWardOpDepsPass);
+REGISTER_PASS(backward_optimizer_op_deps_pass,
+              paddle::framework::ir::BackWardOpDepsPass);
