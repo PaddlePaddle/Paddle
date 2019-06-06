@@ -102,6 +102,24 @@ struct SoftmaxParam {
   int axis{-1};
 };
 
+// For Reshape and Reshape2 Op
+struct ReshapeParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* actual_shape{nullptr};
+  lite::Tensor* output{};
+  lite::Tensor* xshape{};
+
+  std::vector<int> shape{};
+  bool inplace{false};
+};
+
+// For Concat op
+struct ConcatParam {
+  std::vector<lite::Tensor*> x{};
+  lite::Tensor* output{};
+  int axis{0};
+};
+
 // For Convolution op
 struct ConvParam {
   lite::Tensor* x{};

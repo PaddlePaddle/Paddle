@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/kernels/arm/softmax_compute.h"
 #include <gtest/gtest.h>
+#include <limits>
 #include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -23,19 +24,19 @@ namespace kernels {
 namespace arm {
 
 template <typename dtype>
-void softmat_compute_ref(const operators::SoftmaxParam& param) {
+void softmax_compute_ref(const operators::SoftmaxParam& param) {
   const dtype* x_data = param.x->mutable_data<const dtype>();
   dtype* output_data = param.output->mutable_data<dtype>();
-  DDim dim = param.x->dims();
-  ASSERT_EQ(dim.data(), param.output->dims().data());
-  auto rank = dim.size();
+  DDim x_dims = param.x->dims();
+  ASSERT_EQ(x_dims.data(), param.output->dims().data());
+  auto x_rank = x_dims.size();
   int axis = param.axis;
   if (axis < 0) {
-    axis += rank;
+    axis += x_rank;
   }
-  int axis_size = dim[axis];
-  int outer_num = dim.Slice(0, axis).production();
-  int inner_num = dim.Slice(axis + 1, rank).production();
+  int axis_size = x_dims[axis];
+  int outer_num = x_dims.Slice(0, axis).production();
+  int inner_num = x_dims.Slice(axis + 1, x_rank).production();
   int compute_size = outer_num * inner_num;
   for (int i = 0; i < compute_size; i++) {
     int idx_inner = i % inner_num;
@@ -100,7 +101,7 @@ TEST(softmax_arm, compute) {
             softmax.SetParam(param);
             softmax.Run();
             param.output = &output_ref;
-            softmat_compute_ref<float>(param);
+            softmax_compute_ref<float>(param);
             for (int i = 0; i < output.dims().production(); i++) {
               EXPECT_NEAR(output_data[i], output_ref_data[i], 1e-5);
             }

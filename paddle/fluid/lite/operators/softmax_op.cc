@@ -22,9 +22,10 @@ namespace operators {
 bool SoftmaxOp::CheckShape() const {
   CHECK_OR_FALSE(param_.x);
   CHECK_OR_FALSE(param_.output);
-  auto dim_x = param_.x->dims();
-  auto rank_x = dim_x.size();
-  CHECK_OR_FALSE(param_.axis >= -rank_x && param_.axis < rank_x);
+  auto x_dims = param_.x->dims();
+  auto x_rank = x_dims.size();
+  CHECK_OR_FALSE(param_.axis >= -static_cast<int>(x_rank) &&
+                 param_.axis < static_cast<int>(x_rank));
   return true;
 }
 
@@ -33,12 +34,12 @@ bool SoftmaxOp::InferShape() const {
   return true;
 }
 
-bool SoftmaxOp::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
+bool SoftmaxOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   param_.x = const_cast<lite::Tensor *>(
       &scope->FindVar(opdesc.Input("X").front())->Get<lite::Tensor>());
   param_.output =
       scope->FindVar(opdesc.Output("Out").front())->GetMutable<lite::Tensor>();
-  param_.axis = GetAttr<int>(opdesc.GetAttr("axis"));
+  param_.axis = opdesc.GetAttr<int>("axis");
   CHECK(param_.x);
   CHECK(param_.output);
   return true;

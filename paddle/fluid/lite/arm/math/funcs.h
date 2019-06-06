@@ -17,7 +17,9 @@
 #include <Eigen/Core>
 #include <cmath>
 
+#include "paddle/fluid/lite/arm/math/elementwise.h"
 #include "paddle/fluid/lite/arm/math/packed_sgemm.h"
+#include "paddle/fluid/lite/arm/math/scale.h"
 #include "paddle/fluid/lite/arm/math/softmax.h"
 
 namespace paddle {

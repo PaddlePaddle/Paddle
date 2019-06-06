@@ -14,6 +14,7 @@ cc_library(scale_compute_x86 SRCS scale_compute.cc DEPS ${lite_kernel_deps})
 cc_library(elementwise_compute_x86 SRCS elementwise_compute.cc DEPS ${lite_kernel_deps} elementwise_sub_op elementwise_add_op)
 cc_library(softmax_compute_x86 SRCS softmax_compute.cc DEPS ${lite_kernel_deps} softmax)
 cc_library(dropout_compute_x86 SRCS dropout_compute.cc DEPS ${lite_kernel_deps} )
+cc_library(concat_compute_x86 SRCS concat_compute.cc DEPS ${lite_kernel_deps} )
 
 set(x86_kernels
     activation_compute_x86
@@ -26,6 +27,7 @@ set(x86_kernels
     scale_compute_x86
     softmax_compute_x86 
     dropout_compute_x86
+    concat_compute_x86
     )
 
 set(x86_kernels "${x86_kernels}" CACHE INTERNAL "x86 kernels")
