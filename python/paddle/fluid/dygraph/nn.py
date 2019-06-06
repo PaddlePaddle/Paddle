@@ -832,6 +832,7 @@ class FC(layers.Layer):
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
+        dtype(str): Dtype used for weight
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
@@ -858,7 +859,8 @@ class FC(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  act=None,
-                 is_test=False):
+                 is_test=False,
+                 dtype="float32"):
         super(FC, self).__init__(name_scope, dtype)
 
         self._size = size
