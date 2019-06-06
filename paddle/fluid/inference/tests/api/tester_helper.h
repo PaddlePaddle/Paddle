@@ -534,7 +534,7 @@ void CompareNativeAndAnalysis(
 }
 
 void CompareAnalysisAndZeroCopy(
-    PaddlePredictor::Config *config,
+    PaddlePredictor::Config *config, PaddlePredictor::Config *config1,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const std::vector<std::string> &outputs_name) {
   int batch_size = FLAGS_batch_size;
@@ -544,8 +544,8 @@ void CompareAnalysisAndZeroCopy(
   predictor->Run(inputs[0], &analysis_outputs, batch_size);
   // analysis + zero_copy
   std::vector<ZeroCopyTensor> zerocopy_outputs;
-  reinterpret_cast<AnalysisConfig *>(config)->SwitchUseFeedFetchOps(false);
-  predictor = CreateTestPredictor(config, true);
+  reinterpret_cast<AnalysisConfig *>(config1)->SwitchUseFeedFetchOps(false);
+  predictor = CreateTestPredictor(config1, true);
   ConvertPaddleTensorToZeroCopyTensor(predictor.get(), inputs[0]);
   predictor->ZeroCopyRun();
   for (size_t i = 0; i < outputs_name.size(); i++) {
