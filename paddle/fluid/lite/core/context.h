@@ -51,7 +51,7 @@ class Context<TargetType::kHost> {
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {}
 
-  void CopyShared(const HostContext* ctx) {}
+  void CopySharedFrom(const HostContext& ctx) {}
 
   std::string name() const { return "HostContext"; }
 };
@@ -70,7 +70,7 @@ class Context<TargetType::kARM> {
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() { DeviceInfo::Init(); }
 
-  void CopyShared(const ARMContext* ctx) {}
+  void CopySharedFrom(const ARMContext& ctx) {}
 
   void SetRunMode(PowerMode mode, int threads);
   void SetCache(int l1size, int l2size, int l3size);
@@ -115,10 +115,9 @@ class Context<TargetType::kCUDA> {
     cublas_fp32_ = std::make_shared<lite::cuda::Blas<float>>();
   }
 
-  void CopyShared(const CUDAContext* ctx) {
-    CHECK(ctx);
-    CHECK(cublas_fp32_) << "cublas_fp32 should be set first";
-    ctx->cublas_fp32_ = cublas_fp32_;
+  void CopySharedFrom(const CUDAContext& ctx) {
+    CHECK(ctx.cublas_fp32()) << "cublas_fp32 should be set first";
+    cublas_fp32_ = ctx.cublas_fp32();
   }
 
   const cudaStream_t exec_stream() { return exec_stream_; }
@@ -176,7 +175,7 @@ class Context<TargetType::kX86> {
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {}
 
-  void CopyShared(const X86Context* ctx) {}
+  void CopySharedFrom(const X86Context& ctx) {}
 
   const device_ctx_t* x86_device_context() { return x86_device_context_.get(); }
   void SetX86DeviceContext(std::unique_ptr<device_ctx_t>&& ctx) {
@@ -231,25 +230,25 @@ class ContextScheduler {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
     switch (target) {
       case TARGET(kHost):
-        kernel_contexts_[TargetType::kHost].As<HostContext>().CopyShared(
-            &ctx->As<HostContext>());
+        ctx->As<HostContext>().CopySharedFrom(
+            kernel_contexts_[TargetType::kHost].As<HostContext>());
         break;
 #ifdef LITE_WITH_X86
       case TARGET(kX86):
-        kernel_contexts_[TargetType::kX86].As<X86Context>().CopyShared(
-            &ctx->As<X86Context>());
+        ctx->As<X86Context>().CopySharedFrom(
+            kernel_contexts_[TargetType::kX86].As<X86Context>());
         break;
 #endif
 #ifdef LITE_WITH_CUDA
       case TARGET(kCUDA):
-        kernel_contexts_[TargetType::kCUDA].As<CUDAContext>().CopyShared(
-            &ctx->As<CUDAContext>());
+        ctx->As<CUDAContext>().CopySharedFrom(
+            kernel_contexts_[TargetType::kCUDA].As<CUDAContext>());
         break;
 #endif
 #ifdef LITE_WITH_ARM
       case TARGET(kARM):
-        kernel_contexts_[TargetType::kARM].As<ARMContext>().CopyShared(
-            &ctx->As<ARMContext>());
+        ctx->As<ARMContext>().CopySharedFrom(
+            kernel_contexts_[TargetType::kARM].As<ARMContext>());
         break;
 #endif
       default:

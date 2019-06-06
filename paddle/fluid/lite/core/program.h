@@ -16,6 +16,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
@@ -37,9 +38,10 @@ static const char kKernelTypeAttr[] = "__@kernel_type_attr@__";
 // - main block, which is a list of OpLite
 // - scope: which contains all the weights
 struct Program {
-  std::list<std::string> tmp_vars;
-  std::list<std::string> weights;
+  // std::list<std::string> tmp_vars;
+  // std::list<std::string> weights;
   std::list<std::shared_ptr<OpLite>> ops;
+  std::list<std::shared_ptr<VarInfo>> vars;
   // the scope to run the kernels, NOTE this is the execution scope.
   std::shared_ptr<lite::Scope> scope;
   std::vector<Place> valid_places;
@@ -71,7 +73,6 @@ struct Program {
       pb::OpDesc op_desc(proto_op_desc);
       auto op_type = op_desc.Type();
       // if (op_type == "feed" || op_type == "fetch") continue;
-      VLOG(4) << "create Op [" << op_type << "]";
       LOG(INFO) << "create Op [" << op_type << "]";
       auto op = LiteOpRegistry::Global().Create(op_type);
       CHECK(op) << "no Op found for " << op_type;
@@ -91,18 +92,27 @@ struct Program {
     scope->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
     scope->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
 
-    tmp_vars.push_back("feed");
-    tmp_vars.push_back("fetch");
+    // tmp_vars.push_back("feed");
+    // tmp_vars.push_back("fetch");
     CHECK(!program.blocks().empty());
     for (auto proto_var_desc : program.blocks(0).vars()) {
-      lite::VarDesc var_desc(proto_var_desc);
-      if (!var_desc.Persistable()) {
-        tmp_vars.push_back(var_desc.Name());
-        exec_scope->Var(var_desc.Name());
-      } else {
-        if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
-        weights.push_back(var_desc.Name());
+      pb::VarDesc pb_var_desc(proto_var_desc);
+      auto name = pb_var_desc.Name();
+      cpp::VarDesc cpp_var_desc;
+      TransformVarDescPbToCpp(pb_var_desc, &cpp_var_desc);
+      vars.emplace_back(new VarInfo(cpp_var_desc));
+
+      if (!vars.back()->Persistable()) {
+        exec_scope->Var(name);
       }
+
+      // if (!var_desc.Persistable()) {
+      //  tmp_vars.push_back(cpp_var_desc.Name());
+      //  exec_scope->Var(cpp_var_desc.Name());
+      //} else {
+      //  if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
+      //  weights.push_back(cpp_var_desc.Name());
+      //}
     }
   }
 };

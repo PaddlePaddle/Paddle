@@ -15,9 +15,11 @@
 #pragma once
 
 #include <algorithm>
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/framework.pb.h"
+#include "paddle/fluid/lite/model_parser/desc_apis.h"
 #include "paddle/fluid/lite/utils/cp_logging.h"
 
 namespace paddle {
@@ -56,8 +58,13 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
   }
 }
 
-class VarDesc {
+class VarDesc : public VarDescAPI {
  public:
+  using comm2pb_type_t =
+      std::map<VarDescAPI::VarDataType, framework::proto::VarType::Type>;
+  using pb2comm_type_t =
+      std::map<framework::proto::VarType::Type, VarDescAPI::VarDataType>;
+
   explicit VarDesc(const std::string &name) {
     desc_.set_name(name);
     // TODO(paddle-dev): Why default to lodtensor.
@@ -68,21 +75,21 @@ class VarDesc {
 
   framework::proto::VarDesc *Proto() { return &desc_; }
 
-  std::string Name() const { return desc_.name(); }
+  std::string Name() const override { return desc_.name(); }
 
-  void SetName(std::string name) { desc_.set_name(name); }
+  void SetName(const std::string &name) override { desc_.set_name(name); }
 
   void SetTensorDescNum(size_t num);
 
   size_t GetTensorDescNum() const;
 
-  void SetShape(const std::vector<int64_t> &dims);
+  void SetShape(const std::vector<int64_t> &dims) override;
 
   void SetShapes(const std::vector<std::vector<int64_t>> &multiple_dims);
 
-  std::vector<int64_t> GetShape() const;
+  std::vector<int64_t> Shape() const override;
 
-  std::vector<std::vector<int64_t>> GetShapes() const;
+  std::vector<std::vector<int64_t>> Shapes() const;
 
   void SetDataType(framework::proto::VarType::Type data_type);
 
@@ -105,17 +112,29 @@ class VarDesc {
 
   void SetType(framework::proto::VarType::Type type);
 
-  bool Persistable() const { return desc_.persistable(); }
+  bool Persistable() const override { return desc_.persistable(); }
 
-  void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
+  void SetPersistable(bool persistable) override {
+    desc_.set_persistable(persistable);
+  }
+
+  VarDataType Type() const override;
+
+  void SetType(VarDataType type) override;
+
+  VarDataType DataType() const override;
+
+  void SetDataType(VarDataType type) override;
 
  private:
   const framework::proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<framework::proto::VarType::TensorDesc> tensor_descs() const;
   framework::proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<framework::proto::VarType::TensorDesc *> mutable_tensor_descs();
-
   framework::proto::VarDesc desc_;
+
+  static comm2pb_type_t comm2pb_type_map_;
+  static pb2comm_type_t pb2comm_type_map_;
 };
 
 }  // namespace pb

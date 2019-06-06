@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/generate_program_pass.h"
+#include "paddle/fluid/lite/core/mir/memory_optimize_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
@@ -36,6 +37,7 @@ class Optimizer {
  public:
   void Run(Program&& program, const std::vector<Place>& valid_places,
            core::KernelPickFactor kernel_pick_factor,
+           mir::MemoryOptimizeKind mem_opt_kind,
            const std::vector<std::string>& passes = {}) {
     program_ = &program;
     valid_places_ = valid_places;
@@ -44,6 +46,7 @@ class Optimizer {
     graph_.reset(new mir::SSAGraph);
     graph_->Build(program, valid_places);
     SpecifyKernelPickTactic(kernel_pick_factor);
+    SpecifyMemoryOptimizeKind(mem_opt_kind);
     InitTargetTypeTransformPass();
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
@@ -59,6 +62,7 @@ class Optimizer {
           "io_copy_kernel_pick_pass",       //
           "variable_place_inference_pass",  //
           "runtime_context_assign_pass",    //
+          "memory_optimize_pass",           //
       }});
     } else {
       RunPasses(passes);
@@ -112,6 +116,7 @@ class Optimizer {
 
  protected:
   void SpecifyKernelPickTactic(core::KernelPickFactor factor);
+  void SpecifyMemoryOptimizeKind(mir::MemoryOptimizeKind opt_kind);
 
   // Specify the passes and run them.
   void RunPasses(const std::vector<std::string>& passes) {

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <list>
 #include <map>
 #include <memory>
@@ -24,6 +25,7 @@
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/model_parser/cpp/op_desc.h"
+#include "paddle/fluid/lite/model_parser/cpp/var_desc.h"
 
 namespace paddle {
 namespace lite {
@@ -146,8 +148,8 @@ class OpLite : public Registry {
  */
 class OpInfo : public cpp::OpDesc {
  public:
-  OpInfo(const OpInfo &) = default;
-  OpInfo(const cpp::OpDesc &other) : cpp::OpDesc(other) {}
+  explicit OpInfo(const OpInfo &) = default;
+  explicit OpInfo(const cpp::OpDesc &other) : cpp::OpDesc(other) {}
 
   // Collect all the input variable's name.
   std::vector<std::string> input_names() const {
@@ -199,6 +201,45 @@ class OpInfo : public cpp::OpDesc {
     }
     return false;
   }
+};
+
+/*
+ * Variable Information, such as some description.
+ */
+class VarInfo : public cpp::VarDesc {
+ public:
+  explicit VarInfo(const VarInfo &) = default;
+  explicit VarInfo(const cpp::VarDesc &other) : cpp::VarDesc(other) {}
+
+  int data_size() const {
+    auto shape = Shape();
+    for (auto &d : shape) {
+      if (d < 0) d = 1;
+    }
+    int size =
+        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+    return size;
+  }
+
+  int data_type_space() const {
+    switch (data_type_) {
+      case VarDataType::BOOL:
+        return sizeof(bool);
+      case VarDataType::FP32:
+        return sizeof(float);
+      case VarDataType::INT32:
+        return sizeof(int32_t);
+      case VarDataType::INT64:
+        return sizeof(int64_t);
+      default:
+        LOG(FATAL) << "Unknown data type";
+    }
+  }
+
+  int space_size() const { return data_size() * data_type_space(); }
+
+  /// Alais of Shape
+  std::vector<int64_t> dim() { return Shape(); }
 };
 
 }  // namespace lite
