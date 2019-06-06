@@ -273,9 +273,9 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   {
     // Check CUDA/CUDNN version compatiblity
     auto local_cuda_version =
-        (driver_version_ / 1000) + (driver_version_ % 100) / 10;
+        (driver_version_ / 1000) * 10 + (driver_version_ % 100) / 10;
     auto compile_cuda_version =
-        (CUDA_VERSION / 1000) + (CUDA_VERSION % 100) / 10;
+        (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
           << "WARNING: device: " << place_.device
