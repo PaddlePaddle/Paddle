@@ -37,7 +37,7 @@ using anakin::OpRunType;
 template <typename T, Precision P, OpRunType R>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
-  PaddleInferenceAnakinPredictor() : config_() { this->InitEnv(); }
+  PaddleInferenceAnakinPredictor() = default;
 
   explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config)
       : config_(config) {
@@ -79,7 +79,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
 #ifdef ANAKIN_MLU_PLACE
 template <Precision P, OpRunType R>
-class PaddleInferenceAnakinMLUPredictor
+class PaddleInferenceAnakinMLUPredictor final
     : public PaddleInferenceAnakinPredictor<anakin::MLU, P, R> {
  public:
   explicit PaddleInferenceAnakinMLUPredictor(const AnakinConfig& config) {

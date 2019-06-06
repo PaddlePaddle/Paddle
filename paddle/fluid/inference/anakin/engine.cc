@@ -46,10 +46,9 @@ AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
       max_input_shape_(max_input_shape),
       program_inputs_(program_inputs),
       auto_config_layout_(auto_config_layout) {
-  std::call_once(init_anakin_, [this]() {
-    ::anakin::TargetWrapper<TargetT>::set_device(device_);
-    ::anakin::Env<TargetT>::env_init();
-  });
+  ::anakin::TargetWrapper<TargetT>::set_device(device_);
+  std::call_once(init_anakin_,
+                 [this]() { ::anakin::Env<TargetT>::env_init(); });
   graph_.reset(new AnakinGraphT<TargetT, PrecisionType>());
   net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary));
 }

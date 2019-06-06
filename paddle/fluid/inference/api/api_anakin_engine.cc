@@ -34,8 +34,8 @@ extern std::once_flag PaddleInferenceAnakinPredictor<T, P, R>::init_anakin_;
 
 template <typename T, Precision P, OpRunType R>
 void PaddleInferenceAnakinPredictor<T, P, R>::InitEnv() {
+  anakin::TargetWrapper<T>::set_device(this->config_.device_id);
   std::call_once(this->init_anakin_, [this]() {
-    anakin::TargetWrapper<T>::set_device(this->config_.device_id);
     anakin::Env<T>::env_init(this->config_.max_stream);
   });
 }
