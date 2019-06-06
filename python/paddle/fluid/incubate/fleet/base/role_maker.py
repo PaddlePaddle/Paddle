@@ -349,9 +349,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
 
 
 class UserDefinedRoleMakerNCCL(RoleMakerBase):
-    def __init__(self,
-                 current_id=0,
-                 server_endpoints=None):
+    def __init__(self, current_id=0, server_endpoints=None):
         """
         UserDefinedRoleMakerNCCL is designed for worker assignment
         under manual for collective mode.
