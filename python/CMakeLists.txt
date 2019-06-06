@@ -17,6 +17,12 @@ if(WITH_AVX AND AVX_FOUND)
     message(WARNING "You are building AVX version without NOAVX core, \
       and the wheel package may fail on NOAVX machine.")
   endif()
+
+  if(NOAVX_CORE_FILE AND NOT EXISTS "${NOAVX_CORE_FILE}")
+    message(FATAL_ERROR "The file ${NOAVX_CORE_FILE} does not exist!")
+  endif()
+
+  set(HAS_NOAVX_CORE ON)
 else()
   set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_noavx")
 endif()
@@ -28,13 +34,35 @@ IF(WIN32)
     # Python would use the .pyd by default under Windows series platform
     set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
     set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
+    set(NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)
 ELSE()
     set(FLUID_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}.so)
+    set(NOAVX_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/core_noavx.so)
 ENDIF()
+
+set(FLUID_CORE_DEPS ${FLUID_CORE})
+
+if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
+  get_filename_component(NOAVX_CORE_NAME ${NOAVX_CORE_FILE} NAME)
+  get_filename_component(NOAVX_CORE_EXT ${NOAVX_CORE_FILE} EXT)
+  if(WIN32)
+    if(NOT NOAVX_CORE_EXT STREQUAL ".pyd")
+      message(FATAL_ERROR "Wrong file ${NOAVX_CORE_NAME}, the ext does not match windows *.pyd!")
+    endif()
+  else()
+    if(NOT NOAVX_CORE_EXT STREQUAL ".so")
+      message(FATAL_ERROR "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.so!")
+    endif()
+  endif()
+  add_custom_command(OUTPUT ${NOAVX_CORE}
+    COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${NOAVX_CORE} DEPENDS paddle_pybind)
+  set(FLUID_CORE_DEPS "${FLUID_CORE_DEPS} ${NOAVX_CORE}")
+endif()
+
 add_custom_command(OUTPUT ${FLUID_CORE}
         COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
         DEPENDS paddle_pybind)
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE})
+add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE_DEPS})
 
 IF(WIN32)
     add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
