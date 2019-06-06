@@ -55,7 +55,7 @@ class BackWardOpDepsPass : public ir::Pass {
       if (!node->Op()) continue;
 
       GetBackWardOpHandles(node, &backward_op_handles, &params_grads);
-      GetOptHandles(node, &all_opt_handles);
+      GetOptimizerOpHandles(node, &all_opt_handles);
     }
 
     VLOG(10) << "backward_op_handles size:" << backward_op_handles.size()
@@ -67,7 +67,7 @@ class BackWardOpDepsPass : public ir::Pass {
     }
 
     std::vector<details::OpHandleBase*> opt_handles;
-    GetHeadOptHandles(all_opt_handles, &opt_handles, params_grads);
+    GetOptimizerHandlesRoot(all_opt_handles, &opt_handles, params_grads);
 
     if (opt_handles.size() <= 1) {
       VLOG(10) << "need not backward_op_deps_pass";
@@ -84,9 +84,19 @@ class BackWardOpDepsPass : public ir::Pass {
            opt_handles[0]);
   }
 
-  void GetHeadOptHandles(const std::vector<details::OpHandleBase*>& ops,
-                         std::vector<details::OpHandleBase*>* r,
-                         const details::ParamsAndGrads& params_grads) const {
+  /*
+   * When the backward ophandles complete, the optimizer ophandle's inputs var
+   * are ready.
+   * Since the optimizer ophandles can be seen as graphs which each of them
+   * doesn't
+   * connect to each other, they can run parallelly or by a specified order,
+   * such as by the grads generated order.
+   * This function will get these graphs' root.
+   */
+  void GetOptimizerHandlesRoot(
+      const std::vector<details::OpHandleBase*>& ops,
+      std::vector<details::OpHandleBase*>* r,
+      const details::ParamsAndGrads& params_grads) const {
     std::unordered_set<details::OpHandleBase*> visit;
     for (auto op : ops) {
       int order = 0;
@@ -200,8 +210,8 @@ class BackWardOpDepsPass : public ir::Pass {
     }
   }
 
-  void GetOptHandles(ir::Node* node,
-                     std::vector<details::OpHandleBase*>* opt_handles) const {
+  void GetOptimizerOpHandles(
+      ir::Node* node, std::vector<details::OpHandleBase*>* opt_handles) const {
     try {
       bool is_opt_op =
           static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
