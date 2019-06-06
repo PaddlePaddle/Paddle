@@ -90,18 +90,19 @@ def load_persistables(dirname='save_dir'):
 
     Args:
         dirname(str): The directory path. default is save_dir
-        optimizer(Optimizer): Optimizer to be saved
 
     Returns:
         dict: The parameter-dict resumed from file
+        optimizer dict: The optimizer
 
     Examples:
         .. code-block:: python
             my_layer = layer(fluid.Layer)
             param_path = "./my_paddle_model"
-
-            param_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            param_dict, optimizer_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
             param_1 = param_dict['PtbModel_0.w_1']
+            sgd.load(optimizer_dict)
 
         """
     return _load_var_from_file(dirname)
@@ -217,8 +218,10 @@ def _load_var_from_file(file_dir):
                                   file_dir, "optimizers",
                                   os.path.normpath(str(optimizer._name))))
     if len(load_optimizer_map) == 0:
+        print(
+            "No optimizer loaded. If you didn't save optimizer, please ignore this. The program can still work with new optimizer. "
+        )
         pass
-        # warnings.warn("No optimizer loaded")
 
     return load_var_map, load_optimizer_map
 
