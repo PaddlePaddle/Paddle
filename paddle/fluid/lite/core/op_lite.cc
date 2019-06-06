@@ -62,7 +62,7 @@ bool OpLite::Run() {
   CHECK(kernel_);
   SyncInputEvents();
 
-  kernel_->Run();
+  kernel_->Launch();
 
   RecordOutputEvents();
   return true;
