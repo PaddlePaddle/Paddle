@@ -117,6 +117,12 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Concat Operator.
 

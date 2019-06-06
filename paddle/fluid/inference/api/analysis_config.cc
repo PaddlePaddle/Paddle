@@ -107,6 +107,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  // NGRAPH related.
+  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -170,11 +172,20 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
-std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
-    const {
+void AnalysisConfig::EnableNgraph() {
+#ifdef PADDLE_WITH_NGRAPH
+  pass_builder()->EnableNgraph();
+  use_ngraph_ = true;
+#else
+  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+  use_ngraph_ = false;
+#endif
+}
+
+MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
-  return mkldnn_quantizer_config_;
+  return mkldnn_quantizer_config_.get();
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
@@ -236,6 +247,20 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       pass_builder()->AppendPass(pass);
     }
+  }
+
+  if (use_ngraph_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableNgraph() only works when IR optimization is enabled.";
+    }
+#ifdef PADDLE_WITH_NGRAPH
+    pass_builder()->EnableNgraph();
+    use_ngraph_ = true;
+#else
+    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+    use_ngraph_ = false;
+#endif
   }
 
   if (use_mkldnn_) {
@@ -311,6 +336,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << enable_memory_optim_;
   ss << static_memory_optim_;
   ss << static_memory_optim_force_update_;
+
+  ss << use_ngraph_;
 
   ss << use_mkldnn_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
