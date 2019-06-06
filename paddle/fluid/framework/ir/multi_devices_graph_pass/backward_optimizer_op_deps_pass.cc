@@ -86,12 +86,10 @@ class BackWardOpDepsPass : public ir::Pass {
 
   /*
    * When the backward ophandles complete, the optimizer ophandle's inputs var
-   * are ready.
-   * Since the optimizer ophandles can be seen as graphs which each of them
-   * doesn't
-   * connect to each other, they can run parallelly or by a specified order,
-   * such as by the grads generated order.
-   * This function will get these graphs' root.
+   * are ready.Since the optimizer ophandles can be seen as graphs which each of
+   * them doesn't connect to each other, they can run parallelly or by a
+   * specified order, such as by the grads generated order. This function will
+   * get these graphs' root.
    */
   void GetOptimizerHandlesRoot(
       const std::vector<details::OpHandleBase*>& ops,
