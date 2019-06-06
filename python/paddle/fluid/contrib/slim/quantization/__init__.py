@@ -18,5 +18,8 @@ from . import quantization_pass
 from .quantization_pass import *
 from . import quantization_strategy
 from .quantization_strategy import *
+from . import mkldnn_post_training_strategy
+from .mkldnn_post_training_strategy import *
 
 __all__ = quantization_pass.__all__ + quantization_strategy.__all__
+__all__ += mkldnn_post_training_strategy.__all__
