@@ -93,27 +93,19 @@ std::vector<mir::Node *> SSAGraph::StmtTopologicalOrder() {
   return res;
 }
 
-void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
-  for (const auto &name : program.tmp_vars()) {
+void SSAGraph::GraphCreateVarNodes(const Program &program) {
+  for (auto var : program.vars()) {
+    auto name = var->Name();
     CHECK(!arguments_.count(name)) << "duplicate creating temp variable: "
                                    << name;
     VLOG(5) << "create arg node " << name;
     node_storage_.emplace_back();
     auto &new_node = node_storage_.back();
-    new_node.AsArg(name);
-    arguments_[name] = &new_node;
-  }
-}
-
-void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
-  // create weight nodes.
-  for (const auto &name : program.weights()) {
-    CHECK(!arguments_.count(name)) << "duplicate creating weight variable: "
-                                   << name;
-    VLOG(5) << "create arg node " << name;
-    node_storage_.emplace_back();
-    auto &new_node = node_storage_.back();
-    new_node.AsArg(name);
+    auto &arg = new_node.AsArg(name);
+    arg.var_info_ = var;
+    if (name != "feed" && name != "fetch" && var->Persistable()) {
+      arg.is_weight = true;
+    }
     arguments_[name] = &new_node;
   }
 }
@@ -135,9 +127,11 @@ Node *SSAGraph::GraphCreateInstructNode(
 void SSAGraph::Build(const Program &program,
                      const std::vector<Place> &valid_places) {
   CHECK(node_storage_.empty());
-  GraphCreateTmpVarNodes(program);
-  GraphCreateWeightVarNodes(program);
+  GraphCreateVarNodes(program);
   CHECK(CheckNodesRoleSet());
+
+  CHECK(program.exec_scope()) << "Program Execution Scope must set first.";
+  scope_ = program.exec_scope();
 
   for (auto &op : program.ops()) {
     auto *op_node = GraphCreateInstructNode(op, valid_places);
@@ -157,7 +151,6 @@ void SSAGraph::Build(const Program &program,
     CHECK(CheckLinksRoleSet());
   }
 
-  MarkArgumentWeights(program);
   CheckValid();
 }
 

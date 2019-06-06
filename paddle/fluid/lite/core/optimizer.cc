@@ -30,5 +30,13 @@ void Optimizer::SpecifyKernelPickTactic(core::KernelPickFactor factor) {
   *pass->mutable_kernel_pick_factors() = factor;
 }
 
+void Optimizer::SpecifyMemoryOptimizeKind(mir::MemoryOptimizeKind opt_kind) {
+  auto* pass = mir::PassManager::Global().LookUp<mir::MemoryOptimizePass>(
+      "memory_optimize_pass");
+  CHECK(pass);
+
+  *pass->mutable_memory_optimize_kind() = opt_kind;
+}
+
 }  // namespace lite
 }  // namespace paddle

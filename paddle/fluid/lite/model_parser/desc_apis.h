@@ -81,5 +81,69 @@ class OpDescAPI {
   T GetAttr(const std::string& name) const;
 };
 
+/*
+ * Compatible interfaces for all the different kinds of vardesc. All the VarDesc
+ * classes should implement this.
+ * NOTE Some interfaces are weried, we remain them unchanged to keep compatible
+ * with framework::VarDesc in Fluid framework.
+ */
+class VarDescAPI {
+ public:
+  enum class VarDataType {
+    // Pod Types
+    BOOL = 0,
+    INT16,
+    INT32,
+    INT64,
+    FP16,
+    FP32,
+    FP64,
+    // Tensor<size_t> is used in C++.
+    SIZE_T,
+    UINT8,
+    INT8,
+    // Other types that may need additional descriptions
+    LOD_TENSOR,
+    SELECTED_ROWS,
+    FEED_MINIBATCH,
+    FETCH_LIST,
+    STEP_SCOPES,
+    LOD_RANK_TABLE,
+    LOD_TENSOR_ARRAY,
+    PLACE_LIST,
+    READER,
+    // Any runtime decided variable type is raw
+    // raw variables should manage their own allocations
+    // in operators like nccl_op
+    RAW,
+    TUPLE,
+    // NOTE: The UNK is not a Enum member in pb::VarType
+    UNK
+  };
+
+  virtual ~VarDescAPI() = default;
+
+  /// Get var's name.
+  virtual std::string Name() const = 0;
+  /// Set var's name.
+  virtual void SetName(const std::string& name) = 0;
+  /// Get persistable.
+  virtual bool Persistable() const = 0;
+  /// Set persistable.
+  virtual void SetPersistable(bool persistable) = 0;
+  /// Get shape.
+  virtual std::vector<int64_t> Shape() const = 0;
+  /// Set shape
+  virtual void SetShape(const std::vector<int64_t>& shape) = 0;
+  /// Get type
+  virtual VarDataType Type() const = 0;
+  /// Set type
+  virtual void SetType(VarDataType type) = 0;
+  /// Get data type
+  virtual VarDataType DataType() const = 0;
+  /// Set type
+  virtual void SetDataType(VarDataType type) = 0;
+};
+
 }  // namespace lite
 }  // namespace paddle

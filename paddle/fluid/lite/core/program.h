@@ -16,6 +16,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
@@ -53,9 +54,8 @@ struct Program {
     return res;
   }
 
-  const std::list<std::string>& weights() const { return weights_; }
-  const std::list<std::string>& tmp_vars() const { return tmp_vars_; }
   const std::list<std::shared_ptr<OpLite>>& ops() const { return ops_; }
+  const std::list<std::shared_ptr<VarInfo>>& vars() const { return vars_; }
   lite::Scope* exec_scope() { return exec_scope_; }
 
  private:
@@ -65,9 +65,8 @@ struct Program {
   void PrepareWorkspace(const framework::proto::ProgramDesc& program);
 
  private:
-  std::list<std::string> tmp_vars_;
-  std::list<std::string> weights_;
   std::list<std::shared_ptr<OpLite>> ops_;
+  std::list<std::shared_ptr<VarInfo>> vars_;
   // the scope to run the kernels, NOTE this is the execution scope.
   std::shared_ptr<lite::Scope> scope_;
   std::vector<Place> valid_places_;

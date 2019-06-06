@@ -80,24 +80,23 @@ void Program::Build(const framework::proto::ProgramDesc &program) {
   }
 }
 
-void Program::PrepareWorkspace(const framework::proto::ProgramDesc &program) {
+void Program::PrepareWorkspace(const framework::proto::ProgramDesc& program) {
   CHECK(!exec_scope_) << "Duplicate PrepareWorkspace found";
-  exec_scope_ = &scope_->NewScope();
+  exec_scope_ = &scope->NewScope();
   // Create Feed and Fetch var.
   scope_->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
   scope_->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
 
-  tmp_vars_.push_back("feed");
-  tmp_vars_.push_back("fetch");
   CHECK(!program.blocks().empty());
   for (auto proto_var_desc : program.blocks(0).vars()) {
-    lite::VarDesc var_desc(proto_var_desc);
-    if (!var_desc.Persistable()) {
-      tmp_vars_.push_back(var_desc.Name());
-      exec_scope_->Var(var_desc.Name());
-    } else {
-      if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
-      weights_.push_back(var_desc.Name());
+    pb::VarDesc pb_var_desc(proto_var_desc);
+    auto name = pb_var_desc.Name();
+    cpp::VarDesc cpp_var_desc;
+    TransformVarDescPbToCpp(pb_var_desc, &cpp_var_desc);
+    vars_.emplace_back(new VarInfo(cpp_var_desc));
+
+    if (!vars_.back()->Persistable()) {
+      exec_scope_->Var(name);
     }
   }
 }

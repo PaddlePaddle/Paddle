@@ -11,7 +11,9 @@ if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
 endif()
 
 
-cc_library(compatible_pb_lite SRCS compatible_pb.cc DEPS op_desc_lite framework_proto_lite var_desc_lite)
+cc_library(compatible_pb_lite 
+           SRCS compatible_pb.cc 
+           DEPS op_desc_lite framework_proto_lite var_desc_lite cpp_op_desc_lite cpp_var_desc_lite)
 
 set(model_parser_deps variable_lite scope_lite ${tensor_lite} scope_lite
                       target_wrapper_host
@@ -23,7 +25,8 @@ if (LITE_WITH_CUDA)
 endif()
 cc_library(model_parser_lite SRCS model_parser.cc DEPS ${model_parser_deps})
 
-lite_cc_test(test_op_desc_lite SRCS op_desc_test.cc DEPS cpp_op_desc_lite op_desc_lite compatible_pb_lite)
+lite_cc_test(test_op_desc_lite SRCS op_desc_test.cc DEPS any_lite compatible_pb_lite)
+lite_cc_test(test_var_desc_lite SRCS var_desc_test.cc DEPS compatible_pb_lite)
 
 add_subdirectory(pb)
 add_subdirectory(cpp)

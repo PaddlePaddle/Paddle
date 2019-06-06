@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/model_parser/cpp/op_desc.h"
+#include "paddle/fluid/lite/model_parser/cpp/var_desc.h"
 #include "paddle/fluid/lite/model_parser/pb/op_desc.h"
 #include "paddle/fluid/lite/model_parser/pb/var_desc.h"
 
@@ -42,6 +43,14 @@ void TransformOpDescPbToCpp(const pb::OpDesc& pb_desc, cpp::OpDesc* cpp_desc);
 
 /// Transform an OpDesc from cpp to pb format.
 void TransformOpDescCppToPb(const cpp::OpDesc& cpp_desc, pb::OpDesc* pb_desc);
+
+/// Transform an VarDesc from pb to cpp format.
+void TransformVarDescPbToCpp(const pb::VarDesc& pb_desc,
+                             cpp::VarDesc* cpp_desc);
+
+/// Transform an VarDesc from cpp to pb format.
+void TransformVarDescCppToPb(const cpp::VarDesc& cpp_desc,
+                             pb::VarDesc* pb_desc);
 
 }  // namespace lite
 }  // namespace paddle

@@ -19,6 +19,68 @@ namespace lite {
 namespace pb {
 
 using namespace framework;  // NOLINT
+using comm2pb_type_t =
+    std::map<VarDescAPI::VarDataType, framework::proto::VarType::Type>;
+using pb2comm_type_t =
+    std::map<framework::proto::VarType::Type, VarDescAPI::VarDataType>;
+
+comm2pb_type_t VarDesc::comm2pb_type_map_ = comm2pb_type_t({
+#define INSERT_TYPE_PAIR_COMM2PB_ONCE(name__) \
+  { VarDescAPI::VarDataType::name__, framework::proto::VarType::name__ }
+
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(BOOL),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(INT16),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(INT32),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(INT64),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(FP16),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(FP32),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(FP64),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(SIZE_T),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(UINT8),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(INT8),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(LOD_TENSOR),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(SELECTED_ROWS),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(FEED_MINIBATCH),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(FETCH_LIST),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(STEP_SCOPES),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(LOD_RANK_TABLE),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(LOD_TENSOR_ARRAY),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(PLACE_LIST),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(READER),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(RAW),
+    INSERT_TYPE_PAIR_COMM2PB_ONCE(TUPLE),
+
+#undef INSERT_TYPE_PAIR_COMM2PB_ONCE
+});
+
+pb2comm_type_t VarDesc::pb2comm_type_map_ = pb2comm_type_t({
+#define INSERT_TYPE_PAIR_PB2COMM_ONCE(name__) \
+  { framework::proto::VarType::name__, VarDescAPI::VarDataType::name__ }
+
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(BOOL),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(INT16),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(INT32),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(INT64),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(FP16),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(FP32),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(FP64),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(SIZE_T),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(UINT8),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(INT8),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(LOD_TENSOR),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(SELECTED_ROWS),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(FEED_MINIBATCH),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(FETCH_LIST),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(STEP_SCOPES),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(LOD_RANK_TABLE),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(LOD_TENSOR_ARRAY),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(PLACE_LIST),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(READER),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(RAW),
+    INSERT_TYPE_PAIR_PB2COMM_ONCE(TUPLE),
+
+#undef INSERT_TYPE_PAIR_PB2COMM_ONCE
+});
 
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 
@@ -75,11 +137,11 @@ void VarDesc::SetShapes(
   }
 }
 
-std::vector<int64_t> VarDesc::GetShape() const {
+std::vector<int64_t> VarDesc::Shape() const {
   return RepeatedToVector(tensor_desc().dims());
 }
 
-std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
+std::vector<std::vector<int64_t>> VarDesc::Shapes() const {
   std::vector<proto::VarType::TensorDesc> descs = tensor_descs();
   std::vector<std::vector<int64_t>> res;
   res.reserve(descs.size());
@@ -264,6 +326,22 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
              "%s."
           << this->Name();
   }
+}
+
+VarDescAPI::VarDataType VarDesc::Type() const {
+  return pb2comm_type_map_.at(GetType());
+}
+
+void VarDesc::SetType(VarDescAPI::VarDataType type) {
+  SetType(comm2pb_type_map_.at(type));
+}
+
+VarDescAPI::VarDataType VarDesc::DataType() const {
+  return pb2comm_type_map_.at(GetDataType());
+}
+
+void VarDesc::SetDataType(VarDescAPI::VarDataType type) {
+  SetDataType(comm2pb_type_map_.at(type));
 }
 
 }  // namespace pb

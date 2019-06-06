@@ -50,7 +50,8 @@ class ExecutorLite {
     optimizer_.KernelPickPreferPlace(prefer_place);
     core::KernelPickFactor factor;
     factor.ConsiderTarget();
-    optimizer_.Run(std::move(program), valid_places, factor);
+    optimizer_.Run(std::move(program), valid_places, factor,
+                   mir::MemoryOptimizeKind::kGreedy);
     program_ = optimizer_.GenRuntimeProgram();
   }
 

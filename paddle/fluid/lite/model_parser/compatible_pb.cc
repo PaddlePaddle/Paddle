@@ -19,31 +19,31 @@
 namespace paddle {
 namespace lite {
 
-void InputsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
+void OpInputsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
   for (const std::string &param : pb_desc.InputArgumentNames()) {
     cpp_desc->SetInput(param, pb_desc.Input(param));
   }
 }
 
-void InputsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
+void OpInputsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
   for (const std::string &param : cpp_desc.InputArgumentNames()) {
     pb_desc->SetInput(param, cpp_desc.Input(param));
   }
 }
 
-void OutputsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
+void OpOutputsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
   for (const std::string &param : pb_desc.OutputArgumentNames()) {
     cpp_desc->SetOutput(param, pb_desc.Output(param));
   }
 }
 
-void OutputsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
+void OpOutputsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
   for (const std::string &param : cpp_desc.OutputArgumentNames()) {
     pb_desc->SetOutput(param, cpp_desc.Output(param));
   }
 }
 
-void AttrsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
+void OpAttrsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
   using AttrType = OpDescAPI::AttrType;
   auto set_attr = [&](const std::string &name, AttrType type) {
     switch (type) {
@@ -83,7 +83,7 @@ void AttrsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
   }
 }
 
-void AttrsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
+void OpAttrsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
   using AttrType = OpDescAPI::AttrType;
   auto set_attr = [&](const std::string &name, AttrType type) {
     switch (type) {
@@ -111,16 +111,41 @@ void AttrsCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
 
 void TransformOpDescPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
   cpp_desc->SetType(pb_desc.Type());
-  InputsPbToCpp(pb_desc, cpp_desc);
-  OutputsPbToCpp(pb_desc, cpp_desc);
-  AttrsPbToCpp(pb_desc, cpp_desc);
+  OpInputsPbToCpp(pb_desc, cpp_desc);
+  OpOutputsPbToCpp(pb_desc, cpp_desc);
+  OpAttrsPbToCpp(pb_desc, cpp_desc);
 }
 
 void TransformOpDescCppToPb(const cpp::OpDesc &cpp_desc, pb::OpDesc *pb_desc) {
   pb_desc->SetType(cpp_desc.Type());
-  InputsCppToPb(cpp_desc, pb_desc);
-  OutputsCppToPb(cpp_desc, pb_desc);
-  AttrsCppToPb(cpp_desc, pb_desc);
+  OpInputsCppToPb(cpp_desc, pb_desc);
+  OpOutputsCppToPb(cpp_desc, pb_desc);
+  OpAttrsCppToPb(cpp_desc, pb_desc);
+}
+
+void TransformVarDescPbToCpp(const pb::VarDesc &pb_desc,
+                             cpp::VarDesc *cpp_desc) {
+  using VarType = lite::VarDescAPI::VarDataType;
+
+#define VarDescCopyOnce(name__) cpp_desc->Set##name__(pb_desc.name__())
+  VarDescCopyOnce(Name);
+  VarDescCopyOnce(Persistable);
+  VarDescCopyOnce(Type);
+  auto type = cpp_desc->Type();
+  if (type == VarType::SELECTED_ROWS || type == VarType::LOD_TENSOR ||
+      type == VarType::LOD_TENSOR_ARRAY) {
+    VarDescCopyOnce(Shape);
+    VarDescCopyOnce(DataType);
+  } else {
+    cpp_desc->SetShape(std::vector<int64_t>({1}));
+    cpp_desc->SetDataType(VarType::UNK);
+  }
+#undef VarDescCopyOnce
+}
+
+void TransformVarDescCppToPb(const cpp::VarDesc &cpp_desc,
+                             pb::VarDesc *pb_desc) {
+  LOG(FATAL) << "Not supported now.";
 }
 
 }  // namespace lite

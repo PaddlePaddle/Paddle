@@ -53,6 +53,11 @@ class Node {
       return op->op_info();
     }
 
+    OpInfo* mutable_op_info() {
+      CHECK(op);
+      return op->mutable_op_info();
+    }
+
     Place place() const {
       CHECK(!valid_kernels.empty());
       return valid_kernels.front()->place();
@@ -75,6 +80,12 @@ class Node {
     // Weight is a special kind of argument, it is marked as weight explicitly
     // so that some weight related optimization can take place.
     bool is_weight{false};
+    std::shared_ptr<VarInfo> var_info_;
+
+    const VarInfo* var_info() {
+      CHECK(var_info_);
+      return var_info_.get();
+    }
   };
 
   Arg& AsArg(const std::string& name) {

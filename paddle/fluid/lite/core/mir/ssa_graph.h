@@ -53,6 +53,8 @@ class SSAGraph : GraphBase {
   const std::list<mir::Node> &nodes() const { return node_storage_; }
   std::list<mir::Node> &mutable_nodes() { return node_storage_; }
 
+  const lite::Scope *scope() { return scope_; }
+
   mir::Node *RetrieveArgument(const std::string &arg);
 
   Node *NewArgumentNode(const std::string &name);
@@ -68,20 +70,12 @@ class SSAGraph : GraphBase {
                                 const std::vector<Place> &valid_places);
 
  private:
-  void GraphCreateTmpVarNodes(const Program &program);
-  void GraphCreateWeightVarNodes(const Program &program);
-
+  void GraphCreateVarNodes(const Program &program);
   // Check the bidirectional connection.
   bool CheckBidirectionalConnection();
   bool CheckNodesRoleSet();
   // Check all the items's role in inlinks and outlinks is set.
   bool CheckLinksRoleSet();
-
-  void MarkArgumentWeights(const Program &program) {
-    for (const auto &name : program.weights()) {
-      arguments_[name]->AsArg().is_weight = true;
-    }
-  }
 
   // Build operator inlink edge table.
   std::map<mir::Node *, std::set<mir::Node *>> BuildOperationAdjList();
@@ -93,6 +87,7 @@ class SSAGraph : GraphBase {
  private:
   std::list<mir::Node> node_storage_;
   std::map<std::string, mir::Node *> arguments_;
+  lite::Scope *scope_;
 };
 
 // Remove the link between a -> b.

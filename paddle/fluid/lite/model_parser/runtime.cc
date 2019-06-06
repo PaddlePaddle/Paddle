@@ -35,7 +35,7 @@ void OpDesc::Parse(const framework::proto::OpDesc& desc) {
   // prepare outputs
   for (const auto& output : desc.inputs()) {
     for (const auto& arg : output.arguments()) {
-      inputs[output.parameter()].push_back(arg);
+      outputs[output.parameter()].push_back(arg);
     }
   }
 
