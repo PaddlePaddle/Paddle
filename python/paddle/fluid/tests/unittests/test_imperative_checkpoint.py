@@ -144,8 +144,8 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     avg_loss.backward()
                     sgd.minimize(avg_loss)
-                    fluid.dygraph.save_persistables(mnist.state_dict(), [sgd],
-                                                    "save_dir")
+                    fluid.dygraph.save_persistables(mnist.state_dict(),
+                                                    "save_dir", [sgd])
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():

@@ -24,13 +24,10 @@ import warnings
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(model_dict,
-                      optimizer=None,
-                      dirname='save_dir',
-                      filename=None):
+def save_persistables(model_dict, dirname='save_dir', optimizers=None):
     """
     This function filters out all variables in layer.parameters from the
-    give `layer` and then trys to load these variables from the folder
+    give `layer`, and optimizer's learning rate decay and then trys to load these variables from the folder
     `dirname` or the file `filename`.
 
     Use the `dirname` to specify the folder where persistable variables were
@@ -43,6 +40,7 @@ def save_persistables(model_dict,
                                     be saved. If it is None, nothing
                                     will be deal.
         dirname(str): The directory path.
+        optimizers(fluid.Optimizer|list(fluid.Optimizer)|None): The optimizers to be saved
         filename(str|None): The file which saved all variables. If variables were
                             saved in different files, set it to None.
                             Default: None
@@ -77,7 +75,7 @@ def save_persistables(model_dict,
                                        layer=ptb_model)
     """
     if isinstance(model_dict, collections.OrderedDict):
-        _save_var_to_file(model_dict, optimizer, dirname, filename)
+        _save_var_to_file(model_dict, optimizers, dirname, None)
 
 
 def load_persistables(dirname='save_dir'):
