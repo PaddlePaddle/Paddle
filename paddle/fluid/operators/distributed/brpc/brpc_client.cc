@@ -365,7 +365,11 @@ bool BRPCClient::Wait() {
   VLOG(9) << "begin to brpcclient wait";
   {
     std::unique_lock<std::mutex> lk(sync_mutex_);
-    sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+    sync_cond_.wait(lk, [this] {
+      int x = req_count_;
+      VLOG(1) << "Wait Count << " << x;
+      return x == 0;
+    });
   }
   VLOG(9) << "end to brpcclient wait";
   return true;

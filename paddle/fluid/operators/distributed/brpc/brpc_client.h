@@ -151,8 +151,6 @@ class BRPCClient : public RPCClient {
   void DecreaseReqCount() {
     int x = --req_count_;
 
-    VLOG(1) << "DecreaseReqCount X: " << x;
-
     if (x <= 0) {
       sync_cond_.notify_all();
     }
