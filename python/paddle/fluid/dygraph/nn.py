@@ -27,8 +27,7 @@ import numpy as np
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
     'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose',
-    'Conv3DTranspose', 'SequenceConv', 'RowConv', 'GroupNorm', 'SpectralNorm',
-    'TreeConv'
+    'Conv3DTranspose', 'RowConv', 'GroupNorm', 'SpectralNorm', 'TreeConv'
 ]
 
 
@@ -341,8 +340,16 @@ class Conv3D(layers.Layer):
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
-          conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
+          import paddle.fluid as fluid
+          import numpy
+
+          with fluid.dygraph.guard():
+              data = numpy.random.random((3, 12, 32, 32)).astype('float32')
+
+              conv3d = fluid.dygraph.nn.Conv3D(
+                    'Conv3D', num_filters=2, filter_size=3, act="relu")
+              ret = conv3d(data)
+
     """
 
     def __init__(self,
@@ -541,12 +548,19 @@ class Conv3DTranspose(layers.Layer):
     Examples:
        .. code-block:: python
 
-          conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose',
-                num_filters=12,
-                filter_size=12,
-                use_cudnn=False)
-          transpose_res = conv3d_transpose(base.to_variable(input_array))
+         import paddle.fluid as fluid
+         import numpy
+
+         with fluid.dygraph.guard():
+             data = numpy.random.random((3, 12, 32, 32)).astype('float32')
+
+             conv3dTranspose = fluid.dygraph.nn.Conv3DTranspose(
+                    'Conv3DTranspose',
+                    num_filters=12,
+                    filter_size=12,
+                    use_cudnn=False)
+             ret = conv3dTranspose(data)
+
     """
 
     def __init__(self,
@@ -1245,7 +1259,13 @@ class Embedding(layers.Layer):
 
 class LayerNorm(layers.Layer):
     """
-    ${comment}
+    Assume feature vectors exist on dimensions
+    `begin_norm_axis ... rank(input)` and calculate the moment statistics along these dimensions for each feature
+    vector `a` with size `H`, then normalize each feature vector using the corresponding
+    statistics. After that, apply learnable gain and bias on the normalized
+    tensor to scale and shift if `scale` and `shift` are set.
+
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
     The formula is as follows:
 
@@ -1290,13 +1310,21 @@ class LayerNorm(layers.Layer):
         act(str): Activation to be applied to the output of layer normalizaiton.
                   Default None.
     Returns:
-        ${y_comment}
+        Result after normalization
 
     Examples:
 
-        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          with fluid.dygraph.guard():
+              x = numpy.random.random((3, 32, 32)).astype('float32')
+              layerNorm = fluid.dygraph.nn.LayerNorm(
+                    'LayerNorm', begin_norm_axis=1)
+              ret = layerNorm(x)
+
     """
 
     def __init__(self,
@@ -1825,7 +1853,15 @@ class BilinearTensorProduct(layers.Layer):
     Examples:
        .. code-block:: python
 
-         tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+         import paddle.fluid as fluid
+         import numpy
+
+         with fluid.dygraph.guard():
+             layer1 = numpy.random.random((5)).astype('float32')
+             layer2 = numpy.random.random((4)).astype('float32')
+             bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
+                    'BilinearTensorProduct', size=1000)
+             ret = bilinearTensorProduct(layer1, layer2)
     """
 
     def __init__(self,
@@ -1988,8 +2024,15 @@ class Conv2DTranspose(layers.Layer):
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+          import paddle.fluid as fluid
+          import numpy
+
+          with fluid.dygraph.guard():
+              data = numpy.random.random((3, 32, 32)).astype('float32')
+              conv2DTranspose = fluid.dygraph.nn.Conv2DTranspose(
+                    'Conv2DTranspose', num_filters=2, filter_size=3)
+              ret = conv2DTranspose(data)
+
     """
 
     def __init__(self,
@@ -2168,6 +2211,49 @@ class SequenceConv(layers.Layer):
 
 
 class RowConv(layers.Layer):
+    """
+    ***Row-convolution operator***
+
+    The row convolution is called lookahead convolution.  This operator was introduced in the following paper for DeepSpeech2:
+    http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+
+    The main motivation is that a bidirectional RNN, useful in DeepSpeech like speech models, learns representation for a sequence by performing a
+    forward and a backward pass through the entire sequence. However, unlike
+    unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
+    and low-latency setting. The lookahead convolution incorporates information
+    from future subsequences in a computationally efficient manner to improve
+    unidirectional recurrent neural networks. The row convolution operator is
+    different from the 1D sequence convolution, and is computed as follows:
+
+    Given an input sequence X of length t and input dimension D, and a filter (W) of size context * D.
+
+    More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
+
+    Args:
+        input (${x_type}): ${x_comment}.
+        future_context_size (int): Future context size. Please note, the shape
+            of convolution kernel is [future_context_size + 1, D].
+        param_attr (ParamAttr): Attributes of parameters, including
+            name, initializer etc.
+        act (str): Non-linear activation to be applied to output variable.
+
+    Returns:
+        the output(Out) is a LodTensor, which supports variable time-length input sequences. The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          with fluid.dygraph.guard():
+              x = numpy.random.random((16)).astype('float32')
+              rowConv = fluid.dygraph.nn.RowConv(
+                    'RowConv', future_context_size=2)
+              ret = rowConv(x)
+
+    """
+
     def __init__(self,
                  name_scope,
                  future_context_size,
@@ -2223,6 +2309,16 @@ class GroupNorm(layers.Layer):
         Returns:
             Variable: A tensor variable which is the result after applying group normalization on the input.
 
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import numpy
+
+              with fluid.dygraph.guard():
+                  x = numpy.random.random((8, 32, 32)).astype('float32')
+                  groupNorm = fluid.dygraph.nn.GroupNorm('GroupNorm', groups=4)
+                  ret = groupNorm(x)
 
     """
 
@@ -2290,6 +2386,63 @@ class GroupNorm(layers.Layer):
 
 
 class SpectralNorm(layers.Layer):
+    """
+    **Spectral Normalization Layer**
+
+    This layer calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` shoule be a positive interger, do following
+    calculations with U and V for :attr:`power_iters` rounds.
+
+    .. math::
+
+        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Args:
+        weight(${weight_type}): ${weight_comment}
+        dim(int): ${dim_comment}
+        power_iters(int): ${power_iters_comment}
+        eps(float): ${eps_comment}
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        Variable: A tensor variable of weight parameters after spectral normalization.
+
+    Examples:
+       .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy
+
+            with fluid.dygraph.guard():
+                x = numpy.random.random((2, 8, 32, 32)).astype('float32')
+                spectralNorm = fluid.dygraph.nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+                ret = spectralNorm(x)
+
+    """
+
     def __init__(self, name_scope, dim=0, power_iters=1, eps=1e-12, name=None):
         super(SpectralNorm, self).__init__(name_scope)
         self._power_iters = power_iters
@@ -2333,6 +2486,45 @@ class SpectralNorm(layers.Layer):
 
 
 class TreeConv(layers.Layer):
+    """
+        ***Tree-Based Convolution Operator***
+
+        Tree-Based Convolution is a kind of convolution based on tree structure.
+        Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
+        which is used to classify tree structures, such as Abstract Syntax Tree.
+        Tree-Based Convolution proposed a kind of data structure called continuous binary tree,
+        which regards multiway tree as binary tree.
+        The paper of Tree-Based Convolution Operator is here: https://arxiv.org/abs/1409.5718v1
+
+
+        Args:
+            nodes_vector(Variable): input, (Tensor) The feature vector of every node on the tree. The shape of the feature vector must be [max_tree_node_size, feature_size]
+            edge_set(Variable): input, (Tensor) The Edges of Tree. The edge must be directional. The shape of the edge set must be [max_tree_node_size, 2]
+            output_size(int): output feature width
+            num_filters(int): number of filters, Default 1
+            max_depth(int): max depth of filters, Default 2
+            act(str): activation function, Default tanh
+            param_attr(ParamAttr): the parameter attribute for the filters, Default None
+            bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
+            name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
+
+        Returns:
+            out(Variable): (Tensor) The feature vector of subtrees. The shape of the output tensor is [max_tree_node_size, output_size, num_filters]. The output tensor could be a new feature vector for next tree convolution layers
+
+        Examples:
+            .. code-block:: python
+              import paddle.fluid as fluid
+              import numpy
+
+              with fluid.dygraph.guard():
+                  nodes_vector = numpy.random.random((10, 5)).astype('float32')
+                  edge_set = numpy.random.random((10, 2)).astype('float32')
+                  treeConv = fluid.dygraph.nn.TreeConv(
+                    'TreeConv', output_size=3, num_filters=4, max_depth=2)
+                  ret = treeConv(nodes_vector, edge_set)
+
+    """
+
     def __init__(self,
                  name_scope,
                  output_size,
@@ -2371,6 +2563,7 @@ class TreeConv(layers.Layer):
             is_bias=False)
 
     def forward(self, nodes_vector, edge_set):
+
         if self._name:
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)
