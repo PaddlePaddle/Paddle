@@ -81,14 +81,24 @@ class MemoryOptimizePass : public ProgramPass {
       std::vector<MemNode>* mem_nodes);
 
   // Update variables within scope for holder shared
-  void UpdateVarsByReuseTable(
+  void UpdateScopeVarsByReuseTable(
+      SSAGraph* graph,
+      const std::unordered_map<std::string, std::string>& reuse_table) const;
+
+  // Update SSAGraph info
+  void UpdateSSAGraphByReuseTable(
+      SSAGraph* graph,
+      const std::unordered_map<std::string, std::string>& reuse_table) const;
+
+  // Update var nodes
+  void UpdateVarNodesByReuseTable(
       SSAGraph* graph,
       const std::unordered_map<std::string, std::string>& reuse_table) const;
 
   // Update OpDesc Input/Output information
-  void UpdateOpDescsByReuseTable(
+  void UpdateOpNodesByReuseTable(
       SSAGraph* graph,
-      const std::unordered_map<std::string, std::string>& reuse_table);
+      const std::unordered_map<std::string, std::string>& reuse_table) const;
 
   bool IsVarCanBeReused(SSAGraph* graph, const std::string& name) const;
 

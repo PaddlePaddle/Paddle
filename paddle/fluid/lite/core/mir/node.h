@@ -86,6 +86,13 @@ class Node {
       CHECK(var_info_);
       return var_info_.get();
     }
+
+    void ShareDataWith(const Arg& other) {
+      name = other.name;
+      type = other.type;
+      is_weight = other.is_weight;
+      var_info_ = other.var_info_;
+    }
   };
 
   Arg& AsArg(const std::string& name) {
