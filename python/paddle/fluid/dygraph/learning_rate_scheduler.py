@@ -121,11 +121,13 @@ class PiecewiseDecay(LearningRateDecay):
 class NaturalExpDecay(LearningRateDecay):
     """
     Applies natural exponential decay to the initial learning rate.
+    
+    .. code-block:: python
 
-    >>> if not staircase:
-    >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
-    >>> else:
-    >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+        if not staircase:
+            decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+        else:
+            decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
 
     Args:
         learning_rate: A scalar float32 value or a Variable. This
@@ -184,11 +186,13 @@ class ExponentialDecay(LearningRateDecay):
     When training a model, it is often recommended to lower the learning rate as the
     training progresses. By using this function, the learning rate will be decayed by
     'decay_rate' every 'decay_steps' steps.
+    
+    .. code-block:: python
 
-    >>> if staircase == True:
-    >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
-    >>> else:
-    >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
+        if staircase == True:
+            decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
+        else:
+            decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 
     Args:
         learning_rate(Variable|float): The initial learning rate.

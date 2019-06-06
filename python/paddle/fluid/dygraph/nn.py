@@ -179,7 +179,7 @@ class Conv2D(layers.Layer):
         #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17275
         self._l_type = 'conv2d'
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._num_channels = input.shape[1]
         if self._groups is None:
             num_filter_channels = self._num_channels
