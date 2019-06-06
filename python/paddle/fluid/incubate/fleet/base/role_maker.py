@@ -346,3 +346,39 @@ class UserDefinedRoleMaker(RoleMakerBase):
 
     def worker_num(self):
         return self._worker_num
+
+
+class UserDefinedRoleMakerNCCL(RoleMakerBase):
+    def __init__(self,
+                 current_id=0,
+                 server_endpoints=None):
+        """
+        UserDefinedRoleMakerNCCL is designed for worker assignment
+        under manual for collective mode.
+        """
+        super(UserDefinedRoleMaker, self).__init__()
+
+        if not isinstance(current_id, int):
+            raise TypeError("current_id must be as int")
+        else:
+            if current_id < 0:
+                raise ValueError("current_id must be greater or equal 0")
+            self._current_id = current_id
+
+        if not isinstance(worker_endpoints, list):
+            raise TypeError("worker_endpoints must be as string list")
+        else:
+            self._worker_endpoints = worker_endpoints
+        self._worker_num = len(self._worker_endpoints)
+
+    def is_worker(self):
+        return True
+
+    def is_first_worker(self):
+        return self._current_id == 0
+
+    def worker_index(self):
+        return self._current_id
+
+    def worker_num(self):
+        return self._worker_num
