@@ -174,6 +174,11 @@ void Module::AddOp(const cpp::OpDesc &op) {
       "auto %s = std::move(%s->CreateKernels(valid_places, \"%s\").front());",
       kernel_name.c_str(), op_name.c_str(), kernel_type.c_str()));
 
+  // Set Context for kernel
+  // clang-format off
+  Line(string_format("%s->SetContext(lite::ContextScheduler::Global().NewContext(%s->target()));", kernel_name.c_str(), kernel_name.c_str()));  // NOLINT
+  // clang-format on
+
   Line(string_format("ops.push_back(%s);", op_name.c_str()));
   Line(string_format("kernels.push_back(std::move(%s));", kernel_name.c_str()));
 

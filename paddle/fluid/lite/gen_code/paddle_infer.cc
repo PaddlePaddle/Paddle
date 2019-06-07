@@ -74,12 +74,19 @@ std::unique_ptr<Tensor> PaddlePredictor::GetMutableTensor(
   return std::unique_ptr<Tensor>(new Tensor(nullptr, tensor));
 }
 
-PaddlePredictor::~PaddlePredictor() {
-  auto *ops =
+#define CAST_OPS \
+  auto *ops =    \
       static_cast<std::vector<std::shared_ptr<lite::OpLite>> *>(raw_ops_);
-  auto *kernels = static_cast<std::vector<std::unique_ptr<lite::KernelBase>> *>(
-      raw_kernels_);
-  auto *scope = static_cast<lite::Scope *>(raw_scope_);
+#define CAST_KERNELS                                                 \
+  auto *kernels =                                                    \
+      static_cast<std::vector<std::unique_ptr<lite::KernelBase>> *>( \
+          raw_kernels_);
+#define CAST_SCOPE auto *scope = static_cast<lite::Scope *>(raw_scope_);
+
+PaddlePredictor::~PaddlePredictor() {
+  CAST_OPS
+  CAST_KERNELS
+  CAST_SCOPE
 
   if (ops) {
     delete ops;
@@ -93,8 +100,8 @@ PaddlePredictor::~PaddlePredictor() {
 }
 
 void PaddlePredictor::Run() {
-  auto *ops = static_cast<std::vector<lite::OpLite> *>(raw_ops_);
-  auto *kernels = static_cast<std::vector<lite::KernelBase> *>(raw_kernels_);
+  CAST_OPS
+  CAST_KERNELS
 
   CHECK(ops);
   CHECK(kernels);
@@ -102,8 +109,8 @@ void PaddlePredictor::Run() {
 
   for (size_t i = 0; i < ops->size(); i++) {
     LOG(INFO) << "Running the " << i << "-th operator";
-    ops->at(i).InferShape();
-    kernels->at(i).Launch();
+    ops->at(i)->InferShape();
+    kernels->at(i)->Launch();
   }
 }
 
