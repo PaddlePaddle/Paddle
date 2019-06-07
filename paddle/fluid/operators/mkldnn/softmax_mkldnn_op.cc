@@ -55,7 +55,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
   AcquireSoftmaxPrimitiveDescriptor(const softmax_forward::desc& softmax_desc,
                                     const mkldnn::engine& engine) {
     // Softmax PD has to be passed to Grad op that
-    // may be exxecuted by diffrent thread, hence
+    // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
     const std::string key_softmax_pd = key_common_ + "@softmax_pd";
 

@@ -666,32 +666,43 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       const bool fuse_relu, const bool fuse_residual_conn,
       const bool fuse_brelu, const float fuse_brelu_threshold,
       mkldnn::prop_kind fwd_prop_kind) {
-    const std::string key_conv_pd = key_ + "@conv_pd";
+    // Conv PD has to be passed to Grad op that
+    // may be exxecuted by diffrent thread, hence
+    // for that one we use key that does not contain TID
+    const std::string key_conv_pd = key_common_ + "@conv_pd";
 
     auto conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
         dev_ctx_.GetBlob(key_conv_pd));
 
     if (conv_pd == nullptr) {
-      mkldnn::memory::dims stride_dims = strides;
-      mkldnn::memory::dims padding_dims = paddings;
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(acquire_barrier);
 
-      auto conv_desc =
-          bias ? typename forward_t::desc(
-                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
-                     weights, *bias, dst, stride_dims, padding_dims,
-                     padding_dims, mkldnn::padding_kind::zero)
-               : typename forward_t::desc(
-                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
-                     weights, dst, stride_dims, padding_dims, padding_dims,
-                     mkldnn::padding_kind::zero);
+      conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
+        dev_ctx_.GetBlob(key_conv_pd));
+      if (conv_pd == nullptr) {
 
-      mkldnn::primitive_attr conv_attr = CreatePostOps(
-          fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
+        mkldnn::memory::dims stride_dims = strides;
+        mkldnn::memory::dims padding_dims = paddings;
 
-      conv_pd_.reset(
-          new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
-      // Save conv_pd/src_memory/weights_memory for backward pass
-      dev_ctx_.SetBlob(key_conv_pd, conv_pd_);
+        auto conv_desc =
+            bias ? typename forward_t::desc(
+                       fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                       weights, *bias, dst, stride_dims, padding_dims,
+                       padding_dims, mkldnn::padding_kind::zero)
+                 : typename forward_t::desc(
+                       fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                       weights, dst, stride_dims, padding_dims, padding_dims,
+                       mkldnn::padding_kind::zero);
+
+        mkldnn::primitive_attr conv_attr = CreatePostOps(
+            fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
+
+        conv_pd_.reset(
+            new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
+        // Save conv_pd/src_memory/weights_memory for backward pass
+        dev_ctx_.SetBlob(key_conv_pd, conv_pd_);
+      }
     } else {
       conv_pd_ = conv_pd;
     }
