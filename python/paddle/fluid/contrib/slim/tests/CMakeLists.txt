@@ -135,7 +135,7 @@ endif()
 
 # Since the test for QAT FP32 & INT8 comparison supports only testing on Linux 
 # with MKL-DNN, we remove it here to not test it on other systems.
-list(REMOVE_ITEM TEST_OPS ${MKLDNN_QAT_TEST_FILE})
+list(REMOVE_ITEM TEST_OPS qat_int8_comparison.py)
 
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)

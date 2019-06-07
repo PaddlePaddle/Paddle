@@ -62,7 +62,7 @@ def parse_args():
 
 class TestQatInt8Comparison(unittest.TestCase):
     """
-    Test for output and accuracy comparison of QAT FP32 and INT8 inference.
+    Test for accuracy comparison of QAT FP32 and INT8 inference.
     """
 
     def _reader_creator(self, data_file='data.bin'):
