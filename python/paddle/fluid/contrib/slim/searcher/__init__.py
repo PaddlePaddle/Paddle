@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import pruner
-from .pruner import *
-from . import prune_strategy
-from .prune_strategy import *
-from . import auto_prune_strategy
-from .auto_prune_strategy import *
+from . import controller
+from .controller import *
 
-__all__ = pruner.__all__
-__all__ += prune_strategy.__all__
-__all__ += auto_prune_strategy.__all__
+__all__ = controller.__all__
