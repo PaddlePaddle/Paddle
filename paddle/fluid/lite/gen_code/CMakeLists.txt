@@ -20,3 +20,5 @@ lite_cc_test(test_generated_code SRCS generated_code_test.cc DEPS __generated_co
   ${ops_lite} ${host_kernels}
   X86_DEPS ${x86_kernels}
   )
+
+add_dependencies(__generated_code__ test_gen_code_lite)

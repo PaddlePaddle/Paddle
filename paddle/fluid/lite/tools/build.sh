@@ -4,15 +4,26 @@ set -ex
 TESTS_FILE="./lite_tests.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
+
+# for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
+# here we fake an empty file to make cmake works.
+function prepare_for_codegen {
+    # in build directory
+    mkdir -p ./paddle/fluid/lite/gen_code
+    touch ./paddle/fluid/lite/gen_code/__generated_code__.cc
+}
 function cmake_x86 {
+    prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
 function cmake_x86_for_CI {
+    prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=ON
 }
 
 function cmake_gpu {
+    prepare_for_codegen
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
 }
 
