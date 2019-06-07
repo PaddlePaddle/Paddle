@@ -25,7 +25,6 @@ from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
 from paddle.fluid import core
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
 
 
