@@ -22,6 +22,7 @@ from .tracer import Tracer
 __all__ = [
     'enabled',
     'no_grad',
+    'not_support',
     'guard',
     'to_variable',
 ]
@@ -43,6 +44,15 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
+def _dygraph_not_support_(func):
+    def __impl__(*args, **kwargs):
+        assert not framework.in_dygraph_mode(
+        ), "We don't support %s in Dygraph mode" % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
 def _no_grad_(func):
     def __impl__(*args, **kwargs):
         with _switch_tracer_mode_guard_(is_train=False):
@@ -52,6 +62,7 @@ def _no_grad_(func):
 
 
 no_grad = wrap_decorator(_no_grad_)
+not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
