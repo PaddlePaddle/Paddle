@@ -89,7 +89,12 @@ class Node {
   // Return a reference to the `wrapper`.
   template <typename T>
   T& Wrapper() {
-    return *boost::any_cast<T*>(wrapper_);
+    try {
+      return *boost::any_cast<T*>(wrapper_);
+    } catch (boost::bad_any_cast&) {
+      PADDLE_THROW("Invalid wrapper type error, expected %s, actual %s",
+                   typeid(T).name(), wrapper_type_.name());
+    }
   }
 
   // Test if the Node is wrapped by type T.

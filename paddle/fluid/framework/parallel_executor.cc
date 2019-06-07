@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -38,6 +39,8 @@ DEFINE_string(pe_profile_fname, "",
               "Only valid when compiled `WITH_PRIFILER=ON`. Empty if disable.");
 DEFINE_bool(enable_parallel_graph, false,
             "Force disable parallel graph execution mode if set false.");
+
+DEFINE_bool(use_buffer_shared_inplace_pass, true, "");
 
 namespace paddle {
 namespace framework {
@@ -79,20 +82,6 @@ class ParallelExecutorPrivate {
   ir::Graph *PrepareGCAndRefCnts(ir::Graph *graph, size_t max_memory_size);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
-
-  void ResetRuntimeReferenceCount(const std::vector<std::string> &fetch_tensors,
-                                  const std::string &fetched_var_name) {
-    for (size_t i = 0; i < runtime_ref_cnts_.size(); ++i) {
-      for (auto &pair : global_ref_cnts_[i]) {
-        runtime_ref_cnts_[i][pair.first] = pair.second;
-      }
-
-      for (auto &fetch_name : fetch_tensors) {
-        runtime_ref_cnts_[i].erase(fetch_name);
-      }
-      runtime_ref_cnts_[i].erase(fetched_var_name);
-    }
-  }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
@@ -197,16 +186,33 @@ class ParallelExecutorPrivate {
   bool use_all_reduce_;
   size_t nranks_;
 
-  // global_ref_cnts_ is only initialized when ParallelExecutor constructs, and
-  // then keeps unchanged
-  // Before each iteration, runtime_ref_cnts_ is reset to global_ref_cnts_
-  std::vector<ir::ReferenceCountMap> global_ref_cnts_;
-  std::vector<ir::AtomicReferenceCountMap> runtime_ref_cnts_;
+  ir::MemOptVarInfoMapList mem_opt_var_infos_;
   ir::GarbageCollectorMap gcs_;
 };
 
 ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
     ir::Graph *graph, size_t max_memory_size) {
+  std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
+
+  auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
+  ref_cnt_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+  ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+  graph = ref_cnt_pass->Apply(graph);
+  VLOG(10) << "ReferenceCountPass Applied";
+
+  if (FLAGS_use_buffer_shared_inplace_pass) {
+    auto inplace_pass =
+        ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
+    inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+    inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+    inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    VLOG(10) << "Start to apply buffer_shared_inplace_pass";
+    graph = inplace_pass->Apply(graph);
+    VLOG(10) << "buffer_shared_inplace_pass Applied";
+  }
+
+  if (GetEagerDeletionThreshold() < 0) return graph;
+
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &place = places_[i];
     if (gcs_.count(place) > 0) {
@@ -240,19 +246,10 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
   }
 
   if (!gcs_.empty()) {
-    std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
-
-    auto ref_cnt_pass =
-        ir::PassRegistry::Instance().Get("reference_count_pass");
-    ref_cnt_pass->SetNotOwned(ir::kGlobalReferenceCount, &global_ref_cnts_);
-    ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    graph = ref_cnt_pass->Apply(graph);
-    VLOG(10) << "ReferenceCountPass Applied";
-
     auto eager_deletion_pass =
         ir::PassRegistry::Instance().Get("eager_deletion_pass");
-    eager_deletion_pass->SetNotOwned(ir::kRuntimeReferenceCount,
-                                     &runtime_ref_cnts_);
+    eager_deletion_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
+                                     &mem_opt_var_infos_);
     eager_deletion_pass->SetNotOwned(ir::kGarbageCollector, &gcs_);
     eager_deletion_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                      &last_live_ops_of_vars);
@@ -426,10 +423,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
-  if (max_memory_size >= 0) {
-    graph = member_->PrepareGCAndRefCnts(graph,
-                                         static_cast<size_t>(max_memory_size));
-  }
+  graph =
+      member_->PrepareGCAndRefCnts(graph, static_cast<size_t>(max_memory_size));
 
   async_graphs[0] = graph;
 
@@ -585,10 +580,9 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 #endif
 
   platform::RecordBlock b(0);
-  if (member_->HasGarbageCollectors()) {
-    platform::RecordEvent event("PrepareGarbageCollectors");
-    member_->ResetRuntimeReferenceCount(fetch_tensors, fetched_var_name);
-  }
+
+  ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_), fetch_tensors,
+                                member_->HasGarbageCollectors());
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data = member_->executor_->Run(fetch_tensors);
@@ -673,3 +667,4 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
+USE_PASS(buffer_shared_inplace_pass);

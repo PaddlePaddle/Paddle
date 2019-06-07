@@ -33,16 +33,10 @@ class VarDesc;
 
 namespace ir {
 
-using ReferenceCountMap = std::unordered_map<std::string, size_t>;
-
-using AtomicReferenceCountMap =
-    std::unordered_map<std::string, std::atomic<size_t>>;
-
 using GarbageCollectorMap =
     std::map<platform::Place, std::unique_ptr<GarbageCollector>>;
 
-const char kGlobalReferenceCount[] = "global_reference_count";
-const char kRuntimeReferenceCount[] = "runtime_reference_count";
+const char kMemOptVarInfoMapList[] = "mem_opt_var_info_map_list";
 const char kGarbageCollector[] = "garbage_collector";
 const char kAllPlaces[] = "all_places";
 
