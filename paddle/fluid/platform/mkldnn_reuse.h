@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include <sstream>
 #include <vector>
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
