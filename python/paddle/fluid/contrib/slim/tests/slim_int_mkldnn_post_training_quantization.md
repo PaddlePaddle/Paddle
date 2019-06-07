@@ -13,31 +13,34 @@ Note: MKL-DNN and MKL are required.
 
 ## 2. Accuracy and Performance benchmark
 
-We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 6271 on single core.
+We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 8280 on single core.
 
-   >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
+   >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 8280**
 
 | Model  | Dataset  | FP32 Accuracy  | INT8 Accuracy  | Accuracy Diff  |
 | :------------: | :------------: | :------------: | :------------: | :------------: |
-| ResNet-50    | Full ImageNet Val  |  * |  * | * |
-| ResNet101    | Full ImageNet Val  |  * |  * |  * |
-| MobileNet-V1 | Full ImageNet Val  |  * |  * |  * |
-| Mobilenet-V2 | Full ImageNet Val  |  * |  * |  * |
-| GoogleNet    | Full ImageNet Val  |  * |  * |  * |
-| VGG16        | Full ImageNet Val  |  * |  * |  * |
-| VGG19        | Full ImageNet Val  |  * |  * |  * |
+| GoogleNet    | Full ImageNet Val  |  70.50% |  70.20% |  0.30% |
+| MobileNet-V1 | Full ImageNet Val  |  70.78% |  70.36% |  0.42% |
+| Mobilenet-V2 | Full ImageNet Val  |  71.90% |  71.57% |  0.33% |
+| ResNet101    | Full ImageNet Val  |  77.50% |  77.53% |  -0.03% |
+| ResNet-50    | Full ImageNet Val  |  76.63% |  76.48% |  0.15%  |
+| VGG16        | Full ImageNet Val  |  72.08% |  72.01% |  0.07% |
+| VGG19        | Full ImageNet Val  |  72.56% |  72.56% |  0.01% |
 
-   >**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
+   >**II. Throughput on Intel(R) Xeon(R) Gold 8280 (batch size 1 on single core)**
 
 | Model  | Dataset  | FP32 Throughput  | INT8 Throughput  |  Ratio(INT8/FP32)  |
 | :------------: | :------------: | :------------: | :------------: | :------------: |
-| ResNet-50    | Full ImageNet Val  |   images/s |  images/s | * |
-| ResNet101    | Full ImageNet Val  |  images/s |  images/s | *  |
-| MobileNet-V1 | Full ImageNet Val  |  images/s |  images/s | *  |
-| MobileNet-V2 | Full ImageNet Val  |  images/s |  images/s | *  |
-| GoogleNet    | Full ImageNet Val  |  images/s |  images/s | *  |
-| VGG16        | Full ImageNet Val  |  images/s |  images/s | *  |
-| VGG19        | Full ImageNet Val  |  images/s |  images/s | *  |
+| GoogleNet    | Full ImageNet Val  |  170.04   images/s |  558.9    images/s |  3.29  |
+| MobileNet-V1 | Full ImageNet Val  |  31.63    images/s |  761.94   images/s |  24.09 |
+| MobileNet-V2 | Full ImageNet Val  |  19.18    images/s |  598.53   images/s |  31.21 |
+| ResNet101    | Full ImageNet Val  |  22.2     images/s |  339.9    images/s |  15.31 |
+| ResNet-50    | Full ImageNet Val  |  43.5     images/s |  483.39   images/s |  11.11 |
+| VGG16        | Full ImageNet Val  |  10.94    images/s |  195.75   images/s |  17.89 |
+| VGG19        | Full ImageNet Val  |  20.25    images/s |  169.4    images/s |  8.37  |
+
+Notes:
+* CPU turbo off.
 
 ## 3. Commands to reproduce the above accuracy and performance benchmark
 * #### Full dataset (Single core)
