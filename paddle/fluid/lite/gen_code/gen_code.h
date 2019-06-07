@@ -86,31 +86,32 @@ class Module {
 
   void AddScopeDecl() {
     Line("lite::Scope* scope = static_cast<lite::Scope*>(raw_scope_);");
-    Line(
-        "lite::Scope* exec_scope = "
-        "static_cast<lite::Scope*>(raw_exe_scope_);");
+
+    // clang-format off
+    Line("lite::Scope* exec_scope = static_cast<lite::Scope*>(raw_exe_scope_);");  // NOLINT
+    // clang-format on
+
+    // Create feed and fetch in exec_scope.
+    Line(string_format("exec_scope->Var(%s);", Repr("feed").c_str()));
+    Line(string_format("exec_scope->Var(%s);", Repr("fetch").c_str()));
   }
 
   void AddValidPlaceDecl() {
-    Line(
-        "std::vector<lite::Place> valid_places({lite::Place( {TARGET(kX86), "
-        "PRECISION(kFloat), DATALAYOUT(kNCHW)}) });");
+    // clang-format off
+    Line("std::vector<lite::Place> valid_places({lite::Place({TARGET(kX86), PRECISION(kFloat), DATALAYOUT(kNCHW)}), lite::Place({TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)})});");  // NOLINT
+    // clang-format on
   }
 
   void AddMemberCast() {
     Line("// Cast the raw members");
-    Line(
-        string_format("auto& ops = "
-                      "*static_cast<std::vector<std::shared_ptr<lite::OpLite>>*"
-                      ">(raw_ops_);"));
-    Line(
-        string_format("auto& kernels = "
-                      "*static_cast<std::vector<std::unique_ptr<lite::"
-                      "KernelBase>>*>(raw_kernels_);"));
+    // clang-format off
+    Line(string_format("auto& ops = *static_cast<std::vector<std::shared_ptr<lite::OpLite>>*>(raw_ops_);"));  // NOLINT
+    Line(string_format("auto& kernels = *static_cast<std::vector<std::unique_ptr<lite::KernelBase>>*>(raw_kernels_);"));  // NOLINT
+    // clang-format on
     Line("");
   }
 
-  void AddWeight(const TensorRepr &tensor);
+  void AddWeight(const std::string &name, const TensorRepr &tensor);
 
   void AddTmpVar(const std::string &x) {
     Line(string_format("// Create temporary variable: %s", x.c_str()));
@@ -180,7 +181,9 @@ class ProgramCodeGenerator {
  public:
   ProgramCodeGenerator(const framework::proto::ProgramDesc &program,
                        const lite::Scope &exec_scope)
-      : program_(program), exec_scope_(exec_scope) {}
+      : program_(program), exec_scope_(exec_scope) {
+    LOG(INFO) << program.DebugString();
+  }
 
   std::string GenCode() {
     Module m;
@@ -212,7 +215,7 @@ class ProgramCodeGenerator {
         const auto &tensor = exec_scope_.FindVar(name)->Get<lite::Tensor>();
         TensorRepr repr;
         TensorToRepr(tensor, &repr);
-        m->AddWeight(repr);
+        m->AddWeight(name, repr);
       }
     }
   }

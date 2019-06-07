@@ -75,7 +75,7 @@ TEST(gen_code, manual) {
   mul_op->CheckShape();
   mul_op->InferShape();
   mul_kernel->SetContext(std::move(fc_ctx));
-  mul_kernel->Run();
+  mul_kernel->Launch();
 }
 
 TEST(gen_code, auto_gen) {
@@ -104,8 +104,8 @@ TEST(gen_code, auto_gen) {
 
   module.AddMemberCast();
 
-  module.AddWeight(w0);
-  module.AddWeight(w1);
+  module.AddWeight("w0", w0);
+  module.AddWeight("w1", w1);
   module.AddTmpVar("a");
   module.AddTmpVar("b");
 

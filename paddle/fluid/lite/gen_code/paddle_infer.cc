@@ -101,8 +101,29 @@ void PaddlePredictor::Run() {
   for (size_t i = 0; i < ops->size(); i++) {
     LOG(INFO) << "Running the " << i << "-th operator";
     ops->at(i).InferShape();
-    kernels->at(i).Run();
+    kernels->at(i).Launch();
   }
+}
+
+std::unique_ptr<Tensor> PaddlePredictor::GetInput(size_t offset) {
+  auto *exec_scope = static_cast<lite::Scope *>(raw_exe_scope_);
+  auto *_feed_list = exec_scope->FindVar("feed");
+  CHECK(_feed_list) << "no feed variable in exec_scope";
+  auto *feed_list = _feed_list->GetMutable<std::vector<lite::Tensor>>();
+  if (offset >= feed_list->size()) {
+    feed_list->resize(offset + 1);
+  }
+
+  return std::unique_ptr<Tensor>(new Tensor(nullptr, &feed_list->at(offset)));
+}
+
+std::unique_ptr<Tensor> PaddlePredictor::GetOutput(size_t offset) {
+  auto *exec_scope = static_cast<lite::Scope *>(raw_exe_scope_);
+  auto *_fetch_list = exec_scope->FindVar("fetch");
+  CHECK(_fetch_list) << "no fatch variable in exec_scope";
+  auto &fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
+  CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
+  return std::unique_ptr<Tensor>(new Tensor(&fetch_list.at(offset), nullptr));
 }
 
 }  // namespace gencode
