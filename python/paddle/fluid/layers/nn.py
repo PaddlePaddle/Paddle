@@ -12062,6 +12062,7 @@ def deformable_psroi_pooling(input,
                   C is the number of output channels, H is the height of output, and W is the width of output.
 
     Examples:
+      .. code-block:: python
 
         input = fluid.layers.data(name="input",
                                   shape=[2, 3, 64, 64], 
