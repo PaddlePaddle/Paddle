@@ -37,8 +37,8 @@ class MKLDNNHandler {
         key_common_(base_key) 
       {
         // TODO(jczaja): Make it faster
-        auto tid = this_thread.get_id();
-        stringstream ss;
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
         ss << tid;
         key_ = key_common_ + "-t:" + ss.str();
       }
