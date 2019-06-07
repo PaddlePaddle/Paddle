@@ -1287,7 +1287,7 @@ class LayerNorm(layers.Layer):
     * :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): The input tensor variable.
+        name_scope (str): See base class.
         scale(bool): Whether to learn the adaptive gain :math:`g` after
             normalization. Default True.
         shift(bool): Whether to learn the adaptive bias :math:`b` after
@@ -1836,8 +1836,7 @@ class BilinearTensorProduct(layers.Layer):
      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-       x (Variable): 2-D input tensor with shape [batch_size, M]
-       y (Variable): 2-D input tensor with shape [batch_size, N]
+       name_scope (str): See base class.
        size (int): The dimension of this layer.
        act (str, default None): Activation to be applied to the output of this layer.
        name (str, default None): The name of this layer.
@@ -1971,7 +1970,7 @@ class Conv2DTranspose(layers.Layer):
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
-        input(Variable): The input image with [N, C, H, W] format.
+        name_scope (str): See base class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
@@ -2144,7 +2143,7 @@ class SequenceConv(layers.Layer):
     in the input parameters to the function.
 
     Args:
-        input (Variable): ${x_comment}
+        name_scope (str): See base class.
         num_filters (int): number of filters.
         filter_size (int): the filter size (H and W).
         filter_stride (int): stride of the filter.
@@ -2230,7 +2229,7 @@ class RowConv(layers.Layer):
     More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
     Args:
-        input (${x_type}): ${x_comment}.
+        name_scope (str): See base class.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
@@ -2421,10 +2420,10 @@ class SpectralNorm(layers.Layer):
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Args:
-        weight(${weight_type}): ${weight_comment}
-        dim(int): ${dim_comment}
-        power_iters(int): ${power_iters_comment}
-        eps(float): ${eps_comment}
+        name_scope (str): See base class.
+        dim(int): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer, default 0
+        power_iters(int): number of power iterations to calculate spectral norm, default 1
+        eps(float): epsilon for numerical stability in calculating norms
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -2498,8 +2497,7 @@ class TreeConv(layers.Layer):
 
 
         Args:
-            nodes_vector(Variable): input, (Tensor) The feature vector of every node on the tree. The shape of the feature vector must be [max_tree_node_size, feature_size]
-            edge_set(Variable): input, (Tensor) The Edges of Tree. The edge must be directional. The shape of the edge set must be [max_tree_node_size, 2]
+            name_scope (str): See base class.
             output_size(int): output feature width
             num_filters(int): number of filters, Default 1
             max_depth(int): max depth of filters, Default 2
