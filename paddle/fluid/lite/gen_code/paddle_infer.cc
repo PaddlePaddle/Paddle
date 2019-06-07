@@ -75,8 +75,10 @@ std::unique_ptr<Tensor> PaddlePredictor::GetMutableTensor(
 }
 
 PaddlePredictor::~PaddlePredictor() {
-  auto *ops = static_cast<std::vector<lite::OpLite> *>(raw_ops_);
-  auto *kernels = static_cast<std::vector<lite::KernelBase> *>(raw_kernels_);
+  auto *ops =
+      static_cast<std::vector<std::shared_ptr<lite::OpLite>> *>(raw_ops_);
+  auto *kernels = static_cast<std::vector<std::unique_ptr<lite::KernelBase>> *>(
+      raw_kernels_);
   auto *scope = static_cast<lite::Scope *>(raw_scope_);
 
   if (ops) {
