@@ -47,6 +47,9 @@ def _no_grad_(func):
     """
     This Decorator will avoid the func being decorated creating backward network in dygraph mode
 
+    Args:
+        func: the func don't need grad
+
     Examples:
 
      .. code-block:: python
@@ -66,8 +69,6 @@ def _no_grad_(func):
 
         test_layer()
 
-    :param func
-    :return:
     """
 
     def __impl__(*args, **kwargs):
@@ -134,7 +135,7 @@ def to_variable(value, block=None, name=None):
         name(str|None): Name of Varaible
 
     return:
-        None
+        Variable: The variable created from given numpy
 
     Examples:
 
