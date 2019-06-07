@@ -54,11 +54,6 @@ def parse_args():
         type=float,
         default=0.01,
         help='Accepted accuracy difference threshold.')
-    parser.add_argument(
-        '--out_diff_threshold',
-        type=float,
-        default=1e-05,
-        help='Accepted output difference threshold.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
 
@@ -235,22 +230,6 @@ class TestQatInt8Comparison(unittest.TestCase):
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
-    def _compare_outputs(self, tensorA, tensorB, threshold=1e-05):
-        A = np.array(tensorA).flatten()
-        B = np.array(tensorB).flatten()
-
-        no_of_values = np.prod(A.shape)
-        no_of_different_vales = no_of_values - np.sum(
-            np.isclose(
-                A, B, rtol=0, atol=threshold))
-        max_abs_diff = np.max(np.absolute(np.array(A) - np.array(B)))
-        _logger.info('Accepted output diff threshold: {0}'.format(threshold))
-        _logger.info('Number of values: {0}'.format(no_of_values))
-        _logger.info('Number of different values: {0}'.format(
-            no_of_different_vales))
-        _logger.info('Max absolute diff: {0}'.format(max_abs_diff))
-        assert np.allclose(A, B, rtol=0, atol=threshold)
-
     def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
                           threshold):
         _logger.info('Accepted acc1 diff threshold: {0}'.format(threshold))
@@ -272,7 +251,6 @@ class TestQatInt8Comparison(unittest.TestCase):
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num
         acc_diff_threshold = test_case_args.acc_diff_threshold
-        out_diff_threshold = test_case_args.out_diff_threshold
 
         _logger.info('QAT FP32 & INT8 prediction run.')
         _logger.info('QAT model: {0}'.format(qat_model_path))
@@ -282,9 +260,6 @@ class TestQatInt8Comparison(unittest.TestCase):
         _logger.info('Accuracy diff threshold: {0}. '
                      '(condition: (fp32_acc - int8_acc) <= threshold)'
                      .format(acc_diff_threshold))
-        _logger.info('Output diff threshold: {0}. '
-                     '(condition: abs(fp32_value - int8_value) <= threshold'
-                     .format(out_diff_threshold))
 
         _logger.info('--- QAT FP32 prediction start ---')
         val_reader = paddle.batch(
@@ -315,9 +290,6 @@ class TestQatInt8Comparison(unittest.TestCase):
         _logger.info('--- Comparing accuracy ---')
         self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
                                acc_diff_threshold)
-
-        _logger.info('--- Comparing outputs ---')
-        self._compare_outputs(fp32_output, int8_output, out_diff_threshold)
 
 
 if __name__ == '__main__':
