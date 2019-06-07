@@ -54,15 +54,23 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
   std::shared_ptr<softmax_forward::primitive_desc>
   AcquireSoftmaxPrimitiveDescriptor(const softmax_forward::desc& softmax_desc,
                                     const mkldnn::engine& engine) {
-    const std::string key_softmax_pd = key_ + "@softmax_pd";
+    // Softmax PD has to be passed to Grad op that
+    // may be exxecuted by diffrent thread, hence
+    // for that one we use key that does not contain TID
+    const std::string key_softmax_pd = key_common_ + "@softmax_pd";
 
     auto softmax_pd = std::static_pointer_cast<softmax_forward::primitive_desc>(
         dev_ctx_.GetBlob(key_softmax_pd));
-
     if (softmax_pd == nullptr) {
-      softmax_pd_.reset(
-          new softmax_forward::primitive_desc(softmax_desc, engine));
-      dev_ctx_.SetBlob(key_softmax_pd, softmax_pd_);
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(acquire_barrier);
+      softmax_pd = std::static_pointer_cast<softmax_forward::primitive_desc>(
+        dev_ctx_.GetBlob(key_softmax_pd));
+      if (softmax_pd == nullptr) {
+        softmax_pd_.reset(
+            new softmax_forward::primitive_desc(softmax_desc, engine));
+        dev_ctx_.SetBlob(key_softmax_pd, softmax_pd_);
+      }
     } else {
       softmax_pd_ = softmax_pd;
     }

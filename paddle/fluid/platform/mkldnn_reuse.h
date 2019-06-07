@@ -33,7 +33,14 @@ class MKLDNNHandler {
                 const std::string& base_key)
       : dev_ctx_(dev_ctx),
         engine_(engine),
-        key_(base_key) {}
+        key_common_(base_key) 
+      {
+        // TODO(jczaja): Make it faster
+        auto tid = this_thread.get_id();
+        stringstream ss;
+        ss << tid;
+        key_ = key_common_ + "-t:" + ss.str();
+      }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
@@ -254,6 +261,7 @@ class MKLDNNHandler {
   const MKLDNNDeviceContext& dev_ctx_;
   mkldnn::engine engine_;
   std::string key_;
+  std::string key_common_;
 
  public:
   static constexpr int MaxKeyLength = 256;
