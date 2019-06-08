@@ -91,7 +91,7 @@ class ParallelExecutor {
   // used for compatible with syncbatch norm op
   std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs_;
   platform::NCCLContextMap *GetNCCLContextForSyncbatchNomrOp(
-      framework::Scope *scope);
+      framework::Scope *scope, size_t dev_id);
 };
 }  // namespace framework
 }  // namespace paddle
