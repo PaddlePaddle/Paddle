@@ -16,7 +16,8 @@ from __future__ import print_function
 from enum import Enum
 
 __all__ = [
-    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker'
+    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
+    'MultiProcessRoleMaker'
 ]
 
 
@@ -99,6 +100,46 @@ class RoleMakerBase(object):
         return pserver endpoints
         """
         return self._server_endpoints
+
+
+class MultiProcessRoleMaker(RoleMakerBase):
+    """
+    MultiProcessRoleMaker is a default role maker for multi-process
+    GPU training. It works with paddle.distributed.lanuch.py by-design
+    """
+
+    def __init__(self):
+        super(MultiProcessRoleMaker, self).__init__()
+        self._role_is_generated = False
+
+    def generate_role(self):
+        import os
+        if not self._role_is_generated:
+            self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+            self._num_trainers = 1
+            self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
+            assert (self._training_role == "TRAINER")
+            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+            self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+            if self._worker_endpoints:
+                self._worker_endpoints = self._worker_endpoints.split(",")
+                self._num_trainers = len(self._worker_endpoints)
+            self._role_is_generated = True
+
+    def is_worker(self):
+        return True
+
+    def is_server(self):
+        return False
+
+    def is_first_worker(self):
+        return self._current_id == 0
+
+    def worker_index(self):
+        return self._current_id
+
+    def worker_num(self):
+        return self._worker_num
 
 
 class MPIRoleMaker(RoleMakerBase):
@@ -328,6 +369,13 @@ class UserDefinedRoleMaker(RoleMakerBase):
             raise TypeError("server_endpoints must be as string list")
         else:
             self._server_endpoints = server_endpoints
+
+        # currently not used
+        self._role_is_generated = False
+
+    def generate_role(self):
+        if not self._role_is_generated:
+            self._role_is_generated = True
 
     def is_worker(self):
         return self._role == Role.WORKER
