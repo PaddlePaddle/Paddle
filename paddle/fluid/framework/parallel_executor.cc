@@ -281,6 +281,7 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 /*
  * When nccl inits nccl comm using ncclCommInitAll, it meets error when
  * allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
@@ -299,6 +300,7 @@ platform::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp(
   }
   return dev_nccl_ctxs_.get();
 }
+#endif
 
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
