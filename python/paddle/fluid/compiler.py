@@ -107,7 +107,6 @@ class CompiledProgram(object):
             raise ValueError("Wrong program_to_graph type: %s" %
                              type(program_or_graph))
 
-        self._program_desc = self._graph.origin_program_desc()
         self._scope = None
         self._place = None
         self._executor = None

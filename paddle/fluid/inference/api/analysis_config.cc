@@ -87,10 +87,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Model related.
   CP_MEMBER(model_dir_);
-  CP_MEMBER(prog_file_);
-  CP_MEMBER(params_file_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
+
+  prog_file_ = std::move(other.prog_file_);
+  params_file_ = std::move(other.params_file_);
+
   // Gpu related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(device_id_);
@@ -369,6 +371,7 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_used, gpu_available;
+  platform::SetDeviceId(device_id_);
   platform::GpuMemoryUsage(&gpu_used, &gpu_available);
   double total_gpu_memory = (gpu_used + gpu_available) / 1024. / 1024.;
   float fraction_of_gpu_memory =
@@ -439,4 +442,12 @@ void AnalysisConfig::EnableAnakinEngine(
   anakin_auto_config_layout_ = auto_config_layout;
   Update();
 }
+
+void AnalysisConfig::PartiallyRelease() {
+  prog_file_.clear();
+  prog_file_.shrink_to_fit();
+  params_file_.clear();
+  params_file_.shrink_to_fit();
+}
+
 }  // namespace paddle

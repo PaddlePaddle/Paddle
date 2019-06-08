@@ -8830,14 +8830,19 @@ def prelu(x, mode, param_attr=None, name=None):
     .. math::
         y = \max(0, x) + \\alpha * \min(0, x)
 
+    There are three modes for the activation:
+
+    .. code-block:: text
+
+        all: All elements share same alpha.
+        channel: Elements in same channel share same alpha.
+        element: All elements do not share alpha. Each element has its own alpha.
+
     Args:
         x (Variable): The input tensor.
+        mode (string): The mode for weight sharing. 
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha).
-        mode (string): The mode for weight sharing. It supports all, channel
-          and element. all: all elements share same weight
-          channel:elements in a channel share same weight
-          element:each element has a weight
+          weight (alpha), it can be create by ParamAttr.
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -8848,9 +8853,13 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            import paddle.fluid as fluid
+            from paddle.fluid.param_attr import ParamAttr
+            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
             mode = 'channel'
-            output = fluid.layers.prelu(x,mode)
+            output = fluid.layers.prelu(
+                     x,mode,param_attr=ParamAttr(name='alpha'))
+
     """
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
@@ -10594,8 +10603,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 2]
         input.data = [
-            [[1], [2]],
-            [[3], [4]],
+            [[1, 2],
+             [3, 4]],
         ]
 
         input.lod = [[0, 2]]
@@ -10612,8 +10621,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 4]
         output.data = [
-            [[9662], [9217], [1129], [8487]],
-            [[8310], [1327], [1654], [4567]],
+            [[9662, 9217, 1129, 8487],
+             [8310, 1327, 1654, 4567]],
         ]
 
         output.lod = [[0, 2]]
@@ -10632,8 +10641,24 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
-           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
+
+            place = fluid.core.CPUPlace()
+            exece = fluid.Executor(place)
+            exece.run(fluid.default_startup_program()) 
+
+            # Init Tensor
+            tensor = fluid.core.LoDTensor() 
+            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
+            # Set LoD
+            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
+
+            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
