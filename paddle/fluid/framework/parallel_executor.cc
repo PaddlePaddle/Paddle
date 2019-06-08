@@ -287,7 +287,8 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
  * create a new nccl comm for sync_batch_norm_op. And these codes should be
  * polished with a unified nccl management.
  */
-platform::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp() {
+platform::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp(
+    framework::Scope *scope, size_t dev_id) {
   auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
   if (nccl_id_var != nullptr) {
     auto *nccl_ctx =
@@ -375,8 +376,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
-    auto *nccl_ctx = GetNCCLContextForSyncbatchNomrOp();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      auto *nccl_ctx = GetNCCLContextForSyncbatchNomrOp(scope, dev_id);
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
