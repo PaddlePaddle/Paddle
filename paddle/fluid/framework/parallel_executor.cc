@@ -287,7 +287,7 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
  * create a new nccl comm for sync_batch_norm_op. And these codes should be
  * polished with a unified nccl management.
  */
-details::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp() {
+platform::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp() {
   auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
   if (nccl_id_var != nullptr) {
     auto *nccl_ctx =
