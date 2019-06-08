@@ -1,17 +1,17 @@
 # SLIM Post-training quantization (INT8 MKL-DNN)
 
-This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a FP32 ProgramDesc with FP32 weights to an INT8 ProgramDesc with FP32 weights on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. The Paddle Slim results on above 7 models in accuracy as follows:
+This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a FP32 ProgramDesc with FP32 weights to an INT8 ProgramDesc with FP32 weights on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. Paddle Slim MKL-DNN post-training quantization strategy accuracy results on above 7 models are as follows:
 
 ## Accuracy benchmark
 
->**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 8280**
+>**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
 | Model        | Dataset                        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff   |
 | :----------: | :----------------------------: | :-------------: | :------------:  | :--------------:|
 | GoogleNet    | ILSVRC2012 Validation dataset  |  70.50%         |  70.20%         |  0.30%          |
 | MobileNet-V1 | ILSVRC2012 Validation dataset  |  70.78%         |  70.36%         |  0.42%          |
 | MobileNet-V2 | ILSVRC2012 Validation dataset  |  71.90%         |  71.57%         |  0.33%          |
-| ResNet-101   | ILSVRC2012 Validation dataset  |  77.50%         |  77.53%         |  -0.03%         |
+| ResNet-101   | ILSVRC2012 Validation dataset  |  77.50%         |  77.53%         | -0.03%          |
 | ResNet-50    | ILSVRC2012 Validation dataset  |  76.63%         |  76.48%         |  0.15%          |
 | VGG16        | ILSVRC2012 Validation dataset  |  72.08%         |  72.01%         |  0.07%          |
 | VGG19        | ILSVRC2012 Validation dataset  |  72.56%         |  72.56%         |  0.00%          |
@@ -19,17 +19,15 @@ This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle
 Notes:
 
 * MKL-DNN and MKL are required.
-* CPU turbo off.
-* Running on single core.
 
 ## Instructions to reproduce the above accuracy benchmark
 
 ### 0. Install PaddlePaddle
 
-Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/models/blob/develop/PaddleCV/image_classification/README_ngraph.md) to install PaddlePaddle. If you [build from source](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/beginners_guide/install/compile/compile_Ubuntu_en.md), please use the following cmake arguments.
+Follow PaddlePaddle [installation instruction](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/install/index_en.html) to install PaddlePaddle. If you [build from source](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/beginners_guide/install/compile/compile_Ubuntu_en.md), please use the following cmake arguments.
 
 ```bash
-cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=ON -DWITH_MKLDNN=ON  -DWITH_TESTING=ON  -WITH_FLUID_ONLY=ON  -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON -DWITH_SLIM_MKLDNN_FULL_TEST=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=ON -DWITH_MKLDNN=ON  -DWITH_TESTING=ON -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON -DWITH_SLIM_MKLDNN_FULL_TEST=ON
 ```
 
 ### 1. Data Preparation
@@ -58,12 +56,6 @@ Notes:
 
 To verify all the 7 models, you need to set the parameter of `--infer_model` to one of the following values in command line:
 
-| Model Name   | --infer_model  |
-| :----------: | :------------: |
-| GoogleNet    | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/googlenet/model  |
-| MobileNet-V1 | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/mobilenet/model  |
-| MobileNet-V2 | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/mobilenetv2/model|
-| ResNet-101   | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/resnet101/model  |
-| ResNet-50    | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/resnet50/model   |
-| VGG16        | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/vgg16/model      |
-| VGG19        | /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/vgg19/model      |
+--infer_model /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/MODEL_NAME/model
+
+MODEL_NAME = googlenet, mobilenet, mobilenetv2, resnet101, resnet50, vgg16,vgg19
