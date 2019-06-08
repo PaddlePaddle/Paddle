@@ -174,6 +174,8 @@ def start_procs(args):
             "%s:%d" % (current_node_ip, args.started_port + i),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints,
+            # paddle broadcast ncclUniqueId use socket, and
+            # proxy maybe make trainers unreachable, so set them to ""
             "http_proxy": "",
             "https_proxy": ""
         })
@@ -184,6 +186,7 @@ def start_procs(args):
         cmds.append(cmd)
 
         if args.log_dir is not None:
+            os.system("mkdir -p {}".format(args.log_dir))
             fn = open("%s/workerlog.%d" % (args.log_dir, i), "w")
             log_fns.append(fn)
 
