@@ -87,7 +87,10 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
-};
 
+  // used for compatible with syncbatch norm op
+  std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs_;
+  platform::NCCLContextMap *GetNCCLContextForSyncbatchNomrOp();
+};
 }  // namespace framework
 }  // namespace paddle
