@@ -34,6 +34,9 @@ DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
+DEFINE_bool(check_multi_src_lods, false,
+            "For some operators with multiple inputs, check whether they have "
+            "identical LoDs.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 
 namespace paddle {
@@ -861,6 +864,52 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                  "Operator %s output Tensor %s contains NAN", op_type, name);
 }
 
+static void CheckMultiSrcLods(const std::string& op_type,
+                              const Scope& exec_scope,
+                              const std::vector<std::string>& input_vars) {
+  // The candidate ops to be checked, give a warning when the inputs of these
+  // ops have different LoDs, which may assist users to check whether set the
+  // LoDs right for multiple inputs in run time.
+  const std::vector<std::string> checked_ops = {"sum", "concat", "matmul",
+                                                "mul", "stack"};
+  const std::vector<std::string> checked_prefixes = {"elementwise"};
+
+  bool to_check = false;
+  for (auto& op : checked_ops) {
+    if (op_type == op) {
+      to_check = true;
+      break;
+    }
+  }
+  for (auto& prefix : checked_prefixes) {
+    if (op_type.find(prefix) == 0) {
+      to_check = true;
+      break;
+    }
+  }
+  if (!to_check) return;
+
+  std::vector<std::string> vnames;
+  std::vector<const framework::LoD*> lods;
+  for (auto& vname : input_vars) {
+    auto* var = exec_scope.FindVar(vname);
+    if (var == nullptr || !var->IsType<framework::LoDTensor>()) continue;
+    vnames.push_back(vname);
+    lods.push_back(&var->Get<framework::LoDTensor>().lod());
+  }
+
+  if (vnames.size() <= 1) return;
+  for (size_t i = 1; i < vnames.size(); ++i) {
+    if (*lods[0] != *lods[i]) {
+      LOG(WARNING) << "The input LoDTensors of OP[" << op_type
+                   << "] doesn't "
+                      "have identical LoDs. Tensor "
+                   << vnames[0] << "'s LoD: " << *lods[0] << " vs. Tensor "
+                   << vnames[i] << "'s LoD: " << *lods[i] << ".";
+    }
+  }
+}
+
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
@@ -932,6 +981,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
+
+  if (FLAGS_check_multi_src_lods) {
+    CheckMultiSrcLods(type_, exec_scope, InputVars());
+  }
+
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
