@@ -69,6 +69,7 @@ class TestOperator(unittest.TestCase):
             set(mul_op.attr_names),
             set([
                 "x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var",
+                "scale_x", "scale_y", "scale_out", "force_fp32_output",
                 "op_namescope", "op_callstack"
             ]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)

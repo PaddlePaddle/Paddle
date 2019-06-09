@@ -494,7 +494,9 @@ class MulMKLDNNKernel : public framework::OpKernel<T> {
 
     const Tensor *x = ctx.Input<Tensor>("X");
     const Tensor *y = ctx.Input<Tensor>("Y");
+
     Tensor *z = ctx.Output<Tensor>("Out");
+    auto z_dims = z->dims();
 
     auto prim_creator =
         GetPrimitiveFactory<T, K>(dev_ctx, ctx, x, y, mkldnn_engine);
@@ -502,6 +504,9 @@ class MulMKLDNNKernel : public framework::OpKernel<T> {
 
     stream(stream::kind::eager).submit({fc}).wait();
 
+    if (z_dims.size() != 2) {
+      z->Resize(z_dims);
+    }
     z->set_layout(DataLayout::kMKLDNN);
     z->set_format(z->format());
   }
@@ -519,9 +524,14 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
                                     S8, ops::kMULMKLDNNINT8,
                                     ops::MulMKLDNNKernel<int8_t, float>);
 
+REGISTER_OP_KERNEL(mul, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::MulMKLDNNKernel<uint8_t, float>);
+
+/** Unregister <fp32, fp32> MUL OP
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
                                     FP32, ops::kMULMKLDNNFP32,
                                     ops::MulMKLDNNKernel<float, float>);
 
 REGISTER_OP_KERNEL(mul, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::MulMKLDNNKernel<float, float>);
+**/
