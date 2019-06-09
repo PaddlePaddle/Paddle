@@ -1,0 +1,6 @@
+netaddr==0.7.19
+boto3==1.6.21
+namesgenerator==0.3
+paramiko==2.4.1
+scp
+requests

@@ -1,0 +1,58 @@
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+syntax = "proto2";
+package paddle.platform.proto;
+
+message MemCopy { optional uint64 bytes = 1; }
+
+message Event {
+  enum EventType {
+    CPU = 0;
+    GPUKernel = 1;
+  }
+  optional EventType type = 8;
+  optional string name = 1;
+  optional uint64 start_ns = 2;
+  optional uint64 end_ns = 3;
+  // When positive, it represents gpu id. When -1, it represents CPU.
+  optional int64 device_id = 5;
+  optional int64 sub_device_id = 6;
+
+  optional MemCopy memcopy = 7;
+  optional string detail_info = 9;
+}
+
+message MemEvent {
+  enum Place {
+    CUDAPlace = 0;
+    CPUPlace = 1;
+    CUDAPinnedPlace = 2;
+  }
+  optional uint64 start_ns = 1;
+  optional uint64 end_ns = 2;
+  optional uint64 bytes = 3;
+  optional Place place = 4;
+  optional uint64 thread_id = 5;
+  optional uint32 device_id = 6;
+  optional string alloc_in = 7;
+  optional string free_in = 8;
+}
+
+message Profile {
+  repeated Event events = 1;
+  optional uint64 start_ns = 2;
+  optional uint64 end_ns = 3;
+  repeated MemEvent mem_events = 4;
+}
