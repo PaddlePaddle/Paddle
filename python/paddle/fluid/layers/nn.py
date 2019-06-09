@@ -9229,8 +9229,8 @@ def stack(x, axis=0):
         .. code-block:: python
 
             import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape[1, 2], dtype='int32')
-            x2 = layers.data(name='x2', shape[1, 2], dtype='int32')
+            x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
+            x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
             data = layers.stack([x1,x2])
 
     """
@@ -9577,8 +9577,10 @@ def sum(x):
     Examples:
         .. code-block:: python
 
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            out = layers.sum(input)
+            import paddle.fluid.layers as layers
+            input0 = layers.data(name="input0", shape=[13, 11], dtype='float32')
+            input1 = layers.data(name="input1", shape=[13, 11], dtype='float32')
+            out = layers.sum([input0,input1])
     """
 
     helper = LayerHelper('sum', **locals())
