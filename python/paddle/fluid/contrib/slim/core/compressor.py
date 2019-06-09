@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....core import CPUPlace
+from ....core import CPUPlace, EOFException
 from .... import compiler
+from ....framework import Variable
 from .... import io
 from .... import profiler
 from .... import scope_guard
@@ -28,6 +29,7 @@ import logging
 import sys
 import pickle
 import functools
+import traceback
 
 __all__ = ['Context', 'Compressor']
 
@@ -83,7 +85,8 @@ class Context(object):
                  eval_reader=None,
                  teacher_graphs=None,
                  train_optimizer=None,
-                 distiller_optimizer=None):
+                 distiller_optimizer=None,
+                 search_space=None):
         """
         Args:
             place: The device place where the compression job running.
@@ -118,6 +121,9 @@ class Context(object):
         self.optimize_graph = None
         self.cache_path = './eval_cache'
         self.eval_results = {}
+
+        self.skip_training = False
+        self.search_space = search_space
 
     def to_file(self, file_name):
         """
@@ -181,14 +187,30 @@ class Context(object):
         if sampled_rate:
             reader = cached_reader(reader, sampled_rate, self.cache_path,
                                    cached_id)
-        for data in reader():
-            result = executor.run(eval_graph, self.scope, data=data)
-            result = [np.mean(r) for r in result]
-            results.append(result)
-            if batch_id % 20 == 0:
-                _logger.info("batch-{}; {}={}".format(
-                    batch_id, eval_graph.out_nodes.keys(), result))
-            batch_id += 1
+
+        if isinstance(reader, Variable):
+            reader.start()
+            try:
+                while True:
+                    result = executor.run(eval_graph, self.scope)
+                    result = [np.mean(r) for r in result]
+                    results.append(result)
+                    if batch_id % 20 == 0:
+                        _logger.info("batch-{}; {}={}".format(
+                            batch_id, eval_graph.out_nodes.keys(), result))
+                    batch_id += 1
+            except EOFException:
+                reader.reset()
+        else:
+            for data in reader():
+                result = executor.run(eval_graph, self.scope, data=data)
+                result = [np.mean(r) for r in result]
+                results.append(result)
+                if batch_id % 20 == 0:
+                    _logger.info("batch-{}; {}={}".format(
+                        batch_id, eval_graph.out_nodes.keys(), result))
+                batch_id += 1
+
         result = np.mean(np.array(results), axis=0)
         _logger.info("Final eval result: {}={}".format(
             eval_graph.out_nodes.keys(), result))
@@ -221,9 +243,10 @@ class Compressor(object):
                  eval_feed_list=None,
                  eval_fetch_list=None,
                  teacher_programs=[],
-                 checkpoint_path='./checkpoints',
+                 checkpoint_path=None,
                  train_optimizer=None,
-                 distiller_optimizer=None):
+                 distiller_optimizer=None,
+                 search_space=None):
         """
         Args:
             place(fluid.Place): The device place where the compression job running.
@@ -251,12 +274,14 @@ class Compressor(object):
                                  this optimizer is used to minimize the combined loss of student-net and
                                  teacher-net while train_optimizer is used to minimize loss of
                                  student-net in fine-tune stage. 
+            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherite
+                              slim.nas.SearchSpace class and overwrite the abstract methods.
 
         """
-        assert isinstance(
+        assert train_feed_list is None or isinstance(
             train_feed_list, list
         ), "train_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
-        assert isinstance(
+        assert eval_feed_list is None or isinstance(
             eval_feed_list, list
         ), "eval_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
         self.strategies = []
@@ -280,6 +305,8 @@ class Compressor(object):
         self.train_optimizer = train_optimizer
         self.distiller_optimizer = distiller_optimizer
         self.init_model = None
+
+        self.search_space = search_space
 
     def _add_strategy(self, strategy):
         """
@@ -305,6 +332,9 @@ class Compressor(object):
 
         if 'init_model' in factory.compressor:
             self.init_model = factory.compressor['init_model']
+
+        if 'eval_epoch' in factory.compressor:
+            self.eval_epoch = factory.compressor['eval_epoch']
 
     def _init_model(self, context):
         """
@@ -402,7 +432,8 @@ class Compressor(object):
         """
         Train one epoch.
         """
-
+        if context.skip_training:
+            return
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
@@ -410,21 +441,44 @@ class Compressor(object):
                 context.optimize_graph.program).with_data_parallel(
                     loss_name=context.optimize_graph.out_nodes['loss'])
 
-        for data in context.train_reader():
-            for strategy in self.strategies:
-                strategy.on_batch_begin(context)
-            results = executor.run(context.optimize_graph,
-                                   context.scope,
-                                   data=data)
-            results = [float(np.mean(result)) for result in results]
-            if context.batch_id % 20 == 0:
-                _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
-                    context.epoch_id, context.batch_id,
-                    context.optimize_graph.out_nodes.keys(
-                    ), [round(r, 3) for r in results]))
-            for strategy in self.strategies:
-                strategy.on_batch_end(context)
-            context.batch_id += 1
+        if isinstance(context.train_reader, Variable):
+            context.train_reader.start()
+            try:
+                while True:
+
+                    for strategy in self.strategies:
+                        strategy.on_batch_begin(context)
+                    results = executor.run(context.optimize_graph,
+                                           context.scope)
+                    results = [float(np.mean(result)) for result in results]
+                    if context.batch_id % 20 == 0:
+                        _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
+                            context.epoch_id, context.batch_id,
+                            context.optimize_graph.out_nodes.keys(
+                            ), [round(r, 3) for r in results]))
+                    for strategy in self.strategies:
+                        strategy.on_batch_end(context)
+                    context.batch_id += 1
+
+            except EOFException:
+                context.train_reader.reset()
+
+        else:
+            for data in context.train_reader():
+                for strategy in self.strategies:
+                    strategy.on_batch_begin(context)
+                results = executor.run(context.optimize_graph,
+                                       context.scope,
+                                       data=data)
+                results = [float(np.mean(result)) for result in results]
+                if context.batch_id % 20 == 0:
+                    _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
+                        context.epoch_id, context.batch_id,
+                        context.optimize_graph.out_nodes.keys(
+                        ), [round(r, 3) for r in results]))
+                for strategy in self.strategies:
+                    strategy.on_batch_end(context)
+                context.batch_id += 1
         context.batch_id = 0
 
     def _eval(self, context):
@@ -450,7 +504,8 @@ class Compressor(object):
             eval_reader=self.eval_reader,
             teacher_graphs=self.teacher_graphs,
             train_optimizer=self.train_optimizer,
-            distiller_optimizer=self.distiller_optimizer)
+            distiller_optimizer=self.distiller_optimizer,
+            search_space=self.search_space)
         self.context = context
         if self.teacher_graphs:
             context.put('teachers', self.teacher_graphs)
@@ -467,18 +522,25 @@ class Compressor(object):
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
+        if 'MKLDNNPostTrainingQuantStrategy' in [
+                i.__class__.__name__ for i in self.strategies
+        ]:
+            return None
         start = context.epoch_id
-        self._eval(context)
         for epoch in range(start, self.epoch):
             context.epoch_id = epoch
-            for strategy in self.strategies:
-                strategy.on_epoch_begin(context)
-            self._train_one_epoch(context)
-            for strategy in self.strategies:
-                strategy.on_epoch_end(context)
-            if self.eval_epoch and epoch % self.eval_epoch == 0:
-                self._eval(context)
-            self._save_checkpoint(context)
+            try:
+                for strategy in self.strategies:
+                    strategy.on_epoch_begin(context)
+                self._train_one_epoch(context)
+                if self.eval_epoch and epoch % self.eval_epoch == 0:
+                    self._eval(context)
+                self._save_checkpoint(context)
+                for strategy in self.strategies:
+                    strategy.on_epoch_end(context)
+            except Exception:
+                _logger.error(traceback.print_exc())
+                continue
         for strategy in self.strategies:
             strategy.on_compression_end(context)
         return context.eval_graph

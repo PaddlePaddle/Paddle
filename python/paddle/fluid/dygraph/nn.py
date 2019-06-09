@@ -372,7 +372,7 @@ class Conv3D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         num_channels = input.shape[1]
         self._dtype = self._helper.input_dtype(input)
 
@@ -579,7 +579,7 @@ class Conv3DTranspose(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         self._input_channel = input.shape[1]
 
@@ -883,7 +883,7 @@ class FC(layers.Layer):
         assert isinstance(value, Parameter)
         self.__w[i] = value
 
-    def build_once(self, input):
+    def _build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
                                                               self._param_attr):
@@ -1024,6 +1024,8 @@ class BatchNorm(layers.Layer):
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
+        trainable_statistics(bool, Default False): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -1053,7 +1055,8 @@ class BatchNorm(layers.Layer):
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
-                 use_global_stats=False):
+                 use_global_stats=False,
+                 trainable_statistics=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1111,8 +1114,9 @@ class BatchNorm(layers.Layer):
         self._is_test = is_test
         self._fuse_with_relu = fuse_with_relu
         self._use_global_stats = use_global_stats
+        self._trainable_statistics = trainable_statistics
 
-    def build_once(self, input):
+    def _build_once(self, input):
         pass
 
     def forward(self, input):
@@ -1151,7 +1155,8 @@ class BatchNorm(layers.Layer):
                 "is_test": self._is_test,
                 "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
-                "use_global_stats": self._use_global_stats
+                "use_global_stats": self._use_global_stats,
+                "trainable_statistics": self._trainable_statistics
             })
 
         # Currently, we don't support inplace in dygraph mode
@@ -1189,6 +1194,7 @@ class Embedding(layers.Layer):
                   supplied inputs.
 
     Examples:
+
         .. code-block:: python
 
           dict_size = len(dataset.ids)
@@ -1316,7 +1322,7 @@ class LayerNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         input_shape = input.shape
         param_shape = [
@@ -1461,8 +1467,8 @@ class GRUUnit(layers.Layer):
             sigmoid=1,
             tanh=2,
             relu=3, )
-        activation = activation_dict[activation]
-        gate_activation = activation_dict[gate_activation]
+        self.activation = activation_dict[activation]
+        self.gate_activation = activation_dict[gate_activation]
 
         self._dtype = dtype
         size = size // 3
@@ -1494,8 +1500,8 @@ class GRUUnit(layers.Layer):
                 'Hidden': updated_hidden,
             },
             attrs={
-                'activation': 2,  # tanh
-                'gate_activation': 1,  # sigmoid
+                'activation': self.activation,
+                'gate_activation': self.gate_activation,
             })
 
         return updated_hidden, reset_hidden_pre, gate
@@ -1678,7 +1684,7 @@ class NCE(layers.Layer):
             'remote_prefetch': remote_prefetch
         }
 
-    def build_once(self, input, label, sample_weight=None):
+    def _build_once(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
@@ -1764,7 +1770,7 @@ class PRelu(layers.Layer):
             raise ValueError('mode should be one of all, channel, element.')
         self._alpha_shape = [1]
 
-    def build_once(self, input):
+    def _build_once(self, input):
         if self._mode == 'channel':
             self._alpha_shape = [1, input.shape[1], 1, 1]
         elif self._mode == 'element':
@@ -1842,7 +1848,7 @@ class BilinearTensorProduct(layers.Layer):
         self._name = name
         self._inputs = dict()
 
-    def build_once(self, x, y):
+    def _build_once(self, x, y):
         self._dtype = self._helper.input_dtype(x)
 
         param_shape = [self._size, x.shape[1], y.shape[1]]
@@ -2018,7 +2024,7 @@ class Conv2DTranspose(layers.Layer):
         self._output_size = output_size
         self._op_type = 'conv2d_transpose'
 
-    def build_once(self, input):
+    def _build_once(self, input):
         input_channel = input.shape[1]
         if (input_channel == self._groups and
                 self._num_filters == input_channel and not self._use_cudnn):
@@ -2053,7 +2059,7 @@ class Conv2DTranspose(layers.Layer):
             self._filter_size = [filter_size_h, filter_size_w]
         else:
             self._filter_size = utils.convert_to_list(
-                self._output_size, 2, 'conv2d_transpose.filter_size')
+                self._filter_size, 2, 'conv2d_transpose.filter_size')
 
         if self._output_size is None:
             self._output_size = []
@@ -2142,7 +2148,7 @@ class SequenceConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
@@ -2179,7 +2185,7 @@ class RowConv(layers.Layer):
         self._param_attr = param_attr
         self._future_context_size = future_context_size
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
         self._filter_param = self.create_parameter(
@@ -2242,7 +2248,7 @@ class GroupNorm(layers.Layer):
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         param_shape = [input.shape[1]]
         if self._bias_attr:
@@ -2295,7 +2301,7 @@ class SpectralNorm(layers.Layer):
         self._eps = eps
         self._dim = dim
 
-    def build_once(self, weight):
+    def _build_once(self, weight):
         self._dtype = self._helper.input_dtype(weight)
         input_shape = weight.shape
         h = input_shape[self._dim]
@@ -2350,7 +2356,7 @@ class TreeConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, nodes_vector, edge_set):
+    def _build_once(self, nodes_vector, edge_set):
         assert isinstance(nodes_vector, Variable)
         assert isinstance(edge_set, Variable)
         self._dtype = self._helper.input_dtype(nodes_vector)

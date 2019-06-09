@@ -210,7 +210,7 @@ struct AnalysisConfig {
   */
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
-  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
+  MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.

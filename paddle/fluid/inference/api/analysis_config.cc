@@ -184,11 +184,10 @@ void AnalysisConfig::EnableNgraph() {
 #endif
 }
 
-std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
-    const {
+MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
-  return mkldnn_quantizer_config_;
+  return mkldnn_quantizer_config_.get();
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
@@ -372,6 +371,7 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_used, gpu_available;
+  platform::SetDeviceId(device_id_);
   platform::GpuMemoryUsage(&gpu_used, &gpu_available);
   double total_gpu_memory = (gpu_used + gpu_available) / 1024. / 1024.;
   float fraction_of_gpu_memory =

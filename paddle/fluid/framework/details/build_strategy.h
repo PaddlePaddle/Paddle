@@ -80,6 +80,8 @@ struct BuildStrategy {
 
   bool fuse_all_reduce_ops_{false};
 
+  bool enable_backward_optimizer_op_deps_{false};
+
   bool fuse_relu_depthwise_conv_{false};
 
   bool sync_batch_norm_{false};

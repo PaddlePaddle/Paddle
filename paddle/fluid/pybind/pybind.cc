@@ -943,6 +943,8 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
            py::call_guard<py::gil_scoped_release>())
+      .def("create_variables", &Executor::CreateVariables,
+           py::call_guard<py::gil_scoped_release>())
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -1339,6 +1341,9 @@ All parameter, weight, gradient are variables in Paddle.
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
+#ifdef WIN32
+            PADDLE_THROW("Windows has NO support to distribute mode.");
+#endif
             self.num_trainers_ = num_trainers;
           })
       .def_property(
@@ -1484,7 +1489,15 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
-          [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+          [](BuildStrategy &self, bool b) {
+#ifdef WIN32
+            if (b) {
+              PADDLE_THROW("Windows has NO support to distribute mode.");
+            }
+#else
+            self.is_distribution_ = b;
+#endif
+          })
       .def_property("async_mode",
                     [](const BuildStrategy &self) { return self.async_mode_; },
                     [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
@@ -1496,6 +1509,13 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property("enable_backward_optimizer_op_deps",
+                    [](const BuildStrategy &self) {
+                      return self.enable_backward_optimizer_op_deps_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.enable_backward_optimizer_op_deps_ = b;
+                    })
       .def_property(
           "cache_runtime_context",
           [](const BuildStrategy &self) { return self.cache_runtime_context_; },
