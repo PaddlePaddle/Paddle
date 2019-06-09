@@ -1514,6 +1514,13 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property("enable_backward_optimizer_op_deps",
+                    [](const BuildStrategy &self) {
+                      return self.enable_backward_optimizer_op_deps_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.enable_backward_optimizer_op_deps_ = b;
+                    })
       .def_property(
           "cache_runtime_context",
           [](const BuildStrategy &self) { return self.cache_runtime_context_; },

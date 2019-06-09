@@ -78,8 +78,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 optimizer.minimize(avg_loss)
                 optimizer2.minimize(avg_loss)
                 mlp.clear_gradients()
-                fluid.dygraph.save_persistables(
-                    mlp.state_dict(), [optimizer, optimizer2], "save_dir_2")
+                fluid.dygraph.save_persistables(mlp.state_dict(), "save_dir_2",
+                                                [optimizer, optimizer2])
                 if batch_id == 2:
                     break
 

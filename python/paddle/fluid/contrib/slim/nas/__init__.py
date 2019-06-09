@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import pruner
-from .pruner import *
-from . import prune_strategy
-from .prune_strategy import *
-from . import auto_prune_strategy
-from .auto_prune_strategy import *
+from . import light_nas_strategy
+from .light_nas_strategy import *
+from . import controller_server
+from .controller_server import *
+from . import search_agent
+from .search_agent import *
+from . import search_space
+from .search_space import *
+from . import lock
+from .lock import *
 
-__all__ = pruner.__all__
-__all__ += prune_strategy.__all__
-__all__ += auto_prune_strategy.__all__
+__all__ = light_nas_strategy.__all__
+__all__ += controller_server.__all__
+__all__ += search_agent.__all__
+__all__ += search_space.__all__
