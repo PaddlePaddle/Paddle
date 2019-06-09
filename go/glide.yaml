@@ -1,0 +1,33 @@
+package: github.com/PaddlePaddle/Paddle/go
+import:
+- package: github.com/PaddlePaddle/recordio
+- package: github.com/coreos/etcd
+  version: ^3.2.1
+  subpackages:
+  - clientv3
+  - clientv3/concurrency
+  - embed
+  - etcdserver
+- package: github.com/namsral/flag
+  version: ^1.7.4-pre
+- package: github.com/sirupsen/logrus
+  version: ^1.0.0
+- package: github.com/topicai/candy
+- package: golang.org/x/crypto
+  repo: https://github.com/golang/crypto.git
+  vcs: git
+- package: golang.org/x/sys
+  repo: https://github.com/golang/sys.git
+  vcs: git
+- package: golang.org/x/text
+  repo: https://github.com/golang/text.git
+  vcs: git
+- package: github.com/satori/go.uuid
+  version: v1.1.0
+- package: github.com/alecthomas/gometalinter
+  version: v1.2.1
+- package: github.com/inconshreveable/log15
+  version: v2.13
+- package: github.com/go-stack/stack
+  version: v1.6.0
+- package: github.com/golang/protobuf
