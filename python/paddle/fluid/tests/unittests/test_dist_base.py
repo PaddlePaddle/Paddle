@@ -615,8 +615,6 @@ class TestDistBase(unittest.TestCase):
         if self._enable_backward_deps:
             tr0_cmd += " --enable_backward_deps 1"
             tr1_cmd += " --enable_backward_deps 1"
-            env0["FLAGS_fuse_parameter_memory_size"] = 0.5
-            env1["FLAGS_fuse_parameter_memory_size"] = 0.5
 
         env0.update(envs)
         env1.update(envs)
