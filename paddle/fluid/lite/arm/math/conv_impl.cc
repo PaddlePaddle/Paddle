@@ -239,7 +239,7 @@ void im2col3x3(const Dtype* data_im, const int channels, const int height,
  */
 void conv1x1s1_gemm(const float* i_data, float* o_data, int num, int oc, int oh,
                     int ow, int ic, int ih, int win, const float* weights,
-                    const float* bias, operators::ConvParam& param,
+                    const float* bias, const operators::ConvParam& param,
                     ARMContext* ctx, const int* idx_ptr) {
   int channel_size_out = ow * oh;
   int channel_size_in = win * ih;
@@ -368,7 +368,7 @@ void conv1x1s1_gemm(const float* i_data, float* o_data, int num, int oc, int oh,
 void conv_im2col_gemm(const float* i_data, float* o_data, int num, int oc,
                       int oh, int ow, int ic, int ih, int win,
                       const float* weights, const float* bias,
-                      operators::ConvParam& param, ARMContext* ctx,
+                      const operators::ConvParam& param, ARMContext* ctx,
                       const int* idx_ptr) {
   const int group = param.groups;
   auto x_dims = param.x->dims();
@@ -537,55 +537,55 @@ void conv_im2col_gemm(const float* i_data, float* o_data, int num, int oc,
 //   }
 // }
 
-// void conv_depthwise_3x3(const float* i_data, float* o_data, int num, int oc,
-//                         int oh, int ow, int ic, int ih, int win,
-//                         const float* weights, const float* bias,
-//                         operators::ConvParam& param, ARMContext* ctx) {
-//   int pad = param.paddings[1];
-//   int stride = param.strides[1];
-//   bool flag_relu = false;
-//   bool flag_bias = param.bias != nullptr;
-//   if (param.activation_param.has_active) {
-//     if (param.activation_param.active == Active_relu &&
-//         fabs(param.activation_param.negative_slope) < 1e-6f) {
-//       flag_relu = true;
-//     }
-//   }
-//   if (pad == 1) {
-//     conv_depthwise_3x3p1(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-//                          weights, bias, stride, flag_bias, flag_relu, ctx);
-//   } else if (pad == 0 && ih > 2) {
-//     conv_depthwise_3x3p0(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-//                          weights, bias, stride, flag_bias, flag_relu, ctx);
-//   } else {
-//     LOG(FATAL) << "unsupport this type 3x3 dw conv";
-//   }
-// }
+void conv_depthwise_3x3(const float* i_data, float* o_data, int num, int oc,
+                        int oh, int ow, int ic, int ih, int win,
+                        const float* weights, const float* bias,
+                        const operators::ConvParam& param, ARMContext* ctx) {
+  int pad = param.paddings[1];
+  int stride = param.strides[1];
+  bool flag_relu = false;
+  bool flag_bias = param.bias != nullptr;
+  // if (param.activation_param.has_active) {
+  //   if (param.activation_param.active == Active_relu &&
+  //       fabs(param.activation_param.negative_slope) < 1e-6f) {
+  //     flag_relu = true;
+  //   }
+  // }
+  if (pad == 1) {
+    conv_depthwise_3x3p1(i_data, o_data, num, oc, oh, ow, ic, ih, win,
+                         weights, bias, stride, flag_bias, flag_relu, ctx);
+  } else if (pad == 0 && ih > 2) {
+    conv_depthwise_3x3p0(i_data, o_data, num, oc, oh, ow, ic, ih, win,
+                         weights, bias, stride, flag_bias, flag_relu, ctx);
+  } else {
+    LOG(FATAL) << "unsupport this type 3x3 dw conv";
+  }
+}
 
-// void conv_depthwise_5x5(const float* i_data, float* o_data, int num, int oc,
-//                         int oh, int ow, int ic, int ih, int win,
-//                         const float* weights, const float* bias,
-//                         operators::ConvParam& param, ARMContext* ctx) {
-//   int pad = param.paddings[1];
-//   int stride = param.strides[1];
-//   bool flag_relu = false;
-//   bool flag_bias = param.bias != nullptr;
-//   if (param.activation_param.has_active &&
-//       fabs(param.activation_param.negative_slope) < 1e-6f) {
-//     if (param.activation_param.active == Active_relu) {
-//       flag_relu = true;
-//     }
-//   }
-//   if (pad == 2 && stride == 2) {
-//     conv_depthwise_5x5s2(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-//                          weights, bias, pad, flag_bias, flag_relu, ctx);
-//   } else if (stride == 1) {
-//     conv_depthwise_5x5s1(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-//                          weights, bias, pad, flag_bias, flag_relu, ctx);
-//   } else {
-//     LOG(FATAL) << "unsupport this type 5x5 dw conv";
-//   }
-// }
+void conv_depthwise_5x5(const float* i_data, float* o_data, int num, int oc,
+                        int oh, int ow, int ic, int ih, int win,
+                        const float* weights, const float* bias,
+                        const operators::ConvParam& param, ARMContext* ctx) {
+  int pad = param.paddings[1];
+  int stride = param.strides[1];
+  bool flag_relu = false;
+  bool flag_bias = param.bias != nullptr;
+  // if (param.activation_param.has_active &&
+  //     fabs(param.activation_param.negative_slope) < 1e-6f) {
+  //   if (param.activation_param.active == Active_relu) {
+  //     flag_relu = true;
+  //   }
+  // }
+  if (pad == 2 && stride == 2) {
+    conv_depthwise_5x5s2(i_data, o_data, num, oc, oh, ow, ic, ih, win,
+                         weights, bias, pad, flag_bias, flag_relu, ctx);
+  } else if (stride == 1) {
+    conv_depthwise_5x5s1(i_data, o_data, num, oc, oh, ow, ic, ih, win,
+                         weights, bias, pad, flag_bias, flag_relu, ctx);
+  } else {
+    LOG(FATAL) << "unsupport this type 5x5 dw conv";
+  }
+}
 
 }  // namespace math
 }  // namespace arm

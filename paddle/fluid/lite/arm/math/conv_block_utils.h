@@ -16,6 +16,7 @@
 #include <arm_neon.h>
 #include <cmath>
 #include "paddle/fluid/lite/arm/math/saturate.h"
+#include "paddle/fluid/lite/arm/math/type_trans.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/utils/cp_logging.h"
 

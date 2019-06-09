@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/lite/kernels/arm/conv_compute.h"
 #include "paddle/fluid/lite/arm/math/conv_direct.h"
+#include "paddle/fluid/lite/arm/math/conv_depthwise.h"
+#include "paddle/fluid/lite/arm/math/conv_gemmlike.h"
 #include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
@@ -62,22 +64,26 @@ void ConvCompute::Run() {
   // TODO(xxx): enable more
   if (param.groups == ic && ic == oc && kps_equal && no_dilation && flag_dw) {
     // dw conv impl
-    // impl_ = new lite::arm::math::prepackA<PRECISION(kFloat)>;
+    impl_ = new lite::arm::math::DepthwiseConv<PRECISION(kFloat)>;
+    LOG(INFO) << "invoking dw conv";
   } else if (param.groups == 1 && kw == 3 && stride == 1 && kps_equal &&
              no_dilation) {
     if (ic >= 32 && oc >= 32 && oh > 16 && ow > 16) {
       // winograd conv impl
       // impl_ = new lite::arm::math::WinogradConv<PRECISION(kFloat)>;
+      LOG(FATAL) << "TODO!!! winograd conv";
     } else {
       // direct conv impl
       impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
+      LOG(INFO) << "invoking direct conv";
     }
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
     impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
   } else {
-    // impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
+    impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
+    LOG(INFO) << "invoking gemm like conv";
   }
   this->impl_->create(param, &ctx);
 
@@ -98,7 +104,15 @@ PrecisionType ConvCompute::precision() const { return PRECISION(kFloat); }
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(conv, kARM, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW,
+                     paddle::lite::kernels::arm::ConvCompute, def)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindInput("Filter", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::ConvCompute, def)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})

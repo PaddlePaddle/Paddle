@@ -34,7 +34,7 @@ class ImplBase {
 
   virtual bool init(const Param& param, Context<TType>* ctx) { return false; }
 
-  virtual bool run(Param& param) { return false; }
+  virtual bool run(const Param& param) { return false; }
   // void set_op_name(const char* name){_op_name = name;}
   // const char* get_op_name() { return _op_name.c_str();}
 
@@ -124,6 +124,27 @@ void conv_im2col_gemm_int8(const int8_t* din, int32_t* dout, int num, int chout,
 /**
  * \brief depthwise convolution, kernel size 3x3, stride 1, pad 1, with bias
  */
+
+void conv_depthwise_3x3p0(const float* din, float* dout, int num, int ch_out,
+                          int h_out, int w_out, int ch_in, int h_in, int w_in,
+                          const float* weights, const float* bias, int stride,
+                          bool flag_bias, bool flag_relu, ARMContext* ctx);
+
+void conv_depthwise_3x3p1(const float* din, float* dout, int num, int ch_out,
+                          int h_out, int w_out, int ch_in, int h_in, int w_in,
+                          const float* weights, const float* bias, int stride,
+                          bool flag_bias, bool flag_relu, ARMContext* ctx);
+
+void conv_depthwise_5x5s1(const float* din, float* dout, int num, int chout,
+                          int hout, int wout, int chin, int hin, int win,
+                          const float* weights, const float* bias, int pad,
+                          bool flag_bias, bool flag_relu, ARMContext* ctx);
+
+void conv_depthwise_5x5s2(const float* din, float* dout, int num, int chout,
+                          int hout, int wout, int chin, int hin, int win,
+                          const float* weights, const float* bias, int pad,
+                          bool flag_bias, bool flag_relu, ARMContext* ctx);
+
 void conv_depthwise_3x3(const float* din, float* dout, int num, int chout,
                         int hout, int wout, int chin, int hin, int win,
                         const float* weights, const float* bias,
@@ -159,11 +180,11 @@ void conv_depthwise_5x5_int8(const int8_t* din, int32_t* dout, int num,
                              Context<TARGET(kARM)>* ctx, PrecisionType out_type,
                              const float* scale);
 
-void conv_arm_winograd3x3(const float* din, float* dout, int num, int chout,
-                          int hout, int wout, int chin, int hin, int win,
-                          const float* weights, const float* bias,
-                          const operators::ConvParam& param,
-                          Context<TARGET(kARM)>* ctx);
+void conv_winograd3x3(const float* din, float* dout, int num, int chout,
+                      int hout, int wout, int chin, int hin, int win,
+                      const float* weights, const float* bias,
+                      const operators::ConvParam& param,
+                      Context<TARGET(kARM)>* ctx);
 
 void winograd_transform_weights(void* dout, const void* din, int ch_out,
                                 int ch_in, void* work_space);

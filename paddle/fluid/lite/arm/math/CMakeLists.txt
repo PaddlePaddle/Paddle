@@ -11,9 +11,20 @@ cc_library(math_arm SRCS
     scale.cc
     elementwise.cc
     sgemv.cc
+    type_trans.cpp
     conv_impl.cc
     conv_direct_3x3s1.cc
     conv_direct_3x3s2.cc
     conv_direct.cc
+    conv_depthwise_3x3_int7.cc
+    conv_depthwise_3x3_int8.cc
+    conv_depthwise_5x5s1_int8.cc
+    conv_depthwise_3x3p0.cc
+    conv_depthwise_3x3p1.cc
+    conv_depthwise_5x5s1.cc
+    conv_depthwise_5x5s2.cc
+    conv_depthwise.cc
+    conv_gemmlike.cc
+    conv_winograd_3x3.cc
     DEPS ${lite_kernel_deps} eigen3)
  

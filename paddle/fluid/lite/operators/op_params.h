@@ -124,8 +124,8 @@ struct ConcatParam {
 struct ConvParam {
   lite::Tensor* x{};
   lite::Tensor* filter{};
-  lite::Tensor* bias{};
-  lite::Tensor* residualData{};
+  lite::Tensor* bias{nullptr};
+  lite::Tensor* residualData{nullptr};
   lite::Tensor* output{};
   std::vector<int> strides{1, 1};
   std::vector<int> paddings{0, 0};

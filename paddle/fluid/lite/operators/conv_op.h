@@ -41,27 +41,39 @@ class ConvOpLite : public OpLite {
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
     auto input = op_desc.Input("Input").front();
     auto filter = op_desc.Input("Filter").front();
-    auto bias = op_desc.Input("Bias").front();
-    auto resid = op_desc.Input("ResidualData").front();  // maybe not used
     auto out = op_desc.Output("Out").front();
-
     param_.x = scope->FindVar(input)->GetMutable<lite::Tensor>();
     param_.filter = scope->FindVar(filter)->GetMutable<lite::Tensor>();
-    param_.residualData = scope->FindVar(resid)->GetMutable<lite::Tensor>();
-    param_.bias = scope->FindVar(bias)->GetMutable<lite::Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
     param_.groups = op_desc.GetAttr<int>("groups");
     param_.dilations = op_desc.GetAttr<std::vector<int>>("dilations");
-
+    // optional params
+    std::vector<std::string> input_arg_names = op_desc.InputArgumentNames();
+    if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
+        input_arg_names.end()) {
+      auto bias_var = scope->FindVar(op_desc.Input("Bias").front());
+      if (bias_var != nullptr) {
+        param_.bias =
+            const_cast<lite::Tensor *>(&(bias_var->Get<lite::Tensor>()));
+      }
+    }
+    if (std::find(input_arg_names.begin(), input_arg_names.end(), "ResidualData") !=
+        input_arg_names.end()) {
+      auto residual_data_var = scope->FindVar(op_desc.Input("ResidualData").front());
+      if (residual_data_var != nullptr) {
+        param_.residualData =
+            const_cast<lite::Tensor *>(&(residual_data_var->Get<lite::Tensor>()));
+      }
+    }
     return true;
   }
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
-  std::string DebugString() const override { return "conv"; }
+  std::string DebugString() const override { return "conv2d"; }
 
  private:
   mutable ConvParam param_;
