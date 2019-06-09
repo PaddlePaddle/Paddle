@@ -93,7 +93,8 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (platform::CanCUDNNBeUsed(ctx) &&
+      ctx.Input<Tensor>("X")->type() == framework::proto::VarType::FP16) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
@@ -123,7 +124,8 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (platform::CanCUDNNBeUsed(ctx) &&
+      ctx.Input<Tensor>("X")->type() == framework::proto::VarType::FP16) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
