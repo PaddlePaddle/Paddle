@@ -92,6 +92,7 @@ function build_test_server {
 
 # Build the code and run lite server tests. This is executed in the CI system.
 function build_test_arm {
+    adb kill-server
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     # start android arm64-v8a armeabi-v7a emulators first
     echo n | avdmanager create avd -f -n paddle-armv8 -k "system-images;android-24;google_apis;arm64-v8a"
@@ -177,7 +178,7 @@ function main {
                 shift
                 ;;
             cmake_arm)
-                cmake_arm
+                cmake_arm $2 $3
                 shift
                 ;;
             test_server)
