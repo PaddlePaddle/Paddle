@@ -1033,6 +1033,8 @@ class BatchNorm(layers.Layer):
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
+        trainable_statistics(bool, Default False): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -1062,7 +1064,8 @@ class BatchNorm(layers.Layer):
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
-                 use_global_stats=False):
+                 use_global_stats=False,
+                 trainable_statistics=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1120,6 +1123,7 @@ class BatchNorm(layers.Layer):
         self._is_test = is_test
         self._fuse_with_relu = fuse_with_relu
         self._use_global_stats = use_global_stats
+        self._trainable_statistics = trainable_statistics
 
     def _build_once(self, input):
         pass
@@ -1160,7 +1164,8 @@ class BatchNorm(layers.Layer):
                 "is_test": self._is_test,
                 "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
-                "use_global_stats": self._use_global_stats
+                "use_global_stats": self._use_global_stats,
+                "trainable_statistics": self._trainable_statistics
             })
 
         # Currently, we don't support inplace in dygraph mode
