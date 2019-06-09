@@ -73,4 +73,5 @@ bool ConvOpLite::InferShape() const {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_OP(conv, paddle::lite::operators::ConvOpLite);
+REGISTER_LITE_OP(conv2d, paddle::lite::operators::ConvOpLite);
+REGISTER_LITE_OP(depthwise_conv2d, paddle::lite::operators::ConvOpLite);

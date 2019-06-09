@@ -34,7 +34,7 @@ function cmake_arm {
 function build {
     file=$1
     for _test in $(cat $file); do
-        make $_test -j$(expr $(nproc) - 2)
+        make $_test -j$(expr $(nproc))
     done
 }
 
