@@ -129,7 +129,7 @@ struct Instruct {
       CHECK(op_->CheckShape());
     }
     op_->InferShape();
-    kernel_->Run();
+    kernel_->Launch();
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Instruct& other) {
