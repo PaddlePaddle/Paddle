@@ -54,7 +54,6 @@ class TestSeqAvgPool(OpTest):
 
     def set_data(self):
         self.op_type = 'sequence_pool'
-        # one level, batch size is 4
         x = np.random.uniform(0.1, 1, [11, 23]).astype('float32')
         lod = self.set_lod()
         self.inputs = {'X': (x, lod)}
@@ -181,7 +180,6 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
 
     def set_data(self):
         self.op_type = 'sequence_pool'
-        # one level, batch size is 4
         x = np.random.uniform(0.1, 1, [13, 3, 17]).astype('float32')
         lod = self.set_lod()
         self.inputs = {'X': (x, lod)}
