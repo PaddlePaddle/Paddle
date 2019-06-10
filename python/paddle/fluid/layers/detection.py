@@ -88,7 +88,7 @@ def retinanet_target_assign(bbox_pred,
     All entries of a negative anchor are set to 0. No other sampling strategy
     is adopted to filter negative anchors because all negative labels along with
     positive labels contribute to the classfication objective(focal loss). Only
-    positive anchors are delecated to regression loss. Anchors that are neither
+    positive anchors are delicated to regression loss. Anchors that are neither
     positive nor negative do not contribute to the training objective. The regression
     targets are the encoded ground-truth boxes associated with the positive anchors.
 
@@ -125,7 +125,7 @@ def retinanet_target_assign(bbox_pred,
     Returns:
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox, bbox_inside_weight. fg_num) is returned. The
+               target_bbox, bbox_inside_weight, fg_num) is returned. The
                predicted_scores and predicted_location is the predicted result
                of the retinanet.The target_label and target_bbox is the ground
                truth, respectively. The predicted_location is a 2D Tensor with
@@ -141,24 +141,23 @@ def retinanet_target_assign(bbox_pred,
 
     Examples:
         .. code-block:: python
-            
-    		import paddle.fluid as fluid
-            bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
-                              append_batch_size=False, dtype='float32')
-            cls_logits = layers.data(name='cls_logits', shape=[100, 1],
-                              append_batch_size=False, dtype='float32')
-            anchor_box = layers.data(name='anchor_box', shape=[20, 4],
-                              append_batch_size=False, dtype='float32')
-            gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                              append_batch_size=False, dtype='float32')
-			is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
-						 	  append_batch_size=False, dtype='float32')
-			im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
-							  append_batch_size=False, dtype='float32')
-            loc_pred, score_pred, loc_target, score_target,
-			bbox_inside_weight, fg_num =
-                fluid.layers.retinanet_target_assign(bbox_pred, cls_logits,
-				anchor_box, gt_boxes, gt_labels)
+
+          import paddle.fluid as fluid
+          bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+                            append_batch_size=False, dtype='float32')
+          cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+                            append_batch_size=False, dtype='float32')
+          anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                            append_batch_size=False, dtype='float32')
+          gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+                            append_batch_size=False, dtype='float32')
+          is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
+                            append_batch_size=False, dtype='float32')
+          im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
+                            append_batch_size=False, dtype='float32')
+          loc_pred, score_pred, loc_target, score_target, bbox_inside_weight, fg_num =
+                fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
+                gt_boxes, gt_labels)
 
     """
 
