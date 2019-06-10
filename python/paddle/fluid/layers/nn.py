@@ -12016,7 +12016,7 @@ def deformable_psroi_pooling(input,
                              trans,
                              no_trans=0,
                              spatial_scale=1.0,
-                             output_channels=64,
+                             output_channels=None,
                              group_size=[1, 1],
                              pooled_height=1,
                              pooled_width=1,
@@ -12039,24 +12039,24 @@ def deformable_psroi_pooling(input,
        trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
                          N is number of ROIs, C is number of channels, which indicate the offset distance 
                          in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans(integer): Whether add offset to get new value or not while roi pooling, which 
-                          value is 0 or 1. Default: 0.
-       spatial_scale(float): Ratio of input feature map height (or width) to raw image height (or width).
+       no_trans (bool): Whether add offset to get new value or not while roi pooling, which 
+                          value is True or False. Default: False.
+       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       output_channels(integer): The number of output channels, which should be less than input channels.
+       output_channels (integer): The number of output channels, which should be less than input channels.
                                  Deformable roi pooling requires output_channels = input_channels, while 
-                                 deformable psroi pooling requires output_channels = input_channels *
-                                 pooled_height * pooled_width. Default: 64.
-       group_size(list): The number of groups which input channels are divided.(eg.number of input channels 
+                                 deformable psroi pooling requires input_channels = output_channels *
+                                 pooled_height * pooled_width. Default value is same to input channels.
+       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
                          is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
-       pooled_height(integer): The pooled output height. Default: 1.
-       pooled_width(integer): The pooled output width. Default: 1.
-       part_size(list): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
+       pooled_height (integer): The pooled output height. Default: 1.
+       pooled_width (integer): The pooled output width. Default: 1.
+       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
                         if None, default value is [pooled_height, pooled_width].
-       sample_per_part(integer): The number of samples in each bin. Default: 1.
-       trans_std(float): Coefficient of offset. Default: 0.1.
-       name(str): Name of layer. Default: None.
+       sample_per_part (integer): The number of samples in each bin. Default: 1.
+       trans_std (float): Coefficient of offset. Default: 0.1.
+       name (str): Name of layer. Default: None.
     Returns:
         Variable: The tensor variable storing the deformable psroi pooling \
                   result.
@@ -12074,7 +12074,7 @@ def deformable_psroi_pooling(input,
                                  dtype='float32', 
                                  lod_level=1)
         trans = fluid.layers.data(name="trans",
-                                  shape=[2, 3, 64, 64], 
+                                  shape=[2, 384, 64, 64], 
                                   dtype='float32', 
                                   append_batch_size=False) 
         x = fluid.layers.nn.deformable_psroi_pooling(input=input, 
@@ -12082,7 +12082,7 @@ def deformable_psroi_pooling(input,
                                                      trans=trans, 
                                                      no_trans=0,
                                                      spatial_scale=1.0, 
-                                                     output_channels=3,
+                                                     output_channels=192,
                                                      group_size=(1, 1),
                                                      pooled_height=8,
                                                      pooled_width=8,
@@ -12090,6 +12090,15 @@ def deformable_psroi_pooling(input,
                                                      sample_per_part=4, 
                                                      trans_std=0.1)
     """
+
+    if no_trans == False:
+        no_trans = 0
+    else:
+        no_trans = 1
+
+    input_channels = input.shape[1]
+    if output_channels is None:
+        output_channels = input_channels
 
     if part_size is None:
         part_height = pooled_height
