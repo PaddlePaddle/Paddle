@@ -49,9 +49,8 @@ class MulPrimitiveFactory {
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
 
-    memory::data_type x_dt = paddle::framework::ToMKLDNNDataType(input->type());
-    memory::data_type y_dt =
-        paddle::framework::ToMKLDNNDataType(weights->type());
+    memory::data_type x_dt = framework::ToMKLDNNDataType(input->type());
+    memory::data_type y_dt = framework::ToMKLDNNDataType(weights->type());
 
     auto x_matrix = UpdateDataFormat(input, false,
                                      /*is_weights*/ x_num_col_dims, x_dt, ctx);
