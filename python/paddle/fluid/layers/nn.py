@@ -6576,6 +6576,7 @@ def one_hot(input, depth):
             inputs = {'X': input}
             attrs = {'depth': depth}
         else:
+            depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
             attrs = {}
     helper.append_op(
@@ -9383,6 +9384,7 @@ def expand(x, expand_times, name=None):
             new_expand_times = []
             for ele in expand_times:
                 if isinstance(ele, Variable):
+                    ele.stop_gradient = True
                     new_expand_times.append(ele)
                 else:
                     assert (isinstance(ele, int))
