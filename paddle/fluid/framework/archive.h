@@ -14,6 +14,11 @@
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include <glog/logging.h>
 #include <algorithm>
 #include <map>
@@ -314,7 +319,11 @@ Archive<AR>& operator>>(Archive<AR>& ar, T (&p)[N]) {
 
 template <class AR, class T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::vector<T>& p) {
+#ifdef _LINUX
   ar << (size_t)p.size();
+#else
+  ar << (uint64_t)p.size();
+#endif
   for (const auto& x : p) {
     ar << x;
   }
@@ -323,7 +332,11 @@ Archive<AR>& operator<<(Archive<AR>& ar, const std::vector<T>& p) {
 
 template <class AR, class T>
 Archive<AR>& operator>>(Archive<AR>& ar, std::vector<T>& p) {
+#ifdef _LINUX
   p.resize(ar.template Get<size_t>());
+#else
+  p.resize(ar.template Get<uint64_t>());
+#endif
   for (auto& x : p) {
     ar >> x;
   }
@@ -332,7 +345,11 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::vector<T>& p) {
 
 template <class AR, class T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::valarray<T>& p) {
+#ifdef _LINUX
   ar << (size_t)p.size();
+#else
+  ar << (uint64_t)p.size();
+#endif
   for (const auto& x : p) {
     ar << x;
   }
@@ -341,7 +358,11 @@ Archive<AR>& operator<<(Archive<AR>& ar, const std::valarray<T>& p) {
 
 template <class AR, class T>
 Archive<AR>& operator>>(Archive<AR>& ar, std::valarray<T>& p) {
+#ifdef _LINUX
   p.resize(ar.template Get<size_t>());
+#else
+  p.resize(ar.template Get<uint64_t>());
+#endif
   for (auto& x : p) {
     ar >> x;
   }
@@ -349,13 +370,21 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::valarray<T>& p) {
 }
 
 inline BinaryArchive& operator<<(BinaryArchive& ar, const std::string& s) {
+#ifdef _LINUX
   ar << (size_t)s.length();
+#else
+  ar << (uint64_t)s.length();
+#endif
   ar.Write(&s[0], s.length());
   return ar;
 }
 
 inline BinaryArchive& operator>>(BinaryArchive& ar, std::string& s) {
+#ifdef _LINUX
   size_t len = ar.template Get<size_t>();
+#else
+  size_t len = ar.template Get<uint64_t>();
+#endif
   ar.PrepareRead(len);
   s.assign(ar.Cursor(), len);
   ar.AdvanceCursor(len);
@@ -368,19 +397,21 @@ Archive<AR>& operator<<(Archive<AR>& ar, const std::pair<T1, T2>& x) {
 }
 
 template <class AR, class T1, class T2>
-Archive<AR>& operator>>(Archive<AR>& ar, std::pair<T1, T2>& x) { // NOLINT
+Archive<AR>& operator>>(Archive<AR>& ar, std::pair<T1, T2>& x) {  // NOLINT
   return ar >> x.first >> x.second;
 }
 
 template <class AR, class... T>
-Archive<AR>& SerializeTuple(Archive<AR>& ar, const std::tuple<T...>& x, // NOLINT
-                            std::integral_constant<size_t, 0> n) { // NOLINT
+Archive<AR>& SerializeTuple(Archive<AR>& ar,
+                            const std::tuple<T...>& x,              // NOLINT
+                            std::integral_constant<size_t, 0> n) {  // NOLINT
   return ar;
 }
 
 template <class AR, class... T, size_t N>
-Archive<AR>& serialize_tuple(Archive<AR>& ar, const std::tuple<T...>& x, // NOLINT
-                             std::integral_constant<size_t, N> n) { // NOLINT
+Archive<AR>& serialize_tuple(Archive<AR>& ar,
+                             const std::tuple<T...>& x,              // NOLINT
+                             std::integral_constant<size_t, N> n) {  // NOLINT
   return SerializeTuple(ar, x, std::integral_constant<size_t, N - 1>())
          << std::get<N - 1>(x);
 }
@@ -392,13 +423,13 @@ Archive<AR>& operator<<(Archive<AR>& ar, const std::tuple<T...>& x) {
 }
 
 template <class AR, class... T>
-Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x, // NOLINT
+Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<size_t, 0> n) {
   return ar;
 }
 
 template <class AR, class... T, size_t N>
-Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x, // NOLINT
+Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<size_t, N> n) {
   return DeserializeTuple(ar, x, std::integral_constant<size_t, N - 1>()) >>
          std::get<N - 1>(x);
@@ -410,6 +441,8 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::tuple<T...>& x) {
   return DeserializeTuple(ar, x, std::integral_constant<size_t, size>());
 }
 
+
+#ifdef _LINUX
 #define ARCHIVE_REPEAT(MAP_TYPE, RESERVE_STATEMENT)                            \
   template <class AR, class KEY, class VALUE, class... ARGS>                   \
   Archive<AR>& operator<<(Archive<AR>& ar,                                     \
@@ -430,6 +463,28 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::tuple<T...>& x) {
     }                                                                          \
     return ar;                                                                 \
   }
+#else
+#define ARCHIVE_REPEAT(MAP_TYPE, RESERVE_STATEMENT)                            \
+  template <class AR, class KEY, class VALUE, class... ARGS>                   \
+  Archive<AR>& operator<<(Archive<AR>& ar,                                     \
+                          const MAP_TYPE<KEY, VALUE, ARGS...>& p) {            \
+    ar << (uint64_t)p.size();                                                  \
+    for (auto it = p.begin(); it != p.end(); ++it) {                           \
+      ar << *it;                                                               \
+    }                                                                          \
+    return ar;                                                                 \
+  }                                                                            \
+  template <class AR, class KEY, class VALUE, class... ARGS>                   \
+  Archive<AR>& operator>>(Archive<AR>& ar, MAP_TYPE<KEY, VALUE, ARGS...>& p) { \
+    size_t size = ar.template get<uint64_t>();                                 \
+    p.clear();                                                                 \
+    RESERVE_STATEMENT;                                                         \
+    for (size_t i = 0; i < size; i++) {                                        \
+      p.insert(ar.template get<std::pair<KEY, VALUE>>());                      \
+    }                                                                          \
+    return ar;                                                                 \
+  }
+#endif
 
 ARCHIVE_REPEAT(std::map, )
 ARCHIVE_REPEAT(std::multimap, )
@@ -438,6 +493,7 @@ ARCHIVE_REPEAT(std::unordered_multimap, p.reserve(size))
 
 #undef ARCHIVE_REPEAT
 
+#ifdef _LINUX
 #define ARCHIVE_REPEAT(SET_TYPE, RESERVE_STATEMENT)                           \
   template <class AR, class KEY, class... ARGS>                               \
   Archive<AR>& operator<<(Archive<AR>& ar, const SET_TYPE<KEY, ARGS...>& p) { \
@@ -457,6 +513,27 @@ ARCHIVE_REPEAT(std::unordered_multimap, p.reserve(size))
     }                                                                         \
     return ar;                                                                \
   }
+#else
+#define ARCHIVE_REPEAT(SET_TYPE, RESERVE_STATEMENT)                           \
+  template <class AR, class KEY, class... ARGS>                               \
+  Archive<AR>& operator<<(Archive<AR>& ar, const SET_TYPE<KEY, ARGS...>& p) { \
+    ar << (uint64_t)p.size();                                                 \
+    for (auto it = p.begin(); it != p.end(); ++it) {                          \
+      ar << *it;                                                              \
+    }                                                                         \
+    return ar;                                                                \
+  }                                                                           \
+  template <class AR, class KEY, class... ARGS>                               \
+  Archive<AR>& operator>>(Archive<AR>& ar, SET_TYPE<KEY, ARGS...>& p) {       \
+    size_t size = ar.template get<uint64_t>();                                \
+    p.clear();                                                                \
+    RESERVE_STATEMENT;                                                        \
+    for (size_t i = 0; i < size; i++) {                                       \
+      p.insert(ar.template get<KEY>());                                       \
+    }                                                                         \
+    return ar;                                                                \
+  }
+#endif
 
 ARCHIVE_REPEAT(std::set, )
 ARCHIVE_REPEAT(std::multiset, )
