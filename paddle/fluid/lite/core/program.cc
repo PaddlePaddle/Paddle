@@ -66,7 +66,9 @@ void Program::Build(const framework::proto::ProgramDesc &program) {
   CHECK(ops_.empty()) << "Executor duplicate Build found";
   // Create operators.
   for (const auto &proto_op_desc : program.blocks(0).ops()) {
-    lite::OpDesc op_desc(proto_op_desc);
+    lite::OpDesc op_desc_dummy(proto_op_desc);
+    cpp::OpDesc op_desc;
+    TransformOpDescPbToCpp(op_desc_dummy, &op_desc);
     auto op_type = op_desc.Type();
     // if (op_type == "feed" || op_type == "fetch") continue;
     VLOG(4) << "create Op [" << op_type << "]";
