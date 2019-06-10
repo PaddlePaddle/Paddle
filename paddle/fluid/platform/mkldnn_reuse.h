@@ -671,16 +671,16 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     // for that one we use key that does not contain TID
     const std::string key_conv_pd = key_common_ + "@conv_pd";
 
-    auto conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
+    conv_pd_ = std::static_pointer_cast<typename forward_t::primitive_desc>(
         dev_ctx_.GetBlob(key_conv_pd));
 
-    if (conv_pd == nullptr) {
+    if (conv_pd_ == nullptr) {
       static std::mutex acquire_barrier;
       std::lock_guard<std::mutex> block_threads_until_finish_this_job(acquire_barrier);
 
-      conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
+      conv_pd_ = std::static_pointer_cast<typename forward_t::primitive_desc>(
         dev_ctx_.GetBlob(key_conv_pd));
-      if (conv_pd == nullptr) {
+      if (conv_pd_ == nullptr) {
 
         mkldnn::memory::dims stride_dims = strides;
         mkldnn::memory::dims padding_dims = paddings;
@@ -703,9 +703,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
         // Save conv_pd/src_memory/weights_memory for backward pass
         dev_ctx_.SetBlob(key_conv_pd, conv_pd_);
       }
-    } else {
-      conv_pd_ = conv_pd;
-    }
+    } 
 
     return conv_pd_;
   }
