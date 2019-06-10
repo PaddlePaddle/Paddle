@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <utility>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
