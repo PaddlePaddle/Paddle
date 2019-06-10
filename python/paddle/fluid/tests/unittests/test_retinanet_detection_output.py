@@ -200,8 +200,8 @@ def retinanet_detection_out(boxes, scores, anchors, im_info, min_level,
         for i in range(sorted_indices.shape[0]):
             idx = selected_indices[sorted_indices[i]]
             idx = idx[0][0]
-            a = idx / class_num
-            c = idx % class_num
+            a = int(idx / class_num)
+            c = int(idx % class_num)
             box_offset = a * 4
             anchor_box_width = anchors_per_level[
                 box_offset + 2] - anchors_per_level[box_offset] + 1

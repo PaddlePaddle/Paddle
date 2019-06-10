@@ -2409,10 +2409,10 @@ def retinanet_detection_output(bboxes,
                                                    nms_eta=1.)
     """
 
-    helper = LayerHelper('retinanet_detection_out', **locals())
+    helper = LayerHelper('retinanet_detection_output', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     helper.append_op(
-        type="retinanet_detection_out",
+        type="retinanet_detection_output",
         inputs={
             'BBoxes': bboxes,
             'Scores': scores,

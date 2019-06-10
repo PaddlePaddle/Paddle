@@ -2009,7 +2009,7 @@ class TestBook(LayerTest):
                 dtype='float32')
             im_info = layers.data(
                 name="im_info", shape=[3], dtype='float32', lod_level=1)
-            nmsed_outs = fluid.layers.retinanet_detection_output(
+            nmsed_outs = layers.retinanet_detection_output(
                 bboxes=bboxes,
                 scores=scores,
                 anchors=anchors,
