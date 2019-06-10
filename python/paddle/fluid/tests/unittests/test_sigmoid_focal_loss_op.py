@@ -32,8 +32,8 @@ def sigmoid_focal_loss_forward(x_data, label_data, fg_num_data, gamma, alpha,
     out_data = out_data.flatten()
     for idx in range(len(x_data_t)):
         x = x_data_t[idx]
-        a = idx / num_classes
-        d = idx % num_classes
+        a = int(idx / num_classes)
+        d = int(idx % num_classes)
         label = label_data[a]
         c_pos = float((int(label) == int(d + 1)))
         c_neg = float(((int(label) != -1) & (int(label) != (d + 1))))
