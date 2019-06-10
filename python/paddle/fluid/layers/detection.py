@@ -253,11 +253,11 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
             import paddle.fluid as fluid
 
             input = fluid.layers.data(
-                name='data', shape=[10,80], dtype='float32')
+                name='data', shape=[10,80], append_batch_size=False, dtype='float32')
             label = fluid.layers.data(
-                name='label', shape=[10,1], dtype='int32')
+                name='label', shape=[10,1], append_batch_size=False, dtype='int32')
             fg_num = fluid.layers.data(
-                name='fg_num', shape=[1], dtype='int32')
+                name='fg_num', shape=[1], append_batch_size=False, dtype='int32')
             loss = fluid.layers.sigmoid_focal_loss(x=input,
                                                    label=label,
                                                    fg_num=fg_num,
