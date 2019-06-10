@@ -16,6 +16,10 @@ endfunction()
 # Need to figure out the root cause and then add it back
 list(REMOVE_ITEM TEST_OPS test_distillation_strategy)
 
+if(WIN32)
+    list(REMOVE_ITEM TEST_OPS test_light_nas)
+endif()
+
 # int8 image classification python api test
 if(LINUX AND WITH_MKLDNN)
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
