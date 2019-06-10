@@ -16,7 +16,8 @@ from __future__ import print_function
 from enum import Enum
 
 __all__ = [
-    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker'
+    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
+    'UserDefinedRoleMakerNCCL'
 ]
 
 
