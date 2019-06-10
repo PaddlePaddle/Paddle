@@ -33,9 +33,6 @@ class PoolOpLite : public OpLite {
 
   explicit PoolOpLite(const std::string &type) : OpLite(type) {}
 
-  int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
-                     bool ceil_mode);
-
   bool CheckShape() const override;
 
   bool InferShape() const override;
@@ -49,26 +46,26 @@ class PoolOpLite : public OpLite {
    */
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override {
+  bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
     auto x = op_desc.Input("X").front();
     auto out = op_desc.Output("Out").front();
 
     CHECK(scope->FindVar(x));
     CHECK(scope->FindVar(out));
     param_.x = scope->FindVar(x)->GetMutable<lite::Tensor>();
-    param_.out = scope->FindVar(out)->GetMutable<lite::Tensor>();
+    param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
 
-    param_.pooling_type = GetAttr<std::string>(op_desc.GetAttr("pooling_type"));
-    param_.ksize = GetAttr<std::vector<int>>(op_desc.GetAttr("ksize"));
-    param_.global_pooling = GetAttr<bool>(op_desc.GetAttr("global_pooling"));
-    param_.strides = GetAttr<std::vector<int>>(op_desc.GetAttr("strides"));
-    param_.paddings = GetAttr<std::vector<int>>(op_desc.GetAttr("paddings"));
+    param_.pooling_type = op_desc.GetAttr<std::string>("pooling_type");
+    param_.ksize = op_desc.GetAttr<std::vector<int>>("ksize");
+    param_.global_pooling = op_desc.GetAttr<bool>("global_pooling");
+    param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
+    param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
 
-    param_.exclusive = GetAttr<bool>(op_desc.GetAttr("exclusive"));
-    param_.adaptive = GetAttr<bool>(op_desc.GetAttr("adaptive"));
-    param_.ceil_mode = GetAttr<bool>(op_desc.GetAttr("ceil_mode"));
-    param_.use_quantizer = GetAttr<bool>(op_desc.GetAttr("use_quantizer"));
-    param_.data_format = GetAttr<std::string>(op_desc.GetAttr("data_format"));
+    param_.exclusive = op_desc.GetAttr<bool>("exclusive");
+    param_.adaptive = op_desc.GetAttr<bool>("adaptive");
+    param_.ceil_mode = op_desc.GetAttr<bool>("ceil_mode");
+    param_.use_quantizer = op_desc.GetAttr<bool>("use_quantizer");
+    // param_.data_format = op_desc.GetAttr<bool>("data_format");
     return true;
   }
 

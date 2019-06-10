@@ -23,7 +23,10 @@ bool PoolOpLite::CheckShape() const {
   CHECK_OR_FALSE(param_.x);
   CHECK_OR_FALSE(param_.output);
 
-  const auto x_dims = param_.x->dims();
+  const auto& x_dims = param_.x->dims();
+  const auto& ksize = param_.ksize;
+  const auto& strides = param_.strides;
+  const auto& paddings = param_.paddings;
 
   // "Pooling intput should be 4-D or 5-D tensor."
   CHECK_OR_FALSE(x_dims.size() == 4 || x_dims.size() == 5);
@@ -51,7 +54,7 @@ int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
 
 bool PoolOpLite::InferShape() const {
   const auto x_dims = param_.x->dims();
-  std::vector<int> ksize = param_.ksize;
+  std::vector<int>& ksize = param_.ksize;
   if (param_.global_pooling) {
     ksize.resize(static_cast<size_t>(x_dims.size()) - 2);
     for (size_t i = 0; i < ksize.size(); ++i) {
@@ -60,18 +63,18 @@ bool PoolOpLite::InferShape() const {
     }
   }
 
-  std::vector<int> output_shape({x_dims[0], x_dims[1]});
+  std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
   if (param_.adaptive) {
     output_shape.insert(output_shape.end(), param_.ksize.begin(),
                         param_.ksize.end());
   } else {
     for (size_t i = 0; i < param_.ksize.size(); ++i) {
       output_shape.push_back(
-          PoolOutputSize(x_dims[i + 2], param_.ksize[i], param_._paddings[i],
+          PoolOutputSize(x_dims[i + 2], param_.ksize[i], param_.paddings[i],
                          param_.strides[i], param_.ceil_mode));
     }
   }
-  param_.output->Resize(lite : DDim(output_shape));
+  param_.output->Resize(lite::DDim(output_shape));
 
   // ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   // ctx->ShareLoD("X", "Out");

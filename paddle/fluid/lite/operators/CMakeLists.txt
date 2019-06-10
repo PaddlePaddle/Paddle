@@ -41,9 +41,12 @@ set(ops_lite
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
              DEPS fc_op_lite memory_lite 
              X86_DEPS fc_compute_x86
-                 ARM_DEPS fc_compute_arm)
+             ARM_DEPS fc_compute_arm)
+
 lite_cc_test(test_scale_op_lite SRCS scale_op_test.cc DEPS scale_op_lite memory_lite)
 lite_cc_test(test_softmax_op_lite SRCS softmax_op_test.cc DEPS softmax_op_lite memory_lite)
 lite_cc_test(test_reshape_op_lite SRCS reshape_op_test.cc DEPS reshape_op_lite memory_lite)
 lite_cc_test(test_concat_op_lite SRCS concat_op_test.cc DEPS concat_op_lite memory_lite)
-lite_cc_test(test_pool_op_lite SRCS pool_op_test.cc DEPS pool_op_lite memory_lite)
+lite_cc_test(test_pool_op_lite SRCS pool_op_test.cc
+             DEPS pool_op_lite memory_lite
+             ARM_DEPS pool_compute_arm)
