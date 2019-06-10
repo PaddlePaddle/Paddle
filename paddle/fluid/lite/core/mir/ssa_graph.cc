@@ -94,7 +94,7 @@ std::vector<mir::Node *> SSAGraph::StmtTopologicalOrder() {
 }
 
 void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
-  for (const auto &name : program.tmp_vars) {
+  for (const auto &name : program.tmp_vars()) {
     CHECK(!arguments_.count(name)) << "duplicate creating temp variable: "
                                    << name;
     VLOG(5) << "create arg node " << name;
@@ -107,7 +107,7 @@ void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
 
 void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
   // create weight nodes.
-  for (const auto &name : program.weights) {
+  for (const auto &name : program.weights()) {
     CHECK(!arguments_.count(name)) << "duplicate creating weight variable: "
                                    << name;
     VLOG(5) << "create arg node " << name;
@@ -140,7 +140,7 @@ void SSAGraph::Build(const Program &program,
   GraphCreateWeightVarNodes(program);
   CHECK(CheckNodesRoleSet());
 
-  for (auto &op : program.ops) {
+  for (auto &op : program.ops()) {
     auto *op_node = GraphCreateInstructNode(program, op, valid_places);
     for (const std::string &name : op->op_info()->input_names()) {
       auto *arg = Argument(name);
