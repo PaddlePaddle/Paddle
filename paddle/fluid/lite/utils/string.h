@@ -61,6 +61,7 @@ static std::string Join(const std::vector<std::string>& vec,
   if (!vec.empty()) {
     ss << vec.back();
   }
+
   return ss.str();
 }
 
