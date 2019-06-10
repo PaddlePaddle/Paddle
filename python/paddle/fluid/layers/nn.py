@@ -12043,7 +12043,7 @@ def deformable_psroi_pooling(input,
                           value is 0 or 1. Default: 0.
        spatial_scale(float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       output_channels(integer): The number of output channels, which shoule be less than input channels.
+       output_channels(integer): The number of output channels, which should be less than input channels.
                                  Deformable roi_pooling requires output_channels = input_channels, while 
                                  deformable psroi_pooling requires output_channels = input_channels *
                                  pooled_height * pooled_width. Default: 64.
@@ -12058,8 +12058,9 @@ def deformable_psroi_pooling(input,
        trans_std(float): Coefficient of offset. Default: 0.1.
        name(str): Name of layer. Default: None.
     Returns:
-        Variable: The output of Deformable PSROIPooling. The format is NCHW, where N is the number of ROIs,
-                  C is the number of output channels, H is the height of output, and W is the width of output.
+        Variable: The tensor variable storing the deformable convolution \
+                  result.
+
 
     Examples:
       .. code-block:: python

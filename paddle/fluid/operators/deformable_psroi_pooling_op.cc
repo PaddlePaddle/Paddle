@@ -57,7 +57,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                    "of total stride in convolutional layers.");
     AddAttr<int>("output_dim",
                  "(int), "
-                 "the number of output channels, which shoule be less than "
+                 "the number of output channels, which should be less than "
                  "input channels. Deformable roi_pooling requires "
                  "output_channels = input_channels, while deformable "
                  "psroi_pooling requires output_channels = input_channels "
