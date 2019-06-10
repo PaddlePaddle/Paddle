@@ -41,7 +41,7 @@ class GenerateProgramPass : public ProgramPass {
   }
 
  private:
-  std::vector<Instruct> insts_;
+  std::vector<Instruction> insts_;
 };
 
 }  // namespace mir
