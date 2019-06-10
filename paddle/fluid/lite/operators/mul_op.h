@@ -45,10 +45,11 @@ class MulOpLite : public OpLite {
     CHECK(var);
     param_.x = var->GetMutable<Tensor>();
     var = scope->FindVar(W);
-    CHECK(var);
+    CHECK(var) << "no var called " << W;
     param_.y = var->GetMutable<Tensor>();
-    CHECK(scope->FindVar(out));
-    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
+    var = scope->FindVar(out);
+    CHECK(var) << "no var called " << out;
+    param_.output = var->GetMutable<Tensor>();
     param_.x_num_col_dims = op_desc.GetAttr<int>("x_num_col_dims");
     param_.y_num_col_dims = op_desc.GetAttr<int>("y_num_col_dims");
 

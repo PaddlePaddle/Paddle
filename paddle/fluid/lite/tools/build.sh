@@ -4,15 +4,26 @@ set -ex
 TESTS_FILE="./lite_tests.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
+
+# for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
+# here we fake an empty file to make cmake works.
+function prepare_for_codegen {
+    # in build directory
+    mkdir -p ./paddle/fluid/lite/gen_code
+    touch ./paddle/fluid/lite/gen_code/__generated_code__.cc
+}
 function cmake_x86 {
+    prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
 function cmake_x86_for_CI {
+    prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=ON
 }
 
 function cmake_gpu {
+    prepare_for_codegen
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
 }
 
@@ -31,18 +42,19 @@ function cmake_arm {
         -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
 }
 
-function build {
-    file=$1
-    for _test in $(cat $file); do
-        make $_test -j$(expr $(nproc) - 2)
-    done
-}
+# function build {
+#     file=$1
+#     for _test in $(cat $file); do
+#         make $_test -j$(expr $(nproc) - 2)
+#     done
+# }
 
 # It will eagerly test all lite related unittests.
 function test_lite {
     local file=$1
     echo "file: ${file}"
     for _test in $(cat $file); do
+        make $_test -j$(expr $(nproc) - 2)
         ctest -R $_test -V
     done
 }
@@ -86,7 +98,7 @@ function build_test_server {
     cd ./build
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
     cmake_x86_for_CI
-    build $TESTS_FILE
+    #build $TESTS_FILE
     test_lite $TESTS_FILE
 }
 
@@ -165,10 +177,10 @@ function main {
                 TESTS_FILE="${i#*=}"
                 shift
                 ;;
-            build)
-                build $TESTS_FILE
-                shift
-                ;;
+            # build)
+            #     build $TESTS_FILE
+            #     shift
+            #     ;;
             cmake_x86)
                 cmake_x86
                 shift

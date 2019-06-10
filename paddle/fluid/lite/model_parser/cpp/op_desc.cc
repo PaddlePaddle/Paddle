@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/model_parser/cpp/op_desc.h"
 #include <set>
+#include <utility>
 
 namespace paddle {
 namespace lite {
@@ -44,12 +45,13 @@ FindAttr(const cpp::OpDesc& desc, const std::string& name) {
   return std::make_pair(it, attr_it);
 }
 
-#define GET_IMPL_ONE(T, repr__)                         \
-  template <>                                           \
-  T OpDesc::GetAttr<T>(const std::string& name) const { \
-    auto pair = FindAttr(*this, name);                  \
-    CHECK(pair.second->second == AttrType::repr__);     \
-    return pair.first->second.get<T>();                 \
+#define GET_IMPL_ONE(T, repr__)                                          \
+  template <>                                                            \
+  T OpDesc::GetAttr<T>(const std::string& name) const {                  \
+    auto pair = FindAttr(*this, name);                                   \
+    CHECK(pair.second->second == AttrType::repr__)                       \
+        << "required type is " << #repr__ << " not match the true type"; \
+    return pair.first->second.get<T>();                                  \
   }
 
 GET_IMPL_ONE(int32_t, INT);
