@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/model_parser/compatible_pb.h"
-#include "compatible_pb.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace lite {

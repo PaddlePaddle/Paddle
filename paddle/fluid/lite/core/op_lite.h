@@ -147,7 +147,7 @@ class OpLite : public Registry {
 class OpInfo : public cpp::OpDesc {
  public:
   OpInfo(const OpInfo &) = default;
-  OpInfo(const cpp::OpDesc &other) : cpp::OpDesc(other) {}
+  explicit OpInfo(const cpp::OpDesc &other) : cpp::OpDesc(other) {}
 
   // Collect all the input variable's name.
   std::vector<std::string> input_names() const {
