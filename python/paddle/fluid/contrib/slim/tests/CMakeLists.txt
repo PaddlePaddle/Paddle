@@ -14,6 +14,7 @@ endfunction()
 function(inference_qat_int8_test target model_dir data_dir test_script use_mkldnn)
     py_test(${target} SRCS ${test_script}
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=${use_mkldnn}
             ARGS --qat_model ${model_dir}/model
                  --infer_data ${data_dir}/data.bin
