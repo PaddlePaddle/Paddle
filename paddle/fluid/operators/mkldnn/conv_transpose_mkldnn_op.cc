@@ -188,9 +188,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
 
-    auto output_data = output->mutable_data<T>(
-        ctx.GetPlace(), paddle::memory::Allocator::kDefault,
-        handler.GetDstMemorySize());
+    auto output_data =
+        output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
     dst_memory_p = handler.AcquireDstMemoryFromPrimitive(
         platform::to_void_cast<T>(output_data));
 
