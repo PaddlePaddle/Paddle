@@ -228,8 +228,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
       VLOG(10) << out.str()
                << ", group size:" << group_grads_params->at(i).size()
-               << ", group memory size:"
-               << static_cast<double>(gps_size) / 1048576.0 << "(MB)";
+               << ", group memory size:" << static_cast<double>(gps_size) / kMB
+               << "(MB)";
     }
   }
 
@@ -270,7 +270,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
           break;
         }
 
-        if (static_cast<double>(local_group_memory_size) / 1048576.0 >=
+        if (static_cast<double>(local_group_memory_size) / kMB >=
             group_memory_size) {
           break;
         }
@@ -288,6 +288,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   }
 
  private:
+  static constexpr double kMB = 1048576.0;
   bool IsSupportedVarType(const proto::VarType::Type &type) const {
     // Current only support LOD_TENSOR.
     return type == proto::VarType::LOD_TENSOR;
