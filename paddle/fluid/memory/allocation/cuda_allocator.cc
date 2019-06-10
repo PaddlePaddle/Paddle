@@ -31,7 +31,7 @@ void CUDAAllocator::FreeImpl(Allocation* allocation) {
   delete allocation;
 }
 
-Allocation* CUDAAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   platform::CUDADeviceGuard guard(place_.device);
   void* ptr;
   auto status = cudaMalloc(&ptr, size);

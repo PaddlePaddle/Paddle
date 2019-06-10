@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign
+from .tensor import concat, assign, fill_constant
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -2346,7 +2346,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type, is_test=False):
+def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -2361,29 +2361,32 @@ def sequence_pool(input, pool_type, is_test=False):
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
+       x is a 1-level LoDTensor and **pad_value** = 0.0:
+         x.lod = [[2, 3, 2, 0]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
-         out.dim = [3, 1]
+         out.dim = [4, 1]
          with condition len(x.lod[-1]) == out.dims[0]
 
        for different pool_type:
-         average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-         sum    : out.data = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
-         sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
+         average: out.data = [2, 4, 3, 0.0], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+         sum    : out.data = [4, 12, 6, 0.0], where 4=1+3, 12=2+4+6, 6=5+1
+         sqrt   : out.data = [2.82, 6.93, 4.24, 0.0], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-         max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+         max    : out.data = [3, 6, 5, 0.0], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1, 0.0], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5, 0.0], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+
+         and all above 0.0 = **pad_value**.
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input (variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
-        is_test(bool, Default False): Used distinguish training from scoring mode.
+        is_test (bool): Used to distinguish training from scoring mode. Default False.
+        pad_value (float): Used to pad the pooling result for empty input sequence.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -2391,6 +2394,8 @@ def sequence_pool(input, pool_type, is_test=False):
     Examples:
 
         .. code-block:: python
+
+             import paddle.fluid as fluid
 
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
@@ -2413,8 +2418,11 @@ def sequence_pool(input, pool_type, is_test=False):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper(),
-               "is_test": is_test})
+        attrs={
+            "pooltype": pool_type.upper(),
+            "is_test": is_test,
+            "pad_value": pad_value
+        })
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -6564,11 +6572,25 @@ def one_hot(input, depth):
             one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
+
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
+
+    if in_dygraph_mode():
+        inputs = {'X': input}
+        attrs = {'depth': depth}
+    else:
+        if not isinstance(depth, Variable):
+            # user attribute 
+            inputs = {'X': input}
+            attrs = {'depth': depth}
+        else:
+            depth.stop_gradient = True
+            inputs = {'X': input, 'depth_tensor': depth}
+            attrs = {}
     helper.append_op(
         type="one_hot",
-        inputs={'X': input},
-        attrs={'depth': depth},
+        inputs=inputs,
+        attrs=attrs,
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
@@ -6690,6 +6712,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python list or tuple.")
+
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -6698,7 +6721,12 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     # Validate the shape
     unk_dim_idx = -1
+    contain_var = False
     for dim_idx, dim_size in enumerate(shape):
+        if isinstance(dim_size, Variable):
+            contain_var = True
+            continue
+
         if dim_size == -1:
             assert unk_dim_idx == -1, (
                 "Only one dimension in shape can be unknown.")
@@ -6712,13 +6740,35 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'shape': shape}
+    else:
+        if contain_var:
+            new_shape_tensor = []
+            for dim in shape:
+                if isinstance(dim, Variable):
+                    dim.stop_gradient = True
+                    new_shape_tensor.append(dim)
+                else:
+                    assert (isinstance(dim, int))
+                    temp_out = helper.create_variable_for_type_inference(
+                        'int32')
+                    fill_constant(
+                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    new_shape_tensor.append(temp_out)
+            inputs['ShapeTensor'] = new_shape_tensor
+            attrs = {}
+
+        else:
+            attrs = {'shape': shape}
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
-        attrs={"shape": shape},
+        attrs=attrs,
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -8817,14 +8867,19 @@ def prelu(x, mode, param_attr=None, name=None):
     .. math::
         y = \max(0, x) + \\alpha * \min(0, x)
 
+    There are three modes for the activation:
+
+    .. code-block:: text
+
+        all: All elements share same alpha.
+        channel: Elements in same channel share same alpha.
+        element: All elements do not share alpha. Each element has its own alpha.
+
     Args:
         x (Variable): The input tensor.
+        mode (string): The mode for weight sharing. 
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha).
-        mode (string): The mode for weight sharing. It supports all, channel
-          and element. all: all elements share same weight
-          channel:elements in a channel share same weight
-          element:each element has a weight
+          weight (alpha), it can be create by ParamAttr.
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -8835,9 +8890,13 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            import paddle.fluid as fluid
+            from paddle.fluid.param_attr import ParamAttr
+            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
             mode = 'channel'
-            output = fluid.layers.prelu(x,mode)
+            output = fluid.layers.prelu(
+                     x,mode,param_attr=ParamAttr(name='alpha'))
+
     """
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
@@ -9207,8 +9266,8 @@ def stack(x, axis=0):
         .. code-block:: python
 
             import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape[1, 2], dtype='int32')
-            x2 = layers.data(name='x2', shape[1, 2], dtype='int32')
+            x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
+            x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
             data = layers.stack([x1,x2])
 
     """
@@ -9316,11 +9375,39 @@ def expand(x, expand_times, name=None):
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
+    # check expand_times have tensor
+
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'expand_times': expand_times}
+    else:
+
+        def contain_tensor(expand_times):
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        if contain_tensor(expand_times):
+            new_expand_times = []
+            for ele in expand_times:
+                if isinstance(ele, Variable):
+                    ele.stop_gradient = True
+                    new_expand_times.append(ele)
+                else:
+                    assert (isinstance(ele, int))
+                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    fill_constant(
+                        [1], 'int32', ele, force_cpu=True, out=temp_out)
+                    new_expand_times.append(temp_out)
+            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
+            attrs = {}
+        else:
+            inputs = {'X': x}
+            attrs = {'expand_times': expand_times}
+
     helper.append_op(
-        type='expand',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'expand_times': expand_times})
+        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9528,8 +9615,10 @@ def sum(x):
     Examples:
         .. code-block:: python
 
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            out = layers.sum(input)
+            import paddle.fluid.layers as layers
+            input0 = layers.data(name="input0", shape=[13, 11], dtype='float32')
+            input1 = layers.data(name="input1", shape=[13, 11], dtype='float32')
+            out = layers.sum([input0,input1])
     """
 
     helper = LayerHelper('sum', **locals())
@@ -9547,8 +9636,39 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    ${comment}
+    Slice Operator.
 
+    Produces a slice of the input tensor along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
+    end dimension for each axis in the list of axes, it uses this information
+    to slice the input data tensor. If a negative value is passed for any of
+    the start or end indices, it represents number of elements before the end
+    of that dimension. If the value passed to start or end is larger than
+    the n (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
+    Following examples will explain how slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+            Then:
+                result = [ [2, 3, 4], ]
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
@@ -10523,8 +10643,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 2]
         input.data = [
-            [[1], [2]],
-            [[3], [4]],
+            [[1, 2],
+             [3, 4]],
         ]
 
         input.lod = [[0, 2]]
@@ -10541,8 +10661,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 4]
         output.data = [
-            [[9662], [9217], [1129], [8487]],
-            [[8310], [1327], [1654], [4567]],
+            [[9662, 9217, 1129, 8487],
+             [8310, 1327, 1654, 4567]],
         ]
 
         output.lod = [[0, 2]]
@@ -10561,8 +10681,24 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
-           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
+
+            place = fluid.core.CPUPlace()
+            exece = fluid.Executor(place)
+            exece.run(fluid.default_startup_program()) 
+
+            # Init Tensor
+            tensor = fluid.core.LoDTensor() 
+            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
+            # Set LoD
+            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
+
+            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(

@@ -334,7 +334,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 #ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph) {
+  if (FLAGS_use_ngraph && ctx->block_id_ == 0) {
     paddle::operators::NgraphEngine::FuseNgraphOps(
         ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
   }
