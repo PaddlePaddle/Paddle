@@ -70,6 +70,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
     auto gt_labels_dims = ctx->GetInputDim("GtLabels");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
+
     PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
                       "The rank of Input(Anchor) must be 2.");
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
@@ -79,12 +80,12 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                       "The rank of Input(ImInfo) must be 2.");
 
-    ctx->SetOutputDim("LocationIndex", {-1});
-    ctx->SetOutputDim("ScoreIndex", {-1});
-    ctx->SetOutputDim("TargetBBox", {-1, 4});
-    ctx->SetOutputDim("TargetLabel", {-1, 1});
-    ctx->SetOutputDim("BBoxInsideWeight", {-1, 4});
-    ctx->SetOutputDim("ForegroundNumber", {-1, 1});
+    ctx->SetOutputDim("LocationIndex", {gt_labels_dims[0]});
+    ctx->SetOutputDim("ScoreIndex", {gt_labels_dims[0]});
+    ctx->SetOutputDim("TargetBBox", {gt_labels_dims[0], 4});
+    ctx->SetOutputDim("TargetLabel", {gt_labels_dims[0], 1});
+    ctx->SetOutputDim("BBoxInsideWeight", {gt_labels_dims[0], 4});
+    ctx->SetOutputDim("ForegroundNumber", {gt_labels_dims[0], 1});
   }
 
  protected:
@@ -316,6 +317,7 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
                       "RetinanetTargetAssignOp gt_boxes needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
                       "RetinanetTargetAssignOp is_crowd needs 1 level of LoD");
+
     int64_t anchor_num = static_cast<int64_t>(anchor->dims()[0]);
     int64_t batch_num = static_cast<int64_t>(gt_boxes->lod().back().size() - 1);
 
@@ -525,20 +527,23 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     regression targets to each each anchor, these target labels are used for
     train retinanet. 
     
-    Every anchor is assigned with a length num_classes
-    one-hot vector of classification targets, and a 4-vector of box regression
-    targets, where num_classes is the class number. The positive anchors are
-    two kinds of anchors: (i) the anchor/anchors with the highest IoU overlap
-    with a ground-truth box, or (ii) an anchor that has an IoU overlap higher
-    than positive_overlap(0.5) with any ground-truth box. A negative anchor is
-    when its IoU ratio is lower than negative_overlap (0.4) for all ground-truth
-    boxes. When a anchor is assgned with a ground-truth box which is the i-th
-    category, the i-th entry in its num_classes label vector is set to 1 and all
-    other entries is set to 0. All negative labels and positive labels contribute
-    to classfication objective. Only positive anchors are delecated to regression
-    loss. Anchors that are neither positive nor negative do not contribute to
-    the training objective. The regression targets are the encoded ground-truth
-    boxes associated with the positive anchors.
+    Every anchor is assigned with a length C one-hot vector of
+    classification targets, and a 4-vector of box regression targets,
+    where C is the class number. The assignment rules are as followed:
+    
+    1. Anchors are assigned to ground-truth boxes when: (i) it has the highest
+    IoU overlap with a ground-truth box, or (ii) it has an IoU overlap higher
+    than positive_overlap(0.5) with any ground-truth box.
+    
+    2. Anchors are assigned to background when its IoU ratio is lower than
+    negative_overlap (0.4) for all ground-truth boxes.
+
+    When a anchor is assgned with a ground-truth box which is the i-th category,
+    the i-th entry in its C vector of targets is set to 1 and all other entries
+    are set to 0. When a anchor is assgned with background, all entries are set
+    to 0. Anchors that are not assigned do not contribute to the training
+    objective. The regression targets are the encoded ground-truth boxes
+    associated with the assgined anchors.
 
 )DOC");
   }

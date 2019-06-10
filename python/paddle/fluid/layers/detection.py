@@ -78,20 +78,22 @@ def retinanet_target_assign(bbox_pred,
     regression targets to each anchor, these target labels are used for training
     retinanet. Every anchor is assigned with a length :attr:`num_classes`
     one-hot vector of classification targets, and a 4-vector of box regression
-    targets. The positive anchors are two kinds of anchors: (i) the anchors
-    with the highest IoU overlap with a ground-truth box, or (ii) an anchor
-    that has an IoU overlap higher than positive_overlap(0.5) with any
-    ground-truth box. A negative anchor is when its IoU ratio is lower than
-    negative_overlap (0.4) for all ground-truth boxes. When a anchor is assgned
-    with a ground-truth box which is the i-th category, the i-th entry in its
-    :attr:`num_classes` label vector is set to 1 and all other entries is set to 0.
-    All entries of a negative anchor are set to 0. No other sampling strategy
-    is adopted to filter negative anchors because all negative labels along with
-    positive labels contribute to the classfication objective(focal loss). Only
-    positive anchors are delicated to regression loss. Anchors that are neither
-    positive nor negative do not contribute to the training objective. The regression
-    targets are the encoded ground-truth boxes associated with the positive anchors.
-
+    targets. The assignment rules are as followed:
+    
+    1. Anchors are assigned to ground-truth boxes when: (i) it has the highest
+    IoU overlap with a ground-truth box, or (ii) it has an IoU overlap higher
+    than positive_overlap(0.5) with any ground-truth box.
+    
+    2. Anchors are assigned to background when its IoU ratio is lower than
+    negative_overlap (0.4) for all ground-truth boxes.
+    
+    When a anchor is assgned with a ground-truth box which is the i-th category,
+    the i-th entry in its C vector of targets is set to 1 and all other entries
+    are set to 0. When a anchor is assgned with background, all entries are set
+    to 0. Anchors that are not assigned do not contribute to the training
+    objective. The regression targets are the encoded ground-truth boxes
+    associated with the assgined anchors.
+ 
     Args:
         bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
