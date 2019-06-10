@@ -21,12 +21,12 @@ namespace paddle {
 namespace lite {
 namespace gencode {
 
-void Module::AddWeight(const TensorRepr &tensor) {
+void Module::AddWeight(const std::string &name, const TensorRepr &tensor) {
   auto w_name = WeightUniqueName();
-  Line(string_format("// Create weight: %s", w_name.c_str()));
+  Line(string_format("// Create weight: %s", name.c_str()));
   // auto* w0 = scope.Var("w0")->GetMutable<lite::Tensor>();
   Line(string_format("auto* %s = scope->Var(%s)->GetMutable<lite::Tensor>();",
-                     w_name.c_str(), Repr(w_name).c_str()));
+                     w_name.c_str(), Repr(name).c_str()));
   // lite::DDim w_ddim({1, 2})
   Line(string_format("lite::DDim %s_ddim(std::vector<int64_t>(%s));",
                      w_name.c_str(), tensor.ddim.repr().c_str()));
@@ -86,13 +86,13 @@ void Module::AddOpDescHelper(const std::string &op_id,
     return Repr(vec);
   };
   for (auto &item : desc.inputs()) {
-    Line(string_format("%s.SetInput(%s, {%s});", desc_var.c_str(),
+    Line(string_format("%s.SetInput(%s, %s);", desc_var.c_str(),
                        Repr(item.first).c_str(),
                        vec_str_repr(item.second).c_str()));
   }
 
   for (auto &item : desc.outputs()) {
-    Line(string_format("%s.SetOutput(%s, {%s});", desc_var.c_str(),
+    Line(string_format("%s.SetOutput(%s, %s);", desc_var.c_str(),
                        Repr(item.first).c_str(),
                        vec_str_repr(item.second).c_str()));
   }
@@ -176,7 +176,12 @@ void Module::AddOp(const cpp::OpDesc &op) {
       "auto %s = std::move(%s->CreateKernels(valid_places, \"%s\").front());",
       kernel_name.c_str(), op_name.c_str(), kernel_type.c_str()));
 
-  Line(string_format("ops.push_back(std::move(%s));", op_name.c_str()));
+  // Set Context for kernel
+  // clang-format off
+  Line(string_format("%s->SetContext(lite::ContextScheduler::Global().NewContext(%s->target()));", kernel_name.c_str(), kernel_name.c_str()));  // NOLINT
+  // clang-format on
+
+  Line(string_format("ops.push_back(%s);", op_name.c_str()));
   Line(string_format("kernels.push_back(std::move(%s));", kernel_name.c_str()));
 
   op_kinds_.insert(op.Type());

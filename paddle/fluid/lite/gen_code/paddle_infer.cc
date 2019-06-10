@@ -74,10 +74,19 @@ std::unique_ptr<Tensor> PaddlePredictor::GetMutableTensor(
   return std::unique_ptr<Tensor>(new Tensor(nullptr, tensor));
 }
 
+#define CAST_OPS \
+  auto *ops =    \
+      static_cast<std::vector<std::shared_ptr<lite::OpLite>> *>(raw_ops_);
+#define CAST_KERNELS                                                 \
+  auto *kernels =                                                    \
+      static_cast<std::vector<std::unique_ptr<lite::KernelBase>> *>( \
+          raw_kernels_);
+#define CAST_SCOPE auto *scope = static_cast<lite::Scope *>(raw_scope_);
+
 PaddlePredictor::~PaddlePredictor() {
-  auto *ops = static_cast<std::vector<lite::OpLite> *>(raw_ops_);
-  auto *kernels = static_cast<std::vector<lite::KernelBase> *>(raw_kernels_);
-  auto *scope = static_cast<lite::Scope *>(raw_scope_);
+  CAST_OPS
+  CAST_KERNELS
+  CAST_SCOPE
 
   if (ops) {
     delete ops;
@@ -91,8 +100,8 @@ PaddlePredictor::~PaddlePredictor() {
 }
 
 void PaddlePredictor::Run() {
-  auto *ops = static_cast<std::vector<lite::OpLite> *>(raw_ops_);
-  auto *kernels = static_cast<std::vector<lite::KernelBase> *>(raw_kernels_);
+  CAST_OPS
+  CAST_KERNELS
 
   CHECK(ops);
   CHECK(kernels);
@@ -100,9 +109,30 @@ void PaddlePredictor::Run() {
 
   for (size_t i = 0; i < ops->size(); i++) {
     LOG(INFO) << "Running the " << i << "-th operator";
-    ops->at(i).InferShape();
-    kernels->at(i).Run();
+    ops->at(i)->InferShape();
+    kernels->at(i)->Launch();
   }
+}
+
+std::unique_ptr<Tensor> PaddlePredictor::GetInput(size_t offset) {
+  auto *exec_scope = static_cast<lite::Scope *>(raw_exe_scope_);
+  auto *_feed_list = exec_scope->FindVar("feed");
+  CHECK(_feed_list) << "no feed variable in exec_scope";
+  auto *feed_list = _feed_list->GetMutable<std::vector<lite::Tensor>>();
+  if (offset >= feed_list->size()) {
+    feed_list->resize(offset + 1);
+  }
+
+  return std::unique_ptr<Tensor>(new Tensor(nullptr, &feed_list->at(offset)));
+}
+
+std::unique_ptr<Tensor> PaddlePredictor::GetOutput(size_t offset) {
+  auto *exec_scope = static_cast<lite::Scope *>(raw_exe_scope_);
+  auto *_fetch_list = exec_scope->FindVar("fetch");
+  CHECK(_fetch_list) << "no fatch variable in exec_scope";
+  auto &fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
+  CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
+  return std::unique_ptr<Tensor>(new Tensor(&fetch_list.at(offset), nullptr));
 }
 
 }  // namespace gencode

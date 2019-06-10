@@ -8,7 +8,7 @@ lite_cc_library(target_wrapper_lite SRCS target_wrapper.cc
 lite_cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite)
 lite_cc_library(lite_tensor SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
 if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    cc_library(hvy_tensor SRCS hvy_tensor.cc DEPS lod_tensor)
+    lite_cc_library(hvy_tensor SRCS hvy_tensor.cc DEPS lod_tensor HVY_DEPS framework_proto)
 endif()
 
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

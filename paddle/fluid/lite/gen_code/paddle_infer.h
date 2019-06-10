@@ -49,6 +49,11 @@ class PaddlePredictor {
   std::unique_ptr<Tensor> GetTensor(const std::string &id) const;
   std::unique_ptr<Tensor> GetMutableTensor(const std::string &id);
 
+  // Get offset-th col of feed.
+  std::unique_ptr<Tensor> GetInput(size_t offset);
+
+  std::unique_ptr<Tensor> GetOutput(size_t offset);
+
   void Run();
 
   PaddlePredictor();
