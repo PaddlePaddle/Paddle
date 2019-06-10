@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <random>
 #include <thread>  // NOLINT
 #include <vector>
@@ -36,8 +37,7 @@ struct ForEachFill {
 TEST(BestFitAllocator, concurrent_cuda) {
   CUDAAllocator allocator(platform::CUDAPlace(0));
   // 256 MB
-  auto cuda_allocation =
-      allocator.Allocate(256U * 1024 * 1024, allocator.kDefault);
+  auto cuda_allocation = allocator.Allocate(256U * 1024 * 1024);
   LockedAllocator concurrent_allocator(
       std::unique_ptr<Allocator>(new BestFitAllocator(cuda_allocation.get())));
 
@@ -50,8 +50,8 @@ TEST(BestFitAllocator, concurrent_cuda) {
     for (size_t i = 0; i < 128; ++i) {
       size_t allocate_size = dist(engine);
 
-      auto allocation = concurrent_allocator.Allocate(
-          sizeof(size_t) * allocate_size, concurrent_allocator.kDefault);
+      auto allocation =
+          concurrent_allocator.Allocate(sizeof(size_t) * allocate_size);
 
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 
