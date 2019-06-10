@@ -12066,7 +12066,7 @@ def deformable_psroi_pooling(input,
       .. code-block:: python
 
         input = fluid.layers.data(name="input",
-                                  shape=[2, 3, 64, 64], 
+                                  shape=[2, 192, 64, 64], 
                                   dtype='float32', 
                                   append_batch_size=False)                   
         rois = fluid.layers.data(name="rois",
@@ -12082,7 +12082,7 @@ def deformable_psroi_pooling(input,
                                                      trans=trans, 
                                                      no_trans=False,
                                                      spatial_scale=1.0, 
-                                                     output_channels=192,
+                                                     output_channels=3,
                                                      group_size=(1, 1),
                                                      pooled_height=8,
                                                      pooled_width=8,
