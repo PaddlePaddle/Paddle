@@ -32,10 +32,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -202,6 +205,7 @@ class DownpourWorker : public HogwildWorker {
   std::vector<::std::future<int32_t>> push_dense_status_;
 };
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 using ScopeQueue = operators::reader::BlockingQueue<Scope*>;
 
 class SyncFunctor {
@@ -269,6 +273,7 @@ class SectionWorker : public DeviceWorker {
   void SetNextSectionPlace(const paddle::platform::Place& place) {
     next_section_place_ = place;
   }
+  SyncFunctor* sync_func_ = nullptr;
   void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
 
   static std::atomic<int> cpu_id_;
@@ -294,7 +299,7 @@ class SectionWorker : public DeviceWorker {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
-  SyncFunctor* sync_func_ = nullptr;
 };
+#endif
 }  // namespace framework
 }  // namespace paddle

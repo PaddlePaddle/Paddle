@@ -423,6 +423,7 @@ class MultiSlotInMemoryDataFeed
                               const std::string& str);
 };
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 template <typename T>
 class PrivateInstantDataFeed : public DataFeed {
  public:
@@ -469,6 +470,7 @@ class MultiSlotFileInstantDataFeed
 
   bool ParseOneMiniBatch() override;
 };
+#endif
 
 }  // namespace framework
 }  // namespace paddle

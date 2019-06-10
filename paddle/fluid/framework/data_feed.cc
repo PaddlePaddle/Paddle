@@ -1019,6 +1019,7 @@ void MultiSlotInMemoryDataFeed::DeserializeIns(
   fleet_ptr->Deserialize(ins, str);
 }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 template <typename T>
 void PrivateInstantDataFeed<T>::PutToFeedVec() {
   for (size_t i = 0; i < use_slots_.size(); ++i) {
@@ -1216,6 +1217,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
                  "offset_ != end_");
   return true;
 }
+#endif
 
 }  // namespace framework
 }  // namespace paddle
