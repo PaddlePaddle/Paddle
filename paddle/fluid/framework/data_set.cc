@@ -240,6 +240,7 @@ void DatasetImpl<T>::LocalShuffle() {
   input_channel_->Write(std::move(data));
   data.clear();
   data.shrink_to_fit();
+  input_channel_->Close();
 
   timeline.Pause();
   VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, cost time="

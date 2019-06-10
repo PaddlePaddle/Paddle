@@ -15,17 +15,17 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
-#include <unordered_map>
-#include <unordered_set>
-#include <valarray>
-#include <vector>
-#include <algorithm>
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <valarray>
+#include <vector>
 #include "paddle/fluid/framework/expect.h"
 
 namespace paddle {
@@ -219,7 +219,7 @@ class ArchiveBase {
   }
 
   template <class T>
-  void GetRaw(T& x) { // NOLINT
+  void GetRaw(T& x) {  // NOLINT
     PrepareRead(sizeof(T));
     memcpy(&x, cursor_, sizeof(T));
     AdvanceCursor(sizeof(T));
@@ -368,19 +368,19 @@ Archive<AR>& operator<<(Archive<AR>& ar, const std::pair<T1, T2>& x) {
 }
 
 template <class AR, class T1, class T2>
-Archive<AR>& operator>>(Archive<AR>& ar, std::pair<T1, T2>& x) {
+Archive<AR>& operator>>(Archive<AR>& ar, std::pair<T1, T2>& x) { // NOLINT
   return ar >> x.first >> x.second;
 }
 
 template <class AR, class... T>
 Archive<AR>& SerializeTuple(Archive<AR>& ar, const std::tuple<T...>& x, // NOLINT
-                            std::integral_constant<size_t, 0> n) {
+                            std::integral_constant<size_t, 0> n) { // NOLINT
   return ar;
 }
 
 template <class AR, class... T, size_t N>
 Archive<AR>& serialize_tuple(Archive<AR>& ar, const std::tuple<T...>& x, // NOLINT
-                             std::integral_constant<size_t, N> n) {
+                             std::integral_constant<size_t, N> n) { // NOLINT
   return SerializeTuple(ar, x, std::integral_constant<size_t, N - 1>())
          << std::get<N - 1>(x);
 }
