@@ -15,14 +15,14 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <condition_variable> // NOLINT
-#include <deque>
-#include <memory>
-#include <mutex> // NOLINT
-#include <vector>
 #include <algorithm>
+#include <condition_variable>  // NOLINT
+#include <deque>
 #include <limits>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <utility>
+#include <vector>
 #include "paddle/fluid/framework/expect.h"
 
 namespace paddle {

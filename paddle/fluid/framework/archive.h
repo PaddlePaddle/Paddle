@@ -401,13 +401,23 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::pair<T1, T2>& x) {  // NOLINT
   return ar >> x.first >> x.second;
 }
 
+#ifdef _LINUX
 template <class AR, class... T>
 Archive<AR>& SerializeTuple(Archive<AR>& ar,
                             const std::tuple<T...>& x,              // NOLINT
                             std::integral_constant<size_t, 0> n) {  // NOLINT
   return ar;
 }
+#else
+template <class AR, class... T>
+Archive<AR>& SerializeTuple(Archive<AR>& ar,
+                            const std::tuple<T...>& x,              // NOLINT
+                            std::integral_constant<uint64_t, 0> n) {  // NOLINT
+  return ar;
+}
+#endif
 
+#ifdef _LINUX
 template <class AR, class... T, size_t N>
 Archive<AR>& serialize_tuple(Archive<AR>& ar,
                              const std::tuple<T...>& x,              // NOLINT
@@ -415,32 +425,73 @@ Archive<AR>& serialize_tuple(Archive<AR>& ar,
   return SerializeTuple(ar, x, std::integral_constant<size_t, N - 1>())
          << std::get<N - 1>(x);
 }
+#else
+template <class AR, class... T, uint64_t N>
+Archive<AR>& serialize_tuple(Archive<AR>& ar,
+                             const std::tuple<T...>& x,              // NOLINT
+                             std::integral_constant<uint64_t, N> n) {  // NOLINT
+  return SerializeTuple(ar, x, std::integral_constant<uint64_t, N - 1>())
+         << std::get<N - 1>(x);
+}
+#endif
 
+#ifdef _LINUX
 template <class AR, class... T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::tuple<T...>& x) {
   const size_t size = std::tuple_size<std::tuple<T...>>::value;
   return SerializeTuple(ar, x, std::integral_constant<size_t, size>());
 }
+#else
+template <class AR, class... T>
+Archive<AR>& operator<<(Archive<AR>& ar, const std::tuple<T...>& x) {
+  const uint64_t size = std::tuple_size<std::tuple<T...>>::value;
+  return SerializeTuple(ar, x, std::integral_constant<uint64_t, size>());
+}
+#endif
 
+#ifdef _LINUX
 template <class AR, class... T>
 Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<size_t, 0> n) {
   return ar;
 }
+#else
+template <class AR, class... T>
+Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
+                              std::integral_constant<uint64_t, 0> n) {
+  return ar;
+}
+#endif
 
+#ifdef _LINUX
 template <class AR, class... T, size_t N>
 Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<size_t, N> n) {
   return DeserializeTuple(ar, x, std::integral_constant<size_t, N - 1>()) >>
          std::get<N - 1>(x);
 }
+#else
+template <class AR, class... T, uint64_t N>
+Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
+                              std::integral_constant<uint64_t, N> n) {
+  return DeserializeTuple(ar, x, std::integral_constant<uint64_t, N - 1>()) >>
+         std::get<N - 1>(x);
+}
+#endif
 
+#ifdef _LINUX
 template <class AR, class... T>
 Archive<AR>& operator>>(Archive<AR>& ar, std::tuple<T...>& x) {
   const size_t size = std::tuple_size<std::tuple<T...>>::value;
   return DeserializeTuple(ar, x, std::integral_constant<size_t, size>());
 }
-
+#else
+template <class AR, class... T>
+Archive<AR>& operator>>(Archive<AR>& ar, std::tuple<T...>& x) {
+  const uint64_t size = std::tuple_size<std::tuple<T...>>::value;
+  return DeserializeTuple(ar, x, std::integral_constant<uint64_t, size>());
+}
+#endif
 
 #ifdef _LINUX
 #define ARCHIVE_REPEAT(MAP_TYPE, RESERVE_STATEMENT)                            \
