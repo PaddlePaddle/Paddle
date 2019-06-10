@@ -28,14 +28,22 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
   CHECK(!op_type_.empty()) << "op_type_ should be set first";
 
   auto pick_kernel = [&](const Place &place) {
-    auto ks = KernelRegistry::Global().Create(
-        (kernel_type.empty() ? op_type_ : kernel_type), place.target,
-        place.precision, place.layout);
+    auto ks = KernelRegistry::Global().Create(op_type_, place.target,
+                                              place.precision, place.layout);
     for (auto &&it : ks) {
       AttachKernel(it.get());
       kernels.emplace_back(std::move(it));
     }
   };
+
+  if (!kernel_type.empty()) {
+    Place place;
+    std::string op_type, alias;
+    KernelBase::ParseKernelType(kernel_type, &op_type, &alias, &place);
+    pick_kernel(place);
+    CHECK(!kernels.empty()) << "no kernel for kernel type " << kernel_type;
+    return kernels;
+  }
 
   std::set<Place> place_set;
   for (auto place : places) {

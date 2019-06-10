@@ -173,6 +173,11 @@ class Context<TargetType::kX86> {
         new ::paddle::framework::ExecutionContext(*x86_device_context_));
   }
 
+  Context(Context&& ctx) {
+    x86_device_context_ = std::move(ctx.x86_device_context_);
+    x86_execution_context_ = std::move(ctx.x86_execution_context_);
+  }
+
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {}
 

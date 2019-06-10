@@ -25,7 +25,7 @@ set(x86_kernels
     relu_compute_x86
     fc_compute_x86
     scale_compute_x86
-    softmax_compute_x86 
+    softmax_compute_x86
     dropout_compute_x86
     concat_compute_x86
     )
