@@ -76,6 +76,7 @@ TEST(CXXApi, save_model) {
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
                   valid_places);
 
+  LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
   predictor.SaveModel(FLAGS_optimized_model);
 }
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK

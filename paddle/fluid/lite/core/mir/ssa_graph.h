@@ -77,7 +77,7 @@ class SSAGraph : GraphBase {
   bool CheckLinksRoleSet();
 
   void MarkArgumentWeights(const Program &program) {
-    for (const auto &name : program.weights) {
+    for (const auto &name : program.weights()) {
       arguments_[name]->AsArg().is_weight = true;
     }
   }

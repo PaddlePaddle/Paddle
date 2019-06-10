@@ -37,79 +37,48 @@ static const char kKernelTypeAttr[] = "__@kernel_type_attr@__";
 // - main block, which is a list of OpLite
 // - scope: which contains all the weights
 struct Program {
-  std::list<std::string> tmp_vars;
-  std::list<std::string> weights;
-  std::list<std::shared_ptr<OpLite>> ops;
-  // the scope to run the kernels, NOTE this is the execution scope.
-  std::shared_ptr<lite::Scope> scope;
-  std::vector<Place> valid_places;
-  // Runtime scope.
-  lite::Scope* exec_scope{};
-  const framework::proto::ProgramDesc desc;
-
-  explicit Program(const std::shared_ptr<Scope>& root) { scope = root; }
+ public:
+  explicit Program(const std::shared_ptr<Scope>& root) { scope_ = root; }
   Program(const framework::proto::ProgramDesc& desc,
           const std::shared_ptr<Scope>& root,
           const std::vector<Place>& valid_places)
-      : scope(root), valid_places(valid_places), desc(desc) {
-    CHECK(scope) << "scope should be init first";
+      : scope_(root), valid_places_(valid_places), desc_(desc) {
+    CHECK(scope_) << "scope should be init first";
     PrepareWorkspace(desc);
     Build(desc);
   }
 
   std::unique_ptr<Program> Clone() const {
-    std::unique_ptr<Program> res(new Program(desc, scope, valid_places));
+    std::unique_ptr<Program> res(new Program(desc_, scope_, valid_places_));
     return res;
   }
 
+  const std::list<std::string>& weights() const { return weights_; }
+  const std::list<std::string>& tmp_vars() const { return tmp_vars_; }
+  const std::list<std::shared_ptr<OpLite>>& ops() const { return ops_; }
+  lite::Scope* exec_scope() { return exec_scope_; }
+
  private:
   // Build from a program and scope.
-  void Build(const framework::proto::ProgramDesc& program) {
-    CHECK(ops.empty()) << "Executor duplicate Build found";
-    // Create operators.
-    for (const auto& proto_op_desc : program.blocks(0).ops()) {
-      pb::OpDesc op_desc(proto_op_desc);
-      auto op_type = op_desc.Type();
-      // if (op_type == "feed" || op_type == "fetch") continue;
-      VLOG(4) << "create Op [" << op_type << "]";
-      LOG(INFO) << "create Op [" << op_type << "]";
-      auto op = LiteOpRegistry::Global().Create(op_type);
-      CHECK(op) << "no Op found for " << op_type;
-      ops.emplace_back(std::move(op));
-
-      cpp::OpDesc cpp_op_desc;
-      TransformOpDescPbToCpp(op_desc, &cpp_op_desc);
-      ops.back()->Attach(cpp_op_desc, exec_scope);
-    }
-  }
-
+  void Build(const framework::proto::ProgramDesc& program);
   // Create temporary variables.
-  void PrepareWorkspace(const framework::proto::ProgramDesc& program) {
-    CHECK(!exec_scope) << "Duplicate PrepareWorkspace found";
-    exec_scope = &scope->NewScope();
-    // Create Feed and Fetch var.
-    scope->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
-    scope->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
+  void PrepareWorkspace(const framework::proto::ProgramDesc& program);
 
-    tmp_vars.push_back("feed");
-    tmp_vars.push_back("fetch");
-    CHECK(!program.blocks().empty());
-    for (auto proto_var_desc : program.blocks(0).vars()) {
-      lite::VarDesc var_desc(proto_var_desc);
-      if (!var_desc.Persistable()) {
-        tmp_vars.push_back(var_desc.Name());
-        exec_scope->Var(var_desc.Name());
-      } else {
-        if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
-        weights.push_back(var_desc.Name());
-      }
-    }
-  }
+ private:
+  std::list<std::string> tmp_vars_;
+  std::list<std::string> weights_;
+  std::list<std::shared_ptr<OpLite>> ops_;
+  // the scope to run the kernels, NOTE this is the execution scope.
+  std::shared_ptr<lite::Scope> scope_;
+  std::vector<Place> valid_places_;
+  // Runtime scope.
+  lite::Scope* exec_scope_{};
+  const framework::proto::ProgramDesc desc_;
 };
 
-struct Instruct {
-  Instruct(const std::shared_ptr<OpLite>& op,
-           std::unique_ptr<KernelBase>&& kernel)
+struct Instruction {
+  Instruction(const std::shared_ptr<OpLite>& op,
+              std::unique_ptr<KernelBase>&& kernel)
       : op_(op), kernel_(std::move(kernel)) {
 #ifdef LITE_WITH_PROFILE
     profile_id_ = profile::BasicProfiler<profile::BasicTimer>::Global()
@@ -129,10 +98,10 @@ struct Instruct {
       CHECK(op_->CheckShape());
     }
     op_->InferShape();
-    kernel_->Run();
+    kernel_->Launch();
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const Instruct& other) {
+  friend std::ostream& operator<<(std::ostream& os, const Instruction& other) {
     os << other.kernel_->summary() << "\t(" << other.kernel_->doc() << ")";
     return os;
   }
@@ -156,7 +125,7 @@ struct Instruct {
  */
 class RuntimeProgram {
  public:
-  explicit RuntimeProgram(std::vector<Instruct>&& insts)
+  explicit RuntimeProgram(std::vector<Instruction>&& insts)
       : instructions_(std::move(insts)) {
     if (instructions_.empty()) {
       LOG(FATAL) << "no instructions";
@@ -186,7 +155,7 @@ class RuntimeProgram {
 
  private:
   RuntimeProgram(const RuntimeProgram&) = delete;
-  std::vector<Instruct> instructions_;
+  std::vector<Instruction> instructions_;
   lite::Scope* exec_scope_{};
 };
 

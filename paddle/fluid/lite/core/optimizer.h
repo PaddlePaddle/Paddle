@@ -64,7 +64,7 @@ class Optimizer {
       RunPasses(passes);
     }
 #endif
-    exec_scope_ = program.exec_scope;
+    exec_scope_ = program.exec_scope();
   }
 
   void KernelPickPreferPlace(const Place& place) {
