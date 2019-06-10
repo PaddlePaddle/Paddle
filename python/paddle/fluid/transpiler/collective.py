@@ -27,6 +27,7 @@ import numpy as np
 from .. import core, unique_name
 from ..framework import Program, default_main_program, default_startup_program
 from .details import wait_server_ready
+from ..core.op_proto_and_checker_maker import OpRole
 
 __all__ = ['SGD', 'LocalSGD']
 
@@ -43,9 +44,9 @@ class Collective(object):
         self.rank = None
         self.startup_program = None
         self.main_program = None
-        self.op_maker = core.op_proto_and_checker_maker
-        self.op_role_key = self.op_maker.kOpRoleAttrName()
-        self.collective_role = self.op_maker.OpRole.Collective
+        op_maker = core.op_proto_and_checker_maker
+        self.op_role_key = op_maker.kOpRoleAttrName()
+        self.op_role_var_key = op_maker.kOpRoleVarAttrName()
 
     def transpile(self, startup_program, main_program, rank, endpoints,
                   current_endpoint, wait_port):
@@ -114,7 +115,7 @@ class Collective(object):
                 'rank': rank,
                 'endpoint': current_endpoint,
                 'other_endpoints': other_endpoints,
-                self.op_role_key: self.collective_role
+                self.op_role_key: OpRole.Collective
             })
         block.append_op(
             type='c_comm_init',
@@ -124,7 +125,7 @@ class Collective(object):
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': ring_id,
-                self.op_role_key: self.collective_role
+                self.op_role_key: OpRole.Collective
             })
 
     def _broadcast_params(self):
@@ -137,29 +138,32 @@ class Collective(object):
                 attrs={
                     'ring_id': self.global_ring_id,
                     'root': 0,
-                    self.op_role_key: self.collective_role
+                    self.op_role_key: OpRole.Collective
                 })
         block.append_op(
             type='c_sync_comm_stream',
             attrs={
                 'ring_id': self.global_ring_id,
-                self.op_role_key: self.collective_role
+                self.op_role_key: OpRole.Collective
             })
+
+    def _is_loss_grad_op(self, op):
+        if self.op_role_key not in op.attr_names:
+            return False
+        op_role = int(op.all_attrs()[self.op_role_key])
+        return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+    def _is_backward_op(self, op):
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Backward)
 
     def _is_update_op(self, op):
         return 'Param' in op.input_names and 'Grad' in op.input_names and \
                 "LearningRate" in op.input_names
 
     def _is_optimizer_op(self, op):
-        '''
-        depend on op_role to find out whether this op is for optimize
-        '''
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
 
 
 class SGD(Collective):
@@ -170,38 +174,55 @@ class SGD(Collective):
         Collective.__init__(self)
 
     def _transpile_main_program(self):
+        self._insert_scale_loss_grad_ops()
         self._insert_allreduce_ops()
+
+    def _insert_scale_loss_grad_ops(self):
+        '''
+        In order to keep the learning rate consistent in different numbers of
+        training workers, we scale the loss grad by the number of workers
+        '''
+        block = self.main_program.global_block()
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                block._insert_op(
+                    idx + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={'scale': 1.0 / self.nranks})
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
-
-        grad2param = {}
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_update_op(op):
-                param = block.vars[op.input('Param')[0]]
-                grad2param[op.input('Grad')[0]] = param
-                continue
+            if self._is_backward_op(op) and \
+                    self.op_role_var_key in op.attr_names:
+                op_role_var = op.all_attrs()[self.op_role_var_key]
 
-            if self._is_optimizer_op(op):
-                continue
+                if len(op_role_var) == 0:
+                    continue
 
-            for name in op.output_arg_names:
-                if name in grad2param:
-                    grad = block.vars[name]
+                assert len(op_role_var) % 2 == 0
+
+                block._insert_op(
+                    idx + 1,
+                    type='c_sync_compute_stream',
+                    attrs={self.op_role_key: OpRole.Collective})
+
+                offset = 2
+                for i in range(0, len(op_role_var), 2):
+                    grad = op_role_var[i + 1]
                     block._insert_op(
-                        idx + 1,
-                        type='c_sync_compute_stream',
-                        attrs={self.op_role_key: self.collective_role})
-                    block._insert_op(
-                        idx + 2,
+                        idx + offset,
                         type='c_allreduce',
-                        inputs={'X': [grad]},
-                        outputs={'Out': [grad]},
+                        inputs={'X': [block.vars[grad]]},
+                        outputs={'Out': [block.vars[grad]]},
                         attrs={
                             'reduce_type': 0,
-                            self.op_role_key: self.collective_role
+                            self.op_role_key: OpRole.Collective
                         })
-                    del grad2param[name]
+                    offset += 1
 
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
@@ -210,7 +231,7 @@ class SGD(Collective):
                     type='c_sync_comm_stream',
                     attrs={
                         'ring_id': self.global_ring_id,
-                        self.op_role_key: self.collective_role
+                        self.op_role_key: OpRole.Collective
                     })
                 break
 
@@ -237,7 +258,7 @@ class LocalSGD(Collective):
                 type='assign',
                 inputs={'X': [param]},
                 outputs={'Out': [snapshot]},
-                attrs={self.op_role_key: self.collective_role})
+                attrs={self.op_role_key: OpRole.Collective})
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
@@ -245,8 +266,6 @@ class LocalSGD(Collective):
     def _transpile_main_program(self):
         block = self.main_program.global_block()
         ordered_param_snapshot = []
-        # FIXME(liuyi05): how to deal with parameters updated in
-        # non-optimization ops such as batch_norm
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_update_op(op):
                 param = block.vars[op.input('Param')[0]]
@@ -262,11 +281,11 @@ class LocalSGD(Collective):
                     inputs={'X': [snapshot],
                             'Y': [param]},
                     outputs={'Out': [param]},
-                    attrs={self.op_role_key: self.collective_role})
+                    attrs={self.op_role_key: OpRole.Collective})
                 block._insert_op(
                     idx + 2,
                     type='c_sync_compute_stream',
-                    attrs={self.op_role_key: self.collective_role})
+                    attrs={self.op_role_key: OpRole.Collective})
                 block._insert_op(
                     idx + 3,
                     type='c_allreduce',
@@ -274,7 +293,7 @@ class LocalSGD(Collective):
                     outputs={'Out': [param]},
                     attrs={
                         'reduce_type': 0,
-                        self.op_role_key: self.collective_role
+                        self.op_role_key: OpRole.Collective
                     })
 
                 ordered_param_snapshot.append((param, snapshot))
@@ -283,7 +302,7 @@ class LocalSGD(Collective):
             type='c_sync_comm_stream',
             attrs={
                 'ring_id': self.global_ring_id,
-                self.op_role_key: self.collective_role
+                self.op_role_key: OpRole.Collective
             })
 
         for param_snapshot in reversed(ordered_param_snapshot):
@@ -295,16 +314,16 @@ class LocalSGD(Collective):
                 outputs={'Out': [param]},
                 attrs={
                     'scale': 1.0 / self.nranks,
-                    self.op_role_key: self.collective_role
+                    self.op_role_key: OpRole.Collective
                 })
             block.append_op(
                 type='elementwise_sub',
                 inputs={'X': [snapshot],
                         'Y': [param]},
                 outputs={'Out': [param]},
-                attrs={self.op_role_key: self.collective_role})
+                attrs={self.op_role_key: OpRole.Collective})
             block.append_op(
                 type='assign',
                 inputs={'X': [param]},
                 outputs={'Out': [snapshot]},
-                attrs={self.op_role_key: self.collective_role})
+                attrs={self.op_role_key: OpRole.Collective})
