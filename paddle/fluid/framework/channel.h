@@ -283,7 +283,7 @@ class ChannelObject {
     }
     return finished;
   }
-};
+};  // NOLINT
 
 template <class T>
 using Channel = std::shared_ptr<ChannelObject<T>>;
@@ -354,7 +354,7 @@ class ChannelReader {
   std::vector<T> buffer_;
   size_t cursor_ = 0;
   bool failed_ = true;
-};
+};  // NOLINT
 
 template <class T>
 class ChannelWriter {
@@ -413,7 +413,7 @@ class ChannelWriter {
   Channel<T> channel_;
   std::vector<T> buffer_;
   bool failed_ = true;
-};
+};  // NOLINT
 
 // only used for range-for loop
 // for (auto& x : chan) {...}
@@ -440,7 +440,7 @@ struct ChannelIterator {
                          const ChannelIterator<T>& b) {
     return a.reader_ != b.reader_;
   }
-};
+};  // NOLINT
 
 template <class T>
 ChannelIterator<T> begin(const Channel<T>& chan) {
