@@ -14,6 +14,11 @@
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include <glog/logging.h>
 #include <algorithm>
 #include <condition_variable>  // NOLINT
@@ -204,7 +209,11 @@ class ChannelObject {
   bool FullUnlocked() { return data_.size() >= capacity_ + reading_count_; }
 
   bool WaitForRead(std::unique_lock<std::mutex>& lock) {  // NOLINT
+#ifdef _LINUX
     while (unlikely(EmptyUnlocked() && !closed_)) {
+#else
+    while (EmptyUnlocked() && !closed_) {
+#endif
       if (full_waiters_ != 0) {
         full_cond_.notify_one();
       }
@@ -216,7 +225,11 @@ class ChannelObject {
   }
 
   bool WaitForWrite(std::unique_lock<std::mutex>& lock) {  // NOLINT
+#ifdef _LINUX
     while (unlikely(FullUnlocked() && !closed_)) {
+#else
+    while (FullUnlocked() && !closed_) {
+#endif
       if (empty_waiters_ != 0) {
         empty_cond_.notify_one();
       }

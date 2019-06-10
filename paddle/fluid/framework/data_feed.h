@@ -14,6 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include <fstream>
 #include <future>  // NOLINT
 #include <memory>
@@ -314,7 +319,15 @@ template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
                                            const MultiSlotType& ins) {
   ar << ins.GetType();
+#ifdef _LINUX
   ar << ins.GetOffset();
+#else
+  const auto& offset = ins.GetOffset();
+  ar << (uint64_t)offset.size();
+  for (const size_t& x : p) {
+    ar << (const uint64_t)x;
+  }
+#endif
   ar << ins.GetFloatData();
   ar << ins.GetUint64Data();
   return ar;
@@ -324,7 +337,17 @@ template <class AR>
 paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
                                            MultiSlotType& ins) {
   ar >> ins.MutableType();
+#ifdef _LINUX
   ar >> ins.MutableOffset();
+#else
+  auto& offset = ins.MutableOffset();
+  offset.resize(ar.template Get<uint64_t>());
+  for (size_t& x : offset) {
+    uint64_t t;
+    ar >> t;
+    x = (size_t)t;
+  }
+#endif
   ar >> ins.MutableFloatData();
   ar >> ins.MutableUint64Data();
   return ar;
