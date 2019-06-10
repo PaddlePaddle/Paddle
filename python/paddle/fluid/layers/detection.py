@@ -213,22 +213,39 @@ def rpn_target_assign(bbox_pred,
 
 def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
     """
-    ${comment}
+    **Sigmoid Focal Loss Operator.**
+
+    Focal loss is used to address the foreground-background class imbalance existed
+    on the training phase of one-stage detectors. This operator computes the sigmoid
+    value for each element in the input tensor, after which focal loss is measured.
+    
+    The focal loss is given as followed:
+
+    .. math::
+        loss_j = (-label_j * alpha * {(1 - \\sigma(x_j))}^{gamma} * \\log(\\sigma(x_j)) -
+        (1 - labels_j) * (1 - alpha) * {(\sigma(x_j)}^{ gamma} * \\log(1 - \\sigma(x_j)))
+        / fg\_num, j = 1,...,K
+
+    We know that
+    
+    .. math::
+        \\sigma(x_j) = \\frac{1}{1 + \\exp(-x_j)}
 
     Args:
-        x(${x_type}): ${x_comment}
-        label(${label_type}): ${label_comment}
-        fg_num{${fg_num_type}}: ${fg_num_comment}
+        x(Variable): A 2-D tensor with shape [N, D], where N is the batch size and D is the number
+            of classes. This input is a tensor of logits computed by the previous operator.
+        label(Variable): A 2-D tensor with shape [N, 1], which is the probabilistic labels.
+        fg_num(Variable): A 1-D tensor with shape [1], which is the number of foreground.
 
-        gamma(float): Hyper-parameter to balance the easy and hard examples.
-            Default value is set to 2.0
-        alpha(float): Hyper-parameter to balance the positive and negative example.
-            Default value is set to 0.25
-        num_classes(int): Number of classes (excluding background)
+        gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
+            set to 2.0.
+        alpha(float): Hyper-parameter to balance the positive and negative example. Default value
+            is set to 0.25.
+        num_classes(int): Number of classes (excluding background).
 
 
     Returns:
-        out(${out_type}): ${out_comment}
+        out(Variable): A 2-D tensor with shape [N, D], which is the focal loss.
 
     Examples:
         .. code-block:: python
