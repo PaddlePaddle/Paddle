@@ -30,14 +30,15 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
+set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
+
 IF(WIN32)
     # Python would use the .pyd by default under Windows series platform
-    set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
     set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
-    set(NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)
+    set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)
 ELSE()
-    set(FLUID_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}.so)
-    set(NOAVX_CORE ${PADDLE_BINARY_DIR}/python/paddle/fluid/core_noavx.so)
+    set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
+    set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.so)
 ENDIF()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
@@ -54,9 +55,9 @@ if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
       message(FATAL_ERROR "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.so!")
     endif()
   endif()
-  add_custom_command(OUTPUT ${NOAVX_CORE}
-    COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${NOAVX_CORE} DEPENDS paddle_pybind)
-  set(FLUID_CORE_DEPS "${FLUID_CORE_DEPS} ${NOAVX_CORE}")
+  add_custom_command(OUTPUT ${FLUID_NOAVX_CORE}
+    COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${FLUID_NOAVX_CORE} DEPENDS paddle_pybind)
+  set(FLUID_CORE_DEPS "${FLUID_CORE_DEPS} ${FLUID_NOAVX_CORE}")
 endif()
 
 add_custom_command(OUTPUT ${FLUID_CORE}
