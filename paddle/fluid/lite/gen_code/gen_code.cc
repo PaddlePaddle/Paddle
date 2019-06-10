@@ -72,6 +72,7 @@ std::string Module::DataRepr(const std::string &raw_data, PrecisionType dtype) {
         ss << raw[num_elems - 1];
       }
     } break;
+
     default:
       LOG(FATAL) << "Unsupported type " << PrecisionToStr(dtype);
   }
