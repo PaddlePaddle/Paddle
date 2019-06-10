@@ -136,7 +136,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     }
 
     // ------------------- cudnn conv algorithm ---------------------
-    cudnnConvolutionFwdAlgo_t algo;
+    cudnnConvolutionFwdAlgo_t algo{};
     bool half_float = false;
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
@@ -361,8 +361,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
-    cudnnConvolutionBwdDataAlgo_t data_algo;
-    cudnnConvolutionBwdFilterAlgo_t filter_algo;
+    cudnnConvolutionBwdDataAlgo_t data_algo{};
+    cudnnConvolutionBwdFilterAlgo_t filter_algo{};
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
     size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
