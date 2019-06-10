@@ -105,7 +105,7 @@ def rpn_target_assign(bbox_pred,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
         is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
@@ -1016,8 +1016,8 @@ def ssd_loss(location,
     """
     **Multi-box loss layer for object detection algorithm of SSD**
 
-    This layer is to compute dection loss for SSD given the location offset
-    predictions, confidence predictions, prior boxes and ground-truth boudding
+    This layer is to compute detection loss for SSD given the location offset
+    predictions, confidence predictions, prior boxes and ground-truth bounding
     boxes and labels, and the type of hard example mining. The returned loss
     is a weighted sum of the localization loss (or regression loss) and
     confidence loss (or classification loss) by performing the following steps:
@@ -1061,7 +1061,7 @@ def ssd_loss(location,
         confidence (Variable): The confidence predictions are a 3D Tensor
             with shape [N, Np, C], N and Np are the same as they are in
             `location`, C is the class number.
-        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
         gt_label (Variable): The ground-truth labels are a 2D LoDTensor
@@ -1074,14 +1074,14 @@ def ssd_loss(location,
             `overlap_threshold` to determine the extra matching bboxes when
              finding matched boxes. 0.5 by default.
         neg_pos_ratio (float): The ratio of the negative boxes to the positive
-            boxes, used only when mining_type is 'max_negative', 3.0 by defalut.
+            boxes, used only when mining_type is 'max_negative', 3.0 by default.
         neg_overlap (float): The negative overlap upper bound for the unmatched
             predictions. Use only when mining_type is 'max_negative',
             0.5 by default.
         loc_loss_weight (float): Weight for localization loss, 1.0 by default.
         conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
         match_type (str): The type of matching method during training, should
-            be 'bipartite' or 'per_prediction', 'per_prediction' by defalut.
+            be 'bipartite' or 'per_prediction', 'per_prediction' by default.
         mining_type (str): The hard example mining type, should be 'hard_example'
             or 'max_negative', now only support `max_negative`.
         normalize (bool): Whether to normalize the SSD loss by the total number
@@ -1265,7 +1265,7 @@ def prior_box(input,
             Default:[0.1, 0.1, 0.2, 0.2].
        flip(bool): Whether to flip aspect ratios. Default:False.
        clip(bool): Whether to clip out-of-boundary boxes. Default: False.
-       step(list|turple): Prior boxes step across width and height, If
+       step(list|tuple): Prior boxes step across width and height, If
             step[0] == 0.0/step[1] == 0.0, the prior boxes step across
             height/weight of the input will be automatically calculated.
             Default: [0., 0.]
@@ -1394,7 +1394,7 @@ def density_prior_box(input,
        variance(list|tuple): the variances to be encoded in density prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
        clip(bool): Whether to clip out-of-boundary boxes. Default: False.
-       step(list|turple): Prior boxes step across width and height, If
+       step(list|tuple): Prior boxes step across width and height, If
             step[0] == 0.0/step[1] == 0.0, the density prior boxes step across
             height/weight of the input will be automatically calculated.
             Default: [0., 0.]
@@ -1761,7 +1761,7 @@ def anchor_generator(input,
                                         anchors, e.g. [0.5, 1.0, 2.0].
        variance(list|tuple): The variances to be used in box regression deltas.
                              Default:[0.1, 0.1, 0.2, 0.2].
-       stride(list|turple): The anchors stride across width and height,e.g. [16.0, 16.0]
+       stride(list|tuple): The anchors stride across width and height,e.g. [16.0, 16.0]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
 
