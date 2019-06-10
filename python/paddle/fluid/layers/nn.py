@@ -203,7 +203,7 @@ __all__ = [
     'where',
     'sign',
     'deformable_conv',
-    'deformable_psroi_pooling',
+    'deformable_roi_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -12011,19 +12011,19 @@ def deformable_conv(input,
     return output
 
 
-def deformable_psroi_pooling(input,
-                             rois,
-                             trans,
-                             no_trans=False,
-                             spatial_scale=1.0,
-                             output_channels=None,
-                             group_size=[1, 1],
-                             pooled_height=1,
-                             pooled_width=1,
-                             part_size=None,
-                             sample_per_part=1,
-                             trans_std=0.1,
-                             name=None):
+def deformable_roi_pooling(input,
+                           rois,
+                           trans,
+                           no_trans=False,
+                           spatial_scale=1.0,
+                           group_size=[1, 1],
+                           pooled_height=1,
+                           pooled_width=1,
+                           part_size=None,
+                           sample_per_part=1,
+                           trans_std=0.1,
+                           position_sensitive=False,
+                           name=None):
     """
     Deformable PSROI Pooling Layer
     
@@ -12039,14 +12039,10 @@ def deformable_psroi_pooling(input,
        trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
                          N is number of ROIs, C is number of channels, which indicate the offset distance 
                          in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether add offset to get new value or not while roi pooling, which 
+       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
                           value is True or False. Default: False.
        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       output_channels (integer): The number of output channels, which should be less than input channels.
-                                 Deformable roi pooling requires output_channels = input_channels, while 
-                                 deformable psroi pooling requires input_channels = output_channels *
-                                 pooled_height * pooled_width. Default value is same to input channels.
        group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
                          is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
@@ -12056,6 +12052,7 @@ def deformable_psroi_pooling(input,
                         if None, default value is [pooled_height, pooled_width].
        sample_per_part (integer): The number of samples in each bin. Default: 1.
        trans_std (float): Coefficient of offset. Default: 0.1.
+       position_sensitive: Whether to choose deformable psroi pooling or not. Default: False.
        name (str): Name of layer. Default: None.
     Returns:
         Variable: The tensor variable storing the deformable psroi pooling \
@@ -12077,28 +12074,25 @@ def deformable_psroi_pooling(input,
                                   shape=[2, 384, 64, 64], 
                                   dtype='float32', 
                                   append_batch_size=False) 
-        x = fluid.layers.nn.deformable_psroi_pooling(input=input, 
+        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
                                                      rois=rois, 
                                                      trans=trans, 
                                                      no_trans=False,
                                                      spatial_scale=1.0, 
-                                                     output_channels=3,
                                                      group_size=(1, 1),
                                                      pooled_height=8,
                                                      pooled_width=8,
                                                      part_size=(8, 8),
                                                      sample_per_part=4, 
-                                                     trans_std=0.1)
+                                                     trans_std=0.1,
+                                                     position_sensitive=False)
     """
 
-    if no_trans == False:
-        no_trans = 0
-    else:
-        no_trans = 1
-
     input_channels = input.shape[1]
-    if output_channels is None:
+    if position_sensitive == False:
         output_channels = input_channels
+    else:
+        output_channels = input_channels / pooled_height / pooled_width
 
     if part_size is None:
         part_height = pooled_height

@@ -63,7 +63,7 @@ __global__ void DeformablePSROIPoolForwardKernel(
     const int count, const T* bottom_data, const T spatial_scale,
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, const T* bottom_rois,
-    const T* bottom_trans, const int no_trans, const T trans_std,
+    const T* bottom_trans, const bool no_trans, const T trans_std,
     const int sample_per_part, const int output_dim, const int group_height,
     const int group_width, const int part_height, const int part_width,
     const int num_classes, const int channels_each_class, T* top_data,
@@ -166,7 +166,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     Tensor* top_count = ctx.Output<Tensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
 
-    auto no_trans = ctx.Attr<int>("no_trans");
+    auto no_trans = ctx.Attr<bool>("no_trans");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto output_dim = ctx.Attr<int>("output_dim");
     auto group_size = ctx.Attr<std::vector<int>>("group_size");
@@ -247,7 +247,7 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
     const int width, const int pooled_height, const int pooled_width,
     const int output_dim, T* bottom_data_diff, T* bottom_trans_diff,
     const T* bottom_data, const T* bottom_rois, const T* bottom_trans,
-    const int no_trans, const T trans_std, const int sample_per_part,
+    const bool no_trans, const T trans_std, const int sample_per_part,
     const int group_height, const int group_width, const int part_height,
     const int part_width, const int num_classes, const int channels_each_class,
     int* roi_batch_id_data) {
@@ -421,7 +421,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, trans_grad, static_cast<T>(0));
     }
 
-    auto no_trans = ctx.Attr<int>("no_trans");
+    auto no_trans = ctx.Attr<bool>("no_trans");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto output_dim = ctx.Attr<int>("output_dim");
     auto group_size = ctx.Attr<std::vector<int>>("group_size");

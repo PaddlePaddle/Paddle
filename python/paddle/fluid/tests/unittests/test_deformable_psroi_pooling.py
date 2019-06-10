@@ -175,7 +175,7 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.input_dim = [
             self.batch_size, self.channels, self.height, self.width
         ]
-        self.no_trans = 0
+        self.no_trans = False
         self.spatial_scale = 1.0 / 4.0
         self.output_channels = 12
         self.group_size = [1, 1]
@@ -194,7 +194,7 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.input_dim = [
             self.batch_size, self.channels, self.height, self.width
         ]
-        self.no_trans = 1
+        self.no_trans = True
         self.spatial_scale = 1.0 / 2.0
         self.output_channels = 12
         self.group_size = [1, 1]
@@ -213,7 +213,7 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.input_dim = [
             self.batch_size, self.channels, self.height, self.width
         ]
-        self.no_trans = 0
+        self.no_trans = False
         self.spatial_scale = 1.0 / 4.0
         self.output_channels = 12
         self.group_size = [1, 1]
@@ -232,7 +232,7 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.input_dim = [
             self.batch_size, self.channels, self.height, self.width
         ]
-        self.no_trans = 1
+        self.no_trans = True
         self.spatial_scale = 1.0 / 2.0
         self.output_channels = 12
         self.group_size = [1, 1]

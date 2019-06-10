@@ -1991,7 +1991,7 @@ class TestBook(LayerTest):
                     padding=1)
                 return (out)
 
-    def test_deform_psroi_pooling(self):
+    def test_deform_roi_pooling(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             input = layers.data(
@@ -2006,13 +2006,12 @@ class TestBook(LayerTest):
                 shape=[2, 3, 32, 32],
                 dtype='float32',
                 append_batch_size=False)
-            out = layers.deformable_psroi_pooling(
+            out = layers.deformable_roi_pooling(
                 input=input,
                 rois=rois,
                 trans=trans,
-                no_trans=0,
+                no_trans=False,
                 spatial_scale=1.0,
-                output_channels=3,
                 group_size=(1, 1),
                 pooled_height=8,
                 pooled_width=8,

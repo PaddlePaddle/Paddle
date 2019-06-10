@@ -45,11 +45,10 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "in the x and y directions, "
              "H is pooled height, and "
              "W is pooled width.");
-    AddAttr<int>("no_trans",
-                 "(int), "
-                 "whether add offset to get new value or not while roi "
-                 "pooling, which value is 0 or 1")
-        .SetDefault(0);
+    AddAttr<bool>("no_trans",
+                  "(bool), "
+                  "whether add offset to get new value or not while roi "
+                  "pooling, which value is True or False");
     AddAttr<float>("spatial_scale",
                    "(float), "
                    "ratio of input feature map height (or width) to "
