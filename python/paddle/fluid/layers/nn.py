@@ -2346,7 +2346,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type, is_test=False):
+def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -2361,29 +2361,32 @@ def sequence_pool(input, pool_type, is_test=False):
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
+       x is a 1-level LoDTensor and **pad_value** = 0.0:
+         x.lod = [[2, 3, 2, 0]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
-         out.dim = [3, 1]
+         out.dim = [4, 1]
          with condition len(x.lod[-1]) == out.dims[0]
 
        for different pool_type:
-         average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-         sum    : out.data = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
-         sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
+         average: out.data = [2, 4, 3, 0.0], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+         sum    : out.data = [4, 12, 6, 0.0], where 4=1+3, 12=2+4+6, 6=5+1
+         sqrt   : out.data = [2.82, 6.93, 4.24, 0.0], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-         max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+         max    : out.data = [3, 6, 5, 0.0], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1, 0.0], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5, 0.0], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+
+         and all above 0.0 = **pad_value**.
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input (variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
-        is_test(bool, Default False): Used distinguish training from scoring mode.
+        is_test (bool): Used to distinguish training from scoring mode. Default False.
+        pad_value (float): Used to pad the pooling result for empty input sequence.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -2391,6 +2394,8 @@ def sequence_pool(input, pool_type, is_test=False):
     Examples:
 
         .. code-block:: python
+
+             import paddle.fluid as fluid
 
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
@@ -2413,8 +2418,11 @@ def sequence_pool(input, pool_type, is_test=False):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper(),
-               "is_test": is_test})
+        attrs={
+            "pooltype": pool_type.upper(),
+            "is_test": is_test,
+            "pad_value": pad_value
+        })
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
