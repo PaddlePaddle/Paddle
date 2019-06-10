@@ -269,7 +269,7 @@ class ArchiveBase {
     }
     deleter_ = nullptr;
   }
-};
+};  // NOLINT
 
 template <class Type>
 class Archive {};
@@ -415,14 +415,14 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::pair<T1, T2>& x) {  // NOLINT
 
 #ifdef _LINUX
 template <class AR, class... T>
-Archive<AR>& SerializeTuple(Archive<AR>& ar,
+Archive<AR>& SerializeTuple(Archive<AR>& ar,                        // NOLINT
                             const std::tuple<T...>& x,              // NOLINT
                             std::integral_constant<size_t, 0> n) {  // NOLINT
   return ar;
 }
 #else
 template <class AR, class... T>
-Archive<AR>& SerializeTuple(Archive<AR>& ar,
+Archive<AR>& SerializeTuple(Archive<AR>& ar,                          // NOLINT
                             const std::tuple<T...>& x,                // NOLINT
                             std::integral_constant<uint64_t, 0> n) {  // NOLINT
   return ar;
@@ -431,7 +431,7 @@ Archive<AR>& SerializeTuple(Archive<AR>& ar,
 
 #ifdef _LINUX
 template <class AR, class... T, size_t N>
-Archive<AR>& serialize_tuple(Archive<AR>& ar,
+Archive<AR>& serialize_tuple(Archive<AR>& ar,                        // NOLINT
                              const std::tuple<T...>& x,              // NOLINT
                              std::integral_constant<size_t, N> n) {  // NOLINT
   return SerializeTuple(ar, x, std::integral_constant<size_t, N - 1>())
@@ -439,7 +439,7 @@ Archive<AR>& serialize_tuple(Archive<AR>& ar,
 }
 #else
 template <class AR, class... T, uint64_t N>
-Archive<AR>& serialize_tuple(Archive<AR>& ar,
+Archive<AR>& serialize_tuple(Archive<AR>& ar,                          // NOLINT
                              const std::tuple<T...>& x,                // NOLINT
                              std::integral_constant<uint64_t, N> n) {  // NOLINT
   return SerializeTuple(ar, x, std::integral_constant<uint64_t, N - 1>())
