@@ -21,13 +21,12 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
-                                        size_t size, Allocator::Attr attr) {
-  return allocation::AllocatorFacade::Instance().AllocShared(place, size, attr);
+                                        size_t size) {
+  return allocation::AllocatorFacade::Instance().AllocShared(place, size);
 }
 
-AllocationPtr Alloc(const platform::Place& place, size_t size,
-                    Allocator::Attr attr) {
-  return allocation::AllocatorFacade::Instance().Alloc(place, size, attr);
+AllocationPtr Alloc(const platform::Place& place, size_t size) {
+  return allocation::AllocatorFacade::Instance().Alloc(place, size);
 }
 
 }  // namespace memory
