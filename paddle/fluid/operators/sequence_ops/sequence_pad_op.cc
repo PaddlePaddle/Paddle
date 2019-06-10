@@ -71,16 +71,13 @@ class SequencePadOp : public framework::OperatorWithKernel {
       out_dim_0 = seq_num;
     } else {
       // compile time
-      if (padded_length == -1) {
-        padded_length = 1;
-      }
       framework::VarDesc* x_desc =
           boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
       PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
     }
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
-    std::vector<int> len_dims_vec{out_dim_0, 1};
+    std::vector<int> len_dims_vec{out_dim_0};
     auto time_step_dims_vec = framework::vectorize2int(time_step_dims);
     out_dims_vec.insert(out_dims_vec.end(), time_step_dims_vec.begin(),
                         time_step_dims_vec.end());

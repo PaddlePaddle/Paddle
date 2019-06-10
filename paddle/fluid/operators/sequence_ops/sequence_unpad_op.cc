@@ -37,8 +37,13 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
                       "The rank of Input(X) can't be less than 2.");
 
     auto len_dims = ctx->GetInputDim("Length");
-    PADDLE_ENFORCE(len_dims.size() == 2 && len_dims[1] == 1,
-                   "The shape of Input(Length) should be [batch_size, 1].");
+    PADDLE_ENFORCE(len_dims.size() == 1,
+                   "The shape of Input(Length) should be [batch_size].");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[0], len_dims[0],
+                        "x dims[0] should be equal with len_dims[0]");
+    }
     PADDLE_ENFORCE(
         len_dims[0] == x_dims[0],
         "Input(X) and Input(Length) should have the same first dimension.");

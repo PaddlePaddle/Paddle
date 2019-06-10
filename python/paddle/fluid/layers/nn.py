@@ -4153,13 +4153,16 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy
+            x = fluid.layers.data(name='y', shape=[-1, 100],
+                                         dtype='float32', lod_level=1)
+            pad_value = fluid.layers.fill_constant( shape=[1], value = 0.0, dtype='float32')
 
-            x = fluid.layers.data(name='y', shape=[10, 5],
-                             dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(
-                input=numpy.array([0.0], dtype=numpy.float32))
-            out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            padding_result, seq_len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            seq_mask = fluid.layers.sequence_mask( seq_len )
+            # padding_result is [batch_size x seq_len x hidden_size], seq_mask is [batch_size x seq_len ]
+            padding_result_with_mask = padding_result * seq_mask
+            convert_to_lod_out = fluid.layers.sequence_unpad( padding_result_with_mask, seq_len )
+
     """
 
     assert not in_dygraph_mode(), (
@@ -4204,7 +4207,7 @@ def sequence_unpad(x, length, name=None):
 	in which there are 3 sequences padded to length 5, and the acutal length
 	specified by input Variable **length**:
 
-	    length.data = [[2], [3], [4]],
+	    length.data = [2, 3, 4],
 
 	after unpadding, the output Variable will be:
 
@@ -4224,10 +4227,17 @@ def sequence_unpad(x, length, name=None):
 
     Examples:
         .. code-block:: python
+            
+            x = fluid.layers.data(name='y', shape=[-1, 100],
+                                         dtype='float32', lod_level=1)
+            pad_value = fluid.layers.fill_constant( shape=[1], value = 0.0, dtype='float32')
 
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
-            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
-            out = fluid.layers.sequence_unpad(x=x, length=len)
+            padding_result, seq_len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            seq_mask = fluid.layers.sequence_mask( seq_len )
+            # padding_result is [batch_size x seq_len x hidden_size], seq_mask is [batch_size x seq_len ]
+            padding_result_with_mask = padding_result * seq_mask
+            convert_to_lod_out = fluid.layers.sequence_unpad( padding_result_with_mask, seq_len )
+
     """
 
     assert not in_dygraph_mode(), (
@@ -9166,10 +9176,15 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     Examples:
         .. code-block:: python
 	
-            import paddle.fluid.layers as layers
+            x = fluid.layers.data(name='y', shape=[-1, 100],
+                                         dtype='float32', lod_level=1)
+            pad_value = fluid.layers.fill_constant( shape=[1], value = 0.0, dtype='float32')
 
-            x = fluid.layers.data(name='x', shape=[10], dtype='float32', lod_level=1)
-            mask = layers.sequence_mask(x=x)
+            padding_result, seq_len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            seq_mask = fluid.layers.sequence_mask( seq_len )
+            # padding_result is [batch_size x seq_len x hidden_size], seq_mask is [batch_size x seq_len ]
+            padding_result_with_mask = padding_result * seq_mask
+            convert_to_lod_out = fluid.layers.sequence_unpad( padding_result_with_mask, seq_len )
 
     """
     assert not in_dygraph_mode(), (
