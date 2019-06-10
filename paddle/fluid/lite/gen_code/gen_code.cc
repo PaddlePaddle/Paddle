@@ -65,10 +65,12 @@ std::string Module::DataRepr(const std::string &raw_data, PrecisionType dtype) {
     case PRECISION(kFloat): {
       const float *raw = reinterpret_cast<const float *>(raw_data.c_str());
       int num_elems = raw_data.size() / sizeof(float);
-      for (int i = 0; i < num_elems - 1; i++) {
-        ss << raw[i] << ",";
+      if (num_elems) {
+        for (int i = 0; i < num_elems - 1; i++) {
+          ss << raw[i] << ",";
+        }
+        ss << raw[num_elems - 1];
       }
-      ss << raw[num_elems - 1];
     } break;
     default:
       LOG(FATAL) << "Unsupported type " << PrecisionToStr(dtype);
