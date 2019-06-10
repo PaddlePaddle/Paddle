@@ -485,7 +485,7 @@ template <typename T, typename K>
 class MulMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
 
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
