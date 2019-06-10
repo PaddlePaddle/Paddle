@@ -49,6 +49,8 @@ class Dataset {
   virtual void SetTrainerNum(int trainer_num) = 0;
   // set fleet send batch size
   virtual void SetFleetSendBatchSize(int64_t size) = 0;
+  // set is_single_output
+  virtual void SetSingleOutput(bool is_single_output) = 0;
   // set fs name and ugi
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi) = 0;
@@ -69,12 +71,17 @@ class Dataset {
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() = 0;
   // get readers, the reader num depend both on thread num
   // and filelist size
-  virtual std::vector<std::shared_ptr<paddle::framework::DataFeed>>&
-  GetReaders() = 0;
+  virtual std::vector<paddle::framework::DataFeed*> GetReaders() = 0;
+  // create input channel and output channel
+  virtual void CreateChannel() = 0;
   // register message handler between workers
   virtual void RegisterClientToClientMsgHandler() = 0;
   // load all data into memory
   virtual void LoadIntoMemory() = 0;
+  // load all data into memory in async mode
+  virtual void PreLoadIntoMemory() = 0;
+  // wait async load done
+  virtual void WaitPreLoadDone() = 0;
   // release all memory data
   virtual void ReleaseMemory() = 0;
   // local shuffle data
@@ -107,6 +114,7 @@ class DatasetImpl : public Dataset {
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
   virtual void SetFleetSendBatchSize(int64_t size);
+  virtual void SetSingleOutput(bool is_single_output);
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
@@ -121,11 +129,12 @@ class DatasetImpl : public Dataset {
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
   }
-  virtual std::vector<std::shared_ptr<paddle::framework::DataFeed>>&
-  GetReaders();
-
+  virtual std::vector<paddle::framework::DataFeed*> GetReaders();
+  virtual void CreateChannel();
   virtual void RegisterClientToClientMsgHandler();
   virtual void LoadIntoMemory();
+  virtual void PreLoadIntoMemory();
+  virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
@@ -138,8 +147,16 @@ class DatasetImpl : public Dataset {
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
-  std::vector<T> memory_data_;
-  std::mutex mutex_for_update_memory_data_;
+  paddle::framework::Channel<T> input_channel_;
+  bool is_single_output_;
+  paddle::framework::Channel<T> single_output_channel_;
+  paddle::framework::Channel<T> single_consume_channel_;
+  std::vector<paddle::framework::Channel<T>> multi_output_channel_;
+  std::vector<paddle::framework::Channel<T>> multi_consume_channel_;
+  // when read ins, we put ins from one channel to the other,
+  // and when finish reading, we set cur_channel = 1 - cur_channel,
+  // so if cur_channel=0, all data are in output_channel, else consume_channel
+  int cur_channel_;
   int thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
   int trainer_num_;
@@ -148,8 +165,9 @@ class DatasetImpl : public Dataset {
   std::mutex mutex_for_pick_file_;
   std::string fs_name_;
   std::string fs_ugi_;
-  unsigned int rand_seed;
   int64_t fleet_send_batch_size_;
+  int64_t fleet_send_sleep_seconds_;
+  std::vector<std::thread> preload_threads_;
 };
 
 // use std::vector<MultiSlotType> as data type
