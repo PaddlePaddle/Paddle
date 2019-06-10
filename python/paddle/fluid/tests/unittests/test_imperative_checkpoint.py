@@ -151,7 +151,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param.numpy()
 
-                    restore = fluid.dygraph.load_persistables("save_dir")
+                    restore, _ = fluid.dygraph.load_persistables("save_dir")
                     mnist.load_dict(restore)
 
                     self.assertEqual(len(dy_param_init_value), len(restore))

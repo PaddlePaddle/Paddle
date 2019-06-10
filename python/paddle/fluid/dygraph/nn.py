@@ -372,7 +372,7 @@ class Conv3D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         num_channels = input.shape[1]
         self._dtype = self._helper.input_dtype(input)
 
@@ -579,7 +579,7 @@ class Conv3DTranspose(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         self._input_channel = input.shape[1]
 
@@ -883,7 +883,7 @@ class FC(layers.Layer):
         assert isinstance(value, Parameter)
         self.__w[i] = value
 
-    def build_once(self, input):
+    def _build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
                                                               self._param_attr):
@@ -1024,6 +1024,8 @@ class BatchNorm(layers.Layer):
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
+        trainable_statistics(bool, Default False): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -1053,7 +1055,8 @@ class BatchNorm(layers.Layer):
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
-                 use_global_stats=False):
+                 use_global_stats=False,
+                 trainable_statistics=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1111,8 +1114,9 @@ class BatchNorm(layers.Layer):
         self._is_test = is_test
         self._fuse_with_relu = fuse_with_relu
         self._use_global_stats = use_global_stats
+        self._trainable_statistics = trainable_statistics
 
-    def build_once(self, input):
+    def _build_once(self, input):
         pass
 
     def forward(self, input):
@@ -1151,7 +1155,8 @@ class BatchNorm(layers.Layer):
                 "is_test": self._is_test,
                 "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
-                "use_global_stats": self._use_global_stats
+                "use_global_stats": self._use_global_stats,
+                "trainable_statistics": self._trainable_statistics
             })
 
         # Currently, we don't support inplace in dygraph mode
@@ -1165,22 +1170,15 @@ class Embedding(layers.Layer):
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     a lookup table. The result of this lookup is the embedding of each ID in the
     :attr:`input`.
-
-    All the input variables are passed in as local variables to the LayerHelper
-    constructor.
+    All the input variables are passed in as local variables to the LayerHelper constructor
 
     Args:
         name_scope: See base class.
-        size(tuple|list): The shape of the look up table parameter. It should
-            have two elements which indicate the size of the dictionary of
-            embeddings and the size of each embedding vector respectively.
+        size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size of the dictionary of embeddings and the size of each embedding vector respectively.
+
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
-            :math:`size[0] + dim`.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup. Otherwise the given :attr:`padding_idx` indicates padding the output with zeros whenever lookup encounters it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
@@ -1189,12 +1187,18 @@ class Embedding(layers.Layer):
                   supplied inputs.
 
     Examples:
+
         .. code-block:: python
 
-          dict_size = len(dataset.ids)
-          input = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          embedding = fluid.Embedding(size=[dict_size, 16])
-          fc = embedding(input)
+          inp_word = np.array([[[1]]]).astype('int64')
+          dict_size = 20
+          with fluid.dygraph.guard():
+              emb = fluid.Embedding(
+                  name_scope='embedding',
+                  size=[dict_size, 32],
+                  param_attr='emb.w',
+                  is_sparse=False)
+            static_rlt3 = emb2(base.to_variable(inp_word))
     """
 
     def __init__(self,
@@ -1316,7 +1320,7 @@ class LayerNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         input_shape = input.shape
         param_shape = [
@@ -1503,12 +1507,15 @@ class GRUUnit(layers.Layer):
 
 class NCE(layers.Layer):
     """
-    ${comment}
+    Compute and return the noise-contrastive estimation training loss. See
+    `Noise-contrastive estimation: A new estimation principle for unnormalized
+    statistical models
+     <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
+    By default this operator uses a uniform distribution for sampling.
 
     Args:
-        input (Variable): input variable.
-        label (Variable): label.
-        num_total_classes (int):${num_total_classes_comment}
+        name_scope (str): See base class.
+        num_total_classes (int): Total number of classes in all samples
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
@@ -1521,7 +1528,7 @@ class NCE(layers.Layer):
              If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
-        num_neg_samples (int): ${num_neg_samples_comment}
+        num_neg_samples (int): The number of negative classes. The default value is 10.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
         sampler (str): The sampler used to sample class from negtive classes.
@@ -1540,37 +1547,45 @@ class NCE(layers.Layer):
     Examples:
         .. code-block:: python
 
+            import numpy as np
+            import paddle.fluid as fluid
+
             window_size = 5
-            words = []
-            for i in xrange(window_size):
-                words.append(layers.data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+            dict_size = 20
+            label_word = int(window_size // 2) + 1
+            inp_word = np.array([[[1]], [[2]], [[3]], [[4]], [[5]]]).astype('int64')
+            nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
 
-            dict_size = 10000
-            label_word = int(window_size / 2) + 1
+            with fluid.dygraph.guard():
+                words = []
+                for i in range(window_size):
+                    words.append(fluid.dygraph.base.to_variable(inp_word[i]))
 
-            embs = []
-            for i in xrange(window_size):
-                if i == label_word:
-                    continue
+                emb = fluid.Embedding(
+                    'embedding',
+                    size=[dict_size, 32],
+                    param_attr='emb.w',
+                    is_sparse=False)
 
-                emb = layers.embedding(input=words[i], size=[dict_size, 32],
-                                       param_attr='emb.w', is_sparse=True)
-                embs.append(emb)
+                embs3 = []
+                for i in range(window_size):
+                    if i == label_word:
+                        continue
 
-            embs = layers.concat(input=embs, axis=1)
-            loss = layers.nce(input=embs, label=words[label_word],
-                          num_total_classes=dict_size, param_attr='nce.w',
-                          bias_attr='nce.b')
+                    emb_rlt = emb(words[i])
+                    embs3.append(emb_rlt)
 
-            #or use custom distribution
-            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
-            loss = layers.nce(input=embs, label=words[label_word],
-                          num_total_classes=5, param_attr='nce.w',
-                          bias_attr='nce.b',
-                          num_neg_samples=3,
-                          sampler="custom_dist",
-                          custom_dist=dist)
+                embs3 = fluid.layers.concat(input=embs3, axis=1)
+                nce = fluid.NCE('nce',
+                             num_total_classes=dict_size,
+                             num_neg_samples=2,
+                             sampler="custom_dist",
+                             custom_dist=nid_freq_arr.tolist(),
+                             seed=1,
+                             param_attr='nce.w',
+                             bias_attr='nce.b')
+
+                nce_loss3 = nce(embs3, words[label_word])
 
     """
 
@@ -1678,7 +1693,7 @@ class NCE(layers.Layer):
             'remote_prefetch': remote_prefetch
         }
 
-    def build_once(self, input, label, sample_weight=None):
+    def _build_once(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
@@ -1733,13 +1748,13 @@ class PRelu(layers.Layer):
         y = \max(0, x) + \\alpha * \min(0, x)
 
     Args:
-        x (Variable): The input tensor.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha).
+        name_scope (str): See base class.
         mode (string): The mode for weight sharing. It supports all, channel
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+          weight (alpha).
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -1750,9 +1765,14 @@ class PRelu(layers.Layer):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+        inp_np = np.ones([5, 200, 100, 100]).astype('float32')
+        with fluid.dygraph.guard():
             mode = 'channel'
-            output = fluid.layers.prelu(x,mode)
+            prelu = fluid.PRelu(
+                'prelu',
+                mode=mode,
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+            dy_rlt = prelu(fluid.dygraph.base.to_variable(inp_np))
     """
 
     def __init__(self, name_scope, mode, param_attr=None):
@@ -1764,7 +1784,7 @@ class PRelu(layers.Layer):
             raise ValueError('mode should be one of all, channel, element.')
         self._alpha_shape = [1]
 
-    def build_once(self, input):
+    def _build_once(self, input):
         if self._mode == 'channel':
             self._alpha_shape = [1, input.shape[1], 1, 1]
         elif self._mode == 'element':
@@ -1842,7 +1862,7 @@ class BilinearTensorProduct(layers.Layer):
         self._name = name
         self._inputs = dict()
 
-    def build_once(self, x, y):
+    def _build_once(self, x, y):
         self._dtype = self._helper.input_dtype(x)
 
         param_shape = [self._size, x.shape[1], y.shape[1]]
@@ -2018,7 +2038,7 @@ class Conv2DTranspose(layers.Layer):
         self._output_size = output_size
         self._op_type = 'conv2d_transpose'
 
-    def build_once(self, input):
+    def _build_once(self, input):
         input_channel = input.shape[1]
         if (input_channel == self._groups and
                 self._num_filters == input_channel and not self._use_cudnn):
@@ -2142,7 +2162,7 @@ class SequenceConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
@@ -2179,7 +2199,7 @@ class RowConv(layers.Layer):
         self._param_attr = param_attr
         self._future_context_size = future_context_size
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
         self._filter_param = self.create_parameter(
@@ -2242,7 +2262,7 @@ class GroupNorm(layers.Layer):
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         param_shape = [input.shape[1]]
         if self._bias_attr:
@@ -2295,7 +2315,7 @@ class SpectralNorm(layers.Layer):
         self._eps = eps
         self._dim = dim
 
-    def build_once(self, weight):
+    def _build_once(self, weight):
         self._dtype = self._helper.input_dtype(weight)
         input_shape = weight.shape
         h = input_shape[self._dim]
@@ -2350,7 +2370,7 @@ class TreeConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, nodes_vector, edge_set):
+    def _build_once(self, nodes_vector, edge_set):
         assert isinstance(nodes_vector, Variable)
         assert isinstance(edge_set, Variable)
         self._dtype = self._helper.input_dtype(nodes_vector)

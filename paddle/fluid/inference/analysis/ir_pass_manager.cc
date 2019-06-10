@@ -87,6 +87,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool enable_int8 = argument->tensorrt_precision_mode() ==
                          AnalysisConfig::Precision::kInt8;
 
+      pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
