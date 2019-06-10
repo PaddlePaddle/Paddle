@@ -180,8 +180,8 @@ def retinanet_detection_out(boxes, scores, anchors, im_info, min_level,
     prediction = {}
     for lvl in range(min_level, max_level + 1):
         factor = pow(2, max_level - lvl)
-        begin_idx = end_idx
-        end_idx = begin_idx + coarsest_cell_num * factor * factor
+        begin_idx = int(end_idx)
+        end_idx = int(begin_idx + coarsest_cell_num * factor * factor)
 
         scores_per_level = all_scores[begin_idx:end_idx, :]
         scores_per_level = scores_per_level.flatten()
