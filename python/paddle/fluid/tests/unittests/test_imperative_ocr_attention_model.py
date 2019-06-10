@@ -80,7 +80,6 @@ class ConvBNPool(fluid.dygraph.Layer):
 
         self.conv_0_layer = Conv2D(
             self.full_name(),
-            channels[0],
             out_ch[0],
             3,
             padding=1,
@@ -92,7 +91,6 @@ class ConvBNPool(fluid.dygraph.Layer):
             self.full_name(), out_ch[0], act=act, is_test=is_test)
         self.conv_1_layer = Conv2D(
             self.full_name(),
-            num_channels=channels[1],
             num_filters=out_ch[1],
             filter_size=3,
             padding=1,
