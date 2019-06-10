@@ -477,8 +477,12 @@ class GraphWrapper(object):
         for var in self.program.list_vars():
             if var.persistable and var.name not in self.persistables:
                 self.persistables[var.name] = var
+        persistables = []
+        for var in self.persistables:
+            if 'reader' not in var and 'double_buffer' not in var:
+                persistables.append(self.persistables[var])
 
-        io.save_vars(exe.exe, path, vars=self.persistables.values())
+        io.save_vars(exe.exe, path, vars=persistables)
 
     def load_persistables(self, path, exe):
         """
@@ -491,8 +495,11 @@ class GraphWrapper(object):
         def if_exist(var):
             return os.path.exists(os.path.join(path, var.name))
 
-        io.load_vars(
-            exe.exe, path, vars=self.persistables.values(), predicate=if_exist)
+        persistables = []
+        for var in self.persistables:
+            if 'reader' not in var and 'double_buffer' not in var:
+                persistables.append(self.persistables[var])
+        io.load_vars(exe.exe, path, vars=persistables, predicate=if_exist)
 
     def update_param_shape(self, scope):
         """
