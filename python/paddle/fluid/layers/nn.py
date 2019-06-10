@@ -7855,7 +7855,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
-def gather(input, index):
+def gather(input, index, overwrite=True):
     """
     **Gather Layer**
 
@@ -7886,6 +7886,12 @@ def gather(input, index):
     Args:
         input (Variable): The source input with rank>=1.
         index (Variable): The index input with rank=1.
+        overwrite (bool): The mode that updating the grad when has same index.
+            If True, use the overwrite mode to update the grad of the same index,
+	    if False, use the accumulate mode to update the grad of the same index. 
+	    Default value is True.
+	    
+
 
     Returns:
         output (Variable): The output is a tensor with the same rank as input.
@@ -7905,11 +7911,12 @@ def gather(input, index):
         type="gather",
         inputs={"X": input,
                 "Index": index},
-        outputs={"Out": out})
+        outputs={"Out": out},
+        attrs={'overwrite': overwrite})
     return out
 
 
-def scatter(input, index, updates, name=None):
+def scatter(input, index, updates, name=None, overwrite=True):
     """
     **Scatter Layer**
 
@@ -7927,6 +7934,10 @@ def scatter(input, index, updates, name=None):
                           int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter op.
         name (str|None): The output variable name. Default None.
+        overwrite (bool): The mode that updating the output when has same index.
+            If True, use the overwrite mode to update the output of the same index,
+	    if False, use the accumulate mode to update the output of the same index. 
+	    Default value is True.You can set overwrite=False to implement scatter_add.
 
     Returns:
         output (Variable): The output is a tensor with the same shape as input.
@@ -7951,6 +7962,7 @@ def scatter(input, index, updates, name=None):
         inputs={"X": input,
                 "Ids": index,
                 "Updates": updates},
+        attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
 
