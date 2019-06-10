@@ -30,7 +30,7 @@ class PassManager {
     return x;
   }
 
-  PassManager();
+  PassManager() {}
 
   void Run(const std::unique_ptr<SSAGraph>& graph) {
     for (auto& pass : passes_) {

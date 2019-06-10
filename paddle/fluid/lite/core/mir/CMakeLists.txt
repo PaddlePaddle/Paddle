@@ -51,4 +51,8 @@ cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_tes
 
 cc_library(pattern_matcher_lite SRCS pattern_matcher.cc DEPS mir_node mir_ssa_graph op_lite)
 cc_test(test_pattern_matcher_lite SRCS pattern_matcher_tester.cc DEPS pattern_matcher_lite)
- 
+
+cc_library(pattern_matcher_high_api SRCS pattern_matcher_high_api.cc DEPS pattern_matcher_lite)
+cc_test(test_pattern_matcher_high_api SRCS pattern_matcher_high_api_test.cc DEPS
+    pattern_matcher_high_api proto_desc mir_pass_manager fc_op_lite mul_op_lite elementwise_ops_lite
+    mir_passes compatible_pb_lite ${ops_lite})

@@ -58,6 +58,15 @@ struct PMNode {
   PMNode& LinksTo(const std::vector<PMNode*>& others);
   PMNode& LinksFrom(const std::vector<PMNode*>& others);
 
+  // Link this to another node.
+  PMNode& operator>>(PMNode& right);
+
+  // Link many nodes to this node.
+  friend void operator>>(std::vector<PMNode*>& others, PMNode& me);
+
+  // Link this to many other nodes.
+  PMNode& operator>>(std::vector<PMNode*>& nodes);
+
   bool Tell(const Node* node) const {
     if (teller_) return teller_(node);
 
@@ -91,6 +100,20 @@ struct PMNode {
     role_ = Role::kIntermediate;
     return this;
   }
+
+  PMNode* AsVar() {
+    type_ = Type::kVar;
+    assert_is_var();
+    return this;
+  }
+
+  PMNode* AsOp(const std::string& op_type) {
+    type_ = Type::kOp;
+    assert_is_op(op_type);
+    return this;
+  }
+
+  void set_op_type(const std::string& op_type) { op_type_ = op_type; }
 
   bool IsIntermediate() const { return role_ == Role::kIntermediate; }
   bool IsInput() const { return role_ == Role::kInput; }
@@ -141,6 +164,7 @@ struct PMNode {
   std::vector<teller_t> asserts_;
   PMPattern* pattern_;
   std::string name_;
+  std::string op_type_;
   Type type_;
   Role role_{Role::kUnknown};
 };
@@ -272,6 +296,10 @@ class PatternMatcher {
   PMPattern pattern_;
   std::unordered_map<const PMNode*, std::unordered_set<Node*>> pmnodes2nodes_;
 };
+
+// Graph safely remove some nodes, will automatically clean up the edges.
+void GraphSafeRemoveNodes(SSAGraph* graph,
+                          const std::unordered_set<const Node*>& nodes);
 
 // Some pre-defined patterns those can be reused in multiple passes.
 // The related Fluid Layer or Op should be one pattern here for better re-usage
