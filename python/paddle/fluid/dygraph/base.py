@@ -54,6 +54,33 @@ def _dygraph_not_support_(func):
 
 
 def _no_grad_(func):
+    """
+    This Decorator will avoid the func being decorated creating backward network in dygraph mode
+
+    Args:
+        func: the func don't need grad
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        @fluid.dygraph.no_grad
+        def test_layer():
+            with fluid.dygraph.guard():
+                inp = np.ones([3, 32, 32], dtype='float32')
+                t = fluid.dygraph.base.to_variable(inp)
+                fc1 = fluid.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+                fc2 = fluid.FC('fc2', size=4)
+                ret = fc1(t)
+                dy_ret = fc2(ret)
+
+        test_layer()
+
+    """
+
     def __impl__(*args, **kwargs):
         with _switch_tracer_mode_guard_(is_train=False):
             return func(*args, **kwargs)
@@ -67,6 +94,31 @@ not_support = wrap_decorator(_dygraph_not_support_)
 
 @signature_safe_contextmanager
 def guard(place=None):
+    """
+    This context will create a dygraph context for dygraph to run
+
+    Args:
+        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+
+    return:
+        None
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        with fluid.dygraph.guard():
+            inp = np.ones([3, 32, 32], dtype='float32')
+            t = fluid.dygraph.base.to_variable(inp)
+            fc1 = fluid.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            fc2 = fluid.FC('fc2', size=4)
+            ret = fc1(t)
+            dy_ret = fc2(ret)
+
+    """
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer(train.current_block().desc)
@@ -85,6 +137,29 @@ def guard(place=None):
 
 
 def to_variable(value, block=None, name=None):
+    """
+    This function will create a variable from ndarray
+
+    Args:
+        value(ndarray): the numpy value need to be convert
+        block(fluid.Block|None): which block this variable will be in
+        name(str|None): Name of Varaible
+
+    return:
+        Variable: The variable created from given numpy
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            y = fluid.dygraph.to_variable(x)
+
+    """
     if isinstance(value, np.ndarray):
         assert enabled(), "to_variable could only be called in dygraph mode"
 

@@ -654,6 +654,8 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
