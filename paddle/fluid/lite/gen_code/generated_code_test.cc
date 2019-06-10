@@ -12,36 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <set>
-#include <string>
-#include "paddle/fluid/lite/core/compatible_tensor.h"
-#include "paddle/fluid/lite/utils/all.h"
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include "paddle/fluid/lite/gen_code/paddle_infer.h"
 
 namespace paddle {
 namespace lite {
 
-class Variable {
- public:
-  template <typename T>
-  const T& Get() const {
-    return blob_.get<T>();
+TEST(PaddlePredictor, Init) {
+  gencode::PaddlePredictor predictor;
+  predictor.Init();
+}
+
+TEST(PaddlePredictor, Run) {
+  gencode::PaddlePredictor predictor;
+  predictor.Init();
+
+  LOG(INFO) << "run the generated code";
+  auto input_tensor = predictor.GetInput(0);
+  input_tensor->Resize(std::vector<int64_t>({100, 100}));
+  auto* data = input_tensor->mutable_data<float>();
+  for (int i = 0; i < 100 * 100; i++) {
+    data[i] = i;
   }
 
-  template <typename T>
-  T* GetMutable() {
-    if (!blob_.is<T>()) blob_.set<T>();
-    return blob_.get_mutable<T>();
-  }
+  predictor.Run();
 
-  template <typename T>
-  bool IsType() {
-    return blob_.type() == typeid(T).hash_code();
-  }
-
- private:
-  variant<int, float, std::string, lite::Tensor> blob_;
-};
+  auto output_tensor = predictor.GetOutput(0);
+  LOG(INFO) << "output: " << output_tensor->data<float>()[0];
+}
 
 }  // namespace lite
 }  // namespace paddle
