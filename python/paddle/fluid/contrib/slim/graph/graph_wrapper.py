@@ -209,6 +209,7 @@ class GraphWrapper(object):
             if var.persistable:
                 self.persistables[var.name] = var
         self.compiled_graph = None
+        in_nodes = [] if in_nodes is None else in_nodes
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
@@ -241,7 +242,7 @@ class GraphWrapper(object):
         """
         return var._var.persistable
 
-    def compile(self, for_parallel=True, for_test=False):
+    def compile(self, for_parallel=True, for_test=False, mem_opt=False):
         """
         Compile the program in this wrapper to framework.CompiledProgram for next running.
         This function must be called if the program is modified.
@@ -257,8 +258,9 @@ class GraphWrapper(object):
         if for_parallel:
             # disable memory optimize for stable training
             build_strategy = compiler.BuildStrategy()
-            build_strategy.enable_inplace = False
-            build_strategy.memory_optimize = False
+            build_strategy.enable_inplace = mem_opt
+            build_strategy.memory_optimize = mem_opt
+            #            build_strategy.async_mode = False
             self.compiled_graph = compiler.CompiledProgram(
                 target).with_data_parallel(
                     loss_name=loss, build_strategy=build_strategy)

@@ -24,13 +24,10 @@ import warnings
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(model_dict,
-                      optimizer=None,
-                      dirname='save_dir',
-                      filename=None):
+def save_persistables(model_dict, dirname='save_dir', optimizers=None):
     """
     This function filters out all variables in layer.parameters from the
-    give `layer` and then trys to load these variables from the folder
+    give `layer`, and optimizer's learning rate decay and then trys to load these variables from the folder
     `dirname` or the file `filename`.
 
     Use the `dirname` to specify the folder where persistable variables were
@@ -43,9 +40,7 @@ def save_persistables(model_dict,
                                     be saved. If it is None, nothing
                                     will be deal.
         dirname(str): The directory path.
-        filename(str|None): The file which saved all variables. If variables were
-                            saved in different files, set it to None.
-                            Default: None
+        optimizers(fluid.Optimizer|list(fluid.Optimizer)|None): The optimizers to be saved
 
     Returns:
 
@@ -57,7 +52,7 @@ def save_persistables(model_dict,
                 num_layers=num_layers,
                 num_steps=num_steps,
                 init_scale=init_scale)
-
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
             x_data = np.arange(12).reshape(4, 3).astype('int64')
             y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
             x_data = x_data.reshape((-1, num_steps, 1))
@@ -72,12 +67,14 @@ def save_persistables(model_dict,
             init_cell = to_variable(init_cell_data)
             dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                         init_cell)
+            dy_loss.backward()
+            sgd.minimize(dy_loss)
+            ptb_model.clear_gradient()
             param_path = "./my_paddle_model"
-            fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path,
-                                       layer=ptb_model)
+            fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path, sgd)
     """
     if isinstance(model_dict, collections.OrderedDict):
-        _save_var_to_file(model_dict, optimizer, dirname, filename)
+        _save_var_to_file(model_dict, optimizers, dirname, None)
 
 
 def load_persistables(dirname='save_dir'):
@@ -92,18 +89,19 @@ def load_persistables(dirname='save_dir'):
 
     Args:
         dirname(str): The directory path. default is save_dir
-        optimizer(Optimizer): Optimizer to be saved
 
     Returns:
         dict: The parameter-dict resumed from file
+        optimizer dict: The optimizer
 
     Examples:
         .. code-block:: python
             my_layer = layer(fluid.Layer)
             param_path = "./my_paddle_model"
-
-            param_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            param_dict, optimizer_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
             param_1 = param_dict['PtbModel_0.w_1']
+            sgd.load(optimizer_dict)
 
         """
     return _load_var_from_file(dirname)
@@ -123,32 +121,38 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
                     'file_path': os.path.join(file_dir,
                                               os.path.normpath(each_var.name))
                 })
-    if isinstance(optimizers, (list, tuple)):
-        optimizers = optimizers
-    else:
-        optimizers = [optimizers]
-    if os.path.exists(os.path.join(file_dir, os.path.normpath("optimizers"))):
-        pass
-    else:
-        os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
-    for optimizer in optimizers:
-        if isinstance(optimizer._learning_rate,
-                      learning_rate_scheduler.LearningRateDecay):
-            try:
-                f = open(
-                    os.path.join(file_dir, "optimizers",
-                                 os.path.normpath(str(optimizer._name))), "wb")
-                pickle.dump(optimizer._learning_rate, f, 2)
-                f.close()
-            except ():
-                raise IOError("Can't load %s",
-                              os.path.join(
-                                  file_dir, "optimizers",
-                                  os.path.normpath(str(optimizer._name))))
+
+    if optimizers is not None:
+        if isinstance(optimizers, (list, tuple)):
+            optimizers = optimizers
         else:
-            warnings.warn(
-                "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
-            )
+            optimizers = [optimizers]
+        if os.path.exists(
+                os.path.join(file_dir, os.path.normpath("optimizers"))):
+            pass
+        else:
+            os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
+        for optimizer in optimizers:
+            if isinstance(optimizer._learning_rate,
+                          learning_rate_scheduler.LearningRateDecay):
+                try:
+                    f = open(
+                        os.path.join(file_dir, "optimizers",
+                                     os.path.normpath(str(optimizer._name))),
+                        "wb")
+                    pickle.dump(optimizer._learning_rate, f, 2)
+                    f.close()
+                except ():
+                    raise IOError("Can't load %s",
+                                  os.path.join(
+                                      file_dir, "optimizers",
+                                      os.path.normpath(str(optimizer._name))))
+            else:
+                warnings.warn(
+                    "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
+                )
+    else:
+        pass
 
     if file_name is not None:
         save_var_list = []
@@ -213,7 +217,10 @@ def _load_var_from_file(file_dir):
                                   file_dir, "optimizers",
                                   os.path.normpath(str(optimizer._name))))
     if len(load_optimizer_map) == 0:
-        warnings.warn("No optimizer loaded")
+        print(
+            "No optimizer loaded. If you didn't save optimizer, please ignore this. The program can still work with new optimizer. "
+        )
+        pass
 
     return load_var_map, load_optimizer_map
 
