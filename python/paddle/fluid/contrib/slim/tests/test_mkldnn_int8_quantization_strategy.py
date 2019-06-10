@@ -129,7 +129,7 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
             top1 = 0.0
             top5 = 0.0
             total_samples = 0
-            for _, data in enumerate(test_reader()):
+            for batch_id, data in enumerate(test_reader()):
                 if six.PY2:
                     images = map(lambda x: x[0].reshape(dshape), data)
                 if six.PY3:
@@ -146,6 +146,9 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                 top1 += np.sum(out[1]) * len(data)
                 top5 += np.sum(out[2]) * len(data)
                 total_samples += len(data)
+                if (batch_id + 1) % 100 == 0:
+                    _logger.info('{} images have been predicted'.format(
+                        total_samples))
             return top1 / total_samples, top5 / total_samples
 
     def _warmup(self, reader=None, config_path=''):
