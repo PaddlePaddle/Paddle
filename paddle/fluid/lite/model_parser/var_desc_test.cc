@@ -34,16 +34,16 @@ void TestX() {
   auto persistable = desc.Persistable();
   ASSERT_EQ(persistable, false);
 
-  desc.SetType(VarType::LOD_TENSOR);
-  auto type = desc.Type();
+  desc.SetVarType(VarType::LOD_TENSOR);
+  auto type = desc.GetVarType();
   ASSERT_EQ(type, VarType::LOD_TENSOR);
 
-  desc.SetDataType(VarType::FP32);
-  auto data_type = desc.DataType();
+  desc.SetVarDataType(VarType::FP32);
+  auto data_type = desc.GetVarDataType();
   ASSERT_EQ(data_type, VarType::FP32);
 
   desc.SetShape(std::vector<int64_t>({1, 2, 3}));
-  auto shape = desc.Shape();
+  auto shape = desc.GetShape();
   ASSERT_EQ(shape.size(), 3);
   ASSERT_EQ(shape[0], 1);
   ASSERT_EQ(shape[1], 2);
@@ -60,8 +60,8 @@ TEST(VarDesc, PbToCpp) {
 
   desc.SetName("test");
   desc.SetPersistable(false);
-  desc.SetType(VarType::LOD_TENSOR);
-  desc.SetDataType(VarType::FP32);
+  desc.SetVarType(VarType::LOD_TENSOR);
+  desc.SetVarDataType(VarType::FP32);
   desc.SetShape(std::vector<int64_t>({1, 2, 3}));
 
   cpp::VarDesc cpp_desc;
@@ -75,20 +75,20 @@ TEST(VarDesc, PbToCpp) {
     auto persistable = desc.Persistable();
     ASSERT_EQ(persistable, false);
 
-    auto type = desc.Type();
+    auto type = desc.GetVarType();
     ASSERT_EQ(type, VarType::LOD_TENSOR);
 
-    auto data_type = desc.DataType();
+    auto data_type = desc.GetVarDataType();
     ASSERT_EQ(data_type, VarType::FP32);
 
-    auto shape = desc.Shape();
+    auto shape = desc.GetShape();
     ASSERT_EQ(shape.size(), 3);
     ASSERT_EQ(shape[0], 1);
     ASSERT_EQ(shape[1], 2);
     ASSERT_EQ(shape[2], 3);
   }
 
-  desc.SetType(VarType::FP32);
+  desc.SetVarType(VarType::FP32);
   TransformVarDescPbToCpp(desc, &cpp_desc);
   {
     auto& desc = cpp_desc;
@@ -98,13 +98,13 @@ TEST(VarDesc, PbToCpp) {
     auto persistable = desc.Persistable();
     ASSERT_EQ(persistable, false);
 
-    auto type = desc.Type();
+    auto type = desc.GetVarType();
     ASSERT_EQ(type, VarType::FP32);
 
-    auto data_type = desc.DataType();
+    auto data_type = desc.GetVarDataType();
     ASSERT_EQ(data_type, VarType::UNK);
 
-    auto shape = desc.Shape();
+    auto shape = desc.GetShape();
     ASSERT_EQ(shape.size(), 1);
     ASSERT_EQ(shape[0], 1);
   }

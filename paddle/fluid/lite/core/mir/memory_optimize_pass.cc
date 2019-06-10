@@ -28,6 +28,23 @@ namespace lite {
 namespace mir {
 
 void MemoryOptimizePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+  // TODO(sangoly): Make MemoryOptimizePass support hvyTensor
+  // NOTE: Because scope initialize and oplite->Attach run before mir passees,
+  // so we must make scope->FindVar(var1) and scope->FindVar(var2) share memory
+  // holder with each other for reused vars(var1 and var2) to reuse memory. But
+  // HvyTensor(framework::LodTensor) may re-allocate holder pointer which will
+  // break the shared relation. So we just make MemoryOptimizePass work in arm(
+  // use LiteTenor) for now.
+  LOG(WARNING) << "Disable MemoryOptimizePass on server mode";
+  memory_optimize_kind_ = MemoryOptimizeKind::kDisable;
+#endif
+
+  if (memory_optimize_kind_ == MemoryOptimizeKind::kDisable) {
+    LOG(INFO) << "MemoryOptimizePass is disabled";
+    return;
+  }
+
   SSAGraph* ssa_graph = graph.get();
   CHECK(graph);
 
@@ -77,7 +94,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
   // Collect tensors from graph.
   LOG(INFO) << "CollectVarMemorySize: ===========================";
   for (auto& node : graph->mutable_nodes()) {
-    if (!node.IsArg() || !IsVarCanBeReused(graph, node.AsArg().name)) continue;
+    if (!node.IsArg() || !CanVarBeReused(graph, node.AsArg().name)) continue;
     auto& var = node.AsArg();
     LOG(INFO) << var.name << " " << var.var_info()->data_size() << " "
               << var.var_info()->data_type_space();
@@ -137,47 +154,34 @@ void MemoryOptimizePass::MakeReusePlan(
 void MemoryOptimizePass::MemoryOptimizeGreedy(
     SSAGraph* graph, std::unordered_map<std::string, std::string>* node2cluster,
     std::vector<MemNode>* mem_nodes) {
-  struct ClusterInfo {
-    std::unordered_map<std::string, int> cluster_size;
-    std::unordered_map<std::string, std::string> cluster;
-  };
-
-  std::map<TargetType, ClusterInfo> clusters;
-
+  std::unordered_map<std::string, int> cluster_size;
   // Generating Memory Reuse Strategy Based on Greedy Way
   for (size_t i = 0; i < mem_nodes->size(); i++) {
     if ((*mem_nodes)[i].cluster >= 0) continue;
     auto& center_name = (*mem_nodes)[i].name;
-    auto var_type = graph->Argument(center_name)->AsArg().type->target();
-    // var_type = TargetType::kX86;
-    auto& cluster_size = clusters[var_type].cluster_size;
-    auto& cluster = clusters[var_type].cluster;
+    auto& var_type = *graph->Argument(center_name)->AsArg().type;
+    CHECK(var_type.IsTensor());
 
     int cluster_index = cluster_size.size();
     (*mem_nodes)[i].cluster = cluster_index;
     cluster_size[center_name] = (*mem_nodes)[i].size;
-    cluster[center_name] = center_name;
+    (*node2cluster)[center_name] = center_name;
     std::unordered_set<std::string> cluster_adj = (*mem_nodes)[i].adj;
 
     for (size_t j = i + 1; j < mem_nodes->size(); j++) {
       auto& candi_name = (*mem_nodes)[j].name;
-      auto candi_var_type = graph->Argument(candi_name)->AsArg().type->target();
-      if (var_type != candi_var_type) continue;
+      auto& candi_var_type = *graph->Argument(candi_name)->AsArg().type;
+      CHECK(candi_var_type.IsTensor());
+      if (!TargetCompatibleTo(var_type, candi_var_type, true)) continue;
       if ((*mem_nodes)[j].cluster < 0 &&
           (cluster_adj.find(candi_name) == cluster_adj.end())) {
-        cluster[candi_name] = center_name;
+        (*node2cluster)[candi_name] = center_name;
         (*mem_nodes)[j].cluster = cluster_index;
         for (auto& n : (*mem_nodes)[j].adj) {
           cluster_adj.insert(n);
         }
       }
     }
-  }
-
-  // Merge clusters together
-  for (auto& item : clusters) {
-    node2cluster->insert(item.second.cluster.begin(),
-                         item.second.cluster.end());
   }
 }
 
@@ -283,8 +287,8 @@ void MemoryOptimizePass::UpdateOpNodesByReuseTable(
             << " Reuse Ratio: " << (static_cast<float>(free_size) / total_size);
 }
 
-bool MemoryOptimizePass::IsVarCanBeReused(SSAGraph* graph,
-                                          const std::string& name) const {
+bool MemoryOptimizePass::CanVarBeReused(SSAGraph* graph,
+                                        const std::string& name) const {
   CHECK(graph);
   if (name == "feed" || name == "fetch") {
     return false;
@@ -300,7 +304,7 @@ void MemoryOptimizePass::CollectLifeCycleHelper(
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     const std::vector<std::string>& var_names) const {
   for (auto& var : var_names) {
-    if (!IsVarCanBeReused(graph, var)) continue;
+    if (!CanVarBeReused(graph, var)) continue;
     if (!lifecycles->count(var)) {
       (*lifecycles)[var] = std::make_pair(max_lifecycle, max_lifecycle);
     } else {

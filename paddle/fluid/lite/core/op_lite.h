@@ -212,7 +212,7 @@ class VarInfo : public cpp::VarDesc {
   explicit VarInfo(const cpp::VarDesc &other) : cpp::VarDesc(other) {}
 
   int data_size() const {
-    auto shape = Shape();
+    auto shape = GetShape();
     for (auto &d : shape) {
       if (d < 0) d = 1;
     }
@@ -239,7 +239,7 @@ class VarInfo : public cpp::VarDesc {
   int space_size() const { return data_size() * data_type_space(); }
 
   /// Alais of Shape
-  std::vector<int64_t> dim() { return Shape(); }
+  std::vector<int64_t> dim() { return GetShape(); }
 };
 
 }  // namespace lite

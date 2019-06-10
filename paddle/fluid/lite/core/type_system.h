@@ -164,11 +164,12 @@ class Type : public DataType {
 };
 
 // -------------------------------- compatible check ---------------------------
-static bool TargetCompatibleTo(const Type& a, const Type& b) {
+static bool TargetCompatibleTo(const Type& a, const Type& b,
+                               bool only_tensor = false) {
   auto is_host = [](TargetType x) {
     return x == TARGET(kHost) || x == TARGET(kX86);
   };
-  if (a.IsVoid() || b.IsVoid()) return true;
+  if (!only_tensor && (a.IsVoid() || b.IsVoid())) return true;
   if (a.IsTensor() || b.IsTensor()) {
     if (a.IsTensor() && b.IsTensor()) {
       return is_host(a.target()) ? is_host(b.target())

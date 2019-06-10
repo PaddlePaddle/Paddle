@@ -45,19 +45,19 @@ class VarDesc : public VarDescAPI {
 
   void SetPersistable(bool persistable) override { persistable_ = persistable; }
 
-  std::vector<int64_t> Shape() const override { return shape_; }
+  std::vector<int64_t> GetShape() const override { return shape_; }
 
   void SetShape(const std::vector<int64_t>& shape) override {
     shape_.assign(shape.begin(), shape.end());
   }
 
-  VarDataType Type() const override { return type_; }
+  VarDataType GetVarType() const override { return type_; }
 
-  void SetType(VarDataType type) override { type_ = type; }
+  void SetVarType(VarDataType type) override { type_ = type; }
 
-  VarDataType DataType() const override { return data_type_; }
+  VarDataType GetVarDataType() const override { return data_type_; }
 
-  void SetDataType(VarDataType type) override { data_type_ = type; }
+  void SetVarDataType(VarDataType type) override { data_type_ = type; }
 };
 
 }  // namespace cpp

@@ -80,9 +80,9 @@ void Program::Build(const framework::proto::ProgramDesc &program) {
   }
 }
 
-void Program::PrepareWorkspace(const framework::proto::ProgramDesc& program) {
+void Program::PrepareWorkspace(const framework::proto::ProgramDesc &program) {
   CHECK(!exec_scope_) << "Duplicate PrepareWorkspace found";
-  exec_scope_ = &scope->NewScope();
+  exec_scope_ = &scope_->NewScope();
   // Create Feed and Fetch var.
   scope_->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
   scope_->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();

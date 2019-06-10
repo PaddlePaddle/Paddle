@@ -28,7 +28,7 @@ namespace mir {
 
 using lifecycle_t = std::pair<int, int>;
 
-enum class MemoryOptimizeKind : int { kGreedy = 0, kAdapt, Num };
+enum class MemoryOptimizeKind : int { kGreedy = 0, kAdapt, kDisable, Num };
 
 typedef struct {
   std::string name;
@@ -100,7 +100,7 @@ class MemoryOptimizePass : public ProgramPass {
       SSAGraph* graph,
       const std::unordered_map<std::string, std::string>& reuse_table) const;
 
-  bool IsVarCanBeReused(SSAGraph* graph, const std::string& name) const;
+  bool CanVarBeReused(SSAGraph* graph, const std::string& name) const;
 
   void CollectLifeCycleHelper(
       SSAGraph* graph, int max_lifecycle,

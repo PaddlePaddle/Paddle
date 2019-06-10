@@ -56,7 +56,7 @@ struct Program {
 
   const std::list<std::shared_ptr<OpLite>>& ops() const { return ops_; }
   const std::list<std::shared_ptr<VarInfo>>& vars() const { return vars_; }
-  lite::Scope* exec_scope() { return exec_scope_; }
+  lite::Scope* exec_scope() const { return exec_scope_; }
 
  private:
   // Build from a program and scope.

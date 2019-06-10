@@ -132,17 +132,17 @@ class VarDescAPI {
   /// Set persistable.
   virtual void SetPersistable(bool persistable) = 0;
   /// Get shape.
-  virtual std::vector<int64_t> Shape() const = 0;
+  virtual std::vector<int64_t> GetShape() const = 0;
   /// Set shape
   virtual void SetShape(const std::vector<int64_t>& shape) = 0;
   /// Get type
-  virtual VarDataType Type() const = 0;
+  virtual VarDataType GetVarType() const = 0;
   /// Set type
-  virtual void SetType(VarDataType type) = 0;
+  virtual void SetVarType(VarDataType type) = 0;
   /// Get data type
-  virtual VarDataType DataType() const = 0;
+  virtual VarDataType GetVarDataType() const = 0;
   /// Set type
-  virtual void SetDataType(VarDataType type) = 0;
+  virtual void SetVarDataType(VarDataType type) = 0;
 };
 
 }  // namespace lite

@@ -87,9 +87,9 @@ class VarDesc : public VarDescAPI {
 
   void SetShapes(const std::vector<std::vector<int64_t>> &multiple_dims);
 
-  std::vector<int64_t> Shape() const override;
+  std::vector<int64_t> GetShape() const override;
 
-  std::vector<std::vector<int64_t>> Shapes() const;
+  std::vector<std::vector<int64_t>> GetShapes() const;
 
   void SetDataType(framework::proto::VarType::Type data_type);
 
@@ -118,13 +118,13 @@ class VarDesc : public VarDescAPI {
     desc_.set_persistable(persistable);
   }
 
-  VarDataType Type() const override;
+  VarDataType GetVarType() const override;
 
-  void SetType(VarDataType type) override;
+  void SetVarType(VarDataType type) override;
 
-  VarDataType DataType() const override;
+  VarDataType GetVarDataType() const override;
 
-  void SetDataType(VarDataType type) override;
+  void SetVarDataType(VarDataType type) override;
 
  private:
   const framework::proto::VarType::TensorDesc &tensor_desc() const;

@@ -50,6 +50,7 @@ class ExecutorLite {
     optimizer_.KernelPickPreferPlace(prefer_place);
     core::KernelPickFactor factor;
     factor.ConsiderTarget();
+    // Use mir::MemoryOptimizeKind::kDisable to disable MemoryOptimizePass
     optimizer_.Run(std::move(program), valid_places, factor,
                    mir::MemoryOptimizeKind::kGreedy);
     program_ = optimizer_.GenRuntimeProgram();

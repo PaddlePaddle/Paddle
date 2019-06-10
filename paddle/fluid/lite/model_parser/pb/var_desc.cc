@@ -137,11 +137,11 @@ void VarDesc::SetShapes(
   }
 }
 
-std::vector<int64_t> VarDesc::Shape() const {
+std::vector<int64_t> VarDesc::GetShape() const {
   return RepeatedToVector(tensor_desc().dims());
 }
 
-std::vector<std::vector<int64_t>> VarDesc::Shapes() const {
+std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
   std::vector<proto::VarType::TensorDesc> descs = tensor_descs();
   std::vector<std::vector<int64_t>> res;
   res.reserve(descs.size());
@@ -328,19 +328,19 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
   }
 }
 
-VarDescAPI::VarDataType VarDesc::Type() const {
+VarDescAPI::VarDataType VarDesc::GetVarType() const {
   return pb2comm_type_map_.at(GetType());
 }
 
-void VarDesc::SetType(VarDescAPI::VarDataType type) {
+void VarDesc::SetVarType(VarDescAPI::VarDataType type) {
   SetType(comm2pb_type_map_.at(type));
 }
 
-VarDescAPI::VarDataType VarDesc::DataType() const {
+VarDescAPI::VarDataType VarDesc::GetVarDataType() const {
   return pb2comm_type_map_.at(GetDataType());
 }
 
-void VarDesc::SetDataType(VarDescAPI::VarDataType type) {
+void VarDesc::SetVarDataType(VarDescAPI::VarDataType type) {
   SetDataType(comm2pb_type_map_.at(type));
 }
 

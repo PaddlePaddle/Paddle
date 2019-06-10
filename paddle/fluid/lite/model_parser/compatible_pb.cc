@@ -127,18 +127,18 @@ void TransformVarDescPbToCpp(const pb::VarDesc &pb_desc,
                              cpp::VarDesc *cpp_desc) {
   using VarType = lite::VarDescAPI::VarDataType;
 
-#define VarDescCopyOnce(name__) cpp_desc->Set##name__(pb_desc.name__())
-  VarDescCopyOnce(Name);
-  VarDescCopyOnce(Persistable);
-  VarDescCopyOnce(Type);
-  auto type = cpp_desc->Type();
+  cpp_desc->SetName(pb_desc.Name());
+  cpp_desc->SetPersistable(pb_desc.Persistable());
+#define VarDescCopyOnce(name__) cpp_desc->Set##name__(pb_desc.Get##name__())
+  VarDescCopyOnce(VarType);
+  auto type = cpp_desc->GetVarType();
   if (type == VarType::SELECTED_ROWS || type == VarType::LOD_TENSOR ||
       type == VarType::LOD_TENSOR_ARRAY) {
     VarDescCopyOnce(Shape);
-    VarDescCopyOnce(DataType);
+    VarDescCopyOnce(VarDataType);
   } else {
     cpp_desc->SetShape(std::vector<int64_t>({1}));
-    cpp_desc->SetDataType(VarType::UNK);
+    cpp_desc->SetVarDataType(VarType::UNK);
   }
 #undef VarDescCopyOnce
 }
