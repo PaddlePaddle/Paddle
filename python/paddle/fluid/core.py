@@ -31,10 +31,11 @@ if cpuinfo.supports_avx:
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
     except ImportError as error:
-        print('WARNING: Error importing avx core. You may not build with AVX, '
-              'but AVX is supported on local machine, you could build paddle '
-              'WITH_AVX=ON to get better performance. ' +
-              error.__class__.__name__)
+        sys.stderr.write(
+            error.__class__.__name__ +
+            ' WARNING: Error importing avx core. You may not build with AVX, '
+            'but AVX is supported on local machine, you could build paddle '
+            'WITH_AVX=ON to get better performance. ')
         load_noavx = True
 else:
     load_noavx = True
