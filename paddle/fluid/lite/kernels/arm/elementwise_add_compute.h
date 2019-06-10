@@ -13,37 +13,24 @@
 // limitations under the License.
 
 #pragma once
-
-#include <list>
-#include <memory>
-#include <utility>
-#include <vector>
+#include <algorithm>
 #include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {
+namespace kernels {
+namespace arm {
 
-/*
- * GenerateProgramPass will build the execution program for executor from a mir
- * graph.
- */
-class GenerateProgramPass : public ProgramPass {
+class ElementwiseAddCompute
+    : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
-  void Apply(const std::unique_ptr<SSAGraph> &graph) override;
+  void Run() override;
 
-  std::unique_ptr<RuntimeProgram> GenProgram() {
-    LOG(INFO) << "insts.size " << insts_.size();
-    std::unique_ptr<RuntimeProgram> program(
-        new RuntimeProgram(std::move(insts_)));
-    return program;
-  }
-
- private:
-  std::vector<Instruction> insts_;
+  virtual ~ElementwiseAddCompute() = default;
 };
 
-}  // namespace mir
+}  // namespace arm
+}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

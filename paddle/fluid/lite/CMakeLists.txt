@@ -34,7 +34,7 @@ endfunction()
 function (lite_deps TARGET)
   set(options "")
   set(oneValueArgs "")
-  set(multiValueArgs DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
+  set(multiValueArgs DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS HVY_DEPS ARGS)
   cmake_parse_arguments(lite_deps "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   set(deps ${lite_deps_DEPS})
@@ -63,31 +63,35 @@ function (lite_deps TARGET)
     endforeach(var)
   endif()
 
+  if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    foreach(var ${lite_deps_LIGHT_DEPS})
+      set(deps ${deps} ${var})
+    endforeach(var)
+  endif()
+
+  if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    foreach(var ${lite_deps_HVY_DEPS})
+      set(deps ${deps} ${var})
+    endforeach(var)
+  endif()
+
   set(${TARGET} ${deps} PARENT_SCOPE)
 
 endfunction()
 
+# cc_library with branch support.
+# The branches:
+#  X86_DEPS: works only when LITE_WITH_X86 is ON.
+#  CUDA_DEPS:     LITE_WITH_CUDA
+#  ARM_DEPS:      LITE_WITH_ARM
+#  PROFILE_DEPS:  LITE_WITH_PROFILE
+#  LIGHT_DEPS:    LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+#  HVY_DEPS:      NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 function(lite_cc_library TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
-    cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    set(deps "")
-    lite_deps(deps
-            DEPS ${args_DEPS}
-            X86_DEPS ${args_X86_DEPS}
-            CUDA_DEPS ${args_CUDA_DEPS}
-            ARM_DEPS ${args_ARM_DEPS}
-            PROFILE_DEPS ${args_PROFILE_DEPS})
-
-    cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
-endfunction()
-
-function(lite_cc_binary TARGET)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
+      HVY_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -97,6 +101,29 @@ function(lite_cc_binary TARGET)
             CUDA_DEPS ${args_CUDA_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
             PROFILE_DEPS ${args_PROFILE_DEPS}
+            LIGHT_DEPS ${args_LIGHT_DEPS}
+            HVY_DEPS ${args_HVY_DEPS}
+            )
+
+    cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+endfunction()
+
+function(lite_cc_binary TARGET)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS
+      LIGHT_DEPS HVY_DEPS ARGS)
+    cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(deps "")
+    lite_deps(deps
+            DEPS ${args_DEPS}
+            X86_DEPS ${args_X86_DEPS}
+            CUDA_DEPS ${args_CUDA_DEPS}
+            ARM_DEPS ${args_ARM_DEPS}
+            PROFILE_DEPS ${args_PROFILE_DEPS}
+            LIGHT_DEPS ${args_LIGHT_DEPS}
+            HVY_DEPS ${args_HVY_DEPS}
             )
     cc_binary(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
 endfunction()
@@ -112,7 +139,9 @@ endfunction()
 function(lite_cc_test TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS
+      LIGHT_DEPS HVY_DEPS
+      ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -122,6 +151,8 @@ function(lite_cc_test TARGET)
             CUDA_DEPS ${args_CUDA_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
             PROFILE_DEPS ${args_PROFILE_DEPS}
+            LIGHT_DEPS ${args_LIGHT_DEPS}
+            HVY_DEPS ${args_HVY_DEPS}
             )
     _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
     register_test_offline("${TARGET}")
@@ -137,3 +168,4 @@ add_subdirectory(kernels)
 add_subdirectory(model_parser)
 add_subdirectory(utils)
 add_subdirectory(api)
+add_subdirectory(gen_code)

@@ -38,8 +38,8 @@ class FeedOp : public OpLite {
     auto feed_var_name = opdesc.Input("X").front();
     auto* feed_var = scope->FindVar(feed_var_name);
     CHECK(feed_var);
-    auto& feed_tensor_list = feed_var->Get<std::vector<lite::Tensor>>();
-    param_.feed_list = &feed_tensor_list;
+    auto* feed_tensor_list = feed_var->GetMutable<std::vector<lite::Tensor>>();
+    param_.feed_list = feed_tensor_list;
 
     auto out_name = opdesc.Output("Out").front();
     auto* out_var = scope->FindVar(out_name);

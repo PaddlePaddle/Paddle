@@ -44,7 +44,7 @@ FindAttr(framework::proto::OpDesc *desc, const std::string &name) {
   }
 SET_IMPL_ONE(int, INT, i);
 SET_IMPL_ONE(float, FLOAT, f);
-SET_IMPL_ONE(bool, FLOAT, f);
+SET_IMPL_ONE(bool, BOOLEAN, b);
 
 template <>
 void OpDesc::SetAttr<std::vector<int>>(const std::string &name,

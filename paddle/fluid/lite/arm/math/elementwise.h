@@ -14,36 +14,15 @@
 
 #pragma once
 
-#include <list>
-#include <memory>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/mir/pass.h"
-
 namespace paddle {
 namespace lite {
-namespace mir {
+namespace arm {
+namespace math {
 
-/*
- * GenerateProgramPass will build the execution program for executor from a mir
- * graph.
- */
-class GenerateProgramPass : public ProgramPass {
- public:
-  void Apply(const std::unique_ptr<SSAGraph> &graph) override;
+template <typename T>
+void elementwise_add(const T* dinx, const T* diny, T* dout, int num);
 
-  std::unique_ptr<RuntimeProgram> GenProgram() {
-    LOG(INFO) << "insts.size " << insts_.size();
-    std::unique_ptr<RuntimeProgram> program(
-        new RuntimeProgram(std::move(insts_)));
-    return program;
-  }
-
- private:
-  std::vector<Instruction> insts_;
-};
-
-}  // namespace mir
+}  // namespace math
+}  // namespace arm
 }  // namespace lite
 }  // namespace paddle

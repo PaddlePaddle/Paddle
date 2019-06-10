@@ -21,6 +21,7 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/core/tensor.h"
 
 namespace paddle {
@@ -65,6 +66,14 @@ class TensorHvy : public TensorBase<TensorHvy> {
   using DDimT = DDimHvy;
   using LoDT = framework::LoD;
 
+  template <typename DType, typename DimT, TargetType Target>
+  void Assign(DType* data, const DimT& dim) {
+    Resize(dim);
+    auto* dst = mutable_data<DType>(Target);
+    CopySync<Target>(dst, data, dim.production() * sizeof(DType),
+                     IoDirection::HtoD);
+  }
+
   TargetType target() const {
     if (platform::is_gpu_place(data_.place())) {
       return TARGET(kCUDA);
@@ -95,7 +104,6 @@ class TensorHvy : public TensorBase<TensorHvy> {
   const void* raw_data() const { return data_.raw_data(); }
 
   void Resize(const DDimHvy& dims) {
-    LOG(INFO) << "dims.size " << dims.size();
     data_.Resize(framework::make_ddim(dims.Vectorize()));
   }
 
