@@ -26,7 +26,7 @@ void DeviceInfo::InitInternal(DeviceInfo* dev) {
   dev->max_memory_ = arm_get_meminfo();
 
 // get max freq
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   std::vector<int> max_freq(dev->compute_core_num_);
   for (int i = 0; i < dev->compute_core_num_; ++i) {
     max_freq[i] = get_max_freq_khz(i) / 1000;
@@ -311,7 +311,7 @@ bool get_cpu_info_from_name(DeviceInfo* cpu_info, std::string hardware_name) {
 }
 
 size_t arm_get_meminfo() {
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   // get cpu count from /proc/cpuinfo
   FILE* fp = fopen("/proc/meminfo", "rb");
   if (!fp) {
@@ -339,7 +339,7 @@ size_t arm_get_meminfo() {
 }
 
 int arm_get_cpucount() {
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   // get cpu count from /sys/devices/system/cpu/cpunum/uevent
   int max_cpu_count = 20;
   int count = 0;
@@ -371,7 +371,7 @@ int arm_get_cpucount() {
 }
 
 void arm_get_cpu_arch(std::vector<ARMArch>* archs) {
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   archs->clear();
   //! get CPU ARCH
   FILE* fp = fopen("/proc/cpuinfo", "rb");
@@ -436,7 +436,7 @@ void arm_get_cpu_arch(std::vector<ARMArch>* archs) {
 #endif
 }
 
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
 
 void set_default_cache(DeviceInfo* dev) {
   int cpu_count = arm_get_cpucount();
@@ -621,7 +621,7 @@ int set_sched_affinity(const std::vector<int>& cpuids) {
   return 0;
 }
 
-#endif  // LITE_WITH_ANDROID
+#endif  // LITE_WITH_LINUX
 
 #endif  // LITE_WITH_ARM
 

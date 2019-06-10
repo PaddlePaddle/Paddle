@@ -24,10 +24,10 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-static void UpdateInputTo(framework::proto::OpDesc* desc,
-                          const std::string& from, const std::string& to) {
+static void UpdateInputTo(cpp::OpDesc* desc, const std::string& from,
+                          const std::string& to) {
   for (auto& item : *desc->mutable_inputs()) {
-    for (auto& input : *item.mutable_arguments()) {
+    for (auto& input : item.second) {
       if (input == from) {
         input = to;
       }

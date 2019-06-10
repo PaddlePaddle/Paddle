@@ -72,7 +72,7 @@ ENDIF()
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    temp_allocator ${dgc_deps})
+    temp_allocator ${dgc_deps} xxhash)
 
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)

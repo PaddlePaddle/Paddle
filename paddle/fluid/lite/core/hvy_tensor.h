@@ -39,6 +39,7 @@ class DDimHvy : public DDimBase<DDimHvy> {
   }
 
   value_type operator[](int offset) const { return data_[offset]; }
+  value_type& operator[](int offset) { return data_[offset]; }
 
   std::vector<int64_t> Vectorize() const { return framework::vectorize(data_); }
 
@@ -102,7 +103,8 @@ class TensorHvy : public TensorBase<TensorHvy> {
     data_.ShareDataWith(other.data_);
   }
   void CopyDataFrom(const TensorHvy& other) {
-    data_.ShareDataWith(other.data_);
+    data_.mutable_data(other.data_.place(), other.data_.type());
+    TensorCopySync(other.data_, data_.place(), &data_);
   }
 
   DDimT dims() const { return DDimT(framework::vectorize(data_.dims())); }

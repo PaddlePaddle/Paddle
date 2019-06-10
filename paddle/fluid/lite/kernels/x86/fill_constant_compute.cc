@@ -31,13 +31,13 @@ class FillConstantCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto& context = context_->As<X86Context>();
-    CHECK(context.x86_device_context);
+    auto& context = ctx_->As<X86Context>();
+    CHECK(context.x86_device_context());
 
     param.Out->template mutable_data<T>();
 
     paddle::operators::math::set_constant(
-        *context.x86_device_context, &param.Out->raw_tensor(), param.value);
+        *context.x86_device_context(), &param.Out->raw_tensor(), param.value);
   }
 
   virtual ~FillConstantCompute() = default;

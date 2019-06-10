@@ -18,7 +18,7 @@
 #include <vector>
 #include "paddle/fluid/lite/utils/cp_logging.h"
 
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
 #include <sys/syscall.h>
 #include <unistd.h>
 #endif
@@ -103,7 +103,7 @@ void arm_get_cpu_arch(std::vector<ARMArch>* archs);
 
 bool get_cpu_info_from_name(DeviceInfo* cpu_info, std::string hardware_name);
 
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
 
 void set_default_cache(DeviceInfo* dev);
 
@@ -117,7 +117,7 @@ int arm_sort_cpuid_by_max_frequency(int cpu_count, std::vector<int>* cpuids,
 int check_online(const std::vector<int>& core_ids);
 int set_sched_affinity(const std::vector<int>& cpuids);
 
-#endif  // LITE_WITH_ANDROID
+#endif  // LITE_WITH_LINUX
 
 #endif  // LITE_WITH_ARM
 

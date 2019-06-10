@@ -39,11 +39,11 @@ std::string RuntimeProgram::SerializeProgram(
   auto program_dummy = desc;
   program_dummy.mutable_blocks(0)->clear_ops();
   for (auto &node : instructions_) {
-    auto desc_dummy = node.op()->op_info()->desc();
-    OpDesc desc(desc_dummy);
-    desc.SetAttr(kKernelTypeAttr, node.kernel()->SerializedKernelType());
+    pb::OpDesc pb_desc;
+    TransformOpDescCppToPb(*node.op()->op_info(), &pb_desc);
+    pb_desc.SetAttr(kKernelTypeAttr, node.kernel()->SerializedKernelType());
     // append new opdesc
-    *program_dummy.mutable_blocks(0)->add_ops() = *desc.Proto();
+    *program_dummy.mutable_blocks(0)->add_ops() = *pb_desc.Proto();
   }
   return program_dummy.SerializeAsString();
 }

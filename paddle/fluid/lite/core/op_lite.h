@@ -23,7 +23,7 @@
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/model_parser/compatible_pb.h"
+#include "paddle/fluid/lite/model_parser/cpp/op_desc.h"
 
 namespace paddle {
 namespace lite {
@@ -71,7 +71,7 @@ class OpLite : public Registry {
   virtual bool Run();
 
   // Link the external execution environ to internal context.
-  bool Attach(const OpDesc &opdesc, lite::Scope *scope);
+  bool Attach(const cpp::OpDesc &opdesc, lite::Scope *scope);
 
   const OpInfo *op_info() const { return op_info_.get(); }
   OpInfo *mutable_op_info() { return op_info_.get(); }
@@ -94,7 +94,7 @@ class OpLite : public Registry {
 
  protected:
   // Attach it with the runtime environment.
-  virtual bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) = 0;
+  virtual bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) = 0;
 
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
@@ -144,40 +144,61 @@ class OpLite : public Registry {
  * Operator Information, such as some description. It will be shared by all the
  * kernels of the same operator.
  */
-class OpInfo {
+class OpInfo : public cpp::OpDesc {
  public:
-  // To avoid the bugs from legancy framework::OpDesc, we use the ProtoBuf
-  // message instead.
-  void Build(const framework::proto::OpDesc &desc);
+  OpInfo(const OpInfo &) = default;
+  explicit OpInfo(const cpp::OpDesc &other) : cpp::OpDesc(other) {}
 
-  const framework::proto::OpDesc &desc() const;
-  framework::proto::OpDesc *mutable_desc() { return desc_.get(); }
-  const std::list<std::string> &input_names() const { return input_names_; }
-  const std::list<std::string> &output_names() const { return output_names_; }
-  const std::map<std::string, std::list<std::string>> &input_argument() const;
-  const std::map<std::string, std::list<std::string>> &output_argument() const;
-  bool GetInputArgname(const std::string &value_name, std::string *out) const;
-  bool GetOutputArgname(const std::string &value_name, std::string *out) const;
+  // Collect all the input variable's name.
+  std::vector<std::string> input_names() const {
+    std::vector<std::string> res;
+    for (auto &param : InputArgumentNames()) {
+      for (auto &x : Input(param)) {
+        res.push_back(x);
+      }
+    }
+    return res;
+  }
 
-  const std::list<std::string> &input_argnames() const;
-  const std::list<std::string> &output_argnames() const;
+  // Collect all the output variable's name.
+  std::vector<std::string> output_names() const {
+    std::vector<std::string> res;
+    for (auto &param : OutputArgumentNames()) {
+      for (auto &x : Output(param)) {
+        res.push_back(x);
+      }
+    }
+    return res;
+  }
 
- private:
-  void ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc);
+  std::vector<std::string> input_argnames() const {
+    return InputArgumentNames();
+  }
 
-  void CollectInputAndOutputArgnames(const framework::proto::OpDesc &opdesc);
+  std::vector<std::string> output_argnames() const {
+    return OutputArgumentNames();
+  }
 
-  void CollectArguments(const framework::proto::OpDesc &opdesc);
-
- private:
-  std::list<std::string> input_names_;
-  std::list<std::string> output_names_;
-  std::list<std::string> input_argnames_;
-  std::list<std::string> output_argnames_;
-  std::map<std::string, std::list<std::string>> input_argument_;
-  std::map<std::string, std::list<std::string>> output_argument_;
-  // NOTE too heavy.
-  std::unique_ptr<framework::proto::OpDesc> desc_;
+  bool GetInputArgname(const std::string &value_name, std::string *out) const {
+    for (auto &item : inputs_) {
+      auto it = std::find(item.second.begin(), item.second.end(), value_name);
+      if (it != item.second.end()) {
+        *out = item.first;
+        return true;
+      }
+    }
+    return false;
+  }
+  bool GetOutputArgname(const std::string &value_name, std::string *out) const {
+    for (auto &item : outputs_) {
+      auto it = std::find(item.second.begin(), item.second.end(), value_name);
+      if (it != item.second.end()) {
+        *out = item.first;
+        return true;
+      }
+    }
+    return false;
+  }
 };
 
 }  // namespace lite

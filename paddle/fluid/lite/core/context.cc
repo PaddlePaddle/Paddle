@@ -15,7 +15,7 @@
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/cpu_info.h"
 
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
 #include <sys/syscall.h>
 #include <unistd.h>
 #endif
@@ -33,7 +33,7 @@ namespace lite {
 
 #ifdef LITE_WITH_ARM
 
-void ARMContext::SetCache(int l1size, int l2size, int l3size) {
+void Context<TargetType::kARM>::SetCache(int l1size, int l2size, int l3size) {
   DeviceInfo& dev = DeviceInfo::Global();
   int cpu_count = arm_get_cpucount();
   dev.L1_cache_.resize(cpu_count);
@@ -47,7 +47,7 @@ void ARMContext::SetCache(int l1size, int l2size, int l3size) {
   workspace_.Resize({2 * (l1size + l2size)});
 }
 
-ARMContext::ARMContext() {
+Context<TargetType::kARM>::Context() {
   active_ids_ = {0};
   mode_ = LITE_POWER_HIGH;
   DeviceInfo& dev = DeviceInfo::Global();
@@ -62,11 +62,11 @@ ARMContext::ARMContext() {
 #endif
 }
 
-PowerMode ARMContext::mode() const { return mode_; }
+PowerMode Context<TargetType::kARM>::mode() const { return mode_; }
 
-int ARMContext::threads() const { return active_ids_.size(); }
+int Context<TargetType::kARM>::threads() const { return active_ids_.size(); }
 
-ARMContext::ARMContext(const ARMContext& ctx) {
+Context<TargetType::kARM>::Context(const ARMContext& ctx) {
   mode_ = ctx.mode_;
   active_ids_ = ctx.active_ids_;
   workspace_ = ctx.workspace_;
@@ -74,7 +74,7 @@ ARMContext::ARMContext(const ARMContext& ctx) {
   count_ = ctx.count_;
 }
 
-ARMContext& ARMContext::operator=(const ARMContext& ctx) {
+ARMContext& Context<TargetType::kARM>::operator=(const ARMContext& ctx) {
   mode_ = ctx.mode_;
   active_ids_ = ctx.active_ids_;
   workspace_ = ctx.workspace_;
@@ -83,11 +83,11 @@ ARMContext& ARMContext::operator=(const ARMContext& ctx) {
   return *this;
 }
 
-void ARMContext::BindDev() {
+void Context<TargetType::kARM>::BindDev() {
 #ifdef USE_OPENMP
   int num_threads = active_ids_.size();
   omp_set_num_threads(num_threads);
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   std::vector<int> ssarets;
   for (int j = 0; j < num_threads; ++j) {
     ssarets.push_back(0);
@@ -102,9 +102,9 @@ void ARMContext::BindDev() {
       return;
     }
   }
-#endif  // LITE_WITH_ANDROID
+#endif  // LITE_WITH_LINUX
 #else   // USE_OPENMP
-#ifdef LITE_WITH_ANDROID
+#ifdef LITE_WITH_LINUX
   std::vector<int> cpuid1;
   cpuid1.push_back(active_ids_[0]);
   int ssaret = set_sched_affinity(cpuid1);
@@ -112,11 +112,11 @@ void ARMContext::BindDev() {
     printf("set cpu affinity failed, cpuID: %d\n", active_ids_[0]);
     return;
   }
-#endif  // LITE_WITH_ANDROID
+#endif  // LITE_WITH_LINUX
 #endif  // USE_OPENMP
 }
 
-void ARMContext::SetRunMode(PowerMode mode, int threads) {
+void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
   DeviceInfo& dev = DeviceInfo::Global();
   int big_core_size = dev.big_core_ids_.size();
   int small_core_size = dev.little_core_ids_.size();
@@ -293,26 +293,26 @@ void ARMContext::SetRunMode(PowerMode mode, int threads) {
   arch_ = DeviceInfo::Global().archs_[active_ids_[0]];
 }
 
-ARMArch ARMContext::arch() const { return arch_; }
+ARMArch Context<TargetType::kARM>::arch() const { return arch_; }
 
-void ARMContext::SetArch(ARMArch arch) { arch_ = arch; }
+void Context<TargetType::kARM>::SetArch(ARMArch arch) { arch_ = arch; }
 
-int ARMContext::l1_cache_size() const {
+int Context<TargetType::kARM>::l1_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
   return dev.L1_cache_[active_ids_[0]];
 }
 
-int ARMContext::l2_cache_size() const {
+int Context<TargetType::kARM>::l2_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
   return dev.L2_cache_[active_ids_[0]];
 }
 
-int ARMContext::l3_cache_size() const {
+int Context<TargetType::kARM>::l3_cache_size() const {
   DeviceInfo& dev = DeviceInfo::Global();
   return dev.L3_cache_[active_ids_[0]];
 }
 
-bool ARMContext::ExtendWorkspace(DDimLite dims) {
+bool Context<TargetType::kARM>::ExtendWorkspace(DDimLite dims) {
   auto count = dims.product();
   auto old = workspace_.dims();
   if (count == old.product()) {
@@ -324,5 +324,6 @@ bool ARMContext::ExtendWorkspace(DDimLite dims) {
   return true;
 }
 #endif  // LITE_WITH_ARM
+
 }  // namespace lite
 }  // namespace paddle

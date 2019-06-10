@@ -7,6 +7,7 @@ message(STATUS "LIGHT_FRAMEWORK:\t${LITE_WITH_LIGHT_WEIGHT_FRAMEWORK}")
 message(STATUS "LITE_WITH_CUDA:\t${LITE_WITH_CUDA}")
 message(STATUS "LITE_WITH_X86:\t${LITE_WITH_X86}")
 message(STATUS "LITE_WITH_ARM:\t${LITE_WITH_ARM}")
+message(STATUS "LITE_WITH_PROFILE:\t${LITE_WITH_PROFILE}")
 
 set(LITE_MODEL_DIR "${THIRD_PARTY_PATH}/install")
 
@@ -33,7 +34,7 @@ endfunction()
 function (lite_deps TARGET)
   set(options "")
   set(oneValueArgs "")
-  set(multiValueArgs DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
+  set(multiValueArgs DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
   cmake_parse_arguments(lite_deps "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   set(deps ${lite_deps_DEPS})
@@ -56,6 +57,12 @@ function (lite_deps TARGET)
     endforeach(var)
   endif()
 
+  if(LITE_WITH_PROFILE)
+    foreach(var ${lite_deps_PROFILE_DEPS})
+      set(deps ${deps} ${var})
+    endforeach(var)
+  endif()
+
   set(${TARGET} ${deps} PARENT_SCOPE)
 
 endfunction()
@@ -63,7 +70,7 @@ endfunction()
 function(lite_cc_library TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -71,7 +78,8 @@ function(lite_cc_library TARGET)
             DEPS ${args_DEPS}
             X86_DEPS ${args_X86_DEPS}
             CUDA_DEPS ${args_CUDA_DEPS}
-            ARM_DEPS ${args_ARM_DEPS})
+            ARM_DEPS ${args_ARM_DEPS}
+            PROFILE_DEPS ${args_PROFILE_DEPS})
 
     cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
 endfunction()
@@ -79,7 +87,7 @@ endfunction()
 function(lite_cc_binary TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -87,7 +95,9 @@ function(lite_cc_binary TARGET)
             DEPS ${args_DEPS}
             X86_DEPS ${args_X86_DEPS}
             CUDA_DEPS ${args_CUDA_DEPS}
-            ARM_DEPS ${args_ARM_DEPS})
+            ARM_DEPS ${args_ARM_DEPS}
+            PROFILE_DEPS ${args_PROFILE_DEPS}
+            )
     cc_binary(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
 endfunction()
 
@@ -102,7 +112,7 @@ endfunction()
 function(lite_cc_test TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS ARGS)
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -111,6 +121,7 @@ function(lite_cc_test TARGET)
             X86_DEPS ${args_X86_DEPS}
             CUDA_DEPS ${args_CUDA_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
+            PROFILE_DEPS ${args_PROFILE_DEPS}
             )
     _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
     register_test_offline("${TARGET}")

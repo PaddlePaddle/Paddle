@@ -27,13 +27,15 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/lite/core/framework.pb.h"
+#include "paddle/fluid/lite/model_parser/desc_apis.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
 namespace pb {
 
-using Attribute = variant<int, float, bool, std::vector<std::string>>;
+using Attribute =
+    variant<int, float, bool, std::vector<std::string>, std::vector<int>>;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 /*
@@ -42,7 +44,7 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
  * except the desc_, to avoid the inconsistent state, which is normal in the
  * original interface and results in bugs.
  */
-class OpDesc {
+class OpDesc : public OpDescAPI {
  public:
   OpDesc() {}
 
@@ -53,38 +55,38 @@ class OpDesc {
   framework::proto::OpDesc *Proto() { return &desc_; }
   const framework::proto::OpDesc &ReadonlyProto() const { return desc_; }
 
-  std::string Type() const { return desc_.type(); }
+  std::string Type() const override { return desc_.type(); }
 
-  void SetType(const std::string &type) { desc_.set_type(type); }
+  void SetType(const std::string &type) override { desc_.set_type(type); }
 
   // Get the arguments of parameter called `param`
-  std::vector<std::string> Input(const std::string &param) const {
+  std::vector<std::string> Input(const std::string &param) const override {
     return GetArguments(desc_.inputs(), param);
   }
 
-  std::vector<std::string> InputArgumentNames() const {
+  std::vector<std::string> InputArgumentNames() const override {
     return GetArgumentNames(desc_.inputs());
   }
 
   void SetInput(const std::string &param,
-                const std::vector<std::string> &args) {
+                const std::vector<std::string> &args) override {
     SetArgument(desc_.mutable_inputs(), param, args);
   }
 
-  std::vector<std::string> Output(const std::string &param) const {
+  std::vector<std::string> Output(const std::string &param) const override {
     return GetArguments(desc_.outputs(), param);
   }
 
-  std::vector<std::string> OutputArgumentNames() const {
+  std::vector<std::string> OutputArgumentNames() const override {
     return GetArgumentNames(desc_.outputs());
   }
 
   void SetOutput(const std::string &param,
-                 const std::vector<std::string> &args) {
+                 const std::vector<std::string> &args) override {
     SetArgument(desc_.mutable_outputs(), param, args);
   }
 
-  bool HasAttr(const std::string &name) const {
+  bool HasAttr(const std::string &name) const override {
     const auto &xs = desc_.attrs();
     auto it = std::find_if(xs.begin(), xs.end(),
                            [&](const framework::proto::OpDesc_Attr &x) {
@@ -93,17 +95,38 @@ class OpDesc {
     return it != xs.end();
   }
 
-  framework::proto::AttrType GetAttrType(const std::string &name) const {
+  AttrType GetAttrType(const std::string &name) const override {
     const auto &xs = desc_.attrs();
     auto it = std::find_if(xs.begin(), xs.end(),
                            [&](const framework::proto::OpDesc_Attr &x) {
                              return x.name() == name;
                            });
     CHECK(it != xs.end());
-    return it->type();
+#define DEF_ONE(type__)                    \
+  case framework::proto::AttrType::type__: \
+    return AttrType::type__;
+
+    switch (it->type()) {
+      DEF_ONE(INT);
+      DEF_ONE(FLOAT);
+      DEF_ONE(STRING);
+      DEF_ONE(INTS);
+      DEF_ONE(FLOATS);
+      DEF_ONE(STRINGS);
+      DEF_ONE(BOOLEAN);
+      DEF_ONE(BOOLEANS);
+      DEF_ONE(BLOCK);
+      DEF_ONE(LONG);
+      DEF_ONE(BLOCKS);
+      DEF_ONE(LONGS);
+      default:
+        LOG(ERROR) << "Unknown attribute type";
+        return AttrType::UNK;
+    }
+#undef DEF_ONE
   }
 
-  std::vector<std::string> AttrNames() const {
+  std::vector<std::string> AttrNames() const override {
     std::vector<std::string> res;
     const auto &xs = desc_.attrs();
     std::transform(
@@ -113,66 +136,10 @@ class OpDesc {
   }
 
   template <typename T>
-  void SetAttr(const std::string &name, const T &v) {
-    auto &xs = *desc_.mutable_attrs();
-    auto it = std::find_if(xs.begin(), xs.end(),
-                           [&](const framework::proto::OpDesc_Attr &x) {
-                             return x.name() == name;
-                           });
-    if (it == xs.end()) {
-      auto *attr = xs.Add();
-      attr->set_name(name);
-      it = std::find_if(xs.begin(), xs.end(),
-                        [&](const framework::proto::OpDesc_Attr &x) {
-                          return x.name() == name;
-                        });
-    }
+  void SetAttr(const std::string &name, const T &v);
 
-    size_t hash = typeid(T).hash_code();
-    if (hash == typeid(int).hash_code()) {  // NOLINT
-      it->set_type(framework::proto::INT);
-      it->set_i(v);
-    } else if (hash == typeid(float).hash_code()) {  // NOLINT
-      it->set_type(framework::proto::FLOAT);
-      it->set_f(v);
-    } else if (hash == typeid(bool).hash_code()) {  // NOLINT
-      it->set_type(framework::proto::BOOLEAN);
-      it->set_b(v);
-    } else {
-      LOG(FATAL) << "unsupport attr type";
-    }
-  }
-
-  Attribute GetAttr(const std::string &name) const {
-    auto &xs = desc_.attrs();
-    auto it = std::find_if(xs.begin(), xs.end(),
-                           [&](const framework::proto::OpDesc_Attr &x) {
-                             return x.name() == name;
-                           });
-
-    Attribute res;
-    CHECK(it != xs.end());
-
-    switch (it->type()) {
-      case framework::proto::INT:
-        res.set<int>(it->i());
-        break;
-      case framework::proto::FLOAT:
-        res.set<float>(it->f());
-        break;
-      case framework::proto::STRING:
-        res.set<std::string>(it->s());
-        break;
-      case framework::proto::BOOLEAN:
-        res.set<bool>(it->b());
-        break;
-
-      default:
-        LOG(FATAL) << "unsupported attr type";
-    }
-
-    return res;
-  }
+  template <typename T>
+  T GetAttr(const std::string &name) const;
 
  private:
   std::vector<std::string> GetArguments(
@@ -230,6 +197,10 @@ class OpDesc {
 template <>
 void OpDesc::SetAttr<std::string>(const std::string &name,
                                   const std::string &v);
+
+template <>
+void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
+                                       const std::vector<int> &v);
 
 }  // namespace pb
 }  // namespace lite

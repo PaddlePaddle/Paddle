@@ -22,6 +22,10 @@
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/model_parser/compatible_pb.h"
+#ifdef LITE_WITH_PROFILE
+#include "paddle/fluid/lite/core/profile/basic_profiler.h"
+#endif  // LITE_WITH_PROFILE
 
 namespace paddle {
 namespace lite {
@@ -57,7 +61,6 @@ struct Program {
  private:
   // Build from a program and scope.
   void Build(const framework::proto::ProgramDesc& program);
-
   // Create temporary variables.
   void PrepareWorkspace(const framework::proto::ProgramDesc& program);
 
@@ -76,9 +79,18 @@ struct Program {
 struct Instruction {
   Instruction(const std::shared_ptr<OpLite>& op,
               std::unique_ptr<KernelBase>&& kernel)
-      : op_(op), kernel_(std::move(kernel)) {}
+      : op_(op), kernel_(std::move(kernel)) {
+#ifdef LITE_WITH_PROFILE
+    profile_id_ = profile::BasicProfiler<profile::BasicTimer>::Global()
+                      .NewRcd(kernel_->SerializedKernelType())
+                      .id();
+#endif  // LITE_WITH_PROFILE
+  }
 
   void Run() {
+#ifdef LITE_WITH_PROFILE
+    profile::ProfileBlock x(profile_id_);
+#endif  // LITE_WITH_PROFILE
     CHECK(op_);
     CHECK(kernel_);
     if (first_epoch_) {
@@ -86,7 +98,7 @@ struct Instruction {
       CHECK(op_->CheckShape());
     }
     op_->InferShape();
-    kernel_->Run();
+    kernel_->Launch();
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Instruction& other) {
@@ -101,6 +113,11 @@ struct Instruction {
   std::shared_ptr<OpLite> op_;
   std::unique_ptr<KernelBase> kernel_;
   bool first_epoch_{true};
+
+#ifdef LITE_WITH_PROFILE
+  // for profiler
+  int profile_id_{-1};
+#endif  // LITE_WITH_PROFILE
 };
 
 /*

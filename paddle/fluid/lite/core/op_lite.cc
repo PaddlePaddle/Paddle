@@ -62,19 +62,19 @@ bool OpLite::Run() {
   CHECK(kernel_);
   SyncInputEvents();
 
-  kernel_->Run();
+  kernel_->Launch();
 
   RecordOutputEvents();
   return true;
 }
 
-bool OpLite::Attach(const OpDesc &opdesc, lite::Scope *scope) {
+bool OpLite::Attach(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   // valid_places_.clear();
   CHECK(scope != nullptr);
   // CHECK(!op_info_.get());
   scope_ = scope;
-  op_info_.reset(new OpInfo);  // Force clean the out-of-date infomation.
-  op_info_->Build(opdesc.ReadonlyProto());
+  op_info_.reset(
+      new OpInfo(opdesc));  // Force clean the out-of-date infomation.
   return AttachImpl(opdesc, scope);
 }
 
@@ -90,95 +90,6 @@ Tensor *OpLite::GetMutableTensor(lite::Scope *scope,
   auto *var = scope->FindVar(name);
   CHECK(var) << "no variable called " << name << " found";
   return var->GetMutable<lite::Tensor>();
-}
-
-bool OpInfo::GetInputArgname(const std::string &value_name,
-                             std::string *out) const {
-  for (auto &item : input_argument_) {
-    auto it = std::find(item.second.begin(), item.second.end(), value_name);
-    if (it != item.second.end()) {
-      *out = item.first;
-      return true;
-    }
-  }
-  return false;
-}
-bool OpInfo::GetOutputArgname(const std::string &value_name,
-                              std::string *out) const {
-  for (auto &item : output_argument_) {
-    auto it = std::find(item.second.begin(), item.second.end(), value_name);
-    if (it != item.second.end()) {
-      *out = item.first;
-      return true;
-    }
-  }
-  return false;
-}
-
-void OpInfo::ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc) {
-  for (const auto &item : opdesc.inputs()) {
-    for (const auto &x : item.arguments()) {
-      input_names_.push_back(x);
-    }
-  }
-  for (const auto &item : opdesc.outputs()) {
-    for (const auto &x : item.arguments()) {
-      output_names_.push_back(x);
-    }
-  }
-}
-
-void OpInfo::CollectInputAndOutputArgnames(
-    const framework::proto::OpDesc &opdesc) {
-  for (const auto &item : opdesc.inputs()) {
-    input_argnames_.push_back(item.parameter());
-  }
-  for (const auto &item : opdesc.outputs()) {
-    output_argnames_.push_back(item.parameter());
-  }
-}
-
-void OpInfo::CollectArguments(const framework::proto::OpDesc &opdesc) {
-  for (const auto &item : opdesc.inputs()) {
-    for (auto &x : item.arguments()) {
-      input_argument_[item.parameter()].push_back(x);
-    }
-  }
-  for (const auto &item : opdesc.outputs()) {
-    for (auto &x : item.arguments()) {
-      output_argument_[item.parameter()].push_back(x);
-    }
-  }
-}
-
-void OpInfo::Build(const framework::proto::OpDesc &desc) {
-  ExtractInputsAndOutputs(desc);
-  CollectInputAndOutputArgnames(desc);
-  CollectArguments(desc);
-  desc_.reset(new framework::proto::OpDesc(desc));
-}
-
-const std::map<std::string, std::list<std::string>> &OpInfo::input_argument()
-    const {
-  return input_argument_;
-}
-
-const std::map<std::string, std::list<std::string>> &OpInfo::output_argument()
-    const {
-  return output_argument_;
-}
-
-const std::list<std::string> &OpInfo::input_argnames() const {
-  return input_argnames_;
-}
-
-const std::list<std::string> &OpInfo::output_argnames() const {
-  return output_argnames_;
-}
-
-const framework::proto::OpDesc &OpInfo::desc() const {
-  CHECK(desc_) << "desc has't set";
-  return *desc_;
 }
 
 }  // namespace lite

@@ -5,6 +5,7 @@ cc_library(relu_op_lite SRCS relu_op.cc DEPS ${op_DEPS})
 cc_library(mul_op_lite SRCS mul_op.cc DEPS ${op_DEPS})
 cc_library(scale_op_lite SRCS scale_op.cc DEPS ${op_DEPS})
 cc_library(softmax_op_lite SRCS softmax_op.cc DEPS ${op_DEPS})
+cc_library(reshape_op_lite SRCS reshape_op.cc DEPS ${op_DEPS} )
 cc_library(feed_op_lite SRCS feed_op.cc DEPS ${op_DEPS})
 cc_library(fetch_op_lite SRCS fetch_op.cc DEPS ${op_DEPS})
 cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
@@ -12,22 +13,34 @@ cc_library(activation_ops_lite SRCS activation_ops.cc DEPS ${op_DEPS})
 cc_library(elementwise_ops_lite SRCS elementwise_ops.cc DEPS ${op_DEPS})
 cc_library(mean_op_lite SRCS mean_op.cc DEPS ${op_DEPS})
 cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
-cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
+#cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
+cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
+cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
+cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
 
-cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite)
 set(ops_lite
         fc_op_lite
         relu_op_lite
         mul_op_lite
         scale_op_lite
         softmax_op_lite
+        reshape_op_lite
         feed_op_lite
         fetch_op_lite
         io_copy_op_lite
         elementwise_ops_lite
         mean_op_lite
         fill_constant_op_lite
+        activation_ops_lite
+        dropout_op_lite
+        concat_op_lite
         PARENT_SCOPE)
 
-lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite memory_lite)
+lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
+             DEPS fc_op_lite memory_lite 
+             X86_DEPS fc_compute_x86
+                 ARM_DEPS fc_compute_arm)
+lite_cc_test(test_scale_op_lite SRCS scale_op_test.cc DEPS scale_op_lite memory_lite)
 lite_cc_test(test_softmax_op_lite SRCS softmax_op_test.cc DEPS softmax_op_lite memory_lite)
+lite_cc_test(test_reshape_op_lite SRCS reshape_op_test.cc DEPS reshape_op_lite memory_lite)
+lite_cc_test(test_concat_op_lite SRCS concat_op_test.cc DEPS concat_op_lite memory_lite)

@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef LITE_WITH_X86
 #include "paddle/fluid/framework/operator.h"
+#endif
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -35,8 +37,7 @@ class MeanOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 2UL);
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
     auto X_name = opdesc.Input("X").front();
     auto Out_name = opdesc.Output("Out").front();
 
@@ -53,6 +54,7 @@ class MeanOp : public OpLite {
   mutable operators::ElementwiseParam param_;
 };
 
+#ifdef LITE_WITH_X86
 class MeanGradOp : public OpLite {
  public:
   explicit MeanGradOp(const std::string& type) : OpLite(type) {}
@@ -70,8 +72,8 @@ class MeanGradOp : public OpLite {
     return true;
   }
 
-  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.Inputs().size(), 3UL);
+  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
+    CHECK_EQ(opdesc.InputArgumentNames().size(), 3UL);
     auto X_name = opdesc.Input("X").front();
     auto Out_grad_name = opdesc.Input(framework::GradVarName("Out")).front();
     auto X_grad_name = opdesc.Output(framework::GradVarName("X")).front();
@@ -89,10 +91,13 @@ class MeanGradOp : public OpLite {
  private:
   mutable operators::MeanGradParam param_;
 };
+#endif
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
 REGISTER_LITE_OP(mean, paddle::lite::operators::MeanOp);
+#ifdef LITE_WITH_X86
 REGISTER_LITE_OP(mean_grad, paddle::lite::operators::MeanGradOp);
+#endif

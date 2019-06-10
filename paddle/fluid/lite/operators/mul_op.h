@@ -37,7 +37,7 @@ class MulOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override {
+  bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
     auto input = op_desc.Input("X").front();
     auto W = op_desc.Input("Y").front();
     auto out = op_desc.Output("Out").front();
@@ -49,8 +49,8 @@ class MulOpLite : public OpLite {
     param_.y = var->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.x_num_col_dims = GetAttr<int>(op_desc.GetAttr("x_num_col_dims"));
-    param_.y_num_col_dims = GetAttr<int>(op_desc.GetAttr("y_num_col_dims"));
+    param_.x_num_col_dims = op_desc.GetAttr<int>("x_num_col_dims");
+    param_.y_num_col_dims = op_desc.GetAttr<int>("y_num_col_dims");
 
     return true;
   }
@@ -73,7 +73,7 @@ class MulGradOpLite : public OpLite {
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
-  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override;
+  bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override;
 
   std::string DebugString() const override { return "mul_grad"; }
 

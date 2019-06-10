@@ -90,7 +90,7 @@ void TypeTargetTransformPass::AddIoCopyInst(
   inst_node->AsStmt().op->scope()->Var(io_copy_output_name);
 
   // Create IoCopy Instruction.
-  lite::OpDesc op_desc;
+  cpp::OpDesc op_desc;
   op_desc.SetType("io_copy");
   op_desc.SetInput("Input", {var});
   op_desc.SetOutput("Out", {io_copy_output_name});
@@ -104,8 +104,6 @@ void TypeTargetTransformPass::AddIoCopyInst(
 
   // Update the original instruction OpDesc.
   // Update its input to the io_copy_output_name
-  auto& inst = inst_node->AsStmt();
-  auto inst_program_desc = inst.op_info()->desc();
 
   // Add new link, var -> new_inst, new_inst->newarg, newarg->inst
   DirectedLink(graph->Argument(var), io_copy_inst);
@@ -113,11 +111,11 @@ void TypeTargetTransformPass::AddIoCopyInst(
   DirectedLink(io_copy_output_arg, inst_node);
 
   // reset opdesc and update kernel information
-  auto desc_dummy = inst_node->AsStmt().op->op_info()->desc();
-  UpdateInputTo(&desc_dummy, var, io_copy_output_name);
+  UpdateInputTo(inst_node->AsStmt().op->mutable_op_info(), var,
+                io_copy_output_name);
 
-  lite::OpDesc desc_fake(desc_dummy);
-  inst_node->AsStmt().op->Attach(desc_fake, inst_node->AsStmt().op->scope());
+  inst_node->AsStmt().op->Attach(*inst_node->AsStmt().op->op_info(),
+                                 inst_node->AsStmt().op->scope());
 
   std::string tmp;
   if (inst_node->AsStmt().op_info()->GetInputArgname("a", &tmp)) {
