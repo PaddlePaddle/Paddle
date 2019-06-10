@@ -70,8 +70,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
         auto x_memory_pd = memory::primitive_desc(
             {{src_x_tz}, memory::data_type::f32, format}, mkldnn_engine);
         auto size = x_memory_pd.get_size();
-        _x.mutable_data<T>(ctx.GetPlace(), paddle::memory::Allocator::kDefault,
-                           size);
+        _x.mutable_data<T>(ctx.GetPlace(), size);
         auto user_x_memory =
             memory(user_x_memory_pd, paddle::platform::to_void_cast<T>(x_data));
         auto x_memory = memory(x_memory_pd,
