@@ -57,7 +57,7 @@ if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
   endif()
   add_custom_command(OUTPUT ${FLUID_NOAVX_CORE}
     COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${FLUID_NOAVX_CORE} DEPENDS paddle_pybind)
-  set(FLUID_CORE_DEPS "${FLUID_CORE_DEPS} ${FLUID_NOAVX_CORE}")
+  list(APPEND FLUID_CORE_DEPS ${FLUID_NOAVX_CORE})
 endif()
 
 add_custom_command(OUTPUT ${FLUID_CORE}
