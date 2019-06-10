@@ -32,7 +32,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<Tensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
-    T pad_value = context.Attr<T>("pad_value");
+    T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto dims = in->dims();
     auto lod = in->lod();

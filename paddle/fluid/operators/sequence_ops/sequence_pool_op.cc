@@ -37,7 +37,6 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -58,8 +57,8 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE")
         .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
-    AddAttr<T>("pad_value",
-               "(float, default 0.0) The value to pad for empty sequence.")
+    AddAttr<float>("pad_value",
+                   "(float, default 0.0) The value to pad for empty sequence.")
         .SetDefault(0.0);
     AddComment(R"DOC(
 Sequence Pool Operator.
@@ -153,8 +152,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp,
-                  ops::SequencePoolOpMaker<float>,
+REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker);
 REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInference);
