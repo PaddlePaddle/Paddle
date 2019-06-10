@@ -1,6 +1,7 @@
 attention_lstm
 conv_shift
 cos_sim
+cudnn_gru
 dequantize
 fc
 flatten
