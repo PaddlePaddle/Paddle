@@ -12052,7 +12052,7 @@ def deformable_roi_pooling(input,
                         if None, default value is [pooled_height, pooled_width].
        sample_per_part (integer): The number of samples in each bin. Default: 1.
        trans_std (float): Coefficient of offset. Default: 0.1.
-       position_sensitive: Whether to choose deformable psroi pooling or not. Default: False.
+       position_sensitive: Whether to choose deformable psroi pooling mode or not. Default: False.
        name (str): Name of layer. Default: None.
     Returns:
         Variable: The tensor variable storing the deformable psroi pooling \
