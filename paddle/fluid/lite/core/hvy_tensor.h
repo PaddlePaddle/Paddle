@@ -110,6 +110,9 @@ class TensorHvy : public TensorBase<TensorHvy> {
   void ShareDataWith(const TensorHvy& other) {
     data_.ShareDataWith(other.data_);
   }
+  void ShareDataWith(const framework::Tensor& other) {
+    data_.ShareDataWith(other);
+  }
   void CopyDataFrom(const TensorHvy& other) {
     data_.mutable_data(other.data_.place(), other.data_.type());
     TensorCopySync(other.data_, data_.place(), &data_);
