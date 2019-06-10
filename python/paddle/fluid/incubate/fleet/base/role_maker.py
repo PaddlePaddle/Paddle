@@ -17,7 +17,7 @@ from enum import Enum
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
-    'UserDefinedRoleMakerCollective'
+    'UserDefinedCollectiveRoleMaker'
 ]
 
 
@@ -349,13 +349,13 @@ class UserDefinedRoleMaker(RoleMakerBase):
         return self._worker_num
 
 
-class UserDefinedRoleMakerCollective(RoleMakerBase):
+class UserDefinedCollectiveRoleMaker(RoleMakerBase):
     def __init__(self, current_id=0, worker_endpoints=None):
         """
-        UserDefinedRoleMakerNCCL is designed for worker assignment
+        UserDefinedCollectiveRoleMaker is designed for worker assignment
         under manual for collective mode.
         """
-        super(UserDefinedRoleMakerCollective, self).__init__()
+        super(UserDefinedCollectiveRoleMaker, self).__init__()
 
         if not isinstance(current_id, int):
             raise TypeError("current_id must be as int")
