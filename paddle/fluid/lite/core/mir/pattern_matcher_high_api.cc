@@ -21,7 +21,7 @@ namespace mir {
 
 void FuseBase::PerformPatternMatcher(SSAGraph *graph) {
   LOG(INFO) << "\n" << matcher_.pattern().DotString();
-  // Get subgraphs and record the ir::Node pointers for each PDNode.
+  // Get subgraphs and record the mir::Node pointers for each PMNode.
   auto handler = [&](const PatternMatcher::subgraph_t &subgraph, SSAGraph *g) {
     // get all the reigistered nodes.
     key2nodes_.emplace_back();

@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 
@@ -85,13 +86,19 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   auto* main_block = program_desc->MutableBlock(0);
   auto* mul = main_block->AppendOp();
   auto* add = main_block->AppendOp();
-  auto* scale = main_block->AppendOp();
   main_block->Var("x");
   main_block->Var("b");
   main_block->Var("mul_out");
   main_block->Var("w");
   main_block->Var("out");
   main_block->Var("out1");
+
+  scope->Var("w")->GetMutable<lite::Tensor>();
+  scope->Var("b")->GetMutable<lite::Tensor>();
+  scope->Var("mul_out")->GetMutable<lite::Tensor>();
+  scope->Var("w")->GetMutable<lite::Tensor>();
+  scope->Var("out")->GetMutable<lite::Tensor>();
+  scope->Var("out1")->GetMutable<lite::Tensor>();
 
   mul->SetInput("X", {"x"});
   mul->SetInput("Y", {"w"});
@@ -104,9 +111,7 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   add->SetInput("Y", {"b"});
   add->SetOutput("Out", {"out"});
   add->SetType("elementwise_add");
-
-  scale->SetInput("X", {"out"});
-  scale->SetOutput("Out", {"out1"});
+  add->SetAttr("axis", 1);
 
   program_desc->Flush();
 
