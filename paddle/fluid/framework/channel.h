@@ -100,7 +100,7 @@ class ChannelObject {
   }
 
   // blocking operation
-  bool Get(T& val) { return Read(1, &val) != 0; } // NOLINT
+  bool Get(T& val) { return Read(1, &val) != 0; }  // NOLINT
 
   // blocking operation
   // returns 0 if the channel is closed and empty
@@ -145,14 +145,14 @@ class ChannelObject {
   }
 
   // read data of block size from channel to vector
-  size_t Read(std::vector<T>& p) { // NOLINT
+  size_t Read(std::vector<T>& p) {  // NOLINT
     p.resize(block_size_);
     size_t finished = Read(p.size(), &p[0]);
     p.resize(finished);
     return finished;
   }
 
-  size_t ReadAll(std::vector<T>& p) { // NOLINT
+  size_t ReadAll(std::vector<T>& p) {  // NOLINT
     p.clear();
     size_t finished = 0;
     size_t n = 0;
@@ -203,7 +203,7 @@ class ChannelObject {
 
   bool FullUnlocked() { return data_.size() >= capacity_ + reading_count_; }
 
-  bool WaitForRead(std::unique_lock<std::mutex>& lock) { // NOLINT
+  bool WaitForRead(std::unique_lock<std::mutex>& lock) {  // NOLINT
     while (unlikely(EmptyUnlocked() && !closed_)) {
       if (full_waiters_ != 0) {
         full_cond_.notify_one();
@@ -215,7 +215,7 @@ class ChannelObject {
     return !EmptyUnlocked();
   }
 
-  bool WaitForWrite(std::unique_lock<std::mutex>& lock) { // NOLINT
+  bool WaitForWrite(std::unique_lock<std::mutex>& lock) {  // NOLINT
     while (unlikely(FullUnlocked() && !closed_)) {
       if (empty_waiters_ != 0) {
         empty_cond_.notify_one();
@@ -227,7 +227,7 @@ class ChannelObject {
     return !closed_;
   }
 
-  size_t Read(size_t n, T* p, std::unique_lock<std::mutex>& lock) { // NOLINT
+  size_t Read(size_t n, T* p, std::unique_lock<std::mutex>& lock) {  // NOLINT
     size_t finished = 0;
     CHECK(n <= MaxCapacity() - reading_count_);
     reading_count_ += n;
@@ -243,7 +243,9 @@ class ChannelObject {
     return finished;
   }
 
-  size_t Write(size_t n, const T* p, std::unique_lock<std::mutex>& lock) { // NOLINT
+  size_t Write(size_t n,
+               const T* p,                            // NOLINT
+               std::unique_lock<std::mutex>& lock) {  // NOLINT
     size_t finished = 0;
     while (finished < n && WaitForWrite(lock)) {
       size_t m =
@@ -255,7 +257,9 @@ class ChannelObject {
     return finished;
   }
 
-  size_t WriteMove(size_t n, T* p, std::unique_lock<std::mutex>& lock) { // NOLINT
+  size_t WriteMove(size_t n,
+                   T* p,                                  // NOLINT
+                   std::unique_lock<std::mutex>& lock) {  // NOLINT
     size_t finished = 0;
     while (finished < n && WaitForWrite(lock)) {
       size_t m =
@@ -323,7 +327,7 @@ class ChannelReader {
     return *this;
   }
 
-  bool GetBufferRemain(T& val) { // NOLINT
+  bool GetBufferRemain(T& val) {  // NOLINT
     if (cursor_ >= buffer_.size()) {
       cursor_ = 0;
       return false;

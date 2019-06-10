@@ -14,10 +14,19 @@
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
+#ifdef _LINUX
 #ifndef likely
 #define likely(x) __builtin_expect((x), 1)
 #endif
+#endif
 
+#ifdef _LINUX
 #ifndef unlikely
 #define unlikely(x) __builtin_expect((x), 0)
+#endif
 #endif

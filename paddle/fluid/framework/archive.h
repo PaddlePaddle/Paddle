@@ -163,7 +163,11 @@ class ArchiveBase {
   }
 
   void Resize(size_t newsize) {
+#ifdef _LINUX
     if (unlikely(newsize > Capacity())) {
+#else
+    if (newsize > Capacity()) {
+#endif
       Reserve(std::max(Capacity() * 2, newsize));
     }
     finish_ = buffer_ + newsize;
@@ -188,13 +192,21 @@ class ArchiveBase {
   }
 
   void PrepareRead(size_t size) {
+#ifdef _LINUX
     if (unlikely(!(size <= size_t(finish_ - cursor_)))) {
+#else
+    if (!(size <= size_t(finish_ - cursor_))) {
+#endif
       CHECK(size <= size_t(finish_ - cursor_));
     }
   }
 
   void PrepareWrite(size_t size) {
+#ifdef _LINUX
     if (unlikely(size > size_t(limit_ - finish_))) {
+#else
+    if (size > size_t(limit_ - finish_)) {
+#endif
       Reserve(std::max(Capacity() * 2, Length() + size));
     }
   }
@@ -411,7 +423,7 @@ Archive<AR>& SerializeTuple(Archive<AR>& ar,
 #else
 template <class AR, class... T>
 Archive<AR>& SerializeTuple(Archive<AR>& ar,
-                            const std::tuple<T...>& x,              // NOLINT
+                            const std::tuple<T...>& x,                // NOLINT
                             std::integral_constant<uint64_t, 0> n) {  // NOLINT
   return ar;
 }
@@ -428,7 +440,7 @@ Archive<AR>& serialize_tuple(Archive<AR>& ar,
 #else
 template <class AR, class... T, uint64_t N>
 Archive<AR>& serialize_tuple(Archive<AR>& ar,
-                             const std::tuple<T...>& x,              // NOLINT
+                             const std::tuple<T...>& x,                // NOLINT
                              std::integral_constant<uint64_t, N> n) {  // NOLINT
   return SerializeTuple(ar, x, std::integral_constant<uint64_t, N - 1>())
          << std::get<N - 1>(x);
