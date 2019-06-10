@@ -25,6 +25,20 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+inline int CalcOutputSize(int input_size, int filter_size, int dilation,
+                          int padding1, int padding2, int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  int output_size = (input_size + padding1 + padding2 - dkernel) / stride + 1;
+  PADDLE_ENFORCE(output_size > 0,
+                 "Due to the settings of padding(%d, %d), filter_size(%d), "
+                 "dilation(%d) and "
+                 "stride(%d), the output size is less than 0, please check "
+                 "again. Input_size:%d",
+                 padding1, padding2, filter_size, dilation, stride, input_size);
+
+  return output_size;
+}
+
 template <typename DeviceContext, typename T>
 class UnfoldOpKernel : public framework::OpKernel<T> {
  public:
@@ -44,14 +58,12 @@ class UnfoldOpKernel : public framework::OpKernel<T> {
 
     auto input_dims = input->dims();
 
-    int dkernel_h = dilations[0] * (kernel_sizes[0] - 1) + 1;
-    int dkernel_w = dilations[1] * (kernel_sizes[1] - 1) + 1;
     int output_height =
-        (input_dims[2] + paddings[0] + paddings[2] - dkernel_h) / strides[0] +
-        1;
+        CalcOutputSize(input_dims[2], kernel_sizes[0], dilations[0],
+                       paddings[0], paddings[2], strides[0]);
     int output_width =
-        (input_dims[3] + paddings[1] + paddings[3] - dkernel_w) / strides[1] +
-        1;
+        CalcOutputSize(input_dims[3], kernel_sizes[1], dilations[1],
+                       paddings[1], paddings[3], strides[1]);
 
     framework::DDim input_shape({input_dims[1], input_dims[2], input_dims[3]});
     framework::DDim output_matrix_shape({input_dims[1], kernel_sizes[0],
@@ -85,14 +97,12 @@ class UnfoldGradOpKernel : public framework::OpKernel<T> {
 
     auto input_dims = input_grad->dims();
 
-    int dkernel_h = dilations[0] * (kernel_sizes[0] - 1) + 1;
-    int dkernel_w = dilations[1] * (kernel_sizes[1] - 1) + 1;
     int output_height =
-        (input_dims[2] + paddings[0] + paddings[2] - dkernel_h) / strides[0] +
-        1;
+        CalcOutputSize(input_dims[2], kernel_sizes[0], dilations[0],
+                       paddings[0], paddings[2], strides[0]);
     int output_width =
-        (input_dims[3] + paddings[1] + paddings[3] - dkernel_w) / strides[1] +
-        1;
+        CalcOutputSize(input_dims[3], kernel_sizes[1], dilations[1],
+                       paddings[1], paddings[3], strides[1]);
 
     framework::DDim input_shape({input_dims[1], input_dims[2], input_dims[3]});
     framework::DDim output_matrix_shape({input_dims[1], kernel_sizes[0],

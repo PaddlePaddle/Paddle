@@ -12050,9 +12050,8 @@ def deformable_conv(input,
     return output
 
 
-def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1):
+def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     """
-    **unfold**
 
     This function returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,

@@ -106,13 +106,13 @@ class UnfoldOp : public framework::OperatorWithKernel {
     int output_channels = in_dims[1] * kernel_sizes[0] * kernel_sizes[1];
     out_dims.push_back(output_channels);
 
-    int dkernel_h = dilations[0] * (kernel_sizes[0] - 1) + 1;
-    int dkernel_w = dilations[1] * (kernel_sizes[1] - 1) + 1;
-    int conv_out_height =
-        (in_dims[2] + paddings[0] + paddings[2] - dkernel_h) / strides[0] + 1;
-    int conv_out_width =
-        (in_dims[3] + paddings[1] + paddings[3] - dkernel_w) / strides[1] + 1;
-    int output_col_length = conv_out_height * conv_out_width;
+    int output_height =
+        CalcOutputSize(in_dims[2], kernel_sizes[0], dilations[0], paddings[0],
+                       paddings[2], strides[0]);
+    int output_width = CalcOutputSize(in_dims[3], kernel_sizes[1], dilations[1],
+                                      paddings[1], paddings[3], strides[1]);
+
+    int output_col_length = output_height * output_width;
     out_dims.push_back(output_col_length);
 
     ctx->SetOutputDim("Y", framework::make_ddim(out_dims));
