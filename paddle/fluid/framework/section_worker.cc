@@ -83,7 +83,10 @@ void SyncFunctor::Synchronize() {
                     nccl_ctx_map_->DevCtx(i)->GetPlace());
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           data, data, numel, ncclFloat, ncclSum, nccl_ctx.comm(),
-          nccl_ctx.stream()));
+          dynamic_cast<platform::CUDADeviceContext*>(
+              platform::DeviceContextPool::Instance().Get(
+                  platform::CUDAPlace(i)))
+              ->stream()));
     }
   }
   nccl_ctx_map_->WaitAll();

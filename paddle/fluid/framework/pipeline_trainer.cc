@@ -107,16 +107,10 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
         this_worker->Initialize(trainer_desc);
       }
     }
-    if (platform::is_gpu_place(place)) {
-      std::shared_ptr<framework::ProgramDesc> program;
-      program.reset(new ProgramDesc(section_config.program_desc()));
-      for (auto& var : program->Block(0).AllVars()) {
-        if (var->Persistable()) {
-          param_need_sync_->emplace_back(var->Name());
-        }
-      }
-    }
   }
+  param_need_sync_.reset(
+      new std::vector<std::string>(pipeline_config_.param_need_sync().begin(),
+                                   pipeline_config_.param_need_sync().end()));
   VLOG(3) << "param_need_sync_ have: ";
   for (const std::string& name : *param_need_sync_) {
     VLOG(3) << name;
@@ -157,7 +151,7 @@ void PipelineTrainer::CopyParameters(const Scope& root_scope, int pipeline_id) {
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
   PADDLE_ENFORCE(root_scope_, "Null root_scope pointer");
-  SectionWorker::cpu_id_.store(0);
+  SectionWorker::cpu_id_.store(pipeline_config_.start_cpu_core_id());
   scope_queues_.resize(section_num_);
   pipeline_scopes_.resize(pipeline_num_);
 
@@ -198,10 +192,12 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     }
   }
 
-  if (pipeline_num_ <= 1) {
-    return;
+  if (pipeline_num_ > 1) {
+    construct_sync_functor();
   }
-  // Construct sync functor
+}
+
+void PipelineTrainer::construct_sync_functor() {
   std::vector<platform::Place> cuda_places;
   for (int i = 0; i < pipeline_num_; ++i) {
     cuda_places.emplace_back(platform::CUDAPlace(i));

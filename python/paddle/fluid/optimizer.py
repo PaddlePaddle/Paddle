@@ -2616,7 +2616,8 @@ class PipelineOptimizer(object):
                  place_list=None,
                  concurrency_list=None,
                  queue_size=30,
-                 sync_steps=1):
+                 sync_steps=1,
+                 start_cpu_core_id=0):
         # TODO: check properties
         self._optimizer = optimizer
         self._cut_list = cut_list
@@ -2624,6 +2625,7 @@ class PipelineOptimizer(object):
         self._concurrency_list = concurrency_list
         self._queue_size = queue_size
         self._sync_steps = sync_steps
+        self._start_cpu_core_id = start_cpu_core_id
 
     def create_vars(self, block, main_program):
         used_var_set = set()
@@ -2637,9 +2639,9 @@ class PipelineOptimizer(object):
                 source_var = main_program.block(0).var(str(var))
                 block._clone_variable(source_var, False)
 
-    def extract_forward_section_ops(self, ops, cut_point_name):
+    def extract_section_opt_ops(self, ops, cut_point_name):
         """
-        Extract ops in the forward part of program
+        Extract opt ops in the given section
         """
         output_names = set(cut_point_name)
         relevant_op_flags = [True] * len(ops)
@@ -2653,34 +2655,11 @@ class PipelineOptimizer(object):
         op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
         return op_path
 
-    def extract_backward_section_ops(self, ops, cut_point_name):
-        """
-        Extract ops in the backward part of program
-        """
-        input_names = set(cut_point_name)
-        relevant_op_flags = [True] * len(ops)
-        for i, op in list(enumerate(ops)):
-            if _some_in_set_(op.desc.input_arg_names(), input_names):
-                for name in op.desc.output_arg_names():
-                    input_names.add(name)
-            elif _some_in_set_(
-                    op.desc.output_arg_names(),
-                    input_names) and len(op.desc.input_arg_names()) == 0:
-                # such as the fill_constant operation
-                for name in op.desc.output_arg_names():
-                    input_names.add(name)
-            else:
-                relevant_op_flags[i] = False
-
-        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
-        return op_path
-
     def find_input_output(self, ops, name, is_forward=True):
         """
-        The result for the bp part maybe wrong due to the optimization op, but it doesn't matter for our purpose. 
-        Correct me if i am wrong.
+        Find the inputs or outputs of a section
         """
-        all_set = set(name)
+        all_set = set()
         part_set = set()
         for op in ops:
             if is_forward:
@@ -2703,77 +2682,126 @@ class PipelineOptimizer(object):
                     res.add(var)
         return res
 
+    def _is_opt_role_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) & int(optimize_role) != 0:
+            return True
+        return False
+
+    def _is_lr_role_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.LRSched
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
+
+    def extract_section_ops(self, ops, cut_point_name):
+        """
+        Extract ops in the given section 
+        """
+        output_names = set(cut_point_name)
+        relevant_op_flags = [True] * len(ops)
+        for i, op in reversed(list(enumerate(ops))):
+            if not self._is_opt_role_op(op) and _some_in_set_(
+                    op.desc.output_arg_names(), output_names):
+                for name in op.desc.input_arg_names():
+                    output_names.add(name)
+            elif op.desc.type() == "print" and op.desc.input_arg_names()[
+                    0] in output_names:
+                continue
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def find_section_opt(self, ops, params):
+        res = self.extract_section_opt_ops(ops, params)
+        return res
+
     def split_program(self, main_program, cut_list):
-        """
-        Split a program by the cut node specified in 'cut_list'.
-        Only support simplest scenario now and extended scenario 
-        will be supported later.
-        """
         programs = []
-        backward_programs = []
         block = main_program.block(0)
-        whole_parameters = []
-        for v in block.vars.values():
-            if v.persistable:
-                whole_parameters.append(v.name)
-        used_op_set = set()
-        for i, cut_vars in enumerate(cut_list):
-            is_last = i == len(cut_list) - 1
+        whole_parameters = [e.name for e in block.all_parameters()]
+        cut_var_names = []
+        cut_len = len(cut_list)
+        sec_params = []
+        for i, cut_vars in enumerate(cut_list[:-1]):
+            cut_var_names.append([cut_var.name for cut_var in cut_vars])
+        for i, cut_vars in reversed(list(enumerate(cut_list[:-1]))):
+            cut_var_names.append(
+                [_append_grad_suffix_(cut_var.name) for cut_var in cut_vars])
+            if i == 0:
+                cut_var_names[-1] += [var.name for var in cut_list[-1]]
+        ops = block.ops[:]
+        for i, cut_vars in enumerate(cut_var_names):
             program = {
                 "program": Program(),
                 "input_set": set(),
                 "output_set": set()
             }
+            cur_ops = self.extract_section_ops(ops, cut_vars)
+            if i == 0:
+                for op in ops:
+                    if self._is_lr_role_op(op):
+                        cur_ops.append(op)
+            #prevent inplace in/out
+            program["input_set"].update(
+                self.find_input_output(
+                    cur_ops, [], is_forward=True))
+            for e in cur_ops:
+                ops.remove(e)
 
-            cut_var_names = [cut_var.name for cut_var in cut_vars]
-            grad_cut_var_names = [
-                _append_grad_suffix_(cut_var_name)
-                for cut_var_name in cut_var_names
-            ]
-            cur_ops = self.extract_forward_section_ops(block.ops, cut_var_names)
-            cur_ops = [op for op in cur_ops if op not in used_op_set]
+            if i < cut_len:
+                sec_params.append(
+                    self.find_persistable_vars(cur_ops, whole_parameters))
+            if i >= cut_len - 1:
+                opt_ops = self.find_section_opt(ops,
+                                                sec_params[2 * cut_len - 2 - i])
+
+                for e in opt_ops:
+                    ops.remove(e)
+                cur_ops += opt_ops
+
             op_descs = [op.desc for op in cur_ops]
             for op_desc in op_descs:
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
             program["input_set"].update(
                 self.find_input_output(
-                    cur_ops, cut_var_names, is_forward=True))
-            program["input_set"].update(
-                self.find_persistable_vars(cur_ops, whole_parameters))
-            if not is_last:
-                program["output_set"].update(cut_var_names)
-
-            b_program = None
-            if is_last:
-                b_program = program
-            else:
-                b_program = {
-                    "program": Program(),
-                    "input_set": set(),
-                    "output_set": set()
-                }
-            cur_back_ops = self.extract_backward_section_ops(block.ops,
-                                                             grad_cut_var_names)
-            cur_back_ops = [op for op in cur_back_ops if op not in used_op_set]
-            op_descs = [op.desc for op in cur_back_ops]
-            for op_desc in op_descs:
-                ap_op = b_program["program"].block(0).desc.append_op()
-                ap_op.copy_from(op_desc)
-            if not is_last:
-                b_program["input_set"].update(grad_cut_var_names)
-            b_program["input_set"].update(
-                self.find_persistable_vars(cur_back_ops, whole_parameters))
-            b_program["output_set"].update(
+                    cur_ops, cut_vars, is_forward=True))
+            program["input_set"].update(sec_params[min(i, 2 * cut_len - 2 - i)])
+            program["output_set"].update(
                 self.find_input_output(
-                    cur_back_ops, grad_cut_var_names, is_forward=False))
-
-            used_op_set.update(cur_ops)
-            used_op_set.update(cur_back_ops)
+                    cur_ops, cut_vars, is_forward=False))
             programs.append(program)
-            if not is_last:
-                backward_programs.append(b_program)
-        return programs + list(reversed(backward_programs))
+        program = {
+            "program": Program(),
+            "input_set": set(),
+            "output_set": set()
+        }
+        op_descs = [op.desc for op in ops]
+        for op_desc in op_descs:
+            ap_op = program["program"].block(0).desc.append_op()
+            ap_op.copy_from(op_desc)
+        program["input_set"].update(
+            [cut_var.name + "@GRAD" for cut_var in cut_list[0]])
+        program["input_set"].update(
+            self.find_input_output(
+                ops, [], is_forward=True))
+        program["input_set"].update(sec_params[0])
+        programs.append(program)
+        inputs = set()
+        for program in reversed(list(programs)):
+            output_list = list(program["output_set"])
+            for output in output_list:
+                if output not in inputs:
+                    program["output_set"].remove(output)
+            inputs.update(program["input_set"])
+        return programs
 
     def minimize(self,
                  loss,
@@ -2783,16 +2811,26 @@ class PipelineOptimizer(object):
         self._optimizer.minimize(loss, startup_program, parameter_list,
                                  no_grad_set)
         program = loss.block.program
-        program_list = self.split_program(program, self._cut_list + [[loss]])
+        program_list = self.split_program(program, self._cut_list)
         for p in program_list:
             self.create_vars(p["program"].block(0), program)
+        whole_parameters = [e.name for e in program.block(0).all_parameters()]
+        param_need_sync = []
+        for i, section_p in enumerate(program_list):
+            if not isinstance(self._place_list[i], core.CUDAPlace):
+                continue
+            section_var = [e for e in section_p["program"].block(0).vars]
+            for p in section_var:
+                if p in whole_parameters:
+                    param_need_sync.append(p)
         program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
             "section_program_list": program_list,
-            "place_list": self._place_list + self._place_list[-2::-1],
-            "concurrency_list":
-            self._concurrency_list + self._concurrency_list[-2::-1],
+            "place_list": self._place_list,
+            "concurrency_list": self._concurrency_list,
             "queue_size": self._queue_size,
-            "sync_steps": self._sync_steps
+            "start_cpu_core_id": self._start_cpu_core_id,
+            "sync_steps": self._sync_steps,
+            "param_need_sync": param_need_sync
         }

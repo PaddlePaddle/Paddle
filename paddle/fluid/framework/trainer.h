@@ -140,6 +140,7 @@ class PipelineTrainer : public TrainerBase {
   void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
                            const ProgramDesc& main_program);
   void CopyParameters(const Scope& root_scope, int pipeline_id);
+  void construct_sync_functor();
 };
 }  // namespace framework
 }  // namespace paddle
