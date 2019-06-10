@@ -125,19 +125,19 @@ void pool_compute_ref(const operators::PoolParam& param) {
                   result =
                       result >= src_ptr[src_ind] ? result : src_ptr[src_ind];
                 }
-                // if (pooling_type == Pooling_average_include_padding) {
                 if (pooling_type == "avg" && exclusive == false) {
+                  // Pooling_average_include_padding
                   result += src_ptr[src_ind];
                 }
-                // if (pooling_type == Pooling_average_include_padding) {
                 if (pooling_type == "avg" && exclusive == true) {
+                  // Pooling_average_include_padding
                   result += src_ptr[src_ind];
                 }
               }
             }
           }
-          // if (param.pooling_type == Pooling_average_include_padding) {
           if (pooling_type == "avg" && exclusive == false) {
+            // Pooling_average_include_padding
             // result /= param.window_h * param.window_w;
             // LOG(ERROR)<<"cpu"<<param.window_h * param.window_w;
             int bh = window_h;
@@ -152,12 +152,10 @@ void pool_compute_ref(const operators::PoolParam& param) {
             }
             result /= bh * bw;
           }
-
-          // if (param.pooling_type == Pooling_average_exclude_padding) {
           if (pooling_type == "avg" && exclusive == true) {
+            // Pooling_average_exclude_padding
             result /= (ew - sw) * (eh - sh);
           }
-
           dst_ptr[dst_ind] = result;
         }
       }
@@ -179,39 +177,47 @@ TEST(pool_arm, compute) {
   lite::Tensor output;
   lite::Tensor output_ref;
 
-  for (auto n : {1, 3, 4, 11}) {
-    for (auto c : {1, 3, 11, 4, 1024}) {
-      for (auto h : {3, 1, 11, 4, 1}) {
-        for (auto w : {1, 3, 4, 12, 1}) {
-          LOG(INFO) << "n:" << n << " c:" << c << " h:" << h << " w:" << w;
+  for (auto pooling_type : {"avg", "max"}) {
+    for (auto global_pooling : {true}) {
+      for (auto stride : {2}) {
+        for (auto pad : {0}) {
+          for (auto n : {1, 3, 4, 11}) {
+            for (auto c : {1, 3, 11, 4, 1024}) {
+              for (auto h : {3, 1, 11, 4, 1}) {
+                for (auto w : {1, 3, 4, 12, 1}) {
+                  LOG(INFO) << "n:" << n << " c:" << c << " h:" << h
+                            << " w:" << w << " stride:" << stride
+                            << " pad:" << pad
+                            << " pooling_type:" << pooling_type
+                            << " global_pooling:" << global_pooling;
 
-          // init x
-          x.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
-          output.Resize(DDim(std::vector<int64_t>({n, c, 1, 1})));
-          output_ref.Resize(DDim(std::vector<int64_t>({n, c, 1, 1})));
-          auto* x_data = x.mutable_data<float>();
-          for (int i = 0; i < x.dims().production(); ++i) {
-            x_data[i] = i;
-          }
+                  // init x, output
+                  x.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
+                  output.Resize(DDim(std::vector<int64_t>({n, c, 1, 1})));
+                  output_ref.Resize(DDim(std::vector<int64_t>({n, c, 1, 1})));
+                  auto* x_data = x.mutable_data<float>();
+                  for (int i = 0; i < x.dims().production(); ++i) {
+                    x_data[i] = i;
+                  }
 
-          // fill param
-          param.x = &x;
-          param.output = &output;
-          param.pooling_type = "avg";
-          param.ksize = {h, w};
-          param.global_pooling = true;
-          // param.strides = {2, 2};
-          // param.paddings = {0, 0};
-          param.exclusive = true;
-          param.adaptive = false;
-          param.ceil_mode = false;
-          param.use_quantizer = false;
+                  // fill param
+                  param.x = &x;
+                  param.output = &output;
+                  param.pooling_type = pooling_type;
+                  param.ksize = {h, w};
+                  param.global_pooling = global_pooling;
+                  param.strides = {stride, stride};
+                  param.paddings = {pad, pad};
+                  param.exclusive = true;
+                  param.adaptive = false;
+                  param.ceil_mode = false;
+                  param.use_quantizer = false;
 
-          // compute
-          pool.SetParam(param);
-          pool.Run();
+                  // compute
+                  pool.SetParam(param);
+                  pool.Run();
 
-#if 1
+#if 0
           LOG(INFO) << "n:" << n << " c:" << c << " h:" << h << " w:" << w
                     << " end";
           std::cout << "n:" << n << " c:" << c << " h:" << h << " w:" << w
@@ -229,24 +235,30 @@ TEST(pool_arm, compute) {
           }
           std::cout << "\n";
 #endif
-          // compute ref
-          // output_ref.Resize(output.dims());
-          param.output = &output_ref;
-          pool_compute_ref(param);
-          LOG(INFO) << "pool_compute_ref(param) end";
 
-          // compare
-          auto* output_data = output.mutable_data<float>();
-          auto* output_ref_data = output_ref.mutable_data<float>();
-          for (int i = 0; i < output.dims().production(); i++) {
-            EXPECT_NEAR(output_data[i], output_ref_data[i], 1);  // 1e-5);
+                  // compute ref
+                  // output_ref.Resize(output.dims());
+                  param.output = &output_ref;
+                  pool_compute_ref(param);
+                  LOG(INFO) << "pool_compute_ref(param) end";
+
+                  // compare
+                  auto* output_data = output.mutable_data<float>();
+                  auto* output_ref_data = output_ref.mutable_data<float>();
+                  for (int i = 0; i < output.dims().production(); i++) {
+                    EXPECT_NEAR(output_data[i], output_ref_data[i],
+                                1);  // 1e-5);
+                  }
+
+                  LOG(INFO) << "compare pass";
+                }
+              }
+            }
           }
-
-          LOG(INFO) << "compare pass";
-        }
-      }
-    }
-  }
+        }  // pad
+      }    // stride
+    }      // global_pooling
+  }        // pooling_type
 }
 
 TEST(pool, retrive_op) {
