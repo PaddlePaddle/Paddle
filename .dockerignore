@@ -1,0 +1,15 @@
+*.DS_Store
+build/
+*.user
+.vscode
+.idea
+.project
+.cproject
+.pydevproject
+Makefile
+.test_env/
+third_party/
+*~
+bazel-*
+
+!build/*.deb
