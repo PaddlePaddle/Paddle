@@ -22,6 +22,10 @@ __all__ = ['Uniform', 'Normal']
 
 
 class Distribution(object):
+    """
+    Distribution is the abstract base class for probability distributions.
+    """
+
     def sample(self):
         """Sampling from the distribution."""
         raise NotImplementedError
@@ -39,6 +43,13 @@ class Distribution(object):
         raise NotImplementedError
 
     def _validate_args(self, *args):
+        """
+        Argument validation for distribution args
+        Args:
+            value (float, list, numpy.ndarray, Variable)
+        Raises
+            ValueError: if one argument is Variable, all arguments should be Variable
+        """
         is_variable = False
         is_number = False
         for arg in args:
@@ -48,11 +59,18 @@ class Distribution(object):
                 is_number = True
 
         if is_variable and is_number:
-            raise ValueError('if one parameter is Variable, other parameters must be Varialbe')
+            raise ValueError('if one argument is Variable, all arguments should be Variable')
 
         return is_variable
 
     def _to_variable(self, *args):
+        """
+        Argument convert args to Variable
+        Args:
+            value (float, list, numpy.ndarray, Variable)
+        Returns:
+            Variable of args.
+        """
         numpy_args = []
         variable_args = []
         tmp = 0.
@@ -83,6 +101,47 @@ class Distribution(object):
 #https://www.tensorflow.org/api_docs/python/tf/distributions/Normal
 #https://pytorch.org/docs/stable/distributions.html?highlight=uniform#torch.distributions.uniform.Uniform
 class Uniform(Distribution):
+    """Uniform distribution with `low` and `high` parameters.
+    #### Mathematical Details
+    The probability density function (pdf) is,
+    ```none
+    pdf(x; a, b) = I[a <= x < b] / Z
+    Z = b - a
+    ```
+    where
+    - `low = a`,
+    - `high = b`,
+    - `Z` is the normalizing constant, and
+    - `I[predicate]` is the [indicator function](
+    https://en.wikipedia.org/wiki/Indicator_function) for `predicate`.
+    The parameters `low` and `high` must be shaped in a way that supports
+    broadcasting (e.g., `high - low` is a valid operation).
+    #### Examples
+    ```python
+    # Without broadcasting:
+    u1 = Uniform(low=3.0, high=4.0)  # a single uniform distribution [3, 4]
+    u2 = Uniform(low=[1.0, 2.0],
+               high=[3.0, 4.0])  # 2 distributions [1, 3], [2, 4]
+    u3 = Uniform(low=[[1.0, 2.0],
+                    [3.0, 4.0]],
+               high=[[1.5, 2.5],
+                     [3.5, 4.5]])  # 4 distributions
+    ```
+    ```python
+    # With broadcasting:
+    u1 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])  # 3 distributions
+    ```
+    ```python
+    # Variable as input:
+    low_array = np.array([1.0, 2.0])
+    high_array = np.array([3.0, 4.0])
+    low_variable = layers.create_tensor(dtype='float32')
+    high_variable = layers.create_tensor(dtype='float32')
+    layers.assign(low_array, low_variable)
+    layers.assign(high_array, high_variable)
+    u1 = Uniform(low=low_variable, high=high_variable)
+    ```
+    """
     def __init__(self, low, high):
         self.all_arg_is_float = False
         self.batch_size_unknown = False
@@ -124,6 +183,41 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
+    """The Normal distribution with location `loc` and `scale` parameters.
+    #### Mathematical details
+    The probability density function (pdf) is,
+    ```none
+    pdf(x; mu, sigma) = exp(-0.5 (x - mu)**2 / sigma**2) / Z
+    Z = (2 pi sigma**2)**0.5
+    ```
+    where `loc = mu` is the mean, `scale = sigma` is the std. deviation, and, `Z`
+    is the normalization constant.
+    The Normal distribution is a member of the [location-scale family](
+    https://en.wikipedia.org/wiki/Location-scale_family), i.e., it can be
+    constructed as,
+    ```none
+    X ~ Normal(loc=0, scale=1)
+    Y = loc + scale * X
+    ```
+    #### Examples
+    Examples of initialization of one or a batch of distributions.
+    ```python
+    # Define a single scalar Normal distribution.
+    dist = Normal(loc=0., scale=3.)
+    # Define a batch of two scalar valued Normals.
+    # The first has mean 1 and standard deviation 11, the second 2 and 22.
+    dist = Normal(loc=[1, 2.], scale=[11, 22.])
+    # Get 3 samples, returning a 3 x 2 tensor.
+    dist.sample([3])
+    ```
+    Arguments are broadcast when possible.
+    ```python
+    # Define a batch of two scalar valued Normals.
+    # Both have mean 1, but different standard deviations.
+    dist = Normal(loc=1., scale=[11, 22.])
+
+    ```
+    """
     def __init__(self, loc, scale):
         self.batch_size_unknown = False
         self.all_arg_is_float = False
