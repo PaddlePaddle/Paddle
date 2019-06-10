@@ -42,12 +42,12 @@ function cmake_arm {
         -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
 }
 
-function build {
-    file=$1
-    for _test in $(cat $file); do
-        make $_test -j$(expr $(nproc) )
-    done
-}
+#function build {
+#    file=$1
+#    for _test in $(cat $file); do
+#        make $_test -j$(expr $(nproc) )
+#    done
+#}
 
 # It will eagerly test all lite related unittests.
 function test_lite {
