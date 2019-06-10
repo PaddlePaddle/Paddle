@@ -325,8 +325,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       auto dst_mdp = mkldnn::memory::primitive_desc{
           Axis2MemoryDesc(dims_, axis_), engine_};
 
-      auto dst_data = output->mutable_data<float>(
-          place, paddle::memory::Allocator::kDefault, dst_mdp.get_size());
+      auto dst_data = output->mutable_data<float>(place, dst_mdp.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_mdp, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
@@ -865,9 +864,8 @@ template <typename T>
 static std::shared_ptr<mkldnn::memory> SetDstMemory(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
     const std::shared_ptr<ConvMKLDNNHandler>& handler) {
-  T* output_data = output->mutable_data<T>(
-      ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
-      handler->GetDstMemorySize());
+  T* output_data =
+      output->mutable_data<T>(ctx.GetPlace(), handler->GetDstMemorySize());
   std::shared_ptr<mkldnn::memory> dst_memory_p =
       handler->AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
   return dst_memory_p;
@@ -898,9 +896,8 @@ static void SetDstMemoryHandler(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
     const std::shared_ptr<ConvMKLDNNHandler>& handler,
     std::shared_ptr<mkldnn::memory>* dst_memory_p) {
-  T* output_data = output->mutable_data<T>(
-      ctx.GetPlace(), ::paddle::memory::Allocator::kDefault,
-      handler->GetDstMemorySize());
+  T* output_data =
+      output->mutable_data<T>(ctx.GetPlace(), handler->GetDstMemorySize());
   (*dst_memory_p)->set_data_handle(to_void_cast<T>(output_data));
 }
 
