@@ -84,7 +84,7 @@ class Conv2D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, H, W] format.
+        name_scope(str) : The name for this class.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -118,12 +118,6 @@ class Conv2D(layers.Layer):
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None
-
-    Returns:
-        Variable: The tensor variable storing the convolution and \
-                  non-linearity activation result.
 
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
@@ -131,25 +125,37 @@ class Conv2D(layers.Layer):
 
     Examples:
         .. code-block:: python
+          
+          with fluid.dygraph.guard():
+             conv2d = Conv2D( "conv2d", 2, 3)
+             data = to_variable( data )
+             conv = conv2d( data )
+          from paddle.fluid.dygraph.base import to_variable
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph import Conv2D
+          import numpy as np
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = np.random.uniform( -1, 1, [10, 3, 32, 32] ).astype('float32')
+          with fluid.dygraph.guard():
+              conv2d = Conv2D( "conv2d", 2, 3)
+              data = to_variable( data )
+              conv = conv2d( data )
+
     """
 
     def __init__(self,
                  name_scope,
-                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
                  padding=0,
                  dilation=1,
                  groups=None,
-                 use_cudnn=True,
-                 act=None,
                  param_attr=None,
                  bias_attr=None,
-                 dtype=core.VarDesc.VarType.FP32):
+                 use_cudnn=True,
+                 act=None,
+                 dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__(name_scope, dtype)
         self._groups = groups
@@ -160,7 +166,11 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
-        self._num_channels = num_channels
+        self._filter_size = filter_size
+        self._num_filters = num_filters
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._dtype = dtype
         # if (self._num_channels == self._groups and
         #         num_filters % self._num_channels == 0 and not self._use_cudnn):
         #     self._l_type = 'depthwise_conv2d'
@@ -169,22 +179,26 @@ class Conv2D(layers.Layer):
         #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17275
         self._l_type = 'conv2d'
 
-        if groups is None:
-            num_filter_channels = num_channels
+    def _build_once(self, input):
+        self._num_channels = input.shape[1]
+        if self._groups is None:
+            num_filter_channels = self._num_channels
         else:
-            if num_channels % groups != 0:
+            if self._num_channels % self._groups != 0:
                 raise ValueError("num_channels must be divisible by groups.")
-            num_filter_channels = num_channels // groups
-        filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-        filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+            num_filter_channels = self._num_channels // self._groups
+        filter_size = utils.convert_to_list(self._filter_size, 2, 'filter_size')
+        filter_shape = [self._num_filters, int(num_filter_channels)
+                        ] + filter_size
 
         def _get_default_param_initializer():
-            filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+            filter_elem_num = filter_size[0] * filter_size[
+                1] * self._num_channels
             std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
-            attr=param_attr,
+            attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
@@ -204,8 +218,8 @@ class Conv2D(layers.Layer):
                 type=core.VarDesc.VarType.RAW)
 
         self._bias_param = self.create_parameter(
-            attr=bias_attr,
-            shape=[num_filters],
+            attr=self._bias_attr,
+            shape=[self._num_filters],
             dtype=self._dtype,
             is_bias=True)
 
@@ -229,15 +243,17 @@ class Conv2D(layers.Layer):
                 'use_mkldnn': False,
             })
 
-        pre_act = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
-
-        self._helper.append_op(
-            type='elementwise_add',
-            inputs={'X': [pre_bias],
-                    'Y': [self._bias_param]},
-            outputs={'Out': [pre_act]},
-            attrs={'axis': 1})
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_act, act=self._act)
@@ -370,7 +386,7 @@ class Conv3D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         num_channels = input.shape[1]
         self._dtype = self._helper.input_dtype(input)
 
@@ -577,7 +593,7 @@ class Conv3DTranspose(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         self._input_channel = input.shape[1]
 
@@ -651,14 +667,12 @@ class Conv3DTranspose(layers.Layer):
 
 
 class Pool2D(layers.Layer):
+    # TODO, should delete this class
     """
     ${comment}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCHW, where N is batch size, C is
-                          the number of channels, H is the height of the
-                          feature, and W is the width of the feature.
+        name_scope(str) : The name of this class.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
@@ -812,8 +826,7 @@ class FC(layers.Layer):
             out.shape = (1, 2)
 
     Args:
-        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
-            the input tensor(s) is at least 2.
+        name(str): The name of this class.
         size(int): The number of output units in this layer.
         num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
@@ -831,37 +844,35 @@ class FC(layers.Layer):
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
-        name (str, default None): The name of this layer.
-
-    Returns:
-        Variable: The transformation result.
+        dtype(str): Dtype used for weight
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
 
     Examples:
         .. code-block:: python
+        
+          from paddle.fluid.dygraph.base import to_variable
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph import FC
+          import numpy as np
+          data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
+          with fluid.dygraph.guard():
+              fc = FC( "fc", 64, num_flatten_dims=2)
+              data = to_variable( data )
+              conv = fc( data )
 
-          # when input is single tensor
-          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-          fc = fluid.FC("fc", size=1000, act="tanh")
-          fc_res = fc(data)
-
-          # when input are multiple tensors
-          data_1 = fluid.layers.data(name="data_1", shape=[32, 32], dtype="float32")
-          data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
-          fc = fluid.FC("fc", size=1000, act="tanh")
-          fc_res = fc([data_1, data_2])
     """
 
     def __init__(self,
                  name_scope,
                  size,
+                 num_flatten_dims=1,
                  param_attr=None,
                  bias_attr=None,
-                 num_flatten_dims=1,
-                 dtype=core.VarDesc.VarType.FP32,
-                 act=None):
+                 act=None,
+                 is_test=False,
+                 dtype="float32"):
         super(FC, self).__init__(name_scope, dtype)
 
         self._size = size
@@ -881,7 +892,7 @@ class FC(layers.Layer):
         assert isinstance(value, Parameter)
         self.__w[i] = value
 
-    def build_once(self, input):
+    def _build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
                                                               self._param_attr):
@@ -1022,6 +1033,8 @@ class BatchNorm(layers.Layer):
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
+        trainable_statistics(bool, Default False): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -1044,23 +1057,24 @@ class BatchNorm(layers.Layer):
                  epsilon=1e-05,
                  param_attr=None,
                  bias_attr=None,
-                 dtype=core.VarDesc.VarType.FP32,
+                 dtype='float32',
                  data_layout='NCHW',
                  in_place=False,
                  moving_mean_name=None,
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
-                 use_global_stats=False):
+                 use_global_stats=False,
+                 trainable_statistics=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
-        self._param_attr = bias_attr
+        self._bias_attr = bias_attr
         self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
-        if dtype == core.VarDesc.VarType.FP16:
-            self._dtype = core.VarDesc.VarType.FP32
+        if dtype == "float16":
+            self._dtype = "float32"
         else:
             self._dtype = dtype
 
@@ -1076,7 +1090,7 @@ class BatchNorm(layers.Layer):
             self._scale.stop_gradient = True
 
         self._bias = self.create_parameter(
-            attr=self._param_attr,
+            attr=self._bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
@@ -1109,8 +1123,9 @@ class BatchNorm(layers.Layer):
         self._is_test = is_test
         self._fuse_with_relu = fuse_with_relu
         self._use_global_stats = use_global_stats
+        self._trainable_statistics = trainable_statistics
 
-    def build_once(self, input):
+    def _build_once(self, input):
         pass
 
     def forward(self, input):
@@ -1149,7 +1164,8 @@ class BatchNorm(layers.Layer):
                 "is_test": self._is_test,
                 "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
-                "use_global_stats": self._use_global_stats
+                "use_global_stats": self._use_global_stats,
+                "trainable_statistics": self._trainable_statistics
             })
 
         # Currently, we don't support inplace in dygraph mode
@@ -1163,22 +1179,15 @@ class Embedding(layers.Layer):
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     a lookup table. The result of this lookup is the embedding of each ID in the
     :attr:`input`.
-
-    All the input variables are passed in as local variables to the LayerHelper
-    constructor.
+    All the input variables are passed in as local variables to the LayerHelper constructor
 
     Args:
         name_scope: See base class.
-        size(tuple|list): The shape of the look up table parameter. It should
-            have two elements which indicate the size of the dictionary of
-            embeddings and the size of each embedding vector respectively.
+        size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size of the dictionary of embeddings and the size of each embedding vector respectively.
+
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
-            :math:`size[0] + dim`.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup. Otherwise the given :attr:`padding_idx` indicates padding the output with zeros whenever lookup encounters it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
@@ -1187,12 +1196,18 @@ class Embedding(layers.Layer):
                   supplied inputs.
 
     Examples:
+
         .. code-block:: python
 
-          dict_size = len(dataset.ids)
-          input = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          embedding = fluid.Embedding(size=[dict_size, 16])
-          fc = embedding(input)
+          inp_word = np.array([[[1]]]).astype('int64')
+          dict_size = 20
+          with fluid.dygraph.guard():
+              emb = fluid.Embedding(
+                  name_scope='embedding',
+                  size=[dict_size, 32],
+                  param_attr='emb.w',
+                  is_sparse=False)
+            static_rlt3 = emb2(base.to_variable(inp_word))
     """
 
     def __init__(self,
@@ -1314,7 +1329,7 @@ class LayerNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         input_shape = input.shape
         param_shape = [
@@ -1438,6 +1453,7 @@ class GRUUnit(layers.Layer):
                              Default: 'tanh'
         gate_activation (string): The activation type for gates (actGate).
                                   Default: 'sigmoid'
+        dtype(string): The dtype of the layers
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values.
@@ -1459,8 +1475,8 @@ class GRUUnit(layers.Layer):
             sigmoid=1,
             tanh=2,
             relu=3, )
-        activation = activation_dict[activation]
-        gate_activation = activation_dict[gate_activation]
+        self.activation = activation_dict[activation]
+        self.gate_activation = activation_dict[gate_activation]
 
         self._dtype = dtype
         size = size // 3
@@ -1492,8 +1508,8 @@ class GRUUnit(layers.Layer):
                 'Hidden': updated_hidden,
             },
             attrs={
-                'activation': 2,  # tanh
-                'gate_activation': 1,  # sigmoid
+                'activation': self.activation,
+                'gate_activation': self.gate_activation,
             })
 
         return updated_hidden, reset_hidden_pre, gate
@@ -1501,12 +1517,15 @@ class GRUUnit(layers.Layer):
 
 class NCE(layers.Layer):
     """
-    ${comment}
+    Compute and return the noise-contrastive estimation training loss. See
+    `Noise-contrastive estimation: A new estimation principle for unnormalized
+    statistical models
+     <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
+    By default this operator uses a uniform distribution for sampling.
 
     Args:
-        input (Variable): input variable.
-        label (Variable): label.
-        num_total_classes (int):${num_total_classes_comment}
+        name_scope (str): See base class.
+        num_total_classes (int): Total number of classes in all samples
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
@@ -1519,7 +1538,7 @@ class NCE(layers.Layer):
              If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
-        num_neg_samples (int): ${num_neg_samples_comment}
+        num_neg_samples (int): The number of negative classes. The default value is 10.
         name (str|None): A name for this layer(optional). If set None, the layer
              will be named automatically. Default: None.
         sampler (str): The sampler used to sample class from negtive classes.
@@ -1538,37 +1557,45 @@ class NCE(layers.Layer):
     Examples:
         .. code-block:: python
 
+            import numpy as np
+            import paddle.fluid as fluid
+
             window_size = 5
-            words = []
-            for i in xrange(window_size):
-                words.append(layers.data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+            dict_size = 20
+            label_word = int(window_size // 2) + 1
+            inp_word = np.array([[[1]], [[2]], [[3]], [[4]], [[5]]]).astype('int64')
+            nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
 
-            dict_size = 10000
-            label_word = int(window_size / 2) + 1
+            with fluid.dygraph.guard():
+                words = []
+                for i in range(window_size):
+                    words.append(fluid.dygraph.base.to_variable(inp_word[i]))
 
-            embs = []
-            for i in xrange(window_size):
-                if i == label_word:
-                    continue
+                emb = fluid.Embedding(
+                    'embedding',
+                    size=[dict_size, 32],
+                    param_attr='emb.w',
+                    is_sparse=False)
 
-                emb = layers.embedding(input=words[i], size=[dict_size, 32],
-                                       param_attr='emb.w', is_sparse=True)
-                embs.append(emb)
+                embs3 = []
+                for i in range(window_size):
+                    if i == label_word:
+                        continue
 
-            embs = layers.concat(input=embs, axis=1)
-            loss = layers.nce(input=embs, label=words[label_word],
-                          num_total_classes=dict_size, param_attr='nce.w',
-                          bias_attr='nce.b')
+                    emb_rlt = emb(words[i])
+                    embs3.append(emb_rlt)
 
-            #or use custom distribution
-            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
-            loss = layers.nce(input=embs, label=words[label_word],
-                          num_total_classes=5, param_attr='nce.w',
-                          bias_attr='nce.b',
-                          num_neg_samples=3,
-                          sampler="custom_dist",
-                          custom_dist=dist)
+                embs3 = fluid.layers.concat(input=embs3, axis=1)
+                nce = fluid.NCE('nce',
+                             num_total_classes=dict_size,
+                             num_neg_samples=2,
+                             sampler="custom_dist",
+                             custom_dist=nid_freq_arr.tolist(),
+                             seed=1,
+                             param_attr='nce.w',
+                             bias_attr='nce.b')
+
+                nce_loss3 = nce(embs3, words[label_word])
 
     """
 
@@ -1676,7 +1703,7 @@ class NCE(layers.Layer):
             'remote_prefetch': remote_prefetch
         }
 
-    def build_once(self, input, label, sample_weight=None):
+    def _build_once(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
@@ -1731,13 +1758,13 @@ class PRelu(layers.Layer):
         y = \max(0, x) + \\alpha * \min(0, x)
 
     Args:
-        x (Variable): The input tensor.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha).
+        name_scope (str): See base class.
         mode (string): The mode for weight sharing. It supports all, channel
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+          weight (alpha).
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -1748,9 +1775,14 @@ class PRelu(layers.Layer):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+        inp_np = np.ones([5, 200, 100, 100]).astype('float32')
+        with fluid.dygraph.guard():
             mode = 'channel'
-            output = fluid.layers.prelu(x,mode)
+            prelu = fluid.PRelu(
+                'prelu',
+                mode=mode,
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+            dy_rlt = prelu(fluid.dygraph.base.to_variable(inp_np))
     """
 
     def __init__(self, name_scope, mode, param_attr=None):
@@ -1762,7 +1794,7 @@ class PRelu(layers.Layer):
             raise ValueError('mode should be one of all, channel, element.')
         self._alpha_shape = [1]
 
-    def build_once(self, input):
+    def _build_once(self, input):
         if self._mode == 'channel':
             self._alpha_shape = [1, input.shape[1], 1, 1]
         elif self._mode == 'element':
@@ -1840,7 +1872,7 @@ class BilinearTensorProduct(layers.Layer):
         self._name = name
         self._inputs = dict()
 
-    def build_once(self, x, y):
+    def _build_once(self, x, y):
         self._dtype = self._helper.input_dtype(x)
 
         param_shape = [self._size, x.shape[1], y.shape[1]]
@@ -2016,7 +2048,7 @@ class Conv2DTranspose(layers.Layer):
         self._output_size = output_size
         self._op_type = 'conv2d_transpose'
 
-    def build_once(self, input):
+    def _build_once(self, input):
         input_channel = input.shape[1]
         if (input_channel == self._groups and
                 self._num_filters == input_channel and not self._use_cudnn):
@@ -2051,7 +2083,7 @@ class Conv2DTranspose(layers.Layer):
             self._filter_size = [filter_size_h, filter_size_w]
         else:
             self._filter_size = utils.convert_to_list(
-                self._output_size, 2, 'conv2d_transpose.filter_size')
+                self._filter_size, 2, 'conv2d_transpose.filter_size')
 
         if self._output_size is None:
             self._output_size = []
@@ -2140,7 +2172,7 @@ class SequenceConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
@@ -2177,7 +2209,7 @@ class RowConv(layers.Layer):
         self._param_attr = param_attr
         self._future_context_size = future_context_size
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
         self._filter_param = self.create_parameter(
@@ -2240,7 +2272,7 @@ class GroupNorm(layers.Layer):
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def build_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         param_shape = [input.shape[1]]
         if self._bias_attr:
@@ -2293,7 +2325,7 @@ class SpectralNorm(layers.Layer):
         self._eps = eps
         self._dim = dim
 
-    def build_once(self, weight):
+    def _build_once(self, weight):
         self._dtype = self._helper.input_dtype(weight)
         input_shape = weight.shape
         h = input_shape[self._dim]
@@ -2348,7 +2380,7 @@ class TreeConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def build_once(self, nodes_vector, edge_set):
+    def _build_once(self, nodes_vector, edge_set):
         assert isinstance(nodes_vector, Variable)
         assert isinstance(edge_set, Variable)
         self._dtype = self._helper.input_dtype(nodes_vector)

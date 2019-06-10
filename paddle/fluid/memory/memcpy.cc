@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 
 #include <cstring>  // for memcpy
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -24,6 +25,7 @@ template <>
 void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
                                                   platform::CPUPlace,
                                                   const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
 
@@ -40,6 +42,7 @@ template <>
 void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
     const void* src, size_t num, cudaStream_t stream) {
+  if (UNLIKELY(num == 0)) return;
   platform::SetDeviceId(src_place.device);
 
   if (stream) {
@@ -59,6 +62,8 @@ template <>
 void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CPUPlace src_place,
     const void* src, size_t num, cudaStream_t stream) {
+  if (UNLIKELY(num == 0)) return;
+
   platform::SetDeviceId(dst_place.device);
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CPU->GPU");
@@ -77,6 +82,8 @@ template <>
 void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     platform::CUDAPlace dst_place, void* dst, platform::CUDAPlace src_place,
     const void* src, size_t num, cudaStream_t stream) {
+  if (UNLIKELY(num == 0)) return;
+
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
     if (stream) {
@@ -103,6 +110,7 @@ template <>
 void Copy<platform::CPUPlace, platform::CUDAPinnedPlace>(
     platform::CPUPlace dst_place, void* dst,
     platform::CUDAPinnedPlace src_place, const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
 
@@ -110,6 +118,7 @@ template <>
 void Copy<platform::CUDAPinnedPlace, platform::CPUPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
     platform::CPUPlace src_place, const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
 
@@ -117,6 +126,7 @@ template <>
 void Copy<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
     platform::CUDAPinnedPlace src_place, const void* src, size_t num) {
+  if (UNLIKELY(num == 0)) return;
   std::memcpy(dst, src, num);
 }
 
@@ -125,6 +135,7 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::CUDAPinnedPlace dst_place, void* dst,
     platform::CUDAPlace src_place, const void* src, size_t num,
     cudaStream_t stream) {
+  if (UNLIKELY(num == 0)) return;
   platform::SetDeviceId(src_place.device);
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned");
@@ -140,6 +151,8 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     platform::CUDAPlace dst_place, void* dst,
     platform::CUDAPinnedPlace src_place, const void* src, size_t num,
     cudaStream_t stream) {
+  if (UNLIKELY(num == 0)) return;
+
   platform::SetDeviceId(dst_place.device);
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU");

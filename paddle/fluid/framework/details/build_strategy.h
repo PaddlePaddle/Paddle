@@ -80,6 +80,8 @@ struct BuildStrategy {
 
   bool fuse_all_reduce_ops_{false};
 
+  bool enable_backward_optimizer_op_deps_{false};
+
   bool fuse_relu_depthwise_conv_{false};
 
   bool sync_batch_norm_{false};
@@ -111,6 +113,17 @@ struct BuildStrategy {
   bool cache_runtime_context_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
+  size_t nccl_comm_num_{1};
+  // The picture is here:
+  // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+  bool use_hierarchical_allreduce_{false};
+  // Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu
+  // cards' number in most cases.
+  size_t hierarchical_allreduce_inter_nranks_{0};
+  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to
+  // nodes number.
+  size_t hierarchical_allreduce_exter_nranks_{0};
+
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
   // with other strategy. If not, the strategy should be created through
@@ -136,7 +149,7 @@ struct BuildStrategy {
                    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                    const bool use_cuda,
-                   platform::NCCLContextMap *nccl_ctxs) const;
+                   platform::MultiNCCLContextMap *nccl_ctxs) const;
 #else
                    const bool use_cuda) const;
 #endif

@@ -148,7 +148,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::INT64: {
         int64_t *pdata = static_cast<int64_t *>(out.data.data());
         int64_t *pdata_ref = ref_out.data<int64_t>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
@@ -534,7 +534,7 @@ void CompareNativeAndAnalysis(
 }
 
 void CompareAnalysisAndZeroCopy(
-    PaddlePredictor::Config *config,
+    PaddlePredictor::Config *config, PaddlePredictor::Config *config1,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const std::vector<std::string> &outputs_name) {
   int batch_size = FLAGS_batch_size;
@@ -544,8 +544,8 @@ void CompareAnalysisAndZeroCopy(
   predictor->Run(inputs[0], &analysis_outputs, batch_size);
   // analysis + zero_copy
   std::vector<ZeroCopyTensor> zerocopy_outputs;
-  reinterpret_cast<AnalysisConfig *>(config)->SwitchUseFeedFetchOps(false);
-  predictor = CreateTestPredictor(config, true);
+  reinterpret_cast<AnalysisConfig *>(config1)->SwitchUseFeedFetchOps(false);
+  predictor = CreateTestPredictor(config1, true);
   ConvertPaddleTensorToZeroCopyTensor(predictor.get(), inputs[0]);
   predictor->ZeroCopyRun();
   for (size_t i = 0; i < outputs_name.size(); i++) {

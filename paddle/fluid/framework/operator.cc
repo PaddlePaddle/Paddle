@@ -1142,7 +1142,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
                          input.first, i);
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
