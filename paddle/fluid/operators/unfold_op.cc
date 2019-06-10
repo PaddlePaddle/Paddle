@@ -111,7 +111,6 @@ class UnfoldOp : public framework::OperatorWithKernel {
                        paddings[2], strides[0]);
     int output_width = CalcOutputSize(in_dims[3], kernel_sizes[1], dilations[1],
                                       paddings[1], paddings[3], strides[1]);
-
     int output_col_length = output_height * output_width;
     out_dims.push_back(output_col_length);
 
