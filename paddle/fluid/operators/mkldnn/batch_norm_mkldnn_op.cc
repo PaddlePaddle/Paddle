@@ -65,21 +65,21 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
     const std::string key_batch_norm_fwd_pd = key_common_ + "@bn_fwd_pd";
-    batch_norm_pd_ =
-        std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
-            dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
+    batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
+        dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
 
     if (batch_norm_pd_ == nullptr) {
       static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(acquire_barrier);
-      batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
+      batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
+          dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
       if (batch_norm_pd_ == nullptr) {
         batch_norm_pd_.reset(
             new batch_norm_fwd::primitive_desc(bn_fwd_desc, engine));
         dev_ctx_.SetBlob(key_batch_norm_fwd_pd, batch_norm_pd_);
       }
-
-    } 
+    }
     return batch_norm_pd_;
   }
 

@@ -63,15 +63,16 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
         dev_ctx_.GetBlob(key_softmax_pd));
     if (softmax_pd_ == nullptr) {
       static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(acquire_barrier);
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
       softmax_pd_ = std::static_pointer_cast<softmax_forward::primitive_desc>(
-        dev_ctx_.GetBlob(key_softmax_pd));
+          dev_ctx_.GetBlob(key_softmax_pd));
       if (softmax_pd_ == nullptr) {
         softmax_pd_.reset(
             new softmax_forward::primitive_desc(softmax_desc, engine));
         dev_ctx_.SetBlob(key_softmax_pd, softmax_pd_);
       }
-    } 
+    }
 
     return softmax_pd_;
   }
@@ -106,7 +107,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
           *softmax_bwd_pd_, *dst_memory_p, *diff_dst_memory_p,
           *diff_src_memory_p);
       dev_ctx_.SetBlob(prim_key, softmax_bwd_p);
-    } 
+    }
 
     return softmax_bwd_p;
   }

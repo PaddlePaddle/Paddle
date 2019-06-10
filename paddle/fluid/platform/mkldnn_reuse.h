@@ -14,8 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#include <string>
 #include <sstream>
+#include <string>
 #include <vector>
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
@@ -32,16 +32,13 @@ class MKLDNNHandler {
  public:
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
-      : dev_ctx_(dev_ctx),
-        engine_(engine),
-        key_common_(base_key) 
-      {
-        // TODO(jczaja): Make it faster
-        auto tid = std::this_thread::get_id();
-        std::stringstream ss;
-        ss << tid;
-        key_ = key_common_ + "-t:" + ss.str();
-      }
+      : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
+    // TODO(jczaja): Make it faster
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << tid;
+    key_ = key_common_ + "-t:" + ss.str();
+  }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
@@ -676,34 +673,34 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
 
     if (conv_pd_ == nullptr) {
       static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(acquire_barrier);
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
 
       conv_pd_ = std::static_pointer_cast<typename forward_t::primitive_desc>(
-        dev_ctx_.GetBlob(key_conv_pd));
+          dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {
-
         mkldnn::memory::dims stride_dims = strides;
         mkldnn::memory::dims padding_dims = paddings;
 
         auto conv_desc =
             bias ? typename forward_t::desc(
-                       fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
-                       weights, *bias, dst, stride_dims, padding_dims,
+                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
+                       src, weights, *bias, dst, stride_dims, padding_dims,
                        padding_dims, mkldnn::padding_kind::zero)
                  : typename forward_t::desc(
-                       fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
-                       weights, dst, stride_dims, padding_dims, padding_dims,
-                       mkldnn::padding_kind::zero);
+                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
+                       src, weights, dst, stride_dims, padding_dims,
+                       padding_dims, mkldnn::padding_kind::zero);
 
         mkldnn::primitive_attr conv_attr = CreatePostOps(
             fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
 
-        conv_pd_.reset(
-            new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
+        conv_pd_.reset(new typename forward_t::primitive_desc(
+            conv_desc, conv_attr, engine));
         // Save conv_pd/src_memory/weights_memory for backward pass
         dev_ctx_.SetBlob(key_conv_pd, conv_pd_);
       }
-    } 
+    }
 
     return conv_pd_;
   }
@@ -755,7 +752,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
           *conv_bwd_weights_pd_, *src_memory_p, *diff_dst_memory_p,
           *diff_weights_memory_p);
       dev_ctx_.SetBlob(prim_key, conv_bwd_weights_p);
-    } 
+    }
     return conv_bwd_weights_p;
   }
 
