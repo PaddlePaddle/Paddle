@@ -150,12 +150,12 @@ class Layer(core.Layer):
             if p.trainable:
                 p.clear_gradient()
 
-    def build_once(self, *args):
+    def _build_once(self, *args):
         pass
 
     def __call__(self, *inputs):
         if not self._built:
-            self.build_once(*inputs)
+            self._build_once(*inputs)
             if parallel_helper._is_data_parallel_mode():
                 parallel_helper._broadcast_parameters(self._parameters.values())
 

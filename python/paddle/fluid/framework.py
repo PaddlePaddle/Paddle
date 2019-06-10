@@ -654,6 +654,8 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
@@ -1677,7 +1679,11 @@ class Block(object):
             attrs = kwargs.get("attrs", {})
             if _dygraph_tracer_._train_mode == False:
                 # eval mode
-                attrs['is_test'] = True
+                if ('trainable_statistics' not in attrs
+                    ) or not attrs['trainable_statistics']:
+                    attrs['is_test'] = True
+                else:
+                    attrs['is_test'] = False
 
             op = Operator(
                 block=self,

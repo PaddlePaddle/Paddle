@@ -54,6 +54,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 original_in1 = out
                 sum_out_value = sum_out.numpy()
                 sum_out.backward()
+                dyout = out.gradient()
                 rt.clear_gradients()
 
         with new_program_scope():
@@ -69,7 +70,9 @@ class TestRecurrentFeed(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            fetch_list = [static_sum_out, static_out]
+            static_dout = fluid.default_main_program().block(
+                0)._find_var_recursive(static_out.name + "@GRAD")
+            fetch_list = [static_sum_out, static_out, static_dout]
             for i in range(3):
                 out = exe.run(
                     fluid.default_main_program(),
@@ -78,9 +81,11 @@ class TestRecurrentFeed(unittest.TestCase):
                     fetch_list=fetch_list)
                 static_out_value = out[1]
                 static_sum_out = out[0]
+                static_dout = out[2]
                 original_np1 = static_out_value
 
         self.assertTrue(np.array_equal(static_sum_out, sum_out_value))
+        self.assertTrue(np.array_equal(static_dout, dyout))
 
 
 if __name__ == '__main__':

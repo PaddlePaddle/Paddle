@@ -21,8 +21,8 @@ namespace ir {
 void SetFuseParameterGroupsSize(int group_size);
 int GetFuseParameterGroupsSize();
 
-void SetFuseParameterMemorySize(uint64_t memory_size);
-uint64_t GetFuseParameterMemorySize();
+void SetFuseParameterMemorySize(double memory_size);
+double GetFuseParameterMemorySize();
 
 }  // namespace ir
 }  // namespace framework

@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,25 +16,25 @@ from __future__ import print_function
 
 import numpy as np
 from collections import defaultdict
-from functools import reduce
 
-from paddle.fluid import core
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
-from paddle.fluid.layers import tensor
 
 from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward
 from .clip import append_gradient_clip_ops, error_clip_callback
-from .dygraph import base as imperative_base
-from .dygraph.learning_rate_scheduler import LearningRateDecay
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
+from paddle.fluid import core
+from paddle.fluid.layers import tensor
+from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
@@ -63,14 +63,18 @@ class Optimizer(object):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
+            if name is not None:
+                self._name = unique_name.generate(name)
+            else:
+                self._name = unique_name.generate(self.__class__.__name__)
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
+            self._name = name
 
-        self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
@@ -88,6 +92,90 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+
+    def load(self, stat_dict):
+        """
+        load optimizer with learning rate decay in dygraph mode
+        :return: None
+
+        Args:
+            stat_dict: the dict load by load_persistable method
+
+        Examples:
+
+        .. code-block:: python
+
+            from __future__ import print_function
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+            from paddle.fluid.optimizer import SGDOptimizer
+            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.base import to_variable
+
+            class MLP(fluid.Layer):
+                def __init__(self, name_scope):
+                    super(MLP, self).__init__(name_scope)
+
+                    self._fc1 = FC(self.full_name(), 10)
+                    self._fc2 = FC(self.full_name(), 10)
+
+                def forward(self, inputs):
+                    y = self._fc1(inputs)
+                    y = self._fc2(y)
+                    return y
+
+            with fluid.dygraph.guard():
+                mlp = MLP('mlp')
+                optimizer2 = SGDOptimizer(
+                    learning_rate=fluid.layers.natural_exp_decay(
+                    learning_rate=0.1,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+
+                train_reader = paddle.batch(
+                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+                for batch_id, data in enumerate(train_reader()):
+                    dy_x_data = np.array(
+                            [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+
+                    y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                            128, 1)
+
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
+                    label._stop_gradient = True
+                    cost = mlp(img)
+                    avg_loss = fluid.layers.reduce_mean(cost)
+                    avg_loss.backward()
+                    optimizer.minimize(avg_loss)
+                    mlp.clear_gradients()
+                    fluid.dygraph.save_persistables(
+                            mlp.state_dict(), [optimizer, optimizer2], "save_dir_2")
+                    if batch_id == 2:
+                            break
+
+            with fluid.dygraph.guard():
+                mlp_load = MLP('mlp')
+                optimizer_load2 = SGDOptimizer(
+                        learning_rate=fluid.layers.natural_exp_decay(
+                        learning_rate=0.1,
+                        decay_steps=10000,
+                        decay_rate=0.5,
+                        staircase=True))
+                parameters, optimizers = fluid.dygraph.load_persistables(
+                    "save_dir_2")
+                mlp_load.load_dict(parameters)
+                optimizer_load2.load(optimizers)
+            self.assertTrue(optimizer2._learning_rate.__dict__ == optimizer_load2._learning_rate.__dict__)
+
+        """
+        if framework.in_dygraph_mode():
+            self._learning_rate = stat_dict[self._name]
+        else:
+            raise TypeError("load can only be used under DyGraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list

@@ -2348,7 +2348,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type, is_test=False):
+def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -2363,29 +2363,32 @@ def sequence_pool(input, pool_type, is_test=False):
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
+       x is a 1-level LoDTensor and **pad_value** = 0.0:
+         x.lod = [[2, 3, 2, 0]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
-         out.dim = [3, 1]
+         out.dim = [4, 1]
          with condition len(x.lod[-1]) == out.dims[0]
 
        for different pool_type:
-         average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-         sum    : out.data = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
-         sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
+         average: out.data = [2, 4, 3, 0.0], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+         sum    : out.data = [4, 12, 6, 0.0], where 4=1+3, 12=2+4+6, 6=5+1
+         sqrt   : out.data = [2.82, 6.93, 4.24, 0.0], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-         max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+         max    : out.data = [3, 6, 5, 0.0], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1, 0.0], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5, 0.0], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+
+         and all above 0.0 = **pad_value**.
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input (variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
-        is_test(bool, Default False): Used distinguish training from scoring mode.
+        is_test (bool): Used to distinguish training from scoring mode. Default False.
+        pad_value (float): Used to pad the pooling result for empty input sequence.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -2393,6 +2396,8 @@ def sequence_pool(input, pool_type, is_test=False):
     Examples:
 
         .. code-block:: python
+
+             import paddle.fluid as fluid
 
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
@@ -2415,8 +2420,11 @@ def sequence_pool(input, pool_type, is_test=False):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={"pooltype": pool_type.upper(),
-               "is_test": is_test})
+        attrs={
+            "pooltype": pool_type.upper(),
+            "is_test": is_test,
+            "pad_value": pad_value
+        })
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -6584,6 +6592,7 @@ def one_hot(input, depth):
             inputs = {'X': input}
             attrs = {'depth': depth}
         else:
+            depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
             attrs = {}
     helper.append_op(
@@ -6711,6 +6720,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python list or tuple.")
+
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -6719,7 +6729,12 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     # Validate the shape
     unk_dim_idx = -1
+    contain_var = False
     for dim_idx, dim_size in enumerate(shape):
+        if isinstance(dim_size, Variable):
+            contain_var = True
+            continue
+
         if dim_size == -1:
             assert unk_dim_idx == -1, (
                 "Only one dimension in shape can be unknown.")
@@ -6733,13 +6748,35 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'shape': shape}
+    else:
+        if contain_var:
+            new_shape_tensor = []
+            for dim in shape:
+                if isinstance(dim, Variable):
+                    dim.stop_gradient = True
+                    new_shape_tensor.append(dim)
+                else:
+                    assert (isinstance(dim, int))
+                    temp_out = helper.create_variable_for_type_inference(
+                        'int32')
+                    fill_constant(
+                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    new_shape_tensor.append(temp_out)
+            inputs['ShapeTensor'] = new_shape_tensor
+            attrs = {}
+
+        else:
+            attrs = {'shape': shape}
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
-        attrs={"shape": shape},
+        attrs=attrs,
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -9363,6 +9400,7 @@ def expand(x, expand_times, name=None):
             new_expand_times = []
             for ele in expand_times:
                 if isinstance(ele, Variable):
+                    ele.stop_gradient = True
                     new_expand_times.append(ele)
                 else:
                     assert (isinstance(ele, int))
