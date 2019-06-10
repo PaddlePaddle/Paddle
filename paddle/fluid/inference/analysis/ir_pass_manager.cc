@@ -87,6 +87,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool enable_int8 = argument->tensorrt_precision_mode() ==
                          AnalysisConfig::Precision::kInt8;
 
+      pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
@@ -112,7 +113,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("engine_opt_info", new std::map<std::string, std::string>(
                                        argument->engine_opt_info()));
     }
-
+    if (pass_name == "ngraph_subgraph_pass") {
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
+    }
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
