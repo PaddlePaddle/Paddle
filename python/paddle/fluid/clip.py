@@ -21,6 +21,7 @@ import functools
 from . import layers
 from . import framework
 from . import core
+from .dygraph import not_support
 
 __all__ = [
     'ErrorClipByValue',
@@ -335,6 +336,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         return param, new_grad
 
 
+@not_support
 def set_gradient_clip(clip, param_list=None, program=None):
     """
     To specify parameters that require gradient clip.
