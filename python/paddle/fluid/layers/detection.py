@@ -2329,13 +2329,14 @@ def retinanet_detection_output(bboxes,
 
     This operation is to get the detection results by performing following
     steps:
-    1. Divide the input bounding box predictions into box predictions per
-       FPN level, according to that the box number of the i-th FPN level is
+
+    1. Divide the input bounding box predictions into box predictions per FPN
+       level, according to that the box number of the i-th FPN level is
        4**(:attr:`max_level`-i) times of that of the :attr:`max_level`-th
        FPN level.
     2. Decode top-scoring bounding box predictions per FPN level according 
        to the anchor boxes.
-    3. Merge top predictions from all levels and applying multi-class non
+    3. Merge top predictions from all levels and applying multi-class non 
        maximum suppression (NMS) on them to get the final detections.
 
     Args:

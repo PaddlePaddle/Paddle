@@ -1991,6 +1991,40 @@ class TestBook(LayerTest):
                     padding=1)
                 return (out)
 
+    def test_retinanet_detection_output(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            bboxes = layers.data(
+                name='bboxes',
+                shape=[1, 21, 4],
+                append_batch_size=False,
+                dtype='float32')
+            scores = layers.data(
+                name='scores',
+                shape=[1, 21, 10],
+                append_batch_size=False,
+                dtype='float32')
+            anchors = layers.data(
+                name='anchors',
+                shape=[21, 4],
+                append_batch_size=False,
+                dtype='float32')
+            im_info = layers.data(
+                name="im_info", shape=[3], dtype='float32', lod_level=1)
+            nmsed_outs = fluid.layers.retinanet_detection_output(
+                bboxes=bboxes,
+                scores=scores,
+                anchors=anchors,
+                im_info=im_info,
+                min_level=3,
+                max_level=5,
+                score_threshold=0.05,
+                nms_top_k=1000,
+                keep_top_k=100,
+                nms_threshold=0.3,
+                nms_eta=1.)
+            return (nmsed_outs)
+
 
 if __name__ == '__main__':
     unittest.main()
