@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,10 +47,10 @@ class TestUnfoldOp(OpTest):
             0] * self.kernel_sizes[1]
         dkernel_h = self.dilations[0] * (self.kernel_sizes[0] - 1) + 1
         dkernel_w = self.dilations[1] * (self.kernel_sizes[1] - 1) + 1
-        out_height = (self.input_height + self.paddings[0] + self.paddings[2] -
-                      dkernel_h) / self.strides[0] + 1
-        out_width = (self.input_width + self.paddings[1] + self.paddings[3] -
-                     dkernel_w) / self.strides[1] + 1
+        out_height = int((self.input_height + self.paddings[0] +
+                          self.paddings[2] - dkernel_h) / self.strides[0]) + 1
+        out_width = int((self.input_width + self.paddings[1] + self.paddings[3]
+                         - dkernel_w) / self.strides[1]) + 1
         output_shape[2] = out_height * out_width
         output = np.zeros(output_shape).astype(np.float32)
         ############ calculate output ##############

@@ -52,7 +52,7 @@ class UnfoldOpMaker : public framework::OpProtoAndCheckerMaker {
 This Operator is used to extract sliding local blocks from a batched input tensor, also known
 as im2col when operated on batched 2D image tensor. For each block under the convolution filter,
 all element will be rearranged as a column. While the convolution filter silding over the input
-feature map, a series of such columns will be formed.
+feature map, a series of such columns will be formed. 
     )DOC");
   }
 };
@@ -83,12 +83,12 @@ class UnfoldOp : public framework::OperatorWithKernel {
         "The dims of X should be larger than that of kernel_sizes "
         "by a number of 2, due to the batch size and input channel dim. "
         "But recieved dims(X:%u) - dims(kernel_sizes:%u) != 2",
-        in_dims.size(), strides.size());
+        in_dims.size(), kernel_sizes.size());
     PADDLE_ENFORCE_EQ(
         strides.size(), kernel_sizes.size(),
         "The dims of strides shold be the same with that of kernel_sizes. "
         "But recieved dims(strides: %u) != dims(kernel_sizes: %u).",
-        strides.size(), dilations.size());
+        strides.size(), kernel_sizes.size());
     PADDLE_ENFORCE_EQ(
         paddings.size(), 2 * strides.size(),
         "The dims of paddings should be 2 times of that of strides. "
