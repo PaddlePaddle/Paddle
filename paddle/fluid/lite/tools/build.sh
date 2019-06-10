@@ -13,6 +13,7 @@ function prepare_for_codegen {
     touch ./paddle/fluid/lite/gen_code/__generated_code__.cc
 }
 function cmake_x86 {
+    prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
