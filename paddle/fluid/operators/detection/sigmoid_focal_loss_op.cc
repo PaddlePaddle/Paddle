@@ -132,13 +132,14 @@ class SigmoidFocalLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "operator.");
     AddInput("Label",
              "(Tensor, default Tensor<int>), a 2-D tensor with shape [N, 1]. "
-             "This input is a tensor of probabalistic labels.");
+             "This input is a tensor of probabilistic labels.");
     AddInput("FgNum",
              "(Tensor, default Tensor<int>), a 1-D tensor with shape [1]. "
              "This input is the number of foreground.");
-    AddOutput("Out",
-              "(Tensor, default Tensor<float>), a 1-D tensor with shape [1]. "
-              "This output is the focal loss.");
+    AddOutput(
+        "Out",
+        "(Tensor, default Tensor<float>), a 2-D tensor with shape [N, D]. "
+        "This output is the focal loss.");
     AddAttr<float>(
         "gamma",
         "Hyper-parameter of sigmoid focal loss op, which is to balance the "
@@ -153,7 +154,7 @@ class SigmoidFocalLossOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.25);
     AddAttr<int>("num_classes", "Number of classes (excluding background). ");
     AddComment(R"DOC(
-SigmoidFocalLoss Operator.
+Sigmoid Focal Loss Operator.
 
 Focal loss is used to address the foreground-background class imbalance existed
 on the training phase of one-stage detectors. This operator computes the sigmoid
@@ -161,13 +162,11 @@ value for each element in the input tensor, after which focal loss is measured.
 
 The focal loss is given as follows:
 
-    $$loss = (-Labels * alpha * \pow(1 - \sigma(X), gamma) * \log(\sigma(X)) -
-        
-        (1 - Labels) * (1 - alpha) * \pow(\sigma(X), gamma) * \log(1 - \sigma(X)))
+$$Loss_j = (-Label_j * alpha * \pow(1 - \sigma(X_j), gamma) * \log(\sigma(X_j)) -
+(1 - Labels_j) * (1 - alpha) * \pow(\sigma(X_j), gamma) * \log(1 - \sigma(X_j)))
+/ FgNum, j = 1,...,K$$
 
-        / FgNum
-
-We know that $$\sigma(X) = \\frac{1}{1 + \exp(-X)}$$.
+We know that $$\sigma(X_j) = \\frac{1}{1 + \exp(-X_j)}$$.
 
 )DOC");
   }
