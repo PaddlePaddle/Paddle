@@ -1989,6 +1989,12 @@ class TestBook(LayerTest):
                     padding=1)
                 return (out)
 
+    def test_unfold(self):
+        with self.static_graph():
+            x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
+            out = layers.unfold(x, [3, 3], 1, 1, 1)
+            return (out)
+
 
 if __name__ == '__main__':
     unittest.main()
