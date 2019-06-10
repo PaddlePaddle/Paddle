@@ -88,6 +88,20 @@ if(LINUX AND WITH_MKLDNN)
 		inference_download_and_uncompress(${DATASET_DIR} "${INFERENCE_URL}/int8" "imagenet_val_100_tail.tar.gz")
 	endif()
 
+	# QAT ResNet50
+	set(QAT_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50")
+	if (NOT EXISTS ${QAT_RESNET50_MODEL_DIR})
+		inference_download_and_uncompress(${QAT_RESNET50_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet50_qat_model.tar.gz" )
+	endif()
+	inference_qat_int8_test(test_qat_int8_resnet50_mkldnn ${QAT_RESNET50_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+
+	# QAT ResNet101
+	set(QAT_RESNET101_MODEL_DIR "${QAT_DATA_DIR}/ResNet101")
+	if (NOT EXISTS ${QAT_RESNET101_MODEL_DIR})
+		inference_download_and_uncompress(${QAT_RESNET101_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet101_qat_model.tar.gz" )
+	endif()
+	inference_qat_int8_test(test_qat_int8_resnet101_mkldnn ${QAT_RESNET101_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+
 	# QAT GoogleNet
 	set(QAT_GOOGLENET_MODEL_DIR "${QAT_DATA_DIR}/GoogleNet")
 	if (NOT EXISTS ${QAT_GOOGLENET_MODEL_DIR})
@@ -102,44 +116,26 @@ if(LINUX AND WITH_MKLDNN)
 	endif()
 	inference_qat_int8_test(test_qat_int8_mobilenetv1_mkldnn ${QAT_MOBILENETV1_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
 
-	# temporarily adding WITH_SLIM_MKLDNN_FULL_TEST FLAG for QA testing the following UTs locally, 
-	# since the following UTs cost too much time on CI test.
-	if (WITH_SLIM_MKLDNN_FULL_TEST)
-		# QAT ResNet50
-		set(QAT_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50")
-		if (NOT EXISTS ${QAT_RESNET50_MODEL_DIR})
-			inference_download_and_uncompress(${QAT_RESNET50_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet50_qat_model.tar.gz" )
-		endif()
-		inference_qat_int8_test(test_qat_int8_resnet50_mkldnn ${QAT_RESNET50_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
-
-		# QAT ResNet101
-		set(QAT_RESNET101_MODEL_DIR "${QAT_DATA_DIR}/ResNet101")
-		if (NOT EXISTS ${QAT_RESNET101_MODEL_DIR})
-			inference_download_and_uncompress(${QAT_RESNET101_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet101_qat_model.tar.gz" )
-		endif()
-		inference_qat_int8_test(test_qat_int8_resnet101_mkldnn ${QAT_RESNET101_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
-
-		# QAT MobileNetV2
-		set(QAT_MOBILENETV2_MODEL_DIR "${QAT_DATA_DIR}/MobileNetV2")
-		if (NOT EXISTS ${QAT_MOBILENETV2_MODEL_DIR})
-			inference_download_and_uncompress(${QAT_MOBILENETV2_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "MobileNetV2_qat_model.tar.gz" )
-		endif()
-		inference_qat_int8_test(test_qat_int8_mobilenetv2_mkldnn ${QAT_MOBILENETV2_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
-
-		# QAT VGG16
-		set(QAT_VGG16_MODEL_DIR "${QAT_DATA_DIR}/VGG16")
-		if (NOT EXISTS ${QAT_VGG16_MODEL_DIR})
-			inference_download_and_uncompress(${QAT_VGG16_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "VGG16_qat_model.tar.gz" )
-		endif()
-		inference_qat_int8_test(test_qat_int8_vgg16_mkldnn ${QAT_VGG16_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
-
-		# QAT VGG19
-		set(QAT_VGG19_MODEL_DIR "${QAT_DATA_DIR}/VGG19")
-		if (NOT EXISTS ${QAT_VGG19_MODEL_DIR})
-			inference_download_and_uncompress(${QAT_VGG19_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "VGG19_qat_model.tar.gz" )
-		endif()
-		inference_qat_int8_test(test_qat_int8_vgg19_mkldnn ${QAT_VGG19_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+	# QAT MobileNetV2
+	set(QAT_MOBILENETV2_MODEL_DIR "${QAT_DATA_DIR}/MobileNetV2")
+	if (NOT EXISTS ${QAT_MOBILENETV2_MODEL_DIR})
+		inference_download_and_uncompress(${QAT_MOBILENETV2_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "MobileNetV2_qat_model.tar.gz" )
 	endif()
+	inference_qat_int8_test(test_qat_int8_mobilenetv2_mkldnn ${QAT_MOBILENETV2_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+
+	# QAT VGG16
+	set(QAT_VGG16_MODEL_DIR "${QAT_DATA_DIR}/VGG16")
+	if (NOT EXISTS ${QAT_VGG16_MODEL_DIR})
+		inference_download_and_uncompress(${QAT_VGG16_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "VGG16_qat_model.tar.gz" )
+	endif()
+	inference_qat_int8_test(test_qat_int8_vgg16_mkldnn ${QAT_VGG16_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+
+	# QAT VGG19
+	set(QAT_VGG19_MODEL_DIR "${QAT_DATA_DIR}/VGG19")
+	if (NOT EXISTS ${QAT_VGG19_MODEL_DIR})
+		inference_download_and_uncompress(${QAT_VGG19_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "VGG19_qat_model.tar.gz" )
+	endif()
+	inference_qat_int8_test(test_qat_int8_vgg19_mkldnn ${QAT_VGG19_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
 endif()
 
 # Since the test for QAT FP32 & INT8 comparison supports only testing on Linux 
