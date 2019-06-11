@@ -177,6 +177,10 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
+
+    if not isinstance(executor, Executor):
+        raise TypeError("executor should be as Executor")
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -594,6 +598,10 @@ def load_vars(executor,
             # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
+
+    if not isinstance(executor, Executor):
+        raise TypeError("executor should be as Executor")
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
