@@ -34,8 +34,8 @@ class FcFusePass::Impl : public FuseBase {
 
 void FcFusePass::Impl::BuildPattern() {
   // create nodes.
-  auto* x = VarNode("x");
-  auto* W = VarNode("W");
+  auto* x = VarNode("x")->assert_is_op_input("mul", "X");
+  auto* W = VarNode("W")->assert_is_op_nth_input("mul", "Y", 1);
   auto* b = VarNode("b");
   auto* mul = OpNode("mul", "mul");
   auto* mul_out = VarNode("mul_out");
@@ -78,7 +78,9 @@ cpp::OpDesc FcFusePass::Impl::GenOpDesc(const key2nodes_t& matched) {
   op_desc.SetInput("W", {matched.at("W")->arg()->name});
   op_desc.SetInput("Bias", {matched.at("b")->arg()->name});
   op_desc.SetOutput("Out", {matched.at("Out")->arg()->name});
-  op_desc.SetAttr("in_num_col_dims", 1);
+  op_desc.SetAttr(
+      "in_num_col_dims",
+      matched.at("mul")->stmt()->op_info()->GetAttr<int>("x_num_col_dims"));
   return op_desc;
 }
 

@@ -34,6 +34,9 @@ bool FcOpLite::CheckShape() const {
       CHECK_EQ_OR_FALSE(bias_dims[0], 1);
       CHECK_EQ_OR_FALSE(bias_dims[1], w_dims[1]);
     } else if (bias_dims.size() == 1) {
+      LOG(INFO) << "bias_dims = " << bias_dims[0];
+      LOG(INFO) << "w_dims = " << w_dims[0] << ", " << w_dims[1];
+
       CHECK_EQ_OR_FALSE(bias_dims[0], w_dims[1]);
     }
   }

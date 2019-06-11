@@ -127,6 +127,10 @@ struct PMNode {
   PMNode* assert_is_persistable_var();
   PMNode* assert_is_op_output(const std::string& op_type);
   PMNode* assert_is_op_input(const std::string& op_type);
+  PMNode* assert_is_op_input(const std::string& op_type,
+                             const std::string& argument);
+  PMNode* assert_is_op_nth_input(const std::string& op_type,
+                                 const std::string& argument, int nth);
 
   template <typename T>
   PMNode* assert_op_attr(const std::string& attr_name, const T& attr) {
@@ -296,6 +300,13 @@ class PatternMatcher {
   PMPattern pattern_;
   std::unordered_map<const PMNode*, std::unordered_set<Node*>> pmnodes2nodes_;
 };
+
+// Check whether a var node is a op node's nth input.
+bool IsNthInput(const Node& var, const Node& op, const std::string& argument,
+                int nth);
+
+// Check whether the op node has input of given name.
+bool HasInput(const Node& op, const std::string& argument);
 
 // Graph safely remove some nodes, will automatically clean up the edges.
 void GraphSafeRemoveNodes(SSAGraph* graph,

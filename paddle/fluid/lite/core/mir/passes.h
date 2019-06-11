@@ -22,6 +22,7 @@ namespace mir {}  // namespace mir
 }  // namespace paddle
 
 USE_MIR_PASS(demo);
+USE_MIR_PASS(lite_fc_fuse_pass);
 USE_MIR_PASS(static_kernel_pick_pass);
 USE_MIR_PASS(variable_place_inference_pass);
 USE_MIR_PASS(type_target_transform_pass);
