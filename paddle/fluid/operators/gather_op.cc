@@ -76,7 +76,7 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of gather op");
     AddAttr<bool>(
         "overwrite",
-        "(bool, defalut: False) "
+        "(bool, default: False) "
         "In backward process, calc the grad when has same index,"
         "If true, update the grad using the overwrite mode in same index,"
         "If false, using the accumulate mode in same index.")

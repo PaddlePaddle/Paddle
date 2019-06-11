@@ -64,7 +64,7 @@ elementwise_inner_add(const framework::ExecutionContext& ctx,
   eigen_dist += eigen_src;
 }
 /**
- * Return a updated tensor from source tensor, scattered according to index:
+ * Return an updated tensor from source tensor, scattered according to index:
  * dst[i] = src[index[i]]
  * input[src]: type-T source Tensor
  * input[index]: type-IndexT index Tensor (1-D)
@@ -130,7 +130,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
 
   const size_t& slice_bytes = slice_size * sizeof(T);
 
-  // if in not overwrite mode, need to init output data
+  // if not in overwrite mode, need to init output data
   for (int i = 0; i < index_size; ++i) {
     const IndexT& index_ = p_index[i];
     memset(result_p_output + slice_size * index_, 0, slice_bytes);
