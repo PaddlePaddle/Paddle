@@ -57,8 +57,8 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& ctx,
                   framework::Tensor* out, const framework::Tensor* prob,
-                  const framework::Tensor* labels, bool softLabel,
-                  const int ignore_index) {
+                  const framework::Tensor* labels, const bool softLabel,
+                  const int ignore_index, const int axis_dim) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
 

@@ -83,15 +83,15 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Examples:
         .. code-block:: python
      
+            import paddle.fluid as fluid
             result = fluid.layers.uniform_random(shape=[32, 784])
     """
 
-    locals_var = locals().keys()
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+    locals_var = locals().copy()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
     return _uniform_random_(**kwargs)
@@ -103,10 +103,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
-    locals_var = locals().keys()
+    locals_var = locals().copy()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
     return _hard_shrink_(**kwargs)
@@ -125,10 +124,9 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
-    locals_var = locals().keys()
+    locals_var = locals().copy()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
     return _cum_sum_(**kwargs)
@@ -147,10 +145,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
-    locals_var = locals().keys()
+    locals_var = locals().copy()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
 

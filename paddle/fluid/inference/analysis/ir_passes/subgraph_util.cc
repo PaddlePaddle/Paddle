@@ -61,7 +61,7 @@ void RenameAndGetOutputs(
     std::set<std::string> *output_names,
     std::unordered_map<std::string, std::string> *output_name_map,
     const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
-    bool is_trt) {
+    bool trt_and_not_int8) {
   //// In the normal case, the paddle-trt exists bug when runing the googlenet.
   // When there are more than two convolutions of 1 * 1 with the same input, the
   // paddle-tensorrt will do the merging optimization, which fuse those conv
@@ -100,7 +100,6 @@ void RenameAndGetOutputs(
         const std::string arg_value = in_var->arguments(k);
         const std::string arg_value_with_id =
             arg_value + std::to_string(var2id[arg_value]);
-
         if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
           if (graph_var_map.count(arg_value)) {
@@ -122,7 +121,7 @@ void RenameAndGetOutputs(
     for (auto out_var : correspond_node->outputs) {
       var2id[out_var->Name()] = out_var->id();
     }
-    if (op_desc.Type() == "conv2d" && is_trt) {
+    if (op_desc.Type() == "conv2d" && trt_and_not_int8) {
       auto input_var_name = op_desc.Input("Input").front();
       auto filter_var_name = op_desc.Input("Filter").front();
       auto out_var_name = op_desc.Output("Output").front();
@@ -149,7 +148,6 @@ void RenameAndGetOutputs(
         const std::string arg_value = out_var->arguments(k);
         const std::string arg_value_with_id =
             arg_value + std::to_string(var2id[arg_value]);
-
         if (graph_var_map.count(arg_value)) {
           add_block_var(arg_value, arg_value_with_id);
         }

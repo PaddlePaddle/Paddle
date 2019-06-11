@@ -107,14 +107,10 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   if (FLAGS_zero_copy) {
     cfg->SwitchUseFeedFetchOps(false);
   }
-  // Enable runtime_context_cache_pass, disabled by default since it doesn't
-  // cover all the cases.
-  // See detail: https://github.com/PaddlePaddle/Paddle/issues/16609
-  // https://github.com/PaddlePaddle/Paddle/issues/16841
-  cfg->pass_builder()->AppendPass("runtime_context_cache_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -181,11 +177,15 @@ TEST(Analyzer_Pyramid_DNN, compare_zero_copy) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
+  AnalysisConfig cfg1;
+  SetConfig(&cfg1);
+
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   std::vector<std::string> outputs_name;
   outputs_name.emplace_back("cos_sim_2.tmp_0");
   CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
                              input_slots_all, outputs_name);
 }
 

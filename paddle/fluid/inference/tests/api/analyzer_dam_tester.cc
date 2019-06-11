@@ -171,9 +171,7 @@ void SetConfig(AnalysisConfig *cfg) {
 }
 
 void SetOptimConfig(AnalysisConfig *cfg) {
-  std::string optimModelPath =
-      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
-      "/saved_optim_model";
+  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
   cfg->SetModel(optimModelPath + "/model", optimModelPath + "/params");
   cfg->SwitchIrOptim(true);
   cfg->SwitchSpecifyInputNames();
@@ -202,8 +200,9 @@ void profile(bool use_mkldnn = false) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
-                                               "relu"};
+                                               "relu", "fc"};
     cfg.SetMKLDNNOp(op_list);
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -253,6 +252,7 @@ void compare(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
                                                "relu"};
     cfg.SetMKLDNNOp(op_list);
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -323,20 +323,13 @@ TEST(Analyzer_dam, compare_determine) {
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
 }
-
 // Save optim model
 TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;
-  SetConfig(&cfg);
-  std::string optimModelPath =
-      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
-      "/saved_optim_model";
+  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
   mkdir(optimModelPath.c_str(), 0777);
-  auto predictor = CreateTestPredictor(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-      FLAGS_use_analysis);
-  (static_cast<AnalysisPredictor *>(predictor.get()))
-      ->SaveOptimModel(optimModelPath);
+  SetConfig(&cfg);
+  SaveOptimModel(&cfg, optimModelPath);
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
