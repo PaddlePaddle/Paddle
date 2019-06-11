@@ -45,10 +45,11 @@ PMNode &PMNode::operator>>(std::vector<PMNode *> &nodes) {
   return *this;
 }
 
-void operator>>(std::vector<PMNode *> &others, PMNode &me) {
+PMNode &operator>>(std::vector<PMNode *> &others, PMNode &me) {
   for (auto *o : others) {
     *o >> me;
   }
+  return me;
 }
 
 PMNode *PMPattern::NewNode(const std::string &name) {
