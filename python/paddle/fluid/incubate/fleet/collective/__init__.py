@@ -163,19 +163,6 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
 
-class MixedPrecisionOptimizer(CollectiveOpBasedOptimizer):
-    """
-    TBA
-    """
-
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
-        pass
-
-
 class FullPrecisionOptimizer(CollectiveOpBasedOptimizer):
     """
     TBA
