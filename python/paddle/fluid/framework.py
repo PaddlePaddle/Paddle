@@ -654,6 +654,8 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
@@ -2782,6 +2784,9 @@ class Program(object):
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
+
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
 
     @property
     def _is_mem_optimized(self):
