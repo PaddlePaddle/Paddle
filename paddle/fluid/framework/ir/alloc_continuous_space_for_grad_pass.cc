@@ -42,6 +42,9 @@ DEFINE_int32(
 namespace paddle {
 namespace framework {
 namespace ir {
+// unit of the FLAGS_fuse_parameter_memory_size.
+static constexpr double kMB = 1048576.0;
+
 // SetFuseParameterGroupsSize and SetFuseParameterMemorySize are used in unit
 // test, because it is invalid that seting 'FLAGS_fuse_parameter_memory_size'
 // and 'FLAGS_fuse_parameter_groups_size' in unit test.
@@ -288,7 +291,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   }
 
  private:
-  static constexpr double kMB = 1048576.0;
   bool IsSupportedVarType(const proto::VarType::Type &type) const {
     // Current only support LOD_TENSOR.
     return type == proto::VarType::LOD_TENSOR;
