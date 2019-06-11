@@ -12,4 +12,4 @@ set(host_kernels
     reshape_compute_host
     )
 
-set(host_kernels "${host_kernels}" CACHE INTERNAL "host kernels")
+set(host_kernels "${host_kernels}" CACHE GLOBAL "host kernels")

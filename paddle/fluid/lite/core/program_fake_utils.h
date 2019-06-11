@@ -33,11 +33,11 @@ Program FakeProgram() {
     std::string w1 = "w" + std::to_string(id);
     std::string b1 = "b" + std::to_string(id);
     std::string out1 = "out" + std::to_string(id);
-    auto w1v = program.scope_->Var(w1)->GetMutable<lite::Tensor>();
-    auto b1v = program.scope_->Var(b1)->GetMutable<lite::Tensor>();
-    auto out1v = program.scope_->Var(out1)->GetMutable<lite::Tensor>();
+    auto w1v = program.scope()->Var(w1)->GetMutable<lite::Tensor>();
+    auto b1v = program.scope()->Var(b1)->GetMutable<lite::Tensor>();
+    auto out1v = program.scope()->Var(out1)->GetMutable<lite::Tensor>();
 
-    lite::OpDesc desc;
+    cpp::OpDesc desc;
     desc.SetInput("Input", {x});
     desc.SetInput("W", {w1});
     desc.SetInput("Bias", {b1});
@@ -46,12 +46,12 @@ Program FakeProgram() {
     desc.SetAttr("in_num_col_dims", 1);
 
     // add to input
-    program.tmp_vars_.push_back(w1);
-    program.tmp_vars_.push_back(b1);
+    program.mutable_tmp_vars()->push_back(w1);
+    program.mutable_tmp_vars()->push_back(b1);
 
     auto fc_op = LiteOpRegistry::Global().Create("fc");
-    fc_op->Attach(desc, program.scope_.get());
-    program.ops_.emplace_back(std::move(fc_op));
+    fc_op->Attach(desc, program.scope());
+    program.mutable_ops()->emplace_back(std::move(fc_op));
 
     w1v->Resize(DDimHvy(std::vector<int64_t>({100, 100})));
     b1v->Resize(DDimHvy(std::vector<int64_t>({100, 1})));
@@ -64,8 +64,8 @@ Program FakeProgram() {
   // out1, w2, b2 -fc-> out2
 
   std::string x = "x";
-  program.tmp_vars_.push_back(x);
-  auto* xv = program.scope_->Var(x)->GetMutable<lite::Tensor>();
+  program.mutable_tmp_vars()->push_back(x);
+  auto* xv = program.scope()->Var(x)->GetMutable<lite::Tensor>();
   xv->Resize(DDimHvy(std::vector<int64_t>({100, 100})));
 
   for (int i = 0; i < 3; i++) {
