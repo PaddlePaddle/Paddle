@@ -460,24 +460,17 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // TODO(lidanqing): We use relu post-op instead of brelu post-op cause
       // mkldnn v0.18 does not support INT8 brelu post-op. Use code in /**/ when
       // v0.20 is enabled
+      boost::optional<memory::desc> bias_md(boost::none);
       if (bias) {
         bias_tz = paddle::framework::vectorize2int(bias->dims());
-        auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
-                                               memory::format::x);
-
-        conv_pd = ConvFwdPrimitiveDesc(
-            src_md, weights_md, bias_md, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu || fuse_brelu /*fuse_relu*/,
-            fuse_residual_conn, false /*fuse_brelu*/, fuse_brelu_threshold,
-            output_shift_scale, sum_scale, is_test);
-
-      } else {
-        conv_pd = ConvFwdPrimitiveDesc(
-            src_md, weights_md, boost::none, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu || fuse_brelu /*fuse_relu*/,
-            fuse_residual_conn, false /*fuse_brelu*/, fuse_brelu_threshold,
-            output_shift_scale, sum_scale, is_test);
+        bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
+                                          memory::format::x);
       }
+      conv_pd = ConvFwdPrimitiveDesc(
+          src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
+          fuse_relu || fuse_brelu /*fuse_relu*/, fuse_residual_conn,
+          false /*fuse_brelu*/, fuse_brelu_threshold, output_shift_scale,
+          sum_scale, is_test);
       // Save conv_pd/src_memory/weights_memory for backward pass
       dev_ctx.SetBlob(key_conv_pd, conv_pd);
       handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
@@ -679,7 +672,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
-                       const boost::optional<memory::desc&> bias,
+                       const boost::optional<memory::desc> bias,
                        const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        const mkldnn::engine& engine, const bool fuse_relu,
