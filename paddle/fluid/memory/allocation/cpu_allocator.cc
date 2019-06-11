@@ -32,7 +32,7 @@ void CPUAllocator::FreeImpl(Allocation *allocation) {
   delete allocation;
 }
 
-Allocation *CPUAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation *CPUAllocator::AllocateImpl(size_t size) {
   void *p;
 #ifdef _WIN32
   p = _aligned_malloc(size, kAlignment);
