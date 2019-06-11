@@ -49,20 +49,17 @@ inline T* Tensor::data() {
 
 template <typename T>
 inline T* Tensor::mutable_data(DDim dims, platform::Place place,
-                               memory::Allocator::Attr attr,
                                size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
-  return mutable_data<T>(place, attr, requested_size);
+  return mutable_data<T>(place, requested_size);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place,
-                               memory::Allocator::Attr attr,
-                               size_t requested_size) {
+inline T* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
-      mutable_data(place, DataTypeTrait<T>::DataType, attr, requested_size));
+      mutable_data(place, DataTypeTrait<T>::DataType, requested_size));
 }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
