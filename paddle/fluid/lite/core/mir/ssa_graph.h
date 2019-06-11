@@ -38,6 +38,7 @@ class SSAGraph : GraphBase {
   // @param program: the op program
   // @param valid_places: the valid places user set for the system.
   void Build(const Program &program, const std::vector<Place> &valid_places);
+  void RemoveNode(const mir::Node *node);
 
   mir::Node *Argument(const std::string &name);
 
@@ -63,12 +64,12 @@ class SSAGraph : GraphBase {
     CHECK(CheckLinksRoleSet());
   }
 
+  Node *GraphCreateInstructNode(const std::shared_ptr<OpLite> &op,
+                                const std::vector<Place> &valid_places);
+
  private:
   void GraphCreateTmpVarNodes(const Program &program);
   void GraphCreateWeightVarNodes(const Program &program);
-  Node *GraphCreateInstructNode(const Program &program,
-                                const std::shared_ptr<OpLite> &op,
-                                const std::vector<Place> &valid_places);
 
   // Check the bidirectional connection.
   bool CheckBidirectionalConnection();
