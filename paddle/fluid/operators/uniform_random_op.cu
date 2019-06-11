@@ -47,6 +47,17 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     auto out_var = context.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
+      if(context.HasInput("Shape")){
+        auto* gpuShapeTensor = context.Input<framework::Tensor>("Shape");
+        framework::Tensor shapeTensor;
+        framework::TensorCopy(*gpuShapeTensor, platform::CPUPlace(), &shapeTensor);
+        const int *shapeData = shapeTensor.data<int>();
+        std::vector<int> shape(shapeData, shapeData + shapeTensor.numel());
+        tensor->Resize(framework::make_ddim(shape));
+      }else{
+        auto shape = context.Attr<std::vector<int64_t>>("shape");
+        tensor->Resize(framework::make_ddim(shape));
+      }
     } else if (out_var->IsType<framework::SelectedRows>()) {
       auto shape = context.Attr<std::vector<int64_t>>("shape");
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();

@@ -41,6 +41,17 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
+    if(context.HasInput("Shape")){
+      auto* gpuShapeTensor = context.Input<framework::Tensor>("Shape");
+      framework::Tensor shapeTensor;
+      framework::TensorCopy(*gpuShapeTensor, platform::CPUPlace(), &shapeTensor);
+      const int *shapeData = shapeTensor.data<int>();
+      std::vector<int> shape(shapeData, shapeData + shapeTensor.numel());
+      tensor->Resize(framework::make_ddim(shape));
+    }else{
+      auto shape = context.Attr<std::vector<int64_t>>("shape");
+      tensor->Resize(framework::make_ddim(shape));
+    }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     if (seed == 0) {
