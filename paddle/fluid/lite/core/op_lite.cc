@@ -61,7 +61,7 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
     targets.insert(place.target);
   }
 
-  CHECK(!kernels.empty()) << "No kernel found for Op " << op_type_;
+  // CHECK(!kernels.empty()) << "No kernel found for Op " << op_type_;
   VLOG(2) << "op " << op_type_ << " get " << kernels.size() << " kernels";
   return kernels;
 }
