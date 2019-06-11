@@ -1,5 +1,5 @@
 lite_cc_library(gen_code_lite SRCS gen_code.cc
-        DEPS program_lite op_lite scope
+        DEPS program_lite op_lite scope_lite
         cpp_op_desc_lite
         HVY_DEPS operator)
 lite_cc_library(paddle_infer_gencode SRCS paddle_infer.cc DEPS program_lite utils_lite)
@@ -9,6 +9,7 @@ lite_cc_test(test_gen_code_lite SRCS gen_code_test.cc DEPS gen_code_lite ${tenso
         compatible_pb_lite
         model_parser_lite
         X86_DEPS mul_compute_x86
+        ARM_DEPS mul_compute_arm
         ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
 if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
