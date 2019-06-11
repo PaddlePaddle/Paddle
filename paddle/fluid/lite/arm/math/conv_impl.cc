@@ -371,9 +371,9 @@ void conv_im2col_gemm(const float* i_data, float* o_data, int num, int oc,
                       const operators::ConvParam& param, ARMContext* ctx,
                       const int* idx_ptr) {
   const int group = param.groups;
-  auto x_dims = param.x->dims();
-  const int kernel_h = x_dims[2];
-  const int kernel_w = x_dims[3];  // nchw
+  auto filter_dims = param.filter->dims();
+  const int kernel_h = filter_dims[2];
+  const int kernel_w = filter_dims[3];  // nchw
   const int m = oc / group;
   const int n = oh * ow;
   const int k = ic * kernel_h * kernel_w / group;
@@ -552,11 +552,11 @@ void conv_depthwise_3x3(const float* i_data, float* o_data, int num, int oc,
   //   }
   // }
   if (pad == 1) {
-    conv_depthwise_3x3p1(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-                         weights, bias, stride, flag_bias, flag_relu, ctx);
+    conv_depthwise_3x3p1(i_data, o_data, num, oc, oh, ow, ic, ih, win, weights,
+                         bias, stride, flag_bias, flag_relu, ctx);
   } else if (pad == 0 && ih > 2) {
-    conv_depthwise_3x3p0(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-                         weights, bias, stride, flag_bias, flag_relu, ctx);
+    conv_depthwise_3x3p0(i_data, o_data, num, oc, oh, ow, ic, ih, win, weights,
+                         bias, stride, flag_bias, flag_relu, ctx);
   } else {
     LOG(FATAL) << "unsupport this type 3x3 dw conv";
   }
@@ -577,11 +577,11 @@ void conv_depthwise_5x5(const float* i_data, float* o_data, int num, int oc,
   //   }
   // }
   if (pad == 2 && stride == 2) {
-    conv_depthwise_5x5s2(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-                         weights, bias, pad, flag_bias, flag_relu, ctx);
+    conv_depthwise_5x5s2(i_data, o_data, num, oc, oh, ow, ic, ih, win, weights,
+                         bias, pad, flag_bias, flag_relu, ctx);
   } else if (stride == 1) {
-    conv_depthwise_5x5s1(i_data, o_data, num, oc, oh, ow, ic, ih, win,
-                         weights, bias, pad, flag_bias, flag_relu, ctx);
+    conv_depthwise_5x5s1(i_data, o_data, num, oc, oh, ow, ic, ih, win, weights,
+                         bias, pad, flag_bias, flag_relu, ctx);
   } else {
     LOG(FATAL) << "unsupport this type 5x5 dw conv";
   }
