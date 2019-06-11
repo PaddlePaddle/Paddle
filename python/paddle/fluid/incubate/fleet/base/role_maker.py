@@ -17,8 +17,7 @@ from enum import Enum
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
-    'MultiProcessRoleMaker',
-    'UserDefinedCollectiveRoleMaker'
+    'MultiProcessRoleMaker', 'UserDefinedCollectiveRoleMaker'
 ]
 
 
