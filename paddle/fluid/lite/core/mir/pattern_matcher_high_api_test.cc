@@ -19,6 +19,8 @@
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
+#include "paddle/fluid/lite/core/program.h"
+#include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
 namespace lite {
@@ -128,7 +130,7 @@ TEST(pattern_matcher2, graph_test) {
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
 
-  ASSERT_EQ(graph->nodes().size(), 9UL);
+  ASSERT_EQ(graph->nodes().size(), 8UL + 2UL /*feed op + fetch op*/);
   Visualize(graph.get());
 }
 
@@ -139,7 +141,8 @@ TEST(pattern_matcher2, test) {
   auto graph = BuildGraph(&program_desc, scope, places);
   FcFuser fuser;
   fuser(graph.get());
-  ASSERT_EQ(graph->nodes().size(), 9 - 3 + 1);
+  ASSERT_EQ(graph->nodes().size(),
+            8UL - 3UL /*mul_out, mul, add */ + 1UL /* fc*/);
 }
 
 }  // namespace mir

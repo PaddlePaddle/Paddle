@@ -139,7 +139,7 @@ void SSAGraph::Build(const Program &program,
   GraphCreateWeightVarNodes(program);
   CHECK(CheckNodesRoleSet());
 
-  for (auto &op : program.ops) {
+  for (auto &op : program.ops()) {
     auto *op_node = GraphCreateInstructNode(op, valid_places);
     for (const std::string &name : op->op_info()->input_names()) {
       auto *arg = Argument(name);
