@@ -54,8 +54,13 @@ template <typename T, Precision P, OpRunType R>
 void PaddleInferenceAnakinPredictor<T, P, R>::InitGraph() {
   this->graph_p_ =
       std::make_shared<anakin::graph::Graph<T, anakin::Precision::FP32>>();
-  if (!(this->graph_p_->load(this->config_.model_file))) {
-    LOG(FATAL) << "fail to load graph from " << this->config_.model_file;
+  if (!this->config_.model_file.empty()) {
+    this->graph_p_->load(this->config_.model_file);
+  } else if (this->config_.model_buf_p) {
+    this->graph_p_->load(this->config_.model_buf_p,
+                         this->config_.model_buf_len);
+  } else {
+    LOG(FATAL) << "Model load error.";
   }
   auto inputs = this->graph_p_->get_ins();
   for (auto &input_str : inputs) {

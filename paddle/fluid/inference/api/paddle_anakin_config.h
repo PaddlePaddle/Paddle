@@ -34,6 +34,8 @@ struct AnakinConfig : public PaddlePredictor::Config {
   int max_stream{4};
   int data_stream_id{0};
   int compute_stream_id{0};
+  char* model_buf_p{nullptr};
+  size_t model_buf_len{0};
   TargetType target_type;
 #ifdef ANAKIN_MLU_PLACE
   int model_parallel{8};
