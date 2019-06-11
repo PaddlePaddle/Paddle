@@ -37,6 +37,7 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (5, 10)
 
     def test_check_output(self):
+
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
@@ -80,6 +81,52 @@ class TestReshapeOpWithInputShape(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
+
+
+class TestReshapeOp_attr_tensor(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "reshape2"
+
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {
+            "X": np.random.random(self.ori_shape).astype("float32"),
+            'ShapeTensor': shape_tensor
+        }
+        self.attrs = {}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+        }
+
+    def init_data(self):
+        self.ori_shape = (2, 25)
+        self.new_shape = (5, 10)
+        self.infered_shape = (5, 10)
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+
+class TestReshapeOpDimInfer1_attr_tensor(TestReshapeOp_attr_tensor):
+    def init_data(self):
+        self.ori_shape = (5, 10)
+        self.new_shape = (5, -1, 5)
+        self.infered_shape = (5, -1, 5)
+
+
+class TestReshapeOpDimInfer2_attr_tensor(TestReshapeOp_attr_tensor):
+    def init_data(self):
+        self.ori_shape = (2, 2, 6)
+        self.new_shape = (2, 0, 3, -1)
+        self.infered_shape = (2, 2, 3, -1)
 
 
 if __name__ == "__main__":

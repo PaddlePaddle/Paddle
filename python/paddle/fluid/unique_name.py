@@ -55,6 +55,25 @@ generator = UniqueNameGenerator()
 
 
 def generate(key):
+    """
+    Generate unique name with prefix key.
+
+    Args:
+        key(str): The generated name prefix. All generated name will be 
+                  started with this prefix.
+
+    Returns: 
+        str: A unique string with the prefix key.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            name1 = fluid.unique_name.generate('fc')
+            name2 = fluid.unique_name.generate('fc')
+            # The result is fc_0, fc_1
+            print name1, name2 
+    """
     return generator(key)
 
 
@@ -82,6 +101,29 @@ def generate_with_ignorable_key(key):
 
 
 def switch(new_generator=None):
+    """
+    Switch the Global namespace to a new namespace.
+
+    Args:
+        new_generator(None|UniqueNameGenerator): A new UniqueNameGenerator.
+
+    Returns: 
+        UniqueNameGenerator: The previous UniqueNameGenerator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            name1 = fluid.unique_name.generate('fc')
+            name2 = fluid.unique_name.generate('fc')
+            # The result is fc_0, fc_1
+            print name1, name2 
+
+            fluid.unique_name.switch()
+            name2 = fluid.unique_name.generate('fc')
+            # The result is fc_0
+            print name2
+    """
     global generator
     old = generator
     if new_generator is None:
@@ -93,6 +135,32 @@ def switch(new_generator=None):
 
 @signature_safe_contextmanager
 def guard(new_generator=None):
+    """
+    Change the global namespace with `with` statement.
+    
+    Args:
+        new_generator(None|str|bytes): New name of global namespace.
+            Note that str in Python2 was spilted into str and bytes in Python3, 
+            so here are two types. Default is None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            with fluid.unique_name.guard():
+              name_1 = fluid.unique_name.generate('fc')
+            with fluid.unique_name.guard():
+              name_2 = fluid.unique_name.generate('fc')
+            # The result is fc_0, fc_0
+            print name_1, name_2
+
+            with fluid.unique_name.guard('A'):
+              name_1 = fluid.unique_name.generate('fc')
+            with fluid.unique_name.guard('B'):
+              name_2 = fluid.unique_name.generate('fc')
+            # The result is Afc_0, Bfc_0
+            print name_1, name_2
+    """
     if isinstance(new_generator, six.string_types):
         new_generator = UniqueNameGenerator(new_generator)
     elif isinstance(new_generator, six.binary_type):

@@ -50,6 +50,16 @@ class HashName(PSDispatcher):
 
     Args:
         pserver_endpoints (list): list of endpoint(ip:port).
+
+    Examples:
+        .. code-block:: python
+
+        pserver_endpoints = ["127.0.0.1:6007", "127.0.0.1:6008"]
+        vars = ["var1","var2","var3","var4","var5"]
+
+        rr = RoundRobin(pserver_endpoints)
+        rr.dispatch(vars)
+
     """
 
     def __init__(self, pserver_endpoints):
@@ -74,6 +84,16 @@ class RoundRobin(PSDispatcher):
 
     Args:
         pserver_endpoints (list): list of endpoint(ip:port).
+
+    Examples:
+        .. code-block:: python
+
+        pserver_endpoints = ["127.0.0.1:6007", "127.0.0.1:6008"]
+        vars = ["var1","var2","var3","var4","var5"]
+
+        rr = RoundRobin(pserver_endpoints)
+        rr.dispatch(vars)
+
     """
 
     def __init__(self, pserver_endpoints):

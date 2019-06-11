@@ -278,11 +278,11 @@ class DistributeTranspiler(object):
                     type=core.VarDesc.VarType.RAW)
 
             if self.config.use_hierarchical_allreduce:
-                startup_program.global_block().create_var(
-                    name="Hierarchical_inter_NCCLID",
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
                 for i in range(0, self.config.nccl_comm_num):
+                    startup_program.global_block().create_var(
+                        name="Hierarchical_inter_NCCLID_{}".format(i),
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
                     startup_program.global_block().create_var(
                         name="Hierarchical_exter_NCCLID_{}".format(i),
                         persistable=True,
@@ -649,6 +649,18 @@ class DistributeTranspiler(object):
 
         Returns:
             Program: trainer side program.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(trainer_id, trainers=trainers, pservers=pserver_endpoints)
+              trainer_program = t.get_trainer_program()
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
@@ -774,6 +786,20 @@ class DistributeTranspiler(object):
 
         Returns:
             Program: the program for current parameter server to run.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              current_endpoint = "192.168.0.1:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(
+                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
+              pserver_program = t.get_pserver_program(current_endpoint)
         """
         # TODO(panyx0718): Revisit this assumption. what if #blocks > #pservers.
         # NOTE: assume blocks of the same variable is not distributed
@@ -1017,6 +1043,20 @@ class DistributeTranspiler(object):
 
         Returns:
             tuple: (main_program, startup_program), of type "Program"
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              current_endpoint = "192.168.0.1:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(
+                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
+              pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
         """
         pserver_prog = self.get_pserver_program(endpoint)
         pserver_startup = self.get_startup_program(
@@ -1042,6 +1082,21 @@ class DistributeTranspiler(object):
 
         Returns:
             Program: parameter server side startup program.
+
+        Examples:
+	    .. code-block:: python
+            
+                pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                current_endpoint = "192.168.0.1:6174"
+                trainer_id = 0
+                trainers = 4
+
+                t = fluid.DistributeTranspiler()
+                t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                pserver_program = t.get_pserver_program(current_endpoint)
+                pserver_startup_program = t.get_startup_program(current_endpoint,
+                                                                pserver_program)
         """
         s_prog = Program()
         orig_s_prog = self.startup_program
