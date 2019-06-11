@@ -9,6 +9,7 @@ cc_library(math_arm SRCS
     packed_sgemm.cc 
     softmax.cc 
     scale.cc
+    pooling.cc
     elementwise.cc
     sgemv.cc
     type_trans.cpp
