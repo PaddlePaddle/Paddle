@@ -134,6 +134,7 @@ void AllReduceOpHandle::RunImpl() {
                       static_cast<ncclDataType_t>(dtype), ncclSum);
       });
     }
+    VLOG(10) << "allreduce size:" << numel * SizeOfType(lod_tensors[0]->type());
     RunAllReduceFuncs(all_reduce_calls);
 #else
     PADDLE_THROW("Not compiled with CUDA");

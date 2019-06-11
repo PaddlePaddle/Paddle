@@ -34,6 +34,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = selected_rows->mutable_value();
       tensor->Resize(framework::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
+      selected_rows->InitDataShards();
     } else {
       PADDLE_THROW(
           "uniform_random_op's output only"

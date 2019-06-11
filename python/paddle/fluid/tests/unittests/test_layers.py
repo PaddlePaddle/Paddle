@@ -190,8 +190,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             ret = conv2d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -200,8 +199,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
 
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
@@ -1266,6 +1264,12 @@ class TestBook(LayerTest):
                 dtype='float32')
             out = layers.scatter(input=x, index=idx, updates=updates)
             return (out)
+
+    def make_one_hot(self):
+        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
+            label = self._get_data(name="label", shape=[1], dtype="int32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            return (one_hot_label)
 
     def make_label_smooth(self):
         # TODO(minqiyang): support gpu ut

@@ -120,7 +120,7 @@ class BestFitAllocator : public Allocator {
 
  protected:
   void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+  Allocation* AllocateImpl(size_t size) override;
 
  private:
   Allocation* allocation_;  // not owned

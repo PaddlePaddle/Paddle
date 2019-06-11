@@ -140,6 +140,9 @@ class TestDistRunnerBase(object):
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
 
+        if args.enable_backward_deps:
+            build_stra.enable_backward_optimizer_op_deps = True
+
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         else:
@@ -275,6 +278,8 @@ def runtime_main(test_class):
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument(
+        '--enable_backward_deps', type=bool, required=False, default=1)
+    parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--mem_opt', action='store_true')
@@ -354,6 +359,7 @@ class TestDistBase(unittest.TestCase):
         self._nccl_comm_num = 1
         self._setup_config()
         self._after_setup_config()
+        self._enable_backward_deps = False
 
     def _find_free_port(self):
         def __free_port():
@@ -605,6 +611,10 @@ class TestDistBase(unittest.TestCase):
         if self._mp_mode:
             env0 = {"FLAGS_selected_gpus": "0"}
             env1 = {"FLAGS_selected_gpus": "1"}
+
+        if self._enable_backward_deps:
+            tr0_cmd += " --enable_backward_deps 1"
+            tr1_cmd += " --enable_backward_deps 1"
 
         env0.update(envs)
         env1.update(envs)

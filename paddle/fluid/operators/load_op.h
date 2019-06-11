@@ -94,7 +94,9 @@ class LoadOpKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
-    selectedRows->SyncIndex();
+    selectedRows->SyncAfterLoad();
+    // construct id to index
+    selectedRows->SyncBeforeSave();
   }
 };
 

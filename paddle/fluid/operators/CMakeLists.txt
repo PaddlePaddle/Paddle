@@ -106,6 +106,7 @@ cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_t
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
+cc_test(merge_sparse_lookup_table_op_test SRCS merge_sparse_lookup_table_op_test.cc DEPS merge_sparse_lookup_table_op)
 nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)
 
 if (WITH_PYTHON)
