@@ -41,7 +41,9 @@ lite_cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pas
       program_fake_utils
       target_wrapper_host
   PROFILE_DEPS basic_profiler_lite
-      CUDA_DEPS target_wrapper_cuda kernels_cuda
+  CUDA_DEPS target_wrapper_cuda kernels_cuda
+  ARM_DEPS mul_compute_arm
+  X86_DEPS mul_compute_x86
 )
 
 

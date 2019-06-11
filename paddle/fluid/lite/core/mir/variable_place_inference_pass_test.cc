@@ -42,6 +42,12 @@ TEST(variable_place_inference_pass, test) {
       Place{
           TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW),
       },
+      Place{
+          TARGET(kX86), PRECISION(kFloat), DATALAYOUT(kNCHW),
+      },
+      Place{
+          TARGET(kX86), PRECISION(kAny), DATALAYOUT(kAny),
+      },
   });
 
   Program program(*desc->Proto(), scope, places);
@@ -58,7 +64,15 @@ TEST(variable_place_inference_pass, test) {
   });
 
   Place prefered_place{
+#ifdef PADDLE_WITH_CUDA
       TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW),
+#else
+#ifdef PADDLE_WITH_ARM
+      TARGET(kARM), PRECISION(kFloat), DATALAYOUT(kNCHW),
+#else   // X86
+      TARGET(kX86), PRECISION(kFloat), DATALAYOUT(kNCHW),
+#endif  // ARM
+#endif
   };
   optimizer.KernelPickPreferPlace(prefered_place);
   optimizer.Run(std::move(program), places, factor, passes);
@@ -72,3 +86,16 @@ USE_LITE_OP(mul);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
+
+#ifdef LITE_WITH_X86
+USE_LITE_KERNEL(mul, kX86, kFloat, kNCHW, def);
+#endif
+
+#ifdef LITE_WITH_ARM
+USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
+#endif
+
+#ifdef LITE_WITH_CUDA
+USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
+USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, device_to_host);
+#endif
