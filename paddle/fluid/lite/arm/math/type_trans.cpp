@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/arm/math/saturate.h"
 #include <arm_neon.h>
+#include <string.h>
 
 namespace paddle {
 namespace lite {
