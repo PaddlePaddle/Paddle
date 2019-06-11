@@ -60,20 +60,16 @@ TEST(conv2d_op, gpu) {
   test_conv2d_op<::anakin::saber::NV>(ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(conv2d_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_conv2d_op<::anakin::saber::X86>(ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(conv2d);
-USE_CPU_ANAKIN_CONVERTER(conv2d);
-
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(conv2d);
-#endif
