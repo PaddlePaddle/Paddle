@@ -39,15 +39,25 @@ def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
     labels[anchors_with_max_overlap] = 1
     labels[anchor_to_gt_max >= positive_overlap] = 1
 
-    fg_fake_inds = np.where(labels == 1)[0]
+    fg_inds = np.where(labels == 1)[0]
+    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float32)
+
     bg_inds = np.where(anchor_to_gt_max < negative_overlap)[0]
     enable_inds = bg_inds
+
+    fg_fake_inds = np.array([], np.int32)
+    fg_value = np.array([fg_inds[0]], np.int32)
+    fake_num = 0
+    for bg_id in enable_inds:
+        if bg_id in fg_inds:
+            fake_num += 1
+            fg_fake_inds = np.hstack([fg_fake_inds, fg_value])
     labels[enable_inds] = 0
 
+    bbox_inside_weight[fake_num:, :] = 1
     fg_inds = np.where(labels == 1)[0]
     bg_inds = np.where(labels == 0)[0]
-    bbox_inside_weight = np.ones((len(fg_inds), 4), dtype=np.float32)
-    loc_index = np.hstack([fg_inds])
+    loc_index = np.hstack([fg_fake_inds, fg_inds])
     score_index = np.hstack([fg_inds, bg_inds])
     score_index_tmp = np.hstack([fg_inds])
     labels = labels[score_index]
@@ -55,9 +65,8 @@ def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
     gt_inds = anchor_to_gt_argmax[loc_index]
     label_inds = anchor_to_gt_argmax[score_index_tmp]
     labels[0:len(fg_inds)] = np.squeeze(gt_labels[label_inds])
+    fg_num = len(fg_fake_inds) + len(fg_inds) + 1
     assert not np.any(labels == -1), "Wrong labels with -1"
-
-    fg_num = len(fg_fake_inds) + 1
     return loc_index, score_index, labels, gt_inds, bbox_inside_weight, fg_num
 
 
