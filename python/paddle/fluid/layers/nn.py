@@ -204,6 +204,7 @@ __all__ = [
     'sign',
     'deformable_conv',
     'unfold',
+    'deformable_roi_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -12168,3 +12169,117 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "dilations": dilations
         })
     return out
+
+
+def deformable_roi_pooling(input,
+                           rois,
+                           trans,
+                           no_trans=False,
+                           spatial_scale=1.0,
+                           group_size=[1, 1],
+                           pooled_height=1,
+                           pooled_width=1,
+                           part_size=None,
+                           sample_per_part=1,
+                           trans_std=0.1,
+                           position_sensitive=False,
+                           name=None):
+    """
+    Deformable PSROI Pooling Layer
+    
+    Args:
+       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
+                        [N,C,H,W]. Where N is batch size,C is number of input channels,H 
+                        is height of the feature, and W is the width of the feature.
+       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        the top left coordinates, and (x2, y2) is the bottom
+                        right coordinates.
+       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
+                         N is number of ROIs, C is number of channels, which indicate the offset distance 
+                         in the x and y directions, H is pooled height, and W is pooled width.
+       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
+                          value is True or False. Default: False.
+       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
+                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
+                         is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
+                         chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
+       pooled_height (integer): The pooled output height. Default: 1.
+       pooled_width (integer): The pooled output width. Default: 1.
+       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
+                        if None, default value is [pooled_height, pooled_width].
+       sample_per_part (integer): The number of samples in each bin. Default: 1.
+       trans_std (float): Coefficient of offset. Default: 0.1.
+       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not. Default: False.
+       name (str): Name of layer. Default: None.
+    Returns:
+        Variable: The tensor variable storing the deformable psroi pooling \
+                  result.
+
+
+    Examples:
+      .. code-block:: python
+
+        input = fluid.layers.data(name="input",
+                                  shape=[2, 192, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False)                   
+        rois = fluid.layers.data(name="rois",
+                                 shape=[4],
+                                 dtype='float32', 
+                                 lod_level=1)
+        trans = fluid.layers.data(name="trans",
+                                  shape=[2, 384, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False) 
+        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
+                                                     rois=rois, 
+                                                     trans=trans, 
+                                                     no_trans=False,
+                                                     spatial_scale=1.0, 
+                                                     group_size=(1, 1),
+                                                     pooled_height=8,
+                                                     pooled_width=8,
+                                                     part_size=(8, 8),
+                                                     sample_per_part=4, 
+                                                     trans_std=0.1,
+                                                     position_sensitive=False)
+    """
+
+    input_channels = input.shape[1]
+    if position_sensitive == False:
+        output_channels = input_channels
+    else:
+        output_channels = input_channels / pooled_height / pooled_width
+
+    if part_size is None:
+        part_height = pooled_height
+        part_width = pooled_width
+        part_size = [part_height, part_width]
+    part_size = utils.convert_to_list(part_size, 2, 'part_size')
+    group_size = utils.convert_to_list(group_size, 2, 'group_size')
+    helper = LayerHelper('deformable_psroi_pooling', **locals())
+    dtype = helper.input_dtype()
+    output = helper.create_variable_for_type_inference(dtype)
+    top_count = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type="deformable_psroi_pooling",
+        inputs={"Input": input,
+                "ROIs": rois,
+                "Trans": trans},
+        outputs={"Output": output,
+                 "TopCount": top_count},
+        attrs={
+            "no_trans": no_trans,
+            "spatial_scale": spatial_scale,
+            "output_dim": output_channels,
+            "group_size": group_size,
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
+            "part_size": part_size,
+            "sample_per_part": sample_per_part,
+            "trans_std": trans_std
+        })
+    return output
