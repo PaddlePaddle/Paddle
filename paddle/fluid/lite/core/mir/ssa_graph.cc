@@ -119,8 +119,7 @@ void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
 }
 
 Node *SSAGraph::GraphCreateInstructNode(
-    const Program &program, const std::shared_ptr<OpLite> &op,
-    const std::vector<Place> &valid_places) {
+    const std::shared_ptr<OpLite> &op, const std::vector<Place> &valid_places) {
   node_storage_.emplace_back();
   // TODO(Superjomn) remove one valid_places here.
   op->SetValidPlaces(valid_places);
@@ -141,7 +140,7 @@ void SSAGraph::Build(const Program &program,
   CHECK(CheckNodesRoleSet());
 
   for (auto &op : program.ops()) {
-    auto *op_node = GraphCreateInstructNode(program, op, valid_places);
+    auto *op_node = GraphCreateInstructNode(op, valid_places);
     for (const std::string &name : op->op_info()->input_names()) {
       auto *arg = Argument(name);
       CHECK(arg->IsRoleSet());
@@ -160,6 +159,13 @@ void SSAGraph::Build(const Program &program,
 
   MarkArgumentWeights(program);
   CheckValid();
+}
+
+void SSAGraph::RemoveNode(const mir::Node *node) {
+  auto pos = std::find_if(node_storage_.begin(), node_storage_.end(),
+                          [&node](mir::Node &n) { return &n == node; });
+  CHECK(pos != node_storage_.end());
+  node_storage_.erase(pos);
 }
 
 mir::Node *SSAGraph::Argument(const std::string &name) {

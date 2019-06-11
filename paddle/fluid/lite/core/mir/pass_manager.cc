@@ -16,10 +16,6 @@
 
 namespace paddle {
 namespace lite {
-namespace mir {
-
-PassManager::PassManager() {}
-
-}  // namespace mir
+namespace mir {}  // namespace mir
 }  // namespace lite
 }  // namespace paddle
