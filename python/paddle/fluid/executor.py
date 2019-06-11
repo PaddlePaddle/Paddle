@@ -888,7 +888,7 @@ class Executor(object):
         """
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
- 
+
         dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
