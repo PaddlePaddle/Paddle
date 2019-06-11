@@ -106,9 +106,7 @@ class MulPrimitiveFactory {
       auto dst_mdesc = CreateMemDescriptor(dims, type, dst_fmt);
 
       if (is_weights) {
-        x_tmp.mutable_data<K>(ctx.GetPlace(),
-                              ::paddle::memory::Allocator::kDefault,
-                              data->memory_size());
+        x_tmp.mutable_data<K>(ctx.GetPlace(), data->memory_size());
 
         auto src_mem =
             memory({src_mdesc, engine_}, to_void_cast<K>(data->data<K>()));
@@ -118,9 +116,7 @@ class MulPrimitiveFactory {
         auto reorder = mkldnn::reorder(src_mem, dst_mem);
         stream(stream::kind::eager).submit({reorder}).wait();
       } else {
-        x_tmp.mutable_data<T>(ctx.GetPlace(),
-                              ::paddle::memory::Allocator::kDefault,
-                              data->memory_size());
+        x_tmp.mutable_data<T>(ctx.GetPlace(), data->memory_size());
 
         auto src_mem =
             memory({src_mdesc, engine_}, to_void_cast<T>(data->data<T>()));
@@ -228,8 +224,8 @@ class MulPrimitiveFactory {
     auto dst_prim_desc = fc_prim_desc.dst_primitive_desc();
     auto buffer_size = dst_prim_desc.get_size();
 
-    float *output_data = output->mutable_data<float>(
-        ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, buffer_size);
+    float *output_data =
+        output->mutable_data<float>(ctx.GetPlace(), buffer_size);
     output->set_format((memory::format)dst_prim_desc.desc().data.format);
     return memory(dst_prim_desc, to_void_cast<float>(output_data));
   }
@@ -422,14 +418,14 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<T, K> {
     auto buffer_size = dst_prim_desc.get_size();
 
     if (force_fp32_output) {
-      float *output_data = output->mutable_data<float>(
-          ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, buffer_size);
+      float *output_data =
+          output->mutable_data<float>(ctx.GetPlace(), buffer_size);
       output->set_format((memory::format)dst_prim_desc.desc().data.format);
 
       return memory(dst_prim_desc, to_void_cast<float>(output_data));
     } else {
-      int8_t *output_data = output->mutable_data<int8_t>(
-          ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, buffer_size);
+      int8_t *output_data =
+          output->mutable_data<int8_t>(ctx.GetPlace(), buffer_size);
       output->set_format((memory::format)dst_prim_desc.desc().data.format);
 
       return memory(dst_prim_desc, to_void_cast<int8_t>(output_data));
@@ -525,12 +521,3 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
 
 REGISTER_OP_KERNEL(mul, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::MulMKLDNNKernel<uint8_t, float>);
-
-/** Unregister <fp32, fp32> MUL OP
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
-                                    FP32, ops::kMULMKLDNNFP32,
-                                    ops::MulMKLDNNKernel<float, float>);
-
-REGISTER_OP_KERNEL(mul, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::MulMKLDNNKernel<float, float>);
-**/
