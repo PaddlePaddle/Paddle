@@ -2,6 +2,7 @@
 set -ex
 
 TESTS_FILE="./lite_tests.txt"
+LIBS_FILE="./lite_libs.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 
@@ -53,7 +54,10 @@ function build {
 function test_lite {
     local file=$1
     echo "file: ${file}"
+
     for _test in $(cat $file); do
+        # We move the build phase here to make the 'gen_code' test compiles after the
+        # corresponding test is executed and the C++ code generates.
         make $_test -j$(expr $(nproc) - 2)
         ctest -R $_test -V
     done
@@ -98,8 +102,10 @@ function build_test_server {
     cd ./build
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
     cmake_x86_for_CI
-    #build $TESTS_FILE
+    # compile the tests and execute them.
     test_lite $TESTS_FILE
+    # build the remaining libraries to check compiling error.
+    build $LIBS_FILE
 }
 
 # Build the code and run lite server tests. This is executed in the CI system.
@@ -177,10 +183,11 @@ function main {
                 TESTS_FILE="${i#*=}"
                 shift
                 ;;
-            # build)
-            #     build $TESTS_FILE
-            #     shift
-            #     ;;
+            build)
+                build $TESTS_FILE
+                build $LIBS_FILE
+                shift
+                ;;
             cmake_x86)
                 cmake_x86
                 shift

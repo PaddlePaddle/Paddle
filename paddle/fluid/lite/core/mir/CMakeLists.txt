@@ -28,26 +28,22 @@ cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         mir_pass_manager
         program_fake_utils
         )
-set(test_variable_place_infrence_pass_DEPS
-        mul_op_lite
-        feed_op_lite
-        fetch_op_lite
-        io_copy_op_lite
-        ${host_kernels}
-        mir_passes
-        mir_pass_manager
-        optimizer_lite
-        program_fake_utils
-        target_wrapper_host
-        )
-if (LITE_WITH_CUDA)
-    set(test_variable_place_infrence_pass_DEPS
-            ${test_variable_place_infrence_pass_DEPS} target_wrapper_cuda
-            kernels_cuda
-            )
-endif()
-lite_cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_test.cc DEPS
-        ${test_variable_place_infrence_pass_DEPS})
+lite_cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_test.cc
+  DEPS
+      mul_op_lite
+      feed_op_lite
+      fetch_op_lite
+      io_copy_op_lite
+      ${host_kernels}
+      mir_passes
+      mir_pass_manager
+      optimizer_lite
+      program_fake_utils
+      target_wrapper_host
+  PROFILE_DEPS basic_profiler_lite
+      CUDA_DEPS target_wrapper_cuda kernels_cuda
+)
+
 
 lite_cc_library(pattern_matcher_lite SRCS pattern_matcher.cc DEPS mir_node mir_ssa_graph op_lite)
 lite_cc_test(test_pattern_matcher_lite SRCS pattern_matcher_test.cc DEPS pattern_matcher_lite)
