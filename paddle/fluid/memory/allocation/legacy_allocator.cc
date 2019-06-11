@@ -339,7 +339,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
 
-Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation *LegacyAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
