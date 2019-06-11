@@ -127,8 +127,8 @@ class TestFleetBase(unittest.TestCase):
     def _start_pserver(self, cmd, required_envs):
         ps0_cmd, ps1_cmd = cmd.format(0), cmd.format(1)
 
-        ps0_pipe = open("/tmp/ps0_err.log", "wb")
-        ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        ps0_pipe = open("/tmp/ps0_err.log", "wb+")
+        ps1_pipe = open("/tmp/ps1_err.log", "wb+")
 
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
@@ -146,8 +146,8 @@ class TestFleetBase(unittest.TestCase):
     def _start_trainer(self, cmd, required_envs):
         tr0_cmd, tr1_cmd = cmd.format(0), cmd.format(1)
 
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
+        tr0_pipe = open("/tmp/tr0_err.log", "wb+")
+        tr1_pipe = open("/tmp/tr1_err.log", "wb+")
 
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
@@ -204,9 +204,9 @@ class TestFleetBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
-        with open("/tmp/tr0_out.log", "w") as wn:
+        with open("/tmp/tr0_out.log", "wb+") as wn:
             wn.write(tr0_out)
-        with open("/tmp/tr1_out.log", "w") as wn:
+        with open("/tmp/tr1_out.log", "wb+") as wn:
             wn.write(tr1_out)
 
         # print server log
