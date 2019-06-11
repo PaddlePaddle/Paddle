@@ -1,9 +1,9 @@
 # INT8 MKL-DNN quantization 
 
-This document describes how to use Paddle inference Engine to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
+This document describes how to use Paddle inference Engine to convert the FP32 model to INT8 model on following 7 models: ResNet-50, ResNet-101, MobileNet-V1, MobileNet-V2, VGG16, VGG19 and GoogleNet. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show all the 7 models' results in accuracy and performance.
 
 ## 0. Install PaddlePaddle 
-Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification#installation) to install PaddlePaddle. If you build PaddlePaddle yourself, please use the following cmake arguments. 
+Follow PaddlePaddle [installation instruction](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/install/index_en.html) to install PaddlePaddle. If you [build from source](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/beginners_guide/install/compile/compile_Ubuntu_en.md), please use the following cmake arguments. 
 ```
 cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON  -WITH_SWIG_PY=OFF -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON
 
@@ -38,6 +38,11 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 | :------------: | :------------: | :------------: | :------------: | :------------: |
 | ResNet-50  | Full ImageNet Val  | 76.63%  | 76.48%  | 0.15% |
 | MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.36%  | 0.42%  |
+| MobileNet-V2 | Full ImageNet Val  |         |         |        |
+| ResNet-101  | Full ImageNet Val  |         |         |        |
+| VGG16  | Full ImageNet Val  |         |         |         |
+| VGG19  | Full ImageNet Val  |         |         |         |
+| GoogleNet  | Full ImageNet Val  |         |         |        |
 
    >**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
 
@@ -45,6 +50,12 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 | :------------: | :------------: | :------------: | :------------: | :------------: |
 | ResNet-50  | Full ImageNet Val  |  13.17 images/s | 49.84 images/s | 3.78 |
 | MobileNet-V1 | Full ImageNet Val  | 75.49 images/s | 232.38 images/s | 3.07  |
+| MobileNet-V2 | Full ImageNet Val  |   |  |  |
+| ResNet-101  | Full ImageNet Val  |  |  |   |
+| VGG16  | Full ImageNet Val  |   |  |  |
+| VGG19 | Full ImageNet Val  |  |  |   |
+| GoogleNet  | Full ImageNet Val  |   |  |  |
+
 
 Notes:
 * Measurement of accuracy requires a model which accepts two inputs: data and labels.
@@ -59,12 +70,22 @@ Notes:
 cd /PATH/TO/PADDLE/build
 python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
-The converted data binary file is saved by default in ~/.cache/paddle/dataset/int8/download/int8_full_val.bin
+Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in ~/.cache/paddle/dataset/int8/download/int8_full_val.bin.
    * ##### ResNet50 Full dataset benchmark
 ```bash
 ./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8v2/resnet50/model --infer_data=/path/to/converted/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
-   * ##### Mobilenet-v1 Full dataset benchmark
+   * ##### Other 6 models Full dataset benchmark
 ```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_mobilenet --infer_model=third_party/inference_demo/int8v2/mobilenet/model --infer_data=/path/to/converted/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
+./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model= --infer_data=/path/to/converted/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
+Set argument `--infer_model` with the following values in command line for other 6 models' benchmark:
+
+| Model Name   | --infer_model  |
+| :----------: | :------------: |
+| MobileNet-V1 | third_party/inference_demo/int8v2/mobilenet/model  |
+| MobileNet-V2 | third_party/inference_demo/int8v2/mobilenetv2/model|
+| ResNet-101   | third_party/inference_demo/int8v2/resnet101/model  |
+| VGG16        | third_party/inference_demo/int8v2/vgg16/model      |
+| VGG19        | third_party/inference_demo/int8v2/vgg19/model      |
+| GoogleNet    | third_party/inference_demo/int8v2/googlenet/model  |
