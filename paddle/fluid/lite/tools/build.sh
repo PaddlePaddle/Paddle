@@ -135,13 +135,7 @@ function build_test_arm {
             build_dir=build.lite.${os}.${abi}
             mkdir -p $build_dir
             cd $build_dir
-            prepare_for_codegen
             cmake_arm ${os} ${abi}
-
-            # gen_code need to run the gen_code test first to generate code.
-            make test_gen_code_lite
-            ctest -R test_gen_code_lite
-
             build $TESTS_FILE
 
             if [[ ${os} == "android" ]]; then
