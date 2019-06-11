@@ -460,17 +460,18 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // TODO(lidanqing): We use relu post-op instead of brelu post-op cause
       // mkldnn v0.18 does not support INT8 brelu post-op. Use code in /**/ when
       // v0.20 is enabled
-      boost::optional<memory::desc> bias_md(boost::none);
+      memory::desc* bias_md_p = nullptr;
       if (bias) {
         bias_tz = paddle::framework::vectorize2int(bias->dims());
-        bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
-                                          memory::format::x);
+        auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
+                                               memory::format::x);
+        bias_md_p = &bias_md;
       }
       conv_pd = ConvFwdPrimitiveDesc(
-          src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu || fuse_brelu /*fuse_relu*/, fuse_residual_conn,
-          false /*fuse_brelu*/, fuse_brelu_threshold, output_shift_scale,
-          sum_scale, is_test);
+          src_md, weights_md, bias_md_p, dst_md, strides, paddings,
+          mkldnn_engine, fuse_relu || fuse_brelu /*fuse_relu*/,
+          fuse_residual_conn, false /*fuse_brelu*/, fuse_brelu_threshold,
+          output_shift_scale, sum_scale, is_test);
       // Save conv_pd/src_memory/weights_memory for backward pass
       dev_ctx.SetBlob(key_conv_pd, conv_pd);
       handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
@@ -672,8 +673,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
-                       const boost::optional<memory::desc> bias,
-                       const memory::desc& dst, const std::vector<int>& strides,
+                       const memory::desc* bias_md_p, const memory::desc& dst,
+                       const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        const mkldnn::engine& engine, const bool fuse_relu,
                        const bool fuse_residual_conn, const bool fuse_brelu,
@@ -685,14 +686,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto propagation = is_test ? mkldnn::prop_kind::forward_scoring
                                : mkldnn::prop_kind::forward_training;
-    auto conv_desc = bias ? mkldnn::convolution_forward::desc(
-                                propagation, mkldnn::convolution_direct, src,
-                                weights, *bias, dst, stride_dims, padding_dims,
-                                padding_dims, mkldnn::padding_kind::zero)
-                          : mkldnn::convolution_forward::desc(
-                                propagation, mkldnn::convolution_direct, src,
-                                weights, dst, stride_dims, padding_dims,
-                                padding_dims, mkldnn::padding_kind::zero);
+    auto conv_desc =
+        (bias_md_p != nullptr)
+            ? mkldnn::convolution_forward::desc(
+                  propagation, mkldnn::convolution_direct, src, weights,
+                  (*bias_md_p), dst, stride_dims, padding_dims, padding_dims,
+                  mkldnn::padding_kind::zero)
+            : mkldnn::convolution_forward::desc(
+                  propagation, mkldnn::convolution_direct, src, weights, dst,
+                  stride_dims, padding_dims, padding_dims,
+                  mkldnn::padding_kind::zero);
 
     mkldnn::primitive_attr conv_attr =
         CreatePostOps(fuse_relu, fuse_residual_conn, output_shift_scale,
