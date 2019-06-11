@@ -20,9 +20,9 @@ import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
-from role_maker import MPISymetricRoleMaker
-from role_maker import RoleMakerBase
-from role_maker import UserDefinedRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
+from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 
 
 class Mode:
