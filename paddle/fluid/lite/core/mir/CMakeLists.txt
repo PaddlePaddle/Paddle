@@ -59,3 +59,4 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
         pattern_matcher_high_api proto_desc mir_pass_manager fc_op_lite mul_op_lite elementwise_ops_lite
         mir_passes compatible_pb_lite program_lite ${ops_lite})
 endif()
+add_subdirectory(fusion)
