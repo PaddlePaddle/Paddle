@@ -13,7 +13,7 @@ endif()
 set(FLUID_CORE_NAME "core")
 if(WITH_AVX AND AVX_FOUND)
   set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_avx")
-  if(NOT DEFINED NOAVX_CORE_FILE)
+  if(NOT DEFINED NOAVX_CORE_FILE OR NOAVX_CORE_FILE STREQUAL "")
     message(WARNING "You are building AVX version without NOAVX core, \
       and the wheel package may fail on NOAVX machine.")
   endif()
