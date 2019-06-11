@@ -17,6 +17,10 @@
 #include <Eigen/Core>
 #include <cmath>
 
+#include "paddle/fluid/lite/arm/math/conv_depthwise.h"
+#include "paddle/fluid/lite/arm/math/conv_direct.h"
+#include "paddle/fluid/lite/arm/math/conv_gemmlike.h"
+#include "paddle/fluid/lite/arm/math/conv_winograd.h"
 #include "paddle/fluid/lite/arm/math/elementwise.h"
 #include "paddle/fluid/lite/arm/math/packed_sgemm.h"
 #include "paddle/fluid/lite/arm/math/scale.h"

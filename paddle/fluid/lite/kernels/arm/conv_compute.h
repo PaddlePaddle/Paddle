@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/lite/arm/math/conv_impl.h"
+#include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/conv_op.h"
 
@@ -27,10 +26,9 @@ class ConvCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
   using param_t = operators::ConvParam;
 
-  void Run() override;
+  void PrepareForRun() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
+  void Run() override;
 
   virtual ~ConvCompute() = default;
 
