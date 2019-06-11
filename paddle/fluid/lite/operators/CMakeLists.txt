@@ -17,6 +17,7 @@ cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
 cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
+cc_library(conv_op_lite SRCS conv_op.cc DEPS ${op_DEPS})
 cc_library(pool_op_lite SRCS pool_op.cc DEPS ${op_DEPS})
 
 set(ops_lite
@@ -35,6 +36,7 @@ set(ops_lite
         activation_ops_lite
         dropout_op_lite
         concat_op_lite
+        conv_op_lite
         pool_op_lite
         PARENT_SCOPE)
 

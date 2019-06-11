@@ -131,7 +131,9 @@ USE_LITE_OP(square)
 USE_LITE_OP(softmax)
 USE_LITE_OP(dropout)
 USE_LITE_OP(concat)
-USE_LITE_OP(pool)
+USE_LITE_OP(conv2d)
+USE_LITE_OP(depthwise_conv2d)
+USE_LITE_OP(pool2d)
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
 
@@ -146,6 +148,9 @@ USE_LITE_KERNEL(elementwise_add, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(softmax, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(dropout, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(concat, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(conv2d, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(depthwise_conv2d, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool2d, kX86, kFloat, kNCHW, def);
 #endif
 
 #ifdef LITE_WITH_CUDA

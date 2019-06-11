@@ -37,40 +37,24 @@ class PoolOpLite : public OpLite {
 
   bool InferShape() const override;
 
-  /*
-  bool Run() override {
-    CHECK(kernel_);
-    kernel_->Run();
-    return true;
-  }
-   */
-
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
-    auto x = op_desc.Input("X").front();
+    auto input = op_desc.Input("X").front();
     auto out = op_desc.Output("Out").front();
 
-    CHECK(scope->FindVar(x));
-    CHECK(scope->FindVar(out));
-    param_.x = scope->FindVar(x)->GetMutable<lite::Tensor>();
-    param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
-
+    param_.x = scope->FindVar(input)->GetMutable<Tensor>();
+    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
     param_.pooling_type = op_desc.GetAttr<std::string>("pooling_type");
     param_.ksize = op_desc.GetAttr<std::vector<int>>("ksize");
-    param_.global_pooling = op_desc.GetAttr<bool>("global_pooling");
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
-
-    param_.exclusive = op_desc.GetAttr<bool>("exclusive");
-    param_.adaptive = op_desc.GetAttr<bool>("adaptive");
     param_.ceil_mode = op_desc.GetAttr<bool>("ceil_mode");
-    param_.use_quantizer = op_desc.GetAttr<bool>("use_quantizer");
-    // param_.data_format = op_desc.GetAttr<bool>("data_format");
+    param_.adaptive = op_desc.GetAttr<bool>("adaptive");
+    param_.global_pooling = op_desc.GetAttr<bool>("global_pooling");
     return true;
   }
-
-  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-
+  
   std::string DebugString() const override { return "pool"; }
 
  private:
