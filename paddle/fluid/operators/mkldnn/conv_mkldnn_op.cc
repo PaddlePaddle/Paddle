@@ -643,7 +643,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  private:
   mkldnn::primitive_attr CreatePostOps(
       bool fuse_relu, bool fuse_residual_conn,
-      const std::vector<float> output_shift_scale, float sum_scale,
+      const std::vector<float>& output_shift_scale, float sum_scale,
       bool fuse_brelu, float fuse_brelu_threshold) const {
     mkldnn::primitive_attr conv_attr;
     mkldnn::post_ops post_operations;
@@ -679,7 +679,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const mkldnn::engine& engine, const bool fuse_relu,
                        const bool fuse_residual_conn, const bool fuse_brelu,
                        const float fuse_brelu_threshold,
-                       const std::vector<float> output_shift_scale,
+                       const std::vector<float>& output_shift_scale,
                        const float sum_scale, bool is_test) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
