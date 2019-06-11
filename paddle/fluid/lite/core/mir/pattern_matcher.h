@@ -62,7 +62,7 @@ struct PMNode {
   PMNode& operator>>(PMNode& right);
 
   // Link many nodes to this node.
-  friend void operator>>(std::vector<PMNode*>& others, PMNode& me);
+  friend PMNode& operator>>(std::vector<PMNode*>& others, PMNode& me);
 
   // Link this to many other nodes.
   PMNode& operator>>(std::vector<PMNode*>& nodes);
