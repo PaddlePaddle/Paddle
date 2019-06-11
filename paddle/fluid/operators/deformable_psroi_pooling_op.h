@@ -33,8 +33,8 @@ T bilinear_interp(const T* data, const T x, const T y, const int width,
   int x2 = ceil(x);
   int y1 = floor(y);
   int y2 = ceil(y);
-  T dist_x = (T)(x - x1);
-  T dist_y = (T)(y - y1);
+  T dist_x = static_cast<T>(x - x1);
+  T dist_y = static_cast<T>(y - y1);
   T value11 = data[y1 * width + x1];
   T value12 = data[y2 * width + x1];
   T value21 = data[y1 * width + x2];
@@ -64,54 +64,58 @@ void DeformablePSROIPoolForwardCPUKernel(
     const T* offset_bottom_rois = bottom_rois + n * 4;
 
     int roi_batch_ind = roi_batch_id_data[n];
-    T roi_start_w = (T)(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
-    T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
-    T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
-    T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
+    T roi_start_w =
+        static_cast<T>(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
+    T roi_start_h =
+        static_cast<T>(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
+    T roi_end_w =
+        static_cast<T>(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
+    T roi_end_h =
+        static_cast<T>(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
 
     //  width and height of roi
     T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));
     T roi_height = std::max(roi_end_h - roi_start_h, T(0.1));
 
     //  width and height of each bin
-    T bin_size_h = roi_height / (T)(pooled_height);
-    T bin_size_w = roi_width / (T)(pooled_width);
+    T bin_size_h = roi_height / static_cast<T>(pooled_height);
+    T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
     //  sampling interval in each bin
-    T sub_bin_size_h = bin_size_h / (T)(sample_per_part);
-    T sub_bin_size_w = bin_size_w / (T)(sample_per_part);
+    T sub_bin_size_h = bin_size_h / static_cast<T>(sample_per_part);
+    T sub_bin_size_w = bin_size_w / static_cast<T>(sample_per_part);
 
     //  obtain offset of roi
-    int part_h = floor((T)(ph) / pooled_height * part_height);
-    int part_w = floor((T)(pw) / pooled_width * part_width);
+    int part_h = floor(static_cast<T>(ph) / pooled_height * part_height);
+    int part_w = floor(static_cast<T>(pw) / pooled_width * part_width);
     int class_id = ctop / channels_each_class;
 
     T trans_x =
         no_trans
-            ? (T)(0)
+            ? static_cast<T>(0)
             : bottom_trans[(((n * num_classes + class_id) * 2) * part_height +
                             part_h) *
                                part_width +
                            part_w] *
-                  (T)trans_std;
+                  static_cast<T>(trans_std);
     T trans_y = no_trans
-                    ? (T)(0)
+                    ? static_cast<T>(0)
                     : bottom_trans[(((n * num_classes + class_id) * 2 + 1) *
                                         part_height +
                                     part_h) *
                                        part_width +
                                    part_w] *
-                          (T)trans_std;
+                          static_cast<T>(trans_std);
 
     //  location of start after adding offset
-    T wstart = (T)(pw)*bin_size_w + roi_start_w;
+    T wstart = static_cast<T>(pw) * bin_size_w + roi_start_w;
     wstart += trans_x * roi_width;
-    T hstart = (T)(ph)*bin_size_h + roi_start_h;
+    T hstart = static_cast<T>(ph) * bin_size_h + roi_start_h;
     hstart += trans_y * roi_height;
     T sum = 0;
     int num_sample = 0;
-    int gw = floor((T)(pw)*group_width / pooled_width);
-    int gh = floor((T)(ph)*group_height / pooled_height);
+    int gw = floor(static_cast<T>(pw) * group_width / pooled_width);
+    int gh = floor(static_cast<T>(ph) * group_height / pooled_height);
     gw = std::min(std::max(gw, 0), group_width - 1);
     gh = std::min(std::max(gh, 0), group_height - 1);
     const T* offset_bottom_data =
@@ -135,7 +139,7 @@ void DeformablePSROIPoolForwardCPUKernel(
         num_sample++;
       }
     }
-    top_data[ix] = num_sample == 0 ? (T)(0) : sum / num_sample;
+    top_data[ix] = num_sample == 0 ? static_cast<T>(0) : sum / num_sample;
     top_count[ix] = num_sample;
   }
 }
@@ -239,49 +243,53 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
     //  location of roi on feature map
     const T* offset_bottom_rois = bottom_rois + n * 4;
     int roi_batch_ind = roi_batch_id_data[n];
-    T roi_start_w = (T)(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
-    T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
-    T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
-    T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
+    T roi_start_w =
+        static_cast<T>(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
+    T roi_start_h =
+        static_cast<T>(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
+    T roi_end_w =
+        static_cast<T>(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
+    T roi_end_h =
+        static_cast<T>(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
 
     //  width and height of roi
     T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));
     T roi_height = std::max(roi_end_h - roi_start_h, T(0.1));
 
     //  width and height of each bin
-    T bin_size_h = roi_height / (T)(pooled_height);
-    T bin_size_w = roi_width / (T)(pooled_width);
+    T bin_size_h = roi_height / static_cast<T>(pooled_height);
+    T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
     //  sampling interval in each bin
-    T sub_bin_size_h = bin_size_h / (T)(sample_per_part);
-    T sub_bin_size_w = bin_size_w / (T)(sample_per_part);
+    T sub_bin_size_h = bin_size_h / static_cast<T>(sample_per_part);
+    T sub_bin_size_w = bin_size_w / static_cast<T>(sample_per_part);
 
     //  obtain offset of roi
-    int part_h = floor((T)(ph) / pooled_height * part_height);
-    int part_w = floor((T)(pw) / pooled_width * part_height);
+    int part_h = floor(static_cast<T>(ph) / pooled_height * part_height);
+    int part_w = floor(static_cast<T>(pw) / pooled_width * part_height);
     int class_id = ctop / channels_each_class;
 
     T trans_x =
         no_trans
-            ? (T)(0)
+            ? static_cast<T>(0)
             : bottom_trans[(((n * num_classes + class_id) * 2) * part_height +
                             part_h) *
                                part_width +
                            part_w] *
-                  (T)trans_std;
+                  static_cast<T>(trans_std);
     T trans_y = no_trans
-                    ? (T)(0)
+                    ? static_cast<T>(0)
                     : bottom_trans[(((n * num_classes + class_id) * 2 + 1) *
                                         part_height +
                                     part_h) *
                                        part_width +
                                    part_w] *
-                          (T)trans_std;
+                          static_cast<T>(trans_std);
 
     //  location of start after adding offset
-    T wstart = (T)(pw)*bin_size_w + roi_start_w;
+    T wstart = static_cast<T>(pw) * bin_size_w + roi_start_w;
     wstart += trans_x * roi_width;
-    T hstart = (T)(ph)*bin_size_h + roi_start_h;
+    T hstart = static_cast<T>(ph) * bin_size_h + roi_start_h;
     hstart += trans_y * roi_height;
 
     if (top_count[index] <= 0) {
@@ -291,8 +299,8 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
     T diff_val = top_diff[index] / top_count[index];
     const T* offset_bottom_data =
         bottom_data + roi_batch_ind * channels * height * width;
-    int gw = floor((T)(pw)*group_width / pooled_width);
-    int gh = floor((T)(ph)*group_height / pooled_height);
+    int gw = floor(static_cast<T>(pw) * group_width / pooled_width);
+    int gh = floor(static_cast<T>(ph) * group_height / pooled_height);
     gw = std::min(std::max(gw, 0), group_width - 1);
     gh = std::min(std::max(gh, 0), group_height - 1);
 
