@@ -15,6 +15,8 @@ cc_library(elementwise_compute_x86 SRCS elementwise_compute.cc DEPS ${lite_kerne
 cc_library(softmax_compute_x86 SRCS softmax_compute.cc DEPS ${lite_kernel_deps} softmax)
 cc_library(dropout_compute_x86 SRCS dropout_compute.cc DEPS ${lite_kernel_deps} )
 cc_library(concat_compute_x86 SRCS concat_compute.cc DEPS ${lite_kernel_deps} )
+cc_library(conv_compute_x86 SRCS conv_compute.cc DEPS ${lite_kernel_deps} blas im2col vol2col)
+cc_library(pool_compute_x86 SRCS pool_compute.cc DEPS ${lite_kernel_deps} pooling)
 
 set(x86_kernels
     activation_compute_x86
@@ -28,6 +30,8 @@ set(x86_kernels
     softmax_compute_x86
     dropout_compute_x86
     concat_compute_x86
+    conv_compute_x86 
+    pool_compute_x86  
     )
 
 set(x86_kernels "${x86_kernels}" CACHE INTERNAL "x86 kernels")
