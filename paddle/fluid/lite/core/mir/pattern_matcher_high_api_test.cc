@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pattern_matcher.h"
+#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 #include <gtest/gtest.h>
 #include <memory>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
-#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 #include "paddle/fluid/lite/core/program.h"
-#include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
 namespace lite {
@@ -130,7 +128,8 @@ TEST(pattern_matcher2, graph_test) {
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
 
-  ASSERT_EQ(graph->nodes().size(), 8UL + 2UL /*feed op + fetch op*/);
+  ASSERT_EQ(graph->nodes().size(),
+            8UL /*real nodes*/ + 2UL /*feed op + fetch op*/);
   Visualize(graph.get());
 }
 
@@ -139,10 +138,11 @@ TEST(pattern_matcher2, test) {
   std::vector<Place> places{{TARGET(kHost), PRECISION(kFloat)}};
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
+  const int num_nodes = graph->nodes().size();
   FcFuser fuser;
   fuser(graph.get());
   ASSERT_EQ(graph->nodes().size(),
-            8UL - 3UL /*mul_out, mul, add */ + 1UL /* fc*/);
+            num_nodes - 3UL /*nodes removed */ + 1UL /* fused fc node*/);
 }
 
 }  // namespace mir
