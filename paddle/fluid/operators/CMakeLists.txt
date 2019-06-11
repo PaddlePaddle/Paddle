@@ -33,7 +33,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-if (ANAKIN_FOUND) 
+if (ANAKIN_SUBGRAPH) 
     add_subdirectory(anakin)
 endif()
 
