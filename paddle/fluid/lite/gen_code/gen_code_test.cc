@@ -136,4 +136,10 @@ TEST(gen_code, optimized_program) {
 }  // namespace paddle
 
 USE_LITE_OP(mul);
+#ifdef LITE_WITH_X86
 USE_LITE_KERNEL(mul, kX86, kFloat, kNCHW, def);
+#endif
+
+#ifdef LITE_WITH_ARM
+USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
+#endif

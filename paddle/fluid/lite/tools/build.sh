@@ -2,6 +2,7 @@
 set -ex
 
 TESTS_FILE="./lite_tests.txt"
+LIBS_FILE="./lite_libs.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 
@@ -42,18 +43,21 @@ function cmake_arm {
         -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
 }
 
-# function build {
-#     file=$1
-#     for _test in $(cat $file); do
-#         make $_test -j$(expr $(nproc) - 2)
-#     done
-# }
+function build {
+    file=$1
+    for _test in $(cat $file); do
+        make $_test -j$(expr $(nproc) - 2)
+    done
+}
 
 # It will eagerly test all lite related unittests.
 function test_lite {
     local file=$1
     echo "file: ${file}"
+
     for _test in $(cat $file); do
+        # We move the build phase here to make the 'gen_code' test compiles after the
+        # corresponding test is executed and the C++ code generates.
         make $_test -j$(expr $(nproc) - 2)
         ctest -R $_test -V
     done
@@ -98,8 +102,10 @@ function build_test_server {
     cd ./build
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
     cmake_x86_for_CI
-    #build $TESTS_FILE
+    # compile the tests and execute them.
     test_lite $TESTS_FILE
+    # build the remaining libraries to check compiling error.
+    build $LIBS_FILE
 }
 
 # Build the code and run lite server tests. This is executed in the CI system.
@@ -129,7 +135,6 @@ function build_test_arm {
             build_dir=build.lite.${os}.${abi}
             mkdir -p $build_dir
             cd $build_dir
-
             cmake_arm ${os} ${abi}
             build $TESTS_FILE
 
@@ -177,10 +182,11 @@ function main {
                 TESTS_FILE="${i#*=}"
                 shift
                 ;;
-            # build)
-            #     build $TESTS_FILE
-            #     shift
-            #     ;;
+            build)
+                build $TESTS_FILE
+                build $LIBS_FILE
+                shift
+                ;;
             cmake_x86)
                 cmake_x86
                 shift

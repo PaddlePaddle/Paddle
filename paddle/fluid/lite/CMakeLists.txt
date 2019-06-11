@@ -79,6 +79,10 @@ function (lite_deps TARGET)
 
 endfunction()
 
+# Add names for lite libraries for latter compile. We use this name list to avoid compiling
+# the whole fluid project to accelerate the compile speed.
+set(offline_lib_registry_file "${CMAKE_BINARY_DIR}/lite_libs.txt")
+file(WRITE ${offline_lib_registry_file} "") # clean
 # cc_library with branch support.
 # The branches:
 #  X86_DEPS: works only when LITE_WITH_X86 is ON.
@@ -106,6 +110,9 @@ function(lite_cc_library TARGET)
             )
 
     cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+
+    # register a library name.
+    file(APPEND ${offline_lib_registry_file} "${TARGET}\n")
 endfunction()
 
 function(lite_cc_binary TARGET)
@@ -131,10 +138,6 @@ endfunction()
 # Add a unit-test name to file for latter offline manual test.
 set(offline_test_registry_file "${CMAKE_BINARY_DIR}/lite_tests.txt")
 file(WRITE ${offline_test_registry_file} "") # clean
-function (register_test_offline TARGET)
-  file(APPEND ${offline_test_registry_file} "${TARGET}\n")
-endfunction()
-
 # Test lite modules.
 function(lite_cc_test TARGET)
     set(options "")
@@ -155,7 +158,7 @@ function(lite_cc_test TARGET)
             HVY_DEPS ${args_HVY_DEPS}
             )
     _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
-    register_test_offline("${TARGET}")
+    file(APPEND ${offline_test_registry_file} "${TARGET}\n")
 endfunction()
 
 add_subdirectory(core)
