@@ -208,6 +208,7 @@ class OpInfo : public cpp::OpDesc {
  */
 class VarInfo : public cpp::VarDesc {
  public:
+  VarInfo() = default;
   explicit VarInfo(const VarInfo &) = default;
   explicit VarInfo(const cpp::VarDesc &other) : cpp::VarDesc(other) {}
 

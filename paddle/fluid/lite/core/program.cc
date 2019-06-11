@@ -88,9 +88,20 @@ void Program::PrepareWorkspace(const framework::proto::ProgramDesc &program) {
   scope_->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
 
   CHECK(!program.blocks().empty());
+
+  // Add feed/fetch vars
+  vars_.emplace_back(new VarInfo);
+  vars_.back()->SetName("feed");
+  vars_.back()->SetPersistable(false);
+  vars_.emplace_back(new VarInfo);
+  vars_.back()->SetName("fetch");
+  vars_.back()->SetPersistable(false);
+
   for (auto proto_var_desc : program.blocks(0).vars()) {
     pb::VarDesc pb_var_desc(proto_var_desc);
     auto name = pb_var_desc.Name();
+    // Ignore feed/fetch vars in origin program
+    if (name == "feed" || name == "fetch") continue;
     cpp::VarDesc cpp_var_desc;
     TransformVarDescPbToCpp(pb_var_desc, &cpp_var_desc);
     vars_.emplace_back(new VarInfo(cpp_var_desc));
