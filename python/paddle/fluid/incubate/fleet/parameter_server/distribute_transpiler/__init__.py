@@ -78,8 +78,7 @@ class DistributedTranspiler(Fleet):
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            io.load_persistables(self._executor, model_dir,
-                                 self.startup_program)
+            io.load_persistables(self._executor, model_dir, self.main_program)
 
     def run_server(self):
         """
@@ -200,16 +199,22 @@ class DistributedTranspiler(Fleet):
 
         self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
-        self._transpiler.transpile(
-            trainer_id=fleet.worker_index(),
-            pservers=fleet.server_endpoints(to_string=True),
-            trainers=fleet.worker_num(),
-            sync_mode=config.sync_mode)
 
         if self.is_worker():
+            self._transpiler.transpile(
+                trainer_id=fleet.worker_index(),
+                pservers=fleet.server_endpoints(to_string=True),
+                trainers=fleet.worker_num(),
+                sync_mode=config.sync_mode)
             self.main_program = self._transpiler.get_trainer_program()
             self.startup_program = default_startup_program()
         else:
+            self._transpiler.transpile(
+                trainer_id=fleet.worker_index(),
+                pservers=fleet.server_endpoints(to_string=True),
+                trainers=fleet.worker_num(),
+                sync_mode=config.sync_mode,
+                current_endpoint=self.server_endpoints()[self.server_index()])
             self.main_program, self.startup_program = \
                 self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
 
