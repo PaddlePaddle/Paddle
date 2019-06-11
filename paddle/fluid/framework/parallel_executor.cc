@@ -281,6 +281,27 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+/*
+ * When nccl inits nccl comm using ncclCommInitAll, it meets error when
+ * allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
+ * create a new nccl comm for sync_batch_norm_op. And these codes should be
+ * polished with a unified nccl management.
+ */
+platform::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp(
+    framework::Scope *scope) {
+  auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
+  if (nccl_id_var != nullptr) {
+    return member_->nccl_ctxs_.DefaultFlatCtx();
+  }
+
+  if (dev_nccl_ctxs_.get() == nullptr) {
+    dev_nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
+  }
+  return dev_nccl_ctxs_.get();
+}
+#endif
+
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -296,6 +317,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
+#if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
+  if (member_->use_cuda_) {
+    PADDLE_ENFORCE(places.size() == 1, "Windows can support Single GPU only.");
+  }
+#endif
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
                    "If you set build_strategy.reduce with 'Reduce',"
@@ -352,17 +378,15 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
+    auto *nccl_ctxs = GetNCCLContextForSyncbatchNomrOp(scope);
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           pool.Get(member_->places_[dev_id]));
-      auto &nccl_ctx =
-          member_->nccl_ctxs_.DefaultFlatCtx()->at(member_->places_[dev_id]);
+      auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
-#else
-    PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
   // broadcast parameters from the 0th device to others:
@@ -544,8 +568,6 @@ void ParallelExecutor::BCastParamsToDevices(
         }
         nccl_ctxs->WaitAll();
       }
-#else
-      PADDLE_THROW("Not compiled with CUDA");
 #endif
     } else {
       platform::CPUPlace cpu;
@@ -650,7 +672,9 @@ ParallelExecutor::~ParallelExecutor() {
 bool ParallelExecutor::EnableParallelGraphExecution(
     const ir::Graph &graph, const ExecutionStrategy &exec_strategy,
     const BuildStrategy &build_strategy) const {
-  if (!FLAGS_enable_parallel_graph) return false;
+  if (!FLAGS_enable_parallel_graph) {
+    return false;
+  }
 
   bool enable_parallel_graph = true;
 
@@ -670,11 +694,19 @@ bool ParallelExecutor::EnableParallelGraphExecution(
     }
   }
 
-  if (!member_->use_all_reduce_ || !member_->use_cuda_)
-
+  if (!member_->use_all_reduce_ || !member_->use_cuda_) {
     if (build_strategy.enable_sequential_execution_ ||
-        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
+        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
       enable_parallel_graph = false;
+    }
+  }
+
+#ifdef WIN32
+  VLOG(1) << "Windows has no support to parallel graph, enable_parallel_graph "
+             "would be forced to false.";
+  enable_parallel_graph = false;
+#endif
+
   return enable_parallel_graph;
 }
 

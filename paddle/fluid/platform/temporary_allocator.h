@@ -51,8 +51,7 @@ class TemporaryAllocator : public memory::allocation::Allocator {
  protected:
   void FreeImpl(memory::allocation::Allocation *allocation) override;
 
-  memory::allocation::Allocation *AllocateImpl(
-      size_t size, memory::allocation::Allocator::Attr attr) override;
+  memory::allocation::Allocation *AllocateImpl(size_t size) override;
 
  private:
   platform::Place place_;

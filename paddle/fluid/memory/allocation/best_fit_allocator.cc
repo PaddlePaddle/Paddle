@@ -140,7 +140,7 @@ void BestFitAllocator::FreeImpl(Allocation* allocation) {
   InsertFreeNode(chunk_it);
   delete allocation;
 }
-Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation* BestFitAllocator::AllocateImpl(size_t size) {
   auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
   MapIt map_it;
   for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {

@@ -26,7 +26,7 @@ import pickle
 import logging
 import sys
 
-__all__ = ['SensitivePruneStrategy', 'UniformPruneStrategy']
+__all__ = ['SensitivePruneStrategy', 'UniformPruneStrategy', 'PruneStrategy']
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
 _logger = logging.getLogger(__name__)
@@ -61,8 +61,6 @@ class PruneStrategy(Strategy):
         self.metric_name = metric_name
         self.pruned_params = pruned_params
         self.pruned_list = []
-        self.backup = {}
-        self.param_shape_backup = {}
 
     def _eval_graph(self, context, sampled_rate=None, cached_id=0):
         """
@@ -82,7 +80,9 @@ class PruneStrategy(Strategy):
                                 ratio,
                                 place,
                                 lazy=False,
-                                only_graph=False):
+                                only_graph=False,
+                                param_shape_backup=None,
+                                param_backup=None):
         """
         Pruning filters by given ratio.
         Args:
@@ -103,16 +103,16 @@ class PruneStrategy(Strategy):
         for param in params:
             assert isinstance(param, VarWrapper)
             param_t = scope.find_var(param.name()).get_tensor()
-            if lazy:
-                self.backup[param.name()] = copy.deepcopy(np.array(param_t))
+            if param_backup is not None and (param.name() not in param_backup):
+                param_backup[param.name()] = copy.deepcopy(np.array(param_t))
             pruned_param = self.pruner.prune_tensor(
                 np.array(param_t), pruned_idx, pruned_axis=0, lazy=lazy)
             if not only_graph:
                 param_t.set(pruned_param, place)
             ori_shape = param.shape()
-            if param.name() not in self.param_shape_backup:
-                self.param_shape_backup[param.name()] = copy.deepcopy(
-                    param.shape())
+            if param_shape_backup is not None and (
+                    param.name() not in param_shape_backup):
+                param_shape_backup[param.name()] = copy.deepcopy(param.shape())
             new_shape = list(param.shape())
             new_shape[0] = pruned_param.shape[0]
             param.set_shape(new_shape)
@@ -120,7 +120,8 @@ class PruneStrategy(Strategy):
                 '|----------------------------------------+----+------------------------------+------------------------------|'
             )
             _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(
-                str(param.name()), str(0), str(ori_shape), str(param.shape())))
+                str(param.name()),
+                str(ratio), str(ori_shape), str(param.shape())))
             self.pruned_list[0].append(param.name())
         return pruned_idx
 
@@ -131,7 +132,9 @@ class PruneStrategy(Strategy):
                                 pruned_axis,
                                 place,
                                 lazy=False,
-                                only_graph=False):
+                                only_graph=False,
+                                param_shape_backup=None,
+                                param_backup=None):
         """
         Pruning parameters in given axis.
         Args:
@@ -150,16 +153,17 @@ class PruneStrategy(Strategy):
         for param in params:
             assert isinstance(param, VarWrapper)
             param_t = scope.find_var(param.name()).get_tensor()
-            if lazy:
-                self.backup[param.name()] = copy.deepcopy(np.array(param_t))
+            if param_backup is not None and (param.name() not in param_backup):
+                param_backup[param.name()] = copy.deepcopy(np.array(param_t))
             pruned_param = self.pruner.prune_tensor(
                 np.array(param_t), pruned_idx, pruned_axis, lazy=lazy)
             if not only_graph:
                 param_t.set(pruned_param, place)
             ori_shape = param.shape()
-            if param.name() not in self.param_shape_backup:
-                self.param_shape_backup[param.name()] = copy.deepcopy(
-                    param.shape())
+
+            if param_shape_backup is not None and (
+                    param.name() not in param_shape_backup):
+                param_shape_backup[param.name()] = copy.deepcopy(param.shape())
             new_shape = list(param.shape())
             new_shape[pruned_axis] = pruned_param.shape[pruned_axis]
             param.set_shape(new_shape)
@@ -251,7 +255,9 @@ class PruneStrategy(Strategy):
                                         ratio=None,
                                         pruned_idxs=None,
                                         lazy=False,
-                                        only_graph=False):
+                                        only_graph=False,
+                                        param_backup=None,
+                                        param_shape_backup=None):
         """
         Pruning all the parameters affected by the pruning of given parameter.
         Args:
@@ -284,7 +290,9 @@ class PruneStrategy(Strategy):
                 pruned_axis=0,
                 place=place,
                 lazy=lazy,
-                only_graph=only_graph)
+                only_graph=only_graph,
+                param_backup=param_backup,
+                param_shape_backup=param_shape_backup)
 
         else:
             pruned_idxs = self._prune_filters_by_ratio(
@@ -292,7 +300,9 @@ class PruneStrategy(Strategy):
                 ratio,
                 place,
                 lazy=lazy,
-                only_graph=only_graph)
+                only_graph=only_graph,
+                param_backup=param_backup,
+                param_shape_backup=param_shape_backup)
         corrected_idxs = pruned_idxs[:]
 
         for idx, op in enumerate(related_ops):
@@ -307,7 +317,9 @@ class PruneStrategy(Strategy):
                             pruned_axis=1,
                             place=place,
                             lazy=lazy,
-                            only_graph=only_graph)
+                            only_graph=only_graph,
+                            param_backup=param_backup,
+                            param_shape_backup=param_shape_backup)
             if op.type() == "depthwise_conv2d":
                 for in_var in op.all_inputs():
                     if graph.is_parameter(in_var):
@@ -319,7 +331,9 @@ class PruneStrategy(Strategy):
                             pruned_axis=0,
                             place=place,
                             lazy=lazy,
-                            only_graph=only_graph)
+                            only_graph=only_graph,
+                            param_backup=param_backup,
+                            param_shape_backup=param_shape_backup)
             elif op.type() == "elementwise_add":
                 # pruning bias
                 for in_var in op.all_inputs():
@@ -332,7 +346,9 @@ class PruneStrategy(Strategy):
                             pruned_axis=0,
                             place=place,
                             lazy=lazy,
-                            only_graph=only_graph)
+                            only_graph=only_graph,
+                            param_backup=param_backup,
+                            param_shape_backup=param_shape_backup)
             elif op.type() == "mul":  # pruning fc layer
                 fc_input = None
                 fc_param = None
@@ -354,7 +370,9 @@ class PruneStrategy(Strategy):
                     pruned_axis=0,
                     place=place,
                     lazy=lazy,
-                    only_graph=only_graph)
+                    only_graph=only_graph,
+                    param_backup=param_backup,
+                    param_shape_backup=param_shape_backup)
 
             elif op.type() == "concat":
                 concat_inputs = op.all_inputs()
@@ -378,28 +396,36 @@ class PruneStrategy(Strategy):
                     pruned_axis=0,
                     place=place,
                     lazy=lazy,
-                    only_graph=only_graph)
+                    only_graph=only_graph,
+                    param_backup=param_backup,
+                    param_shape_backup=param_shape_backup)
                 self._prune_parameter_by_idx(
                     scope, [variance] + self._get_accumulator(graph, variance),
                     corrected_idxs,
                     pruned_axis=0,
                     place=place,
                     lazy=lazy,
-                    only_graph=only_graph)
+                    only_graph=only_graph,
+                    param_backup=param_backup,
+                    param_shape_backup=param_shape_backup)
                 self._prune_parameter_by_idx(
                     scope, [alpha] + self._get_accumulator(graph, alpha),
                     corrected_idxs,
                     pruned_axis=0,
                     place=place,
                     lazy=lazy,
-                    only_graph=only_graph)
+                    only_graph=only_graph,
+                    param_backup=param_backup,
+                    param_shape_backup=param_shape_backup)
                 self._prune_parameter_by_idx(
                     scope, [beta] + self._get_accumulator(graph, beta),
                     corrected_idxs,
                     pruned_axis=0,
                     place=place,
                     lazy=lazy,
-                    only_graph=only_graph)
+                    only_graph=only_graph,
+                    param_backup=param_backup,
+                    param_shape_backup=param_shape_backup)
 
     def _prune_parameters(self,
                           graph,
@@ -408,7 +434,9 @@ class PruneStrategy(Strategy):
                           ratios,
                           place,
                           lazy=False,
-                          only_graph=False):
+                          only_graph=False,
+                          param_backup=None,
+                          param_shape_backup=None):
         """
         Pruning the given parameters.
         Args:
@@ -444,7 +472,9 @@ class PruneStrategy(Strategy):
                 place,
                 ratio=ratio,
                 lazy=lazy,
-                only_graph=only_graph)
+                only_graph=only_graph,
+                param_backup=param_backup,
+                param_shape_backup=param_shape_backup)
             ops = param.outputs()
             for op in ops:
                 if op.type() == 'conv2d':
@@ -458,7 +488,9 @@ class PruneStrategy(Strategy):
                                 place,
                                 ratio=ratio,
                                 lazy=lazy,
-                                only_graph=only_graph)
+                                only_graph=only_graph,
+                                param_backup=param_backup,
+                                param_shape_backup=param_shape_backup)
         _logger.debug(
             '|----------------------------------------+----+------------------------------+------------------------------|'
         )
@@ -575,23 +607,24 @@ class UniformPruneStrategy(PruneStrategy):
             _logger.debug(
                 '-----------Try pruning ratio: {:.2f}-----------'.format(ratio))
             ratios = [ratio] * len(pruned_params)
+            param_shape_backup = {}
             self._prune_parameters(
                 context.eval_graph,
                 context.scope,
                 pruned_params,
                 ratios,
                 context.place,
-                only_graph=True)
+                only_graph=True,
+                param_shape_backup=param_shape_backup)
 
             pruned_flops = 1 - (float(context.eval_graph.flops()) / flops)
             pruned_size = 1 - (float(context.eval_graph.numel_params()) /
                                model_size)
             _logger.debug('Pruned flops: {:.2f}'.format(pruned_flops))
             _logger.debug('Pruned model size: {:.2f}'.format(pruned_size))
-            for param in self.param_shape_backup.keys():
-                context.eval_graph.var(param).set_shape(self.param_shape_backup[
+            for param in param_shape_backup.keys():
+                context.eval_graph.var(param).set_shape(param_shape_backup[
                     param])
-            self.param_shape_backup = {}
 
             if abs(pruned_flops - self.target_ratio) < 1e-2:
                 break
@@ -672,8 +705,6 @@ class SensitivePruneStrategy(PruneStrategy):
         self.pruned_list = []
         self.sensitivities = sensitivities
         self.sensitivities_file = sensitivities_file
-        self.backup = {}
-        self.param_shape_backup = {}
         self.num_steps = num_steps
         self.eval_rate = eval_rate
         self.pruning_step = 1 - pow((1 - target_ratio), 1.0 / self.num_steps)
@@ -728,8 +759,6 @@ class SensitivePruneStrategy(PruneStrategy):
         Computing the sensitivities of all parameters.
         """
         _logger.info("calling _compute_sensitivities.")
-        self.param_shape_backup = {}
-        self.backup = {}
         cached_id = np.random.randint(1000)
         if self.start_epoch == context.epoch_id:
             sensitivities_file = self.sensitivities_file
@@ -761,12 +790,15 @@ class SensitivePruneStrategy(PruneStrategy):
                 if metric is None:
                     metric = self._eval_graph(context, self.eval_rate,
                                               cached_id)
+
+                param_backup = {}
                 # prune parameter by ratio
                 self._prune_parameters(
                     context.eval_graph,
                     context.scope, [param], [ratio],
                     context.place,
-                    lazy=True)
+                    lazy=True,
+                    param_backup=param_backup)
                 self.pruned_list[0]
                 # get accuracy after pruning and update self.sensitivities
                 pruned_metric = self._eval_graph(context, self.eval_rate,
@@ -787,12 +819,11 @@ class SensitivePruneStrategy(PruneStrategy):
                 self._save_sensitivities(sensitivities, sensitivities_file)
 
                 # restore pruned parameters
-                for param_name in self.backup.keys():
+                for param_name in param_backup.keys():
                     param_t = context.scope.find_var(param_name).get_tensor()
-                    param_t.set(self.backup[param_name], context.place)
+                    param_t.set(self.param_backup[param_name], context.place)
 
 #                pruned_metric = self._eval_graph(context)
-                self.backup = {}
 
                 ratio += self.delta_rate
         return sensitivities
@@ -803,8 +834,6 @@ class SensitivePruneStrategy(PruneStrategy):
         """
         _logger.info('_get_best_ratios for pruning ratie: {}'.format(
             target_ratio))
-        self.param_shape_backup = {}
-        self.backup = {}
 
         def func(params, x):
             a, b, c, d = params
@@ -854,23 +883,24 @@ class SensitivePruneStrategy(PruneStrategy):
             _logger.info('Pruned ratios={}'.format(
                 [round(ratio, 3) for ratio in ratios]))
             # step 2.2: Pruning by current ratios
+            param_shape_backup = {}
             self._prune_parameters(
                 context.eval_graph,
                 context.scope,
                 sensitivities.keys(),
                 ratios,
                 context.place,
-                only_graph=True)
+                only_graph=True,
+                param_shape_backup=param_shape_backup)
 
             pruned_flops = 1 - (float(context.eval_graph.flops()) / flops)
             pruned_size = 1 - (float(context.eval_graph.numel_params()) /
                                model_size)
             _logger.info('Pruned flops: {:.4f}'.format(pruned_flops))
             _logger.info('Pruned model size: {:.4f}'.format(pruned_size))
-            for param in self.param_shape_backup.keys():
-                context.eval_graph.var(param).set_shape(self.param_shape_backup[
+            for param in param_shape_backup.keys():
+                context.eval_graph.var(param).set_shape(param_shape_backup[
                     param])
-            self.param_shape_backup = {}
 
             # step 2.3: Check whether current ratios is enough
             if abs(pruned_flops - target_ratio) < 0.015:
@@ -901,9 +931,6 @@ class SensitivePruneStrategy(PruneStrategy):
                                                    current_ratio)
             self._prune_parameters(context.optimize_graph, context.scope,
                                    params, ratios, context.place)
-
-            self.param_shape_backup = {}
-            self.backup = {}
 
             model_size = context.eval_graph.numel_params()
             flops = context.eval_graph.flops()
