@@ -226,7 +226,6 @@ void AnakinSubgraphPass::CreateAnakinEngine(
   auto max_batch_size = Get<int>("max_batch_size");
   auto max_input_shape =
       Get<std::map<std::string, std::vector<int>>>("max_input_shape");
-  bool auto_config_layout = Get<bool>("auto_config_layout");
   if (use_gpu) {
 #ifdef PADDLE_WITH_CUDA
     inference::Singleton<
@@ -235,11 +234,14 @@ void AnakinSubgraphPass::CreateAnakinEngine(
                 max_input_shape, program_inputs, false, engine_key);
 #endif
   } else {
+#ifdef ANAKIN_X86_PLACE
+    bool auto_config_layout = Get<bool>("auto_config_layout");
     inference::Singleton<
         anakin::AnakinEngineManager<::anakin::saber::X86, PrecisionT>>::Global()
         .Create(true, Get<int>("gpu_device_id"), max_batch_size,
                 max_input_shape, program_inputs, auto_config_layout,
                 engine_key);
+#endif
   }
 
   auto *scope = param_scope();
@@ -258,6 +260,7 @@ void AnakinSubgraphPass::CreateAnakinEngine(
             param_set, output_mapping, anakin_engine);
 #endif
   } else {
+#ifdef ANAKIN_X86_PLACE
     auto *anakin_engine =
         inference::Singleton<inference::anakin::AnakinEngineManager<
             ::anakin::saber::X86, PrecisionT>>::Global()
@@ -268,6 +271,7 @@ void AnakinSubgraphPass::CreateAnakinEngine(
             &block_desc_temp, scope,
             std::vector<std::string>(input_names.begin(), input_names.end()),
             param_set, output_mapping, anakin_engine);
+#endif
   }
 }
 
