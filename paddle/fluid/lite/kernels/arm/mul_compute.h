@@ -22,44 +22,13 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-template <typename T>
-void mul_compute_eigen(const T* x, int x_h, int x_w, const T* y, int y_h,
-                       int y_w, T* out) {
-  using matrix_t =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
-  Eigen::Map<const matrix_t> X(x, x_h, x_w);
-  Eigen::Map<const matrix_t> Y(y, y_h, y_w);
-  Eigen::Map<matrix_t> Out(out, x_h, y_w);
-
-  Out = X * Y;
-}
-
 class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 
-  void Run() override {
-    auto& param = Param<operators::MulParam>();
-    core::dim2 x_shape(
-        {static_cast<int>(
-             param.x->dims().Slice(0, param.x_num_col_dims).production()),
-         static_cast<int>(
-             param.x->dims()
-                 .Slice(param.x_num_col_dims, param.x->dims().size())
-                 .production())});
-    core::dim2 y_shape(
-        {static_cast<int>(
-             param.y->dims().Slice(0, param.y_num_col_dims).production()),
-         static_cast<int>(
-             param.y->dims()
-                 .Slice(param.y_num_col_dims, param.y->dims().size())
-                 .production())});
+  void PrepareForRun() override;
 
-    mul_compute_eigen(param.x->data<float>(), x_shape.x, x_shape.y,  //
-                      param.y->data<float>(), y_shape.x, y_shape.y,  //
-                      param.output->mutable_data<float>());
-  }
+  void Run() override;
 
   virtual ~MulCompute() = default;
 };
@@ -68,10 +37,3 @@ class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
 }  // namespace kernels
 }  // namespace lite
 }  // namespace paddle
-
-REGISTER_LITE_KERNEL(mul, kARM, kFloat, kNCHW,
-                     paddle::lite::kernels::arm::MulCompute, def)
-    .BindInput("X", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
-    .Finalize();

@@ -63,10 +63,6 @@ void FcCompute::Run() {
   }
 }
 
-TargetType FcCompute::target() const { return TARGET(kARM); }
-
-PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
-
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite
