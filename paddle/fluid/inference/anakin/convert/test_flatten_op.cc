@@ -48,20 +48,17 @@ TEST(flatten_op, gpu) {
   test_flatten_op<::anakin::saber::NV>(ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(flatten_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_flatten_op<::anakin::saber::X86>(ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(reshape);
 USE_OP_ITSELF(flatten);
-USE_CPU_ANAKIN_CONVERTER(flatten);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(flatten);
-#endif
