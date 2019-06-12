@@ -5297,7 +5297,7 @@ def topk(input, k, name=None):
 
 def edit_distance(input, label, normalized=True, ignored_tokens=None):
     """
-    EditDistance operator computes the edit distances between a batch of
+    Edit distance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
     Levenshtein distance, measures how dissimilar two strings are by counting
     the minimum number of operations to transform one string into anthor.
@@ -5333,9 +5333,28 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.edit_distance(input=x,label=y)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+            cost, _ = fluid.layers.edit_distance(input=x, label=y)
+
+            cpu = fluid.core.CPUPlace()
+            exe = fluid.Executor(cpu)
+            exe.run(fluid.default_startup_program())
+
+            import numpy
+            x_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
+            y_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
+
+            print(x_)
+            print(y_)
+
+            x = fluid.create_lod_tensor(x_, [[2]], cpu)
+            y = fluid.create_lod_tensor(y_, [[2]], cpu)
+
+            outs = exe.run(feed={'x':x, 'y':y}, fetch_list=[cost.name])
+
+            print(outs)
     """
     helper = LayerHelper("edit_distance", **locals())
 
