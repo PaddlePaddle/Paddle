@@ -29,9 +29,6 @@ class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
 
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
-
   virtual ~FcCompute() = default;
 };
 

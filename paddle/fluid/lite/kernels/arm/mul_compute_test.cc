@@ -12,31 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/lite/kernels/arm/mul_compute.h"
 #include <gtest/gtest.h>
+#include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/lite/kernels/arm/fc_compute.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-TEST(fc_arm, retrive_op) {
-  auto fc =
-      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("fc");
-  ASSERT_FALSE(fc.empty());
-  ASSERT_TRUE(fc.front());
+TEST(mul_arm, retrive_op) {
+  auto mul =
+      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("mul");
+  ASSERT_FALSE(mul.empty());
+  ASSERT_TRUE(mul.front());
 }
 
-TEST(fc_arm, init) {
-  FcCompute fc;
-  ASSERT_EQ(fc.precision(), PRECISION(kFloat));
-  ASSERT_EQ(fc.target(), TARGET(kARM));
+TEST(mul_arm, init) {
+  FcCompute mul;
+  ASSERT_EQ(mul.precision(), PRECISION(kFloat));
+  ASSERT_EQ(mul.target(), TARGET(kARM));
 }
 
-TEST(fc_arm, compare_test) {
+TEST(mul_arm, compare_test) {
   lite::Tensor x, w, b, out, ref;
   constexpr int batch_size = 2;
   x.Resize({batch_size, 3});
@@ -65,8 +67,8 @@ TEST(fc_arm, compare_test) {
                                     w_data, 3, 4,           //
                                     b_data, ref_data);
 
-  // fc compute kernel
-  FcCompute fc;
+  // mul compute kernel
+  FcCompute mul;
   operators::FcParam param;
 
   param.in_num_col_dims = 1;
@@ -79,9 +81,9 @@ TEST(fc_arm, compare_test) {
   DeviceInfo::Init();
   std::unique_ptr<KernelContext> ctx(new KernelContext);
   ctx->As<ARMContext>();
-  fc.SetParam(param);
-  fc.SetContext(std::move(ctx));
-  fc.Run();
+  mul.SetParam(param);
+  mul.SetContext(std::move(ctx));
+  mul.Run();
 
   VLOG(3) << "output vs ref";
   for (int i = 0; i < out.dims().product(); i++) {
@@ -93,8 +95,8 @@ TEST(fc_arm, compare_test) {
   }
 }
 
-TEST(fc_arm, num_col_dims) {
-  FcCompute fc;
+TEST(mul_arm, num_col_dims) {
+  FcCompute mul;
   operators::FcParam param;
 
   lite::Tensor x;
@@ -136,9 +138,9 @@ TEST(fc_arm, num_col_dims) {
   ctx->As<ARMContext>();
   DeviceInfo::Init();
 
-  fc.SetParam(param);
-  fc.SetContext(std::move(ctx));
-  fc.Run();
+  mul.SetParam(param);
+  mul.SetContext(std::move(ctx));
+  mul.Run();
 }
 
 }  // namespace arm
@@ -146,4 +148,4 @@ TEST(fc_arm, num_col_dims) {
 }  // namespace lite
 }  // namespace paddle
 
-USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
