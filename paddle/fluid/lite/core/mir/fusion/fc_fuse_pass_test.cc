@@ -64,24 +64,31 @@ TEST(fc_fuse_pass, fuse_test) {
   LOG(INFO) << "out " << out->data<float>()[0];
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
-  // EXPECT_NEAR(out->data<float>()[0], 38.12062, 1e-5);
-  // EXPECT_NEAR(out->data<float>()[1], 10.10981, 1e-5);
+  // EXPECT_NEAR(out->data<float>()[0], 38.120617, 1e-5);
+  // EXPECT_NEAR(out->data<float>()[1], 10.109812, 1e-5);
   CHECK_EQ(out->dims()[0], 100);
   CHECK_EQ(out->dims()[1], 500);
-}
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-TEST(fc_fuse_pass, save_model_test) {
-  lite::ExecutorLite predictor;
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
-                                   Place{TARGET(kX86), PRECISION(kFloat)}});
-  predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
-                  valid_places);
-
   LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
   predictor.SaveModel(FLAGS_optimized_model);
-}
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+}
+
+// #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+// TEST(fc_fuse_pass, save_model_test) {
+//   lite::ExecutorLite predictor;
+//   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+//                                    Place{TARGET(kX86), PRECISION(kFloat)}});
+//   predictor.Build(FLAGS_model_dir,
+//                   Place{TARGET(kX86), PRECISION(kFloat)},
+//                   valid_places);
+//
+//
+//   LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
+//   predictor.SaveModel(FLAGS_optimized_model);
+// }
+// #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 }  // namespace fusion
 }  // namespace mir
