@@ -11,6 +11,7 @@ stages:
 check:prebuilt:
     stage: ci
     script:
+        - pip install six
         - ./paddle/fluid/lite/tools/build.sh check_style
         #- ./paddle/fluid/lite/tools/build.sh check_need_ci
 
