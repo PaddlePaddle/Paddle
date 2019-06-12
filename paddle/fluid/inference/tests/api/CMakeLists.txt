@@ -38,7 +38,7 @@ function(inference_analysis_api_test_with_fake_data target install_dir filename 
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${install_dir}/model
-             --disable_mkldnn_fc=${disable_fc})
+             --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
 function(inference_analysis_api_test_with_refer_result target install_dir filename)
