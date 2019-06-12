@@ -25,6 +25,7 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
+from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
 from . import core
@@ -35,9 +36,8 @@ __all__ = [
     'load_persistables', 'save_inference_model', 'load_inference_model'
 ] + reader.__all__
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def is_parameter(var):
