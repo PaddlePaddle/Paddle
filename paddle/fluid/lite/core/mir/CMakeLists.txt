@@ -53,7 +53,7 @@ lite_cc_test(test_pattern_matcher_lite SRCS pattern_matcher_test.cc DEPS pattern
 lite_cc_library(pattern_matcher_high_api SRCS pattern_matcher_high_api.cc DEPS pattern_matcher_lite)
 
 # TODO(wz) replace framework/proto to lite proto.
-if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     # it depends on the fluid/framework/proto, that is too heavy for mobile execution.
     lite_cc_test(test_pattern_matcher_high_api SRCS pattern_matcher_high_api_test.cc DEPS
         pattern_matcher_high_api proto_desc mir_pass_manager fc_op_lite mul_op_lite elementwise_ops_lite

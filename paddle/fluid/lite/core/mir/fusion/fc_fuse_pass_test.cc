@@ -55,8 +55,6 @@ TEST(fc_fuse_pass, fuse_test) {
     data[i] = i;
   }
 
-  // LOG(INFO) << "input " << *input_tensor;
-
   predictor.Run();
 
   auto* out = predictor.GetOutput(0);
@@ -64,8 +62,8 @@ TEST(fc_fuse_pass, fuse_test) {
   LOG(INFO) << "out " << out->data<float>()[0];
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
-  // EXPECT_NEAR(out->data<float>()[0], 38.120617, 1e-5);
-  // EXPECT_NEAR(out->data<float>()[1], 10.109812, 1e-5);
+  EXPECT_NEAR(out->data<float>()[0], 38.120617f, 1e-5);
+  EXPECT_NEAR(out->data<float>()[1], 10.109812f, 1e-5);
   CHECK_EQ(out->dims()[0], 100);
   CHECK_EQ(out->dims()[1], 500);
 

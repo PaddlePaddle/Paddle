@@ -29,8 +29,8 @@ class FcFuser : public FuseBase {
  public:
   void BuildPattern() override {
     // create nodes.
-    auto* x = VarNode("x");
-    auto* W = VarNode("W");
+    auto* x = VarNode("x")->assert_is_op_input("mul", "X");
+    auto* W = VarNode("W")->assert_is_op_input("mul", "Y");
     auto* b = VarNode("b");
     auto* mul = OpNode("mul", "mul");
     auto* mul_out = VarNode("mul_out");
@@ -139,6 +139,7 @@ TEST(pattern_matcher_high_api, fuse_test) {
   fuser(graph.get());
   ASSERT_EQ(graph->nodes().size(),
             num_nodes - 3UL /*nodes removed */ + 1UL /* fused fc node*/);
+  Visualize(graph.get());
 }
 
 }  // namespace mir
