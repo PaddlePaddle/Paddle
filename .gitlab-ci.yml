@@ -41,4 +41,6 @@ build:mobile:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
     script:
+        - export http_proxy=http://172.19.57.45:3128
+        - export https_proxy=http://172.19.57.45:3128
         - ./paddle/fluid/lite/tools/build.sh build_test_arm
