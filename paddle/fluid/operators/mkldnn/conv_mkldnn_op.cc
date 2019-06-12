@@ -385,14 +385,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key_conv_pd = key + "@conv_pd";
 
     bool need_s8_to_u8 = false;
-    std::shared_ptr<mkldnn::convolution_forward> conv_p = nullptr;
-    std::shared_ptr<mkldnn::memory> src_memory_p = nullptr;
-    std::shared_ptr<mkldnn::memory> user_src_memory_p = nullptr;
-    std::shared_ptr<mkldnn::memory> dst_memory_p = nullptr;
+    std::shared_ptr<mkldnn::convolution_forward> conv_p;
+    std::shared_ptr<mkldnn::memory> src_memory_p;
+    std::shared_ptr<mkldnn::memory> user_src_memory_p;
+    std::shared_ptr<mkldnn::memory> dst_memory_p;
     std::vector<primitive> pipeline;
-    std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd =
-        nullptr;
-    std::shared_ptr<platform::ConvMKLDNNHandler> handler = nullptr;
+    std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
+    std::shared_ptr<platform::ConvMKLDNNHandler> handler;
 
     auto prim_key = key + "@conv_p";
     auto dst_key = key + "@dst_mem_p";
@@ -460,12 +459,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // TODO(lidanqing): We use relu post-op instead of brelu post-op cause
       // mkldnn v0.18 does not support INT8 brelu post-op. Use code in /**/ when
       // v0.20 is enabled
-      memory::desc* bias_md_p = nullptr;
+      std::shared_ptr<memory::desc> bias_md_p;
       if (bias) {
         bias_tz = paddle::framework::vectorize2int(bias->dims());
-        auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
-                                               memory::format::x);
-        bias_md_p = &bias_md;
+        bias_md_p = std::make_shared<memory::desc>(platform::MKLDNNMemDesc(
+            bias_tz, memory::data_type::s32, memory::format::x));
       }
       conv_pd = ConvFwdPrimitiveDesc(
           src_md, weights_md, bias_md_p, dst_md, strides, paddings,
@@ -673,8 +671,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
-                       const memory::desc* bias_md_p, const memory::desc& dst,
-                       const std::vector<int>& strides,
+                       const std::shared_ptr<memory::desc> bias_md_p,
+                       const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        const mkldnn::engine& engine, const bool fuse_relu,
                        const bool fuse_residual_conn, const bool fuse_brelu,
