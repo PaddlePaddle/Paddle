@@ -189,10 +189,13 @@ class ParallelExecutorPrivate {
     if (var != nullptr) {
       PADDLE_ENFORCE(var->IsInitialized(),
                      "if %s exists, it must be initialized", var_name);
+      VLOG(1) << "find " << var_name
+              << " in scope, so use it and does not recreate!";
       nccl_ctxs_ = var->GetMutable<platform::NCCLCommunicator>();
       return;
     }
 
+    VLOG(1) << "not find " << var_name << " in scope, so recreate it!";
     nccl_ctxs_ = scope->Var(var_name)->GetMutable<platform::NCCLCommunicator>();
     InitNCCLCtxs(scope, bst);
   }
