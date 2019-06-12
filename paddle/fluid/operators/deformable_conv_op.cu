@@ -996,7 +996,7 @@ inline void DeformableIm2col(
 }
 
 template <typename DeviceContext, typename T>
-class DeformableConvv1CUDAKernel : public framework::OpKernel<T> {
+class DeformableConvV1CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* input = ctx.Input<Tensor>("Input");
@@ -1097,7 +1097,7 @@ class DeformableConvv1CUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class DeformableConvv1GradCUDAKernel : public framework::OpKernel<T> {
+class DeformableConvV1GradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* output_grad =
@@ -1289,8 +1289,8 @@ REGISTER_OP_CUDA_KERNEL(deformable_conv_grad,
                         ops::DeformableConvGradCUDAKernel<CUDA, float>,
                         ops::DeformableConvGradCUDAKernel<CUDA, double>);
 REGISTER_OP_CUDA_KERNEL(deformable_conv_v1,
-                        ops::DeformableConvv1CUDAKernel<CUDA, float>,
-                        ops::DeformableConvv1CUDAKernel<CUDA, double>);
+                        ops::DeformableConvV1CUDAKernel<CUDA, float>,
+                        ops::DeformableConvV1CUDAKernel<CUDA, double>);
 REGISTER_OP_CUDA_KERNEL(deformable_conv_v1_grad,
-                        ops::DeformableConvv1GradCUDAKernel<CUDA, float>,
-                        ops::DeformableConvv1GradCUDAKernel<CUDA, double>);
+                        ops::DeformableConvV1GradCUDAKernel<CUDA, float>,
+                        ops::DeformableConvV1GradCUDAKernel<CUDA, double>);

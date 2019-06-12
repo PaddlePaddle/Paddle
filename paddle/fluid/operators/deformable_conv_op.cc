@@ -269,7 +269,7 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class DeformableConvv1OpMaker : public framework::OpProtoAndCheckerMaker {
+class DeformableConvV1OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
@@ -351,21 +351,21 @@ $$
   }
 };
 
-class DeformableConvv1Op : public framework::OperatorWithKernel {
+class DeformableConvV1Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of DeformableConvv1Op "
+                   "Input(Input) of DeformableConvV1Op "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Offset"),
-                   "Input(Offset) of DeformableConvv1Op "
+                   "Input(Offset) of DeformableConvV1Op "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of DeformableConvv1Op "
+                   "Input(Filter) of DeformableConvV1Op "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of DeformableConvv1Op "
+                   "Output(Output) of DeformableConvV1Op "
                    "should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
@@ -444,7 +444,7 @@ class DeformableConvv1Op : public framework::OperatorWithKernel {
   }
 };
 
-class DeformableConvv1GradOpDescMaker
+class DeformableConvV1GradOpDescMaker
     : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -468,7 +468,7 @@ class DeformableConvv1GradOpDescMaker
   }
 };
 
-class DeformableConvv1GradOp : public framework::OperatorWithKernel {
+class DeformableConvV1GradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -507,11 +507,11 @@ REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
 
 REGISTER_OPERATOR(deformable_conv_grad, ops::DeformableConvGradOp);
 
-REGISTER_OPERATOR(deformable_conv_v1, ops::DeformableConvv1Op,
-                  ops::DeformableConvv1OpMaker,
-                  ops::DeformableConvv1GradOpDescMaker);
+REGISTER_OPERATOR(deformable_conv_v1, ops::DeformableConvV1Op,
+                  ops::DeformableConvV1OpMaker,
+                  ops::DeformableConvV1GradOpDescMaker);
 
-REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvv1GradOp);
+REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OP_CPU_KERNEL(deformable_conv,
@@ -521,8 +521,8 @@ REGISTER_OP_CPU_KERNEL(deformable_conv_grad,
                        ops::DeformableConvGradCPUKernel<CPU, float>,
                        ops::DeformableConvGradCPUKernel<CPU, double>);
 REGISTER_OP_CPU_KERNEL(deformable_conv_v1,
-                       ops::DeformableConvv1CPUKernel<CPU, float>,
-                       ops::DeformableConvv1CPUKernel<CPU, double>);
+                       ops::DeformableConvV1CPUKernel<CPU, float>,
+                       ops::DeformableConvV1CPUKernel<CPU, double>);
 REGISTER_OP_CPU_KERNEL(deformable_conv_v1_grad,
-                       ops::DeformableConvv1GradCPUKernel<CPU, float>,
-                       ops::DeformableConvv1GradCPUKernel<CPU, double>);
+                       ops::DeformableConvV1GradCPUKernel<CPU, float>,
+                       ops::DeformableConvV1GradCPUKernel<CPU, double>);

@@ -937,7 +937,7 @@ inline void DeformableIm2colCpu(
 }
 
 template <typename DeviceContext, typename T>
-class DeformableConvv1CPUKernel : public framework::OpKernel<T> {
+class DeformableConvV1CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
@@ -1031,7 +1031,7 @@ class DeformableConvv1CPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class DeformableConvv1GradCPUKernel : public framework::OpKernel<T> {
+class DeformableConvV1GradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* output_grad =
