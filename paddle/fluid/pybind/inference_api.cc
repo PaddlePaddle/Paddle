@@ -23,6 +23,7 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 
 namespace py = pybind11;
 
@@ -46,6 +47,7 @@ static void BindNativeConfig(py::module *m);
 static void BindNativePredictor(py::module *m);
 static void BindAnalysisConfig(py::module *m);
 static void BindAnalysisPredictor(py::module *m);
+static void BindPaddlePlatform(py::module *m);
 
 #ifdef PADDLE_WITH_MKLDNN
 static void BindMkldnnQuantizerConfig(py::module *m);
@@ -61,6 +63,7 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
+  BindPaddlePlatform(m);
 #ifdef PADDLE_WITH_MKLDNN
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -310,6 +313,10 @@ void BindAnalysisPredictor(py::module *m) {
            py::return_value_policy::reference)
       .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
            py::arg("dir"));
+}
+
+void BindPaddlePlatform(py::module *m) {
+  m->def("set_omp_num_threads", &platform::SetNumThreads);
 }
 
 }  // namespace pybind

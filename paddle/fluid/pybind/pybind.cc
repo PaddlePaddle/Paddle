@@ -44,7 +44,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -86,7 +85,6 @@ limitations under the License. */
 DEFINE_bool(reader_queue_speed_test_mode, false,
             "If set true, the queue.pop will only get data from queue but not "
             "remove the data from queue for speed testing");
-DECLARE_int32(paddle_num_threads);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -951,10 +949,8 @@ All parameter, weight, gradient are variables in Paddle.
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
         pybind11::gil_scoped_release release;
-        paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
         self.Run(prog, scope, block_id, create_local_scope, create_vars,
                  fetch_vars);
-        paddle::platform::SetNumThreads(1);
       });
 
   m.def("init_gflags", framework::InitGflags);
