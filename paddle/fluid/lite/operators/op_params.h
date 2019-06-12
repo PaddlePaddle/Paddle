@@ -237,6 +237,22 @@ struct SGDParam {
   lite::Tensor* ParamOut{};
 };
 
+//
+struct BatchNormParam {
+  lite::Tensor* x{};
+  lite::Tensor* bias{};
+  lite::Tensor* mean{};
+  lite::Tensor* scale{};
+  lite::Tensor* var{};
+  lite::Tensor* out{};
+  lite::Tensor* mean_out{};
+  lite::Tensor* var_out{};
+  lite::Tensor* saved_mean{};
+  lite::Tensor* saved_var{};
+
+  float eps{1e-5};
+};
+
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle

@@ -147,6 +147,7 @@ void SSAGraph::Build(const Program &program,
       DirectedLink(arg, op_node);
     }
     for (const std::string &name : op->op_info()->output_names()) {
+      LOG(INFO) << name;
       if (!arguments_.count(name)) {
         NewArgumentNode(name);
       }
