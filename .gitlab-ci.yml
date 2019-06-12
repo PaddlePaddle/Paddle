@@ -5,7 +5,8 @@ image: $SERVER_LITE_DOCKER_IMAGE
 
 stages:
   - ci
-  - build
+  - build_server
+  - build_mobile
 
 check:prebuilt:
     stage: ci
@@ -16,7 +17,7 @@ check:prebuilt:
 
 build:server:
     image: $SERVER_LITE_DOCKER_IMAGE
-    stage: build
+    stage: build_server
     cache:
         key: server_thirdparty
         paths:
@@ -36,7 +37,7 @@ build:server:
         - check:prebuilt
 
 build:mobile:
-    stage: build
+    stage: build_mobile
     image: $MOBILE_LITE_DOCKER_IMAGE
     cache:
         key: mobile_thirdparty
@@ -49,4 +50,3 @@ build:mobile:
         - ./paddle/fluid/lite/tools/build.sh build_test_arm
     dependencies:
         - build:server
-
