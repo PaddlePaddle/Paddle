@@ -13,6 +13,11 @@ function prepare_for_codegen {
     mkdir -p ./paddle/fluid/lite/gen_code
     touch ./paddle/fluid/lite/gen_code/__generated_code__.cc
 }
+
+function check_need_ci {
+    git log -1 --oneline | grep "test=develop" || exit -1
+}
+
 function cmake_x86 {
     prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
@@ -230,6 +235,10 @@ function main {
                 ;;
             check_style)
                 check_style
+                shift
+                ;;
+            check_need_ci)
+                check_need_ci
                 shift
                 ;;
             *)
