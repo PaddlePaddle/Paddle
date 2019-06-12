@@ -21,8 +21,6 @@ build:server:
     paths:
         - build/third_party
   script:
-    - export http_proxy=http://agent.baidu.com:8118
-    - export https_proxy=http://agent.baidu.com:8118
     - ./paddle/fluid/lite/tools/build.sh build_test_server
 
 build:mobile:
