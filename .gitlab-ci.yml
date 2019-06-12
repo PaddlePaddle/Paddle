@@ -1,7 +1,5 @@
 before_script:
   - env
-  - pwd
-  - ls -l
 
 image: $SERVER_LITE_DOCKER_IMAGE
 
@@ -12,19 +10,16 @@ stages:
 check:prebuilt:
   stage: ci
   script:
-    - cd $CI_PROJECT_DIR/PaddleLite
     - ./paddle/scripts/paddle_build.sh check_style
 
 build:server:
   image: $SERVER_LITE_DOCKER_IMAGE
   stage: build
   script:
-    - cd $CI_PROJECT_DIR/PaddleLite
     - ./paddle/fluid/lite/tools/build.sh build_test_server
 
 build:mobile:
     stage: build
     image: $MOBILE_LITE_DOCKER_IMAGE
     script:
-        - cd $CI_PROJECT_DIR/PaddleLite
         - ./paddle/fluid/lite/tools/build.sh build_test_arm
