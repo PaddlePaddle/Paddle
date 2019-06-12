@@ -266,14 +266,16 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
   return framework::ir::MultiDevSSAGraphBuilder().count(pass_name) > 0;
 }
 
-ir::Graph *BuildStrategy::Apply(
-    ir::Graph *graph, const std::vector<platform::Place> &places,
-    const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
-    const size_t &nranks,
+ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
+                                const std::vector<platform::Place> &places,
+                                const std::string &loss_var_name,
+                                const std::vector<Scope *> &local_scopes,
+                                const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    const bool use_cuda, platform::NCCLCommunicator *nccl_ctxs) const {
+                                const bool use_cuda,
+                                platform::NCCLCommunicator *nccl_ctxs) const {
 #else
-    const bool use_cuda) const {
+                                const bool use_cuda) const {
 #endif
   VLOG(3) << "apply all passes";
   // Create a default one if not finalized by user.
