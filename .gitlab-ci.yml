@@ -15,7 +15,6 @@ check:prebuilt:
         #- alias python=python3
         - rm -rf ~/.pip
         - pip install pre-commit
-        - yum install clang-format
         - pre-commit install
         - ./paddle/fluid/lite/tools/build.sh check_style
         #- ./paddle/fluid/lite/tools/build.sh check_need_ci
