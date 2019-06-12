@@ -49,8 +49,8 @@ class SGDCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     const T *param_data = param->template data<T>();
     const T *grad_data = grad->template data<T>();
     int64_t rows_idx = 0;
-    T *out_data =
-        param_out->mutable_data<T>(context.x86_device_context()->GetPlace());
+    T *out_data = param_out->template mutable_data<T>(
+        context.x86_device_context()->GetPlace());
 
     auto sgd =
         paddle::operators::jit::KernelFuncs<paddle::operators::jit::SgdTuple<T>,
