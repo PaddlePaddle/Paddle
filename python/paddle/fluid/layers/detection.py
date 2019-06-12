@@ -38,7 +38,6 @@ __all__ = [
     'target_assign',
     'detection_output',
     'ssd_loss',
-    'detection_map',
     'rpn_target_assign',
     'anchor_generator',
     'roi_perspective_transform',
