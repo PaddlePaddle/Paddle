@@ -15,9 +15,9 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid.core as core
 import numpy as np
-from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
 '''
  test case for s8 * s8
 '''
