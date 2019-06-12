@@ -220,7 +220,7 @@ class NCCLCommunicator {
     }
 
     if (sync_batch_norm_ctx_.get() == nullptr) {
-      sync_batch_norm_ctx_.reset(places_);
+      sync_batch_norm_ctx_.reset(new NCCLContextMap(places));
     }
     return sync_batch_norm_ctx_.get();
   }

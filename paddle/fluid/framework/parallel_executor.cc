@@ -112,7 +112,7 @@ class ParallelExecutorPrivate {
     if (nranks_ == 1) {
       // FIXME(gongwb): need not to create ncclid when nranks==1
       nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                              bst.trainer_id_);
+                               bst.trainer_id_);
       return;
     }
 
@@ -133,7 +133,7 @@ class ParallelExecutorPrivate {
       flat_nccl_ids.push_back(nccl_id);
 
       nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                              bst.trainer_id_);
+                               bst.trainer_id_);
       VLOG(1) << "init bst nccl context complete!";
       return;
     }
@@ -141,7 +141,7 @@ class ParallelExecutorPrivate {
     // num_trainers ==1 && places > 1
     if (bst.num_trainers_ == 1) {
       nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                              bst.trainer_id_);
+                               bst.trainer_id_);
       return;
     }
 
@@ -154,7 +154,7 @@ class ParallelExecutorPrivate {
     }
 
     nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                            bst.trainer_id_);
+                             bst.trainer_id_);
 
     if (bst.use_hierarchical_allreduce_) {
       std::vector<ncclUniqueId *> inter_nccl_ids;
@@ -175,21 +175,22 @@ class ParallelExecutorPrivate {
         exter_nccl_ids.push_back(nccl_id);
       }
 
-      nccl_ctxs_->InitHierarchicalCtxs(places_, inter_nccl_ids, exter_nccl_ids,
-                                      bst.num_trainers_, bst.trainer_id_,
-                                      bst.hierarchical_allreduce_inter_nranks_,
-                                      bst.hierarchical_allreduce_exter_nranks_);
+      nccl_ctxs_->InitHierarchicalCtxs(
+          places_, inter_nccl_ids, exter_nccl_ids, bst.num_trainers_,
+          bst.trainer_id_, bst.hierarchical_allreduce_inter_nranks_,
+          bst.hierarchical_allreduce_exter_nranks_);
     }
   }
 
-  void InitOrGetNCCLCommunicator(framework::Scope *scope, const BuildStrategy &bst){
-    const std::string var_name="NCCLCommunicator";
-    auto var = scope->FindVar(var_name)
-    if( var != nullptr){
-        PADDLE_ENFORCE(var->IsInitialized(),
-                       "if %s exists, it must be initialized", InitOrGetNCCLCommunicator());
-        nccl_ctxs_ = var->GetMutable<platform::NCCLCommunicator>();
-        return;
+  void InitOrGetNCCLCommunicator(framework::Scope *scope,
+                                 const BuildStrategy &bst) {
+    const std::string var_name = "NCCLCommunicator";
+    auto var = scope->FindVar(var_name);
+    if (var != nullptr) {
+      PADDLE_ENFORCE(var->IsInitialized(),
+                     "if %s exists, it must be initialized", var_name);
+      nccl_ctxs_ = var->GetMutable<platform::NCCLCommunicator>();
+      return;
     }
 
     nccl_ctxs_ = scope->Var(var_name)->GetMutable<platform::NCCLCommunicator>();
@@ -204,7 +205,7 @@ class ParallelExecutorPrivate {
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  platform::NCCLCommunicator* nccl_ctxs_{nullptr};
+  platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
   bool use_cuda_;
@@ -371,7 +372,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
-    auto *nccl_ctxs = member_->nccl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
+    auto *nccl_ctxs =
+        member_->nccl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
