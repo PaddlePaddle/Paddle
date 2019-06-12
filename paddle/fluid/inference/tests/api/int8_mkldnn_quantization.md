@@ -1,6 +1,6 @@
 # INT8 MKL-DNN quantization 
 
-This document describes how to use Paddle inference Engine to convert the FP32 model to INT8 model on following 7 models: ResNet-50, ResNet-101, MobileNet-V1, MobileNet-V2, VGG16, VGG19 and GoogleNet. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show all the 7 models' results in accuracy and performance.
+This document describes how to use Paddle inference Engine to convert the FP32 model to INT8 model on following 7 models: ResNet-50, ResNet-101, MobileNet-V1, MobileNet-V2, VGG16, VGG19 and GoogleNet. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the accuracy and performance results of all 7 models.
 
 ## 0. Install PaddlePaddle 
 Follow PaddlePaddle [installation instruction](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/install/index_en.html) to install PaddlePaddle. If you [build from source](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/beginners_guide/install/compile/compile_Ubuntu_en.md), please use the following cmake arguments. 
@@ -79,7 +79,7 @@ Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default
 ```bash
 ./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model= --infer_data=/path/to/converted/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
-Set argument `--infer_model` with the following values in command line for other 6 models' benchmark:
+Set argument `--infer_model` with the following values in command line to benchmark 6 other models:
 
 | Model Name   | --infer_model  |
 | :----------: | :------------: |
