@@ -470,7 +470,6 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
     std::vector<int64_t> input_shape_vec = framework::vectorize(input_shape);
     int input_dim = input->numel() / input->dims()[0];
     int input_offset_dim = offset->numel() / offset->dims()[0];
-    std::cout << "offset->dims():" << offset->dims()[0] << std::endl;
     int input_mask_dim = mask->numel() / mask->dims()[0];
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     const T* input_ptr = input->data<T>();

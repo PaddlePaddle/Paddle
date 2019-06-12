@@ -331,15 +331,14 @@ $$
 
 Where $$\\Delta p_k$$ and $$\Delta m_k$$ are the learnable offset and modulation scalar for the k-th location, respectively.
 
-Refer to 'Deformable ConvNets v2: More Deformable, Better Results
-'<https://arxiv.org/abs/1811.11168v2>
+Refer to 'Deformable Convolutional Networks'
+<https://arxiv.org/abs/1703.06211>
 
 Example:
   Input:
        Input shape: $(N, C_{in}, H_{in}, W_{in})$
        Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
        Offset shape: $(N, 2 * deformable_groups, * H_f * W_f, H_{out}, W_{out})$
-       Mask shape: $(N, deformable_groups * H_f * W_f, H_{out}, W_{out})$
   Output:
        Output shape: $(N, C_{out}, H_{out}, W_{out})$
                      where $H_{out}, W_{out}$ must be equal to $H_{in}, W_{in}$ respectively.
@@ -357,16 +356,16 @@ class DeformableConvv1Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of DeformableConvOp "
+                   "Input(Input) of DeformableConvv1Op "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Offset"),
-                   "Input(Offset) of DeformableConvOp "
+                   "Input(Offset) of DeformableConvv1Op "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of DeformableConvOp "
+                   "Input(Filter) of DeformableConvv1Op "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of DeformableConvOp "
+                   "Output(Output) of DeformableConvv1Op "
                    "should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
