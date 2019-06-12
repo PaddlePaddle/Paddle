@@ -33,11 +33,12 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name disable_fc)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model)
+        ARGS --infer_model=${install_dir}/model
+             --disable_mkldnn_fc=disable_fc)
 endfunction()
 
 function(inference_analysis_api_test_with_refer_result target install_dir filename)
@@ -142,15 +143,15 @@ inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose 
 
 # googlenet
 inference_analysis_api_test_with_fake_data(test_analyzer_googlenet
-  "${INFERENCE_DEMO_INSTALL_DIR}/googlenet" analyzer_resnet50_tester.cc "googlenet.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/googlenet" analyzer_resnet50_tester.cc "googlenet.tar.gz" false)
 
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
-  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz" true)
 
 # mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
-  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" false)
 
 # int8 image classification tests
 if(WITH_MKLDNN)
