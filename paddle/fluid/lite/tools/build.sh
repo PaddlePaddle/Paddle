@@ -77,7 +77,7 @@ function test_lite {
         # We move the build phase here to make the 'gen_code' test compiles after the
         # corresponding test is executed and the C++ code generates.
         #make $_test -j$(expr $(nproc) - 2)
-        make -j8
+        make $_test -j8
         ctest -R $_test -V
     done
 }
