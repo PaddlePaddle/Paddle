@@ -223,6 +223,7 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
   if (rpn_fg_fraction > 0 && rpn_batch_size_per_im > 0) {
     bg_num = rpn_batch_size_per_im - fg_fake_num;
     ReservoirSampling(bg_num, &bg_inds_fake, engine, use_random);
+    bg_num = static_cast<int>(bg_inds_fake.size());
   } else {
     bg_num = static_cast<int>(bg_inds_fake.size());
   }
