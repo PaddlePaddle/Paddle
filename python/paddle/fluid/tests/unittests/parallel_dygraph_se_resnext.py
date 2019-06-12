@@ -47,7 +47,6 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._conv = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,

@@ -535,17 +535,20 @@ def memory_optimize(input_program,
         level(int): 0 or 1, 0 means we replace a with b only when a.size == b.size, 1 means we can replace a with b if a.size <= b.size
     Returns:
         None
+
     Examples:
-        ..  code-block:: python
-            
+        .. code-block:: python
+
             import paddle.fluid as fluid
-    
-            # build network
-            # ...
-            
-            # deprecated API
-            fluid.release_memory(fluid.default_main_program())
-    
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(startup_prog)
+            fluid.memory_optimize(main_prog)
+
     """
     sys.stderr.write('memory_optimize is deprecated. '
                      'Use CompiledProgram and Executor\n')
@@ -602,9 +605,9 @@ def release_memory(input_program, skip_opt_set=None):
         skip_opt_set(set): vars wil be skipped in memory optimze
     Returns:
         None
-   
+
     Examples:
-        ..  code-block:: python
+        .. code-block:: python
 
             import paddle.fluid as fluid
 

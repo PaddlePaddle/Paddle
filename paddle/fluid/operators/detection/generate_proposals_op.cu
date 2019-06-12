@@ -70,8 +70,7 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
       nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
   // Allocate temporary storage
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-  auto d_temp_storage =
-      memory::Alloc(place, temp_storage_bytes, memory::Allocator::kScratchpad);
+  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(

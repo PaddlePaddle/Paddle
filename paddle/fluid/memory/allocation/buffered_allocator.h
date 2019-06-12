@@ -45,7 +45,7 @@ class BufferedAllocator : public Allocator {
 
  protected:
   void FreeImpl(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
+  Allocation *AllocateImpl(size_t size) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

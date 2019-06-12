@@ -48,8 +48,7 @@ __all__ = [
     "get_dict",
 ]
 
-DATA_URL = ("http://cloud.dlnel.org/filepub/"
-            "?uuid=46a0808e-ddd8-427c-bacd-0dbc6d045fed")
+DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
 
 TOTAL_EN_WORDS = 11250
