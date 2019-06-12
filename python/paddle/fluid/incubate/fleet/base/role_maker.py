@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from enum import Enum
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
@@ -21,8 +20,8 @@ __all__ = [
 ]
 
 
-class Role(Enum):
-    WORKER = 1,
+class Role:
+    WORKER = 1
     SERVER = 2
 
 
@@ -313,7 +312,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
                 raise ValueError("current_id must be gather or equal 0")
             self._current_id = current_id
 
-        if not isinstance(role, Role):
+        if role != Role.WORKER and role != Role.SERVER:
             raise TypeError("role must be as Role")
         else:
             self._role = role
