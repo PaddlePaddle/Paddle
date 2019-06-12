@@ -29,8 +29,8 @@ class FcFusePass : public ProgramPass {
   void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 
  private:
-  class Impl;
-  std::unique_ptr<Impl> impl_;
+  class Fuser;
+  std::unique_ptr<Fuser> fuser_;
 };
 
 }  // namespace fusion

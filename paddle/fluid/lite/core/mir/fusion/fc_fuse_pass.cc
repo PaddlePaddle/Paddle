@@ -23,7 +23,7 @@ namespace lite {
 namespace mir {
 namespace fusion {
 
-class FcFusePass::Impl : public FuseBase {
+class FcFusePass::Fuser : public FuseBase {
  public:
   void BuildPattern() override;
   void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override;
@@ -32,10 +32,10 @@ class FcFusePass::Impl : public FuseBase {
   cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override;
 };
 
-void FcFusePass::Impl::BuildPattern() {
+void FcFusePass::Fuser::BuildPattern() {
   // create nodes.
   auto* x = VarNode("x")->assert_is_op_input("mul", "X");
-  auto* W = VarNode("W")->assert_is_op_nth_input("mul", "Y", 1);
+  auto* W = VarNode("W")->assert_is_op_input("mul", "Y");
   auto* b = VarNode("b");
   auto* mul = OpNode("mul", "mul");
   auto* mul_out = VarNode("mul_out");
@@ -54,8 +54,8 @@ void FcFusePass::Impl::BuildPattern() {
   add->AsIntermediate();
 }
 
-void FcFusePass::Impl::InsertNewNode(SSAGraph* graph,
-                                     const key2nodes_t& matched) {
+void FcFusePass::Fuser::InsertNewNode(SSAGraph* graph,
+                                      const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto fc_op = LiteOpRegistry::Global().Create("fc");
   auto mul = matched.at("mul")->stmt()->op;
@@ -71,7 +71,7 @@ void FcFusePass::Impl::InsertNewNode(SSAGraph* graph,
   IR_NODE_LINK_TO(new_op_node, matched.at("Out"));
 }
 
-cpp::OpDesc FcFusePass::Impl::GenOpDesc(const key2nodes_t& matched) {
+cpp::OpDesc FcFusePass::Fuser::GenOpDesc(const key2nodes_t& matched) {
   cpp::OpDesc op_desc;
   op_desc.SetType("fc");
   op_desc.SetInput("Input", {matched.at("x")->arg()->name});
@@ -84,10 +84,10 @@ cpp::OpDesc FcFusePass::Impl::GenOpDesc(const key2nodes_t& matched) {
   return op_desc;
 }
 
-FcFusePass::FcFusePass() : impl_(new FcFusePass::Impl) {}
+FcFusePass::FcFusePass() : fuser_(new FcFusePass::Fuser) {}
 
 void FcFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
-  impl_->operator()(graph.get());
+  fuser_->operator()(graph.get());
 }
 
 }  // namespace fusion
