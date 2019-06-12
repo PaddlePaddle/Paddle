@@ -635,6 +635,9 @@ class Executor(object):
         if fetch_list is None:
             fetch_list = []
 
+        if core.is_compiled_with_cuda() and is_gpu_place(self.place):
+            if scope.find_var("NCCLCommunicator")
+
         compiled = isinstance(program, compiler.CompiledProgram)
         # For backward compatibility, run directly.
         if not compiled:
