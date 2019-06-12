@@ -45,9 +45,9 @@ class SGDCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     PADDLE_ENFORCE_EQ(grad->numel(), sz);
 
     paddle::operators::jit::sgd_attr_t attr(1, sz, 1, sz, 1);
-    const T *lr = learning_rate->data<T>();
-    const T *param_data = param->data<T>();
-    const T *grad_data = grad->data<T>();
+    const T *lr = learning_rate->template data<T>();
+    const T *param_data = param->template data<T>();
+    const T *grad_data = grad->template data<T>();
     int64_t rows_idx = 0;
     T *out_data =
         param_out->mutable_data<T>(context.x86_device_context()->GetPlace());
