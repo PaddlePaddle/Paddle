@@ -31,7 +31,7 @@ class SGDCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   void Run() override {
     auto &context = ctx_->As<X86Context>();
     auto &sgd_param = *param_.get_mutable<operators::SGDParam>();
-    CHECK(context.x86_device_context);
+    CHECK(context.x86_device_context());
 
     // param.Out->template mutable_data<T>();
 
@@ -50,7 +50,7 @@ class SGDCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     const T *grad_data = grad->data<T>();
     int64_t rows_idx = 0;
     T *out_data =
-        param_out->mutable_data<T>(context.x86_device_context->GetPlace());
+        param_out->mutable_data<T>(context.x86_device_context()->GetPlace());
 
     auto sgd =
         paddle::operators::jit::KernelFuncs<paddle::operators::jit::SgdTuple<T>,
