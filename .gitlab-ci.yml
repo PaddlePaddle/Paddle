@@ -21,8 +21,8 @@ build:server:
     #paths:
         #- build/third_party
   script:
-    - echo "10.91.163.233 github.com" >> /etc/hosts
-    - git config --system http.sslVerify false
+    - export http_proxy=http://172.19.57.45:3128
+    - export https_proxy=http://172.19.57.45:3128
     - mkdir -p build
     - cd build
     - ../paddle/fluid/lite/tools/build.sh cmake_x86
