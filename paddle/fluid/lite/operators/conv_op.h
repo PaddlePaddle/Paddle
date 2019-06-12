@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
@@ -60,12 +59,13 @@ class ConvOpLite : public OpLite {
             const_cast<lite::Tensor *>(&(bias_var->Get<lite::Tensor>()));
       }
     }
-    if (std::find(input_arg_names.begin(), input_arg_names.end(), "ResidualData") !=
-        input_arg_names.end()) {
-      auto residual_data_var = scope->FindVar(op_desc.Input("ResidualData").front());
+    if (std::find(input_arg_names.begin(), input_arg_names.end(),
+                  "ResidualData") != input_arg_names.end()) {
+      auto residual_data_var =
+          scope->FindVar(op_desc.Input("ResidualData").front());
       if (residual_data_var != nullptr) {
-        param_.residualData =
-            const_cast<lite::Tensor *>(&(residual_data_var->Get<lite::Tensor>()));
+        param_.residualData = const_cast<lite::Tensor *>(
+            &(residual_data_var->Get<lite::Tensor>()));
       }
     }
     return true;

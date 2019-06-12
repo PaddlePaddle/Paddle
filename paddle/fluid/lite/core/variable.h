@@ -24,7 +24,7 @@ namespace lite {
 class Variable {
  public:
   template <typename T>
-  const T& Get() {
+  const T& Get() const {
     return blob_.get<T>();
   }
 

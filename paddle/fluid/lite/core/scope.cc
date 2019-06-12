@@ -17,7 +17,13 @@
 namespace paddle {
 namespace lite {
 
-Scope::~Scope() {}
+Scope::~Scope() {
+  for (auto *x : kids_) {
+    if (x) {
+      delete x;
+    }
+  }
+}
 
 Scope &Scope::NewScope() const {
   kids_.push_back(new Scope);
