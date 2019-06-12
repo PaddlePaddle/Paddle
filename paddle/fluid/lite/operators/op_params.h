@@ -57,6 +57,7 @@ struct FcParam {
   lite::Tensor* output{};
   lite::DDim in_mat_dims;
   int in_num_col_dims{1};
+  bool weight_transposed{false};
 };
 
 struct ReluParam {
