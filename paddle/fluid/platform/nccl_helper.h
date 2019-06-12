@@ -205,20 +205,20 @@ class NCCLCommunicator {
 
     return GetHierarchicalInterCtx(run_order);
   }
-    /*
- * When nccl inits nccl comm using ncclCommInitAll, it meets error when
- * allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
- * create a new nccl comm for sync_batch_norm_op. And these codes should be
- * polished with a unified nccl management.
- */
-  NCCLContextMap *GetSyncBatchNormCtx(framework::Scope *scope,
-                                      const std::vector<platform::Place> &places){
+  /*
+*When nccl inits nccl comm using ncclCommInitAll, it meets error when
+*allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
+*create a new nccl comm for sync_batch_norm_op. And these codes should be
+*polished with a unified nccl management.
+*/
+  NCCLContextMap *GetSyncBatchNormCtx(
+      framework::Scope *scope, const std::vector<platform::Place> &places) {
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     if (nccl_id_var != nullptr) {
       return DefaultFlatCtx();
     }
 
-    if(sync_batch_norm_ctx_.get() == nullptr){
+    if (sync_batch_norm_ctx_.get() == nullptr) {
       sync_batch_norm_ctx_.reset(places_);
     }
     return sync_batch_norm_ctx_.get();
@@ -309,8 +309,8 @@ class NCCLCommunicator {
   std::vector<std::unique_ptr<NCCLContextMap>> h_inter_ctxs_;
   std::vector<std::unique_ptr<NCCLContextMap>> h_exter_ctxs_;
 
-
-  std::unique_ptr<NCCLContextMap>  sync_batch_norm_ctx_;
+  // just used for sync_batch_norm op.
+  std::unique_ptr<NCCLContextMap> sync_batch_norm_ctx_;
 };
 
 }  // namespace platform
