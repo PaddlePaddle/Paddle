@@ -10,7 +10,7 @@ stages:
 check:prebuilt:
   stage: ci
   script:
-    - ./paddle/fluid/lite/tools/build.sh check_style
+    #- ./paddle/fluid/lite/tools/build.sh check_style
 
 build:server:
   image: $SERVER_LITE_DOCKER_IMAGE
