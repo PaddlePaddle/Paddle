@@ -34,9 +34,8 @@ function cmake_gpu {
 }
 
 function check_style {
-    pip install cpplint
     export PATH=/usr/bin:$PATH
-    pre-commit install
+    #pre-commit install
     clang-format --version
 
     if ! pre-commit run -a ; then

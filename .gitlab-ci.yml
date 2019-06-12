@@ -11,7 +11,9 @@ stages:
 check:prebuilt:
     stage: ci
     script:
-        - pip install six
+        - pip3 install pre-commit
+        - alias python=python3
+        - pre-commit install
         - ./paddle/fluid/lite/tools/build.sh check_style
         #- ./paddle/fluid/lite/tools/build.sh check_need_ci
 
