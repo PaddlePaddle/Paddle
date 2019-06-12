@@ -205,12 +205,13 @@ class NCCLCommunicator {
 
     return GetHierarchicalInterCtx(run_order);
   }
+
   /*
-*When nccl inits nccl comm using ncclCommInitAll, it meets error when
-*allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
-*create a new nccl comm for sync_batch_norm_op. And these codes should be
-*polished with a unified nccl management.
-*/
+   *When nccl inits nccl comm using ncclCommInitAll, it meets error when
+   *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
+   *create a new nccl comm for sync_batch_norm_op. And these codes should be
+   *polished with a unified nccl management.
+  */
   NCCLContextMap *GetSyncBatchNormCtx(
       framework::Scope *scope, const std::vector<platform::Place> &places) {
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
