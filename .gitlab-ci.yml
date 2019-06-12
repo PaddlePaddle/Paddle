@@ -10,7 +10,7 @@ stages:
 check:prebuilt:
   stage: ci
   script:
-    - git log -1 --oneline | grep "test=develop" || exit -1
+    - ./paddle/fluid/lite/tools/build.sh check_need_ci
     - ./paddle/fluid/lite/tools/build.sh check_style
 
 build:server:
