@@ -36,6 +36,7 @@ from .. import core
 from ..dygraph import layers
 
 __all__ = [
+    'dist_fc',
     'fc',
     'embedding',
     'dynamic_lstm',
@@ -207,6 +208,72 @@ __all__ = [
 
 kIgnoreIndex = -100
 
+def dist_fc(input,
+            size,
+            num_flatten_dims=1,
+            param_attr=None,
+            bias_attr=None,
+            act=None,
+            is_test=False,
+            name=None,
+            nranks=1,
+            ringid=0):
+    helper = LayerHelper("fc", **locals())
+    dtype = helper.input_dtype()
+    assert size % nranks == 0
+    size = size // nranks
+    mul_results = []
+    for input_var,param_attr in helper.iter_inputs_and_params():
+        input_shape = input_var.shape
+        param_shape=[
+            reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+        ]+[size]
+
+        w = helper.create_parameter(
+            attr=param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=False
+        )
+        allgather_out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="c_allgather",
+            inputs={"X":input},
+            outputs={"Out":allgather_out},
+            attrs={"nranks":nranks,
+                   "ring_id":ringid
+                   })
+        mul_out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+                type="mul",
+                inputs={"X": allgather_out,
+                        "Y": w},
+                outputs={"Out": mul_out},
+                attrs={
+                    "x_num_col_dims": num_flatten_dims,
+                    "y_num_col_dims": 1
+                })
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+                type="c_slicegather",
+                inputs={"X": mul_out},
+                outputs={"Out": out},
+                attrs={"nranks": nranks,
+                       "ring_id":ringid})
+        mul_results.append(out)
+    if len(mul_results) == 1:
+        pre_bias = mul_results[0]
+    else:
+        pre_bias = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="sum",
+            inputs={"X": mul_results},
+            outputs={"Out": pre_bias},
+            attrs={"use_mkldnn": False})
+    # add bias
+    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
+    # add activation
+    return helper.append_activation(pre_activation)
 
 def fc(input,
        size,

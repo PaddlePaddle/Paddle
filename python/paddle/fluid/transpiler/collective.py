@@ -174,6 +174,15 @@ class SGD(Collective):
         Collective.__init__(self)
 
     def _transpile_main_program(self):
+        block=self.main_program.global_block()
+        for idx,op in enumerate(block.ops):
+            if self._is_backward_op(op) and op.type=="mul_grad"  and \
+                    self.op_role_var_key in op.attr_names:
+                op._remove_attr(self.op_role_var_key)
+                break
+            if self._is_backward_op(op) and op.type=="elementwise_add_grad" and \
+                     self.op_role_var_key in op.attr_names:
+                op._remove_attr(self.op_role_var_key)
         self._insert_scale_loss_grad_ops()
         self._insert_allreduce_ops()
 
