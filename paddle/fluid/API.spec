@@ -103,7 +103,7 @@ paddle.fluid.layers.sequence_expand (ArgSpec(args=['x', 'y', 'ref_level', 'name'
 paddle.fluid.layers.sequence_expand_as (ArgSpec(args=['x', 'y', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '0ecf8d24cf4fd5c035406ee46afccfa0'))
 paddle.fluid.layers.sequence_pad (ArgSpec(args=['x', 'pad_value', 'maxlen', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '6a1adf3067b20f6e4bcb354d71c19184'))
 paddle.fluid.layers.sequence_unpad (ArgSpec(args=['x', 'length', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'd12803c903c99aa36ec03aaac5f0cc5b'))
-paddle.fluid.layers.lstm_unit (ArgSpec(args=['x_t', 'hidden_t_prev', 'cell_t_prev', 'forget_bias', 'param_attr', 'bias_attr', 'name'], varargs=None, keywords=None, defaults=(0.0, None, None, None)), ('document', '409d1c2ca874a22511258175649d2b7f'))
+paddle.fluid.layers.lstm_unit (ArgSpec(args=['x_t', 'hidden_t_prev', 'cell_t_prev', 'forget_bias', 'param_attr', 'bias_attr', 'name'], varargs=None, keywords=None, defaults=(0.0, None, None, None)), ('document', 'fe126c58e4339410e875ab1eba246d21'))
 paddle.fluid.layers.reduce_sum (ArgSpec(args=['input', 'dim', 'keep_dim', 'name'], varargs=None, keywords=None, defaults=(None, False, None)), ('document', 'dd5f06fb7cf39ca06cbab4abd03e6893'))
 paddle.fluid.layers.reduce_mean (ArgSpec(args=['input', 'dim', 'keep_dim', 'name'], varargs=None, keywords=None, defaults=(None, False, None)), ('document', 'a3024789eba11a70c2ef27c358173400'))
 paddle.fluid.layers.reduce_max (ArgSpec(args=['input', 'dim', 'keep_dim', 'name'], varargs=None, keywords=None, defaults=(None, False, None)), ('document', '10023caec4d7f78c3b901f023a1feaa7'))
