@@ -62,5 +62,45 @@ void RuntimeProgram::SaveParams(const std::string &dir,
   }
 }
 
+void Program::Build(const framework::proto::ProgramDesc &program) {
+  CHECK(ops_.empty()) << "Executor duplicate Build found";
+  // Create operators.
+  for (const auto &proto_op_desc : program.blocks(0).ops()) {
+    lite::OpDesc op_desc_dummy(proto_op_desc);
+    cpp::OpDesc op_desc;
+    TransformOpDescPbToCpp(op_desc_dummy, &op_desc);
+    auto op_type = op_desc.Type();
+    // if (op_type == "feed" || op_type == "fetch") continue;
+    VLOG(4) << "create Op [" << op_type << "]";
+    LOG(INFO) << "create Op [" << op_type << "]";
+    auto op = LiteOpRegistry::Global().Create(op_type);
+    CHECK(op) << "no Op found for " << op_type;
+    ops_.emplace_back(std::move(op));
+    ops_.back()->Attach(op_desc, exec_scope_);
+  }
+}
+
+void Program::PrepareWorkspace(const framework::proto::ProgramDesc &program) {
+  CHECK(!exec_scope_) << "Duplicate PrepareWorkspace found";
+  exec_scope_ = &scope_->NewScope();
+  // Create Feed and Fetch var.
+  scope_->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
+  scope_->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
+
+  tmp_vars_.push_back("feed");
+  tmp_vars_.push_back("fetch");
+  CHECK(!program.blocks().empty());
+  for (auto proto_var_desc : program.blocks(0).vars()) {
+    lite::VarDesc var_desc(proto_var_desc);
+    if (!var_desc.Persistable()) {
+      tmp_vars_.push_back(var_desc.Name());
+      exec_scope_->Var(var_desc.Name());
+    } else {
+      if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
+      weights_.push_back(var_desc.Name());
+    }
+  }
+}
+
 }  // namespace lite
 }  // namespace paddle
