@@ -11,9 +11,8 @@ stages:
 check:prebuilt:
     stage: ci
     script:
-        - ls
+        - ./paddle/fluid/lite/tools/build.sh check_style
         #- ./paddle/fluid/lite/tools/build.sh check_need_ci
-        #- ./paddle/fluid/lite/tools/build.sh check_style
 
 build:server:
     image: $SERVER_LITE_DOCKER_IMAGE
