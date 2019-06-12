@@ -13,4 +13,3 @@ funcsigs
 pyyaml
 decorator
 prettytable
-coverage
