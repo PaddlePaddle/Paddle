@@ -608,3 +608,15 @@ paddle.reader.Fake.__init__ (ArgSpec(args=['self'], varargs=None, keywords=None,
 paddle.reader.creator.np_array (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', '28d457fbc9a71efa4ac91a3be179cada'))
 paddle.reader.creator.text_file (ArgSpec(args=['path'], varargs=None, keywords=None, defaults=None), ('document', 'f45fcb7add066c8e042c6774fc7c3db2'))
 paddle.reader.creator.recordio (ArgSpec(args=['paths', 'buf_size'], varargs=None, keywords=None, defaults=(100,)), ('document', 'b4a94ee0e2cefb495619275c2f8c61d2'))
+paddle.fluid.layers.Uniform.__init__ (ArgSpec(args=['self', 'low', 'high'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.layers.Uniform.entropy (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7e651e578b914d257471fc6c6e2bfe3e'))
+paddle.fluid.layers.Uniform.kl_divergence (ArgSpec(args=['self', 'other'], varargs=None, keywords=None, defaults=None), ('document', '3baee52abbed82d47e9588d9dfe2f42f'))
+paddle.fluid.layers.Uniform.log_prob (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', '2425beadb1622682d6f193d52a29bfa3'))
+paddle.fluid.layers.Uniform.sample (ArgSpec(args=['self', 'shape', 'seed'], varargs=None, keywords=None, defaults=(0,)), ('document', '470d14d1f35003a43323a547413ab7d7'))
+paddle.fluid.layers.Normal.__init__ (ArgSpec(args=['self', 'loc', 'scale'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.layers.Normal.entropy (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7e651e578b914d257471fc6c6e2bfe3e'))
+paddle.fluid.layers.Normal.kl_divergence (ArgSpec(args=['self', 'other'], varargs=None, keywords=None, defaults=None), ('document', '6bda2ae975306bf277cbac4acfef1c32'))
+paddle.fluid.layers.Normal.log_prob (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', '2425beadb1622682d6f193d52a29bfa3'))
+paddle.fluid.layers.Normal.sample (ArgSpec(args=['self', 'shape', 'seed'], varargs=None, keywords=None, defaults=(0,)), ('document', '470d14d1f35003a43323a547413ab7d7'))
+
+
