@@ -16,6 +16,7 @@ from ..graph import GraphWrapper
 from .controller_server import ControllerServer
 from .search_agent import SearchAgent
 from ....executor import Executor
+from ....log_helper import get_logger
 import re
 import logging
 import functools
@@ -24,10 +25,10 @@ from .lock import lock, unlock
 
 __all__ = ['LightNASStrategy']
 
-logging.basicConfig(
-    format='LightNASStrategy-%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__,
+    logging.INFO,
+    fmt='LightNASStrategy-%(asctime)s-%(levelname)s: %(message)s')
 
 
 class LightNASStrategy(Strategy):
