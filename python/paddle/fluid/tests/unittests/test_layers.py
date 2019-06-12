@@ -2008,12 +2008,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='int32')
             out = fluid.layers.sigmoid_focal_loss(
-                x=input,
-                label=label,
-                fg_num=fg_num,
-                gamma=2.,
-                alpha=0.25,
-                num_classes=80)
+                x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
             return (out)
 
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,22 +36,22 @@ static inline int NumBlocks(const int N) {
 
 template <typename T>
 __global__ void GPUSigmoidForward(const T *x_data, const int *label_data,
-                                  const int *fg_num_data, const float gamma,
-                                  const float alpha, const int num_classes,
+                                  const int *fg_num_data, const T gamma,
+                                  const T alpha, const int num_classes,
                                   const int limit, T *out_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
-    int a = i / num_classes;  // current anchor
+    int a = i / num_classes;  // current sample
     int d = i % num_classes;  // current class
     int g = label_data[a];    // target
 
     // check whether the input data is positive or negative
     // the target classes are in range 1-81
     // and the d is in range 0-80
-    T c_pos = (g == (d + 1));
-    T c_neg = ((g != -1) & (g != (d + 1)));
+    T c_pos = static_cast<T>(g == (d + 1));
+    T c_neg = static_cast<T>((g != -1) & (g != (d + 1)));
 
-    T fg_num = (fg_num_data[0] > 1) ? fg_num_data[0] : 1;
+    T fg_num = static_cast<T>((fg_num_data[0] > 1) ? fg_num_data[0] : 1);
     T s_neg = (1.0 - alpha) / fg_num;
     T s_pos = alpha / fg_num;
 
@@ -74,24 +74,24 @@ __global__ void GPUSigmoidForward(const T *x_data, const int *label_data,
 
 template <typename T>
 __global__ void GPUSigmoidBackward(const T *x_data, const int *label_data,
-                                   const int *fg_num_data, const float gamma,
-                                   const float alpha, const int num_classes,
+                                   const int *fg_num_data, const T gamma,
+                                   const T alpha, const int num_classes,
                                    const T *dout_data, const int limit,
                                    T *dx_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T dout = dout_data[i];
 
-    int a = i / num_classes;  // current anchor
+    int a = i / num_classes;  // current sample
     int d = i % num_classes;  // current class
 
-    T fg_num = (fg_num_data[0] > 1) ? fg_num_data[0] : 1;
+    T fg_num = static_cast<T>((fg_num_data[0] > 1) ? fg_num_data[0] : 1);
     T s_neg = (1.0 - alpha) / fg_num;
     T s_pos = alpha / fg_num;
 
     int g = label_data[a];
-    T c_pos = (g == (d + 1));
-    T c_neg = ((g != -1) & (g != (d + 1)));
+    T c_pos = static_cast<T>(g == (d + 1));
+    T c_neg = static_cast<T>((g != -1) & (g != (d + 1)));
 
     T p = 1. / (1. + real_exp(-x));
 
@@ -120,9 +120,10 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
     const Tensor *Labels = context.Input<Tensor>("Label");
     const Tensor *FgNum = context.Input<Tensor>("FgNum");
     Tensor *Out = context.Output<Tensor>("Out");
-    float gamma = context.Attr<float>("gamma");
-    float alpha = context.Attr<float>("alpha");
-    int num_classes = context.Attr<int>("num_classes");
+    T gamma = static_cast<T>(context.Attr<float>("gamma"));
+    T alpha = static_cast<T>(context.Attr<float>("alpha"));
+    auto x_dims = X->dims();
+    int num_classes = static_cast<int>(x_dims[1]);
     auto out_data = Out->mutable_data<T>(context.GetPlace());
 
     auto &dev_ctx = context.cuda_device_context();
@@ -146,9 +147,10 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
     const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
     auto dx_data = dX->mutable_data<T>(context.GetPlace());
-    float gamma = context.Attr<float>("gamma");
-    float alpha = context.Attr<float>("alpha");
-    int num_classes = context.Attr<int>("num_classes");
+    T gamma = static_cast<T>(context.Attr<float>("gamma"));
+    T alpha = static_cast<T>(context.Attr<float>("alpha"));
+    auto x_dims = X->dims();
+    int num_classes = static_cast<int>(x_dims[1]);
 
     auto &dev_ctx = context.cuda_device_context();
 

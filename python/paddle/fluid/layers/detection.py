@@ -211,7 +211,7 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
+def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
@@ -233,7 +233,8 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
 
     Args:
         x(Variable): A 2-D tensor with shape [N, D], where N is the batch size and D is the number
-            of classes. This input is a tensor of logits computed by the previous operator.
+            of classes (excluding background). This input is a tensor of logits computed by the
+            previous operator.
         label(Variable): A 2-D tensor with shape [N, 1], which is the probabilistic labels.
         fg_num(Variable): A 1-D tensor with shape [1], which is the number of foreground.
 
@@ -241,8 +242,6 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
             set to 2.0.
         alpha(float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
-        num_classes(int): Number of classes (excluding background).
-
 
     Returns:
         out(Variable): A 2-D tensor with shape [N, D], which is the focal loss.
@@ -262,8 +261,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
                                                    label=label,
                                                    fg_num=fg_num,
                                                    gamma=2.,
-                                                   alpha=0.25,
-                                                   num_classes=80)
+                                                   alpha=0.25)
     """
 
     helper = LayerHelper("sigmoid_focal_loss", **locals())
@@ -276,8 +274,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25, num_classes=80):
                 "Label": label,
                 "FgNum": fg_num},
         attrs={"gamma": gamma,
-               'alpha': alpha,
-               "num_classes": num_classes},
+               'alpha': alpha},
         outputs={"Out": out})
     return out
 

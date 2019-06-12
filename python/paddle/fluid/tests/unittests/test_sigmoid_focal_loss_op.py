@@ -81,7 +81,6 @@ class TestSigmoidFocalLossOp1(OpTest):
         self.attrs = {
             'gamma': self.gamma,
             'alpha': self.alpha,
-            'num_classes': self.num_classes
         }
         loss = sigmoid_focal_loss_forward(
             self.inputs['X'], self.inputs['Label'], self.inputs['FgNum'],

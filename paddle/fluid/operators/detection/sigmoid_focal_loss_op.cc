@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -127,9 +127,9 @@ class SigmoidFocalLossOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape [N, D], "
-             "where N is the batch size and D is the number of classes. "
-             "This input is a tensor of logits computed by the previous "
-             "operator.");
+             "where N is the batch size and D is the number of classes "
+             "(excluding background). This input is a tensor of logits "
+             "computed by the previous operator.");
     AddInput("Label",
              "(Tensor, default Tensor<int>), a 2-D tensor with shape [N, 1]. "
              "This input is a tensor of probabilistic labels.");
@@ -152,7 +152,6 @@ class SigmoidFocalLossOpMaker : public framework::OpProtoAndCheckerMaker {
         "positive and negative examples. "
         "A float scalar with default value 0.5.")
         .SetDefault(0.25);
-    AddAttr<int>("num_classes", "Number of classes (excluding background). ");
     AddComment(R"DOC(
 Sigmoid Focal Loss Operator.
 
