@@ -174,6 +174,15 @@ struct DropoutParam {
   std::string dropout_implementation{"downgrade_in_infer"};
 };
 
+// For Split op
+struct SplitParam {
+  lite::Tensor* x{};
+  std::vector<lite::Tensor*>* output{};
+  int axis{-1};
+  int num{0};
+  std::vector<int>* sections;
+};
+
 /// ----------------------- element wise operators ----------------------
 struct ElementwiseParam {
   const lite::Tensor* X{};
