@@ -29,7 +29,7 @@ class SGDCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   using param_t = operators::ActivationParam;
 
   void Run() override {
-    auto &context = context_->As<X86Context>();
+    auto &context = ctx_->As<X86Context>();
     auto &sgd_param = *param_.get_mutable<operators::SGDParam>();
     CHECK(context.x86_device_context);
 
