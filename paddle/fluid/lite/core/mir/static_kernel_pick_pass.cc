@@ -37,6 +37,8 @@ void StaticKernelPickPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
     if (!node.IsStmt()) continue;
     auto& instruct = node.AsStmt();
     std::vector<std::pair<size_t, std::unique_ptr<KernelBase>>> scored;
+    CHECK(!instruct.valid_kernels.empty()) << "No kernels found for "
+                                           << instruct.op_type;
     for (auto&& kernel : instruct.valid_kernels) {
       size_t score = KernelGrade(*kernel);
       scored.emplace_back(score, std::move(kernel));
