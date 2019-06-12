@@ -44,7 +44,7 @@ class SimpleLSTMRNN(fluid.Layer):
         self.cell_array = []
         self.hidden_array = []
 
-    def build_once(self, input_embedding, init_hidden=None, init_cell=None):
+    def _build_once(self, input_embedding, init_hidden=None, init_cell=None):
         self.weight_1_arr = []
         self.weight_2_arr = []
         self.bias_arr = []
@@ -175,9 +175,6 @@ class PtbModel(fluid.Layer):
             dtype="float32",
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
-
-    def build_once(self, input, label, init_hidden, init_cell):
-        pass
 
     def forward(self, input, label, init_hidden, init_cell):
         init_h = fluid.layers.reshape(

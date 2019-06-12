@@ -38,13 +38,11 @@ class AllocatorFacade {
   static AllocatorFacade& Instance();
 
   // Allocate a shared allocation.
-  std::shared_ptr<Allocation> AllocShared(
-      const platform::Place& place, size_t size,
-      Allocator::Attr attr = Allocator::kDefault);
+  std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+                                          size_t size);
 
   // Allocate a unique allocation.
-  AllocationPtr Alloc(const platform::Place& place, size_t size,
-                      Allocator::Attr attr = Allocator::kDefault);
+  AllocationPtr Alloc(const platform::Place& place, size_t size);
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

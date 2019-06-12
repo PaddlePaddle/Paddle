@@ -37,9 +37,9 @@ void LockedAllocator::FreeImpl(Allocation *allocation) {
   underlying_allocator_->Free(allocation);
 }
 
-Allocation *LockedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation *LockedAllocator::AllocateImpl(size_t size) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-  return underlying_allocator_->Allocate(size, attr).release();
+  return underlying_allocator_->Allocate(size).release();
 }
 
 }  // namespace allocation
