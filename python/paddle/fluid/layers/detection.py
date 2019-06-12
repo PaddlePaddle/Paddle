@@ -772,6 +772,7 @@ def detection_map(detect_res,
     Examples:
           .. code-block:: python
 
+            from fluid.layers import detection
             detect_res = fluid.layers.data(
                 name='detect_res',
                 shape=[10, 6],
@@ -783,7 +784,7 @@ def detection_map(detect_res,
                 append_batch_size=False,
                 dtype='float32')
 
-            map_out = fluid.layers.detection_map(detect_res, label, 21)
+            map_out = detection.detection_map(detect_res, label, 21)
     """
     helper = LayerHelper("detection_map", **locals())
 
