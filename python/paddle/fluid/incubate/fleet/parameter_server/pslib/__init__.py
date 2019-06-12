@@ -33,8 +33,8 @@ class PSLib(Fleet):
         self._main_programs = []
         self._scopes = []
 
-    def init(self, executor, role_maker=None):
-        super(PSLib, self).init(executor, MPISymetricRoleMaker())
+    def init(self, role_maker=None):
+        super(PSLib, self).init(MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
 
     def init_worker(self):
@@ -169,23 +169,12 @@ class PSLib(Fleet):
         self._role_maker._barrier_all()
         self._role_maker._finalize()
 
-    def stop(self):
-        """
-        stop(): will be called after a user finishes his/her training task. Fleet instance will be
-            destroyed when stop() is called.
-        """
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.stop_server()
-        self._role_maker._barrier_worker()
-        self._role_maker._barrier_all()
-        self._role_maker._finalize()
-
     def distributed_optimizer(self, optimizer, strategy={}):
         self._optimizer = DownpourOptimizer(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
+                             executor,
                              dirname,
                              feeded_var_names=None,
                              target_vars=None,
@@ -196,7 +185,7 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
-    def save_persistables(self, dirname, main_program=None, **kwargs):
+    def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         save presistable parameters,
         when using fleet, it will save sparse and dense feature

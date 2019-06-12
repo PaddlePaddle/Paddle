@@ -90,7 +90,7 @@ def train():
     MNIST training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [-1, 1] and label in [0, 9].
 
     :return: Training reader creator
     :rtype: callable
@@ -107,7 +107,7 @@ def test():
     MNIST test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [-1, 1] and label in [0, 9].
 
     :return: Test reader creator.
     :rtype: callable

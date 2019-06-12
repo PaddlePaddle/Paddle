@@ -564,8 +564,9 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (
+                self.name, self.dtype, self.shape,
+                str(self._ivar.value().get_tensor()))
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -653,6 +654,8 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
@@ -1012,7 +1015,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1035,7 +1038,6 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1045,13 +1047,17 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
+                                )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1670,13 +1676,22 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+            attrs = kwargs.get("attrs", {})
+            if _dygraph_tracer_._train_mode == False:
+                # eval mode
+                if ('trainable_statistics' not in attrs
+                    ) or not attrs['trainable_statistics']:
+                    attrs['is_test'] = True
+                else:
+                    attrs['is_test'] = False
+
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                attrs=attrs)
 
             # record ops in tracer rather than blocks
             #
@@ -2756,6 +2771,10 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._nccl_comm_num = 1
+        self._use_hierarchical_allreduce = False
+        self._hierarchical_allreduce_inter_nranks = 0
+        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
@@ -2765,6 +2784,9 @@ class Program(object):
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
+
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
 
     @property
     def _is_mem_optimized(self):
@@ -2959,12 +2981,15 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will not do any prune on program here, So if you just want an
+          forward program for testing, please use :code:`clone` before using
+          :code:`Opimizer.minimize`
 
-        Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please. E.g.
 
         .. code-block:: python
 
@@ -2981,7 +3006,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3608,6 +3638,35 @@ def default_main_program():
 
     Returns:
         Program: main program
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            
+            # Sample Network:
+            data = fluid.layers.data(name='image', shape=[3, 224, 224], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            
+            conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
+            bn1 = fluid.layers.batch_norm(conv1, act='relu')
+            pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
+            conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
+            bn2 = fluid.layers.batch_norm(conv2, act='relu')
+            pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
+            
+            fc1 = fluid.layers.fc(pool2, size=50, act='relu')
+            fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
+            
+            loss = fluid.layers.cross_entropy(input=fc2, label=label)
+            loss = fluid.layers.mean(loss)
+            opt = fluid.optimizer.Momentum(
+                learning_rate=0.1,
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            opt.minimize(loss)
+            
+            print(fluid.default_main_program())
     """
     return _main_program_
 
@@ -3646,8 +3705,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3675,9 +3734,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
-            None means do not change startup program.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")
