@@ -8,30 +8,30 @@ stages:
   - build
 
 check:prebuilt:
-  stage: ci
-  script:
-    - ./paddle/fluid/lite/tools/build.sh check_need_ci
-    - ./paddle/fluid/lite/tools/build.sh check_style
+    stage: ci
+    script:
+        - ls
+        #- ./paddle/fluid/lite/tools/build.sh check_need_ci
+        #- ./paddle/fluid/lite/tools/build.sh check_style
 
 build:server:
-  image: $SERVER_LITE_DOCKER_IMAGE
-  stage: build
-  cache:
-    key: server_thirdparty
-    paths:
-        - build/third_party
-  script:
-    - export http_proxy=http://172.19.57.45:3128
-    - export https_proxy=http://172.19.57.45:3128
-    - mkdir -p build
-    - cd build
-    - ../paddle/fluid/lite/tools/build.sh cmake_x86
-    - make extern_eigen3
-    - make extern_boost
-    - cd ..
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/build/third_party/install/mklml/lib
-    - ./paddle/fluid/lite/tools/build.sh build_test_server
-
+    image: $SERVER_LITE_DOCKER_IMAGE
+    stage: build
+    cache:
+        key: server_thirdparty
+        paths:
+            - build/third_party
+    script:
+        - export http_proxy=http://172.19.57.45:3128
+        - export https_proxy=http://172.19.57.45:3128
+        - mkdir -p build
+        - cd build
+        - ../paddle/fluid/lite/tools/build.sh cmake_x86
+        - make extern_eigen3
+        - make extern_boost
+        - cd ..
+        - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/build/third_party/install/mklml/lib
+        - ./paddle/fluid/lite/tools/build.sh build_test_server
     dependencies:
         - check:prebuilt
 
