@@ -344,7 +344,7 @@ EOF
 }
 
 
-function combine_avx_noavx_build_test() {
+function combine_avx_noavx_build() {
     mkdir -p ${PADDLE_ROOT}/build.noavx
     cd ${PADDLE_ROOT}/build.noavx
     WITH_AVX=OFF
@@ -359,7 +359,6 @@ function combine_avx_noavx_build_test() {
 
     cmake_base ${PYTHON_ABI:-""}
     build_base
-    make test -j ${parallel_number}
 }
 
 
@@ -672,9 +671,7 @@ function card_test() {
     set +m
 }
 
-function parallel_test() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
+function parallel_test_base() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -743,6 +740,12 @@ set +x
         fi
 set -ex
     fi
+}
+
+function parallel_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    parallel_test_base
 }
 
 function gen_doc_lib() {
@@ -996,8 +999,12 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
-      combine_avx)
-        combine_avx_noavx_build_test
+      combine_avx_noavx)
+        combine_avx_noavx_build
+        ;;
+      combine_avx_noavx_build_and_test)
+        combine_avx_noavx_build
+        parallel_test_base
         ;;
       test)
         parallel_test
