@@ -76,7 +76,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     math::scatter::MergeAdd<DeviceContext, T> merge_add;
     merge_add(context.template device_context<DeviceContext>(), inputs, out);
 
-    out->SyncIndex();
+    // out->SyncIndex();
 
   } else {
     // no data, just set a empty out tensor.
