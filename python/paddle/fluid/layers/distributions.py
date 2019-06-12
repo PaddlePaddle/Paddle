@@ -14,8 +14,10 @@
 
 from __future__ import print_function
 
-from . import layers
-from .layers import ops
+from . import control_flow
+from . import tensor
+from . import ops
+from . import nn
 import math
 import numpy as np
 __all__ = ['Uniform', 'Normal']
@@ -39,7 +41,7 @@ class Distribution(object):
         raise NotImplementedError
 
     def log_prob(self, value):
-        """"""
+        """Log probability density/mass function."""
         raise NotImplementedError
 
     def _validate_args(self, *args):
@@ -53,13 +55,14 @@ class Distribution(object):
         is_variable = False
         is_number = False
         for arg in args:
-            if isinstance(arg, layers.Variable):
+            if isinstance(arg, tensor.Variable):
                 is_variable = True
             else:
                 is_number = True
 
         if is_variable and is_number:
-            raise ValueError('if one argument is Variable, all arguments should be Variable')
+            raise ValueError(
+                'if one argument is Variable, all arguments should be Variable')
 
         return is_variable
 
@@ -77,7 +80,7 @@ class Distribution(object):
 
         for arg in args:
             valid_arg = False
-            for cls in [float, list, np.ndarray, layers.Variable]:
+            for cls in [float, list, np.ndarray, tensor.Variable]:
                 if isinstance(arg, cls):
                     valid_arg = True
                     break
@@ -89,17 +92,13 @@ class Distribution(object):
             numpy_args.append(arg_np)
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
-            arg_variable = layers.create_tensor(dtype='float32')
-            layers.assign(arg_broadcasted, arg_variable)
+            arg_variable = tensor.create_tensor(dtype='float32')
+            tensor.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 
         return tuple(variable_args)
 
-#https://github.com/tensorflow/tensorflow/blob/r1.13/tensorflow/python/ops/distributions/uniform.py
-#https://github.com/pytorch/pytorch/blob/master/torch/distributions/categorical.py
-#https://github.com/PaddlePaddle/PARL/tree/develop/parl/framework
-#https://www.tensorflow.org/api_docs/python/tf/distributions/Normal
-#https://pytorch.org/docs/stable/distributions.html?highlight=uniform#torch.distributions.uniform.Uniform
+
 class Uniform(Distribution):
     """Uniform distribution with `low` and `high` parameters.
     #### Mathematical Details
@@ -142,6 +141,7 @@ class Uniform(Distribution):
     u1 = Uniform(low=low_variable, high=high_variable)
     ```
     """
+
     def __init__(self, low, high):
         self.all_arg_is_float = False
         self.batch_size_unknown = False
@@ -155,31 +155,50 @@ class Uniform(Distribution):
             self.low, self.high = self._to_variable(low, high)
 
     def sample(self, shape, seed=0):
+        """Generate samples of the specified shape.
+        Args:
+          shape: 1D `int32`. Shape of the generated samples.
+          seed: Python integer seed for RNG
+        Returns:
+          samples: a `Variable` with prepended dimensions `shape`.
+        """
         batch_shape = list((self.low + self.high).shape)
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
-            zero_tmp = layers.fill_constant_batch_size_like(self.low + self.high, batch_shape + shape, 'float32', 0.)
-            uniform_random_tmp = layers.uniform_random_batch_size_like(zero_tmp, zero_tmp.shape, min=0., max=1.,
-                                                                       seed=seed)
-            output = uniform_random_tmp * (zero_tmp + self.high - self.low) + self.low
-            return layers.reshape(output, output_shape)
+            zero_tmp = tensor.fill_constant_batch_size_like(
+                self.low + self.high, batch_shape + shape, 'float32', 0.)
+            uniform_random_tmp = nn.uniform_random_batch_size_like(
+                zero_tmp, zero_tmp.shape, min=0., max=1., seed=seed)
+            output = uniform_random_tmp * (zero_tmp + self.high - self.low
+                                           ) + self.low
+            return nn.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
-            output = ops.uniform_random(output_shape, seed=seed) * (layers.zeros(output_shape, dtype='float32') + (self.high - self.low)) + self.low
+            output = ops.uniform_random(
+                output_shape, seed=seed) * (tensor.zeros(
+                    output_shape, dtype='float32') +
+                                            (self.high - self.low)) + self.low
             if self.all_arg_is_float:
-                return layers.reshape(output, shape)
+                return nn.reshape(output, shape)
             else:
                 return output
 
     def log_prob(self, value):
-        lb_bool = layers.less_than(self.low, value)
-        ub_bool = layers.less_than(value, self.high)
-        lb = layers.cast(lb_bool, dtype='float32')
-        ub = layers.cast(ub_bool, dtype='float32')
-        return layers.log(lb * ub) - layers.log(self.high - self.low)
+        """Log probability density/mass function.
+        Args:
+          value: `Variable`.
+        Returns:
+          log_prob: a `Variable`.
+        """
+        lb_bool = control_flow.less_than(self.low, value)
+        ub_bool = control_flow.less_than(value, self.high)
+        lb = tensor.cast(lb_bool, dtype='float32')
+        ub = tensor.cast(ub_bool, dtype='float32')
+        return nn.log(lb * ub) - nn.log(self.high - self.low)
 
     def entropy(self):
-        return layers.log(self.high - self.low)
+        """Shannon entropy in nats."""
+        return nn.log(self.high - self.low)
 
 
 class Normal(Distribution):
@@ -218,6 +237,7 @@ class Normal(Distribution):
 
     ```
     """
+
     def __init__(self, loc, scale):
         self.batch_size_unknown = False
         self.all_arg_is_float = False
@@ -231,39 +251,62 @@ class Normal(Distribution):
             self.loc, self.scale = self._to_variable(loc, scale)
 
     def sample(self, shape, seed=0):
+        """Generate samples of the specified shape.
+        Args:
+          shape: 1D `int32`. Shape of the generated samples.
+          seed: Python integer seed for RNG
+        Returns:
+          samples: a `Variable` with prepended dimensions `shape`.
+        """
         batch_shape = list((self.loc + self.scale).shape)
 
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
-            zero_tmp = layers.fill_constant_batch_size_like(self.loc + self.scale, batch_shape + shape, 'float32', 0.)
-            normal_random_tmp = layers.gaussian_random_batch_size_like(zero_tmp, zero_tmp.shape, mean=0., std=1.,
-                                                                       seed=seed)
+            zero_tmp = tensor.fill_constant_batch_size_like(
+                self.loc + self.scale, batch_shape + shape, 'float32', 0.)
+            normal_random_tmp = nn.gaussian_random_batch_size_like(
+                zero_tmp, zero_tmp.shape, mean=0., std=1., seed=seed)
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
-            return layers.reshape(output, output_shape)
+            return nn.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
-            output = layers.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
-                     (layers.zeros(output_shape, dtype='float32') + self.scale) + self.loc
+            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
+                     (tensor.zeros(output_shape, dtype='float32') + self.scale) + self.loc
             if self.all_arg_is_float:
-                return layers.reshape(output, shape)
+                return nn.reshape(output, shape)
             else:
                 return output
 
     def entropy(self):
+        """Shannon entropy in nats."""
         batch_shape = list((self.loc + self.scale).shape)
-        zero_tmp = layers.fill_constant_batch_size_like(self.loc + self.scale, batch_shape, 'float32', 0.)
-        return 0.5 + 0.5 * math.log(2 * math.pi) + layers.log((self.scale + zero_tmp))
+        zero_tmp = tensor.fill_constant_batch_size_like(
+            self.loc + self.scale, batch_shape, 'float32', 0.)
+        return 0.5 + 0.5 * math.log(2 * math.pi) + nn.log(
+            (self.scale + zero_tmp))
 
     def log_prob(self, value):
+        """Log probability density/mass function.
+        Args:
+          value: `Variable`.
+        Returns:
+          log_prob: a `Variable`.
+        """
         var = self.scale * self.scale
-        log_scale = layers.log(self.scale)
-        return -1. * ((value - self.loc) * (value - self.loc)) / (2. * var) - log_scale - math.log(
-            math.sqrt(2. * math.pi))
+        log_scale = nn.log(self.scale)
+        return -1. * ((value - self.loc) * (value - self.loc)) / (
+            2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
 
     def kl_divergence(self, other):
+        """The KL-divergence between self normal distributions.
+        Args:
+            other: instance of Normal.
+        Returns:
+            kl_divergence: a `Variable`.
+        """
         assert isinstance(other, Normal), "another distribution must be Normal"
         var_ratio = self.scale / other.scale
         var_ratio = (var_ratio * var_ratio)
         t1 = (self.loc - other.loc) / other.scale
         t1 = (t1 * t1)
-        return 0.5 * (var_ratio + t1 - 1. - layers.log(var_ratio))
+        return 0.5 * (var_ratio + t1 - 1. - nn.log(var_ratio))
