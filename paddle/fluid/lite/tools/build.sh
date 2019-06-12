@@ -28,6 +28,18 @@ function cmake_gpu {
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
 }
 
+function check_style {
+    pip install cpplint
+    export PATH=/usr/bin:$PATH
+    pre-commit install
+    clang-format --version
+
+    if ! pre-commit run -a ; then
+        git diff
+        exit 1
+    fi
+}
+
 function cmake_arm {
     # $1: ARM_TARGET_OS in "android" , "armlinux"
     # $2: ARM_TARGET_ARCH_ABI in "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
@@ -213,6 +225,10 @@ function main {
                 ;;
             build_test_arm)
                 build_test_arm
+                shift
+                ;;
+            check_style)
+                check_style
                 shift
                 ;;
             *)
