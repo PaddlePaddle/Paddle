@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/operators/conv_op.h"
+#include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
