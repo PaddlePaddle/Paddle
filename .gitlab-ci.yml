@@ -16,10 +16,10 @@ check:prebuilt:
 build:server:
   image: $SERVER_LITE_DOCKER_IMAGE
   stage: build
-  #cache:
-    #key: server_thirdparty
-    #paths:
-        #- build/third_party
+  cache:
+    key: server_thirdparty
+    paths:
+        - build/third_party
   script:
     - export http_proxy=http://172.19.57.45:3128
     - export https_proxy=http://172.19.57.45:3128
@@ -27,15 +27,15 @@ build:server:
     - cd build
     - ../paddle/fluid/lite/tools/build.sh cmake_x86
     - make extern_eigen3
-    - ./paddle/fluid/lite/tools/build.sh build_test_server
+    - ../paddle/fluid/lite/tools/build.sh build_test_server
 
 build:mobile:
     stage: build
     image: $MOBILE_LITE_DOCKER_IMAGE
-    #cache:
-        #key: mobile_thirdparty
-        #paths:
-            #- $MOBILE_LITE_CACHE0
-            #- $MOBILE_LITE_CACHE1
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
     script:
         - ./paddle/fluid/lite/tools/build.sh build_test_arm
