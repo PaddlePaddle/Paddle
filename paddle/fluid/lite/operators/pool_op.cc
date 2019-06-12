@@ -39,7 +39,7 @@ bool PoolOpLite::CheckShape() const {
 
   return true;
 }
-  
+
 int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
                    bool ceil_mode) {
   int output_size;

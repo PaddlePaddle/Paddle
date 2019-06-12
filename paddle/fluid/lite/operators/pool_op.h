@@ -54,7 +54,7 @@ class PoolOpLite : public OpLite {
     param_.global_pooling = op_desc.GetAttr<bool>("global_pooling");
     return true;
   }
-  
+
   std::string DebugString() const override { return "pool"; }
 
  private:

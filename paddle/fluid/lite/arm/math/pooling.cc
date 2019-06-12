@@ -383,8 +383,8 @@ void pooling2x2s2_max(const void* din, void* dout, int num, int chout, int hout,
 #else
         w = w_unroll_size;
         int num = w_unroll_size >> 3;
-        const float* dr0 = reinterpret_cast<const float*>(r0);
-        const float* dr1 = reinterpret_cast<const float*>(r1);
+        const float* dr0 = r0;
+        const float* dr1 = r1;
         float* dr_out = data_out_channel;
         if (num > 0) {
           asm volatile(
@@ -442,7 +442,7 @@ void pooling2x2s2_max(const void* din, void* dout, int num, int chout, int hout,
 #else
         w = w_unroll_size;
         int num = w_unroll_size >> 3;
-        const float* dr0 = reinterpret_cast<const float*>(r0);
+        const float* dr0 = r0;
         float* dr_out = data_out_channel;
         if (num > 0) {
           asm volatile(
@@ -529,8 +529,8 @@ void pooling2x2s2_ave(const void* din, void* dout, int num, int chout, int hout,
 #else
         w = w_unroll_size;
         int num = w_unroll_size >> 3;
-        const float* dr0 = reinterpret_cast<const float*>(r0);
-        const float* dr1 = reinterpret_cast<const float*>(r1);
+        const float* dr0 = r0;
+        const float* dr1 = r1;
         float* dr_out = data_out_channel;
 
         if (num > 0) {
@@ -593,7 +593,7 @@ void pooling2x2s2_ave(const void* din, void* dout, int num, int chout, int hout,
 #else
         w = w_unroll_size;
         int num = w_unroll_size >> 3;
-        const float* dr0 = reinterpret_cast<const float*>(r0);
+        const float* dr0 = r0;
         float* dr_out = data_out_channel;
 
         if (num > 0) {
