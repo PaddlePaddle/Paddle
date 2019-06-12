@@ -33,6 +33,13 @@ TEST(LightAPI, load) {
   }
 
   predictor.Run();
+
+  const auto* output = predictor.GetOutput(0);
+  const float* raw_output = output->data<float>();
+
+  for (int i = 0; i < 10; i++) {
+    LOG(INFO) << "out " << raw_output[i];
+  }
 }
 
 }  // namespace lite

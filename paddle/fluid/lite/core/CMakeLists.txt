@@ -19,7 +19,7 @@ endif()
 
 proto_library(framework_proto_lite SRCS framework.proto)
 
-cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite)
+cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite ${tensor_lite})
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
 cc_library(scope_lite SRCS scope.cc DEPS ${tensor_lite})
@@ -30,7 +30,11 @@ cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite target_wrapp
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
-lite_cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite compatible_pb_lite model_parser_lite PROFILE_DEPS basic_profiler_lite)
+lite_cc_library(program_lite SRCS program.cc
+  DEPS op_lite kernel_lite compatible_pb_lite model_parser_lite
+  PROFILE_DEPS basic_profiler_lite
+  HVY_DEPS framework_proto
+  )
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
 add_subdirectory(mir)

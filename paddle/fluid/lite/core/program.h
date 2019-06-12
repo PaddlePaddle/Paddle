@@ -55,8 +55,14 @@ struct Program {
 
   const std::list<std::string>& weights() const { return weights_; }
   const std::list<std::string>& tmp_vars() const { return tmp_vars_; }
+  std::list<std::string>* mutable_weights() { return &weights_; }
+  std::list<std::string>* mutable_tmp_vars() { return &tmp_vars_; }
+
   const std::list<std::shared_ptr<OpLite>>& ops() const { return ops_; }
+  std::list<std::shared_ptr<OpLite>>* mutable_ops() { return &ops_; }
+
   lite::Scope* exec_scope() { return exec_scope_; }
+  lite::Scope* scope() { return scope_.get(); }
 
  private:
   // Build from a program and scope.

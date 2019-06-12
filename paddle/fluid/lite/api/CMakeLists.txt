@@ -1,4 +1,5 @@
-set(cxx_api_lite_deps scope_lite optimizer_lite target_wrapper_host model_parser_lite)
+set(cxx_api_lite_deps
+  scope_lite optimizer_lite target_wrapper_host model_parser_lite program_lite)
 if(LITE_WITH_CUDA)
     set(cxx_api_lite_deps ${cxx_api_lite_deps} kernels_cuda)
     cc_library(cxx_api_lite_cuda SRCS cxx_api.cc DEPS ${cxx_api_lite_deps} target_wrapper_cuda)
@@ -8,13 +9,15 @@ endif()
 cc_library(cxx_api_lite SRCS cxx_api.cc DEPS ${cxx_api_lite_deps} ${ops_lite})
 
 set(light_api_deps
-    scope_lite target_wrapper_host model_parser_lite)
+    scope_lite target_wrapper_host model_parser_lite program_lite)
 
 if(LITE_WITH_CUDA)
     set(light_api_deps ${light_api_deps} target_wrapper_cuda)
 endif()
 
-cc_library(light_api_lite SRCS light_api.cc DEPS ${light_api_deps} ${ops_lite} ${host_kernels})
+cc_library(light_api_lite SRCS light_api.cc
+  DEPS ${light_api_deps} ${ops_lite} ${host_kernels}
+  )
 
 message(STATUS "get ops ${ops_lite}")
 message(STATUS "get Host kernels ${host_kernels}")
@@ -44,7 +47,7 @@ endif()
 message(STATUS "x86 kernels: ${x86_kernels}")
 lite_cc_test(test_light_api SRCS light_api_test.cc
   DEPS light_api_lite
-  ${x86_kernels}
+  X86_DEPS ${x86_kernels}
   ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt
   SERIAL)
 
