@@ -17,12 +17,12 @@ import re
 import logging
 import functools
 import copy
+from ....log_helper import get_logger
 
 __all__ = ['AutoPruneStrategy']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class AutoPruneStrategy(PruneStrategy):
