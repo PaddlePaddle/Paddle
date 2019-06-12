@@ -10,8 +10,9 @@ stages:
 check:prebuilt:
   stage: ci
   script:
-    - ls
-    #- ./paddle/fluid/lite/tools/build.sh check_style
+    - export to_test=$(echo $(git log -1 --oneline) | grep "test=deveop")
+    - [ -z "$to_test" ] && exit -1
+    - ./paddle/fluid/lite/tools/build.sh check_style
 
 build:server:
   image: $SERVER_LITE_DOCKER_IMAGE
@@ -32,6 +33,9 @@ build:server:
     - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/build/third_party/install/mklml/lib
     - ./paddle/fluid/lite/tools/build.sh build_test_server
 
+    dependencies:
+        - check:prebuilt
+
 build:mobile:
     stage: build
     image: $MOBILE_LITE_DOCKER_IMAGE
@@ -44,3 +48,6 @@ build:mobile:
         - export http_proxy=http://172.19.57.45:3128
         - export https_proxy=http://172.19.57.45:3128
         - ./paddle/fluid/lite/tools/build.sh build_test_arm
+    dependencies:
+        - build:server
+
