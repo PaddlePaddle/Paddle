@@ -30,6 +30,8 @@ build:server:
         - ../paddle/fluid/lite/tools/build.sh cmake_x86
         - make extern_eigen3
         - make extern_boost
+        - make framework_proto
+        - make extern_warpctc
         - cd ..
         - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/build/third_party/install/mklml/lib
         - ./paddle/fluid/lite/tools/build.sh build_test_server
