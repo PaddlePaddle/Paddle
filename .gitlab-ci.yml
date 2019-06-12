@@ -10,8 +10,7 @@ stages:
 check:prebuilt:
   stage: ci
   script:
-    - export to_test=$(echo $(git log -1 --oneline) | grep "test=deveop")
-    - [ -z "$to_test" ] && exit -1
+    - git log -1 --oneline | grep "test=develop" || exit -1
     - ./paddle/fluid/lite/tools/build.sh check_style
 
 build:server:
