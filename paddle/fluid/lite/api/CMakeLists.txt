@@ -41,10 +41,12 @@ if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif()
 
-# if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-#     lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
-# endif()
-
+message(STATUS "x86 kernels: ${x86_kernels}")
+lite_cc_test(test_light_api SRCS light_api_test.cc
+  DEPS light_api_lite
+  ${x86_kernels}
+  ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt
+  SERIAL)
 
 lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     DEPS

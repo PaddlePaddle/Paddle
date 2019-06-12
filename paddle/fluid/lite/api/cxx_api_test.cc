@@ -16,6 +16,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -29,7 +30,7 @@ DEFINE_string(main_program_path, "", "");
 namespace paddle {
 namespace lite {
 
-TEST(CXXApi, test) {
+const lite::Tensor* RunHvyModel() {
   lite::ExecutorLite predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
@@ -60,10 +61,16 @@ TEST(CXXApi, test) {
 
   predictor.Run();
 
-  auto* out = predictor.GetOutput(0);
+  const auto* out = predictor.GetOutput(0);
+  return out;
+}
+
+TEST(CXXApi, test) {
+  const lite::Tensor* out = RunHvyModel();
   LOG(INFO) << out << " memory size " << out->data_size();
-  LOG(INFO) << "out " << out->data<float>()[0];
-  LOG(INFO) << "out " << out->data<float>()[1];
+  for (int i = 0; i < 10; i++) {
+    LOG(INFO) << "out " << out->data<float>()[i];
+  }
   LOG(INFO) << "dims " << out->dims();
   // LOG(INFO) << "out " << *out;
 }
