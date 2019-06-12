@@ -21,7 +21,6 @@ message(STATUS "get Host kernels ${host_kernels}")
 message(STATUS "get ARM kernels ${arm_kernels}")
 
 include(ExternalProject)
-set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
         "A path setting inference demo download directories.")
 

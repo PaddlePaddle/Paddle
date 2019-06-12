@@ -10,6 +10,7 @@ message(STATUS "LITE_WITH_ARM:\t${LITE_WITH_ARM}")
 message(STATUS "LITE_WITH_PROFILE:\t${LITE_WITH_PROFILE}")
 
 set(LITE_MODEL_DIR "${THIRD_PARTY_PATH}/install")
+set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 
 function(lite_download_and_uncompress INSTALL_DIR URL FILENAME)
     message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
