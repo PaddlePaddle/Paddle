@@ -16,7 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
-DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC");
+DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
 
 namespace paddle {
 namespace inference {
