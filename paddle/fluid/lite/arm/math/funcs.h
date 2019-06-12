@@ -26,6 +26,7 @@
 #include "paddle/fluid/lite/arm/math/pooling.h"
 #include "paddle/fluid/lite/arm/math/scale.h"
 #include "paddle/fluid/lite/arm/math/softmax.h"
+#include "paddle/fluid/lite/arm/math/split.h"
 
 namespace paddle {
 namespace lite {
