@@ -110,6 +110,7 @@ function test_lite_android {
 
 # Build the code and run lite server tests. This is executed in the CI system.
 function build_test_server {
+    rm -rf build
     mkdir -p ./build
     cd ./build
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
