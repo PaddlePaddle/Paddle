@@ -1,5 +1,7 @@
 before_script:
   - env
+  - pwd
+  - ls -l
 
 image: $SERVER_LITE_DOCKER_IMAGE
 
