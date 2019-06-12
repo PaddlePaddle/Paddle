@@ -123,11 +123,6 @@ TEST(conv_arm, init) {
 }
 
 TEST(conv_arm, compute) {
-  lite::Tensor input;
-  lite::Tensor filter;
-  lite::Tensor bias;
-  lite::Tensor output;
-  lite::Tensor output_ref;
   DeviceInfo::Init();
   for (auto n : {1, 2}) {
     for (auto ic : {6, 32 /*, 128*/}) {
@@ -149,17 +144,26 @@ TEST(conv_arm, compute) {
                           std::vector<int64_t> input_shape = {n, ic, ih, iw};
                           std::vector<int64_t> filter_shape = {oc, ic / group,
                                                                ks, ks};
-                          std::vector<int64_t> output_shape({n, oc});
-                          const int dkernel = dilation * (ks - 1) + 1;
-                          output_shape.push_back(
-                              (ih + 2 * padding - dkernel) / stride + 1);
-                          output_shape.push_back(
-                              (iw + 2 * padding - dkernel) / stride + 1);
+                          const int dks = dilation * (ks - 1) + 1;
+                          int oh = (ih + 2 * padding - dks) / stride + 1;
+                          int ow = (iw + 2 * padding - dks) / stride + 1;
+                          std::vector<int64_t> output_shape({n, oc, oh, ow});
                           // resize input, filter and output
+                          Tensor input;
+                          Tensor filter;
+                          Tensor bias;
+                          Tensor output;
+                          Tensor output_ref;
                           input.Resize(input_shape);
                           filter.Resize(filter_shape);
                           output.Resize(output_shape);
                           output_ref.Resize(output_shape);
+                          LOG(INFO) << "input: " << input.dims();
+                          LOG(INFO) << "filter: " << filter.dims()
+                                    << " padding:" << padding
+                                    << " stride:" << stride
+                                    << " dilation:" << dilation;
+                          LOG(INFO) << "output: " << output.dims();
                           auto* input_data = input.mutable_data<float>();
                           auto* filter_data = filter.mutable_data<float>();
                           auto* output_data = output.mutable_data<float>();

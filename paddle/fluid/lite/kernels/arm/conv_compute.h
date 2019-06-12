@@ -30,10 +30,15 @@ class ConvCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
 
   void Run() override;
 
-  virtual ~ConvCompute() = default;
+  ~ConvCompute() {
+    if (impl_ != nullptr) {
+      delete impl_;
+    }
+  }
 
  private:
-  lite::arm::math::ImplBase<TARGET(kARM), PRECISION(kFloat), param_t>* impl_;
+  lite::arm::math::ImplBase<TARGET(kARM), PRECISION(kFloat), param_t>* impl_{
+      nullptr};
 };
 
 }  // namespace arm
