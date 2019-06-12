@@ -732,7 +732,6 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
     }
   }
 };
-/********************************/
 
 template <typename T>
 __global__ void DeformableCol2imGpuKernel(

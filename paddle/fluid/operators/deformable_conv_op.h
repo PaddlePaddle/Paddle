@@ -694,8 +694,6 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-/********************************************/
-
 template <typename T>
 void DeformableCol2imCpuKernel(
     const int num_kernels, const T* data_col, const T* data_offset,
