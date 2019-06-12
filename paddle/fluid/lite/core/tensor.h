@@ -21,6 +21,7 @@
  * looks the same.
  */
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
@@ -47,7 +48,8 @@ class DDimBase {
   DDimBase() = default;
 
   explicit DDimBase(const std::vector<int64_t> &x) { self()->ConstructFrom(x); }
-  value_type operator[](int offset) const { return (*self())[offset]; }
+  value_type operator[](int offset) const { return (*const_self())[offset]; }
+  value_type &operator[](int offset) { return (*self())[offset]; }
   std::vector<int64_t> Vectorize() const { return self()->Vectorize(); }
   size_t size() const { return const_self()->size(); }
   bool empty() const { return const_self()->empty(); }
@@ -73,18 +75,19 @@ class DDimBase {
         {Slice(0, col).production(), Slice(col, size()).production()}));
   }
 
-  friend std::ostream &operator<<(std::ostream &os, const DDimT &dims) {
-    if (dims.empty()) {
-      os << "[]";
-      return os;
+  std::string repr() const {
+    std::stringstream ss;
+    ss << "{";
+    for (size_t i = 0; i < this->size() - 1; i++) {
+      ss << (*this)[i] << ",";
     }
+    if (!this->empty()) ss << (*this)[size() - 1];
+    ss << "}";
+    return ss.str();
+  }
 
-    os << "[";
-    for (size_t i = 0; i < dims.size() - 1; i++) {
-      os << dims[i] << " ";
-    }
-    if (!dims.empty()) os << dims[dims.size() - 1];
-    os << "]";
+  friend std::ostream &operator<<(std::ostream &os, const DDimT &dims) {
+    os << dims.repr();
     return os;
   }
 
@@ -102,6 +105,12 @@ template <typename TensorT>
 class TensorBase {
  public:
   TensorBase() = default;
+
+  template <typename T, typename DimT>
+  void Assign(T *data, const DimT &dim) {
+    self()->Assign(data, dim);
+  }
+
   TargetType target() const { return self()->target(); }
 
   template <typename T>

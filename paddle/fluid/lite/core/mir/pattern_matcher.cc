@@ -27,6 +27,30 @@ namespace mir {
 
 size_t PMPattern::id_ = 0UL;
 
+PMNode &PMNode::operator>>(PMNode &right) {
+  pattern_->AddEdge(this, &right);
+  // automatically add out op link relation.
+  if (right.IsOp()) {
+    CHECK(!right.op_type_.empty());
+    this->assert_is_op_input(right.op_type_);
+  }
+
+  return right;
+}
+
+PMNode &PMNode::operator>>(std::vector<PMNode *> &nodes) {
+  for (auto *node : nodes) {
+    *this >> *node;
+  }
+  return *this;
+}
+
+void operator>>(std::vector<PMNode *> &others, PMNode &me) {
+  for (auto *o : others) {
+    *o >> me;
+  }
+}
+
 PMNode *PMPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
     CHECK_EQ(node_map_.count(name), 0UL)
@@ -122,9 +146,7 @@ void PatternMatcher::ValidateByNodeRole(
                        // Collect the inlinks and outlinks.
                        std::unordered_set<Node *> ios;
                        for (auto &item : subgraph) {
-                         if (!item.first->IsIntermediate()) {
-                           ios.insert(item.second);
-                         }
+                         ios.insert(item.second);
                        }
                        for (auto &item : subgraph) {
                          if (item.first->IsIntermediate()) {
@@ -398,6 +420,30 @@ PMNode *PMNode::assert_is_op_input(const std::string &op_type) {
     return false;
   });
   return this;
+}
+
+void GraphSafeRemoveNodes(SSAGraph *graph,
+                          const std::unordered_set<const Node *> &nodes) {
+  for (auto *node : nodes) {
+    graph->RemoveNode(node);
+  }
+
+  for (auto &node : graph->mutable_nodes()) {
+    for (auto it = node.inlinks.begin(); it != node.inlinks.end();) {
+      if (nodes.count(*it)) {
+        it = node.inlinks.erase(it);
+      } else {
+        it++;
+      }
+    }
+    for (auto it = node.outlinks.begin(); it != node.outlinks.end();) {
+      if (nodes.count(*it)) {
+        it = node.outlinks.erase(it);
+      } else {
+        it++;
+      }
+    }
+  }
 }
 
 }  // namespace mir

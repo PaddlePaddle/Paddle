@@ -85,4 +85,4 @@ bool PoolOpLite::InferShape() const {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_OP(pool, paddle::lite::operators::PoolOpLite);
+REGISTER_LITE_OP(pool2d, paddle::lite::operators::PoolOpLite);

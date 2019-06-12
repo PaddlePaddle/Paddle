@@ -46,7 +46,6 @@ void ConvCompute::PrepareForRun() {
   const auto* b_data = param.bias ? param.bias->data<float>() : nullptr;
   auto* o_data = param.output->mutable_data<float>();
 
-  // TODO(xxx): create should be somewhere better!
   bool kps_equal = (param.paddings[0] == param.paddings[1]) &&
                    (param.strides[0] == param.strides[1]) && (kw == kh);
   bool no_dilation = (param.dilations[0] == 1) && (param.dilations[1] == 1);
@@ -60,26 +59,26 @@ void ConvCompute::PrepareForRun() {
   if (param.groups == ic && ic == oc && kps_equal && no_dilation && flag_dw) {
     // dw conv impl
     impl_ = new lite::arm::math::DepthwiseConv<PRECISION(kFloat)>;
-    // LOG(INFO) << "invoking dw conv";
+    VLOG(3) << "invoking dw conv";
   } else if (param.groups == 1 && kw == 3 && stride == 1 && kps_equal &&
              no_dilation) {
     if (ic >= 32 && oc >= 32 && oh > 16 && ow > 16) {
       // winograd conv impl
       impl_ = new lite::arm::math::WinogradConv<PRECISION(kFloat)>;
-      // LOG(INFO) << "invoking winograd conv";
+      VLOG(3) << "invoking winograd conv";
     } else {
       // direct conv impl
       impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
-      // LOG(INFO) << "invoking direct conv";
+      VLOG(3) << "invoking direct conv";
     }
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
     impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
-    // LOG(INFO) << "invoking direct conv";
+    VLOG(3) << "invoking direct conv";
   } else {
     impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
-    // LOG(INFO) << "invoking gemm like conv";
+    VLOG(3) << "invoking gemm like conv";
   }
   CHECK(this->impl_->create(param, &ctx));
 }

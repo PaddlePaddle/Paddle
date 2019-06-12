@@ -150,7 +150,7 @@ class KernelBase {
   void Torch() {}
 
  protected:
-  std::unique_ptr<KernelContext> ctx_;
+  std::unique_ptr<KernelContext> ctx_{nullptr};
   mutable operators::param_t param_;
   // The corresponding op type.
   std::string op_type_{};

@@ -8,7 +8,7 @@ lite_cc_library(target_wrapper_lite SRCS target_wrapper.cc
 lite_cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite)
 lite_cc_library(lite_tensor SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
 if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    cc_library(hvy_tensor SRCS hvy_tensor.cc DEPS lod_tensor)
+    lite_cc_library(hvy_tensor SRCS hvy_tensor.cc DEPS lod_tensor HVY_DEPS framework_proto)
 endif()
 
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
@@ -19,19 +19,18 @@ endif()
 
 proto_library(framework_proto_lite SRCS framework.proto)
 
-cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite)
+cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite ${tensor_lite})
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
 cc_library(scope_lite SRCS scope.cc DEPS ${tensor_lite})
 cc_library(cpu_info_lite SRCS cpu_info.cc)
 cc_library(context_lite SRCS context.cc DEPS ${tensor_lite} any_lite cpu_info_lite)
 cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite target_wrapper_lite
-  cpp_op_desc_lite
-  ${tensor_lite})
+  cpp_op_desc_lite ${tensor_lite})
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
-cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
+lite_cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite compatible_pb_lite model_parser_lite HVY_DEPS framework_proto)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
 add_subdirectory(mir)
@@ -57,4 +56,3 @@ lite_cc_test(test_type_system SRCS type_system_test.cc DEPS type_system utils_li
 lite_cc_test(test_types_lite SRCS types_test.cc DEPS types_lite)
 lite_cc_test(test_memory_lite SRCS memory_test.cc DEPS memory_lite)
 lite_cc_test(test_context_lite SRCS context_test.cc DEPS context_lite X86_DEPS operator)
- 
