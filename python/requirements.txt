@@ -13,3 +13,4 @@ funcsigs
 pyyaml
 decorator
 prettytable
+x86cpu==0.4
