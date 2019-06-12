@@ -16,6 +16,10 @@ check:prebuilt:
 build:server:
   image: $SERVER_LITE_DOCKER_IMAGE
   stage: build
+  cache:
+    key: server_thirdparty
+    paths:
+        - build/third_party
   script:
     - export http_proxy=http://agent.baidu.com:8118
     - export https_proxy=http://agent.baidu.com:8118
@@ -24,7 +28,10 @@ build:server:
 build:mobile:
     stage: build
     image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
     script:
-        - export http_proxy=http://agent.baidu.com:8118
-        - export https_proxy=http://agent.baidu.com:8118
         - ./paddle/fluid/lite/tools/build.sh build_test_arm
