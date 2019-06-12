@@ -23,7 +23,9 @@ build:server:
   script:
     - echo "10.91.163.233 github.com" >> /etc/hosts
     - git config --system http.sslVerify false
-    - ./paddle/fluid/lite/tools/build.sh cmake_x86
+    - mkdir -p build
+    - cd build
+    - ../paddle/fluid/lite/tools/build.sh cmake_x86
     - make extern_eigen3
     - ./paddle/fluid/lite/tools/build.sh build_test_server
 
