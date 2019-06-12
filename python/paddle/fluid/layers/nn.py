@@ -2236,7 +2236,7 @@ def conv3d(input,
 
     Args:
         input (Variable): The input image with [N, C, D, H, W] format.
-            num_filters(int): The number of filter. It is as same as the output
+        num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
@@ -3107,8 +3107,12 @@ def batch_norm(input,
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, batch_norm will not save mean, otherwise, batch_norm will save global Mean with
+            the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will not save mean, otherwise, batch_norm will save global Variance 
+            with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -5997,7 +6001,7 @@ def transpose(x, perm, name=None):
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
-            "It's length shoud be equal to Input(input)'s rank.")
+            "Its length shoud be equal to Input(input)'s rank.")
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
