@@ -21,7 +21,6 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-const int kIgnoreIndex = -100;
 
 class SigmoidFocalLossOp : public framework::OperatorWithKernel {
  public:
