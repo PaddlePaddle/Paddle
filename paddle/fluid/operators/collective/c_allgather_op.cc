@@ -12,35 +12,37 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
+#include <future>  // NOLINT
+#include <memory>
+#include <ostream>
 
-namespace paddle{
-namespace operators{
+namespace paddle {
+namespace operators {
 
-class CAllGatherOp:public framework::OperatorWithKernel{
+class CAllGatherOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override{
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                                 "Output(Out) of SyncFCGather op should not be null.");
+                   "Output(Out) of SyncFCGather op should not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
     auto in_dim = ctx->GetInputDim("X");
-    in_dim[0] = in_dim[0]* nranks;
+    in_dim[0] = in_dim[0] * nranks;
     ctx->SetOutputDim("Out", in_dim);
   }
 };
 
-class CAllGatherOpMaker: public framework::OpProtoAndCheckerMaker{
+class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make(){
-   AddInput("X","(Tensor) tensor to be allgather");
-   AddOutput("Out","(Tensor) the allgather result");
-   AddAttr<int>("ring_id", "(int) communication ring id.").SetDefault(0);
-   AddAttr<int>("nranks","Total trainer count of the distributed training job").SetDefault(1);
-   AddComment(R"DOC(
+  void Make() {
+    AddInput("X", "(Tensor) tensor to be allgather");
+    AddOutput("Out", "(Tensor) the allgather result");
+    AddAttr<int>("ring_id", "(int) communication ring id.").SetDefault(0);
+    AddAttr<int>("nranks",
+                 "Total trainer count of the distributed training job");
+    AddComment(R"DOC(
 ***CAllGather Operator***
 
 Call NCCL collective  AllGather internally. Note that this op must be used when one
@@ -64,13 +66,14 @@ class CAllGatherOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-} //namespace operators
-} //namespace paddle
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp,ops::CAllGatherOpGradMaker,ops::CAllGatherOpMaker);
+REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp, ops::CAllGatherOpGradMaker,
+                  ops::CAllGatherOpMaker);
 REGISTER_OP_CPU_KERNEL(
     c_allgather, ops::CAllGatherOpKernel<plat::CPUDeviceContext, float>,
     ops::CAllGatherOpKernel<plat::CPUDeviceContext, double>,
