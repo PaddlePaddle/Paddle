@@ -33,7 +33,7 @@ void MulCompute::Run() {
   const auto* y_data = param.y->data<float>();
   auto* o_data = param.output->mutable_data<float>();
 
-  int x_h = static_cast<int>(
+  int m = static_cast<int>(
       param.x->dims().Slice(0, param.x_num_col_dims).production());
   int x_w =
       static_cast<int>(param.x->dims()
@@ -41,22 +41,26 @@ void MulCompute::Run() {
                            .production());
   int y_h = static_cast<int>(
       param.y->dims().Slice(0, param.y_num_col_dims).production());
-  int y_w =
+  int n =
       static_cast<int>(param.y->dims()
                            .Slice(param.y_num_col_dims, param.y->dims().size())
                            .production());
 
   CHECK_EQ(x_w, y_h) << "x_w must be equal with y_h";
-  if (y_w == 1 || x_h == 1) {
-    lite::arm::math::sgemv(x_data, y_data, o_data, false, x_h, x_w, false,
-                           nullptr, false);
+  auto k = x_w;
+  if (n == 1) {
+    lite::arm::math::sgemv(x_data, y_data, o_data, false, m, k, false, nullptr,
+                           false);
 
   } else {
     constexpr bool is_tranposed_y = false;
     auto& ctx = this->ctx_->template As<ARMContext>();
 
-    lite::arm::math::sgemm_prepack(x_data, y_data, nullptr, o_data, x_h, y_w,
-                                   x_w, false, false, is_tranposed_y, &ctx);
+    float* packed_x = static_cast<float*>(ctx.workspace_data<float>()) +
+                      ctx.l2_cache_size() / sizeof(float);
+    lite::arm::math::prepackA(packed_x, x_data, k, 0, m, 0, k, false, &ctx);
+    lite::arm::math::sgemm_prepack(packed_x, y_data, nullptr, o_data, m, n, k,
+                                   false, false, is_tranposed_y, &ctx);
   }
 }
 
