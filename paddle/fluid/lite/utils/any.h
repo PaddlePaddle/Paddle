@@ -54,11 +54,11 @@ class Any {
 
   bool valid() const { return data_; }
 
-  ~Any() {
-    if (valid()) {
-      deleter_();
-    }
-  }
+  // ~Any() {
+  //    if (valid()) {
+  //      deleter_();
+  //    }
+  //  }
 
  private:
   static size_t kInvalidType;

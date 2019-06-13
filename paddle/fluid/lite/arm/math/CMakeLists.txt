@@ -31,5 +31,6 @@ cc_library(math_arm SRCS
     conv_gemmlike.cc
     conv_winograd_3x3.cc
     conv_winograd.cc
+    split.cc
     DEPS ${lite_kernel_deps} eigen3)
  

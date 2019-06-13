@@ -158,12 +158,12 @@ TEST(conv_arm, compute) {
                           filter.Resize(filter_shape);
                           output.Resize(output_shape);
                           output_ref.Resize(output_shape);
-                          LOG(INFO) << "input: " << input.dims();
-                          LOG(INFO) << "filter: " << filter.dims()
-                                    << " padding:" << padding
-                                    << " stride:" << stride
-                                    << " dilation:" << dilation;
-                          LOG(INFO) << "output: " << output.dims();
+                          VLOG(3) << "input: " << input.dims();
+                          VLOG(3) << "filter: " << filter.dims()
+                                  << " padding:" << padding
+                                  << " stride:" << stride
+                                  << " dilation:" << dilation;
+                          VLOG(3) << "output: " << output.dims();
                           auto* input_data = input.mutable_data<float>();
                           auto* filter_data = filter.mutable_data<float>();
                           auto* output_data = output.mutable_data<float>();
