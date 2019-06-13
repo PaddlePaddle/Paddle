@@ -84,9 +84,12 @@ def _current_expected_place():
 def _cpu_num():
     cpu_num = os.environ.get('CPU_NUM', None)
     if cpu_num is None:
-        raise ValueError('The CPU_NUM is not specified. CPU_NUM '
-                         'indicates that how many CPUPlace '
-                         'are used in the current task.')
+        sys.stderr.write(
+            'The CPU_NUM is not specified, you should set CPU_NUM in '
+            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
+            'indicates that how many CPUPlace are used in the current task.\n'
+            '!!! The default number of CPUPlaces is 1.')
+        os.environ['CPU_NUM'] = str(1)
     return int(cpu_num)
 
 
