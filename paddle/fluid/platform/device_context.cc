@@ -405,36 +405,46 @@ thread_local int cur_thread_id = 0;
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
+#define MKLDNN_CAP 12
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  //  int tid = platform::get_cur_thread_id();
+  //  auto tid = std::this_thread::get_id();
+  auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
-  // Find KeyBlob for current thread
-  auto map_it = pMap->find(tid);
+  // Find KeyBlob for key
+  //  auto map_it = pMap->find(tid);
+  auto map_it = pMap->find(name);
 
   if (map_it == pMap->end()) {
     // 1st time to set blob in current thread
     pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
-    (*pMap)[tid] = pBlob;
+    (*pMap)[name] = pBlob;
   } else {
     pBlob = map_it->second;
   }
 
-  // Find Key in found (or newly created) KeyBlob
-  auto key_it = pBlob->find(name);
+  // Find thread id in found (or newly created) KeyBlob
+  auto key_it = pBlob->find(tid);
 
   if (key_it == pBlob->end()) {
-    (*pBlob)[name] = data;  // create new blob
+    if (pBlob->size() >= MKLDNN_CAP)
+      // exceed caps, erase first one
+      pBlob->erase(pBlob->begin());
+
+    (*pBlob)[tid] = data;  // create new blob
   } else {
     key_it->second = data;  // set data to existing blob
   }
 
+  std::cout << "MKLDNNDeviceContext::SetBlob " << name << " tid=" << tid
+            << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -444,17 +454,20 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
   BlobMap* pMap = p_blobmap_.get();
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  //  int tid = platform::get_cur_thread_id();
+  auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
 
+  //  std::cout << "MKLDNNDeviceContext::GetBlob " << name << " tid=" << tid <<
+  //  "\n";
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread firstly
-  auto map_it = pMap->find(tid);
+  auto map_it = pMap->find(name);
   if (map_it == pMap->end()) return nullptr;
   pBlob = map_it->second;
 
   // Find Blob via name
-  auto key_it = pBlob->find(name);
+  auto key_it = pBlob->find(tid);
 
   if (key_it == pBlob->end()) return nullptr;
 

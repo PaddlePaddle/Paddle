@@ -378,8 +378,8 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
-using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+using KeyBlob = std::unordered_map<size_t, std::shared_ptr<void>>;
+using BlobMap = std::unordered_map<std::string, std::shared_ptr<KeyBlob>>;
 
 void set_cur_thread_id(int);
 int get_cur_thread_id(void);
