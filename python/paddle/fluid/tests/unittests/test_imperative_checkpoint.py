@@ -25,7 +25,6 @@ from paddle.fluid.dygraph.base import to_variable
 class SimpleImgConvPool(fluid.Layer):
     def __init__(self,
                  name_scope,
-                 num_channels,
                  num_filters,
                  filter_size,
                  pool_size,
@@ -45,7 +44,6 @@ class SimpleImgConvPool(fluid.Layer):
 
         self._conv2d = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -76,10 +74,10 @@ class MNIST(fluid.Layer):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 1, 20, 5, 2, 2, act="relu")
+            self.full_name(), 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 20, 50, 5, 2, 2, act="relu")
+            self.full_name(), 50, 5, 2, 2, act="relu")
 
         pool_2_shape = 50 * 4 * 4
         SIZE = 10
@@ -151,7 +149,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param.numpy()
 
-                    restore = fluid.dygraph.load_persistables("save_dir")
+                    restore, _ = fluid.dygraph.load_persistables("save_dir")
                     mnist.load_dict(restore)
 
                     self.assertEqual(len(dy_param_init_value), len(restore))

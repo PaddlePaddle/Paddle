@@ -190,8 +190,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             ret = conv2d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -200,8 +199,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
 
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
@@ -1990,6 +1988,41 @@ class TestBook(LayerTest):
                     filter_size=3,
                     padding=1)
                 return (out)
+
+    def test_unfold(self):
+        with self.static_graph():
+            x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
+            out = layers.unfold(x, [3, 3], 1, 1, 1)
+            return (out)
+
+    def test_deform_roi_pooling(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                shape=[2, 3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            rois = layers.data(
+                name="rois", shape=[4], dtype='float32', lod_level=1)
+            trans = layers.data(
+                name="trans",
+                shape=[2, 3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            out = layers.deformable_roi_pooling(
+                input=input,
+                rois=rois,
+                trans=trans,
+                no_trans=False,
+                spatial_scale=1.0,
+                group_size=(1, 1),
+                pooled_height=8,
+                pooled_width=8,
+                part_size=(8, 8),
+                sample_per_part=4,
+                trans_std=0.1)
+        return (out)
 
 
 if __name__ == '__main__':
