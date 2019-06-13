@@ -26,7 +26,7 @@ template <typename T>
 void split_cpy(const T* din, T* dout, int num);
 
 template <typename T>
-void split(const T* din, std::vector<lite::Tensor*>* dout, const int axis,
+void split(const T* din, const std::vector<lite::Tensor*>& dout, const int axis,
            const std::vector<int>& in_strides);
 
 }  // namespace math
