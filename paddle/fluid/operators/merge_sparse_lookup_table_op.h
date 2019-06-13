@@ -62,8 +62,6 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
 
     out->SyncBeforeSave();
 
-    auto& out_id_to_index = out->GetIdToIndex();
-
     for (auto& in : inputs) {
       auto& id_to_index = in->GetIdToIndex();
       const T* in_data = in->value().data<T>();
