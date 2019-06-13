@@ -223,7 +223,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass = nullptr;
 
-    if (strategy_.async_mode_) {
+    if (!strategy_.sync_mode_) {
       VLOG(1) << "Add async_multi_devices_pass";
       multi_devices_pass = AppendPass("async_multi_devices_pass").get();
     } else if (strategy_.is_distribution_) {

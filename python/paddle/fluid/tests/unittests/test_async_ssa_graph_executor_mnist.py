@@ -124,7 +124,7 @@ def train(use_cuda, thread_num, cpu_num):
     print("thread_num:" + str(thread_num))
 
     build_strategy = fluid.BuildStrategy()
-    build_strategy.async_mode = True
+    build_strategy.sync_mode = False
 
     exec_strategy = fluid.ExecutionStrategy()
     exec_strategy.num_threads = thread_num

@@ -345,7 +345,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   std::vector<ir::Graph *> graphs;
-  if (build_strategy.async_mode_) {
+  if (!build_strategy.sync_mode_) {
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
     graphs.push_back(graph);
@@ -411,7 +411,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  if (build_strategy.async_mode_) {
+  if (!build_strategy.sync_mode_) {
     VLOG(3) << "use local async mode";
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
@@ -429,7 +429,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                  member_->use_cuda_, &member_->nccl_ctxs_);
   }
 #else
-  if (build_strategy.async_mode_) {
+  if (!build_strategy.sync_mode_) {
     VLOG(3) << "use local async mode";
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
@@ -484,7 +484,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
-  if (build_strategy.async_mode_) {
+  if (!build_strategy.sync_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_, async_graphs));
@@ -512,7 +512,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  if (!build_strategy.async_mode_) {
+  if (build_strategy.sync_mode_) {
     member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, std::move(var_infos),
         member_->places_, std::move(member_->executor_)));
@@ -584,7 +584,7 @@ void ParallelExecutor::BCastParamsToDevices(
         auto share_memory = [&] { t->ShareDataWith(main_tensor); };
 
         // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
-        if (member_->build_strategy_.async_mode_) {
+        if (!member_->build_strategy_.sync_mode_) {
           share_memory();
         } else if (member_->use_all_reduce_ || member_->use_cuda_ ||
                    var == "@LR_DECAY_COUNTER@") {

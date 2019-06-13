@@ -1498,9 +1498,9 @@ All parameter, weight, gradient are variables in Paddle.
             self.is_distribution_ = b;
 #endif
           })
-      .def_property("async_mode",
-                    [](const BuildStrategy &self) { return self.async_mode_; },
-                    [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
+      .def_property("sync_mode",
+                    [](const BuildStrategy &self) { return self.sync_mode_; },
+                    [](BuildStrategy &self, bool b) { self.sync_mode_ = b; })
       .def_property(
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
