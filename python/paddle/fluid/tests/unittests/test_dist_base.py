@@ -109,7 +109,7 @@ class TestDistRunnerBase(object):
         if args.mem_opt:
             my_print("begin to run memory optimize")
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-            print("trainer run memory optimize done.")
+            my_print("trainer run memory optimize done.")
         if args.update_method == "pserver":
             my_print("begin to run transpile on trainer with pserver mode")
             t = self.get_transpiler(args.trainer_id,
