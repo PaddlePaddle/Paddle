@@ -153,12 +153,9 @@ class KernelRegistor : public lite::Registor<KernelType> {
  public:
   KernelRegistor(const std::string &op_type, const std::string &alias)
       : Registor<KernelType>([=] {
-<<<<<<< HEAD
-=======
           VLOG(3) << "Register kernel " << op_type << " for "
                   << TargetToStr(target) << " " << PrecisionToStr(precision)
                   << " " << DataLayoutToStr(layout) << " alias " << alias;
->>>>>>> gitlab/develop
           KernelRegistry::Global().Register<target, precision, layout>(
               op_type, [=]() -> std::unique_ptr<KernelType> {
                 std::unique_ptr<KernelType> x(new KernelType);
