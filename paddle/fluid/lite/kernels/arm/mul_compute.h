@@ -14,22 +14,23 @@
 
 #pragma once
 #include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/operators/fc_op.h"
+#include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/core/types.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
-  using param_t = operators::FcParam;
+  using param_t = operators::MulParam;
 
   void PrepareForRun() override;
 
   void Run() override;
 
-  virtual ~FcCompute() = default;
+  virtual ~MulCompute() = default;
 };
 
 }  // namespace arm

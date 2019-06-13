@@ -182,7 +182,7 @@ TEST(pool_arm, compute) {
       for (auto stride : {2}) {
         for (auto pad : {0}) {
           for (auto n : {1, 3, 4, 11}) {
-            for (auto c : {1, 3, 11, 4, 1024}) {
+            for (auto c : {1, 3, 11 /* ,1024 */}) {  // speedup for ci
               for (auto h : {3, 1, 11, 4, 1}) {
                 for (auto w : {1, 3, 4, 12, 1}) {
                   VLOG(3) << "n:" << n << " c:" << c << " h:" << h << " w:" << w

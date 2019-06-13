@@ -22,6 +22,10 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
+void FcCompute::PrepareForRun() {
+  // TODO(TJ): transpose weight
+}
+
 void FcCompute::Run() {
   auto& param = this->Param<operators::FcParam>();
   auto x_dims = param.input->dims();
@@ -48,21 +52,15 @@ void FcCompute::Run() {
                               &ctx);
     lite::arm::math::sgemm_prepack(packed_in, w_data, b_data, o_data, x_h, n,
                                    x_w, false, false, false, &ctx);
-
     if (param.bias) {
       CHECK_EQ(param.bias->numel(), n);
       lite::arm::math::fill_bias_fc(o_data, b_data, x_h, n);
     }
   } else {
-    // use sgemmv
-    // sgemv((const float*)weights, (const float*)din, (float*)dout,
-    //       false, n, x_w, _param->_flag_bias, (float*)bias, false);
+    lite::arm::math::sgemv(w_data, i_data, o_data, false, n, x_w,
+                           b_data != nullptr, b_data, false);
   }
 }
-
-TargetType FcCompute::target() const { return TARGET(kARM); }
-
-PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
 
 }  // namespace arm
 }  // namespace kernels
