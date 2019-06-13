@@ -493,7 +493,7 @@ class RetinanetDetectionOutputOpMaker
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections per FPN layer to be kept "
-                 "according to the confidences before NMS.");
+                 "according to the confidence before NMS.");
     AddAttr<float>("nms_threshold",
                    "(float) "
                    "The threshold to be used in NMS.");
@@ -522,7 +522,7 @@ information. This operator greedily selects a subset of detection bounding
 boxes from each FPN layer that have high scores larger than score_threshold,
 if providing this threshold, then selects the largest nms_top_k confidences
 scores per FPN layer, if nms_top_k is larger than -1.
-The Decoding schema described below:
+The decoding schema is described below:
 
 ox = (pw * pxv * tx * + px) - tw / 2
 

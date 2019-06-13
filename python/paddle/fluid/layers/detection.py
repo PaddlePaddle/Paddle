@@ -2330,18 +2330,18 @@ def retinanet_detection_output(bboxes,
 
     1. Decode top-scoring bounding box predictions per FPN level according 
        to the anchor boxes.
-    2. Merge top predictions from all levels and applying multi-class non 
+    2. Merge top predictions from all levels and apply multi-class non 
        maximum suppression (NMS) on them to get the final detections.
 
     Args:
         bboxes(List): A list of tensors from multiple FPN levels. Each
-            element is a 3-D Tensor with shape [N, Mi, 4] represents the
+            element is a 3-D Tensor with shape [N, Mi, 4] representing the
             predicted locations of Mi bounding boxes. N is the batch size,
             Mi is the number of bounding boxes from i-th FPN level and each 
             bounding box has four coordinate values and the layout is
             [xmin, ymin, xmax, ymax].
         scores(List): A list of tensors from multiple FPN levels. Each
-            element is a 3-D Tensor with shape [N, Mi, C] represents the
+            element is a 3-D Tensor with shape [N, Mi, C] representing the
             predicted confidence predictions. N is the batch size, C is the
             class number (excluding background), Mi is the number of bounding
             boxes from i-th FPN level. For each bounding box, there are total
@@ -2369,8 +2369,8 @@ def retinanet_detection_output(bboxes,
             instance, the offsets in first dimension are called LoD, the offset
             number is N + 1, N is the batch size. The i-th image has
             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
-            has no detected results. If all images have not detected results,
-            LoD will be set to {1}, and output tensor only contains one
+            has no detected results. If all images have no detected results,
+            LoD will be set to {1}, and othe utput tensor only contains one
             value, which is -1.
             (After version 1.3, when no boxes detected, the lod is changed
              from {0} to {1}.)

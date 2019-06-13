@@ -23,20 +23,6 @@ from test_multiclass_nms_op import iou
 
 
 def nms(cls_dets, nms_threshold=0.05, eta=1.0):
-    """Apply non-maximum suppression at test time to avoid detecting too many
-    overlapping bounding boxes for a given object.
-    Args:
-        boxes: (tensor) The location preds for the img, Shape: [num_priors,4].
-        scores: (tensor) The class predscores for the img, Shape:[num_priors].
-        score_threshold: (float) The confidence thresh for filtering low
-            confidence boxes.
-        nms_threshold: (float) The overlap thresh for suppressing unnecessary
-            boxes.
-        top_k: (int) The maximum number of box preds to consider.
-        eta: (float) The parameter for adaptive NMS.
-    Return:
-        The indices of the kept boxes with respect to num_priors.
-    """
     all_scores = np.zeros(len(cls_dets))
     for i in range(all_scores.shape[0]):
         all_scores[i] = cls_dets[i][4]
