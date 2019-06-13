@@ -539,10 +539,10 @@ anchor's center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 decoded coordinates, width and height. 
 
 Then the top decoded prediction from all levels are merged followed by NMS.
-In the NMS step, this operator pruns away boxes that have high IOU
+In the NMS step, this operator prunes away boxes that have high IOU
 (intersection over union) overlap with already selected boxes by adaptive
 threshold NMS based on parameters of nms_threshold and nms_eta.
-Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+After NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each

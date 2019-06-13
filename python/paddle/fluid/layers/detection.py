@@ -2317,8 +2317,6 @@ def retinanet_detection_output(bboxes,
                                scores,
                                anchors,
                                im_info,
-                               min_level=3,
-                               max_level=7,
                                score_threshold=0.05,
                                nms_top_k=1000,
                                keep_top_k=100,
@@ -2330,36 +2328,30 @@ def retinanet_detection_output(bboxes,
     This operation is to get the detection results by performing following
     steps:
 
-    1. Divide the input bounding box predictions into box predictions per FPN
-       level, according to that the box number of the i-th FPN level is
-       4**(:attr:`max_level`-i) times of that of the :attr:`max_level`-th
-       FPN level.
-    2. Decode top-scoring bounding box predictions per FPN level according 
+    1. Decode top-scoring bounding box predictions per FPN level according 
        to the anchor boxes.
-    3. Merge top predictions from all levels and applying multi-class non 
+    2. Merge top predictions from all levels and applying multi-class non 
        maximum suppression (NMS) on them to get the final detections.
 
     Args:
-        bboxes(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding boxes. N is the batch size,
-            M is the number of bounding boxes from all FPN level and each 
+        bboxes(List): A list of tensors from multiple FPN levels. Each
+            element is a 3-D Tensor with shape [N, Mi, 4] represents the
+            predicted locations of Mi bounding boxes. N is the batch size,
+            Mi is the number of bounding boxes from i-th FPN level and each 
             bounding box has four coordinate values and the layout is
             [xmin, ymin, xmax, ymax].
-        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+        scores(List): A list of tensors from multiple FPN levels. Each
+            element is a 3-D Tensor with shape [N, Mi, C] represents the
             predicted confidence predictions. N is the batch size, C is the
-            class number, M is the number of bounding boxes from all FPN
-            level. For each bounding box, there are total C scores.
-        anchors(Variable): A 2-D Tensor with shape [M, 4] represents the
-            locations of M anchor bboxes from all FPN level. Each bounding
-            box has four coordinate values and the layout is
-            [xmin, ymin, xmax, ymax].
+            class number (excluding background), Mi is the number of bounding
+            boxes from i-th FPN level. For each bounding box, there are total
+            C scores.
+        anchors(List): A 2-D Tensor with shape [Mi, 4] represents the locations
+            of Mi anchor bboxes from all FPN level. Each bounding box has four
+            coordinate values and the layout is [xmin, ymin, xmax, ymax].
         im_info(Variable): A 2-D LoDTensor with shape [N, 3] represents the
             image information. N is the batch size, each image information
             includes height, width and scale.
-        min_level(int): The lowest level of FPN layer where the boxes
-            come from.
-        max_level(int): The highest level of FPN layer where the boxes
-            come from.
         score_threshold(float): Threshold to filter out bounding boxes
             with a confidence score.
         nms_top_k(int): Maximum number of detections per FPN layer to be
@@ -2396,12 +2388,11 @@ def retinanet_detection_output(bboxes,
                         append_batch_size=False, dtype='float32')
         im_info = layers.data(name="im_info", shape=[3],
                         dtype='float32', lod_level=1)
-        nmsed_outs = fluid.layers.retinanet_detection_output(bboxes=bboxes,
-                                                   scores=scores,
-                                                   anchors=anchors,
+        nmsed_outs = fluid.layers.retinanet_detection_output(
+                                                   bboxes=[bboxes, bboxes],
+                                                   scores=[scores, scores],
+                                                   anchors=[anchors, anchors],
                                                    im_info=im_info,
-                                                   min_level=3,
-                                                   max_level=5,
                                                    score_threshold=0.05,
                                                    nms_top_k=1000,
                                                    keep_top_k=100,
@@ -2410,7 +2401,8 @@ def retinanet_detection_output(bboxes,
     """
 
     helper = LayerHelper('retinanet_detection_output', **locals())
-    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    output = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('scores'))
     helper.append_op(
         type="retinanet_detection_output",
         inputs={
@@ -2420,8 +2412,6 @@ def retinanet_detection_output(bboxes,
             'ImInfo': im_info
         },
         attrs={
-            'min_level': min_level,
-            'max_level': max_level,
             'score_threshold': score_threshold,
             'nms_top_k': nms_top_k,
             'nms_threshold': nms_threshold,
