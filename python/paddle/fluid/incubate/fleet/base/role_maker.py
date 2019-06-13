@@ -13,15 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
-from enum import Enum
 
 __all__ = [
-    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker'
+    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
+    'UserDefinedCollectiveRoleMaker'
 ]
 
 
-class Role(Enum):
-    WORKER = 1,
+class Role:
+    WORKER = 1
     SERVER = 2
 
 
@@ -312,7 +312,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
                 raise ValueError("current_id must be gather or equal 0")
             self._current_id = current_id
 
-        if not isinstance(role, Role):
+        if role != Role.WORKER and role != Role.SERVER:
             raise TypeError("role must be as Role")
         else:
             self._role = role
@@ -342,6 +342,40 @@ class UserDefinedRoleMaker(RoleMakerBase):
         return self._current_id
 
     def server_index(self):
+        return self._current_id
+
+    def worker_num(self):
+        return self._worker_num
+
+
+class UserDefinedCollectiveRoleMaker(RoleMakerBase):
+    def __init__(self, current_id=0, worker_endpoints=None):
+        """
+        UserDefinedCollectiveRoleMaker is designed for worker assignment
+        under manual for collective mode.
+        """
+        super(UserDefinedCollectiveRoleMaker, self).__init__()
+
+        if not isinstance(current_id, int):
+            raise TypeError("current_id must be as int")
+        else:
+            if current_id < 0:
+                raise ValueError("current_id must be greater or equal 0")
+            self._current_id = current_id
+
+        if not isinstance(worker_endpoints, list):
+            raise TypeError("worker_endpoints must be as string list")
+        else:
+            self._worker_endpoints = worker_endpoints
+        self._worker_num = len(self._worker_endpoints)
+
+    def is_worker(self):
+        return True
+
+    def is_first_worker(self):
+        return self._current_id == 0
+
+    def worker_index(self):
         return self._current_id
 
     def worker_num(self):
