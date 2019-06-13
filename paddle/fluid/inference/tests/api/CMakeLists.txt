@@ -23,9 +23,14 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
-function(inference_analysis_api_int8_test target model_dir data_dir filename)
-    inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+function(inference_analysis_api_int8_test_build TARGET_NAME filename)
+	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark)
+endfunction()
+
+function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir data_dir)
+	inference_analysis_test_run(${TARGET_NAME}
+	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_dir}/data.bin
              --warmup_batch_size=100
@@ -33,6 +38,7 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
+
 function(inference_analysis_api_test_with_fake_data target install_dir filename model_name disable_fc)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
@@ -155,59 +161,68 @@ inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_con
 
 # int8 image classification tests
 if(WITH_MKLDNN)
+
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+  set(INT8_TEST_APP "test_analyzer_int8_image_classification")
+  set(INT8_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
+
+  # download dataset if necessary
   if (NOT EXISTS ${INT8_DATA_DIR})
     inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "imagenet_val_100_tail.tar.gz")
   endif()
 
-  #resnet50 int8
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_int8_test_build(${INT8_TEST_APP} ${INT8_TEST_APP_SRC})
+
+  # resnet50 int8
   set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
   if (NOT EXISTS ${INT8_RESNET50_MODEL_DIR})
     inference_download_and_uncompress(${INT8_RESNET50_MODEL_DIR} "${INFERENCE_URL}/int8" "resnet50_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_resnet50 ${INT8_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR})
 
-  #mobilenet int8
-  set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
-  if (NOT EXISTS ${INT8_MOBILENET_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv1_int8_model.tar.gz" )
+  # mobilenetv1 int8
+  set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
+  if (NOT EXISTS ${INT8_MOBILENETV1_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_MOBILENETV1_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv1_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv1 ${INT8_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${INT8_DATA_DIR})
  
-  #mobilenetv2 int8
+  # mobilenetv2 int8
   set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
   if (NOT EXISTS ${INT8_MOBILENETV2_MODEL_DIR})
     inference_download_and_uncompress(${INT8_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_v2_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv2 ${INT8_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR})
  
-  #resnet101 int8
+  # resnet101 int8
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
   if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
     inference_download_and_uncompress(${INT8_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8" "Res101_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR})
  
-  #vgg16 int8
+  # vgg16 int8
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   if (NOT EXISTS ${INT8_VGG16_MODEL_DIR})
     inference_download_and_uncompress(${INT8_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG16_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR})
  
-  #vgg19 int8
+  # vgg19 int8
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
   if (NOT EXISTS ${INT8_VGG19_MODEL_DIR})
     inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR})
 
-  #googlenet int8
+  # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   if (NOT EXISTS ${INT8_GOOGLENET_MODEL_DIR})
     inference_download_and_uncompress(${INT8_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8" "GoogleNet_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+  inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR})
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
