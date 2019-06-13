@@ -24,7 +24,6 @@ from paddle.fluid.optimizer import SGD
 from role_maker import MPISymetricRoleMaker
 from role_maker import RoleMakerBase
 from role_maker import UserDefinedRoleMaker
-from role_maker import UserDefinedCollectiveRoleMaker
 
 
 class Mode(Enum):
@@ -197,12 +196,9 @@ class Fleet(object):
         elif isinstance(role_maker, UserDefinedRoleMaker):
             self._role_maker = role_maker
 
-        elif isinstance(role_maker, UserDefinedCollectiveRoleMaker):
-            self._role_maker = role_maker
-
         else:
             raise ValueError(
-                "role_maker must be an instance of UserDefinedRoleMaker/MPISymetricRoleMaker/UserDefinedCollectiveRoleMaker"
+                "role_maker must be an instance of UserDefinedRoleMaker/MPISymetricRoleMaker"
             )
 
         self._is_initialized = True
