@@ -35,10 +35,12 @@ static inline int NumBlocks(const int N) {
        i += blockDim.x * gridDim.x)
 
 template <typename T>
-__global__ void GPUSigmoidForward(const T *x_data, const int *label_data,
-                                  const int *fg_num_data, const T gamma,
-                                  const T alpha, const int num_classes,
-                                  const int limit, T *out_data) {
+__global__ void GPUSigmoidFocalLossForward(const T *x_data,
+                                           const int *label_data,
+                                           const int *fg_num_data,
+                                           const T gamma, const T alpha,
+                                           const int num_classes,
+                                           const int limit, T *out_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     int a = i / num_classes;  // current sample
@@ -73,11 +75,10 @@ __global__ void GPUSigmoidForward(const T *x_data, const int *label_data,
 }
 
 template <typename T>
-__global__ void GPUSigmoidBackward(const T *x_data, const int *label_data,
-                                   const int *fg_num_data, const T gamma,
-                                   const T alpha, const int num_classes,
-                                   const T *dout_data, const int limit,
-                                   T *dx_data) {
+__global__ void GPUSigmoidFocalLossBackward(
+    const T *x_data, const int *label_data, const int *fg_num_data,
+    const T gamma, const T alpha, const int num_classes, const T *dout_data,
+    const int limit, T *dx_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T dout = dout_data[i];
@@ -131,7 +132,7 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
     int limit = Out->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    GPUSigmoidFocalLossForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
         num_classes, limit, out_data);
   }
@@ -157,7 +158,7 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
     int limit = dX->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    GPUSigmoidFocalLossBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
         num_classes, dOut->data<T>(), limit, dx_data);
   }
