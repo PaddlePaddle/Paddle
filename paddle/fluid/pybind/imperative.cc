@@ -196,6 +196,7 @@ void BindImperative(pybind11::module *m_ptr) {
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase", R"DOC()DOC")
+      .def_static("_left_vars", &imperative::VarBase::LeftVarNames)
       .def(
           py::init<const std::string &, paddle::framework::proto::VarType::Type,
                    const std::vector<int64_t>, const paddle::platform::CPUPlace,

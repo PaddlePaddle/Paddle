@@ -31,8 +31,35 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
+DECLARE_uint64(dygraph_debug);
+
 namespace paddle {
 namespace imperative {
+
+void ThreadSafeNameSet::Insert(const std::string& name) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  set_.insert(name);
+}
+
+void ThreadSafeNameSet::Remove(const std::string& name) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  auto iter = set_.find(name);
+  PADDLE_ENFORCE(iter != set_.end(), "%s does not exist", name);
+  set_.erase(iter);
+}
+
+std::vector<std::string> ThreadSafeNameSet::Names() const {
+  if (!IsDebugEnabled()) {
+    LOG(WARNING) << "FLAGS_dygraph_debug is set to be 0. "
+                    "Please set FLAGS_dygraph_debug=1 for debug";
+  }
+  std::lock_guard<std::mutex> guard(mtx_);
+  return std::vector<std::string>(set_.begin(), set_.end());
+}
+
+ThreadSafeNameSet VarBase::name_set_;
+
+std::vector<std::string> VarBase::LeftVarNames() { return name_set_.Names(); }
 
 using framework::Variable;
 
