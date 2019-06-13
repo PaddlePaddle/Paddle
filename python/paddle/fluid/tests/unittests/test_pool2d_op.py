@@ -245,6 +245,47 @@ class TestCase5(TestCase2):
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
+# Test case from resnet, only for cuda as cpu is slow
+class TestCudaCase1(TestPool2D_Op):
+    def init_test_case(self):
+        self.shape = [8, 1024, 7, 7]
+        self.ksize = [7, 7]
+        self.strides = [1, 1]
+        self.paddings = [0, 0]
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, set(['X']), 'Out', max_relative_error=0.07)
+        else:
+            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
+
+
+# Not test max grad as result has diff
+class TestCudaCase2(TestPool2D_Op):
+    def init_pool_type(self):
+        self.shape = [8, 32, 56, 56]
+        self.strides = [2, 2]
+        self.paddings = [1, 1]
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
+
+
 #--------------------test pool2d cudnn--------------------
 
 
