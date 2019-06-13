@@ -33,14 +33,12 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name mkl_debug)
-    if(mkl_debug) 
-        set(MKL_DEBUG_FLAG MKL_DEBUG_CPU_TYPE=7)
-    endif()
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name disable_fc)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model)
+        ARGS --infer_model=${install_dir}/model
+             --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
 function(inference_analysis_api_test_with_refer_result target install_dir filename)
