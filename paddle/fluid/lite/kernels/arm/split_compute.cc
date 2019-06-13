@@ -24,7 +24,7 @@ namespace arm {
 void SplitCompute::Run() {
   auto& param = Param<operators::SplitParam>();
   const float* din = param.x->data<float>();
-  auto* dout = param.output;
+  auto& dout = param.output;
   auto in_dim = param.x->dims();
   std::vector<int> in_strides(in_dim.size());
   in_strides[in_dim.size() - 1] = in_dim[in_dim.size() - 1];
