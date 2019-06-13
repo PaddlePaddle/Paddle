@@ -58,6 +58,7 @@ TEST(mul_arm, compare_test) {
   for (int m : {1, 2, 3, 4}) {
     for (int n : {1, 2, 3, 4}) {
       for (int k : {1, 2, 3, 4}) {
+        VLOG(3) << "m: " << m << ", n: " << n << ", k: " << k;
         lite::Tensor x, y, out, ref;
         x.Resize({m, k});
         y.Resize({k, n});
@@ -71,8 +72,8 @@ TEST(mul_arm, compare_test) {
 
         FillData<T>(x_data, x.dims().production());
         FillData<T>(y_data, y.dims().production());
-        FillData<T>(out_data, out.dims().production());
-        FillData<T>(ref_data, out.dims().production());
+        FillData<T>(out_data, out.dims().production(), 0, 0);
+        FillData<T>(ref_data, out.dims().production(), 0, 0);
 
         MulCompute mul;
         operators::MulParam param;

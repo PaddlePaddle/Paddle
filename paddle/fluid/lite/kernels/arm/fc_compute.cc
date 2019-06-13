@@ -52,7 +52,6 @@ void FcCompute::Run() {
                               &ctx);
     lite::arm::math::sgemm_prepack(packed_in, w_data, b_data, o_data, x_h, n,
                                    x_w, false, false, false, &ctx);
-
     if (param.bias) {
       CHECK_EQ(param.bias->numel(), n);
       lite::arm::math::fill_bias_fc(o_data, b_data, x_h, n);
