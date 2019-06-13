@@ -22,10 +22,12 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(sum, native) {
+template <typename TargetT>
+static void test_sum_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("sum_x1", {1, 2, 1, 2});
   validator.DeclInputVar("sum_x2", {1, 2, 1, 2});
   validator.DeclOutputVar("sum_out", {1, 2, 1, 2});
@@ -40,6 +42,20 @@ TEST(sum, native) {
   validator.Execute(1);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(sum_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_sum_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+#ifdef ANAKIN_X86_PLACE
+TEST(sum_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_sum_op<::anakin::saber::X86>(ctx, false);
+}
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

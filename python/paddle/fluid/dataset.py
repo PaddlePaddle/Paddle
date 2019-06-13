@@ -21,27 +21,36 @@ __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 class DatasetFactory(object):
     """
     DatasetFactory is a factory which create dataset by its name,
-    you can create "QueueDataset" or "InMemoryDataset",
+    you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
     the default is "QueueDataset".
 
     Example:
-        dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
         """
-        Create "QueueDataset" or "InMemoryDataset",
+        Create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
         the default is "QueueDataset".
 
+        Args:
+            datafeed_class(str): datafeed class name, QueueDataset or InMemoryDataset.
+                                 Default is QueueDataset.
+
         Examples:
-            import paddle.fluid as fluid
-            dataset = fluid.DatasetFactory().create_dataset()
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+
         """
         try:
             dataset = globals()[datafeed_class]()
@@ -52,14 +61,10 @@ class DatasetFactory(object):
 
 
 class DatasetBase(object):
-    """
-    Base dataset class
-    """
+    """ Base dataset class. """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -72,11 +77,15 @@ class DatasetBase(object):
         Set pipe command of current dataset
         A pipe command is a UNIX pipeline command that can be used only
 
-        Example:
-            >>> dataset.set_pipe_command("python my_script.py")
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_pipe_command("python my_script.py")
 
         Args:
-            pipe_command: pipe command
+            pipe_command(str): pipe command
 
         """
         self.proto_desc.pipe_command = pipe_command
@@ -85,11 +94,15 @@ class DatasetBase(object):
         """
         Set batch size. Will be effective during training
 
-        Example:
-            >>> dataset.set_batch_size(128)
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_batch_size(128)
 
         Args:
-            batch_size: batch size
+            batch_size(int): batch size
 
         """
         self.proto_desc.batch_size = batch_size
@@ -98,11 +111,15 @@ class DatasetBase(object):
         """
         Set thread num, it is the num of readers.
 
-        Example:
-            >>> dataset.set_thread(12)
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+               dataset.set_thread(12)
 
         Args:
-            thread_num: thread num
+            thread_num(int): thread num
         """
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
@@ -111,11 +128,15 @@ class DatasetBase(object):
         """
         Set file list in current worker.
 
-        Example:
-            >>> dataset.set_filelist(['a.txt', 'b.txt'])
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
-            filelist: file list
+            filelist(list): file list
         """
         self.dataset.set_filelist(filelist)
 
@@ -123,11 +144,15 @@ class DatasetBase(object):
         """
         Set Variables which you will use.
 
-        Example:
-            >>> dataset.set_use_var([data, label])
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_use_var([data, label])
 
         Args:
-            var_list: variable list
+            var_list(list): variable list
         """
         multi_slot = self.proto_desc.multi_slot_desc
         for var in var_list:
@@ -150,12 +175,16 @@ class DatasetBase(object):
         """
         Set hdfs config: fs name ad ugi
 
-        Example:
-            >>> dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
-            fs_name: fs name
-            fs_ugi: fs ugi
+            fs_name(str): fs name
+            fs_ugi(str): fs ugi
         """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
@@ -170,8 +199,12 @@ class DatasetBase(object):
         """
         Returns a protobuf message for this DataFeedDesc
 
-        Example:
-            >>> print(dataset.desc())
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              print(dataset.desc())
 
         Returns:
             A string message
@@ -186,13 +219,11 @@ class InMemoryDataset(DatasetBase):
     This class should be created by DatasetFactory
 
     Example:
-        dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
+        dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 
@@ -200,12 +231,14 @@ class InMemoryDataset(DatasetBase):
         """
         Load data into memory
 
-        Example:
-            >>> import paddle.fluid as fluid
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
-            >>> filelist = ["a.txt", "b.txt"]
-            >>> dataset.set_filelist(filelist)
-            >>> dataset.load_into_memory()
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
         """
         self._prepare_to_run()
         self.dataset.load_into_memory()
@@ -214,13 +247,15 @@ class InMemoryDataset(DatasetBase):
         """
         Local shuffle
 
-        Example:
-            >>> import paddle.fluid as fluid
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
-            >>> filelist = ["a.txt", "b.txt"]
-            >>> dataset.set_filelist(filelist)
-            >>> dataset.load_into_memory()
-            >>> dataset.local_shuffle()
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.local_shuffle()
         """
         self.dataset.local_shuffle()
 
@@ -232,58 +267,141 @@ class InMemoryDataset(DatasetBase):
         If you run in distributed mode, you should pass fleet instead of None.
 
         Examples:
-            >>> import paddle.fluid as fluid
-            >>> from paddle.fluid.incubate.fleet.pslib import fleet
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
-            >>> filelist = ["a.txt", "b.txt"]
-            >>> dataset.set_filelist(filelist)
-            >>> dataset.load_into_memory()
-            >>> dataset.global_shuffle(fleet)
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.global_shuffle(fleet)
 
         Args:
-            fleet: fleet singleton. Default None.
+            fleet(Fleet): fleet singleton. Default None.
+
         """
         trainer_num = 1
         fleet_send_batch_size = 80000
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
             trainer_num = fleet.worker_num()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle()
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
 
     def release_memory(self):
         """
         Release InMemoryDataset memory data, when data will not be used again.
 
-        Example:
-            >>> import paddle.fluid as fluid
-            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
-            >>> filelist = ["a.txt", "b.txt"]
-            >>> dataset.set_filelist(filelist)
-            >>> dataset.load_into_memory()
-            >>> dataset.global_shuffle(fleet)
-            >>> exe = fluid.Executor(fluid.CPUPlace())
-            >>> exe.run(fluid.default_startup_program())
-            >>> exe.train_from_dataset(fluid.default_main_program(), dataset)
-            >>> dataset.release_memory()
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.global_shuffle(fleet)
+              exe = fluid.Executor(fluid.CPUPlace())
+              exe.run(fluid.default_startup_program())
+              exe.train_from_dataset(fluid.default_main_program(), dataset)
+              dataset.release_memory()
+
         """
         self.dataset.release_memory()
+
+    def get_memory_data_size(self, fleet=None):
+        """
+        Get memory data size, user can call this function to know the num
+        of ins in all workers after load into memory.
+
+        Note:
+            This function may cause bad performance, because it has barrier
+
+        Args:
+            fleet(Fleet): Fleet Object.
+
+        Returns:
+            The size of memory data.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              print dataset.get_memory_data_size(fleet)
+
+        """
+        import numpy as np
+        local_data_size = self.dataset.get_memory_data_size()
+        local_data_size = np.array([local_data_size])
+        if fleet is not None:
+            global_data_size = local_data_size * 0
+            fleet._role_maker._node_type_comm.Allreduce(local_data_size,
+                                                        global_data_size)
+            return global_data_size[0]
+        return local_data_size[0]
+
+    def get_shuffle_data_size(self, fleet=None):
+        """
+        Get shuffle data size, user can call this function to know the num
+        of ins in all workers after local/global shuffle.
+
+        Note:
+            This function may cause bad performance to local shuffle,
+            because it has barrier. It does not affect global shuffle.
+
+        Args:
+            fleet(Fleet): Fleet Object.
+
+        Returns:
+            The size of shuffle data.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.global_shuffle(fleet)
+              print dataset.get_shuffle_data_size(fleet)
+
+        """
+        import numpy as np
+        local_data_size = self.dataset.get_shuffle_data_size()
+        local_data_size = np.array([local_data_size])
+        if fleet is not None:
+            global_data_size = local_data_size * 0
+            fleet._role_maker._node_type_comm.Allreduce(local_data_size,
+                                                        global_data_size)
+            return global_data_size[0]
+        return local_data_size[0]
 
 
 class QueueDataset(DatasetBase):
     """
     QueueDataset, it will process data streamly.
 
-    Example:
-        import paddle.fluid as fluid
-        dataset = fluid.DatasetFactory.create_dataset("QueueDataset")
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+
     """
 
     def __init__(self):
@@ -296,10 +414,18 @@ class QueueDataset(DatasetBase):
 
     def local_shuffle(self):
         """
-        Local shuffle
+        Local shuffle data.
 
         Local shuffle is not supported in QueueDataset
         NotImplementedError will be raised
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+              dataset.local_shuffle()
+
         """
         raise NotImplementedError(
             "QueueDataset does not support local shuffle, "
@@ -307,9 +433,53 @@ class QueueDataset(DatasetBase):
 
     def global_shuffle(self, fleet=None):
         """
+        Global shuffle data.
+
         Global shuffle is not supported in QueueDataset
         NotImplementedError will be raised
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+              dataset.global_shuffle(fleet)
+
         """
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
+            "please use InMemoryDataset for global_shuffle")
+
+
+class FileInstantDataset(DatasetBase):
+    """
+    FileInstantDataset, it will process data streamly.
+    Example:
+        import paddle.fluid as fluid
+        dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
+    """
+
+    def __init__(self):
+        """
+        Init
+        """
+        super(FileInstantDataset, self).__init__()
+        self.proto_desc.name = "MultiSlotFileInstantDataFeed"
+
+    def local_shuffle(self):
+        """
+        Local shuffle
+        FileInstantDataset does not support local shuffle
+        """
+        raise NotImplementedError(
+            "FileInstantDataset does not support local shuffle, "
+            "please use InMemoryDataset for local_shuffle")
+
+    def global_shuffle(self, fleet=None):
+        """
+        Global shuffle
+        """
+        raise NotImplementedError(
+            "FileInstantDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle")

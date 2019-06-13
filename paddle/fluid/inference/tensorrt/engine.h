@@ -18,8 +18,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
@@ -131,6 +133,13 @@ class TensorRTEngine {
   int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
+  void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
+    quant_dynamic_range_[tensor] = range;
+  }
+
+  float* GetWeightCPUData(const std::string& name,
+                          framework::Tensor* weight_tensor, bool enable_int8,
+                          const std::vector<float>& scale = {});
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -139,6 +148,12 @@ class TensorRTEngine {
   // in advance, which affecting the construction of TRT Op.
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
+
+  void ClearWeights() {
+    for (auto& weight_pair : weight_map) {
+      weight_pair.second.reset(nullptr);
+    }
+  }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
@@ -184,7 +199,12 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
+  std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 };  // class TensorRTEngine
+
+#define IS_TRT_VERSION_GE(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
 // Add an layer__ into engine__ with args ARGS.
 // For example:
@@ -198,6 +218,39 @@ class TensorRTEngine {
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
+
+class TRTEngineManager {
+ public:
+  bool Empty() const { return engines_.size() == 0; }
+  bool Has(const std::string& name) const {
+    if (engines_.count(name) == 0) return false;
+    return engines_.at(name).get() != nullptr;
+  }
+
+  TensorRTEngine* Get(const std::string& name) const {
+    return engines_.at(name).get();
+  }
+
+  TensorRTEngine* Create(std::string name, int max_batch, int max_workspace,
+                         bool enable_int8 = false,
+                         TRTInt8Calibrator* calibrator = nullptr,
+                         int device_id = 0,
+                         nvinfer1::ILogger& logger = NaiveLogger::Global()) {
+    auto* p = new TensorRTEngine(max_batch, max_workspace, enable_int8,
+                                 calibrator, device_id, logger);
+    engines_[name].reset(p);
+    return p;
+  }
+
+  void DeleteAll() {
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+};
 
 }  // namespace tensorrt
 }  // namespace inference

@@ -20,12 +20,12 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(reshape, test) {
-  auto* converter = Registry<AnakinOpConverter>::Global().Lookup("reshape");
-  ASSERT_TRUE(converter);
+template <typename TargetT>
+void test_reshape1_op(const platform::DeviceContext& context, bool use_gpu) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
 
   // validator.DeclInputVar("reshape-X", {2, 3, 3, 1});
   // validator.DeclOutputVar("reshape-Out", {3, 2, 1, 3});
@@ -45,10 +45,12 @@ TEST(reshape, test) {
   validator.Execute(1);
 }
 
-TEST(reshape, test2) {
+template <typename TargetT>
+void test_reshape2_op(const platform::DeviceContext& context, bool use_gpu) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
 
   validator.DeclInputVar("reshape-X", {1, 2, 4});
   validator.DeclOutputVar("reshape-Out", {1, 4, 2});
@@ -66,6 +68,32 @@ TEST(reshape, test2) {
   validator.Execute(1);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(reshape1_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_reshape1_op<::anakin::saber::NV>(ctx, true);
+}
+
+TEST(reshape2_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_reshape2_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+#ifdef ANAKIN_X86_PLACE
+TEST(reshape1_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_reshape2_op<::anakin::saber::X86>(ctx, false);
+}
+
+TEST(reshape2_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_reshape2_op<::anakin::saber::X86>(ctx, false);
+}
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

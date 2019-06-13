@@ -13,10 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <memory>
+#include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
@@ -61,7 +66,16 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       var->outputs.push_back(node);
     }
     // For output args, always create a new var.
+    std::unordered_set<std::string> out_arg_set;
     for (auto &each_var_name : op->OutputArgumentNames()) {
+      if (each_var_name != kEmptyVarName) {
+        PADDLE_ENFORCE(out_arg_set.count(each_var_name) == 0,
+                       "Program is wrong. %s occurs in output of %s several "
+                       "times.",
+                       each_var_name, op->Type());
+        out_arg_set.insert(each_var_name);
+      }
+
       ir::Node *var = nullptr;
       if (all_vars.count(each_var_name) != 0) {
         var = CreateVarNode(all_vars.at(each_var_name));
@@ -120,6 +134,7 @@ void Graph::ResolveHazard(
         ir::Node *dep_var = CreateControlDepVar();
         write_op->inputs.push_back(dep_var);
         upstream_op->outputs.push_back(dep_var);
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         dep_var->outputs.push_back(write_op);
         dep_var->inputs.push_back(upstream_op);
       }
@@ -143,6 +158,7 @@ void Graph::ResolveHazard(
         if (has_dep) continue;
 
         ir::Node *dep_var = CreateControlDepVar();
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         read_op->outputs.push_back(dep_var);
         dep_var->inputs.push_back(read_op);
         write_op->inputs.push_back(dep_var);

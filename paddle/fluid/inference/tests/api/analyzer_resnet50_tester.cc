@@ -16,6 +16,8 @@ limitations under the License. */
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
+DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -33,9 +35,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 void SetOptimConfig(AnalysisConfig *cfg) {
-  std::string optimModelPath =
-      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
-      "/saved_optim_model";
+  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
   cfg->SetModel(optimModelPath + "/model", optimModelPath + "/params");
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
@@ -50,6 +50,8 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    if (!FLAGS_disable_mkldnn_fc)
+      cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
   std::vector<std::vector<PaddleTensor>> outputs;
 
@@ -81,6 +83,8 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    if (!FLAGS_disable_mkldnn_fc)
+      cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -107,16 +111,10 @@ TEST(Analyzer_resnet50, compare_determine) {
 // Save optim model
 TEST(Analyzer_resnet50, save_optim_model) {
   AnalysisConfig cfg;
-  SetConfig(&cfg);
-  std::string optimModelPath =
-      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
-      "/saved_optim_model";
+  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
   mkdir(optimModelPath.c_str(), 0777);
-  auto predictor = CreateTestPredictor(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-      FLAGS_use_analysis);
-  (static_cast<AnalysisPredictor *>(predictor.get()))
-      ->SaveOptimModel(optimModelPath);
+  SetConfig(&cfg);
+  SaveOptimModel(&cfg, optimModelPath);
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,

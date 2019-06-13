@@ -16,7 +16,9 @@ limitations under the License. */
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "ngraph/ngraph.hpp"
 
@@ -75,9 +77,7 @@ std::shared_ptr<ngraph::Node> GetNode(
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
   auto& var_names = var_map.at(name);
-  PADDLE_ENFORCE_EQ(var_names.size(), 1,
-                    "op %s name %s expects one associated var", op->Type(),
-                    name);
+  if (var_names.size() == 0) return nullptr;
   if (ngb_node_map->find(var_names[0]) != ngb_node_map->end()) {
     return (*ngb_node_map)[var_names[0]];
   } else {
@@ -103,6 +103,25 @@ std::shared_ptr<ngraph::Node> GetOutputNode(
   return GetNode(op, name, op->Outputs(), ngb_node_map);
 }
 
+template <typename T>
+std::shared_ptr<ngraph::Node> CreateConstant(const ngraph::element::Type& type,
+                                             ngraph::Shape shape,
+                                             std::initializer_list<T> values) {
+  std::shared_ptr<ngraph::Node> result;
+  if (values.size() == 1 && shape != ngraph::Shape{} &&  // NOLINT
+      shape != ngraph::Shape{1}) {
+    result = std::make_shared<ngraph::op::Constant>(type, ngraph::Shape{},
+                                                    std::vector<T>{values});
+    ngraph::AxisSet axis_set;
+    for (size_t i = 0; i < shape.size(); ++i) axis_set.insert(i);
+    result = std::make_shared<ngraph::op::Broadcast>(result, shape, axis_set);
+  } else {
+    result = std::make_shared<ngraph::op::Constant>(type, shape,
+                                                    std::vector<T>{values});
+  }
+  return result;
+}
+
 void SetOutputNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     const std::string name, std::shared_ptr<ngraph::Node> node,
@@ -111,16 +130,6 @@ void SetOutputNode(
         ngb_node_map) {
   auto& var_names = op->Outputs().at(name);
   if (var_names.size() == 1) {
-    /*  */
-    auto dummy_out = GetOutputNode(op, name, ngb_node_map);
-    if (dummy_out && dummy_out->get_shape() != node->get_shape()) {
-      node = NgReshaper(node, dummy_out->get_shape());
-    }
-    if (dummy_out &&
-        dummy_out->get_element_type() != node->get_element_type()) {
-      node = std::make_shared<ngraph::op::Convert>(
-          node, dummy_out->get_element_type());
-    }
     (*ngb_node_map)[var_names[0]] = node;
   } else if (var_names.size() == 0) {
     (*ngb_node_map)[""] = node;
@@ -167,6 +176,22 @@ inline void TrimTrailingSingularDims(ngraph::Shape* shape) {
       shape->pop_back();
     }
   }
+}
+
+ngraph::element::Type GetNgType(paddle::framework::proto::VarType::Type dtype) {
+  ngraph::element::Type ng_dtype;
+  if (dtype == paddle::framework::proto::VarType::FP32) {
+    ng_dtype = ngraph::element::f32;
+  } else if (dtype == paddle::framework::proto::VarType::FP64) {
+    ng_dtype = ngraph::element::f64;
+  } else if (dtype == paddle::framework::proto::VarType::INT64) {
+    ng_dtype = ngraph::element::i64;
+  } else if (dtype == paddle::framework::proto::VarType::INT32) {
+    ng_dtype = ngraph::element::i32;
+  } else {
+    PADDLE_THROW("unsupported data type: %s", dtype);
+  }
+  return ng_dtype;
 }
 }  // namespace platform
 }  // namespace paddle

@@ -38,6 +38,7 @@ IF(WIN32)
     SET(MKLML_LIB                 ${MKLML_LIB_DIR}/mklml.lib)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5md.lib)
     SET(MKLML_SHARED_LIB          ${MKLML_LIB_DIR}/mklml.dll)
+    SET(MKLML_SHARED_LIB_DEPS     ${MKLML_LIB_DIR}/msvcr120.dll)
     SET(MKLML_SHARED_IOMP_LIB     ${MKLML_LIB_DIR}/libiomp5md.dll)
 ELSE()
     #TODO(intel-huying):
