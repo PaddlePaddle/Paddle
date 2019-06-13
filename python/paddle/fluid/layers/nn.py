@@ -11973,7 +11973,7 @@ def deformable_conv(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format.
-        offset (Variable): The input coord offset of deformable convolution layer.
+        offset (Variable): The input coordinate offset of deformable convolution layer.
         Mask (Variable): The input mask of deformable covolution layer.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -12012,7 +12012,7 @@ def deformable_conv(input,
             to the output units. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        modulated (bool): Make sure which version shoule be used between v1 and v2, where v2 is \
+        modulated (bool): Make sure which version should be used between v1 and v2, where v2 is \
             used while True. Default: True.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
