@@ -25,6 +25,7 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
+from paddle.fluid.compiler import CompiledProgram
 from . import reader
 from .reader import *
 from . import core
@@ -499,9 +500,18 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                                        main_program=prog)
     """
 
-    if main_program and main_program._is_distributed:
-        _save_distributed_persistables(
-            executor, dirname=dirname, main_program=main_program)
+    if main_program is not None:
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "main program must be an instance of Program, can not be CompiledProgram"
+            )
+
+        if not isinstance(main_program, Program):
+            raise TypeError("main program must be an instance of Program")
+
+        if main_program._is_distributed:
+            _save_distributed_persistables(
+                executor, dirname=dirname, main_program=main_program)
 
     else:
         save_vars(
@@ -598,6 +608,15 @@ def load_vars(executor,
             # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
+
+    if main_program is not None:
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "main program must be an instance of Program, can not be CompiledProgram"
+            )
+
+        if not isinstance(main_program, Program):
+            raise TypeError("main program must be an instance of Program")
 
     if not isinstance(executor, Executor):
         raise TypeError("executor should be as Executor")
@@ -738,9 +757,18 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
                                        main_program=None)
     """
 
-    if main_program and main_program._is_distributed:
-        _load_distributed_persistables(
-            executor, dirname=dirname, main_program=main_program)
+    if main_program is not None:
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "main program must be an instance of Program, can not be CompiledProgram"
+            )
+
+        if not isinstance(main_program, Program):
+            raise TypeError("main program must be an instance of Program")
+
+        if main_program._is_distributed:
+            _load_distributed_persistables(
+                executor, dirname=dirname, main_program=main_program)
     else:
         load_vars(
             executor,
@@ -1014,6 +1042,14 @@ def save_inference_model(dirname,
                                             is not suitable for saving inference model \
                                             we save the original program as inference model.",
                 RuntimeWarning)
+    else:
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "main program must be an instance of Program, can not be CompiledProgram"
+            )
+
+        if not isinstance(main_program, Program):
+            raise TypeError("main program must be an instance of Program")
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
