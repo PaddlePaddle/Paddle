@@ -33,11 +33,33 @@ class ScatterOpKernel : public framework::OpKernel<T> {
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
+    double overwrite = ctx.Attr<bool>("overwrite");
 
     // In place output: Out = X, Out[Ids] = Updates
     framework::TensorCopySync(*X, ctx.GetPlace(), Out);
     // Apply ScatterUpdate: Out[index] = Updates[:]
-    ScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
+    const auto &index_type = Ids->type();
+    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
+                            index_type == framework::proto::VarType::INT64;
+    PADDLE_ENFORCE(
+        index_type_match,
+        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
+        paddle::framework::DataTypeToString(index_type),
+        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
+        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+    if (overwrite) {
+      if (index_type == framework::proto::VarType::INT32) {
+        ScatterAssign<T, int32_t>(ctx.device_context(), *Updates, *Ids, Out);
+      } else {
+        ScatterAssign<T, int64_t>(ctx.device_context(), *Updates, *Ids, Out);
+      }
+    } else {
+      if (index_type == framework::proto::VarType::INT32) {
+        ScatterAssignAdd<T, int32_t>(ctx, *Updates, *Ids, Out);
+      } else {
+        ScatterAssignAdd<T, int64_t>(ctx, *Updates, *Ids, Out);
+      }
+    }
   }
 };
 
