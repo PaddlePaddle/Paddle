@@ -45,7 +45,7 @@ class TypeTargetTransformPass : public ProgramPass {
 
   void ComplementInputs(SSAGraph* graph, Node* inst_node, Node* in);
 
-  void AddIoCopyInst(const Type& from, const Type& to, const std::string& var,
+  void AddIoCopyInst(const Type& from, const Type& to, Node* in,
                      SSAGraph* graph, Node* inst_node,
                      const std::vector<Place>& valid_places);
 

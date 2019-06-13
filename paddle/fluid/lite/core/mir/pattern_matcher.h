@@ -127,6 +127,15 @@ struct PMNode {
   PMNode* assert_is_persistable_var();
   PMNode* assert_is_op_output(const std::string& op_type);
   PMNode* assert_is_op_input(const std::string& op_type);
+  PMNode* assert_is_op_input(const std::string& op_type,
+                             const std::string& argument);
+  PMNode* assert_is_op_output(const std::string& op_type,
+                              const std::string& argument);
+
+  PMNode* assert_is_op_nth_input(const std::string& op_type,
+                                 const std::string& argument, int nth);
+  PMNode* assert_is_op_nth_output(const std::string& op_type,
+                                  const std::string& argument, int nth);
 
   template <typename T>
   PMNode* assert_op_attr(const std::string& attr_name, const T& attr) {

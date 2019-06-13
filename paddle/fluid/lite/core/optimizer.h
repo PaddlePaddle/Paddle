@@ -49,6 +49,9 @@ class Optimizer {
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
+          "graph_visualze",                 //
+          "lite_conv_bn_fuse_pass",         //
+          "graph_visualze",                 //
           "static_kernel_pick_pass",        //
           "variable_place_inference_pass",  //
           "argument_type_display_pass",     //

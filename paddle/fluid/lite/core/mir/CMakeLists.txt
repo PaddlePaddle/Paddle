@@ -3,6 +3,8 @@ cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node)
 cc_library(mir_pass SRCS pass.cc DEPS mir_ssa_graph)
 cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph mir_passes)
 cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
+
+add_subdirectory(fusion)
 cc_library(mir_passes
         SRCS static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
@@ -13,7 +15,8 @@ cc_library(mir_passes
         argument_type_display_pass.cc
         demo_pass.cc
         runtime_context_assign_pass.cc
-        DEPS mir_pass types_lite context_lite)
+        conv_bn_fuse_pass.cc 
+        DEPS mir_pass types_lite context_lite mir_fusers)
 
 # for mobile, unnecessary to compile the following testings.
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
@@ -60,7 +63,3 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
         pattern_matcher_high_api proto_desc mir_pass_manager fc_op_lite mul_op_lite elementwise_ops_lite
         mir_passes compatible_pb_lite program_lite ${ops_lite})
 endif()
-
-cc_test(test_conv_bn SRCS conv_bn_fuse_test.cc DEPS
-    pattern_matcher_high_api proto_desc mir_pass_manager elementwise_ops_lite batch_norm_op_lite conv_op_lite
-    mir_passes compatible_pb_lite program_lite ${ops_lite})

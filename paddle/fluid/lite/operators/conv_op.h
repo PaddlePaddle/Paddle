@@ -64,13 +64,13 @@ class ConvOpLite : public OpLite {
   bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override {
     auto X = op_desc.Input("Input").front();
     auto Filter = op_desc.Input("Filter").front();
-    auto Bias = op_desc.Input("Bias").front();
+    // auto Bias = op_desc.Input("Bias").front();
     // auto ResidualData = op_desc.Input("ResidualData");
     auto Out = op_desc.Output("Output").front();
 
     param_.x = scope->FindVar(X)->GetMutable<lite::Tensor>();
     param_.filter = scope->FindVar(Filter)->GetMutable<lite::Tensor>();
-    param_.bias = scope->FindVar(Bias)->GetMutable<lite::Tensor>();
+    // param_.bias = scope->FindVar(Bias)->GetMutable<lite::Tensor>();
     // param_.residualData =
     // scope->FindVar(ResidualData)->GetMutable<lite::Tensor>();
     param_.output = scope->FindVar(Out)->GetMutable<lite::Tensor>();

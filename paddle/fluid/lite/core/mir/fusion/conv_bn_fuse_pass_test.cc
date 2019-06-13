@@ -12,93 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/lite/core/mir/conv_bn_fuse_pass.h"
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
-#include <memory>
+#include <vector>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
-#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 #include "paddle/fluid/lite/core/program.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
-
-class ConvBatchNormFuser : public FuseBase {
- public:
-  void BuildPattern() override {
-    // create nodes.
-    auto* conv_input = VarNode("conv_input")->AsInput();
-    auto* conv_weight = VarNode("conv_weight")->AsInput();
-    auto* conv_bias = VarNode("conv_bias")->AsInput();
-    auto* conv = OpNode("conv2d", "conv2d");
-    auto* conv_out = VarNode("conv_out");
-
-    auto* bn_scale = VarNode("bn_scale");
-    auto* bn_bias = VarNode("bn_bias")->AsInput();
-    auto* bn_mean = VarNode("bn_mean");
-    auto* bn_var = VarNode("bn_variance");
-    auto* bn = OpNode("bn", "batch_norm");
-
-    auto* bn_out = VarNode("bn_out")->AsOutput();
-    auto* bn_mean_out = VarNode("bn_mean_out");
-    auto* bn_var_out = VarNode("bn_var_out");
-    auto* bn_saved_mean = VarNode("bn_saved_mean");
-    auto* bn_saved_var = VarNode("bn_saved_var");
-
-    conv->LinksFrom({conv_input, conv_weight, conv_bias}).LinksTo({conv_out});
-
-    bn->LinksFrom({conv_out, bn_scale, bn_bias, bn_mean, bn_var})
-        .LinksTo(
-            {bn_out, bn_mean_out, bn_saved_mean, bn_saved_var, bn_var_out});
-
-    // Some op specialities.
-    bn_scale->AsIntermediate();
-    bn_mean->AsIntermediate();
-    bn_var->AsIntermediate();
-    bn->AsIntermediate();
-    bn_mean_out->AsIntermediate();
-    bn_var_out->AsIntermediate();
-    bn_saved_mean->AsIntermediate();
-    bn_saved_var->AsIntermediate();
-  }
-
-  void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override {
-    LOG(INFO) << "hello";
-    auto op_desc = GenOpDesc(matched);
-    auto eltwise_op = LiteOpRegistry::Global().Create("elementwise_add");
-    std::cout << "1" << matched.count("conv2d") << std::endl;
-    auto conv = matched.at("conv2d")->stmt()->op;
-    auto* scope = conv->scope();
-    auto& valid_places = conv->valid_places();
-    eltwise_op->Attach(op_desc, scope);
-
-    auto* new_op_node =
-        graph->GraphCreateInstructNode(eltwise_op, valid_places);
-
-    std::cout << "2" << matched.count("conv_out") << std::endl;
-    IR_NODE_LINK_TO(matched.at("conv_out"), new_op_node);
-    std::cout << "3" << matched.count("bn_bias") << std::endl;
-    IR_NODE_LINK_TO(matched.at("bn_bias"), new_op_node);
-    std::cout << "4" << matched.count("bn_out") << std::endl;
-    IR_NODE_LINK_TO(new_op_node, matched.at("bn_out"));
-  }
-
- private:
-  cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override {
-    std::cout << "11" << matched.count("conv2d") << std::endl;
-    std::cout << "2" << matched.count("conv_out") << std::endl;
-    std::cout << "3" << matched.count("bn_bias") << std::endl;
-    std::cout << "4" << matched.count("bn_out") << std::endl;
-    cpp::OpDesc op_desc;
-    op_desc.SetType("elementwise_add");
-    op_desc.SetInput("X", {matched.at("conv_out")->arg()->name});
-    op_desc.SetInput("Y", {matched.at("bn_bias")->arg()->name});
-    op_desc.SetOutput("Out", {matched.at("bn_out")->arg()->name});
-    op_desc.SetAttr("axis", 1);
-    return op_desc;
-  }
-};
+namespace fusion {
 
 std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
                                      const std::shared_ptr<Scope>& scope,
@@ -108,7 +34,6 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   auto* bn_op = main_block->AppendOp();
   main_block->Var("conv_i");
   main_block->Var("conv_param");
-  main_block->Var("conv_bias");
   main_block->Var("conv_out");
 
   main_block->Var("bn_scale");
@@ -122,14 +47,29 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   main_block->Var("bn_saved_var");
 
   scope->Var("conv_i")->GetMutable<lite::Tensor>();
-  scope->Var("conv_param")->GetMutable<lite::Tensor>();
-  scope->Var("conv_bias")->GetMutable<lite::Tensor>();
+  auto conv_param_t = scope->Var("conv_param")->GetMutable<lite::Tensor>();
+  std::vector<int64_t> conv_param_shape = {3, 1, 2, 2};
+  conv_param_t->Resize(lite::DDim(conv_param_shape));
+  conv_param_t->mutable_data<float>();
   scope->Var("conv_out")->GetMutable<lite::Tensor>();
+  auto bn_scale_t = scope->Var("bn_scale")->GetMutable<lite::Tensor>();
+  std::vector<int64_t> bn_scale_shape = {3};
+  bn_scale_t->Resize(lite::DDim(bn_scale_shape));
+  bn_scale_t->mutable_data<float>();
 
-  scope->Var("bn_scale")->GetMutable<lite::Tensor>();
-  scope->Var("bn_bias")->GetMutable<lite::Tensor>();
-  scope->Var("bn_mean")->GetMutable<lite::Tensor>();
-  scope->Var("bn_var")->GetMutable<lite::Tensor>();
+  auto bn_bias_t = scope->Var("bn_bias")->GetMutable<lite::Tensor>();
+  std::vector<int64_t> bn_bias_shape = {3};
+  bn_bias_t->Resize(lite::DDim(bn_bias_shape));
+  bn_bias_t->mutable_data<float>();
+
+  auto bn_mean_t = scope->Var("bn_mean")->GetMutable<lite::Tensor>();
+  bn_mean_t->Resize(lite::DDim(bn_bias_shape));
+  bn_mean_t->mutable_data<float>();
+
+  auto bn_var_t = scope->Var("bn_var")->GetMutable<lite::Tensor>();
+  bn_var_t->Resize(lite::DDim(bn_bias_shape));
+  bn_var_t->mutable_data<float>();
+
   scope->Var("bn_out")->GetMutable<lite::Tensor>();
   scope->Var("bn_mean_out")->GetMutable<lite::Tensor>();
   scope->Var("bn_var_out")->GetMutable<lite::Tensor>();
@@ -139,7 +79,6 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   conv_op->SetType("conv2d");
   conv_op->SetInput("Input", {"conv_i"});
   conv_op->SetInput("Filter", {"conv_param"});
-  conv_op->SetInput("Bias", {"conv_bias"});
   conv_op->SetOutput("Output", {"conv_out"});
   const std::vector<int> strides({1, 1});
   const std::vector<int> paddings({1, 1});
@@ -158,7 +97,7 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   bn_op->SetInput("Variance", {"bn_var"});
 
   bn_op->SetOutput("Y", {"bn_out"});
-  bn_op->SetOutput("MeanOut", {"bn_mean"});
+  bn_op->SetOutput("MeanOut", {"bn_mean_out"});
   bn_op->SetOutput("VarianceOut", {"bn_var_out"});
   bn_op->SetOutput("SavedMean", {"bn_saved_mean"});
   bn_op->SetOutput("SavedVariance", {"bn_saved_var"});
@@ -180,10 +119,12 @@ TEST(pattern_matcher2, test) {
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
   Visualize(graph.get());
-  ConvBatchNormFuser fuser;
-  fuser(graph.get());
+  auto* fuser = new ConvBNFusePass;
+  fuser->Apply(graph);
+  Visualize(graph.get());
 }
 
+}  // namespace fusion
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
