@@ -18,6 +18,7 @@ import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
+import logging
 
 __all__ = [
     'enabled',
@@ -134,6 +135,15 @@ def guard(place=None):
             with framework._dygraph_guard(tracer):
                 with framework._dygraph_place_guard(place):
                     yield
+
+
+def _print_debug_msg():
+    logging.warn('size of unique_name generator is {}'.format(
+        len(framework.unique_name.generator.ids)))
+    logging.warn('tracer holds {} variables'.format(
+        len(framework._dygraph_tracer()._vars)))
+    names = core.VarBase._left_vars()
+    logging.warn('{} variables left: {}'.format(len(names), names))
 
 
 def to_variable(value, block=None, name=None):
