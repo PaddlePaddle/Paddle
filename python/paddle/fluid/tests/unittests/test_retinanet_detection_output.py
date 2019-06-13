@@ -18,77 +18,8 @@ import numpy as np
 import math
 import copy
 from op_test import OpTest
-
-
-def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
-                               variances, stride, offset):
-    num_anchors = len(aspect_ratios) * len(anchor_sizes)
-    layer_h = input_feat.shape[2]
-    layer_w = input_feat.shape[3]
-    out_dim = (layer_h, layer_w, num_anchors, 4)
-    out_anchors = np.zeros(out_dim).astype('float32')
-
-    for h_idx in range(layer_h):
-        for w_idx in range(layer_w):
-            x_ctr = (w_idx * stride[0]) + offset * (stride[0] - 1)
-            y_ctr = (h_idx * stride[1]) + offset * (stride[1] - 1)
-            idx = 0
-            for r in range(len(aspect_ratios)):
-                ar = aspect_ratios[r]
-                for s in range(len(anchor_sizes)):
-                    anchor_size = anchor_sizes[s]
-                    area = stride[0] * stride[1]
-                    area_ratios = area / ar
-                    base_w = np.round(np.sqrt(area_ratios))
-                    base_h = np.round(base_w * ar)
-                    scale_w = anchor_size / stride[0]
-                    scale_h = anchor_size / stride[1]
-                    w = scale_w * base_w
-                    h = scale_h * base_h
-                    out_anchors[h_idx, w_idx, idx, :] = [
-                        (x_ctr - 0.5 * (w - 1)), (y_ctr - 0.5 * (h - 1)),
-                        (x_ctr + 0.5 * (w - 1)), (y_ctr + 0.5 * (h - 1))
-                    ]
-                    idx += 1
-
-    # set the variance.
-    out_var = np.tile(variances, (layer_h, layer_w, num_anchors, 1))
-    out_anchors = out_anchors.astype('float32')
-    out_var = out_var.astype('float32')
-    return out_anchors, out_var
-
-
-def iou(box_a, box_b, norm):
-    """Apply intersection-over-union overlap between box_a and box_b
-    """
-    xmin_a = min(box_a[0], box_a[2])
-    ymin_a = min(box_a[1], box_a[3])
-    xmax_a = max(box_a[0], box_a[2])
-    ymax_a = max(box_a[1], box_a[3])
-
-    xmin_b = min(box_b[0], box_b[2])
-    ymin_b = min(box_b[1], box_b[3])
-    xmax_b = max(box_b[0], box_b[2])
-    ymax_b = max(box_b[1], box_b[3])
-
-    area_a = (ymax_a - ymin_a + (norm == False)) * (xmax_a - xmin_a +
-                                                    (norm == False))
-    area_b = (ymax_b - ymin_b + (norm == False)) * (xmax_b - xmin_b +
-                                                    (norm == False))
-    if area_a <= 0 and area_b <= 0:
-        return 0.0
-
-    xa = max(xmin_a, xmin_b)
-    ya = max(ymin_a, ymin_b)
-    xb = min(xmax_a, xmax_b)
-    yb = min(ymax_a, ymax_b)
-
-    inter_area = max(xb - xa + (norm == False),
-                     0.0) * max(yb - ya + (norm == False), 0.0)
-
-    iou_ratio = inter_area / (area_a + area_b - inter_area)
-
-    return iou_ratio
+from test_anchor_generator_op import anchor_generator_in_python
+from test_multiclass_nms_op import iou
 
 
 def nms(cls_dets, nms_threshold=0.05, eta=1.0):
@@ -156,41 +87,28 @@ def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
         ymin = prediction[c][idx][1]
         xmax = prediction[c][idx][2]
         ymax = prediction[c][idx][3]
-        nmsed_outs.append([c, s, xmin, ymin, xmax, ymax])
+        nmsed_outs.append([c + 1, s, xmin, ymin, xmax, ymax])
 
     return nmsed_outs, num_det
 
 
-def retinanet_detection_out(boxes, scores, anchors, im_info, min_level,
-                            max_level, score_threshold, nms_threshold,
-                            nms_top_k, keep_top_k):
-    class_num = scores.shape[1]
-    total_cell_num = scores.shape[0]
+def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
+                            score_threshold, nms_threshold, nms_top_k,
+                            keep_top_k):
+    class_num = scores_list[0].shape[-1]
     im_height, im_width, im_scale = im_info
-    factors = 0
-    for lvl in range(min_level, max_level + 1):
-        factors += pow(2, max_level - lvl) * pow(2, max_level - lvl)
-    coarsest_cell_num = total_cell_num / factors
 
-    begin_idx = 0
-    end_idx = 0
-    all_scores = copy.deepcopy(scores)
-    all_boxes = copy.deepcopy(boxes)
-    all_anchors = copy.deepcopy(anchors)
+    num_level = len(scores_list)
     prediction = {}
-    for lvl in range(min_level, max_level + 1):
-        factor = pow(2, max_level - lvl)
-        begin_idx = int(end_idx)
-        end_idx = int(begin_idx + coarsest_cell_num * factor * factor)
-
-        scores_per_level = all_scores[begin_idx:end_idx, :]
+    for lvl in range(num_level):
+        scores_per_level = scores_list[lvl]
         scores_per_level = scores_per_level.flatten()
-        bboxes_per_level = all_boxes[begin_idx:end_idx, :]
+        bboxes_per_level = boxes_list[lvl]
         bboxes_per_level = bboxes_per_level.flatten()
-        anchors_per_level = all_anchors[begin_idx:end_idx, :]
+        anchors_per_level = anchors_list[lvl]
         anchors_per_level = anchors_per_level.flatten()
 
-        thresh = score_threshold if lvl < max_level else 0.0
+        thresh = score_threshold if lvl < (num_level - 1) else 0.0
         selected_indices = np.argwhere(scores_per_level > thresh)
         scores = scores_per_level[selected_indices]
         sorted_indices = np.argsort(-scores, axis=0, kind='mergesort')
@@ -252,15 +170,24 @@ def retinanet_detection_out(boxes, scores, anchors, im_info, min_level,
     return nmsed_outs, nmsed_num
 
 
-def batched_retinanet_detection_out(boxes, scores, anchors, im_info, min_level,
-                                    max_level, score_threshold, nms_threshold,
-                                    nms_top_k, keep_top_k):
-    batch_size = scores.shape[0]
+def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
+                                    score_threshold, nms_threshold, nms_top_k,
+                                    keep_top_k):
+    batch_size = scores[0].shape[0]
     det_outs = []
     lod = []
+
     for n in range(batch_size):
+        boxes_per_batch = []
+        scores_per_batch = []
+
+        num_level = len(scores)
+        for lvl in range(num_level):
+            boxes_per_batch.append(boxes[lvl][n])
+            scores_per_batch.append(scores[lvl][n])
+
         nmsed_outs, nmsed_num = retinanet_detection_out(
-            boxes[n], scores[n], anchors, im_info[n], min_level, max_level,
+            boxes_per_batch, scores_per_batch, anchors, im_info[n],
             score_threshold, nms_threshold, nms_top_k, keep_top_k)
         if nmsed_num == 0:
             continue
@@ -294,9 +221,9 @@ class TestRetinanetDetectionOutOp1(OpTest):
     def init_test_input(self):
         anchor_num = len(self.aspect_ratios) * self.scales_per_octave
         num_levels = self.max_level - self.min_level + 1
-        scores = []
-        boxes = []
-        anchors = []
+        self.scores_list = []
+        self.bboxes_list = []
+        self.anchors_list = []
 
         for i in range(num_levels):
             layer_h = 2**(num_levels - i)
@@ -326,13 +253,10 @@ class TestRetinanetDetectionOutOp1(OpTest):
                 stride=[self.anchor_strides[i], self.anchor_strides[i]],
                 offset=0.5)
             anchor = np.reshape(anchor, [-1, 4])
-            scores.append(score)
-            boxes.append(box)
-            anchors.append(anchor)
+            self.scores_list.append(score.astype('float32'))
+            self.bboxes_list.append(box.astype('float32'))
+            self.anchors_list.append(anchor.astype('float32'))
 
-        self.anchor_list = np.concatenate(anchors, axis=0).astype('float32')
-        self.score_list = np.concatenate(scores, axis=1).astype('float32')
-        self.box_list = np.concatenate(boxes, axis=1).astype('float32')
         self.im_info = np.array([[256., 256., 1.5]]).astype(
             'float32')  #im_height, im_width, scale
 
@@ -341,23 +265,27 @@ class TestRetinanetDetectionOutOp1(OpTest):
         self.init_test_input()
 
         nmsed_outs, lod = batched_retinanet_detection_out(
-            self.box_list, self.score_list, self.anchor_list, self.im_info,
-            self.min_level, self.max_level, self.score_threshold,
-            self.nms_threshold, self.nms_top_k, self.keep_top_k)
+            self.bboxes_list, self.scores_list, self.anchors_list, self.im_info,
+            self.score_threshold, self.nms_threshold, self.nms_top_k,
+            self.keep_top_k)
         nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
         nmsed_outs = np.array(nmsed_outs).astype('float32')
-
         self.op_type = 'retinanet_detection_output'
         self.inputs = {
-            'BBoxes': self.box_list,
-            'Scores': self.score_list,
-            'Anchors': self.anchor_list,
+            'BBoxes': [('b0', self.bboxes_list[0]), ('b1', self.bboxes_list[1]),
+                       ('b2', self.bboxes_list[2]), ('b3', self.bboxes_list[3]),
+                       ('b4', self.bboxes_list[4])],
+            'Scores': [('s0', self.scores_list[0]), ('s1', self.scores_list[1]),
+                       ('s2', self.scores_list[2]), ('s3', self.scores_list[3]),
+                       ('s4', self.scores_list[4])],
+            'Anchors':
+            [('a0', self.anchors_list[0]), ('a1', self.anchors_list[1]),
+             ('a2', self.anchors_list[2]), ('a3', self.anchors_list[3]),
+             ('a4', self.anchors_list[4])],
             'ImInfo': (self.im_info, [[1, ]])
         }
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
-            'min_level': self.min_level,
-            'max_level': self.max_level,
             'score_threshold': self.score_threshold,
             'nms_top_k': self.nms_top_k,
             'nms_threshold': self.nms_threshold,
@@ -369,7 +297,73 @@ class TestRetinanetDetectionOutOp1(OpTest):
         self.check_output()
 
 
-class TestRetinanetDetectionOutOpNo2(TestRetinanetDetectionOutOp1):
+class TestRetinanetDetectionOutOp2(OpTest):
+    def set_argument(self):
+        self.score_threshold = 0.05
+        self.min_level = 3
+        self.max_level = 7
+        self.nms_threshold = 0.3
+        self.nms_top_k = 1000
+        self.keep_top_k = 200
+
+        self.scales_per_octave = 3
+        self.aspect_ratios = [1.0, 2.0, 0.5]
+        self.anchor_scale = 4
+        self.anchor_strides = [8, 16, 32, 64, 128]
+
+        self.box_size = 4
+        self.class_num = 80
+        self.batch_size = 1
+        self.input_channels = 20
+
+    def init_test_input(self):
+        anchor_num = len(self.aspect_ratios) * self.scales_per_octave
+        num_levels = self.max_level - self.min_level + 1
+        self.scores_list = []
+        self.bboxes_list = []
+        self.anchors_list = []
+
+        # Here test the case there the shape of each FPN level
+        # is irrelevant.
+        layer_hs = [1, 4, 8, 8, 16]
+        layer_ws = [1, 4, 8, 8, 16]
+        for i in range(num_levels):
+            layer_h = layer_hs[i]
+            layer_w = layer_ws[i]
+
+            input_feat = np.random.random((self.batch_size, self.input_channels,
+                                           layer_h, layer_w)).astype('float32')
+            score = np.random.random(
+                (self.batch_size, self.class_num * anchor_num, layer_h,
+                 layer_w)).astype('float32')
+            score = np.transpose(score, [0, 2, 3, 1])
+            score = score.reshape((self.batch_size, -1, self.class_num))
+            box = np.random.random((self.batch_size, self.box_size * anchor_num,
+                                    layer_h, layer_w)).astype('float32')
+            box = np.transpose(box, [0, 2, 3, 1])
+            box = box.reshape((self.batch_size, -1, self.box_size))
+            anchor_sizes = []
+            for octave in range(self.scales_per_octave):
+                anchor_sizes.append(
+                    float(self.anchor_strides[i] * (2**octave)) /
+                    float(self.scales_per_octave) * self.anchor_scale)
+            anchor, var = anchor_generator_in_python(
+                input_feat=input_feat,
+                anchor_sizes=anchor_sizes,
+                aspect_ratios=self.aspect_ratios,
+                variances=[1.0, 1.0, 1.0, 1.0],
+                stride=[self.anchor_strides[i], self.anchor_strides[i]],
+                offset=0.5)
+            anchor = np.reshape(anchor, [-1, 4])
+            self.scores_list.append(score.astype('float32'))
+            self.bboxes_list.append(box.astype('float32'))
+            self.anchors_list.append(anchor.astype('float32'))
+
+        self.im_info = np.array([[256., 256., 1.5]]).astype(
+            'float32')  #im_height, im_width, scale
+
+
+class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
     def set_argument(self):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
@@ -391,7 +385,7 @@ class TestRetinanetDetectionOutOpNo2(TestRetinanetDetectionOutOp1):
         self.input_channels = 20
 
 
-class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
+class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 2
@@ -410,8 +404,43 @@ class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
         self.batch_size = 1
         self.input_channels = 20
 
+    def setUp(self):
+        self.set_argument()
+        self.init_test_input()
 
-class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
+        nmsed_outs, lod = batched_retinanet_detection_out(
+            self.bboxes_list, self.scores_list, self.anchors_list, self.im_info,
+            self.score_threshold, self.nms_threshold, self.nms_top_k,
+            self.keep_top_k)
+        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
+        nmsed_outs = np.array(nmsed_outs).astype('float32')
+        self.op_type = 'retinanet_detection_output'
+        self.inputs = {
+            'BBoxes':
+            [('b0', self.bboxes_list[0]), ('b1', self.bboxes_list[1]),
+             ('b2', self.bboxes_list[2]), ('b3', self.bboxes_list[3])],
+            'Scores': [('s0', self.scores_list[0]), ('s1', self.scores_list[1]),
+                       ('s2', self.scores_list[2]),
+                       ('s3', self.scores_list[3])],
+            'Anchors':
+            [('a0', self.anchors_list[0]), ('a1', self.anchors_list[1]),
+             ('a2', self.anchors_list[2]), ('a3', self.anchors_list[3])],
+            'ImInfo': (self.im_info, [[1, ]])
+        }
+        self.outputs = {'Out': (nmsed_outs, [lod])}
+        self.attrs = {
+            'score_threshold': self.score_threshold,
+            'nms_top_k': self.nms_top_k,
+            'nms_threshold': self.nms_threshold,
+            'keep_top_k': self.keep_top_k,
+            'nms_eta': 1.,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestRetinanetDetectionOutOpNo5(TestRetinanetDetectionOutOp1):
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3

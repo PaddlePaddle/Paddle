@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detection/poly_util.h"
 
 namespace paddle {
 namespace operators {
@@ -26,15 +25,21 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("BBoxes"),
+    PADDLE_ENFORCE_GE(
+        ctx->Inputs("BBoxes").size(), 1UL,
         "Input(BBoxes) of RetinanetDetectionOutput should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("Scores"),
+    PADDLE_ENFORCE_GE(
+        ctx->Inputs("Scores").size(), 1UL,
         "Input(Scores) of RetinanetDetectionOutput should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("Anchors"),
+    PADDLE_ENFORCE_GE(
+        ctx->Inputs("Anchors").size(), 1UL,
         "Input(Anchors) of RetinanetDetectionOutput should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->Inputs("BBoxes").size(), ctx->Inputs("Scores").size(),
+        "Input tensors(BBoxes and Scores) should have the same size.");
+    PADDLE_ENFORCE_EQ(
+        ctx->Inputs("BBoxes").size(), ctx->Inputs("Anchors").size(),
+        "Input tensors(BBoxes and Anchors) should have the same size.");
     PADDLE_ENFORCE(
         ctx->HasInput("ImInfo"),
         "Input(ImInfo) of RetinanetDetectionOutput should not be null");
@@ -42,28 +47,38 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"),
         "Output(Out) of RetinanetDetectionOutput should not be null.");
 
-    auto box_dims = ctx->GetInputDim("BBoxes");
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto anchor_dims = ctx->GetInputDim("Anchors");
+    auto bboxes_dims = ctx->GetInputsDim("BBoxes");
+    auto scores_dims = ctx->GetInputsDim("Scores");
+    auto anchors_dims = ctx->GetInputsDim("Anchors");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
+    const size_t b_n = bboxes_dims.size();
+    PADDLE_ENFORCE_GT(b_n, 0, "Input bbox tensors count should > 0.");
+    const size_t s_n = scores_dims.size();
+    PADDLE_ENFORCE_GT(s_n, 0, "Input score tensors count should > 0.");
+    const size_t a_n = anchors_dims.size();
+    PADDLE_ENFORCE_GT(a_n, 0, "Input anchor tensors count should > 0.");
+
+    auto bbox_dims = bboxes_dims[0];
+    auto score_dims = scores_dims[0];
+    auto anchor_dims = anchors_dims[0];
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                         "The rank of Input(Scores) must be 3");
-      PADDLE_ENFORCE_EQ(box_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(bbox_dims.size(), 3,
                         "The rank of Input(BBoxes) must be 3");
       PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
                         "The rank of Input(Anchors) must be 2");
-      PADDLE_ENFORCE(box_dims[2] == 4,
+      PADDLE_ENFORCE(bbox_dims[2] == 4,
                      "The last dimension of Input(BBoxes) must be 4, "
                      "represents the layout of coordinate "
                      "[xmin, ymin, xmax, ymax]");
-      PADDLE_ENFORCE_EQ(box_dims[1], score_dims[1],
+      PADDLE_ENFORCE_EQ(bbox_dims[1], score_dims[1],
                         "The 2nd dimension of Input(BBoxes) must be equal to "
                         "2nd dimension of Input(Scores), which represents the "
                         "number of the predicted boxes.");
 
-      PADDLE_ENFORCE_EQ(anchor_dims[0], box_dims[1],
+      PADDLE_ENFORCE_EQ(anchor_dims[0], bbox_dims[1],
                         "The 1st dimension of Input(Anchors) must be equal to "
                         "2nd dimension of Input(BBoxes), which represents the "
                         "number of the predicted boxes.");
@@ -72,14 +87,17 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
-    ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
+    ctx->SetOutputDim("Out", {bbox_dims[1], bbox_dims[2] + 2});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>("Scores")->type(), platform::CPUPlace());
+    auto input_data_type =
+        framework::GetDataTypeOfVar(ctx.MultiInputVar("Scores")[0]);
+
+    return framework::OpKernelType(input_data_type,
+                                   platform::CPUPlace());  // ctx.GetPlace());
   }
 };
 
@@ -302,42 +320,27 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void RetinanetDetectionOutput(const framework::ExecutionContext& ctx,
-                                const Tensor& scores, const Tensor& bboxes,
-                                const Tensor* anchors, const Tensor& im_info,
+                                const std::vector<Tensor>& scores,
+                                const std::vector<Tensor>& bboxes,
+                                const std::vector<Tensor>& anchors,
+                                const Tensor& im_info,
                                 std::vector<std::vector<T>>* nmsed_out,
                                 int* num_nmsed_out) const {
-    int64_t min_level = ctx.Attr<int>("min_level");
-    int64_t max_level = ctx.Attr<int>("max_level");
     int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
     int64_t keep_top_k = ctx.Attr<int>("keep_top_k");
     T nms_threshold = static_cast<T>(ctx.Attr<float>("nms_threshold"));
     T nms_eta = static_cast<T>(ctx.Attr<float>("nms_eta"));
     T score_threshold = static_cast<T>(ctx.Attr<float>("score_threshold"));
 
-    int64_t class_num = scores.dims()[1];
-    // The number of total boxes from all FPN level
-    int64_t total_cell_num = bboxes.numel() / bboxes.dims()[1];
-    int64_t factors = 0;
-    for (int64_t l = min_level; l < (max_level + 1); ++l) {
-      factors += std::pow(2, max_level - l) * std::pow(2, max_level - l);
-    }
-    // The number of boxes from the highest FPN level
-    int64_t coarsest_cell_num = total_cell_num / factors;
+    int64_t class_num = scores[0].dims()[1];
     std::map<int, std::vector<std::vector<T>>> preds;
-    int begin_idx = 0;
-    int end_idx = 0;
-    for (int64_t l = min_level; l < (max_level + 1); ++l) {
-      int factor = std::pow(2, max_level - l);
-      // The box number of the l-th level is 4**(max_level - l) times of
-      // that of the highest FPN level
-      begin_idx = end_idx;
-      end_idx = begin_idx + coarsest_cell_num * factor * factor;
+    for (size_t l = 0; l < scores.size(); ++l) {
       // Fetch per level score
-      Tensor scores_per_level = scores.Slice(begin_idx, end_idx);
+      Tensor scores_per_level = scores[l];
       // Fetch per level bbox
-      Tensor bboxes_per_level = bboxes.Slice(begin_idx, end_idx);
+      Tensor bboxes_per_level = bboxes[l];
       // Fetch per level anchor
-      Tensor anchors_per_level = anchors->Slice(begin_idx, end_idx);
+      Tensor anchors_per_level = anchors[l];
 
       int64_t scores_num = scores_per_level.numel();
       int64_t bboxes_num = bboxes_per_level.numel();
@@ -351,7 +354,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       std::vector<std::pair<T, int>> sorted_indices;
 
       // For the highest level, we take the threshold 0.0
-      T threshold = (l < max_level ? score_threshold : 0.0);
+      T threshold = (l < (scores.size() - 1) ? score_threshold : 0.0);
       GetMaxScoreIndex(scores_data, threshold, nms_top_k, &sorted_indices);
       auto* im_info_data = im_info.data<T>();
       auto im_height = im_info_data[0];
@@ -372,7 +375,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     int count = 0;
     int64_t out_dim = 6;
     for (size_t i = 0; i < nmsed_out.size(); ++i) {
-      odata[count * out_dim] = nmsed_out[i][0];      // label
+      odata[count * out_dim] = nmsed_out[i][0] + 1;  // label
       odata[count * out_dim + 1] = nmsed_out[i][1];  // score
       odata[count * out_dim + 2] = nmsed_out[i][2];  // xmin
       odata[count * out_dim + 3] = nmsed_out[i][3];  // xmin
@@ -383,31 +386,47 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* boxes = ctx.Input<Tensor>("BBoxes");
-    auto* scores = ctx.Input<Tensor>("Scores");
-    auto* anchors = ctx.Input<Tensor>("Anchors");
+    auto boxes = ctx.MultiInput<Tensor>("BBoxes");
+    auto scores = ctx.MultiInput<Tensor>("Scores");
+    auto anchors = ctx.MultiInput<Tensor>("Anchors");
     auto* im_info = ctx.Input<LoDTensor>("ImInfo");
     auto* outs = ctx.Output<LoDTensor>("Out");
 
-    auto score_dims = scores->dims();
+    std::vector<Tensor> boxes_list(boxes.size());
+    std::vector<Tensor> scores_list(scores.size());
+    std::vector<Tensor> anchors_list(anchors.size());
+    for (size_t j = 0; j < boxes_list.size(); ++j) {
+      boxes_list[j] = *boxes[j];
+      scores_list[j] = *scores[j];
+      anchors_list[j] = *anchors[j];
+    }
+    auto score_dims = scores_list[0].dims();
+    int64_t batch_size = score_dims[0];
+    auto box_dims = boxes_list[0].dims();
+    int64_t box_dim = box_dims[2];
+    int64_t out_dim = box_dim + 2;
+
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
 
     std::vector<std::vector<std::vector<T>>> all_nmsed_out;
     std::vector<size_t> batch_starts = {0};
-    int64_t batch_size = score_dims[0];
-    int64_t box_dim = boxes->dims()[2];
-    int64_t out_dim = box_dim + 2;
     for (int i = 0; i < batch_size; ++i) {
       int num_nmsed_out = 0;
-      Tensor scores_slice = scores->Slice(i, i + 1);
-      scores_slice.Resize({score_dims[1], score_dims[2]});
-      Tensor boxes_slice = boxes->Slice(i, i + 1);
-      boxes_slice.Resize({score_dims[1], box_dim});
+      std::vector<Tensor> box_per_batch_list(boxes_list.size());
+      std::vector<Tensor> score_per_batch_list(scores_list.size());
+      for (size_t j = 0; j < boxes_list.size(); ++j) {
+        auto score_dims = scores_list[j].dims();
+        score_per_batch_list[j] = scores_list[j].Slice(i, i + 1);
+        score_per_batch_list[j].Resize({score_dims[1], score_dims[2]});
+        box_per_batch_list[j] = boxes_list[j].Slice(i, i + 1);
+        box_per_batch_list[j].Resize({score_dims[1], box_dim});
+      }
       Tensor im_info_slice = im_info->Slice(i, i + 1);
 
       std::vector<std::vector<T>> nmsed_out;
-      RetinanetDetectionOutput(ctx, scores_slice, boxes_slice, anchors,
-                               im_info_slice, &nmsed_out, &num_nmsed_out);
+      RetinanetDetectionOutput(ctx, score_per_batch_list, box_per_batch_list,
+                               anchors_list, im_info_slice, &nmsed_out,
+                               &num_nmsed_out);
       all_nmsed_out.push_back(nmsed_out);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
@@ -441,29 +460,32 @@ class RetinanetDetectionOutputOpMaker
  public:
   void Make() override {
     AddInput("BBoxes",
-             "(Tensor) A 3-D Tensor with shape [N, M, 4] represents the "
-             "predicted locations of M bounding boxes, N is the batch size. "
-             "M is the number of bounding boxes from all FPN level. Each "
+             "(List) A list of tensors from multiple FPN levels. Each "
+             "element is a 3-D Tensor with shape [N, Mi, 4] represents the "
+             "predicted locations of Mi bounding boxes, N is the batch size. "
+             "Mi is the number of bounding boxes from i-th FPN level. Each "
              "bounding box has four coordinate values and the layout is "
-             "[xmin, ymin, xmax, ymax].");
+             "[xmin, ymin, xmax, ymax].")
+        .AsDuplicable();
     AddInput("Scores",
-             "(Tensor) A 3-D Tensor with shape [N, M, C] represents the "
-             "predicted confidence predictions. N is the batch size, C is the "
-             "class number, M is the number of bounding boxes from all FPN "
-             "level. For each bounding box, there are total C scores.");
+             "(List) A list of tensors from multiple FPN levels. Each "
+             "element is a 3-D Tensor with shape [N, Mi, C] represents the "
+             "predicted confidence from its FPN level. N is the batch size, "
+             "C is the class number (excluding background), Mi is the number "
+             "of bounding boxes from i-th FPN level. For each bounding box, "
+             "there are total C scores.")
+        .AsDuplicable();
     AddInput("Anchors",
-             "(Tensor) A 2-D Tensor with shape [M, 4] represents the locations "
-             "of M anchor bboxes from all FPN level. "
-             "Each bounding box has four coordinate values and the layout is "
-             "[xmin, ymin, xmax, ymax].");
+             "(List) A list of tensors from multiple FPN levels. Each"
+             "element is a 2-D Tensor with shape [Mi, 4] represents the "
+             "locations of Mi anchor bboxes from i-th FPN level. Each "
+             "bounding box has four coordinate values and the layout is "
+             "[xmin, ymin, xmax, ymax].")
+        .AsDuplicable();
     AddInput("ImInfo",
              "(LoDTensor) A 2-D LoDTensor with shape [N, 3] represents the "
              "image information. N is the batch size, each image information "
              "includes height, width and scale.");
-    AddAttr<int>("min_level",
-                 "The lowest level of FPN layer where the boxes come from.");
-    AddAttr<int>("max_level",
-                 "The highest level of FPN layer where the boxes come from.");
     AddAttr<float>("score_threshold",
                    "(float) "
                    "Threshold to filter out bounding boxes with a confidence "
@@ -495,12 +517,7 @@ class RetinanetDetectionOutputOpMaker
 This operator is to decode boxes and scores from each FPN layer and do
 multi-class non maximum suppression (NMS) on merged predictions.
 
-Firstly, input bounding box predictions are divided into box predictions per
-FPN level, according to that the box number of the i-th level is
-4**(max_level-i) times of that of the highest FPN level, where `max_level`
-is the highest level of FPN layer where the boxes come from.
-
-Next, top-scoring predictions per FPN layer are decoded with the anchor
+Top-scoring predictions per FPN layer are decoded with the anchor
 information. This operator greedily selects a subset of detection bounding
 boxes from each FPN layer that have high scores larger than score_threshold,
 if providing this threshold, then selects the largest nms_top_k confidences

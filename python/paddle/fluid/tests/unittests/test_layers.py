@@ -2010,12 +2010,10 @@ class TestBook(LayerTest):
             im_info = layers.data(
                 name="im_info", shape=[3], dtype='float32', lod_level=1)
             nmsed_outs = layers.retinanet_detection_output(
-                bboxes=bboxes,
-                scores=scores,
-                anchors=anchors,
+                bboxes=[bboxes, bboxes],
+                scores=[scores, scores],
+                anchors=[anchors, anchors],
                 im_info=im_info,
-                min_level=3,
-                max_level=5,
                 score_threshold=0.05,
                 nms_top_k=1000,
                 keep_top_k=100,
