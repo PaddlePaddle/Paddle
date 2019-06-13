@@ -62,24 +62,35 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
 
             // force unsigned type if already know it
             bool is_unsigned = false;
-            if (is_output && op->Type() == "conv2d") {
-              // output of conv2d with relu must be unsigned
-              is_unsigned = (op->HasAttr("fuse_relu") &&
-                             boost::get<bool>(op->GetAttr("fuse_relu"))) ||
-                            (op->HasAttr("fuse_brelu") &&
-                             boost::get<bool>(op->GetAttr("fuse_brelu")));
-            } else if (is_output && op->Type() == "relu") {
-              is_unsigned = true;
-            } else if (is_output &&
-                       (op->Type() == "pool2d" || op->Type() == "transpose2" ||
-                        op->Type() == "reshape2" || op->Type() == "concat")) {
-              // output of ops with unsigned input must be unsigned
-              is_unsigned = true;
-              for (auto input_var_name : op->Input("X")) {
+            if (is_output) {
+              if (op->Type() == "conv2d") {
+                // output of conv2d with relu must be unsigned
+                is_unsigned = (op->HasAttr("fuse_relu") &&
+                               boost::get<bool>(op->GetAttr("fuse_relu"))) ||
+                              (op->HasAttr("fuse_brelu") &&
+                               boost::get<bool>(op->GetAttr("fuse_brelu")));
+              } else if (op->Type() == "relu") {
+                is_unsigned = true;
+              } else if ((op->Type() == "transpose2" ||
+                          op->Type() == "reshape2" || op->Type() == "concat")) {
+                // output of ops with unsigned input must be unsigned
+                is_unsigned = true;
+                for (auto input_var_name : op->Input("X")) {
+                  PADDLE_ENFORCE(
+                      scales_.find(input_var_name) != scales_.end(),
+                      "Input scales must be calculated before the "
+                      "output scales to infer if output is unsigned.");
+                  is_unsigned = is_unsigned && scales_[input_var_name].first;
+                }
+              } else if (op->Type() == "pool2d") {
+                auto input_var_name = op->Input("X")[0];
                 PADDLE_ENFORCE(scales_.find(input_var_name) != scales_.end(),
                                "Input scales must be calculated before the "
                                "output scales to infer if output is unsigned.");
-                is_unsigned = is_unsigned && scales_[input_var_name].first;
+                if (scales_.find(input_var_name) != scales_.end()) {
+                  scales_[var_name] = scales_[input_var_name];
+                  continue;
+                }
               }
             }
 
