@@ -44,6 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -163,6 +164,8 @@ PYBIND11_MODULE(core_noavx, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def(
       "_append_python_callable_object_and_return_id",

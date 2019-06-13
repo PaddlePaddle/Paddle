@@ -3,7 +3,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 function(inference_analysis_python_api_int8_test target model_dir data_dir filename)
     py_test(${target} SRCS ${filename}
-        ENVS OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+        ENVS CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
         ARGS --infer_model ${model_dir}/model
              --infer_data ${data_dir}/data.bin
              --int8_model_save_path int8_models/${target}
