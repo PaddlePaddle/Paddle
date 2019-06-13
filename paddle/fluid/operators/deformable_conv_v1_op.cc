@@ -75,20 +75,18 @@ Compute 2-D deformable convolution on 4-D input.
 Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
 
 $$
-y(p) = \\sum_{k=1}^{K}{w_k * x(p + p_k + \\Delta p_k) * \\Delta m_k}
+y(p) = \\sum_{k=1}^{K}{w_k * x(p + p_k + \\Delta p_k)}
 $$
 
-Where $$\\Delta p_k$$ and $$\Delta m_k$$ are the learnable offset and modulation scalar for the k-th location, respectively.
+Where $$\\Delta p_k$$ is the learnable offset for the k-th location, respectively.
 
-Refer to 'Deformable ConvNets v2: More Deformable, Better Results
-'<https://arxiv.org/abs/1811.11168v2>
+Refer to 'https://arxiv.org/abs/1703.06211 '<https://arxiv.org/abs/1703.06211>
 
 Example:
   Input:
        Input shape: $(N, C_{in}, H_{in}, W_{in})$
        Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
        Offset shape: $(N, 2 * deformable_groups, * H_f * W_f, H_{out}, W_{out})$
-       Mask shape: $(N, deformable_groups * H_f * W_f, H_{out}, W_{out})$
   Output:
        Output shape: $(N, C_{out}, H_{out}, W_{out})$
                      where $H_{out}, W_{out}$ must be equal to $H_{in}, W_{in}$ respectively.
