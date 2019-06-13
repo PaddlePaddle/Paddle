@@ -16,6 +16,8 @@ limitations under the License. */
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
+DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -48,7 +50,8 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    if (!FLAGS_disable_mkldnn_fc)
+      cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
   std::vector<std::vector<PaddleTensor>> outputs;
 
@@ -80,7 +83,8 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    if (!FLAGS_disable_mkldnn_fc)
+      cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
