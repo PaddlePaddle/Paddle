@@ -156,7 +156,6 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   size_t num_objects = 0UL;
   std::vector<size_t> accum_lod;
   accum_lod.push_back(0UL);
-  int count = 0;
   for (int i = 0; i < batches; i++) {
     std::transform(test_data[i][1].lod[0].begin() + 1,
                    test_data[i][1].lod[0].end(), std::back_inserter(accum_lod),
@@ -164,9 +163,7 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                      return lodtemp + num_objects;
                    });
     num_objects += test_data[i][1].lod[0][test_data_batch_size];
-    count = count + 1;
   }
-  std::cout << "count: " << std::endl;
   if (batch_remain > 0) {
     std::transform(test_data[batches][1].lod[0].begin() + 1,
                    test_data[batches][1].lod[0].begin() + batch_remain + 1,
