@@ -4499,7 +4499,7 @@ def lstm_unit(x_t,
 
             i_t = \sigma(L_{i_t})
 
-    This layer has two outputs including :math:`h_t` and :math:`o_t`.
+    This layer has two outputs including :math:`h_t` and :math:`c_t`.
 
     Args:
         x_t (Variable): The input value of current step, a 2-D tensor with shape
