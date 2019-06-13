@@ -1989,28 +1989,6 @@ class TestBook(LayerTest):
                     padding=1)
                 return (out)
 
-    def test_sigmoid_focal_loss(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = layers.data(
-                name='data',
-                shape=[10, 80],
-                append_batch_size=False,
-                dtype='float32')
-            label = layers.data(
-                name='label',
-                shape=[10, 1],
-                append_batch_size=False,
-                dtype='int32')
-            fg_num = layers.data(
-                name='fg_num',
-                shape=[1],
-                append_batch_size=False,
-                dtype='int32')
-            out = fluid.layers.sigmoid_focal_loss(
-                x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
-            return (out)
-
     def test_unfold(self):
         with self.static_graph():
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
@@ -2045,6 +2023,28 @@ class TestBook(LayerTest):
                 sample_per_part=4,
                 trans_std=0.1)
         return (out)
+
+    def test_sigmoid_focal_loss(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='data',
+                shape=[10, 80],
+                append_batch_size=False,
+                dtype='float32')
+            label = layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='int32')
+            fg_num = layers.data(
+                name='fg_num',
+                shape=[1],
+                append_batch_size=False,
+                dtype='int32')
+            out = fluid.layers.sigmoid_focal_loss(
+                x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
+            return (out)
 
 
 if __name__ == '__main__':
