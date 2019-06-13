@@ -33,14 +33,12 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name mkl_debug)
-    if(mkl_debug) 
-        set(MKL_DEBUG_FLAG MKL_DEBUG_CPU_TYPE=7)
-    endif()
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name disable_fc)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model)
+        ARGS --infer_model=${install_dir}/model
+             --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
 function(inference_analysis_api_test_with_refer_result target install_dir filename)
@@ -218,7 +216,7 @@ download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_dat
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
 
 # anakin
-if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
+if (ANAKIN_FOUND AND WITH_MKL) # only needed in CI
     # anakin rnn1
     set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
     set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
