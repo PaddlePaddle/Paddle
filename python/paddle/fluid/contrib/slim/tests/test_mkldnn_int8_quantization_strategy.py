@@ -137,15 +137,14 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype("int64")
                 labels = labels.reshape([-1, 1])
-                fluid.core.set_omp_num_threads(
-                    int(os.environ['OMP_NUM_THREADS']))
+                fluid.core.set_num_threads(int(os.environ['CPU_NUM_THREADS']))
                 out = exe.run(inference_program,
                               feed={
                                   feed_target_names[0]: images,
                                   feed_target_names[1]: labels
                               },
                               fetch_list=fetch_targets)
-                fluid.core.set_omp_num_threads(1)
+                fluid.core.set_num_threads(1)
                 top1 += np.sum(out[1]) * len(data)
                 top5 += np.sum(out[2]) * len(data)
                 total_samples += len(data)
