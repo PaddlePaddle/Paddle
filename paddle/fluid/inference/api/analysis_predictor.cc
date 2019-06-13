@@ -195,11 +195,14 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 
 void AnalysisPredictor::SetMkldnnMode(int mode) {
 #ifdef PADDLE_WITH_MKLDNN
+#if 0
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
       dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place_));
 
   dev_ctx->SetMode(mode);
+#endif
+  platform::set_cur_thread_id(mode);
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
 #endif
