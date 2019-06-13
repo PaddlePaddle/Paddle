@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/lite/kernels/arm/mul_compute.h"
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <iostream>
 #include <memory>
+#include <random>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/lite/arm/math/funcs.h"
@@ -25,6 +28,17 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
+template <typename T>
+void FillData(T* a, const int n, const T lower = static_cast<T>(-2.f),
+              const T upper = static_cast<T>(2.f)) {
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
+  for (int i = 0; i < n; ++i) {
+    a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
+  }
+}
+
 TEST(mul_arm, retrive_op) {
   auto mul =
       KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("mul");
@@ -33,114 +47,100 @@ TEST(mul_arm, retrive_op) {
 }
 
 TEST(mul_arm, init) {
-  FcCompute mul;
+  MulCompute mul;
   ASSERT_EQ(mul.precision(), PRECISION(kFloat));
   ASSERT_EQ(mul.target(), TARGET(kARM));
 }
 
 TEST(mul_arm, compare_test) {
-  lite::Tensor x, w, b, out, ref;
-  constexpr int batch_size = 2;
-  x.Resize({batch_size, 3});
-  w.Resize({3, 4});
-  b.Resize({1, 4});
-  out.Resize({batch_size, 4});
-  ref.Resize({batch_size, 4});
+  using T = float;
 
-  auto x_data = x.mutable_data<float>();
-  auto w_data = w.mutable_data<float>();
-  auto b_data = b.mutable_data<float>();
-  auto out_data = out.mutable_data<float>();
-  auto ref_data = ref.mutable_data<float>();
+  for (int m : {1, 2, 3, 4}) {
+    for (int n : {1, 2, 3, 4}) {
+      for (int k : {1, 2, 3, 4}) {
+        lite::Tensor x, y, out, ref;
+        x.Resize({m, k});
+        y.Resize({k, n});
+        out.Resize({m, n});
+        ref.Resize({m, n});
 
-  for (int64_t i = 0; i < x.dims().product(); i++) {
-    x_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < w.dims().product(); i++) {
-    w_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < b.dims().product(); i++) {
-    b_data[i] = static_cast<float>(i);
-  }
+        auto* x_data = x.mutable_data<T>();
+        auto* y_data = y.mutable_data<T>();
+        auto* out_data = out.mutable_data<T>();
+        auto* ref_data = ref.mutable_data<T>();
 
-  lite::arm::math::fc_compute_eigen(x_data, batch_size, 3,  //
-                                    w_data, 3, 4,           //
-                                    b_data, ref_data);
+        FillData<T>(x_data, x.dims().production());
+        FillData<T>(y_data, y.dims().production());
+        FillData<T>(out_data, out.dims().production());
+        FillData<T>(ref_data, out.dims().production());
 
-  // mul compute kernel
-  FcCompute mul;
-  operators::FcParam param;
+        MulCompute mul;
+        operators::MulParam param;
 
-  param.in_num_col_dims = 1;
-  param.input = &x;
-  param.w = &w;
-  param.bias = &b;
-  param.output = &out;
-  param.in_mat_dims = x.dims();
+        param.x = &x;
+        param.y = &y;
+        param.output = &out;
 
-  DeviceInfo::Init();
-  std::unique_ptr<KernelContext> ctx(new KernelContext);
-  ctx->As<ARMContext>();
-  mul.SetParam(param);
-  mul.SetContext(std::move(ctx));
-  mul.Run();
+        DeviceInfo::Init();
+        std::unique_ptr<KernelContext> ctx(new KernelContext);
+        ctx->As<ARMContext>();
+        mul.SetParam(param);
+        mul.SetContext(std::move(ctx));
+        mul.PrepareForRun();
 
-  VLOG(3) << "output vs ref";
-  for (int i = 0; i < out.dims().product(); i++) {
-    VLOG(3) << out_data[i] << " vs " << ref_data[i];
-  }
+        mul.Run();
 
-  for (int i = 0; i < out.dims().product(); ++i) {
-    EXPECT_NEAR(out_data[i], ref_data[i], 1e-5);
+        lite::arm::math::mul_compute_eigen(x_data, m, k, y_data, k, n,
+                                           ref_data);
+        for (int i = 0; i < out.dims().production(); i++) {
+          EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
+        }
+      }
+    }
   }
 }
 
 TEST(mul_arm, num_col_dims) {
-  FcCompute mul;
-  operators::FcParam param;
+  using T = float;
 
-  lite::Tensor x;
-  lite::Tensor w;
-  lite::Tensor bias;
-  lite::Tensor output;
+  lite::Tensor x, y, out, ref;
+  x.Resize({2, 3, 4});
+  y.Resize({3, 4, 5});
+  out.Resize({2, 5});
+  ref.Resize({2, 5});
 
-  x.Resize({1, 2, 3});
-  w.Resize({3, 4});
-  bias.Resize({1, 4});
-  output.Resize({2, 4});
+  auto* x_data = x.mutable_data<T>();
+  auto* y_data = y.mutable_data<T>();
+  auto* out_data = out.mutable_data<T>();
+  auto* ref_data = ref.mutable_data<T>();
 
-  auto* x_data = x.mutable_data<float>();
-  auto* w_data = w.mutable_data<float>();
-  auto* bias_data = bias.mutable_data<float>();
-  auto* output_data = output.mutable_data<float>();
+  FillData<T>(x_data, x.dims().production());
+  FillData<T>(y_data, y.dims().production());
+  FillData<T>(out_data, out.dims().production());
+  FillData<T>(ref_data, out.dims().production());
 
-  for (int64_t i = 0; i < x.dims().product(); i++) {
-    x_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < w.dims().product(); i++) {
-    w_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < bias.dims().product(); i++) {
-    bias_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < output.dims().product(); i++) {
-    output_data[i] = static_cast<float>(i);
-  }
+  MulCompute mul;
+  operators::MulParam param;
 
-  param.in_num_col_dims = 2;
-  param.input = &x;
-  param.w = &w;
-  param.bias = &bias;
-  param.output = &output;
-  param.in_mat_dims = x.dims();
+  param.x = &x;
+  param.y = &y;
+  param.output = &out;
+  param.x_num_col_dims = 1;
+  param.y_num_col_dims = 2;
 
+  DeviceInfo::Init();
   std::unique_ptr<KernelContext> ctx(new KernelContext);
   ctx->As<ARMContext>();
-  DeviceInfo::Init();
-
   mul.SetParam(param);
   mul.SetContext(std::move(ctx));
+  mul.PrepareForRun();
+
   mul.Run();
+
+  lite::arm::math::mul_compute_eigen(x_data, 2, 12, y_data, 12, 5, ref_data);
+  for (int i = 0; i < out.dims().production(); i++) {
+    EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
+  }
 }
 
 }  // namespace arm
