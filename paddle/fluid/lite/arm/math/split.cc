@@ -52,10 +52,10 @@ void split_cpy<float>(const float* din, float* dout, int num) {
 }
 
 template <>
-void split<float>(const float* din, std::vector<lite::Tensor*>* dout,
+void split<float>(const float* din, const std::vector<lite::Tensor*>& dout,
                   const int axis, const std::vector<int>& in_strides) {
   int input_offset = 0;
-  for (auto out : *dout) {
+  for (auto out : dout) {
     auto out_dim = out->dims();
     std::vector<int> out_strides(out_dim.size());
     out_strides[out_dim.size() - 1] = out_dim[out_dim.size() - 1];
