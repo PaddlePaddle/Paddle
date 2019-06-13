@@ -567,16 +567,20 @@ class TestDistBase(unittest.TestCase):
         ps1.terminate()
 
         # print server log
-        with open("/tmp/ps0_err.log", "r") as fn:
+        '''
+        with open("/tmp/ps0_err.log", "rb") as fn:
             sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "r") as fn:
+        with open("/tmp/ps1_err.log", "rb") as fn:
             sys.stderr.write("ps1 stderr: %s\n" % fn.read())
+        '''
 
         # print log
-        with open("/tmp/tr0_err.log", "r") as fn:
+        '''
+        with open("/tmp/tr0_err.log", "rb") as fn:
             sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        with open("/tmp/tr1_err.log", "r") as fn:
+        with open("/tmp/tr1_err.log", "rb") as fn:
             sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
+        '''
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
