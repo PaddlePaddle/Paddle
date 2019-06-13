@@ -178,10 +178,10 @@ struct DropoutParam {
 // For Split op
 struct SplitParam {
   lite::Tensor* x{};
-  std::vector<lite::Tensor*>* output{};
+  std::vector<lite::Tensor*> output{};
   int axis{-1};
   int num{0};
-  std::vector<int>* sections;
+  std::vector<int> sections;
 };
 
 /// ----------------------- element wise operators ----------------------
