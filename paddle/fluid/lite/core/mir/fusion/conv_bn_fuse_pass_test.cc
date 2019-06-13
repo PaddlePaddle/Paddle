@@ -118,10 +118,11 @@ TEST(pattern_matcher2, test) {
   std::vector<Place> places{{TARGET(kHost), PRECISION(kFloat)}};
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
-  Visualize(graph.get());
+  const int num_nodes = graph->nodes().size();
   auto* fuser = new ConvBNFusePass;
   fuser->Apply(graph);
-  Visualize(graph.get());
+  ASSERT_EQ(graph->nodes().size(),
+            num_nodes - 8UL /*nodes removed */ + 1UL /* eltwise_add node*/);
 }
 
 }  // namespace fusion

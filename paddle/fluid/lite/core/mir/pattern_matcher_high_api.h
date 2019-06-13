@@ -64,7 +64,6 @@ class FuseBase {
   // Delete nodes that are marked as Intermediate
   void DeleteInterNodes(SSAGraph* graph);
 
- private:
   PMNode* GetOrCreateNode(const std::string& key);
 
  protected:

@@ -22,25 +22,25 @@ cc_library(pool_op_lite SRCS pool_op.cc DEPS ${op_DEPS})
 cc_library(batch_norm_op_lite SRCS batch_norm.cc DEPS ${op_DEPS})
 
 set(ops_lite
-        fc_op_lite
-        relu_op_lite
-        mul_op_lite
-        scale_op_lite
-        softmax_op_lite
-        reshape_op_lite
-        feed_op_lite
-        fetch_op_lite
-        io_copy_op_lite
-        elementwise_ops_lite
-        mean_op_lite
-        fill_constant_op_lite
-        activation_ops_lite
-        dropout_op_lite
-        concat_op_lite
-        conv_op_lite
-        pool_op_lite
-        batch_norm_op_lite
-        PARENT_SCOPE)
+    fc_op_lite
+    relu_op_lite
+    mul_op_lite
+    scale_op_lite
+    softmax_op_lite
+    reshape_op_lite
+    feed_op_lite
+    fetch_op_lite
+    io_copy_op_lite
+    elementwise_ops_lite
+    mean_op_lite
+    fill_constant_op_lite
+    activation_ops_lite
+    dropout_op_lite
+    concat_op_lite
+    conv_op_lite
+    pool_op_lite
+    batch_norm_op_lite
+    CACHE INTERNAL "ops lite")
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
              DEPS fc_op_lite memory_lite 
