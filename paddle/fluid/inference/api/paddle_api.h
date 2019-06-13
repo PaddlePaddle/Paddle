@@ -277,6 +277,8 @@ class PaddlePredictor {
     return "NotImplemented";
   }
 
+  virtual void SetMkldnnMode(int mode) {}
+
   /** The common configs for all the predictors.
    */
   struct Config {
