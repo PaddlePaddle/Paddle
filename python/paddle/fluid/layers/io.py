@@ -18,6 +18,7 @@ import multiprocessing
 import os
 import six
 import threading
+import logging
 
 from ..data_feeder import DataFeeder
 from .control_flow import BlockGuard
@@ -791,6 +792,8 @@ def py_reader(capacity,
          except fluid.core.EOFException:
              test_reader.reset()
     """
+    logging.warn(
+        "py_reader is deprecated. Please use fluid.io.PyReader() instead")
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -857,6 +860,9 @@ def create_py_reader_by_data(capacity,
              except fluid.core.EOFException:
                  reader.reset()
     """
+    logging.warn(
+        "create_py_reader_by_data is deprecated. Please use fluid.io.PyReader() instead"
+    )
     return _py_reader(
         capacity=capacity,
         shapes=None,
