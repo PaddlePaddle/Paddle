@@ -27,7 +27,7 @@ void splite_resize_out(const lite::Tensor* din,
                        const std::vector<lite::Tensor*>& dout, int axis,
                        int num, const std::vector<int>& sections) {
   auto in_dims = din->dims();
-  int outs_number;
+  int outs_number = dout.size();
 
   std::vector<lite::DDimLite> outs_dims;
   outs_dims.reserve(outs_number);
@@ -118,11 +118,11 @@ TEST(split_arm, compute) {
                 for (int i = 0; i < x.dims().production(); i++) {
                   x_data[i] = i;
                 }
-
                 for (auto out : output) delete out;
                 for (auto out : output_ref) delete out;
                 output.clear();
                 output_ref.clear();
+
                 int outs_number;
                 if (num > 0) {
                   outs_number = num;
@@ -133,7 +133,6 @@ TEST(split_arm, compute) {
                   output.push_back(new lite::Tensor);
                   output_ref.push_back(new lite::Tensor);
                 }
-
                 splite_resize_out(&x, output, axis, num, sections);
                 splite_resize_out(&x, output_ref, axis, num, sections);
                 param.x = &x;
