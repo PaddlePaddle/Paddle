@@ -42,6 +42,9 @@ DEFINE_int32(
 namespace paddle {
 namespace framework {
 namespace ir {
+// unit of the FLAGS_fuse_parameter_memory_size.
+static constexpr double kMB = 1048576.0;
+
 // SetFuseParameterGroupsSize and SetFuseParameterMemorySize are used in unit
 // test, because it is invalid that seting 'FLAGS_fuse_parameter_memory_size'
 // and 'FLAGS_fuse_parameter_groups_size' in unit test.
@@ -228,8 +231,8 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
       VLOG(10) << out.str()
                << ", group size:" << group_grads_params->at(i).size()
-               << ", group memory size:"
-               << static_cast<double>(gps_size) / 1048576.0 << "(MB)";
+               << ", group memory size:" << static_cast<double>(gps_size) / kMB
+               << "(MB)";
     }
   }
 
@@ -270,7 +273,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
           break;
         }
 
-        if (static_cast<double>(local_group_memory_size) / 1048576.0 >=
+        if (static_cast<double>(local_group_memory_size) / kMB >=
             group_memory_size) {
           break;
         }
