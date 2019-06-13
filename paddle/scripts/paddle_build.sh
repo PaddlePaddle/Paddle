@@ -52,10 +52,7 @@ function init() {
     fi
 }
 
-function cmake_gen() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-
+function cmake_base() {
     # build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
     # delete previous built whl packages
@@ -228,6 +225,7 @@ EOF
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
+        -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
@@ -249,6 +247,12 @@ EOF
         -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
         -DWITH_GRPC=${grpc_flag}
 
+}
+
+function cmake_gen() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cmake_base $1
 }
 
 function abort(){
@@ -289,6 +293,17 @@ function check_style() {
 #              Build
 #=================================================
 
+function build_base() {
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
+    make clean
+    make -j ${parallel_number}
+    make install -j `nproc`
+}
+
+
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -297,13 +312,7 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
-    parallel_number=`nproc`
-    if [[ "$1" != "" ]]; then
-      parallel_number=$1
-    fi
-    make clean
-    make -j ${parallel_number}
-    make install -j `nproc`
+    build_base $1
 }
 
 function build_mac() {
@@ -335,6 +344,25 @@ EOF
         fi
     fi
 }
+
+
+function combine_avx_noavx_build() {
+    mkdir -p ${PADDLE_ROOT}/build.noavx
+    cd ${PADDLE_ROOT}/build.noavx
+    WITH_AVX=OFF
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+
+    # build combined one
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
+    WITH_AVX=ON
+
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
 
 function run_brpc_test() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -645,9 +673,7 @@ function card_test() {
     set +m
 }
 
-function parallel_test() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
+function parallel_test_base() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -716,6 +742,12 @@ set +x
         fi
 set -ex
     fi
+}
+
+function parallel_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    parallel_test_base
 }
 
 function gen_doc_lib() {
@@ -815,7 +847,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install opencv-python && pip3 install /*.whl; apt-get install -f -y && \
+        pip3 install opencv-python x86cpu==0.4 && pip3 install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         ${PADDLE_VERSION} && \
@@ -968,6 +1000,13 @@ function main() {
         build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
         assert_api_spec_approvals
+        ;;
+      combine_avx_noavx)
+        combine_avx_noavx_build
+        ;;
+      combine_avx_noavx_build_and_test)
+        combine_avx_noavx_build
+        parallel_test_base
         ;;
       test)
         parallel_test
