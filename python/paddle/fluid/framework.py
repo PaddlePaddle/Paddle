@@ -743,7 +743,7 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate(".".join(self.name)),
+                name=unique_name.generate_with_ignorable_key(self.name),
                 dtype=self.dtype)
         else:
             return self
