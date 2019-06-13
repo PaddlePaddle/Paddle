@@ -59,46 +59,37 @@ struct BuildStrategy {
   enum class GradientScaleStrategy {
     kCoeffNumDevice = 0,
     kOne = 1,
+    // user can customize gradient scale to use, and just feed
+    // it into exe.run().
     kCustomized = 2,
-  };
-
-  enum class OptimizeStrategy {
-    // To be Implemented,bruteforce, recursive compute unused var names.
-    kBruteForce = 0,
-    kControlFlowGraph = 1,  // use cfg_graph algorithm, faster speed.
   };
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-  OptimizeStrategy strategy_{OptimizeStrategy::kControlFlowGraph};
 
   std::string debug_graphviz_path_{""};
 
-  bool fuse_elewise_add_act_ops_{false};
-
-  bool fuse_all_optimizer_ops_{false};
-
-  bool fuse_all_reduce_ops_{false};
-
   bool enable_backward_optimizer_op_deps_{false};
-
-  bool fuse_relu_depthwise_conv_{false};
-
-  bool sync_batch_norm_{false};
-
-  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
-  // to open them by default, we need to solve the fetch variable issue
-  bool memory_optimize_{false};
-
-  bool enable_inplace_{false};
-
   bool enable_sequential_execution_{false};
+  bool remove_unnecessary_lock_{true};
+  bool cache_runtime_context_{false};
 
+  // operator fusion
+  bool fuse_elewise_add_act_ops_{false};
+  bool fuse_all_optimizer_ops_{false};
+  bool fuse_all_reduce_ops_{false};
+  bool fuse_relu_depthwise_conv_{false};
   // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
   bool fuse_broadcast_ops_{false};
+  bool sync_batch_norm_{false};
+
+  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
+  // to open them by default, we need to solve the fetch variable issue
+  bool memory_optimize_{false};
+  bool enable_inplace_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
@@ -108,11 +99,11 @@ struct BuildStrategy {
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
-  bool remove_unnecessary_lock_{true};
 
-  bool cache_runtime_context_{false};
+  // TODO(paddle-dev): Add explanation about mkldnn_enabled_op_types_.
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
+  // NCCL config
   size_t nccl_comm_num_{1};
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396

@@ -1171,7 +1171,8 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is BOOL, allow_op_delay represents whether to delay the
                 communication operators to run, it may make the execution faster.
-                Note that in some models, allow_op_delay may cause program hang. Default False.)DOC")
+                Note that this option is invalid now, and it will be deprecated in
+                next version. Default False.)DOC")
       .def_property(
           "num_iteration_per_drop_scope",
           [](const ExecutionStrategy &self) {
