@@ -23,7 +23,7 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class SoftmaxOp : public OpLite {
+class SplitOp : public OpLite {
  public:
   SplitOp() {}
   explicit SplitOp(const std::string &op_type) : OpLite(op_type) {}
