@@ -49,6 +49,7 @@ class Optimizer {
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
+          "lite_fc_fuse_pass",              //
           "static_kernel_pick_pass",        //
           "variable_place_inference_pass",  //
           "argument_type_display_pass",     //

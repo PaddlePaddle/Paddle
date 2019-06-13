@@ -30,8 +30,6 @@ set(x86_kernels
     softmax_compute_x86
     dropout_compute_x86
     concat_compute_x86
-    conv_compute_x86 
-    pool_compute_x86  
-    )
-
-set(x86_kernels "${x86_kernels}" CACHE INTERNAL "x86 kernels")
+    conv_compute_x86
+    pool_compute_x86
+    CACHE INTERNAL "x86 kernels")

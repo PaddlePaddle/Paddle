@@ -45,10 +45,11 @@ PMNode &PMNode::operator>>(std::vector<PMNode *> &nodes) {
   return *this;
 }
 
-void operator>>(std::vector<PMNode *> &others, PMNode &me) {
+PMNode &operator>>(std::vector<PMNode *> &others, PMNode &me) {
   for (auto *o : others) {
     *o >> me;
   }
+  return me;
 }
 
 PMNode *PMPattern::NewNode(const std::string &name) {
@@ -420,6 +421,46 @@ PMNode *PMNode::assert_is_op_input(const std::string &op_type) {
     return false;
   });
   return this;
+}
+
+PMNode *PMNode::assert_is_op_input(const std::string &op_type,
+                                   const std::string &argument) {
+  assert_is_var();
+  assert_is_op_nth_input(op_type, argument, 0);
+  return this;
+}
+
+PMNode *PMNode::assert_is_op_nth_input(const std::string &op_type,
+                                       const std::string &argument, int nth) {
+  assert_is_var();
+  assert_is_op_input(op_type);
+  asserts_.emplace_back([=](const Node *x) {
+    for (auto *op : x->outlinks) {
+      if (op->IsStmt() && op->stmt()->op_info()->Type() == op_type &&
+          IsNthInput(*x, *op, argument, nth))
+        return true;
+    }
+    return false;
+  });
+  return this;
+}
+
+bool IsNthInput(const Node &var, const Node &op, const std::string &argument,
+                int nth) {
+  CHECK(var.IsArg());
+  CHECK(op.IsStmt());
+  if (!HasInput(op, argument) ||
+      static_cast<int>(op.stmt()->op_info()->Input(argument).size()) <= nth)
+    return false;
+  return var.arg()->name == op.stmt()->op_info()->Input(argument)[nth];
+}
+
+bool HasInput(const Node &op, const std::string &argument) {
+  CHECK(op.IsStmt());
+  auto const &names = op.stmt()->op_info()->input_argnames();
+  if (std::find(names.begin(), names.end(), argument) == names.end())
+    return false;
+  return true;
 }
 
 void GraphSafeRemoveNodes(SSAGraph *graph,
