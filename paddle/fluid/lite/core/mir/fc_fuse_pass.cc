@@ -12,28 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
+#include "paddle/fluid/lite/core/mir/fc_fuse_pass.h"
 #include <memory>
-#include <string>
-#include "paddle/fluid/lite/core/mir/pass.h"
+#include <vector>
+#include "paddle/fluid/lite/core/mir/fusion/fc_fuser.h"
+#include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
-namespace fusion {
 
-class FcFusePass : public ProgramPass {
- public:
-  FcFusePass();
-  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
+void FcFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
+  fusion::FcFuser fuser;
+  fuser(graph.get());
+}
 
- private:
-  class Fuser;
-  std::unique_ptr<Fuser> fuser_;
-};
-
-}  // namespace fusion
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
+
+REGISTER_MIR_PASS(lite_fc_fuse_pass, paddle::lite::mir::FcFusePass);

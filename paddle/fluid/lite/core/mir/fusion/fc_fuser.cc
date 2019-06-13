@@ -12,27 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/fc_fuser.h"
 #include <memory>
 #include <vector>
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
-#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 namespace fusion {
 
-class FcFusePass::Fuser : public FuseBase {
- public:
-  void BuildPattern() override;
-  void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override;
-
- private:
-  cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override;
-};
-
-void FcFusePass::Fuser::BuildPattern() {
+void FcFuser::BuildPattern() {
   // create nodes.
   auto* x = VarNode("x")->assert_is_op_input("mul", "X");
   auto* W = VarNode("W")->assert_is_op_input("mul", "Y");
@@ -54,8 +43,7 @@ void FcFusePass::Fuser::BuildPattern() {
   add->AsIntermediate();
 }
 
-void FcFusePass::Fuser::InsertNewNode(SSAGraph* graph,
-                                      const key2nodes_t& matched) {
+void FcFuser::InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto fc_op = LiteOpRegistry::Global().Create("fc");
   auto mul = matched.at("mul")->stmt()->op;
@@ -71,7 +59,7 @@ void FcFusePass::Fuser::InsertNewNode(SSAGraph* graph,
   IR_NODE_LINK_TO(new_op_node, matched.at("Out"));
 }
 
-cpp::OpDesc FcFusePass::Fuser::GenOpDesc(const key2nodes_t& matched) {
+cpp::OpDesc FcFuser::GenOpDesc(const key2nodes_t& matched) {
   cpp::OpDesc op_desc;
   op_desc.SetType("fc");
   op_desc.SetInput("Input", {matched.at("x")->arg()->name});
@@ -84,15 +72,7 @@ cpp::OpDesc FcFusePass::Fuser::GenOpDesc(const key2nodes_t& matched) {
   return op_desc;
 }
 
-FcFusePass::FcFusePass() : fuser_(new FcFusePass::Fuser) {}
-
-void FcFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
-  fuser_->operator()(graph.get());
-}
-
 }  // namespace fusion
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-REGISTER_MIR_PASS(lite_fc_fuse_pass, paddle::lite::mir::fusion::FcFusePass);

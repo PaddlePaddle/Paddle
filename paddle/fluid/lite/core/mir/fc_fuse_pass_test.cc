@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/lite/core/mir/fc_fuse_pass.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -26,7 +26,6 @@ DEFINE_string(optimized_model, "", "");
 namespace paddle {
 namespace lite {
 namespace mir {
-namespace fusion {
 
 TEST(fc_fuse_pass, fuse_test) {
   lite::ExecutorLite predictor;
@@ -66,29 +65,21 @@ TEST(fc_fuse_pass, fuse_test) {
   EXPECT_NEAR(out->data<float>()[1], 10.109812f, 1e-5);
   CHECK_EQ(out->dims()[0], 100);
   CHECK_EQ(out->dims()[1], 500);
-
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-  LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
-  predictor.SaveModel(FLAGS_optimized_model);
-#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 }
 
-// #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-// TEST(fc_fuse_pass, save_model_test) {
-//   lite::ExecutorLite predictor;
-//   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
-//                                    Place{TARGET(kX86), PRECISION(kFloat)}});
-//   predictor.Build(FLAGS_model_dir,
-//                   Place{TARGET(kX86), PRECISION(kFloat)},
-//                   valid_places);
-//
-//
-//   LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
-//   predictor.SaveModel(FLAGS_optimized_model);
-// }
-// #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+TEST(fc_fuse_pass, save_model_test) {
+  lite::ExecutorLite predictor;
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kX86), PRECISION(kFloat)}});
+  predictor.Build(FLAGS_model_dir, Place{TARGET(kX86), PRECISION(kFloat)},
+                  valid_places);
 
-}  // namespace fusion
+  LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
+  predictor.SaveModel(FLAGS_optimized_model);
+}
+#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
