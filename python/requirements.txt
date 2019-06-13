@@ -1,4 +1,4 @@
-requests==2.9.2
+requests>=2.20.0
 numpy>=1.12
 protobuf>=3.1.0
 recordio>=0.1.0
