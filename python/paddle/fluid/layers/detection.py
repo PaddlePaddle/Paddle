@@ -131,18 +131,18 @@ def retinanet_target_assign(bbox_pred,
         tuple:
                A tuple(predicted_scores, predicted_location, target_label,
                target_bbox, bbox_inside_weight, fg_num) is returned. The
-               predicted_scores and predicted_location is the predicted result
-               of the retinanet.The target_label and target_bbox is the ground
+               predicted_scores and predicted_location are the predicted result
+               of the retinanet.The target_label and target_bbox are the ground
                truth, respectively. The predicted_location is a 2D Tensor with
                shape [F, 4], and the shape of target_bbox is same as the shape of
                the predicted_location, F is the number of the foreground
                anchors. The predicted_scores is a 2D Tensor with shape
-               [F + B, 1], and the shape of target_label is same as the shape
-               of the predicted_scores, B is the number of the background
-               anchors, the F and B is depends on the input of this operator.
-               Bbox_inside_weight represents whether the predicted loc is fake_fg
-               or not and the shape is [F, 4]. Fg_num is the foreground number
-               which is needed by focal loss.
+               [F + B, C], and the shape of target_label is [F + B, 1], B is the
+               number of the background anchors, the F and B is depends on the
+               input of this operator. Bbox_inside_weight represents whether the
+               predicted location is fake foreground or not and the shape is [F, 4].
+               Fg_num is the foreground number (including fake foreground) which
+               is needed by focal loss.
 
     Examples:
         .. code-block:: python
