@@ -503,9 +503,9 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
-             "(LoDTensor) input groud-truth bbox with shape [K, 4].");
+             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates groud-truth is crowd.");
+             "(LoDTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
              "(LoDTensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
@@ -547,7 +547,7 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         "ScoreIndex",
         "(Tensor), The indexes of foreground and background anchors in all "
         "RPN anchors(The rest anchors are ignored). The shape of the "
-        "ScoreIndex is [F + B], F and B are sampled foreground and backgroud "
+        "ScoreIndex is [F + B], F and B are sampled foreground and background "
         " number.");
     AddOutput("TargetBBox",
               "(Tensor), The target bbox deltas with shape "
@@ -555,7 +555,7 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "TargetLabel",
         "(Tensor<int>), The target labels of each anchor with shape "
-        "[F + B, 1], F and B are sampled foreground and backgroud number.");
+        "[F + B, 1], F and B are sampled foreground and background number.");
     AddOutput("BBoxInsideWeight",
               "(Tensor), The bbox inside weight with shape "
               "[F, 4], F is the sampled foreground number.");
@@ -590,12 +590,11 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
-             "(LoDTensor) input groud-truth bbox with shape [K, 4].");
+             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("GtLabels",
-             "(LoDTensor) input groud-truth label with shape [K, C]. "
-             "C is the class number.");
+             "(LoDTensor) input ground-truth label with shape [K, 1].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates groud-truth is crowd.");
+             "(LoDTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
              "(LoDTensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
@@ -619,14 +618,14 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         "ScoreIndex",
         "(Tensor), The indexes of foreground and background anchors in all "
         "RPN anchors(The rest anchors are ignored). The shape of the "
-        "ScoreIndex is [F + B], F and B are foreground and backgroud "
+        "ScoreIndex is [F + B], F and B are foreground and background "
         " number.");
     AddOutput("TargetBBox",
               "(Tensor), The target bbox deltas with shape "
               "[F, 4], F is the foreground number.");
     AddOutput("TargetLabel",
               "(Tensor<int>), The target labels of each anchor with shape "
-              "[F + B, 1], F and B are foreground and backgroud number.");
+              "[F + B, 1], F and B are foreground and background number.");
     AddOutput("BBoxInsideWeight",
               "(Tensor), The bbox inside weight with shape "
               "[F, 4], F is the foreground number.");
@@ -636,7 +635,7 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     This layer can be, for given the Intersection-over-Union (IoU) overlap
     between anchors and ground truth boxes, to assign classification and
-    regression targets to each each anchor, these target labels are used for
+    regression targets to each anchor, these target labels are used for
     train retinanet. 
     
     Every anchor is assigned with a length C one-hot vector of
@@ -650,9 +649,9 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     2. Anchors are assigned to background when its IoU ratio is lower than
     negative_overlap (0.4) for all ground-truth boxes.
 
-    When a anchor is assgned with a ground-truth box which is the i-th category,
+    When a anchor is assigned with a ground-truth box which is the i-th category,
     the i-th entry in its C vector of targets is set to 1 and all other entries
-    are set to 0. When a anchor is assgned with background, all entries are set
+    are set to 0. When a anchor is assigned with background, all entries are set
     to 0. Anchors that are not assigned do not contribute to the training
     objective. The regression targets are the encoded ground-truth boxes
     associated with the assgined anchors.

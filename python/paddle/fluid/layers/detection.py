@@ -87,21 +87,21 @@ def retinanet_target_assign(bbox_pred,
     2. Anchors are assigned to background when its IoU ratio is lower than
     negative_overlap (0.4) for all ground-truth boxes.
     
-    When a anchor is assgned with a ground-truth box which is the i-th category,
+    When a anchor is assigned with a ground-truth box which is the i-th category,
     the i-th entry in its C vector of targets is set to 1 and all other entries
-    are set to 0. When a anchor is assgned with background, all entries are set
+    are set to 0. When a anchor is assigned with background, all entries are set
     to 0. Anchors that are not assigned do not contribute to the training
     objective. The regression targets are the encoded ground-truth boxes
-    associated with the assgined anchors.
+    associated with the assigned anchors.
  
     Args:
         bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
-        cls_logits(Variable): A 3-D Tensor with shape [N, M, 1] represents the
-            predicted confidence predictions. N is the batch size, 1 is the
-            frontground and background sigmoid, M is number of bounding boxes.
+        cls_logits(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            number of classes (excluding background), M is number of bounding boxes.
         anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax],
             [xmin, ymin] is the left top coordinate of the anchor box,
@@ -110,11 +110,14 @@ def retinanet_target_assign(bbox_pred,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_boxes(Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
-        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
-        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+        gt_labels(variable): The ground-truth labels are a 2D LoDTensor with
+            shape [Ng, 1], Ng is the total number of ground-truth labels of
+            mini-batch input.
+        is_crowd(Variable): A 1-D LoDTensor which indicates ground-truth is crowd.
+        im_info(Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
             3 is the height, width and scale.
         num_classes(int32): The number of classes.
         positive_overlap(float): Minimum overlap required between an anchor
@@ -145,13 +148,17 @@ def retinanet_target_assign(bbox_pred,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+          bbox_pred = layers.data(name='bbox_pred', shape=[1, 100, 4],
                             append_batch_size=False, dtype='float32')
-          cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+          cls_logits = layers.data(name='cls_logits', shape=[1, 100, 10],
                             append_batch_size=False, dtype='float32')
-          anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+          anchor_box = layers.data(name='anchor_box', shape=[100, 4],
+                            append_batch_size=False, dtype='float32')
+          anchor_var = layers.data(name='anchor_var', shape=[100, 4],
                             append_batch_size=False, dtype='float32')
           gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+                            append_batch_size=False, dtype='float32')
+          gt_labels = layers.data(name='gt_labels', shape=[10, 1],
                             append_batch_size=False, dtype='float32')
           is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
                             append_batch_size=False, dtype='float32')
@@ -159,7 +166,7 @@ def retinanet_target_assign(bbox_pred,
                             append_batch_size=False, dtype='float32')
           loc_pred, score_pred, loc_target, score_target, bbox_inside_weight, fg_num =
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
-                gt_boxes, gt_labels)
+                anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 
     """
 
@@ -257,10 +264,10 @@ def rpn_target_assign(bbox_pred,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
-        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        is_crowd (Variable): A 1-D LoDTensor which indicates ground-truth is crowd.
         im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
         3 is the height, width and scale.
         rpn_batch_size_per_im(int): Total number of RPN examples per image.
@@ -1182,7 +1189,7 @@ def ssd_loss(location,
     **Multi-box loss layer for object detection algorithm of SSD**
 
     This layer is to compute dection loss for SSD given the location offset
-    predictions, confidence predictions, prior boxes and ground-truth boudding
+    predictions, confidence predictions, prior boxes and ground-truth bounding
     boxes and labels, and the type of hard example mining. The returned loss
     is a weighted sum of the localization loss (or regression loss) and
     confidence loss (or classification loss) by performing the following steps:
@@ -1226,7 +1233,7 @@ def ssd_loss(location,
         confidence (Variable): The confidence predictions are a 3D Tensor
             with shape [N, Np, C], N and Np are the same as they are in
             `location`, C is the class number.
-        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
         gt_label (Variable): The ground-truth labels are a 2D LoDTensor
@@ -2182,7 +2189,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
     RoI, which encodes K binary masks of resolution M x M, one for each of the
     K classes. This mask targets are used to compute loss of mask branch.
 
-    Please note, the data format of groud-truth segmentation, assumed the
+    Please note, the data format of ground-truth segmentation, assumed the
     segmentations are as follows. The first instance has two gt objects.
     The second instance has one gt object, this object has two gt segmentations.
 
