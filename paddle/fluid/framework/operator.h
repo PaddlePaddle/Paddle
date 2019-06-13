@@ -71,12 +71,6 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 /// this Op's execution to save the elapsed time.
 constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 
-/// If an Op has attribtue kEnableCacheExpectedKernel, it means that in a same
-/// name scope and same place, since the expected kerenl of this Op does not
-/// change in the execution, it could be recorded only at the first iteration of
-/// this Op's execution to save the elapsed time.
-constexpr char kEnableCacheExpectedKernel[] = "@ENABLE_CACHE_EXPECTED_KERNEL@";
-
 /// If an Op has this attribute, all its kernels should calculate output
 /// variable's shape in the corresponding Compute() function. And
 /// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
@@ -372,9 +366,6 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
@@ -386,12 +377,12 @@ class ExecutionContext {
   }
 
   template <typename T>
-  T& GetKernelConfig(int idx) const {
+  T& GetKernelConfig(size_t idx) const {
     PADDLE_ENFORCE(
         kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
-        "%s selected kernel doesn't have kernel config %lu <= %d",
+        "%s selected kernel doesn't have kernel config %lu <= %lu",
         op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
  private:

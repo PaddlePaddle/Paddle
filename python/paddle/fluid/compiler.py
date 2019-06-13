@@ -98,6 +98,7 @@ class CompiledProgram(object):
     def __init__(self, program_or_graph):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
+            # don't not create a new program here.
             self._program = None
         elif isinstance(program_or_graph, framework.Program):
             self._graph = core.Graph(program_or_graph.desc)
@@ -106,7 +107,6 @@ class CompiledProgram(object):
             raise ValueError("Wrong program_to_graph type: %s" %
                              type(program_or_graph))
 
-        self._program_desc = self._graph.origin_program_desc()
         self._scope = None
         self._place = None
         self._executor = None
@@ -299,6 +299,7 @@ class CompiledProgram(object):
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
+        # TODO(gongwb): let user to set them once.
         if self._program and self._build_strategy.num_trainers > 1 and \
                 self._program._trainers_endpoints:
             tps = self._program._trainers_endpoints
@@ -306,6 +307,12 @@ class CompiledProgram(object):
             assert self._build_strategy.num_trainers == len(
                 tps), "num_trainers == len(end_points)"
             self._build_strategy.trainers_endpoints = tps
+
+        if self._program:
+            self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
+            self._build_strategy.use_hierarchical_allreduce_ = self._program._use_hierarchical_allreduce
+            self._build_strategy.hierarchical_allreduce_inter_nranks_ = self._program._hierarchical_allreduce_inter_nranks
+            self._build_strategy.hierarchical_allreduce_exter_nranks_ = self._program._hierarchical_allreduce_exter_nranks
 
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True

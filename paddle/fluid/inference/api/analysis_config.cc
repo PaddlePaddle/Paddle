@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
+extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -86,10 +87,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Model related.
   CP_MEMBER(model_dir_);
-  CP_MEMBER(prog_file_);
-  CP_MEMBER(params_file_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
+
+  prog_file_ = std::move(other.prog_file_);
+  params_file_ = std::move(other.params_file_);
+
   // Gpu related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(device_id_);
@@ -105,6 +108,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
+  CP_MEMBER(trt_use_calib_mode_);
+  // NGRAPH related.
+  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -168,16 +174,26 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
-std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
-    const {
+void AnalysisConfig::EnableNgraph() {
+#ifdef PADDLE_WITH_NGRAPH
+  pass_builder()->EnableNgraph();
+  use_ngraph_ = true;
+#else
+  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+  use_ngraph_ = false;
+#endif
+}
+
+MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
-  return mkldnn_quantizer_config_;
+  return mkldnn_quantizer_config_.get();
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
-    AnalysisConfig::Precision precision_mode, bool use_static) {
+    AnalysisConfig::Precision precision_mode, bool use_static,
+    bool use_calib_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -190,6 +206,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
+  trt_use_calib_mode_ = use_calib_mode;
 
   Update();
 #else
@@ -228,14 +245,24 @@ void AnalysisConfig::Update() {
   }
 
   if (use_tensorrt_) {
-    const auto &passes = pass_builder_->AllPasses();
-    if (std::find(passes.begin(), passes.end(), "tensorrt_subgraph_pass") ==
-        std::end(passes)) {
-      // Append after the Affine_channel_conv_fuse pass.
-      pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kTRTSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
     }
-    pass_builder()->DeletePass("runtime_context_cache_pass");
-    pass_builder()->DeletePass("expected_kernel_cache_pass");
+  }
+
+  if (use_ngraph_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableNgraph() only works when IR optimization is enabled.";
+    }
+#ifdef PADDLE_WITH_NGRAPH
+    pass_builder()->EnableNgraph();
+    use_ngraph_ = true;
+#else
+    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+    use_ngraph_ = false;
+#endif
   }
 
   if (use_mkldnn_) {
@@ -312,6 +339,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << static_memory_optim_;
   ss << static_memory_optim_force_update_;
 
+  ss << use_ngraph_;
+
   ss << use_mkldnn_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
@@ -342,6 +371,7 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_used, gpu_available;
+  platform::SetDeviceId(device_id_);
   platform::GpuMemoryUsage(&gpu_used, &gpu_available);
   double total_gpu_memory = (gpu_used + gpu_available) / 1024. / 1024.;
   float fraction_of_gpu_memory =
@@ -412,4 +442,12 @@ void AnalysisConfig::EnableAnakinEngine(
   anakin_auto_config_layout_ = auto_config_layout;
   Update();
 }
+
+void AnalysisConfig::PartiallyRelease() {
+  prog_file_.clear();
+  prog_file_.shrink_to_fit();
+  params_file_.clear();
+  params_file_.shrink_to_fit();
+}
+
 }  // namespace paddle

@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
@@ -39,8 +40,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
     platform::CUDAPinnedPlace cuda_pinned;
-    auto result = memory::AllocShared(
-        cuda_pinned, copy_size, memory::allocation::Allocator::kCrossDevice);
+    auto result = memory::AllocShared(cuda_pinned, copy_size);
 
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),

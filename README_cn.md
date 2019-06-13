@@ -80,9 +80,11 @@ pip install paddlepaddle-gpu==1.4.1.post85
 
    欢迎您的贡献!
 
-## 答疑
+## 交流与反馈
 
-欢迎您将问题和bug报告以[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)的形式提交
+- 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
+- QQ群: 432676488 (PaddlePaddle)
+- [论坛](http://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
 
 ## 版权和许可证
 PaddlePaddle由[Apache-2.0 license](LICENSE)提供
