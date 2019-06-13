@@ -765,9 +765,7 @@ class Variable(object):
         if not copy:
             return self.block.create_var(
                 name=unique_name.generate(".".join(self.name)),
-                dtype=self.dtype,
-                persistable=self.persistable,
-                stop_gradient=self.stop_gradient, )
+                dtype=self.dtype)
         else:
             return self
 
