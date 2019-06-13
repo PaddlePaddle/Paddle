@@ -328,6 +328,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                    "the number of places must be greater than 1.");
   }
 
+  LOG(WARNING) << string::Sprintf(
+      "The number of %s, which is used in ParallelExecutor, is %lu. And "
+      "the Program will be copied %lu copies",
+      (member_->use_cuda_ ? "CUDAPlace" : "CPUPlace"), places.size(),
+      places.size());
+
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
   if (local_scopes.empty()) {
