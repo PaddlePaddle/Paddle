@@ -37,7 +37,6 @@ bool ReluOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
       scope->FindVar(opdesc.Output("Out").front())->GetMutable<lite::Tensor>();
   CHECK(param_.input);
   CHECK(param_.output);
-  kernel_->SetParam(param_);
   return true;
 }
 
