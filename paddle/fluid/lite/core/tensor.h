@@ -21,6 +21,7 @@
  * looks the same.
  */
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 

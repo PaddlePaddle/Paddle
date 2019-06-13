@@ -13,12 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/op_registry.h"
 
-USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(pool, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
-USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
+#include <cmath>
+
+namespace paddle {
+namespace lite {
+namespace arm {
+namespace math {
+
+// TODO(xxx): fixme now only support transA = false
+bool sgemv(const float* A, const float* x, float* y, bool transA, int M, int N,
+           bool is_bias = false, const float* bias = nullptr,
+           bool is_relu = false);
+
+}  // namespace math
+}  // namespace arm
+}  // namespace lite
+}  // namespace paddle
