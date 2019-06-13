@@ -21,7 +21,7 @@ namespace operators {
 
 bool SplitOp::CheckShape() const {
   CHECK_OR_FALSE(param_.x);
-  CHECK_OR_FALSE(param_.output);
+  CHECK_GT_OR_FALSE(param_.output.size(), 1UL);
   auto x_dims = param_.x->dims();
   auto x_rank = x_dims.size();
   CHECK_OR_FALSE(param_.axis >= -static_cast<int>(x_rank) &&
@@ -68,7 +68,7 @@ bool SplitOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   param_.sections = opdesc.GetAttr<std::vector<int>>("sections");
   param_.x = const_cast<lite::Tensor *>(
       &scope->FindVar(opdesc.Input("X").front())->Get<lite::Tensor>());
-  auto outs = op_desc.Output("Out");
+  auto outs = op_desc.Output("Out").front;
   for (auto var : outs) {
     param_.output.push_back(scope->FindVar(var)->GetMutable<lite::Tensor>());
   }
@@ -79,4 +79,4 @@ bool SplitOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_OP(softmax, paddle::lite::operators::SoftmaxOp);
+REGISTER_LITE_OP(split, paddle::lite::operators::SplitOp);
