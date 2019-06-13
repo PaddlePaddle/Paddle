@@ -185,11 +185,10 @@ TEST(pool_arm, compute) {
             for (auto c : {1, 3, 11, 4, 1024}) {
               for (auto h : {3, 1, 11, 4, 1}) {
                 for (auto w : {1, 3, 4, 12, 1}) {
-                  LOG(INFO) << "n:" << n << " c:" << c << " h:" << h
-                            << " w:" << w << " stride:" << stride
-                            << " pad:" << pad
-                            << " pooling_type:" << pooling_type
-                            << " global_pooling:" << global_pooling;
+                  VLOG(3) << "n:" << n << " c:" << c << " h:" << h << " w:" << w
+                          << " stride:" << stride << " pad:" << pad
+                          << " pooling_type:" << pooling_type
+                          << " global_pooling:" << global_pooling;
 
                   // init x, output
                   x.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
@@ -240,7 +239,7 @@ TEST(pool_arm, compute) {
                   // output_ref.Resize(output.dims());
                   param.output = &output_ref;
                   pool_compute_ref(param);
-                  LOG(INFO) << "pool_compute_ref(param) end";
+                  VLOG(3) << "pool_compute_ref(param) end";
 
                   // compare
                   auto* output_data = output.mutable_data<float>();
@@ -250,7 +249,7 @@ TEST(pool_arm, compute) {
                                 1);  // 1e-5);
                   }
 
-                  LOG(INFO) << "compare pass";
+                  VLOG(3) << "compare pass";
                 }
               }
             }
