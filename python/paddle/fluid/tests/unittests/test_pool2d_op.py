@@ -248,7 +248,7 @@ class TestCase5(TestCase2):
 # Test case from resnet, only for cuda as cpu is slow
 class TestCudaCase1(TestPool2D_Op):
     def init_test_case(self):
-        self.shape = [8, 1024, 7, 7]
+        self.shape = [4, 1024, 7, 7]
         self.ksize = [7, 7]
         self.strides = [1, 1]
         self.paddings = [0, 0]
