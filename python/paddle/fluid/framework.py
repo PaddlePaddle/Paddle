@@ -2761,6 +2761,9 @@ class Program(object):
         self._fleet_opt = None
         self._program_config = None
 
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
+
     @property
     def _is_mem_optimized(self):
         # if the program is optimized, operator input/outputs
