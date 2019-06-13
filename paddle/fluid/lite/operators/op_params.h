@@ -124,8 +124,8 @@ struct ConcatParam {
 struct ConvParam {
   lite::Tensor* x{};
   lite::Tensor* filter{};
-  lite::Tensor* bias{};
-  lite::Tensor* residualData{};
+  lite::Tensor* bias{nullptr};
+  lite::Tensor* residualData{nullptr};
   lite::Tensor* output{};
   std::vector<int> strides{1, 1};
   std::vector<int> paddings{0, 0};
@@ -172,6 +172,15 @@ struct DropoutParam {
   bool fix_seed{false};
   int seed{0};
   std::string dropout_implementation{"downgrade_in_infer"};
+};
+
+// For Split op
+struct SplitParam {
+  lite::Tensor* x{};
+  std::vector<lite::Tensor*>* output{};
+  int axis{-1};
+  int num{0};
+  std::vector<int>* sections;
 };
 
 /// ----------------------- element wise operators ----------------------

@@ -32,9 +32,9 @@ void Run(const char* model_dir) {
                   valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize(DDim(std::vector<DDim::value_type>({100, 100})));
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < 100 * 100; i++) {
+  for (int i = 0; i < 3 * 224 * 224; i++) {
     data[i] = i;
   }
 
@@ -65,6 +65,14 @@ USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
 
+USE_LITE_OP(con2d);
+// USE_LITE_OP(batch_norm);
+USE_LITE_OP(relu);
+USE_LITE_OP(depthwise_conv2d);
+USE_LITE_OP(pool2d);
+USE_LITE_OP(elementwise_add);
+USE_LITE_OP(softmax);
+
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
 
@@ -72,7 +80,15 @@ USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
+
+USE_LITE_KERNEL(con2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(depthwise_con2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(elementwise_add, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
+
 // USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
 // USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
 #endif  // LITE_WITH_ARM
