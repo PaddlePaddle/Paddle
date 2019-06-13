@@ -208,6 +208,7 @@ __all__ = [
 
 kIgnoreIndex = -100
 
+
 def dist_fc(input,
             size,
             num_flatten_dims=1,
@@ -223,44 +224,40 @@ def dist_fc(input,
     assert size % nranks == 0
     size = size // nranks
     mul_results = []
-    for input_var,param_attr in helper.iter_inputs_and_params():
+    for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
-        param_shape=[
+        param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-        ]+[size]
+        ] + [size]
 
         w = helper.create_parameter(
-            attr=param_attr,
-            shape=param_shape,
-            dtype=dtype,
-            is_bias=False
-        )
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         allgather_out = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type="c_allgather",
-            inputs={"X":input},
-            outputs={"Out":allgather_out},
-            attrs={"nranks":nranks,
-                   "ring_id":ringid
-                   })
+            inputs={"X": input},
+            outputs={"Out": allgather_out},
+            attrs={"nranks": nranks,
+                   "ring_id": ringid})
+        helper.append_op(type="c_sync_comm_stream")
         mul_out = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
-                type="mul",
-                inputs={"X": allgather_out,
-                        "Y": w},
-                outputs={"Out": mul_out},
-                attrs={
-                    "x_num_col_dims": num_flatten_dims,
-                    "y_num_col_dims": 1
-                })
+            type="mul",
+            inputs={"X": allgather_out,
+                    "Y": w},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": num_flatten_dims,
+                   "y_num_col_dims": 1})
+        helper.append_op(type="c_sync_compute_stream")
         out = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
-                type="c_slicegather",
-                inputs={"X": mul_out},
-                outputs={"Out": out},
-                attrs={"nranks": nranks,
-                       "ring_id":ringid})
+            type="c_slicegather",
+            inputs={"X": mul_out},
+            outputs={"Out": out},
+            attrs={"nranks": nranks,
+                   "ring_id": ringid})
         mul_results.append(out)
+        helper.append_op(type="c_sync_comm_stream")
     if len(mul_results) == 1:
         pre_bias = mul_results[0]
     else:
@@ -274,6 +271,7 @@ def dist_fc(input,
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
+
 
 def fc(input,
        size,
