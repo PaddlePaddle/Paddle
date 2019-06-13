@@ -87,9 +87,9 @@ def retinanet_target_assign(bbox_pred,
     2. Anchors are assigned to background when its IoU ratio is lower than
     negative_overlap (0.4) for all ground-truth boxes.
     
-    When a anchor is assigned with a ground-truth box which is the i-th category,
+    When an anchor is assigned with a ground-truth box which is the i-th category,
     the i-th entry in its C vector of targets is set to 1 and all other entries
-    are set to 0. When a anchor is assigned with background, all entries are set
+    are set to 0. When an anchor is assigned with background, all entries are set
     to 0. Anchors that are not assigned do not contribute to the training
     objective. The regression targets are the encoded ground-truth boxes
     associated with the assigned anchors.
