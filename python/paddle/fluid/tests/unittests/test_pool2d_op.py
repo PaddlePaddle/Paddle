@@ -253,6 +253,13 @@ class TestCudaCase1(TestPool2D_Op):
         self.strides = [1, 1]
         self.paddings = [0, 0]
 
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+    def init_global_pool(self):
+        self.global_pool = False
+
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -269,8 +276,13 @@ class TestCudaCase1(TestPool2D_Op):
             self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
 
+class TestCudaCase2(TestCudaCase1):
+    def init_global_pool(self):
+        self.global_pool = True
+
+
 # Not test max grad as result has diff
-class TestCudaCase2(TestPool2D_Op):
+class TestCudaCase3(TestPool2D_Op):
     def init_pool_type(self):
         self.shape = [8, 32, 56, 56]
         self.strides = [2, 2]
