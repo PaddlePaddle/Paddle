@@ -153,7 +153,7 @@ class DistributedTranspiler(Fleet):
                 None,
                 None,
                 export_for_deployment,
-                model_only=True)
+                program_only=True)
 
             model_basename = "__model__"
             model_filename = os.path.join(dirname, model_basename)
