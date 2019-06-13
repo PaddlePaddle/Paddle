@@ -16,36 +16,25 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/deformable_conv.cu.h"
 #include "paddle/fluid/operators/deformable_conv_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaximumNumBlocks = 4096;
-
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
-}
 
 template <typename T>
-__global__ void ModulatedDeformableCol2imGpuKernel(
-    const int nthreads, const T* data_col, const T* data_offset,
-    const T* data_mask, const int channels, const int height, const int width,
-    const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
-    const int stride_h, const int stride_w, const int dilation_h,
-    const int dilation_w, const int channel_per_deformable_group,
-    const int batch_size, const int deformable_group, const int height_col,
-    const int width_col, T* grad_im) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (size_t thread = index; thread < nthreads; thread += offset) {
+void DeformableCol2imCpuKernel(
+    const int num_kernels, const T* data_col, const T* data_offset,
+    const int channels, const int height, const int width, const int kernel_h,
+    const int kernel_w, const int pad_h, const int pad_w, const int stride_h,
+    const int stride_w, const int dilation_h, const int dilation_w,
+    const int channel_per_deformable_group, const int batch_size,
+    const int deformable_group, const int height_col, const int width_col,
+    T* grad_im) {
+  for (size_t thread = 0; thread < num_kernels; thread++) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;
@@ -64,22 +53,16 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                (b * deformable_group + deformable_group_index) *
                                    2 * kernel_h * kernel_w * height_col *
                                    width_col;
-    const T* data_mask_ptr = data_mask +
-                             (b * deformable_group + deformable_group_index) *
-                                 kernel_h * kernel_w * height_col * width_col;
     const int data_offset_h_ptr =
         ((2 * (i * kernel_w + j)) * height_col + h_out) * width_col + w_out;
     const int data_offset_w_ptr =
         ((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col + w_out;
-    const int data_mask_hw_ptr =
-        ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
     const T offset_h = data_offset_ptr[data_offset_h_ptr];
     const T offset_w = data_offset_ptr[data_offset_w_ptr];
-    const T mask = data_mask_ptr[data_mask_hw_ptr];
     const T cur_inv_h_data = h_in + i * dilation_h + offset_h;
     const T cur_inv_w_data = w_in + j * dilation_w + offset_w;
 
-    const T cur_top_grad = data_col[thread] * mask;
+    const T cur_top_grad = data_col[thread];
     const int cur_h = static_cast<int>(cur_inv_h_data);
     const int cur_w = static_cast<int>(cur_inv_w_data);
     for (int dy = -2; dy <= 2; dy++) {
@@ -90,11 +73,11 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
           T weight =
-              DmcnGetGradientWeight(cur_inv_h_data, cur_inv_w_data, cur_h + dy,
-                                    cur_w + dx, height, width);
+              DmcnGetGradientWeightCpu(cur_inv_h_data, cur_inv_w_data,
+                                       cur_h + dy, cur_w + dx, height, width);
 
-          platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
-                                  weight * cur_top_grad);
+          *(grad_im + cur_bottom_grad_pos) =
+              *(grad_im + cur_bottom_grad_pos) + weight * cur_top_grad;
         }
       }
     }
@@ -102,40 +85,32 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
 }
 
 template <typename T>
-inline void ModulatedDeformableCol2im(
+inline void DeformableCol2imCpu(
     const platform::DeviceContext& ctx, const T* data_col, const T* data_offset,
-    const T* data_mask, const std::vector<int64_t> im_shape,
-    const std::vector<int64_t> col_shape,
+    const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
     const std::vector<int64_t> kernel_shape, const std::vector<int> pad,
     const std::vector<int> stride, const std::vector<int> dilation,
     const int deformable_group, T* grad_im) {
   int channel_per_deformable_group = im_shape[0] / deformable_group;
   int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
-  int blocks = NumBlocks(num_kernels);
-  int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imGpuKernel<T><<<
-      blocks, threads, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      num_kernels, data_col, data_offset, data_mask, im_shape[0], im_shape[1],
-      im_shape[2], kernel_shape[2], kernel_shape[3], pad[0], pad[1], stride[0],
-      stride[1], dilation[0], dilation[1], channel_per_deformable_group,
-      col_shape[1], deformable_group, col_shape[2], col_shape[3], grad_im);
+  DeformableCol2imCpuKernel(
+      num_kernels, data_col, data_offset, im_shape[0], im_shape[1], im_shape[2],
+      kernel_shape[2], kernel_shape[3], pad[0], pad[1], stride[0], stride[1],
+      dilation[0], dilation[1], channel_per_deformable_group, col_shape[1],
+      deformable_group, col_shape[2], col_shape[3], grad_im);
 }
 
 template <typename T>
-__global__ void ModulatedDeformableCol2imCoordGpuKernel(
-    const int nthreads, const T* data_col, const T* data_im,
-    const T* data_offset, const T* data_mask, const int channels,
-    const int height, const int width, const int kernel_h, const int kernel_w,
-    const int pad_h, const int pad_w, const int stride_h, const int stride_w,
-    const int dilation_h, const int dilation_w,
-    const int channel_per_deformable_group, const int batch_size,
-    const int offset_channels, const int deformable_group, const int height_col,
-    const int width_col, T* grad_offset, T* grad_mask) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+void DeformableCol2imCoordCpuKernel(
+    const int num_kernels, const T* data_col, const T* data_im,
+    const T* data_offset, const int channels, const int height, const int width,
+    const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
+    const int stride_h, const int stride_w, const int dilation_h,
+    const int dilation_w, const int channel_per_deformable_group,
+    const int batch_size, const int offset_channels, const int deformable_group,
+    const int height_col, const int width_col, T* grad_offset) {
+  for (size_t i = 0; i < num_kernels; i++) {
     T val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
@@ -157,9 +132,6 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
                                (b * deformable_group + deformable_group_index) *
                                    2 * kernel_h * kernel_w * height_col *
                                    width_col;
-    const T* data_mask_ptr = data_mask +
-                             (b * deformable_group + deformable_group_index) *
-                                 kernel_h * kernel_w * height_col * width_col;
 
     const int offset_c = c - deformable_group_index * 2 * kernel_h * kernel_w;
 
@@ -181,75 +153,58 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       const int data_offset_w_ptr =
           (((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col +
            w_out);
-      const int data_mask_hw_ptr =
-          (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
       const T offset_h = data_offset_ptr[data_offset_h_ptr];
       const T offset_w = data_offset_ptr[data_offset_w_ptr];
-      const T mask = data_mask_ptr[data_mask_hw_ptr];
       T inv_h = h_in + i * dilation_h + offset_h;
       T inv_w = w_in + j * dilation_w + offset_w;
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
         mval += data_col_ptr[col_pos] *
-                DmcnIm2colBilinear(data_im_ptr + cnt * height * width, width,
-                                   height, width, inv_h, inv_w);
+                DmcnIm2colBilinearCpu(data_im_ptr + cnt * height * width, width,
+                                      height, width, inv_h, inv_w);
       }
-      const T weight = DmcnGetCoordinateWeight(
+      const T weight = DmcnGetCoordinateWeightCpu(
           inv_h, inv_w, height, width, data_im_ptr + cnt * height * width,
           width, bp_dir);
-      val += weight * data_col_ptr[col_pos] * mask;
+      val += weight * data_col_ptr[col_pos];
       cnt += 1;
     }
     grad_offset[i] = val;
-    if (offset_c % 2 == 0)
-      grad_mask[(((b * deformable_group + deformable_group_index) * kernel_h *
-                      kernel_w +
-                  offset_c / 2) *
-                     height_col +
-                 h) *
-                    width_col +
-                w] = mval;
   }
 }
 
 template <typename T>
-inline void ModulatedDeformableCol2imCoord(
+inline void DeformableCol2imCoordCpu(
     const platform::DeviceContext& ctx, const T* data_col, const T* data_im,
-    const T* data_offset, const T* data_mask,
-    const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
+    const T* data_offset, const std::vector<int64_t> im_shape,
+    const std::vector<int64_t> col_shape,
     const std::vector<int64_t> kernel_shape, const std::vector<int> paddings,
     const std::vector<int> strides, const std::vector<int> dilations,
-    const int deformable_groups, T* grad_offset, T* grad_mask) {
+    const int deformable_groups, T* grad_offset) {
   int num_kernels = 2 * kernel_shape[2] * kernel_shape[3] * col_shape[1] *
                     col_shape[2] * col_shape[3] * deformable_groups;
   int channel_per_deformable_group = col_shape[0] / deformable_groups;
-  int blocks = NumBlocks(num_kernels);
-  int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imCoordGpuKernel<T><<<
-      blocks, threads, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      num_kernels, data_col, data_im, data_offset, data_mask, im_shape[0],
-      im_shape[1], im_shape[2], kernel_shape[2], kernel_shape[3], paddings[0],
-      paddings[1], strides[0], strides[1], dilations[0], dilations[1],
+  DeformableCol2imCoordCpuKernel(
+      num_kernels, data_col, data_im, data_offset, im_shape[0], im_shape[1],
+      im_shape[2], kernel_shape[2], kernel_shape[3], paddings[0], paddings[1],
+      strides[0], strides[1], dilations[0], dilations[1],
       channel_per_deformable_group, col_shape[1],
       2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
-      deformable_groups, col_shape[2], col_shape[3], grad_offset, grad_mask);
+      deformable_groups, col_shape[2], col_shape[3], grad_offset);
 }
 
 template <typename T>
-__global__ void ModulatedDeformableIm2colGpuKernel(
-    const int nthreads, const T* data_im, const T* data_offset,
-    const T* data_mask, const int height, const int width, const int kernel_h,
-    const int kernel_w, const int pad_h, const int pad_w, const int stride_h,
-    const int stride_w, const int dilation_h, const int dilation_w,
+void DeformableIm2colCpuKernel(
+    const int num_kernels, const T* data_im, const T* data_offset,
+    const int height, const int width, const int kernel_h, const int kernel_w,
+    const int pad_h, const int pad_w, const int stride_h, const int stride_w,
+    const int dilation_h, const int dilation_w,
     const int channel_per_deformable_group, const int batch_size,
     const int num_channels, const int deformable_group, const int height_col,
     const int width_col, T* data_col) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = 0; i < num_kernels; i++) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
     const int b_col = (i / width_col) / height_col % batch_size;
@@ -270,10 +225,6 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
         data_offset +
         (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
             kernel_w * height_col * width_col;
-    const T* data_mask_ptr =
-        data_mask +
-        (b_col * deformable_group + deformable_group_index) * kernel_h *
-            kernel_w * height_col * width_col;
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
@@ -282,20 +233,17 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
         const int data_offset_w_ptr =
             ((2 * (i * kernel_w + j) + 1) * height_col + h_col) * width_col +
             w_col;
-        const int data_mask_hw_ptr =
-            ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
 
         const T offset_h = data_offset_ptr[data_offset_h_ptr];
         const T offset_w = data_offset_ptr[data_offset_w_ptr];
-        const T mask = data_mask_ptr[data_mask_hw_ptr];
         T val = static_cast<T>(0);
         const T h_im = h_in + i * dilation_h + offset_h;
         const T w_im = w_in + j * dilation_w + offset_w;
         if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
-          val =
-              DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
+          val = DmcnIm2colBilinearCpu(data_im_ptr, width, height, width, h_im,
+                                      w_im);
         }
-        *data_col_ptr = val * mask;
+        *data_col_ptr = val;
         data_col_ptr += batch_size * height_col * width_col;
       }
     }
@@ -303,23 +251,17 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
 }
 
 template <typename T>
-inline void ModulatedDeformableIm2col(
+inline void DeformableIm2colCpu(
     const platform::DeviceContext& ctx, const T* data_im, const T* data_offset,
-    const T* data_mask, const std::vector<int64_t> im_shape,
-    const std::vector<int64_t> col_shape,
+    const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
     const std::vector<int64_t> filter_shape, const std::vector<int> paddings,
     const std::vector<int> strides, const std::vector<int> dilations,
     const int deformable_groups, T* data_col) {
   int channel_per_deformable_group = im_shape[0] / deformable_groups;
   int num_kernels = im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
-  int blocks = NumBlocks(num_kernels);
-  int threads = kNumCUDAThreads;
-
-  ModulatedDeformableIm2colGpuKernel<T><<<
-      blocks, threads, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      num_kernels, data_im, data_offset, data_mask, im_shape[1], im_shape[2],
+  DeformableIm2colCpuKernel(
+      num_kernels, data_im, data_offset, im_shape[1], im_shape[2],
       filter_shape[2], filter_shape[3], paddings[0], paddings[1], strides[0],
       strides[1], dilations[0], dilations[1], channel_per_deformable_group,
       col_shape[1], im_shape[0], deformable_groups, col_shape[2], col_shape[3],
@@ -327,17 +269,16 @@ inline void ModulatedDeformableIm2col(
 }
 
 template <typename DeviceContext, typename T>
-class DeformableConvCUDAKernel : public framework::OpKernel<T> {
+class DeformableConvV1CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    const Tensor offset = *ctx.Input<Tensor>("Offset");
-    const Tensor mask = *ctx.Input<Tensor>("Mask");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
     Tensor filter = *ctx.Input<Tensor>("Filter");
     Tensor* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.cuda_device_context();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     const int groups = ctx.Attr<int>("groups");
     const int deformable_groups = ctx.Attr<int>("deformable_groups");
@@ -369,7 +310,6 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
     col_buffer = ctx.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
     output_buffer =
         ctx.AllocateTmpTensor<T, DeviceContext>(output_shape, dev_ctx);
-
     int64_t M = output_shape_vec[1] / groups;
     int64_t N = im2col_step * output_shape_vec[2] * output_shape_vec[3];
     int64_t K =
@@ -388,27 +328,19 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
     framework::DDim input_shape =
         framework::slice_ddim(input->dims(), 1, input->dims().size());
     std::vector<int64_t> input_shape_vec = framework::vectorize(input_shape);
-
     int input_dim = input->numel() / input->dims()[0];
-    int input_offset_dim = offset.numel() / offset.dims()[0];
-    int input_mask_dim = mask.numel() / mask.dims()[0];
-
+    int input_offset_dim = offset->numel() / offset->dims()[0];
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-
     const T* input_ptr = input->data<T>();
-    const T* offset_ptr = offset.data<T>();
-    const T* mask_ptr = mask.data<T>();
+    const T* offset_ptr = offset->data<T>();
     col_buffer.mutable_data<T>(ctx.GetPlace());
     T* col_buffer_ptr = col_buffer.data<T>();
-
     for (int i = 0; i < batch_size / im2col_step; ++i) {
-      ModulatedDeformableIm2col(
+      DeformableIm2colCpu(
           ctx.device_context(), input_ptr + i * im2col_step * input_dim,
-          offset_ptr + i * im2col_step * input_offset_dim,
-          mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
+          offset_ptr + i * im2col_step * input_offset_dim, input_shape_vec,
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
           deformable_groups, col_buffer_ptr);
-
       Tensor output_3d = output_4d.Slice(i, i + 1).Resize(
           framework::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
       for (int g = 0; g < groups; ++g) {
@@ -421,7 +353,6 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
         Tensor output_3d_slice =
             output_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
                 output_3d.dims(), 1, output_3d.dims().size()));
-
         blas.MatMul(weight_3d_slice, false, col_buffer_3d_slice, false, T(1.0),
                     &output_3d_slice, T(0.0));
       }
@@ -432,7 +363,7 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
+class DeformableConvV1GradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* output_grad =
@@ -440,13 +371,11 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
     Tensor* offset_grad = ctx.Output<Tensor>(framework::GradVarName("Offset"));
-    Tensor* mask_grad = ctx.Output<Tensor>(framework::GradVarName("Mask"));
 
     const Tensor* input = ctx.Input<Tensor>("Input");
     Tensor offset = *ctx.Input<Tensor>("Offset");
-    Tensor mask = *ctx.Input<Tensor>("Mask");
     Tensor filter = *ctx.Input<Tensor>("Filter");
-    if (!input_grad && !filter_grad && !offset_grad && !mask_grad) return;
+    if (!input_grad && !filter_grad && !offset_grad) return;
 
     int groups = ctx.Attr<int>("groups");
     int deformable_groups = ctx.Attr<int>("deformable_groups");
@@ -455,7 +384,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
 
-    auto& dev_ctx = ctx.cuda_device_context();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     framework::DDim input_shape =
@@ -512,7 +441,6 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
 
     int input_dim = input->numel() / input->dims()[0];
     int input_offset_dim = offset.numel() / offset.dims()[0];
-    int input_mask_dim = mask.numel() / mask.dims()[0];
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
@@ -525,11 +453,9 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
     }
 
-    if (offset_grad && mask_grad) {
+    if (offset_grad) {
       offset_grad->mutable_data<T>(ctx.GetPlace());
-      mask_grad->mutable_data<T>(ctx.GetPlace());
       set_zero(dev_ctx, offset_grad, static_cast<T>(0));
-      set_zero(dev_ctx, mask_grad, static_cast<T>(0));
     }
 
     for (int i = 0; i < batch_size / im2col_step; ++i) {
@@ -555,37 +481,31 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
       T* col_buffer_ptr = col_buffer.data<T>();
       const T* input_ptr = input->data<T>();
       const T* offset_ptr = offset.data<T>();
-      const T* mask_ptr = mask.data<T>();
 
-      if (mask_grad && offset_grad) {
+      if (offset_grad) {
         T* offset_grad_ptr = offset_grad->data<T>();
-        T* mask_grad_ptr = mask_grad->data<T>();
-        ModulatedDeformableCol2imCoord(
+        DeformableCol2imCoordCpu(
             ctx.device_context(), col_buffer_ptr,
             input_ptr + i * im2col_step * input_dim,
-            offset_ptr + i * im2col_step * input_offset_dim,
-            mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
+            offset_ptr + i * im2col_step * input_offset_dim, input_shape_vec,
             col_buffer_shape_vec, filter_shape_vec, paddings, strides,
             dilations, deformable_groups,
-            offset_grad_ptr + i * im2col_step * input_offset_dim,
-            mask_grad_ptr + i * im2col_step * input_mask_dim);
+            offset_grad_ptr + i * im2col_step * input_offset_dim);
       }
       if (input_grad) {
         T* input_grad_ptr = input_grad->data<T>();
-        ModulatedDeformableCol2im(
-            ctx.device_context(), col_buffer_ptr,
-            offset_ptr + i * im2col_step * input_offset_dim,
-            mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
-            col_buffer_shape_vec, filter_shape_vec, paddings, strides,
-            dilations, deformable_groups,
-            input_grad_ptr + i * im2col_step * input_dim);
+        DeformableCol2imCpu(ctx.device_context(), col_buffer_ptr,
+                            offset_ptr + i * im2col_step * input_offset_dim,
+                            input_shape_vec, col_buffer_shape_vec,
+                            filter_shape_vec, paddings, strides, dilations,
+                            deformable_groups,
+                            input_grad_ptr + i * im2col_step * input_dim);
         input_grad->Resize(input->dims());
       }
 
-      ModulatedDeformableIm2col(
+      DeformableIm2colCpu(
           ctx.device_context(), input_ptr + i * im2col_step * input_dim,
-          offset_ptr + i * im2col_step * input_offset_dim,
-          mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
+          offset_ptr + i * im2col_step * input_offset_dim, input_shape_vec,
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
           deformable_groups, col_buffer_ptr);
 
@@ -609,11 +529,8 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
           blas.MatMul(out_grad_3d_slice, false, col_buffer_3d_slice, true,
                       T(1.0), &dweight_3d_slice, T(0.0));
         }
-        FilterGradAddupGpuKernel<
-            T><<<NumBlocks(dweight_3d.numel()), kNumCUDAThreads, 0,
-                 ctx.cuda_device_context().stream()>>>(
-            dweight_3d.numel(), groups, K, M, dweight_3d.data<T>(),
-            filter_grad->data<T>());
+        FilterGradAddupCpuKernel(dweight_3d.numel(), groups, K, M,
+                                 dweight_3d.data<T>(), filter_grad->data<T>());
       }
     }
     if (filter_grad) {
@@ -624,13 +541,3 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
-
-REGISTER_OP_CUDA_KERNEL(deformable_conv,
-                        ops::DeformableConvCUDAKernel<CUDA, float>,
-                        ops::DeformableConvCUDAKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(deformable_conv_grad,
-                        ops::DeformableConvGradCUDAKernel<CUDA, float>,
-                        ops::DeformableConvGradCUDAKernel<CUDA, double>);
