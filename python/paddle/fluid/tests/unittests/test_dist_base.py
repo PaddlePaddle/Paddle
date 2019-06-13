@@ -259,7 +259,7 @@ class TestParallelDyGraphRunnerBase(object):
                 my_print("begin to prepare context in dygraph with nccl2")
                 dygraph.parallel.prepare_context(strategy)
                 model = dygraph.parallel.DataParallel(model, strategy)
-                print("model built in dygraph")
+                my_print("model built in dygraph")
             out_losses = []
             my_print("begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
@@ -281,10 +281,7 @@ class TestParallelDyGraphRunnerBase(object):
 
                 opt.minimize(loss)
                 model.clear_gradients()
-            if six.PY2:
-                print(pickle.dumps(out_losses))
-            else:
-                sys.stdout.buffer.write(pickle.dumps(out_losses))
+            my_print(pickle.dumps(out_losses))
 
 
 def runtime_main(test_class):
