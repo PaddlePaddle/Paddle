@@ -193,6 +193,18 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 #endif
 }
 
+void AnalysisPredictor::SetMkldnnMode(int mode) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place_));
+
+  dev_ctx->SetMode(mode);
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+#endif
+}
+
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {

@@ -397,7 +397,11 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
 
+  void SetMode(int mode) { mode_ = mode; }
+  int GetMode() const { return mode_; }
+
  private:
+  int mode_;
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
