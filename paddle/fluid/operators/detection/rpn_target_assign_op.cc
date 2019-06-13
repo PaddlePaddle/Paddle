@@ -654,7 +654,7 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     are set to 0. When a anchor is assigned with background, all entries are set
     to 0. Anchors that are not assigned do not contribute to the training
     objective. The regression targets are the encoded ground-truth boxes
-    associated with the assgined anchors.
+    associated with the assigned anchors.
 
 )DOC");
   }
