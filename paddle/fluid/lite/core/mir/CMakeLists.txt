@@ -1,5 +1,5 @@
 cc_library(mir_node SRCS node.cc DEPS framework_proto_lite)
-cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node)
+cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node program_lite)
 cc_library(mir_pass SRCS pass.cc DEPS mir_ssa_graph)
 cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph mir_passes)
 cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
@@ -20,14 +20,14 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     return()
 endif()
 cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
-cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
-        mir_ssa_graph scope_lite op_lite
-        fc_op_lite
-        ${host_kernels}
-        mir_passes
-        mir_pass_manager
-        program_fake_utils
-        )
+#cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
+        #mir_ssa_graph scope_lite op_lite
+        #fc_op_lite
+        #${host_kernels}
+        #mir_passes
+        #mir_pass_manager
+        #program_fake_utils
+        #)
 # lite_cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_test.cc
 #   DEPS
 #       mul_op_lite

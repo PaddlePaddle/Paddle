@@ -13,6 +13,11 @@ function prepare_for_codegen {
     mkdir -p ./paddle/fluid/lite/gen_code
     touch ./paddle/fluid/lite/gen_code/__generated_code__.cc
 }
+
+function check_need_ci {
+    git log -1 --oneline | grep "test=develop" || exit -1
+}
+
 function cmake_x86 {
     prepare_for_codegen
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
@@ -26,6 +31,17 @@ function cmake_x86_for_CI {
 function cmake_gpu {
     prepare_for_codegen
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
+}
+
+function check_style {
+    export PATH=/usr/bin:$PATH
+    #pre-commit install
+    clang-format --version
+
+    if ! pre-commit run -a ; then
+        git diff
+        exit 1
+    fi
 }
 
 function cmake_arm {
@@ -46,7 +62,8 @@ function cmake_arm {
 function build {
     file=$1
     for _test in $(cat $file); do
-        make $_test -j$(expr $(nproc) - 2)
+        #make $_test -j$(expr $(nproc) - 2)
+        make $_test -j8
     done
 }
 
@@ -58,7 +75,8 @@ function test_lite {
     for _test in $(cat $file); do
         # We move the build phase here to make the 'gen_code' test compiles after the
         # corresponding test is executed and the C++ code generates.
-        make $_test -j$(expr $(nproc) - 2)
+        #make $_test -j$(expr $(nproc) - 2)
+        make $_test -j8
         ctest -R $_test -V
     done
 }
@@ -213,6 +231,14 @@ function main {
                 ;;
             build_test_arm)
                 build_test_arm
+                shift
+                ;;
+            check_style)
+                check_style
+                shift
+                ;;
+            check_need_ci)
+                check_need_ci
                 shift
                 ;;
             *)

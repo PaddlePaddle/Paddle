@@ -1,0 +1,58 @@
+before_script:
+  - env
+
+image: $SERVER_LITE_DOCKER_IMAGE
+
+stages:
+  - ci
+  - build_server
+  - build_mobile
+
+check:prebuilt:
+    stage: ci
+    script:
+        #- pip3 install pre-commit
+        #- alias python=python3
+        - rm -rf ~/.pip
+        - pip install pre-commit
+        - pre-commit install
+        - ./paddle/fluid/lite/tools/build.sh check_style
+        #- ./paddle/fluid/lite/tools/build.sh check_need_ci
+
+build:server:
+    image: $SERVER_LITE_DOCKER_IMAGE
+    stage: build_server
+    cache:
+        key: server_thirdparty
+        paths:
+            - build/third_party
+    script:
+        - export http_proxy=http://172.19.57.45:3128
+        - export https_proxy=http://172.19.57.45:3128
+        - mkdir -p build
+        - cd build
+        - ../paddle/fluid/lite/tools/build.sh cmake_x86
+        - make extern_eigen3
+        - make extern_boost
+        - make framework_proto
+        - make extern_warpctc
+        - cd ..
+        - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/build/third_party/install/mklml/lib
+        - ./paddle/fluid/lite/tools/build.sh build_test_server
+    dependencies:
+        - check:prebuilt
+
+build:mobile:
+    stage: build_mobile
+    image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+    script:
+        - export http_proxy=http://172.19.57.45:3128
+        - export https_proxy=http://172.19.57.45:3128
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm
+    dependencies:
+        - build:server
