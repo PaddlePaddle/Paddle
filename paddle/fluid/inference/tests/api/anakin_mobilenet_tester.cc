@@ -27,8 +27,8 @@ contrib::AnakinConfig GetConfig() {
   // using AnakinConfig::X86 if you need to use cpu to do inference
   config.target_type = contrib::AnakinConfig::NVGPU;
   config.model_file = FLAGS_model;
-  config.device = 0;
-  config.max_batch_size = 1;
+  config.device_id = 0;
+  config.init_batch_size = 1;
   return config;
 }
 

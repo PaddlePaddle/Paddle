@@ -122,8 +122,9 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
                               const std::string& trainer_desc_str) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
-  google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
-                                                &trainer_desc);
+  bool success = trainer_desc.ParseFromString(trainer_desc_str);
+  PADDLE_ENFORCE(success, "Fail to parse TrainerDesc from string:\n%s",
+                 trainer_desc_str.c_str());
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
