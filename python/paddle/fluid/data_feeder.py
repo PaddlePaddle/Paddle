@@ -22,7 +22,7 @@ from six.moves import zip, range, xrange
 import multiprocessing
 
 from .framework import Variable, default_main_program, _current_expected_place
-
+from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
 
@@ -359,11 +359,9 @@ class DataFeeder(object):
         if num_places is not None:
             return int(num_places)
         elif isinstance(self.place, core.CUDAPlace):
-            return core.get_cuda_device_count()
+            return len(_cuda_ids())
         else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            return cpu_num
+            return _cpu_num()
 
     def decorate_reader(self,
                         reader,
