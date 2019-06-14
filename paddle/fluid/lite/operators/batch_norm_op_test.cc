@@ -35,7 +35,7 @@ TEST(batch_norm_op_lite, test) {
   scale->Resize({channel_size});
   bias->Resize({channel_size});
   mean->Resize({channel_size});
-  variance->Resize(DDim({channel_size}));
+  variance->Resize({channel_size});
 
   // prepare op desc
   cpp::OpDesc desc;
