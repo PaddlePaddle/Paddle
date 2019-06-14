@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 namespace paddle {
 namespace lite {
 namespace arm {
