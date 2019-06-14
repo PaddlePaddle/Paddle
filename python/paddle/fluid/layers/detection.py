@@ -2371,33 +2371,32 @@ def retinanet_detection_output(bboxes,
             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
             has no detected results. If all images have no detected results,
             LoD will be set to {1}, and othe utput tensor only contains one
-            value, which is -1.
-            (After version 1.3, when no boxes detected, the lod is changed
-             from {0} to {1}.)
+            value, which is -1. (After version 1.3, when no boxes detected, the
+            lod is changed from {0} to {1}.)
 
     Examples:
         .. code-block:: python
         
-        import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-        bboxes = layers.data(name='bboxes', shape=[1, 21, 4],
-                       append_batch_size=False, dtype='float32')
-        scores = layers.data(name='scores', shape=[1, 21, 10],
-                       append_batch_size=False, dtype='float32')
-        anchors = layers.data(name='anchors', shape=[21, 4],
-                        append_batch_size=False, dtype='float32')
-        im_info = layers.data(name="im_info", shape=[3],
-                        dtype='float32', lod_level=1)
-        nmsed_outs = fluid.layers.retinanet_detection_output(
-                                                   bboxes=[bboxes, bboxes],
-                                                   scores=[scores, scores],
-                                                   anchors=[anchors, anchors],
-                                                   im_info=im_info,
-                                                   score_threshold=0.05,
-                                                   nms_top_k=1000,
-                                                   keep_top_k=100,
-                                                   nms_threshold=0.3,
-                                                   nms_eta=1.)
+            bboxes = layers.data(name='bboxes', shape=[1, 21, 4],
+                append_batch_size=False, dtype='float32')
+            scores = layers.data(name='scores', shape=[1, 21, 10],
+                append_batch_size=False, dtype='float32')
+            anchors = layers.data(name='anchors', shape=[21, 4],
+                append_batch_size=False, dtype='float32')
+            im_info = layers.data(name="im_info", shape=[3],
+                dtype='float32', lod_level=1)
+            nmsed_outs = fluid.layers.retinanet_detection_output(
+                                                    bboxes=[bboxes, bboxes],
+                                                    scores=[scores, scores],
+                                                    anchors=[anchors, anchors],
+                                                    im_info=im_info,
+                                                    score_threshold=0.05,
+                                                    nms_top_k=1000,
+                                                    keep_top_k=100,
+                                                    nms_threshold=0.3,
+                                                    nms_eta=1.)
     """
 
     helper = LayerHelper('retinanet_detection_output', **locals())
