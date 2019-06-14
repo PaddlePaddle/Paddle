@@ -272,4 +272,4 @@ TEST(pool, retrive_op) {
 }  // namespace lite
 }  // namespace paddle
 
-USE_LITE_KERNEL(pool, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
