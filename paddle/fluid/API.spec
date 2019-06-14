@@ -561,7 +561,7 @@ paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core_avx.LoDTensor) -> List[Li
 paddle.fluid.LoDTensor.recursive_sequence_lengths recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
 paddle.fluid.LoDTensor.set_lod set_lod(self: paddle.fluid.core_avx.LoDTensor, lod: List[List[int]]) -> None
 paddle.fluid.LoDTensor.set_recursive_sequence_lengths set_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor, recursive_sequence_lengths: List[List[int]]) -> None
-paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core.Tensor) -> List[int]
+paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core_avx.Tensor) -> List[int]
 paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_avx.LoDTensorArray) -> None
 paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_avx.LoDTensorArray, tensor: paddle.fluid.core_avx.LoDTensor) -> None
 paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core_avx.CPUPlace) -> None
