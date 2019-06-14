@@ -59,10 +59,9 @@ if cpuinfo.supports_avx:
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
-    except ImportError as error:
+    except ImportError:
         sys.stderr.write(
-            error.__class__.__name__ +
-            ' WARNING: Error importing avx core. You may not build with AVX, '
+            'WARNING: Can not import avx core. You may not build with AVX, '
             'but AVX is supported on local machine, you could build paddle '
             'WITH_AVX=ON to get better performance. ')
         load_noavx = True
