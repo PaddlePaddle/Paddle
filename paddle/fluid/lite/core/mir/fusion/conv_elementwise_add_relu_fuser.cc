@@ -23,21 +23,33 @@ namespace fusion {
 
 void ConvElementwiseAddReLUFuser::BuildPattern() {
   // create input nodes.
-  auto* input = VarNode("input");
-  auto* filter = VarNode("filter");
-  auto* bias = VarNode("bias");
+  auto* input =
+      VarNode("input")->assert_is_op_input(conv_type_, "Input")->AsInput();
+  auto* filter =
+      VarNode("filter")->assert_is_op_input(conv_type_, "Filter")->AsInput();
+  auto* bias =
+      VarNode("bias")->assert_is_op_input("elementwise_add", "Y")->AsInput();
 
   // create op nodes
-  auto* conv2d = OpNode("conv2d", "conv2d");
-  auto* add = OpNode("add", "elementwise_add");
-  auto* relu = OpNode("relu", "relu");
+  auto* conv2d =
+      OpNode("conv2d", conv_type_)->assert_is_op(conv_type_)->AsIntermediate();
+  auto* add = OpNode("add", "elementwise_add")
+                  ->assert_is_op("elementwise_add")
+                  ->AsIntermediate();
+  auto* relu = OpNode("relu", "relu")->assert_is_op("relu")->AsIntermediate();
 
   // create intermediate nodes
-  auto* conv2d_out = VarNode("conv2d_out");
-  auto* add_out = VarNode("add_out");
+  auto* conv2d_out = VarNode("conv2d_out")
+                         ->assert_is_op_output(conv_type_, "Output")
+                         ->assert_is_op_input("elementwise_add", "X")
+                         ->AsIntermediate();
+  auto* add_out = VarNode("add_out")
+                      ->assert_is_op_output("elementwise_add", "Out")
+                      ->assert_is_op_input("relu", "X")
+                      ->AsIntermediate();
 
   // create output node
-  auto* out = VarNode("output");
+  auto* out = VarNode("output")->assert_is_op_output("relu", "Out")->AsOutput();
 
   // create topology.
   std::vector<PMNode*> conv2d_inputs{filter, input};
@@ -45,19 +57,12 @@ void ConvElementwiseAddReLUFuser::BuildPattern() {
   conv2d_inputs >> *conv2d >> *conv2d_out;
   add_inputs >> *add >> *add_out;
   *add_out >> *relu >> *out;
-
-  // Some op specialities.
-  conv2d_out->AsIntermediate();
-  add_out->AsIntermediate();
-  conv2d->AsIntermediate();
-  add->AsIntermediate();
-  relu->AsIntermediate();
 }
 
 void ConvElementwiseAddReLUFuser::InsertNewNode(SSAGraph* graph,
                                                 const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
-  auto conv_op = LiteOpRegistry::Global().Create("conv2d");
+  auto conv_op = LiteOpRegistry::Global().Create(conv_type_);
   auto conv_old = matched.at("conv2d")->stmt()->op;
   auto* scope = conv_old->scope();
   auto& valid_places = conv_old->valid_places();
@@ -75,7 +80,7 @@ cpp::OpDesc ConvElementwiseAddReLUFuser::GenOpDesc(const key2nodes_t& matched) {
   auto* desc = matched.at("conv2d")->stmt()->op_info();
 
   cpp::OpDesc op_desc;
-  op_desc.SetType("conv2d");
+  op_desc.SetType(conv_type_);
   op_desc.SetInput("Input", {matched.at("input")->arg()->name});
   op_desc.SetInput("Filter", {matched.at("filter")->arg()->name});
   op_desc.SetInput("Bias", {matched.at("bias")->arg()->name});
