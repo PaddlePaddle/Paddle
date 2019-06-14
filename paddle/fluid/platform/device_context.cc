@@ -413,7 +413,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 
   int tid = platform::get_cur_thread_id();
 
-  // WA for variable length in detect model
+  // use tid to indicate if cache is enabled, tid > 0 means disable cache
   if (tid > 0) return;
 
   std::lock_guard<std::mutex> lock(*p_mutex_);

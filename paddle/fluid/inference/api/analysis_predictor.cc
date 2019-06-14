@@ -198,11 +198,13 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
+  // TODO(intel): will refactor this code later
   VLOG(3) << "AnalysisPredictor::Run get_cur_thread_id="
           << paddle::platform::get_cur_thread_id()
-          << ", mkldnn_reuse_id_=" << config_.mkldnn_reuse_id_ << "\n";
+          << ", mkldnn_disable_cache_=" << config_.mkldnn_disable_cache_
+          << "\n";
   if (paddle::platform::get_cur_thread_id() == 0)
-    paddle::platform::set_cur_thread_id(config_.mkldnn_reuse_id_);
+    paddle::platform::set_cur_thread_id(config_.mkldnn_disable_cache_);
 #endif
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
@@ -246,7 +248,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
 #ifdef PADDLE_WITH_MKLDNN
-  if (config_.mkldnn_reuse_id_ > 0) paddle::platform::set_cur_thread_id(0);
+  // TODO(intel): will refactor this code later
+  // To avoid confusion when thread is reused from pool
+  if (config_.mkldnn_disable_cache_ > 0) paddle::platform::set_cur_thread_id(0);
 #endif
 
   return true;
@@ -606,11 +610,13 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
+  // TODO(intel): will refactor this code later
   VLOG(3) << "AnalysisPredictor::ZeroCopyRun get_cur_thread_id="
           << paddle::platform::get_cur_thread_id()
-          << ", mkldnn_reuse_id_=" << config_.mkldnn_reuse_id_ << "\n";
+          << ", mkldnn_disable_cache_=" << config_.mkldnn_disable_cache_
+          << "\n";
   if (paddle::platform::get_cur_thread_id() == 0)
-    paddle::platform::set_cur_thread_id(config_.mkldnn_reuse_id_);
+    paddle::platform::set_cur_thread_id(config_.mkldnn_disable_cache_);
 #endif
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
@@ -621,7 +627,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
 #ifdef PADDLE_WITH_MKLDNN
-  if (config_.mkldnn_reuse_id_ > 0) paddle::platform::set_cur_thread_id(0);
+  // TODO(intel): will refactor this code later
+  // To avoid confusion when thread is reused from pool
+  if (config_.mkldnn_disable_cache_ > 0) paddle::platform::set_cur_thread_id(0);
 #endif
 
   return true;

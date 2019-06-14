@@ -177,8 +177,9 @@ struct AnalysisConfig {
   bool ngraph_enabled() const { return use_ngraph_; }
 
   /** Turn on MKLDNN.
+   *@param mkldnn_disable_cache if disable mkldnn cache
    */
-  void EnableMKLDNN(int reuse_id = 0);
+  void EnableMKLDNN(int mkldnn_disable_cache = 0);
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
@@ -287,7 +288,7 @@ struct AnalysisConfig {
   bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
-  int mkldnn_reuse_id_{0};
+  int mkldnn_disable_cache_{0};
 
   bool model_from_memory_{false};
 

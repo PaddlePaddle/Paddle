@@ -114,7 +114,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
-  CP_MEMBER(mkldnn_reuse_id_);
+  CP_MEMBER(mkldnn_disable_cache_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -151,10 +151,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   Update();
 }
 
-void AnalysisConfig::EnableMKLDNN(int reuse_id) {
+void AnalysisConfig::EnableMKLDNN(int mkldnn_disable_cache) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_ = true;
-  mkldnn_reuse_id_ = reuse_id;
+  mkldnn_disable_cache_ = mkldnn_disable_cache;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
   use_mkldnn_ = false;
