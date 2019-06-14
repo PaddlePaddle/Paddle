@@ -57,51 +57,42 @@ class SliceKernel : public framework::OpKernel<T> {
     auto out = context.Output<framework::Tensor>("Out");
     auto out_dims = out->dims();
     auto in_dims = in->dims();
-    
-    //resize out_dims
+
+    // resize out_dims
     auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
-    if ( decrease_axis.size() > 0 )
-    {
-        if(  decrease_axis.size() == (size_t)in_dims.size() )
-        {
-            std::vector<int> vec_origin_out_shape( decrease_axis.size(), 1);
-            out->Resize( framework::make_ddim( vec_origin_out_shape) );
-        }
-        else
-        {
-        std::vector<int> vec_origin_out_shape( out_dims.size() + decrease_axis.size(), -1);
-        
-        for( size_t i = 0; i < decrease_axis.size(); ++i )
-        {
-            vec_origin_out_shape[ decrease_axis[i] ] = 1;
+    if (decrease_axis.size() > 0) {
+      if (decrease_axis.size() == (size_t)in_dims.size()) {
+        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
+        out->Resize(framework::make_ddim(vec_origin_out_shape));
+      } else {
+        std::vector<int> vec_origin_out_shape(
+            out_dims.size() + decrease_axis.size(), -1);
+
+        for (size_t i = 0; i < decrease_axis.size(); ++i) {
+          vec_origin_out_shape[decrease_axis[i]] = 1;
         }
 
         int step_in = 0;
-        for( int i = 0; i < out_dims.size(); ++i )
-        {
-            while( true)
-            {
-                if ( vec_origin_out_shape[step_in] == -1 )
-                {
-                    vec_origin_out_shape[step_in] = out_dims[i];
-                    break;
-                }
-
-                step_in ++;
+        for (int i = 0; i < out_dims.size(); ++i) {
+          while (true) {
+            if (vec_origin_out_shape[step_in] == -1) {
+              vec_origin_out_shape[step_in] = out_dims[i];
+              break;
             }
 
+            step_in++;
+          }
         }
 
-        out->Resize( framework::make_ddim( vec_origin_out_shape)) ;
-        }
+        out->Resize(framework::make_ddim(vec_origin_out_shape));
+      }
     }
 
     out->mutable_data<T>(context.GetPlace());
     auto axes = context.Attr<std::vector<int>>("axes");
     auto starts = context.Attr<std::vector<int>>("starts");
-    
+
     auto new_out_dims = out->dims();
-    LOG( ERROR ) << "out dims " << new_out_dims;
     auto offsets = Eigen::array<int, D>();
     auto extents = Eigen::array<int, D>();
     for (size_t i = 0; i < D; ++i) {
@@ -125,8 +116,7 @@ class SliceKernel : public framework::OpKernel<T> {
             *out, new_out_dims);
     out_t.device(place) = in_t.slice(offsets, extents);
 
-    
-    out->Resize( out_dims );
+    out->Resize(out_dims);
   }
 };
 
@@ -134,9 +124,7 @@ template <typename DeviceContext, typename T>
 class SliceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    size_t rank = ctx.Input<framework::Tensor>("Input")
-                      ->dims()
-                      .size();
+    size_t rank = ctx.Input<framework::Tensor>("Input")->dims().size();
     switch (rank) {
       case 1:
         SliceCompute<1>(ctx);
@@ -175,41 +163,33 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto starts = context.Attr<std::vector<int>>("starts");
 
     auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
-    if ( decrease_axis.size() > 0 )
-    {
-        if(  decrease_axis.size() == (size_t)in_dims.size() )
-        {
-            // all dims decrease
-            std::vector<int> vec_origin_out_shape( decrease_axis.size(), 1);
-            out_dims = framework::make_ddim( vec_origin_out_shape);
-        }
-        else
-        {
-        std::vector<int> vec_origin_out_shape( out_dims.size() + decrease_axis.size(), -1);
-        
-        for( size_t i = 0; i < decrease_axis.size(); ++i )
-        {
-            vec_origin_out_shape[ decrease_axis[i] ] = 1;
+    if (decrease_axis.size() > 0) {
+      if (decrease_axis.size() == (size_t)in_dims.size()) {
+        // all dims decrease
+        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
+        out_dims = framework::make_ddim(vec_origin_out_shape);
+      } else {
+        std::vector<int> vec_origin_out_shape(
+            out_dims.size() + decrease_axis.size(), -1);
+
+        for (size_t i = 0; i < decrease_axis.size(); ++i) {
+          vec_origin_out_shape[decrease_axis[i]] = 1;
         }
 
         int step_in = 0;
-        for( int i = 0; i < out_dims.size(); ++i )
-        {
-            while( true)
-            {
-                if ( vec_origin_out_shape[step_in] == -1 )
-                {
-                    vec_origin_out_shape[step_in] = out_dims[i];
-                    break;
-                }
-
-                step_in ++;
+        for (int i = 0; i < out_dims.size(); ++i) {
+          while (true) {
+            if (vec_origin_out_shape[step_in] == -1) {
+              vec_origin_out_shape[step_in] = out_dims[i];
+              break;
             }
 
+            step_in++;
+          }
         }
 
-        out_dims = framework::make_ddim( vec_origin_out_shape);
-        }
+        out_dims = framework::make_ddim(vec_origin_out_shape);
+      }
     }
 
     auto offsets = Eigen::array<int, D>();

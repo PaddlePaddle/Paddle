@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
-
 '''
 class TestSliceOp(OpTest):
     def setUp(self):
@@ -154,6 +153,8 @@ class TestSliceOp_decs_dim_5(OpTest):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 '''
+
+
 class TestSliceOp_decs_dim_6(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -164,22 +165,23 @@ class TestSliceOp_decs_dim_6(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'decrease_axis' : self.decrease_axis,
+            'decrease_axis': self.decrease_axis,
         }
 
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
-        self.axes = [0, 1,2,3]
-        self.decrease_axis = [0, 1, 2,3 ]
-        self.out = self.input[0, 1, 2, 3:4 ]
+        self.axes = [0, 1, 2, 3]
+        self.decrease_axis = [0, 1, 2, 3]
+        self.out = self.input[0, 1, 2, 3:4]
 
     def test_check_output(self):
         self.check_output()
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
 
 '''
 class TestCase1(TestSliceOp):

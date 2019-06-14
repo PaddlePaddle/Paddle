@@ -46,47 +46,39 @@ class SliceOp : public framework::OperatorWithKernel {
     int dim_value, start, end;
     for (size_t i = 0; i < axes.size(); ++i) {
       dim_value = out_dims[axes[i]];
-      if (dim_value > 0)
-      {
-      start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
-      end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
-      start = std::max(start, 0);
-      end = std::max(end, 0);
-      start = std::min(start, dim_value);
-      end = std::min(end, dim_value);
-      start = std::min(start, end);
-      out_dims[axes[i]] = end - start;
-     }
+      if (dim_value > 0) {
+        start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
+        end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
+        start = std::max(start, 0);
+        end = std::max(end, 0);
+        start = std::min(start, dim_value);
+        end = std::min(end, dim_value);
+        start = std::min(start, end);
+        out_dims[axes[i]] = end - start;
+      }
     }
 
     // generate new shape
-    if ( decrease_axis.size() > 0 )
-    {
-        std::vector<int> new_out_shape;
-        for( size_t i = 0; i < decrease_axis.size(); ++i )
-        {
-            if( ctx->IsRuntime())
-            {
-                PADDLE_ENFORCE_EQ( out_dims[ decrease_axis[i] ], 1, "decrease dim should be 1");
-            }
-            out_dims[ decrease_axis[i] ] = 0;
+    if (decrease_axis.size() > 0) {
+      std::vector<int> new_out_shape;
+      for (size_t i = 0; i < decrease_axis.size(); ++i) {
+        if (ctx->IsRuntime()) {
+          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
+                            "decrease dim should be 1");
         }
+        out_dims[decrease_axis[i]] = 0;
+      }
 
-        for( int i = 0; i < out_dims.size(); ++i )
-        {
-            if( out_dims[i] != 0 )
-            {
-                new_out_shape.push_back( out_dims[i] );
-            }
+      for (int i = 0; i < out_dims.size(); ++i) {
+        if (out_dims[i] != 0) {
+          new_out_shape.push_back(out_dims[i]);
         }
-        if( new_out_shape.size() == 0 )
-        {
-            new_out_shape.push_back( 1 );
-        }
+      }
+      if (new_out_shape.size() == 0) {
+        new_out_shape.push_back(1);
+      }
 
-        out_dims = framework::make_ddim( new_out_shape );
-
-        LOG(ERROR) << " infer shape " << out_dims;
+      out_dims = framework::make_ddim(new_out_shape);
     }
 
     ctx->SetOutputDim("Out", out_dims);
@@ -119,10 +111,8 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "ends",
         "(list<int>) Starting indices of corresponding axis in `axes`.");
-    AddAttr<std::vector<int>>(
-        "decrease_axis",
-        "(list<int>) decrease_axis")
-        .SetDefault( {} );
+    AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
+        .SetDefault({});
     AddComment(R"DOC(
 Slice Operator.
 
