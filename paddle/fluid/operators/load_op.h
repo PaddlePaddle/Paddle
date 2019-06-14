@@ -89,6 +89,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
   void LoadSelectedRows(std::istream &fin, const platform::Place &place,
                         framework::Variable *var) const {
+    var->Clear();
     auto *selectedRows = var->GetMutable<framework::SelectedRows>();
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
