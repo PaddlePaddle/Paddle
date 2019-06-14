@@ -50,6 +50,7 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    //    cfg.SetMKLDNNReuseID(1);
     if (!FLAGS_disable_mkldnn_fc)
       cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }

@@ -48,6 +48,14 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
   platform::MKLDNNHandler::AppendKey(&key, suffix);
+
+  if (platform::get_cur_thread_id() == 0) {
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << tid;
+    platform::MKLDNNHandler::AppendKey(&key, "-t:");
+    platform::MKLDNNHandler::AppendKey(&key, ss.str());
+  }
   return key;
 }
 

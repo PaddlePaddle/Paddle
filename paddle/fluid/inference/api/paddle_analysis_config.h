@@ -202,6 +202,11 @@ struct AnalysisConfig {
     mkldnn_enabled_op_types_ = op_list;
   }
 
+  /** Specify id for MKLDNN primitive reuse.
+   * @param id reuse id.
+   */
+  void SetMKLDNNReuseID(int id) { mkldnn_reuse_id_ = id; }
+
   /** Turn on quantization.
    */
   void EnableMkldnnQuantizer();
@@ -287,6 +292,7 @@ struct AnalysisConfig {
   bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
+  int mkldnn_reuse_id_{0};
 
   bool model_from_memory_{false};
 

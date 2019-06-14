@@ -396,7 +396,6 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
     : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
-  mode_ = 0;
 }
 
 namespace {
@@ -435,7 +434,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   } else {
     key_it->second = data;  // set data to existing blob
   }
-  //  std::cout << "MKLDNNDeviceContext::SetBlob " << name << "\n";
+  std::cout << "MKLDNNDeviceContext::SetBlob " << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }

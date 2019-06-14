@@ -193,25 +193,14 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 #endif
 }
 
-void AnalysisPredictor::SetMkldnnMode(int mode) {
-#ifdef PADDLE_WITH_MKLDNN
-#if 0
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *dev_ctx =
-      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place_));
-
-  dev_ctx->SetMode(mode);
-#endif
-  platform::set_cur_thread_id(mode);
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-#endif
-}
-
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (paddle::platform::get_cur_thread_id() == 0)
+    paddle::platform::set_cur_thread_id(config_.mkldnn_reuse_id_);
+#endif
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
@@ -610,6 +599,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (paddle::platform::get_cur_thread_id() == 0)
+    paddle::platform::set_cur_thread_id(config_.mkldnn_reuse_id_);
+#endif
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);

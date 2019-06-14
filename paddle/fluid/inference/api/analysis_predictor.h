@@ -81,7 +81,6 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::ProgramDesc &program() { return *inference_program_; }
 
   void SetMkldnnThreadID(int tid);
-  void SetMkldnnMode(int mode);
 
   std::string GetSerializedProgram() const override;
 
