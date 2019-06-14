@@ -78,7 +78,10 @@ def reader_creator(image_filename, label_filename, buffer_size):
                         buffer_size, rows * cols)).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
-                    images = images / 255.0 * 2.0 - 1.0
+                    images = images / 255.0
+                    images = images * 2.0
+                    images = images - 1.0
+
                     for i in range(buffer_size):
                         yield images[i, :], int(labels[i])
 
