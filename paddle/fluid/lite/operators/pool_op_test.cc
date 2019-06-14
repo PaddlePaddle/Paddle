@@ -86,5 +86,5 @@ TEST(pool_op_lite, test) {
 }  // namespace paddle
 
 #ifdef LITE_WITH_ARM
-USE_LITE_KERNEL(pool, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
 #endif
