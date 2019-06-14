@@ -13,34 +13,30 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
-#include <vector>
-#include "paddle/fluid/lite/core/op_lite.h"
-#include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/utils/all.h"
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
-namespace operators {
+namespace kernels {
+namespace arm {
 
-class SplitOp : public OpLite {
+class BatchNormCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
-  SplitOp() {}
-  explicit SplitOp(const std::string &op_type) : OpLite(op_type) {}
+  using param_t = operators::BatchNormParam;
 
-  bool CheckShape() const override;
+  void PrepareForRun() override;
 
-  bool InferShape() const override;
+  void Run() override;
 
-  bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
-
-  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-  std::string DebugString() const override { return "split"; }
+  virtual ~BatchNormCompute() = default;
 
  private:
-  mutable SplitParam param_;
+  Tensor new_scale;
+  Tensor new_bias;
 };
 
-}  // namespace operators
+}  // namespace arm
+}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

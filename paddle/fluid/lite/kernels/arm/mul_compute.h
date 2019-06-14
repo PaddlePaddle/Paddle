@@ -13,34 +13,27 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
-#include <vector>
-#include "paddle/fluid/lite/core/op_lite.h"
-#include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/utils/all.h"
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/core/types.h"
 
 namespace paddle {
 namespace lite {
-namespace operators {
+namespace kernels {
+namespace arm {
 
-class SplitOp : public OpLite {
+class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
-  SplitOp() {}
-  explicit SplitOp(const std::string &op_type) : OpLite(op_type) {}
+  using param_t = operators::MulParam;
 
-  bool CheckShape() const override;
+  void PrepareForRun() override;
 
-  bool InferShape() const override;
+  void Run() override;
 
-  bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
-
-  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-  std::string DebugString() const override { return "split"; }
-
- private:
-  mutable SplitParam param_;
+  virtual ~MulCompute() = default;
 };
 
-}  // namespace operators
+}  // namespace arm
+}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

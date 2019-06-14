@@ -24,20 +24,10 @@ namespace kernels {
 namespace arm {
 
 void splite_resize_out(const lite::Tensor* din,
-                       std::vector<lite::Tensor*>* dout, int axis, int num,
-                       const std::vector<int>& sections) {
-  for (auto out : *dout) delete out;
-  dout->clear();
+                       const std::vector<lite::Tensor*>& dout, int axis,
+                       int num, const std::vector<int>& sections) {
   auto in_dims = din->dims();
-  int outs_number;
-  if (num > 0) {
-    outs_number = num;
-  } else {
-    outs_number = sections.size();
-  }
-  for (int i = 0; i < outs_number; i++) {
-    dout->push_back(new lite::Tensor);
-  }
+  int outs_number = dout.size();
 
   std::vector<lite::DDimLite> outs_dims;
   outs_dims.reserve(outs_number);
@@ -58,7 +48,7 @@ void splite_resize_out(const lite::Tensor* din,
   }
 
   for (int j = 0; j < outs_dims.size(); ++j) {
-    (*dout)[j]->Resize(outs_dims[j]);
+    dout[j]->Resize(outs_dims[j]);
   }
 }
 
@@ -75,7 +65,7 @@ void split_compute_ref(const operators::SplitParam& param) {
   }
 
   int input_offset = 0;
-  for (auto out : *dout) {
+  for (auto out : dout) {
     auto out_dim = out->dims();
     std::vector<int> out_strides(out_dim.size());
     out_strides[out_dim.size() - 1] = out_dim[out_dim.size() - 1];
@@ -128,16 +118,31 @@ TEST(split_arm, compute) {
                 for (int i = 0; i < x.dims().production(); i++) {
                   x_data[i] = i;
                 }
-                splite_resize_out(&x, &output, axis, num, sections);
-                splite_resize_out(&x, &output_ref, axis, num, sections);
+                for (auto out : output) delete out;
+                for (auto out : output_ref) delete out;
+                output.clear();
+                output_ref.clear();
+
+                int outs_number;
+                if (num > 0) {
+                  outs_number = num;
+                } else {
+                  outs_number = sections.size();
+                }
+                for (int i = 0; i < outs_number; i++) {
+                  output.push_back(new lite::Tensor);
+                  output_ref.push_back(new lite::Tensor);
+                }
+                splite_resize_out(&x, output, axis, num, sections);
+                splite_resize_out(&x, output_ref, axis, num, sections);
                 param.x = &x;
                 param.axis = axis;
                 param.num = num;
-                param.sections = &sections;
-                param.output = &output;
+                param.sections = sections;
+                param.output = output;
                 split.SetParam(param);
                 split.Run();
-                param.output = &output_ref;
+                param.output = output_ref;
                 split_compute_ref<float>(param);
                 for (int i = 0; i < output.size(); i++) {
                   float* output_data = output[i]->mutable_data<float>();

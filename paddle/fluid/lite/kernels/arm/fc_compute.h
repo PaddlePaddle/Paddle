@@ -25,10 +25,9 @@ class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
   using param_t = operators::FcParam;
 
-  void Run() override;
+  void PrepareForRun() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
+  void Run() override;
 
   virtual ~FcCompute() = default;
 };

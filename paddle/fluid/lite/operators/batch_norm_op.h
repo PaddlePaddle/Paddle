@@ -23,10 +23,10 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class SplitOp : public OpLite {
+class BatchNormOp : public OpLite {
  public:
-  SplitOp() {}
-  explicit SplitOp(const std::string &op_type) : OpLite(op_type) {}
+  BatchNormOp() {}
+  explicit BatchNormOp(const std::string &op_type) : OpLite(op_type) {}
 
   bool CheckShape() const override;
 
@@ -35,10 +35,10 @@ class SplitOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
 
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
-  std::string DebugString() const override { return "split"; }
+  std::string DebugString() const override { return "batch_norm"; }
 
  private:
-  mutable SplitParam param_;
+  mutable BatchNormParam param_;
 };
 
 }  // namespace operators

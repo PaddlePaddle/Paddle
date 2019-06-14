@@ -54,15 +54,15 @@ void DeviceInfo::InitInternal(DeviceInfo* dev) {
               << ", cluster ID: " << dev->cluster_ids_[dev->core_ids_[i]]
               << ", CPU ARCH: A" << dev->archs_[i];
   }
-  LOG(INFO) << "L1 DataCache size is: ";
+  VLOG(1) << "L1 DataCache size is: ";
   for (int i = 0; i < dev->compute_core_num_; ++i) {
-    LOG(INFO) << dev->L1_cache_[i] / 1024 << " KB";
+    VLOG(1) << dev->L1_cache_[i] / 1024 << " KB";
   }
-  LOG(INFO) << "L2 Cache size is: ";
+  VLOG(1) << "L2 Cache size is: ";
   for (int i = 0; i < dev->compute_core_num_; ++i) {
-    LOG(INFO) << dev->L2_cache_[i] / 1024 << " KB";
+    VLOG(1) << dev->L2_cache_[i] / 1024 << " KB";
   }
-  LOG(INFO) << "Total memory: " << dev->max_memory_ << "KB";
+  VLOG(1) << "Total memory: " << dev->max_memory_ << "KB";
 
   dev->max_freq_ = max_freq[0];
   for (int j = 1; j < dev->compute_core_num_; ++j) {
