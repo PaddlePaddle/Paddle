@@ -378,7 +378,7 @@ paddle.fluid.layers.Uniform.__init__ (ArgSpec(args=['self', 'low', 'high'], vara
 paddle.fluid.layers.Uniform.entropy (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7e651e578b914d257471fc6c6e2bfe3e'))
 paddle.fluid.layers.Uniform.kl_divergence (ArgSpec(args=['self', 'other'], varargs=None, keywords=None, defaults=None), ('document', '3baee52abbed82d47e9588d9dfe2f42f'))
 paddle.fluid.layers.Uniform.log_prob (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', '2425beadb1622682d6f193d52a29bfa3'))
-paddle.fluid.layers.Uniform.sample (ArgSpec(args=['self', 'shape', 'seed'], varargs=None, keywords=None, defaults=(0,)), ('document', '470d14d1f35003a43323a547413ab7d7'))
+paddle.fluid.layers.Uniform.sample (ArgSpec(args=['self', 'shape', 'seed'], varargs=None, keywords=None, defaults=(0,)), ('document', '26b9d3aa6f96b763a15587567b37e0f1'))
 paddle.fluid.layers.Normal.__init__ (ArgSpec(args=['self', 'loc', 'scale'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.Normal.entropy (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7e651e578b914d257471fc6c6e2bfe3e'))
 paddle.fluid.layers.Normal.kl_divergence (ArgSpec(args=['self', 'other'], varargs=None, keywords=None, defaults=None), ('document', '6bda2ae975306bf277cbac4acfef1c32'))
