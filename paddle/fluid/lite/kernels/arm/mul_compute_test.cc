@@ -73,7 +73,7 @@ TEST(mul_arm, compare_test) {
         FillData<T>(x_data, x.dims().production());
         FillData<T>(y_data, y.dims().production());
         FillData<T>(out_data, out.dims().production(), 0, 0);
-        FillData<T>(ref_data, out.dims().production(), 0, 0);
+        FillData<T>(ref_data, ref.dims().production(), 0, 0);
 
         MulCompute mul;
         operators::MulParam param;
