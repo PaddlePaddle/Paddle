@@ -53,10 +53,18 @@ class PoolOpLite : public OpLite {
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
 
-    param_.exclusive = op_desc.GetAttr<bool>("exclusive");
-    param_.adaptive = op_desc.GetAttr<bool>("adaptive");
-    param_.ceil_mode = op_desc.GetAttr<bool>("ceil_mode");
-    param_.use_quantizer = op_desc.GetAttr<bool>("use_quantizer");
+    if (op_desc.HasAttr("exclusive")) {
+      param_.exclusive = op_desc.GetAttr<bool>("exclusive");
+    }
+    if (op_desc.HasAttr("adaptive")) {
+      param_.adaptive = op_desc.GetAttr<bool>("adaptive");
+    }
+    if (op_desc.HasAttr("ceil_mode")) {
+      param_.ceil_mode = op_desc.GetAttr<bool>("ceil_mode");
+    }
+    if (op_desc.HasAttr("use_quantizer")) {
+      param_.use_quantizer = op_desc.GetAttr<bool>("use_quantizer");
+    }
     // param_.data_format = op_desc.GetAttr<bool>("data_format");
     return true;
   }

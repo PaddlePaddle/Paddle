@@ -26,7 +26,7 @@ void ElementwiseAddCompute::Run() {
   const float* y_data = param.Y->data<float>();
   float* out_data = param.Out->mutable_data<float>();
   int n = param.X->dims().production();
-  lite::arm::math::elementwise_add(x_data, y_data, out_data, n);
+  // lite::arm::math::elementwise_add(x_data, y_data, out_data, n);
 }
 
 }  // namespace arm
