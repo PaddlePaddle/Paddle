@@ -77,8 +77,7 @@ class ConvOpLite : public OpLite {
       if (bias_arguments.size() != 0) {
         auto bias_var = scope->FindVar(bias_arguments.front());
         if (bias_var != nullptr) {
-          param_.bias =
-              const_cast<lite::Tensor*>(&(bias_var->Get<lite::Tensor>()));
+          param_.bias = &bias_var->Get<lite::Tensor>();
         }
       }
     }
@@ -88,8 +87,7 @@ class ConvOpLite : public OpLite {
       if (res_argument.size() != 0) {
         auto residual_data_var = scope->FindVar(res_argument.front());
         if (residual_data_var != nullptr) {
-          param_.residualData = const_cast<lite::Tensor*>(
-              &(residual_data_var->Get<lite::Tensor>()));
+          param_.residualData = &residual_data_var->Get<lite::Tensor>();
         }
       }
     }
