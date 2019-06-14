@@ -263,10 +263,10 @@ def rpn_target_assign(bbox_pred,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
+        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
-        is_crowd (Variable): A 1-D LoDTensor which indicates ground-truth is crowd.
+        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
         im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
         3 is the height, width and scale.
         rpn_batch_size_per_im(int): Total number of RPN examples per image.
@@ -1189,7 +1189,7 @@ def ssd_loss(location,
     **Multi-box loss layer for object detection algorithm of SSD**
 
     This layer is to compute dection loss for SSD given the location offset
-    predictions, confidence predictions, prior boxes and ground-truth bounding
+    predictions, confidence predictions, prior boxes and ground-truth boudding
     boxes and labels, and the type of hard example mining. The returned loss
     is a weighted sum of the localization loss (or regression loss) and
     confidence loss (or classification loss) by performing the following steps:
@@ -1233,7 +1233,7 @@ def ssd_loss(location,
         confidence (Variable): The confidence predictions are a 3D Tensor
             with shape [N, Np, C], N and Np are the same as they are in
             `location`, C is the class number.
-        gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
+        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
         gt_label (Variable): The ground-truth labels are a 2D LoDTensor
@@ -2189,7 +2189,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
     RoI, which encodes K binary masks of resolution M x M, one for each of the
     K classes. This mask targets are used to compute loss of mask branch.
 
-    Please note, the data format of ground-truth segmentation, assumed the
+    Please note, the data format of groud-truth segmentation, assumed the
     segmentations are as follows. The first instance has two gt objects.
     The second instance has one gt object, this object has two gt segmentations.
 
