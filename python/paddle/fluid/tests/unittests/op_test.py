@@ -269,6 +269,7 @@ class OpTest(unittest.TestCase):
             return fluid.dygraph.base.to_variable(value)
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -307,16 +308,17 @@ class OpTest(unittest.TestCase):
                             persistable=False,
                             stop_gradient=False)
                     outputs[name].append(v)
-
+            
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
                 attrs=self.attrs)
-
+            
             return outputs
 
     def _calc_output(self, place, parallel=False, no_check_set=None, loss=None):
+
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -339,7 +341,7 @@ class OpTest(unittest.TestCase):
                     use_cuda=use_cuda, main_program=program)
         else:
             executor = Executor(place)
-
+        
         fetch_list = getattr(self, "fetch_list", [])
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
@@ -363,6 +365,7 @@ class OpTest(unittest.TestCase):
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
+
         return outs, fetch_list
 
     def check_output_with_place(self,
@@ -371,6 +374,7 @@ class OpTest(unittest.TestCase):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=False):
+
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -498,6 +502,7 @@ class OpTest(unittest.TestCase):
                      equal_nan=False,
                      check_dygraph=False):
         places = self._get_places()
+
         for place in places:
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
                                          check_dygraph)

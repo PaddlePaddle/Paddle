@@ -776,6 +776,7 @@ class Variable(object):
                 return self._cloneVar(True)
             start, stop, step = self._slice_indices(item, self.shape[axis])
             if step == 1:
+                print( "22", start)
                 return self._sliceVar([axis], [start], [stop])
             else:
                 vars = []
@@ -811,35 +812,103 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        new_var = None
-        if isinstance(item, tuple):
-            if len(item) > len(self.shape):
-                raise IndexError("Too many indexes")
-            fixedSize = True
-            for i in range(len(self.shape)):
-                if self.shape[i] == -1:
-                    fixedSize = False
-                    break
+        print( "slice item", item)
 
-            newitem = self._reconstructSliceinfo(item) or item
-            if fixedSize:
-                check, info = self._detectContinuesSlice(newitem)
-                if check:
-                    starts = info[0]
-                    ends = info[1]
-                    axes = [i for i in range(len(starts))]
-                    return self._sliceVar(axes, starts, ends)
-                else:
-                    new_var = self
-                    for index, o in enumerate(newitem):
-                        new_var = new_var._sliceAndConcatVar(o, index)
+        if not isinstance( item, tuple):
+            print( item )
+            item = [ item ]
+
+        decrease_axis = []
+        slice_axis = []
+        slice_start = []
+        slice_end = []
+        reverse_axis = []
+        
+        
+        for dim, slice_item in enumerate(item):
+            if isinstance( slice_item, slice):
+                start = slice_item.start if slice_item.start else 0
+                end = slice_item.stop if slice_item.stop else -1
+                step = slice_item.step if slice_item.step else 1
+
+                assert( step == 1 or step == -1)
+
+                if step == -1:
+                    reverse_axis.append( dim )
+
+                if start == 0 and end == -1:
+                    continue
+
+                slice_axis.append( dim )
+                slice_start.append( start )
+                slice_end.append( end )
             else:
-                new_var = self
-                for index, o in enumerate(newitem):
-                    new_var = new_var._sliceAndConcatVar(o, index)
-        else:
-            new_var = self._sliceAndConcatVar(item, 0)
-        return new_var
+                # int
+                print( "int", slice_item )
+                decrease_axis.append( dim )     
+                slice_axis.append( dim )
+                slice_start.append( slice_item )
+                slice_end.append( slice_item + 1 if slice_item != -1 else 10000000 )
+        
+        out = self
+        if len( slice_axis ) > 0:
+            # append slice_op here
+        
+            slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name + "_slice"),
+                dtype=self.dtype)
+        
+            self.block.append_op(
+                type="slice",
+                inputs={'Input': [out]},
+                outputs={'Out': [slice_out_var]},
+                attrs={'axes': slice_axis,
+                       'starts': slice_start,
+                       'ends': slice_end})
+
+            out = slice_out_var
+
+        if len( decrease_axis ) > 0:
+            squeeze_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name + "_squeeze"),
+                dtype=self.dtype)
+
+            squeeze_xshape = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name + "_squeeze_xshape"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="squeeze2",
+                inputs={'X': [out]},
+                outputs={'Out': squeeze_out_var,
+                         'XShape' : squeeze_xshape},
+                attrs={'axes': decrease_axis } )
+
+            out = squeeze_out_var
+
+        if len( reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name + "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis } )
+
+            out = reverse_out_var
+        
+        return out
+
+
+
+        
+
+
+                
+                
+
+                
+
 
 
 def get_all_op_protos():
