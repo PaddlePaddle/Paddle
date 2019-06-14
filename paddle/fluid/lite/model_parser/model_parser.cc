@@ -154,7 +154,6 @@ void LoadModel(const std::string &model_dir, Scope *scope,
       continue;
 
     std::string file_path = model_dir + "/" + var.name();
-    LOG(INFO) << "reading weight " << var.name();
 
     std::ifstream file(file_path);
     switch (var.type().type()) {
@@ -209,7 +208,7 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.data_size();
+    uint64_t size = tensor.memory_size();
     CHECK_LT(size, std::numeric_limits<std::streamsize>::max())
         << "Index overflow when writing tensor";
 

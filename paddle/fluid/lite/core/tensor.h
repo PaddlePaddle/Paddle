@@ -21,6 +21,7 @@
  * looks the same.
  */
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
@@ -165,6 +166,7 @@ class TensorBase {
   const void *raw_data() const { return const_self()->data(); }
 
   size_t data_size() const { return const_self()->dims().production(); }
+  size_t memory_size() const { return const_self()->memory_size(); }
 
   void ShareDataWith(const TensorBase &other) { self()->ShareDataWith(other); }
   void CopyDataFrom(const TensorBase &other) { self()->CopyDataFrom(other); }

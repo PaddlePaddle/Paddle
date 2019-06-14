@@ -24,7 +24,7 @@ namespace lite {
 namespace mir {
 
 void GenerateProgramPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
-  LOG(INFO) << "final program \n" << Visualize(graph.get());
+  VLOG(4) << "final program \n" << Visualize(graph.get());
   for (auto& item : graph->StmtTopologicalOrder()) {
     if (item->IsStmt()) {
       auto& stmt = item->AsStmt();

@@ -86,6 +86,7 @@ class TensorHvy : public TensorBase<TensorHvy> {
 
   template <typename T>
   T* mutable_data() {
+    memory_size_ = framework::product(data_.dims()) * sizeof(T);
     return data_.mutable_data<T>(data_.dims(), platform::CPUPlace());
   }
   template <typename T>
@@ -126,8 +127,11 @@ class TensorHvy : public TensorBase<TensorHvy> {
   const framework::LoDTensor& raw_tensor() const { return data_; }
   framework::LoDTensor& raw_tensor() { return data_; }
 
+  size_t memory_size() const { return memory_size_; }
+
  private:
   framework::LoDTensor data_;
+  size_t memory_size_{};
 };
 
 }  // namespace lite

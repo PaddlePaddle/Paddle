@@ -50,7 +50,7 @@ endif()
 
 message(STATUS "x86 kernels: ${x86_kernels}")
 lite_cc_test(test_light_api SRCS light_api_test.cc
-  DEPS light_api_lite
+  DEPS light_api_lite mir_passes
   X86_DEPS ${x86_kernels}
   ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt
   SERIAL)

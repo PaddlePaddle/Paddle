@@ -43,10 +43,6 @@ bool CompareTensors(const std::string& name, const ExecutorLite& cxx_api,
                     const LightPredictor& light_api) {
   const auto* a = cxx_api.GetTensor(name);
   const auto* b = light_api.GetTensor(name);
-
-  LOG(INFO) << "compare tensor: " << name;
-  LOG(INFO) << "a: " << *a;
-  LOG(INFO) << "b: " << *b;
   return TensorCompareWith(*a, *b);
 }
 
@@ -89,10 +85,8 @@ TEST(CXXApi_LightApi, save_and_load_model) {
   }
 
   const auto* cxx_out = cxx_api.GetOutput(0);
-  LOG(INFO) << "out: " << *cxx_out;
-
   const auto* light_out = light_api.GetOutput(0);
-  LOG(INFO) << "out: " << *light_out;
+  ASSERT_TRUE(TensorCompareWith(*cxx_out, *light_out));
 
   std::vector<std::string> tensors_with_order({
       "a", "fc_0.w_0", "fc_0.tmp_0", "scale_0.tmp_0",
