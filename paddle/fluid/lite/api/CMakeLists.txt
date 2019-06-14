@@ -54,3 +54,4 @@ lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     mir_passes
     ${ops_lite} ${host_kernels}
     ARM_DEPS ${arm_kernels})
+ 

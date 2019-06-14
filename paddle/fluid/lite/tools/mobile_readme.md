@@ -124,3 +124,4 @@ $ adb devices
 List of devices attached
 5cb00b6 device
 ```
+ 
