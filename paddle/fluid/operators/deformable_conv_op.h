@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/deformable_conv.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -22,64 +23,10 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using CPUDeviceContext = platform::CPUDeviceContext;
 
 template <typename T>
-T DmcnIm2colBilinearCpu(const T* bottom_data, const int data_width,
-                        const int height, const int width, T h, T w) {
-  int h_low = floor(h);
-  int w_low = floor(w);
-  int h_high = h_low + 1;
-  int w_high = w_low + 1;
-
-  T lh = h - h_low;
-  T lw = w - w_low;
-  T hh = 1 - lh, hw = 1 - lw;
-
-  T v1 = 0;
-  if (h_low >= 0 && w_low >= 0) v1 = bottom_data[h_low * data_width + w_low];
-  T v2 = 0;
-  if (h_low >= 0 && w_high <= width - 1)
-    v2 = bottom_data[h_low * data_width + w_high];
-  T v3 = 0;
-  if (h_high <= height - 1 && w_low >= 0)
-    v3 = bottom_data[h_high * data_width + w_low];
-  T v4 = 0;
-  if (h_high <= height - 1 && w_high <= width - 1)
-    v4 = bottom_data[h_high * data_width + w_high];
-
-  T w1 = hh * hw, w2 = hh * lw, w3 = lh * hw, w4 = lh * lw;
-
-  T val = (w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4);
-  return val;
-}
-
-template <typename T>
-T DmcnGetGradientWeightCpu(T argmax_h, T argmax_w, const int h, const int w,
-                           const int height, const int width) {
-  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
-      argmax_w >= width) {
-    return 0;
-  }
-
-  int argmax_h_low = floor(argmax_h);
-  int argmax_w_low = floor(argmax_w);
-  int argmax_h_high = argmax_h_low + 1;
-  int argmax_w_high = argmax_w_low + 1;
-
-  T weight = 0;
-  if (h == argmax_h_low && w == argmax_w_low)
-    weight = (h + 1 - argmax_h) * (w + 1 - argmax_w);
-  if (h == argmax_h_low && w == argmax_w_high)
-    weight = (h + 1 - argmax_h) * (argmax_w + 1 - w);
-  if (h == argmax_h_high && w == argmax_w_low)
-    weight = (argmax_h + 1 - h) * (w + 1 - argmax_w);
-  if (h == argmax_h_high && w == argmax_w_high)
-    weight = (argmax_h + 1 - h) * (argmax_w + 1 - w);
-  return weight;
-}
-
-template <typename T>
-void ModulatedDeformableCol2imCpuKernel(
+void ModulatedDeformableCol2imCPUKernel(
     const int num_kernels, const T* data_col, const T* data_offset,
     const T* data_mask, const int channels, const int height, const int width,
     const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
@@ -132,8 +79,8 @@ void ModulatedDeformableCol2imCpuKernel(
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
           T weight =
-              DmcnGetGradientWeightCpu(cur_inv_h_data, cur_inv_w_data,
-                                       cur_h + dy, cur_w + dx, height, width);
+              DmcnGetGradientWeight(cur_inv_h_data, cur_inv_w_data, cur_h + dy,
+                                    cur_w + dx, height, width);
 
           *(grad_im + cur_bottom_grad_pos) =
               *(grad_im + cur_bottom_grad_pos) + weight * cur_top_grad;
@@ -144,17 +91,17 @@ void ModulatedDeformableCol2imCpuKernel(
 }
 
 template <typename T>
-inline void ModulatedDeformableCol2imCpu(
-    const platform::DeviceContext& ctx, const T* data_col, const T* data_offset,
-    const T* data_mask, const std::vector<int64_t> im_shape,
-    const std::vector<int64_t> col_shape,
+static inline void ModulatedDeformableCol2imCPU(
+    const platform::CPUDeviceContext& ctx, const T* data_col,
+    const T* data_offset, const T* data_mask,
+    const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
     const std::vector<int64_t> kernel_shape, const std::vector<int> pad,
     const std::vector<int> stride, const std::vector<int> dilation,
     const int deformable_group, T* grad_im) {
   int channel_per_deformable_group = im_shape[0] / deformable_group;
   int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
-  ModulatedDeformableCol2imCpuKernel(
+  ModulatedDeformableCol2imCPUKernel(
       num_kernels, data_col, data_offset, data_mask, im_shape[0], im_shape[1],
       im_shape[2], kernel_shape[2], kernel_shape[3], pad[0], pad[1], stride[0],
       stride[1], dilation[0], dilation[1], channel_per_deformable_group,
@@ -162,53 +109,7 @@ inline void ModulatedDeformableCol2imCpu(
 }
 
 template <typename T>
-T DmcnGetCoordinateWeightCpu(T argmax_h, T argmax_w, const int height,
-                             const int width, const T* im_data,
-                             const int data_width, const int bp_dir) {
-  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
-      argmax_w >= width) {
-    return 0;
-  }
-
-  int argmax_h_low = floor(argmax_h);
-  int argmax_w_low = floor(argmax_w);
-  int argmax_h_high = argmax_h_low + 1;
-  int argmax_w_high = argmax_w_low + 1;
-
-  T weight = 0;
-
-  if (bp_dir == 0) {
-    if (argmax_h_low >= 0 && argmax_w_low >= 0)
-      weight += -1 * (argmax_w_low + 1 - argmax_w) *
-                im_data[argmax_h_low * data_width + argmax_w_low];
-    if (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-      weight += -1 * (argmax_w - argmax_w_low) *
-                im_data[argmax_h_low * data_width + argmax_w_high];
-    if (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-      weight += (argmax_w_low + 1 - argmax_w) *
-                im_data[argmax_h_high * data_width + argmax_w_low];
-    if (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-      weight += (argmax_w - argmax_w_low) *
-                im_data[argmax_h_high * data_width + argmax_w_high];
-  } else if (bp_dir == 1) {
-    if (argmax_h_low >= 0 && argmax_w_low >= 0)
-      weight += -1 * (argmax_h_low + 1 - argmax_h) *
-                im_data[argmax_h_low * data_width + argmax_w_low];
-    if (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-      weight += (argmax_h_low + 1 - argmax_h) *
-                im_data[argmax_h_low * data_width + argmax_w_high];
-    if (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-      weight += -1 * (argmax_h - argmax_h_low) *
-                im_data[argmax_h_high * data_width + argmax_w_low];
-    if (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-      weight += (argmax_h - argmax_h_low) *
-                im_data[argmax_h_high * data_width + argmax_w_high];
-  }
-  return weight;
-}
-
-template <typename T>
-void ModulatedDeformableCol2imCoordCpuKernel(
+void ModulatedDeformableCol2imCoordCPUKernel(
     const int num_kernels, const T* data_col, const T* data_im,
     const T* data_offset, const T* data_mask, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
@@ -274,10 +175,10 @@ void ModulatedDeformableCol2imCoordCpuKernel(
         inv_h = inv_w = -2;
       } else {
         mval += data_col_ptr[col_pos] *
-                DmcnIm2colBilinearCpu(data_im_ptr + cnt * height * width, width,
-                                      height, width, inv_h, inv_w);
+                DmcnIm2colBilinear(data_im_ptr + cnt * height * width, width,
+                                   height, width, inv_h, inv_w);
       }
-      const T weight = DmcnGetCoordinateWeightCpu(
+      const T weight = DmcnGetCoordinateWeight(
           inv_h, inv_w, height, width, data_im_ptr + cnt * height * width,
           width, bp_dir);
       val += weight * data_col_ptr[col_pos] * mask;
@@ -296,8 +197,8 @@ void ModulatedDeformableCol2imCoordCpuKernel(
 }
 
 template <typename T>
-inline void ModulatedDeformableCol2imCoordCpu(
-    const platform::DeviceContext& ctx, const T* data_col, const T* data_im,
+static inline void ModulatedDeformableCol2imCoordCPU(
+    const platform::CPUDeviceContext& ctx, const T* data_col, const T* data_im,
     const T* data_offset, const T* data_mask,
     const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
     const std::vector<int64_t> kernel_shape, const std::vector<int> paddings,
@@ -307,7 +208,7 @@ inline void ModulatedDeformableCol2imCoordCpu(
                     col_shape[2] * col_shape[3] * deformable_groups;
   int channel_per_deformable_group = col_shape[0] / deformable_groups;
 
-  ModulatedDeformableCol2imCoordCpuKernel(
+  ModulatedDeformableCol2imCoordCPUKernel(
       num_kernels, data_col, data_im, data_offset, data_mask, im_shape[0],
       im_shape[1], im_shape[2], kernel_shape[2], kernel_shape[3], paddings[0],
       paddings[1], strides[0], strides[1], dilations[0], dilations[1],
@@ -317,7 +218,7 @@ inline void ModulatedDeformableCol2imCoordCpu(
 }
 
 template <typename T>
-void ModulatedDeformableIm2colCpuKernel(
+void ModulatedDeformableIm2colCPUKernel(
     const int num_kernels, const T* data_im, const T* data_offset,
     const T* data_mask, const int height, const int width, const int kernel_h,
     const int kernel_w, const int pad_h, const int pad_w, const int stride_h,
@@ -368,8 +269,8 @@ void ModulatedDeformableIm2colCpuKernel(
         const T h_im = h_in + i * dilation_h + offset_h;
         const T w_im = w_in + j * dilation_w + offset_w;
         if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
-          val = DmcnIm2colBilinearCpu(data_im_ptr, width, height, width, h_im,
-                                      w_im);
+          val =
+              DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
         }
         *data_col_ptr = val * mask;
         data_col_ptr += batch_size * height_col * width_col;
@@ -379,17 +280,17 @@ void ModulatedDeformableIm2colCpuKernel(
 }
 
 template <typename T>
-inline void ModulatedDeformableIm2colCpu(
-    const platform::DeviceContext& ctx, const T* data_im, const T* data_offset,
-    const T* data_mask, const std::vector<int64_t> im_shape,
-    const std::vector<int64_t> col_shape,
+static inline void ModulatedDeformableIm2colCPU(
+    const platform::CPUDeviceContext& ctx, const T* data_im,
+    const T* data_offset, const T* data_mask,
+    const std::vector<int64_t> im_shape, const std::vector<int64_t> col_shape,
     const std::vector<int64_t> filter_shape, const std::vector<int> paddings,
     const std::vector<int> strides, const std::vector<int> dilations,
     const int deformable_groups, T* data_col) {
   int channel_per_deformable_group = im_shape[0] / deformable_groups;
   int num_kernels = im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
-  ModulatedDeformableIm2colCpuKernel(
+  ModulatedDeformableIm2colCPUKernel(
       num_kernels, data_im, data_offset, data_mask, im_shape[1], im_shape[2],
       filter_shape[2], filter_shape[3], paddings[0], paddings[1], strides[0],
       strides[1], dilations[0], dilations[1], channel_per_deformable_group,
@@ -398,7 +299,7 @@ inline void ModulatedDeformableIm2colCpu(
 }
 
 template <typename T>
-void FilterGradAddupCpuKernel(const int nthreads, const int n, const int height,
+void FilterGradAddupCPUKernel(const int nthreads, const int n, const int height,
                               const int width, const T* dweight_3d,
                               T* filter_grad) {
   for (size_t i = 0; i < nthreads; i++) {
@@ -406,7 +307,7 @@ void FilterGradAddupCpuKernel(const int nthreads, const int n, const int height,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class DeformableConvCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -417,7 +318,7 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
     Tensor* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto& dev_ctx = ctx.template device_context<CPUDeviceContext>();
 
     const int groups = ctx.Attr<int>("groups");
     const int deformable_groups = ctx.Attr<int>("deformable_groups");
@@ -446,9 +347,9 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
     framework::DDim output_shape(framework::make_ddim(output_buffer_shape_vec));
     Tensor col_buffer;
     Tensor output_buffer;
-    col_buffer = ctx.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
+    col_buffer = ctx.AllocateTmpTensor<T, CPUDeviceContext>(col_shape, dev_ctx);
     output_buffer =
-        ctx.AllocateTmpTensor<T, DeviceContext>(output_shape, dev_ctx);
+        ctx.AllocateTmpTensor<T, CPUDeviceContext>(output_shape, dev_ctx);
     int64_t M = output_shape_vec[1] / groups;
     int64_t N = im2col_step * output_shape_vec[2] * output_shape_vec[3];
     int64_t K =
@@ -470,15 +371,15 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
     int input_dim = input->numel() / input->dims()[0];
     int input_offset_dim = offset->numel() / offset->dims()[0];
     int input_mask_dim = mask->numel() / mask->dims()[0];
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
     const T* input_ptr = input->data<T>();
     const T* offset_ptr = offset->data<T>();
     const T* mask_ptr = mask->data<T>();
     col_buffer.mutable_data<T>(ctx.GetPlace());
     T* col_buffer_ptr = col_buffer.data<T>();
     for (int i = 0; i < batch_size / im2col_step; ++i) {
-      ModulatedDeformableIm2colCpu(
-          ctx.device_context(), input_ptr + i * im2col_step * input_dim,
+      ModulatedDeformableIm2colCPU(
+          dev_ctx, input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
@@ -504,7 +405,7 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -528,7 +429,7 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto& dev_ctx = ctx.template device_context<CPUDeviceContext>();
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     framework::DDim input_shape =
@@ -552,9 +453,9 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     framework::DDim output_shape(framework::make_ddim(output_buffer_shape_vec));
     Tensor col_buffer;
     Tensor output_buffer;
-    col_buffer = ctx.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
+    col_buffer = ctx.AllocateTmpTensor<T, CPUDeviceContext>(col_shape, dev_ctx);
     output_buffer =
-        ctx.AllocateTmpTensor<T, DeviceContext>(output_shape, dev_ctx);
+        ctx.AllocateTmpTensor<T, CPUDeviceContext>(output_shape, dev_ctx);
 
     output_buffer.ShareDataWith(*output_grad);
 
@@ -576,8 +477,8 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     Tensor col_buffer_3d;
     col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
-    math::SetConstant<DeviceContext, T> set_zero;
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    math::SetConstant<CPUDeviceContext, T> set_zero;
+    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
 
     col_buffer.mutable_data<T>(ctx.GetPlace());
     col_buffer_3d.mutable_data<T>(ctx.GetPlace());
@@ -633,8 +534,8 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
       if (mask_grad && offset_grad) {
         T* offset_grad_ptr = offset_grad->data<T>();
         T* mask_grad_ptr = mask_grad->data<T>();
-        ModulatedDeformableCol2imCoordCpu(
-            ctx.device_context(), col_buffer_ptr,
+        ModulatedDeformableCol2imCoordCPU(
+            ctx.template device_context<CPUDeviceContext>(), col_buffer_ptr,
             input_ptr + i * im2col_step * input_dim,
             offset_ptr + i * im2col_step * input_offset_dim,
             mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
@@ -645,8 +546,8 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
       }
       if (input_grad) {
         T* input_grad_ptr = input_grad->data<T>();
-        ModulatedDeformableCol2imCpu(
-            ctx.device_context(), col_buffer_ptr,
+        ModulatedDeformableCol2imCPU(
+            ctx.template device_context<CPUDeviceContext>(), col_buffer_ptr,
             offset_ptr + i * im2col_step * input_offset_dim,
             mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
             col_buffer_shape_vec, filter_shape_vec, paddings, strides,
@@ -655,8 +556,9 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
         input_grad->Resize(input->dims());
       }
 
-      ModulatedDeformableIm2colCpu(
-          ctx.device_context(), input_ptr + i * im2col_step * input_dim,
+      ModulatedDeformableIm2colCPU(
+          ctx.template device_context<CPUDeviceContext>(),
+          input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
@@ -666,8 +568,8 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
 
       if (filter_grad) {
         Tensor dweight_3d;
-        dweight_3d =
-            ctx.AllocateTmpTensor<T, DeviceContext>(filter_grad_shape, dev_ctx);
+        dweight_3d = ctx.AllocateTmpTensor<T, CPUDeviceContext>(
+            filter_grad_shape, dev_ctx);
         for (int g = 0; g < groups; ++g) {
           Tensor out_grad_3d_slice =
               out_grad_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
@@ -682,7 +584,7 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
           blas.MatMul(out_grad_3d_slice, false, col_buffer_3d_slice, true,
                       T(1.0), &dweight_3d_slice, T(0.0));
         }
-        FilterGradAddupCpuKernel(dweight_3d.numel(), groups, K, M,
+        FilterGradAddupCPUKernel(dweight_3d.numel(), groups, K, M,
                                  dweight_3d.data<T>(), filter_grad->data<T>());
       }
     }

@@ -252,11 +252,9 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(deformable_conv_v1, ops::DeformableConvV1Op,
                   ops::DeformableConvV1OpMaker,
                   ops::DeformableConvV1GradOpDescMaker);
-
 REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);
-using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OP_CPU_KERNEL(deformable_conv_v1,
-                       ops::DeformableConvV1CPUKernel<CPU, float>);
+                       ops::DeformableConvV1CPUKernel<float>);
 REGISTER_OP_CPU_KERNEL(deformable_conv_v1_grad,
-                       ops::DeformableConvV1GradCPUKernel<CPU, float>);
+                       ops::DeformableConvV1GradCPUKernel<float>);

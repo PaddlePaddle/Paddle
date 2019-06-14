@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/deformable_conv.cu.h"
+#include "paddle/fluid/operators/deformable_conv_filter.cu.h"
 #include "paddle/fluid/operators/deformable_conv_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -35,7 +36,7 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void ModulatedDeformableCol2imGpuKernel(
+__global__ void ModulatedDeformableCol2imCUDAKernel(
     const int nthreads, const T* data_col, const T* data_offset,
     const T* data_mask, const int channels, const int height, const int width,
     const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
@@ -114,7 +115,7 @@ inline void ModulatedDeformableCol2im(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imGpuKernel<T><<<
+  ModulatedDeformableCol2imCUDAKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       num_kernels, data_col, data_offset, data_mask, im_shape[0], im_shape[1],
@@ -124,7 +125,7 @@ inline void ModulatedDeformableCol2im(
 }
 
 template <typename T>
-__global__ void ModulatedDeformableCol2imCoordGpuKernel(
+__global__ void ModulatedDeformableCol2imCoordCUDAKernel(
     const int nthreads, const T* data_col, const T* data_im,
     const T* data_offset, const T* data_mask, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
@@ -227,7 +228,7 @@ inline void ModulatedDeformableCol2imCoord(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  ModulatedDeformableCol2imCoordGpuKernel<T><<<
+  ModulatedDeformableCol2imCoordCUDAKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       num_kernels, data_col, data_im, data_offset, data_mask, im_shape[0],
@@ -239,7 +240,7 @@ inline void ModulatedDeformableCol2imCoord(
 }
 
 template <typename T>
-__global__ void ModulatedDeformableIm2colGpuKernel(
+__global__ void ModulatedDeformableIm2colCUDAKernel(
     const int nthreads, const T* data_im, const T* data_offset,
     const T* data_mask, const int height, const int width, const int kernel_h,
     const int kernel_w, const int pad_h, const int pad_w, const int stride_h,
@@ -316,7 +317,7 @@ inline void ModulatedDeformableIm2col(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  ModulatedDeformableIm2colGpuKernel<T><<<
+  ModulatedDeformableIm2colCUDAKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       num_kernels, data_im, data_offset, data_mask, im_shape[1], im_shape[2],
@@ -609,7 +610,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
           blas.MatMul(out_grad_3d_slice, false, col_buffer_3d_slice, true,
                       T(1.0), &dweight_3d_slice, T(0.0));
         }
-        FilterGradAddupGpuKernel<
+        FilterGradAddupCUDAKernel<
             T><<<NumBlocks(dweight_3d.numel()), kNumCUDAThreads, 0,
                  ctx.cuda_device_context().stream()>>>(
             dweight_3d.numel(), groups, K, M, dweight_3d.data<T>(),
