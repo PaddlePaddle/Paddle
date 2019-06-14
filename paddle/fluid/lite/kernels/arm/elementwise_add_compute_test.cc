@@ -44,6 +44,9 @@ void elementwise_add_compute_ref(const operators::ElementwiseParam& param) {
   auto x_dims = param.X->dims();
   auto y_dims = param.Y->dims();
   int axis = param.axis;
+  if (axis < 0) {
+    axis = x_dims.size() - y_dims.size();
+  }
   int batch = 1;
   int channels = 1;
   int num = 1;
@@ -61,9 +64,11 @@ void elementwise_add_compute_ref(const operators::ElementwiseParam& param) {
       int offset = (i * channels + j) * num;
       const dtype* din_ptr = x_data + offset;
       const dtype diny_data = y_data[j];
-      dtype* dout_ptr = dout + offset;
+      dtype* dout_ptr = out_data + offset;
       for (int k = 0; k < num; ++k) {
-        dout_ptr[k] = din_ptr[k] + diny_data;
+        *dout_ptr = *din_ptr + diny_data;
+        dout_ptr++;
+        din_ptr++;
       }
     }
   }
@@ -79,18 +84,15 @@ TEST(elementwise_add, compute) {
       for (auto h : {1, 3, 4, 11}) {
         for (auto w : {1, 3, 4, 11}) {
           for (auto axis : {-1, 0, 1, 2, 3}) {
-            for (auto yd{{n},
-                         {c},
-                         {h},
-                         {w},
-                         {n, c},
-                         {c, h},
-                         {h, w},
-                         {n, c, h},
-                         {c, h, w},
-                         {n, c, h, w}}) {
+            for (auto yd :
+                 {std::vector<int64_t>({n}), std::vector<int64_t>({c}),
+                  std::vector<int64_t>({h}), std::vector<int64_t>({w}),
+                  std::vector<int64_t>({n, c}), std::vector<int64_t>({c, h}),
+                  std::vector<int64_t>({h, w}), std::vector<int64_t>({n, c, h}),
+                  std::vector<int64_t>({c, h, w}),
+                  std::vector<int64_t>({n, c, h, w})}) {
               auto x_dim = DDim(std::vector<int64_t>({n, c, h, w}));
-              auto y_dim = DDim(std::vector<int64_t>(yd));
+              auto y_dim = DDim(yd);
               int axis_t = axis < 0 ? x_dim.size() - y_dim.size() : axis;
 
               if (axis_t + y_dim.size() > 4) continue;
@@ -102,26 +104,27 @@ TEST(elementwise_add, compute) {
 
               x.Resize(x_dim);
               y.Resize(y_dim);
-              output.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
-              output_ref.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
+              output.Resize(x_dim);
+              output_ref.Resize(x_dim);
               auto* x_data = x.mutable_data<float>();
+              auto* y_data = y.mutable_data<float>();
               auto* output_data = output.mutable_data<float>();
               auto* output_ref_data = output_ref.mutable_data<float>();
-              for (int i = 0; i < x.dims().production(); i++) {
+              for (int i = 0; i < x_dim.production(); i++) {
                 x_data[i] = i;
               }
-              for (int i = 0; i < y.dims().production(); i++) {
+              for (int i = 0; i < y_dim.production(); i++) {
                 y_data[i] = i;
               }
               param.X = &x;
               param.Y = &y;
               param.axis = axis;
               param.Out = &output;
-              softmax.SetParam(param);
-              softmax.Run();
+              elementwise_add.SetParam(param);
+              elementwise_add.Run();
               param.Out = &output_ref;
               elementwise_add_compute_ref<float>(param);
-              for (int i = 0; i < out.dims().production(); i++) {
+              for (int i = 0; i < output.dims().production(); i++) {
                 EXPECT_NEAR(output_data[i], output_ref_data[i], 1e-5);
               }
             }

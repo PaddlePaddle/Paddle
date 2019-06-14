@@ -41,10 +41,10 @@ void elementwise_add<float>(const float* dinx, const float* diny, float* dout,
     float32x4_t diny2 = vld1q_f32(diny_ptr + 8);
     float32x4_t diny3 = vld1q_f32(diny_ptr + 12);
 
-    float32x4_t dinx0 = vaddq_f32(dinx0, diny0);
-    float32x4_t dinx1 = vaddq_f32(dinx1, diny1);
-    float32x4_t dinx2 = vaddq_f32(dinx2, diny2);
-    float32x4_t dinx3 = vaddq_f32(dinx3, diny3);
+    dinx0 = vaddq_f32(dinx0, diny0);
+    dinx1 = vaddq_f32(dinx1, diny1);
+    dinx2 = vaddq_f32(dinx2, diny2);
+    dinx3 = vaddq_f32(dinx3, diny3);
 
     vst1q_f32(dout_ptr, dinx0);
     vst1q_f32(dout_ptr + 4, dinx1);
@@ -100,10 +100,10 @@ void elementwise_add_axis<float>(const float* dinx, const float* diny,
       if (remain >= 8) {
         float32x4_t din0 = vld1q_f32(din_ptr);
         float32x4_t din1 = vld1q_f32(din_ptr + 4);
-        din0 = vaddq_f32(din0, diny_data);
-        din1 = vaddq_f32(din1, diny_data);
-        vst1q_f32(dout_ptr, r0);
-        vst1q_f32(dout_ptr + 4, r1);
+        din0 = vaddq_f32(din0, rb);
+        din1 = vaddq_f32(din1, rb);
+        vst1q_f32(dout_ptr, din0);
+        vst1q_f32(dout_ptr + 4, din1);
         din_ptr += 8;
         dout_ptr += 8;
         remain -= 8;
@@ -111,16 +111,16 @@ void elementwise_add_axis<float>(const float* dinx, const float* diny,
       if (remain >= 4) {
         float32x4_t din0 = vld1q_f32(din_ptr);
         din0 = vaddq_f32(din0, rb);
-        vst1q_f32(dout_ptr, diny_data);
+        vst1q_f32(dout_ptr, din0);
         din_ptr += 4;
         dout_ptr += 4;
         remain -= 4;
       }
       if (remain > 0) {
-        for (p = 0; p < remain; p++) {
-          *dout_ptr = *dinx_ptr + diny_data;
+        for (int p = 0; p < remain; p++) {
+          *dout_ptr = *din_ptr + diny_data;
           dout_ptr++;
-          dinx_ptr++;
+          din_ptr++;
         }
       }
     }
