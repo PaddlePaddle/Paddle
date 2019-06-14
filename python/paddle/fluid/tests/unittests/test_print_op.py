@@ -56,6 +56,27 @@ class TestPrintOpCPU(unittest.TestCase):
                        fetch_list=[loss],
                        return_numpy=False)
 
+    def test_all_parameters(self):
+        x = layers.data('x', shape=[3], dtype='float32', lod_level=1)
+        x.stop_gradient = False
+
+        for print_tensor_name in [True, False]:
+            for print_tensor_type in [True, False]:
+                for print_tensor_shape in [True, False]:
+                    for print_tensor_lod in [True, False]:
+                        layers.Print(
+                            input=x,
+                            print_tensor_name=print_tensor_name,
+                            print_tensor_type=print_tensor_type,
+                            print_tensor_shape=print_tensor_shape,
+                            print_tensor_lod=print_tensor_lod, )
+        loss = layers.mean(x)
+        append_backward(loss=loss)
+        exe = Executor(self.place)
+        outs = exe.run(feed={'x': self.x_tensor},
+                       fetch_list=[loss],
+                       return_numpy=False)
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
