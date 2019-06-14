@@ -53,6 +53,16 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
+    // Init diag element
+    unsigned int diag_num = static_cast<unsigned int>(ctx.Attr<int>("diag_num"));
+    unsigned int diag_step = static_cast<unsigned int>(ctx.Attr<int>("diag_step"));
+    auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
+    if (diag_num > 0) {
+      for (int64_t i = 0; i < diag_num; ++i) {
+        int64_t pos = i*diag_step + i;
+        data[pos] = diag_val;
+      }
+    }
   }
 };
 
@@ -67,6 +77,10 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
+        "diag_num must greater than 0");
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
+        "diag_step must greater than 0");
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
@@ -105,6 +119,13 @@ uniform distribution. The random result is in set [min, max].
                  "Note that if seed is not 0, this operator will always "
                  "generate the same random numbers every time. [default 0].")
         .SetDefault(0);
+    AddAttr<int>("diag_num", "The number of diag elements. Note that if "
+                 "diag_num is 0, it means without diag init.[default 0].")
+        .SetDefault(0);
+    AddAttr<int>("diag_step", "The step between two diag element.[default 0].")
+        .SetDefault(0);
+    AddAttr<float>("diag_val", "The value of diag initialition. [default 1.0].")
+        .SetDefault(1.0f);
     AddAttr<int>("dtype", "Output tensor data type. [default 5(FP32)].")
         .SetDefault(framework::proto::VarType::FP32);
   }
