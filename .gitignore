@@ -10,7 +10,10 @@ paddle/fluid/operators/distributed/send_recv.proto
 *.vs
 build/
 build_doc/
+build.*
 *.user
+*.sh
+*.bkp
 
 .vscode
 .idea
