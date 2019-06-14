@@ -27,7 +27,7 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-
+import sys
 from .. import compat as cpt
 from .proto import framework_pb2
 
@@ -82,14 +82,14 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    cpu_num = os.environ.get('CPU_NUM', None)
-    if cpu_num is None:
+    if not os.environ.has_key("CPU_NUM") is None:
         sys.stderr.write(
             'The CPU_NUM is not specified, you should set CPU_NUM in '
             'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
             'indicates that how many CPUPlace are used in the current task.\n'
             '!!! The default number of CPUPlaces is 1.')
         os.environ['CPU_NUM'] = str(1)
+    cpu_num = os.environ.get('CPU_NUM')
     return int(cpu_num)
 
 
