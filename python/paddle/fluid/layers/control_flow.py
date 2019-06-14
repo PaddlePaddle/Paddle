@@ -150,10 +150,6 @@ def Print(input,
     the message `message` is printed, along with the current value of the
     tensor `t`.
 
-    NOTE: The input and output are two different variables, and in the
-    following process, you should use the output variable but not the input,
-    otherwise, the print layer doesn't have backward.
-
     Args:
         input (Variable): A Tensor to print.
         summarize (int): Print this number of elements in the tensor, will print
@@ -170,6 +166,11 @@ def Print(input,
 
     Returns:
         Variable: Output tensor.
+
+    NOTES:
+        The input and output are two different variables, and in the
+        following process, you should use the output variable but not the input,
+        otherwise, the print layer doesn't have backward.
 
     Examples:
         .. code-block:: python
