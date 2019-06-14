@@ -160,6 +160,7 @@ def _addup_repetitive_outputs_(op_descs):
                 if len(renamed_vars[var_name]) == 0:
                     # it's the first time we get the variable
                     renamed_vars[var_name] = [var_name]
+                    renamed_var_start_idx[var_name] = idx
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = var_name + "@RENAME@" + \
@@ -256,7 +257,8 @@ def _append_backward_ops_(block,
                           target_block,
                           no_grad_dict,
                           grad_to_var,
-                          callbacks=None):
+                          callbacks=None,
+                          input_grad_names_set=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -289,7 +291,8 @@ def _append_backward_ops_(block,
             grad_sub_block = program._create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
             _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
-                                  no_grad_dict, grad_to_var, callbacks)
+                                  no_grad_dict, grad_to_var, callbacks,
+                                  input_grad_names_set)
 
             program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
@@ -298,8 +301,17 @@ def _append_backward_ops_(block,
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
 
-        grad_op_descs.extend(grad_op_desc)
-        grad_to_var.update(op_grad_to_var)
+        for op_desc in grad_op_desc:
+            input_grad_names = [
+                name for name in op_desc.input_arg_names()
+                if name.find(core.grad_var_suffix()) != -1
+            ]
+            if _some_in_set_(input_grad_names, input_grad_names_set):
+                for name in op_desc.output_arg_names():
+                    input_grad_names_set.add(name)
+
+                grad_op_descs.extend(grad_op_desc)
+                grad_to_var.update(op_grad_to_var)
 
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
 
@@ -513,10 +525,18 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
     op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
+
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
 
-    _append_backward_ops_(root_block, op_path, root_block, no_grad_dict,
-                          grad_to_var, callbacks)
+    input_grad_names = set([_append_grad_suffix_(loss.name)])
+    _append_backward_ops_(
+        root_block,
+        op_path,
+        root_block,
+        no_grad_dict,
+        grad_to_var,
+        callbacks,
+        input_grad_names_set=input_grad_names)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
@@ -597,6 +617,7 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
             else:
                 relevant_op_flags[i] = False
 
+    #from paddle.fluid.transpiler.details.program_utils import op_to_code
     for i, op in reversed(list(enumerate(block.ops))):
         if _some_in_set_(op.desc.output_arg_names(), output_names):
             for name in op.desc.input_arg_names():
@@ -657,6 +678,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     fwd_op_num = block.desc.op_size()
 
+    input_grad_names_set = set([])
+
     target_grad_map = {}
     for i, grad in enumerate(target_gradients):
         target = targets[i]
@@ -672,6 +695,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                                            'output_dim_idx': 0
                                        })
             block.desc.append_op().copy_from(op_desc)
+            input_grad_names_set.add(grad_name)
         else:
             if target.block.idx != block_idx or target.block.program != prog:
                 raise ValueError("all targets must be in the same block")
@@ -680,6 +704,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                     "The shapes of target and grad are different: %s %s" % (
                         target.name, grad.name))
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
+            input_grad_names_set.add(grad_name)
 
     for input in inputs:
         if input.block.program != prog:
@@ -690,7 +715,13 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
-    _append_backward_ops_(block, op_path, block, no_grad_dict, grad_to_var)
+    _append_backward_ops_(
+        block,
+        op_path,
+        block,
+        no_grad_dict,
+        grad_to_var,
+        input_grad_names_set=input_grad_names_set)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have

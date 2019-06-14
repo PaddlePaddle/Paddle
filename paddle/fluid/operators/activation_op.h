@@ -1235,18 +1235,19 @@ inline void ExtractActivationDoubleGradTensor(
     PADDLE_ENFORCE(x_var != nullptr,
                    "Cannot get input Variable Out, variable name = %s",
                    ctx.op().Input("X"));
-    auto dx_var = ctx.OutputVar("DX");
+    // auto dx_var = ctx.OutputVar("DX");
     if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
-      if (dx_var) {
-        *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-            dx_var);
-      }
+      // if (dx_var) {
+      //   *dX =
+      //   paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+      //       dx_var);
+      // }
     } else {
       *X = ctx.Input<framework::Tensor>("X");
-      if (dx_var) {
-        *dX = ctx.Output<framework::Tensor>("DX");
-      }
+      // if (dx_var) {
+      //   *dX = ctx.Output<framework::Tensor>("DX");
+      // }
     }
   } else {
     VLOG(10) << "Inplace activation of Op: " << ctx.op().Type();
@@ -1321,10 +1322,6 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
       auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
       ddout.device(*d) = ddx * (out > static_cast<T>(0)).template cast<T>();
     }
-    if (dOut) {
-      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-      dout.device(*d) = dout.constant(static_cast<T>(0));
-    }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
@@ -1350,10 +1347,6 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
                           static_cast<T>(alpha) *
                               (x < static_cast<T>(0)).template cast<T>().eval())
                              .template cast<T>();
-    }
-    if (dX) {
-      auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-      dx.device(*d) = dx.constant(static_cast<T>(0));
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
