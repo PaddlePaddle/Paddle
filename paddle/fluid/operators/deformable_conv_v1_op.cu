@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/deformable_conv.cu.h"
+#include "paddle/fluid/operators/deformable_conv_cu.h"
 #include "paddle/fluid/operators/deformable_conv_filter.cu.h"
 #include "paddle/fluid/operators/deformable_conv_v1_op.h"
 #include "paddle/fluid/operators/math/blas.h"
