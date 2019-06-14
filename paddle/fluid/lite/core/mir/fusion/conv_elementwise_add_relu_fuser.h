@@ -25,11 +25,14 @@ namespace fusion {
 
 class ConvElementwiseAddReLUFuser : public FuseBase {
  public:
+  explicit ConvElementwiseAddReLUFuser(const std::string& conv_type)
+      : conv_type_(conv_type) {}
   void BuildPattern() override;
   void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override;
 
  private:
   cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override;
+  std::string conv_type_;
 };
 
 }  // namespace fusion

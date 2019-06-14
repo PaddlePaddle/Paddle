@@ -85,7 +85,7 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   add_1->SetAttr("axis", 1);
 
   relu_1->SetType("relu");
-  relu_1->SetInput("Input", {"add_1_out"});
+  relu_1->SetInput("X", {"add_1_out"});
   relu_1->SetOutput("Out", {"relu_1_out"});
 
   conv2d_2->SetType("conv2d");
@@ -105,7 +105,7 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   add_2->SetAttr("axis", 1);
 
   relu_2->SetType("relu");
-  relu_2->SetInput("Input", {"add_2_out"});
+  relu_2->SetInput("X", {"add_2_out"});
   relu_2->SetOutput("Out", {"out"});
 
   program_desc->Flush();

@@ -24,8 +24,11 @@ namespace mir {
 
 void ConvElementwiseAddReLUFusePass::Apply(
     const std::unique_ptr<SSAGraph>& graph) {
-  fusion::ConvElementwiseAddReLUFuser fuser;
+  fusion::ConvElementwiseAddReLUFuser fuser("conv2d");
   fuser(graph.get());
+
+  fusion::ConvElementwiseAddReLUFuser depthwise_fuser("depthwise_conv2d");
+  depthwise_fuser(graph.get());
 }
 
 }  // namespace mir
