@@ -57,6 +57,8 @@ if cpuinfo.supports_avx:
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
+        from .core_avx import _is_dygraph_debug_enabled
+        from .core_avx import _dygraph_debug_level
     except ImportError as error:
         sys.stderr.write(
             error.__class__.__name__ +
@@ -79,6 +81,8 @@ if load_noavx:
         from .core_noavx import _set_eager_deletion_mode
         from .core_noavx import _set_fuse_parameter_group_size
         from .core_noavx import _set_fuse_parameter_memory_size
+        from .core_noavx import _is_dygraph_debug_enabled
+        from .core_noavx import _dygraph_debug_level
     except ImportError as error:
         sys.exit("Error: Can not load core_noavx.* ." +
                  error.__class__.__name__)

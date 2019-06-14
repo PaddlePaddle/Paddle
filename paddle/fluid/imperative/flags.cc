@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/flags.h"
+#include "gflags/gflags.h"
 
 DEFINE_uint64(dygraph_debug, 0,
               "Debug level of dygraph. This flag is not "
