@@ -30,7 +30,7 @@ namespace details {
 SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    const platform::MultiNCCLContextMap *ctxs, bool is_encoded, int nranks)
+    const platform::NCCLCommunicator *ctxs, bool is_encoded, int nranks)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
       is_encoded_(is_encoded),
       nranks_(nranks) {
