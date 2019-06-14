@@ -22,7 +22,7 @@ import six
 from .. import compat as cpt
 from . import unique_name
 
-__all__ = ['append_backward']
+__all__ = ['append_backward', 'gradients']
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -617,7 +617,6 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
             else:
                 relevant_op_flags[i] = False
 
-    #from paddle.fluid.transpiler.details.program_utils import op_to_code
     for i, op in reversed(list(enumerate(block.ops))):
         if _some_in_set_(op.desc.output_arg_names(), output_names):
             for name in op.desc.input_arg_names():
@@ -745,3 +744,36 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         return grad_vars[0]
     else:
         return grad_vars
+
+
+def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
+    """
+    Backpropagate the graidents of targets to inputs.
+
+    Args:
+        targets(Variable|list[Variable]): The target variables.
+        inputs(Variable|list[Variable]): The input variables.
+        no_grad_set(set[string]): The names of variables that have no gradients
+            in Block 0. All variables with `stop_gradient=True` from all blocks
+            will be automatically added.
+
+    Return:
+        (list[Variable]): list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient variable
+        will be None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[2,8,8], dtype='float32')
+            x.stop_gradient=False
+            y = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
+            y = fluid.layers.relu(y)
+            y = fluid.layers.conv2d(y, 4, 1, bias_attr=False)
+            y = fluid.layers.relu(y)
+            z = fluid.gradients([y], x)
+            print(z)
+    """
+    return calc_gradient(targets, inputs, target_gradients, no_grad_set)

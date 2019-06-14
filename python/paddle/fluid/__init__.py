@@ -39,6 +39,7 @@ from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
+from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
@@ -98,6 +99,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'recordio_writer',
         'Scope',
         'install_check',
+        'gradients',
     ]
 
 
