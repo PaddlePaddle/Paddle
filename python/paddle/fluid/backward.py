@@ -677,7 +677,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     fwd_op_num = block.desc.op_size()
 
-    input_grad_names_set = set([])
+    input_grad_names_set = set()
 
     target_grad_map = {}
     for i, grad in enumerate(target_gradients):
@@ -751,14 +751,17 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the graidents of targets to inputs.
 
     Args:
-        targets(Variable|list[Variable]): The target variables.
-        inputs(Variable|list[Variable]): The input variables.
-        no_grad_set(set[string]): The names of variables that have no gradients
+        targets (Variable|list[Variable]): The target variables.
+        inputs (Variable|list[Variable]): The input variables.
+        target_gradients (Variable|list[Variable]|None): The gradient variables
+            of targets which has the same shape with targets. If None, ones will
+            be created for them.
+        no_grad_set (set[string]): The names of variables that have no gradients
             in Block 0. All variables with `stop_gradient=True` from all blocks
             will be automatically added.
 
     Return:
-        (list[Variable]): list of gradients for inputs
+        (list[Variable]): A list of gradients for inputs,
         If an input does not affect targets, the corresponding gradient variable
         will be None
 
