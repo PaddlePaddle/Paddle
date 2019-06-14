@@ -22,6 +22,14 @@ namespace math {
 template <typename T>
 void scale(const T* din, T* dout, int num, float scale, float bias);
 
+template <typename T>
+void scale(const T* din, T* dout, int outer_dim, int scale_dim, int inner_dim,
+           const float* scale_data, const float* bias_data);
+
+template <typename T>
+void scale(const T* din, T* dout, int outer_dim, int scale_dim,
+           const float* scale_data, const float* bias_data);
+
 }  // namespace math
 }  // namespace arm
 }  // namespace lite

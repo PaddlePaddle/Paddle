@@ -57,6 +57,7 @@ struct FcParam {
   lite::Tensor* output{};
   lite::DDim in_mat_dims;
   int in_num_col_dims{1};
+  bool weight_transposed{false};
 };
 
 struct ReluParam {
@@ -145,6 +146,25 @@ struct ConvParam {
   std::string data_format{"Anylayout"};
 };
 
+// For BatchNorm op
+struct BatchNormParam {
+  lite::Tensor* x{};
+  lite::Tensor* bias{};
+  lite::Tensor* scale{};
+  lite::Tensor* mean{};
+  lite::Tensor* variance{};
+  lite::Tensor* y{};
+  lite::Tensor* mean_out{};
+  lite::Tensor* variance_out{};
+  lite::Tensor* saved_mean{};
+  lite::Tensor* saved_variance{};
+  bool is_test{true};
+  bool use_global_stats{false};
+  float epsilon;
+  float momentum;
+  DataLayoutType data_layout{DATALAYOUT(kNCHW)};
+};
+
 // For Pooling op
 struct PoolParam {
   lite::Tensor* x{};
@@ -177,10 +197,10 @@ struct DropoutParam {
 // For Split op
 struct SplitParam {
   lite::Tensor* x{};
-  std::vector<lite::Tensor*>* output{};
+  std::vector<lite::Tensor*> output{};
   int axis{-1};
   int num{0};
-  std::vector<int>* sections;
+  std::vector<int> sections;
 };
 
 /// ----------------------- element wise operators ----------------------

@@ -59,11 +59,15 @@ function cmake_arm {
         -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
 }
 
+function build_single {
+    #make $1 -j$(expr $(nproc) - 2)
+    make $1 -j8
+}
+
 function build {
     file=$1
     for _test in $(cat $file); do
-        #make $_test -j$(expr $(nproc) - 2)
-        make $_test -j8
+        build_single $_test
     done
 }
 
@@ -81,39 +85,6 @@ function test_lite {
     done
 }
 
-port_armv8=5554
-port_armv7=5556
-
-# Run test on android
-function test_lite_android {
-    local file=$1
-    local adb_abi=$2
-    local port=
-    if [[ ${adb_abi} == "armeabi-v7a" ]]; then
-        port=${port_armv7}
-    fi
-
-    if [[ ${adb_abi} == "arm64-v8a" ]]; then
-        port=${port_armv8}
-    fi
-    if [[ "${port}x" == "x" ]]; then
-        echo "Port can not be empty"
-        exit 1
-    fi
-
-    echo "file: ${file}"
-    # push all to adb and test
-    adb_work_dir="/data/local/tmp"
-    skip_list="test_model_parser_lite"
-    for _test in $(cat $file); do
-        [[ $skip_list =~ (^|[[:space:]])$_test($|[[:space:]]) ]] && continue || echo 'skip $_test'
-        testpath=$(find ./paddle/fluid -name ${_test})
-        adb -s emulator-${port} push ${testpath} ${adb_work_dir}
-        adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${_test}"
-        adb -s emulator-${port} shell "./${adb_work_dir}/${_test}"
-    done
-}
-
 # Build the code and run lite server tests. This is executed in the CI system.
 function build_test_server {
     mkdir -p ./build
@@ -126,8 +97,34 @@ function build_test_server {
     build $LIBS_FILE
 }
 
-# Build the code and run lite server tests. This is executed in the CI system.
+# test_arm_android <some_test_name> <adb_port_number>
+function test_arm_android {
+    test_name=$1
+    port=$2
+    if [[ "${test_name}x" == "x" ]]; then
+        echo "test_name can not be empty"
+        exit 1
+    fi
+    if [[ "${port}x" == "x" ]]; then
+        echo "Port can not be empty"
+        exit 1
+    fi
+
+    echo "test name: ${test_name}"
+    adb_work_dir="/data/local/tmp"
+    skip_list="test_model_parser_lite" # add more with space
+    [[ $skip_list =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && continue || echo 'skip $test_name'
+    testpath=$(find ./paddle/fluid -name ${test_name})
+    adb -s emulator-${port} push ${testpath} ${adb_work_dir}
+    adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
+    adb -s emulator-${port} shell "./${adb_work_dir}/${test_name}"
+}
+
+# Build the code and run lite arm tests. This is executed in the CI system.
 function build_test_arm {
+    port_armv8=5554
+    port_armv7=5556
+
     adb kill-server
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     # start android arm64-v8a armeabi-v7a emulators first
@@ -140,6 +137,7 @@ function build_test_arm {
 
     for os in "android" "armlinux" ; do
         for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
+            # TODO(TJ): enable compile on v7-hf on andorid and all v7 on armlinux
             if [[ ${abi} == "armeabi-v7a-hf" ]]; then
                 echo "armeabi-v7a-hf is not supported on both android and armlinux"
                 continue
@@ -156,17 +154,30 @@ function build_test_arm {
             cmake_arm ${os} ${abi}
             build $TESTS_FILE
 
+            # armlinux need in another docker
+            # TODO(TJ): enable test with armlinux
             if [[ ${os} == "android" ]]; then
                 adb_abi=${abi}
                 if [[ ${adb_abi} == "armeabi-v7a-hf" ]]; then
                     adb_abi="armeabi-v7a"
                 fi
                 if [[ ${adb_abi} == "armeabi-v7a" ]]; then
-                    # skip v7 tests
+                    # skip all armv7 tests
+                    # TODO(TJ): enable test with armv7
                     continue
                 fi
-                test_lite_android $TESTS_FILE ${adb_abi}
-                # armlinux need in another docker
+                local port=
+                if [[ ${adb_abi} == "armeabi-v7a" ]]; then
+                    port=${port_armv7}
+                fi
+
+                if [[ ${adb_abi} == "arm64-v8a" ]]; then
+                    port=${port_armv8}
+                fi
+                echo "test file: ${TESTS_FILE}"
+                for _test in $(cat $TESTS_FILE); do
+                    test_arm_android $_test $port
+                done
             fi
             cd -
         done
@@ -182,12 +193,13 @@ function print_usage {
     echo "----------------------------------------"
     echo -e "cmake_x86: run cmake with X86 mode"
     echo -e "cmake_cuda: run cmake with CUDA mode"
-    echo -e "cmake_arm: run cmake with ARM mode"
+    echo -e "--arm_os=<os> --arm_abi=<abi> cmake_arm: run cmake with ARM mode"
     echo
     echo -e "build: compile the tests"
+    echo -e "--test_name=<test_name> build_single: compile single test"
     echo
     echo -e "test_server: run server tests"
-    echo -e "test_mobile: run mobile tests"
+    echo -e "--test_name=<test_name> --adb_port_number=<adb_port_number> test_arm_android: run arm test"
     echo "----------------------------------------"
     echo
 }
@@ -200,9 +212,29 @@ function main {
                 TESTS_FILE="${i#*=}"
                 shift
                 ;;
+            --test_name=*)
+                TEST_NAME="${i#*=}"
+                shift
+                ;;
+            --arm_os=*)
+                ARM_OS="${i#*=}"
+                shift
+                ;;
+            --arm_abi=*)
+                ARM_ABI="${i#*=}"
+                shift
+                ;;
+            --arm_port=*)
+                ARM_PORT="${i#*=}"
+                shift
+                ;;
             build)
                 build $TESTS_FILE
                 build $LIBS_FILE
+                shift
+                ;;
+            build_single)
+                build_single $TEST_NAME
                 shift
                 ;;
             cmake_x86)
@@ -214,15 +246,15 @@ function main {
                 shift
                 ;;
             cmake_arm)
-                cmake_arm $2 $3
+                cmake_arm $ARM_OS $ARM_ABI
                 shift
                 ;;
             test_server)
                 test_lite $TESTS_FILE
                 shift
                 ;;
-            test_mobile)
-                test_lite $TESTS_FILE
+            test_arm_android)
+                test_arm_android $TEST_NAME $ARM_PORT
                 shift
                 ;;
             build_test_server)
@@ -249,7 +281,5 @@ function main {
         esac
     done
 }
-
-print_usage
 
 main $@

@@ -124,7 +124,20 @@ TEST(conv_arm, init) {
 
 TEST(conv_arm, compute) {
   DeviceInfo::Init();
-#if 0
+#if 1
+  for (auto n : {2}) {
+    for (auto ic : {6}) {
+      for (auto oc : {6}) {
+        for (auto ih : {9}) {
+          for (auto iw : {9}) {
+            for (auto flag_bias : {false, true}) {
+              for (auto flag_relu : {false, true}) {
+                for (auto depthwise : {false, true}) {
+                  for (auto dilation : {1}) {
+                    for (auto stride : {1, 2}) {
+                      for (auto padding : {0, 1, 2}) {
+                        for (auto ks : {1, 3, 5}) {
+#else
   for (auto n : {1, 2}) {
     for (auto ic : {6, 32 /*, 128*/}) {
       for (auto oc : {6, 32 /*, 128*/}) {
@@ -136,19 +149,6 @@ TEST(conv_arm, compute) {
                   for (auto dilation : {1, 2}) {
                     for (auto stride : {1, 2}) {
                       for (auto padding : {0, 1, 2}) {
-                        for (auto ks : {1, 3, 5}) {
-#else
-  for (auto n : {1}) {
-    for (auto ic : {6}) {
-      for (auto oc : {6}) {
-        for (auto ih : {9}) {
-          for (auto iw : {9}) {
-            for (auto flag_bias : {false, true}) {
-              for (auto flag_relu : {false, true}) {
-                for (auto depthwise : {false, true}) {
-                  for (auto dilation : {1}) {
-                    for (auto stride : {1}) {
-                      for (auto padding : {0, 1}) {
                         for (auto ks : {1, 3, 5}) {
 #endif
                           int group = 1;
