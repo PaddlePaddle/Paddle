@@ -60,11 +60,13 @@ class MultiDeviceFeedReader {
       readers_.emplace_back(holder);
     }
 
+    futures_.resize(dst_places.size());
     ret_.resize(dst_places.size());
+    ReadAsync();
   }
 
   ResultDictList ReadNext() {
-    bool success = ReadNextImpl();
+    bool success = WaitFutures();
 
     if (!success) {
       return {};
@@ -76,11 +78,12 @@ class MultiDeviceFeedReader {
         result[i].emplace(names_[j], std::move(ret_[i][j]));
       }
     }
+    ReadAsync();
     return result;
   }
 
   ResultList ReadNextList() {
-    bool success = ReadNextImpl();
+    bool success = WaitFutures();
     if (!success) {
       return {};
     }
@@ -90,12 +93,14 @@ class MultiDeviceFeedReader {
     for (size_t i = 0; i < ret_.size(); ++i) {
       result.emplace_back(std::move(ret_[i]));
     }
+    ReadAsync();
     return result;
   }
 
   void Reset() {
     Shutdown();
     Start();
+    ReadAsync();
   }
 
   ~MultiDeviceFeedReader() {
@@ -104,6 +109,14 @@ class MultiDeviceFeedReader {
   }
 
  private:
+  bool WaitFutures() {
+    bool success = true;
+    for (auto &f : futures_) {
+      success &= f.get();
+    }
+    return success;
+  }
+
   void Shutdown() {
     for (auto &r : readers_) r->Shutdown();
   }
@@ -112,13 +125,13 @@ class MultiDeviceFeedReader {
     for (auto &r : readers_) r->Start();
   }
 
-  bool ReadNextImpl() {
-    bool success = true;
+  void ReadAsync() {
     for (size_t i = 0; i < readers_.size(); ++i) {
-      readers_[i]->ReadNext(&ret_[i]);
-      success &= (!ret_[i].empty());
+      futures_[i] = pool_->enqueue([this, i] {
+        readers_[i]->ReadNext(&ret_[i]);
+        return !ret_[i].empty();
+      });
     }
-    return success;
   }
 
   std::shared_ptr<operators::reader::LoDTensorBlockingQueue> queue_;
@@ -127,6 +140,7 @@ class MultiDeviceFeedReader {
 
   std::vector<std::unique_ptr<framework::ReaderHolder>> readers_;
 
+  std::vector<std::future<bool>> futures_;
   std::vector<std::vector<framework::LoDTensor>> ret_;
 };
 
