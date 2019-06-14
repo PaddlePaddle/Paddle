@@ -45,7 +45,8 @@ endif()
 #     lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 # endif()
 
-
+message(STATUS "!!!"  ${ops_lite})
+message(STATUS "!!!" ${arm_kernels})
 lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     DEPS
     cxx_api_lite
