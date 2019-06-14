@@ -147,8 +147,10 @@ class PrintOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     const auto in_var = scope.FindVar(Input("In"));
     auto out_var = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE_NOT_NULL(in_var);
-    PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_NOT_NULL(in_var, "The input should not be found in scope",
+                            Input("In"));
+    PADDLE_ENFORCE_NOT_NULL(out_var, "The output should not be found in scope",
+                            Output("Out"));
     auto &in_tensor = in_var->Get<framework::LoDTensor>();
     framework::LoDTensor *out_tensor =
         out_var->GetMutable<framework::LoDTensor>();
@@ -213,8 +215,8 @@ class PrintOp : public framework::OperatorBase {
 class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("In", "Input tensor to be displayeddsdfasdfasdf.");
-    AddOutput("Out", "The output of MatMul op");
+    AddInput("In", "Input tensor to be displayed.");
+    AddOutput("Out", "The output tensor.");
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
     AddAttr<int>("summarize", "Number of elements printed.");
