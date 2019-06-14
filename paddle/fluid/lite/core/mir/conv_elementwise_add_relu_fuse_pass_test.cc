@@ -40,8 +40,8 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   auto* conv2d_1 = main_block->AppendOp();
   auto* conv2d_2 = main_block->AppendOp();
   auto* add_1 = main_block->AppendOp();
-  auto* add_2 = main_block->AppendOp();
   auto* relu_1 = main_block->AppendOp();
+  auto* add_2 = main_block->AppendOp();
   auto* relu_2 = main_block->AppendOp();
 
   main_block->Var("input_1");
@@ -123,8 +123,8 @@ TEST(conv_elementwise_add_relu_fuse_pass, graph_test) {
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
 
-  ASSERT_EQ(graph->nodes().size(),
-            11UL /*vars*/ + 6UL /*ops*/ + 2UL /*feed op + fetch op*/);
+  Visualize(graph.get());
+  ASSERT_EQ(graph->nodes().size(), 11UL /*vars*/ + 6UL /*ops*/);
   Visualize(graph.get());
 }
 

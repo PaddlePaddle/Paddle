@@ -407,20 +407,22 @@ PMNode *PMNode::assert_is_op_output(const std::string &op_type) {
   return this;
 }
 
-PMNode *PMNode::assert_is_op_input(const std::string &op_type) {
-  assert_is_var();
-  asserts_.emplace_back([=](const Node *x) {
-    for (auto *op : x->outlinks) {
-      if (op && op->IsStmt()) {
-        auto *op_info = op->stmt()->op_info();
-        if (op_info->Type() == op_type) {
-          return true;
-        }
-      }
-    }
-    return false;
-  });
-  return this;
+bool IsNthOutput(const Node *var, const Node *op, const std::string &argument,
+                 size_t nth) {
+  PADDLE_ENFORCE(var->IsArg());
+  PADDLE_ENFORCE(op->IsStmt());
+  auto op_info = op->stmt()->op_info();
+  if (op_info->Output(argument).size() <= nth) return false;
+  return var->arg()->name == op_info->Output(argument)[nth];
+}
+
+bool IsNthInput(const Node *var, const Node *op, const std::string &argument,
+                size_t nth) {
+  PADDLE_ENFORCE(var->IsArg());
+  PADDLE_ENFORCE(op->IsStmt());
+  auto op_info = op->stmt()->op_info();
+  if (op_info->Input(argument).size() <= nth) return false;
+  return var->arg()->name == op_info->Input(argument)[nth];
 }
 
 PMNode *PMNode::assert_is_op_input(const std::string &op_type,
@@ -436,8 +438,8 @@ PMNode *PMNode::assert_is_op_nth_input(const std::string &op_type,
   assert_is_op_input(op_type);
   asserts_.emplace_back([=](const Node *x) {
     for (auto *op : x->outlinks) {
-      if (op->IsStmt() && op->stmt()->op_info()->Type() == op_type &&
-          IsNthInput(*x, *op, argument, nth))
+      if (op && op->IsStmt() && op->stmt()->op_info()->Type() == op_type &&
+          IsNthInput(x, op, argument, nth))
         return true;
     }
     return false;
@@ -445,14 +447,41 @@ PMNode *PMNode::assert_is_op_nth_input(const std::string &op_type,
   return this;
 }
 
-bool IsNthInput(const Node &var, const Node &op, const std::string &argument,
-                int nth) {
-  CHECK(var.IsArg());
-  CHECK(op.IsStmt());
-  if (!HasInput(op, argument) ||
-      static_cast<int>(op.stmt()->op_info()->Input(argument).size()) <= nth)
+PMNode *PMNode::assert_is_op_output(const std::string &op_type,
+                                    const std::string &argument) {
+  assert_is_var();
+  assert_is_op_nth_output(op_type, argument, 0);
+  return this;
+}
+
+PMNode *PMNode::assert_is_op_nth_output(const std::string &op_type,
+                                        const std::string &argument, int nth) {
+  assert_is_var();
+  asserts_.emplace_back([=](const Node *x) {
+    for (auto *op : x->inlinks) {
+      if (op && op->IsStmt() && op->stmt()->op_info()->Type() == op_type &&
+          IsNthOutput(x, op, argument, nth))
+        return true;
+    }
     return false;
-  return var.arg()->name == op.stmt()->op_info()->Input(argument)[nth];
+  });
+  return this;
+}
+
+PMNode *PMNode::assert_is_op_input(const std::string &op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](const Node *x) {
+    for (auto *op : x->outlinks) {
+      if (op && op->IsStmt()) {
+        auto *op_info = op->stmt()->op_info();
+        if (op_info->Type() == op_type) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
+  return this;
 }
 
 bool HasInput(const Node &op, const std::string &argument) {

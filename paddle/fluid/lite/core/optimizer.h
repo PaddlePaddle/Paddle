@@ -49,17 +49,19 @@ class Optimizer {
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
-          "lite_fc_fuse_pass",              //
-          "static_kernel_pick_pass",        //
-          "variable_place_inference_pass",  //
-          "argument_type_display_pass",     //
-          "type_target_transform_pass",     //
-          "argument_type_display_pass",     //
-          "variable_place_inference_pass",  //
-          "argument_type_display_pass",     //
-          "io_copy_kernel_pick_pass",       //
-          "variable_place_inference_pass",  //
-          "runtime_context_assign_pass",    //
+          "lite_conv_bn_fuse_pass",                   //
+          "lite_conv_elementwise_add_act_fuse_pass",  //
+          "lite_fc_fuse_pass",                        //
+          "static_kernel_pick_pass",                  //
+          "variable_place_inference_pass",            //
+          "argument_type_display_pass",               //
+          "type_target_transform_pass",               //
+          "argument_type_display_pass",               //
+          "variable_place_inference_pass",            //
+          "argument_type_display_pass",               //
+          "io_copy_kernel_pick_pass",                 //
+          "variable_place_inference_pass",            //
+          "runtime_context_assign_pass",              //
       }});
     } else {
       RunPasses(passes);
