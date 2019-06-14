@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/lite/core/mir/fc_fuse_pass.h"
+#include <memory>
+#include <vector>
+#include "paddle/fluid/lite/core/mir/fusion/fc_fuser.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
-USE_MIR_PASS(demo);
-USE_MIR_PASS(lite_fc_fuse_pass);
-USE_MIR_PASS(lite_conv_elementwise_add_act_fuse_pass);
-USE_MIR_PASS(static_kernel_pick_pass);
-USE_MIR_PASS(variable_place_inference_pass);
-USE_MIR_PASS(type_target_transform_pass);
-USE_MIR_PASS(generate_program_pass);
-USE_MIR_PASS(io_copy_kernel_pick_pass);
-USE_MIR_PASS(argument_type_display_pass);
-USE_MIR_PASS(runtime_context_assign_pass);
-USE_MIR_PASS(lite_conv_bn_fuse_pass);
-USE_MIR_PASS(graph_visualze);
+namespace paddle {
+namespace lite {
+namespace mir {
+
+void FcFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
+  fusion::FcFuser fuser;
+  fuser(graph.get());
+}
+
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle
+
+REGISTER_MIR_PASS(lite_fc_fuse_pass, paddle::lite::mir::FcFusePass);

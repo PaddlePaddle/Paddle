@@ -71,11 +71,19 @@ class Node {
 
   struct Arg {
     std::string name;
+    int id{0};
     const Type* type{};
     // Weight is a special kind of argument, it is marked as weight explicitly
     // so that some weight related optimization can take place.
     bool is_weight{false};
   };
+
+  Arg& AsArg(const std::string& name, int id) {
+    auto& x = AsArg();
+    x.name = name;
+    x.id = id;
+    return x;
+  }
 
   Arg& AsArg(const std::string& name) {
     auto& x = AsArg();

@@ -13,17 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
 
-USE_MIR_PASS(demo);
-USE_MIR_PASS(lite_fc_fuse_pass);
-USE_MIR_PASS(lite_conv_elementwise_add_act_fuse_pass);
-USE_MIR_PASS(static_kernel_pick_pass);
-USE_MIR_PASS(variable_place_inference_pass);
-USE_MIR_PASS(type_target_transform_pass);
-USE_MIR_PASS(generate_program_pass);
-USE_MIR_PASS(io_copy_kernel_pick_pass);
-USE_MIR_PASS(argument_type_display_pass);
-USE_MIR_PASS(runtime_context_assign_pass);
-USE_MIR_PASS(lite_conv_bn_fuse_pass);
-USE_MIR_PASS(graph_visualze);
+#include <memory>
+#include <string>
+#include "paddle/fluid/lite/core/mir/pass.h"
+
+namespace paddle {
+namespace lite {
+namespace mir {
+
+class FcFusePass : public ProgramPass {
+ public:
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
+};
+
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle

@@ -32,6 +32,4 @@ set(x86_kernels
     concat_compute_x86
     conv_compute_x86
     pool_compute_x86
-    )
-
-set(x86_kernels "${x86_kernels}" CACHE INTERNAL "x86 kernels")
+    CACHE INTERNAL "x86 kernels")

@@ -10,6 +10,4 @@ set(host_kernels
     feed_compute_host
     fetch_compute_host
     reshape_compute_host
-    )
-
-set(host_kernels "${host_kernels}" CACHE GLOBAL "host kernels")
+    CACHE INTERNAL "host kernels")

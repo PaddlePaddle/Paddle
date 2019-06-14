@@ -124,8 +124,8 @@ struct ConcatParam {
 struct ConvParam {
   lite::Tensor* x{};
   lite::Tensor* filter{};
-  lite::Tensor* bias{};
-  lite::Tensor* residualData{};
+  const lite::Tensor* bias{};
+  const lite::Tensor* residualData{};
   lite::Tensor* output{};
   std::vector<int> strides{1, 1};
   std::vector<int> paddings{0, 0};
@@ -235,6 +235,22 @@ struct SGDParam {
   const lite::Tensor* LearningRate{};
   const lite::Tensor* Grad{};
   lite::Tensor* ParamOut{};
+};
+
+//
+struct BatchNormParam {
+  lite::Tensor* x{};
+  lite::Tensor* bias{};
+  lite::Tensor* mean{};
+  lite::Tensor* scale{};
+  lite::Tensor* var{};
+  lite::Tensor* out{};
+  lite::Tensor* mean_out{};
+  lite::Tensor* var_out{};
+  lite::Tensor* saved_mean{};
+  lite::Tensor* saved_var{};
+
+  float eps{1e-5};
 };
 
 }  // namespace operators

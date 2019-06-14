@@ -30,15 +30,13 @@ message(STATUS "get Host kernels ${host_kernels}")
 message(STATUS "get ARM kernels ${arm_kernels}")
 
 include(ExternalProject)
-set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
         "A path setting inference demo download directories.")
 
 if((NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) AND WITH_TESTING)
     lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
-       DEPS cxx_api_lite model_parser_lite target_wrapper_host
+       DEPS cxx_api_lite mir_passes
        ${ops_lite} ${host_kernels} ${x86_kernels}
-       PROFILE_DEPS basic_profiler_lite
        ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
             --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 

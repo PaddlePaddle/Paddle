@@ -64,16 +64,33 @@ class ConvOpLite : public OpLite {
   bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override {
     auto X = op_desc.Input("Input").front();
     auto Filter = op_desc.Input("Filter").front();
-    auto Bias = op_desc.Input("Bias").front();
-    // auto ResidualData = op_desc.Input("ResidualData");
     auto Out = op_desc.Output("Output").front();
 
     param_.x = scope->FindVar(X)->GetMutable<lite::Tensor>();
     param_.filter = scope->FindVar(Filter)->GetMutable<lite::Tensor>();
-    param_.bias = scope->FindVar(Bias)->GetMutable<lite::Tensor>();
-    // param_.residualData =
-    // scope->FindVar(ResidualData)->GetMutable<lite::Tensor>();
     param_.output = scope->FindVar(Out)->GetMutable<lite::Tensor>();
+
+    std::vector<std::string> input_arg_names = op_desc.InputArgumentNames();
+    if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
+        input_arg_names.end()) {
+      auto bias_arguments = op_desc.Input("Bias");
+      if (bias_arguments.size() != 0) {
+        auto bias_var = scope->FindVar(bias_arguments.front());
+        if (bias_var != nullptr) {
+          param_.bias = &bias_var->Get<lite::Tensor>();
+        }
+      }
+    }
+    if (std::find(input_arg_names.begin(), input_arg_names.end(),
+                  "ResidualData") != input_arg_names.end()) {
+      auto res_argument = op_desc.Input("ResidualData");
+      if (res_argument.size() != 0) {
+        auto residual_data_var = scope->FindVar(res_argument.front());
+        if (residual_data_var != nullptr) {
+          param_.residualData = &residual_data_var->Get<lite::Tensor>();
+        }
+      }
+    }
 
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
