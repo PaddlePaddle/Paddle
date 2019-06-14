@@ -100,46 +100,18 @@ __device__ T DmcnIm2colBilinear(const T* bottom_data, const int data_width,
   T lw = w - w_low;
   T hh = 1 - lh, hw = 1 - lw;
 
-  // T v1 = 0;
   T v1 =
       (h_low >= 0 && w_low >= 0) ? bottom_data[h_low * data_width + w_low] : 0;
-
-  // if (h_low >= 0 && w_low >= 0) v1 = bottom_data[h_low * data_width + w_low];
-  // T v2 = 0;
-  // if (h_low >= 0 && w_high <= width - 1)
-  //  v2 = bottom_data[h_low * data_width + w_high];
   T v2 = (h_low >= 0 && w_high <= width - 1)
              ? bottom_data[h_low * data_width + w_high]
              : 0;
-  // T v3 = 0;
-  // if (h_high <= height - 1 && w_low >= 0)
-  //  v3 = bottom_data[h_high * data_width + w_low];
   T v3 = (h_high <= height - 1 && w_low >= 0)
              ? bottom_data[h_high * data_width + w_low]
              : 0;
-
-  // T v4 = 0;
-  // if (h_high <= height - 1 && w_high <= width - 1)
-  //  v4 = bottom_data[h_high * data_width + w_high];
-
   T v4 = (h_high <= height - 1 && w_high <= width - 1)
              ? bottom_data[h_high * data_width + w_high]
              : 0;
-
   T w1 = hh * hw, w2 = hh * lw, w3 = lh * hw, w4 = lh * lw;
 
   return w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
 }
-
-/*
-template <typename T>
-__global__ void FilterGradAddupCUDAKernel(const int nthreads, const int n,
-                                         const int height, const int width,
-                                         const T* dweight_3d, T* filter_grad) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
-    filter_grad[i] = filter_grad[i] + dweight_3d[i];
-  }
-}
-*/
