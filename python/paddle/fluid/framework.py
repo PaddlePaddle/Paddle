@@ -82,7 +82,7 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    if not os.environ.has_key("CPU_NUM") is None:
+    if not os.environ.has_key("CPU_NUM"):
         sys.stderr.write(
             'The CPU_NUM is not specified, you should set CPU_NUM in '
             'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
