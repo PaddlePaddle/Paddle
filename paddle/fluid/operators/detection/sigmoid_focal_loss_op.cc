@@ -27,10 +27,10 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -73,13 +73,13 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shoudl be not null.");
+                   "Input(Out@GRAD) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+                   "Output(X@GRAD) should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
