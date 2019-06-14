@@ -151,9 +151,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   Update();
 }
 
-void AnalysisConfig::EnableMKLDNN() {
+void AnalysisConfig::EnableMKLDNN(int reuse_id) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_ = true;
+  mkldnn_reuse_id_ = reuse_id;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
   use_mkldnn_ = false;

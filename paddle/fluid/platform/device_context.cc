@@ -437,7 +437,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   } else {
     key_it->second = data;  // set data to existing blob
   }
-  std::cout << "MKLDNNDeviceContext::SetBlob " << name << "\n";
+  VLOG(3) << "MKLDNNDeviceContext::SetBlob " << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }

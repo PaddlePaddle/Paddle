@@ -198,9 +198,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
-  std::cout << "AnalysisPredictor::Run get_cur_thread_id="
-            << paddle::platform::get_cur_thread_id()
-            << ", mkldnn_reuse_id_=" << config_.mkldnn_reuse_id_ << "\n";
+  VLOG(3) << "AnalysisPredictor::Run get_cur_thread_id="
+          << paddle::platform::get_cur_thread_id()
+          << ", mkldnn_reuse_id_=" << config_.mkldnn_reuse_id_ << "\n";
   if (paddle::platform::get_cur_thread_id() == 0)
     paddle::platform::set_cur_thread_id(config_.mkldnn_reuse_id_);
 #endif
@@ -606,9 +606,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
-  std::cout << "AnalysisPredictor::ZeroCopyRun get_cur_thread_id="
-            << paddle::platform::get_cur_thread_id()
-            << ", mkldnn_reuse_id_=" << config_.mkldnn_reuse_id_ << "\n";
+  VLOG(3) << "AnalysisPredictor::ZeroCopyRun get_cur_thread_id="
+          << paddle::platform::get_cur_thread_id()
+          << ", mkldnn_reuse_id_=" << config_.mkldnn_reuse_id_ << "\n";
   if (paddle::platform::get_cur_thread_id() == 0)
     paddle::platform::set_cur_thread_id(config_.mkldnn_reuse_id_);
 #endif

@@ -178,7 +178,7 @@ struct AnalysisConfig {
 
   /** Turn on MKLDNN.
    */
-  void EnableMKLDNN();
+  void EnableMKLDNN(int reuse_id = 0);
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
@@ -201,11 +201,6 @@ struct AnalysisConfig {
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
     mkldnn_enabled_op_types_ = op_list;
   }
-
-  /** Specify id for MKLDNN primitive reuse.
-   * @param id reuse id.
-   */
-  void SetMKLDNNReuseID(int id) { mkldnn_reuse_id_ = id; }
 
   /** Turn on quantization.
    */
