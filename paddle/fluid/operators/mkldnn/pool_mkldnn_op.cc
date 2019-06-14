@@ -138,6 +138,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto pool_p =
         std::static_pointer_cast<pooling_forward>(dev_ctx.GetBlob(key_pool_p));
+    std::shared_ptr<mkldnn::memory> src_memory, dst_memory;
     if (pool_p == nullptr) {
       const std::vector<int>& padding_left_top(paddings);
       std::vector<int> padding_right_bottom(paddings);
@@ -166,9 +167,9 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // save pool_pd into global device context to be referred in backward path
       if (!is_test) dev_ctx.SetBlob(key_pool_pd, pool_pd);
 
-      auto src_memory = std::make_shared<memory>(pool_pd->src_primitive_desc(),
-                                                 to_void_cast<T>(input_data));
-      auto dst_memory =
+      src_memory = std::make_shared<memory>(pool_pd->src_primitive_desc(),
+                                            to_void_cast<T>(input_data));
+      dst_memory =
           std::make_shared<memory>(pool_pd->dst_primitive_desc(), output_data);
 
       dev_ctx.SetBlob(key_pool_src_mem_p, src_memory);
