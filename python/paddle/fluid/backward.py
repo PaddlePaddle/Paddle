@@ -704,7 +704,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                     "The shapes of target and grad are different: %s %s" % (
                         target.name, grad.name))
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
-            input_grad_names_set.add(grad_name)
+            input_grad_names_set.add(grad.name)
 
     for input in inputs:
         if input.block.program != prog:

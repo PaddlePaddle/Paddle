@@ -1235,19 +1235,18 @@ inline void ExtractActivationDoubleGradTensor(
     PADDLE_ENFORCE(x_var != nullptr,
                    "Cannot get input Variable Out, variable name = %s",
                    ctx.op().Input("X"));
-    // auto dx_var = ctx.OutputVar("DX");
+    auto dx_var = ctx.OutputVar("DX");
     if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
-      // if (dx_var) {
-      //   *dX =
-      //   paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-      //       dx_var);
-      // }
+      if (dx_var) {
+        *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+            dx_var);
+      }
     } else {
       *X = ctx.Input<framework::Tensor>("X");
-      // if (dx_var) {
-      //   *dX = ctx.Output<framework::Tensor>("DX");
-      // }
+      if (dx_var) {
+        *dX = ctx.Output<framework::Tensor>("DX");
+      }
     }
   } else {
     VLOG(10) << "Inplace activation of Op: " << ctx.op().Type();
