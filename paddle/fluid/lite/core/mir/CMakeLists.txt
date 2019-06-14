@@ -3,10 +3,12 @@ cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node)
 cc_library(mir_pass SRCS pass.cc DEPS mir_ssa_graph)
 cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph mir_passes)
 cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
+
 add_subdirectory(fusion)
 cc_library(mir_passes
         SRCS fc_fuse_pass.cc
         conv_elementwise_add_relu_fuse_pass.cc
+        conv_bn_fuse_pass.cc 
         static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
         type_target_transform_pass.cc
@@ -54,6 +56,7 @@ lite_cc_library(pattern_matcher_lite SRCS pattern_matcher.cc DEPS mir_node mir_s
 lite_cc_test(test_pattern_matcher_lite SRCS pattern_matcher_test.cc DEPS pattern_matcher_lite)
 
 lite_cc_library(pattern_matcher_high_api SRCS pattern_matcher_high_api.cc DEPS pattern_matcher_lite)
+
 
 # TODO(wz) replace framework/proto to lite proto.
 if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

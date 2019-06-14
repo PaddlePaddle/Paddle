@@ -74,6 +74,7 @@ class Conv2dCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     lite::Tensor col_matrix;
     if (is_expand) {
       col.Resize(col_shape);
+      col.mutable_data<T>();
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }
@@ -155,7 +156,6 @@ REGISTER_LITE_KERNEL(conv2d, kX86, kFloat, kNCHW,
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput("Filter", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kX86))})
-    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput("Output", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
 
@@ -164,6 +164,5 @@ REGISTER_LITE_KERNEL(depthwise_conv2d, kX86, kFloat, kNCHW,
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput("Filter", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kX86))})
-    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput("Output", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();

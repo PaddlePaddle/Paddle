@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/operators/batch_norm.h"
+#include <vector>
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {}  // namespace mir
+namespace operators {
+
+bool BatchNormOpLite::CheckShape() const { return true; }
+
+bool BatchNormOpLite::InferShape() const { return true; }
+
+}  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
-USE_MIR_PASS(demo);
-USE_MIR_PASS(lite_fc_fuse_pass);
-USE_MIR_PASS(lite_conv_elementwise_add_act_fuse_pass);
-USE_MIR_PASS(static_kernel_pick_pass);
-USE_MIR_PASS(variable_place_inference_pass);
-USE_MIR_PASS(type_target_transform_pass);
-USE_MIR_PASS(generate_program_pass);
-USE_MIR_PASS(io_copy_kernel_pick_pass);
-USE_MIR_PASS(argument_type_display_pass);
-USE_MIR_PASS(runtime_context_assign_pass);
-USE_MIR_PASS(lite_conv_bn_fuse_pass);
+REGISTER_LITE_OP(batch_norm, paddle::lite::operators::BatchNormOpLite);

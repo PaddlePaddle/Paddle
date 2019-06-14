@@ -19,6 +19,7 @@ cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
 cc_library(conv_op_lite SRCS conv_op.cc DEPS ${op_DEPS})
 cc_library(pool_op_lite SRCS pool_op.cc DEPS ${op_DEPS})
+cc_library(batch_norm_op_lite SRCS batch_norm.cc DEPS ${op_DEPS})
 
 set(ops_lite
     fc_op_lite
@@ -38,6 +39,7 @@ set(ops_lite
     concat_op_lite
     conv_op_lite
     pool_op_lite
+    batch_norm_op_lite
     CACHE INTERNAL "ops lite")
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 

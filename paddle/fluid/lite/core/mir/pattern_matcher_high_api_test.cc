@@ -124,8 +124,7 @@ TEST(pattern_matcher_high_api, graph_test) {
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
 
-  ASSERT_EQ(graph->nodes().size(),
-            7UL /*real nodes*/ + 2UL /*feed op + fetch op*/);
+  ASSERT_EQ(graph->nodes().size(), 7UL /*real nodes*/);
   Visualize(graph.get());
 }
 
