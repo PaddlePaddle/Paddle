@@ -34,7 +34,6 @@ class Any {
       CHECK(type_ == typeid(T).hash_code());
     } else {
       type_ = typeid(T).hash_code();
-      data_ = new T;
       deleter_ = [&] { delete static_cast<T*>(data_); };
     }
     data_ = new T;
@@ -55,10 +54,16 @@ class Any {
 
   bool valid() const { return data_; }
 
+  // ~Any() {
+  //    if (valid()) {
+  //      deleter_();
+  //    }
+  //  }
+
  private:
   static size_t kInvalidType;
   size_t type_{kInvalidType};
-  void* data_{};
+  void* data_{nullptr};
   std::function<void()> deleter_;
 };
 

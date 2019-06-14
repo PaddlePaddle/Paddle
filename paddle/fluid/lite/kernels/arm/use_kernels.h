@@ -19,5 +19,6 @@ USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
