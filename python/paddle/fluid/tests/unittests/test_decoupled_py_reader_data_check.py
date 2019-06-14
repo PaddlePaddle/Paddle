@@ -67,6 +67,7 @@ class TestClass(unittest.TestCase):
 
                 for epoch_id in six.moves.range(10):
                     gen = batch_reader()
+                    batch_id = 0
                     for d in py_reader():
                         feed = feeder.feed(next(gen))
                         I1, L1 = feed['image'], feed['label']
@@ -79,6 +80,10 @@ class TestClass(unittest.TestCase):
 
                         self.assertTrue(np.array_equal(I1, I2))
                         self.assertTrue(np.array_equal(L1, L2))
+
+                        batch_id += 1
+
+                    self.assertTrue(next(gen, None) is None)
 
 
 class TestClass2(TestClass):
