@@ -23,7 +23,7 @@ namespace math {
 
 template <>
 bool DepthwiseConv<PRECISION(kFloat)>::create(const operators::ConvParam& param,
-                                           ARMContext* ctx) {
+                                              ARMContext* ctx) {
   this->ctx_ = ctx;
   auto x_dims = param.x->dims();
   auto w_dims = param.filter->dims();
@@ -41,7 +41,8 @@ bool DepthwiseConv<PRECISION(kFloat)>::create(const operators::ConvParam& param,
     impl_ = conv_depthwise_3x3;
   } else if (kw == 5) {
     VLOG(5) << "invoke 5x5 dw conv";
-    this->ctx_->ExtendWorkspace(DDim(std::vector<DDim::value_type>({1, 1, 1, iw + ow})));
+    this->ctx_->ExtendWorkspace(
+        DDim(std::vector<DDim::value_type>({1, 1, 1, iw + ow})));
     impl_ = conv_depthwise_5x5;
   } else {
     LOG(ERROR) << "this type dw conv not impl";
@@ -52,7 +53,7 @@ bool DepthwiseConv<PRECISION(kFloat)>::create(const operators::ConvParam& param,
 
 template <>
 bool DepthwiseConv<PRECISION(kFloat)>::init(const operators::ConvParam& param,
-                                         Context<TARGET(kARM)>* ctx) {
+                                            Context<TARGET(kARM)>* ctx) {
   this->ctx_ = ctx;
   return create(param, ctx);
 }

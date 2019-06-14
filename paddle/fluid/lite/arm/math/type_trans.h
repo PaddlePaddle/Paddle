@@ -21,7 +21,7 @@ namespace math {
 
 template <typename dtype>
 void int32_to_dtype(const int* din, dtype* dout, const float* scale,
-    int axis_size, long long outer_size, long long inner_size);
+                    int axis_size, int64_t outer_size, int64_t inner_size);
 
 }  // namespace math
 }  // namespace arm

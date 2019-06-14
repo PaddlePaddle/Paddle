@@ -25,3 +25,4 @@ if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
 
     add_dependencies(__generated_code__ test_gen_code_lite)
 endif()
+ 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -25,20 +26,22 @@ namespace arm {
 namespace math {
 
 template <PrecisionType Ptype>
-class DepthwiseConv : public ImplBase<TARGET(kARM), Ptype, operators::ConvParam> {
+class DepthwiseConv
+    : public ImplBase<TARGET(kARM), Ptype, operators::ConvParam> {
  public:
   typedef void (*conv_dw_impl)(const float* din, float* dout, int num,
-                                   int chout, int hout, int wout, int chin,
-                                   int hin, int win, const float* weights,
-                                   const float* bias,
-                                   const operators::ConvParam& param,
-                                   Context<TARGET(kARM)>* ctx);
+                               int chout, int hout, int wout, int chin, int hin,
+                               int win, const float* weights, const float* bias,
+                               const operators::ConvParam& param,
+                               Context<TARGET(kARM)>* ctx);
 
-  typedef void (*conv_dw_int8_impl)(
-      const int8_t* din, int32_t* dout, int num, int chout, int hout, int wout,
-      int chin, int hin, int win, const int8_t* weights, const int32_t* bias,
-      const operators::ConvParam& param, Context<TARGET(kARM)>* ctx,
-      PrecisionType out_type, const float* scale);
+  typedef void (*conv_dw_int8_impl)(const int8_t* din, int32_t* dout, int num,
+                                    int chout, int hout, int wout, int chin,
+                                    int hin, int win, const int8_t* weights,
+                                    const int32_t* bias,
+                                    const operators::ConvParam& param,
+                                    Context<TARGET(kARM)>* ctx,
+                                    PrecisionType out_type, const float* scale);
   DepthwiseConv() = default;
   ~DepthwiseConv() {}
 

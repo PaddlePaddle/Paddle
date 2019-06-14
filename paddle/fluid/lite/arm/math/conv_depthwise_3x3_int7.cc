@@ -782,9 +782,9 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d31, d12, d13, #1          @ ext \n"  // d11 = 12345678
             "vmull.s8 q13, d12, d3                 @ out1 = din1 * w01 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d12, d6                 @ out0 = din1 * w11 \n"  // q12 = d12 * w11
 
             "vld1.8 {d12-d13}, [%[din_ptr3]]    @ load din00= 0 1 2 3 4 5 6 7 "
@@ -806,13 +806,13 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d14, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d15, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d6                 @ out1 = din2 * w11 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d14, d9                 @ out1 = din2 * w21 \n"  // q13 = d12 * w01
@@ -827,13 +827,13 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d12, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d12, d13, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d12, d9                 @ out1 = din3 * w21 \n"  // q13 = d12 * w01
             "pld [%[din_ptr0]]                @ preload data\n"
@@ -849,9 +849,9 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
 
             "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vst1.32 {d20-d21}, [%[dout_ptr2]]!         @ store\n"
             "cmp %[cnt], #1                                 \n"
             "vst1.32 {d22-d23}, [%[dout_ptr2]]!         @ store\n"
@@ -894,9 +894,9 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d31, d12, d13, #2          @ ext \n"  // d11 = 12345678
             "vmull.s8 q13, d12, d2                 @ out1 = din1 * w01 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d12, d5                 @ out0 = din1 * w11 \n"  // q12 = d12 * w11
 
             "vld1.8 {d12-d13}, [%[din_ptr3]]    @ load din00= 0 1 2 3 4 5 6 7 "
@@ -915,13 +915,13 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d30, d14, d15, #1     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d15, #2          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d5                 @ out1 = din2 * w11 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d14, d8                 @ out1 = din2 * w21 \n"  // q13 = d12 * w01
@@ -936,13 +936,13 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d30, d12, d13, #1     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d12, d13, #2          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d12, d8                 @ out1 = din3 * w21 \n"  // q13 = d12 * w01
             "pld [%[din_ptr0]]                @ preload data\n"
@@ -958,9 +958,9 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
 
             "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vst1.32 {d20-d21}, [%[dout_ptr2]]!         @ store\n"
             "subs %[cnt], #1                                \n"
             "vst1.32 {d22-d23}, [%[dout_ptr2]]!         @ store\n"
@@ -1003,9 +1003,9 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
 
             "vmull.s8 q13, d14, d2                 @ out1 = din1 * w00 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d14, d5                 @ out0 = din1 * w10 \n"  // q12 = d12 * w11
 
             "vld1.8 {d14-d15}, [%[din_ptr3]]    @ load din00= 0 1 2 3 4 5 6 7 "
@@ -1026,13 +1026,13 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8 d31, d12, d13, #2               @ ext \n"  // d11 = 12345678
 
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d12, d5                 @ out1 = din2 * w10 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d12, d8                 @ out1 = din2 * w20 \n"  // q13 = d12 * w01
@@ -1061,13 +1061,13 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vext.8     d30, d14, d15, #1     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d15, #2          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d8                 @ out1 = din3 * w20 \n"  // q13 = d12 * w01
             "sub %[dout_ptr1], #16                  @ sub \n"
@@ -1088,9 +1088,9 @@ void conv_depthwise_3x3s1p1_bias_int7(int* dout, const signed char* din,
             "vst1.32 {d16-d17}, [%[dout_ptr1]]!         @ store\n"
             "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vbif q10, q7, q1        @ bit select, deal with right pad\n"
             "vbif q11, q12, q2       @ bit select, deal with right pad\n"
@@ -1457,9 +1457,9 @@ void conv_depthwise_3x3s1p1_bias_s_int7(int* dout, const signed char* din,
             "vext.8     d31, d13, d11, #1          @ ext \n"  // d11 = 12345678
             "vmull.s8 q13, d13, d3                 @ out1 = din1 * w01 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d13, d6                 @ out0 = din1 * w11 \n"  // q12 = d12 * w11
 
             "vdup.s8 d8, d0[6]               @ d8 = w20, w00, w00, w00\n"
@@ -1480,13 +1480,13 @@ void conv_depthwise_3x3s1p1_bias_s_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d14, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d11, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d6                 @ out1 = din2 * w11 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d14, d9                 @ out1 = din2 * w21 \n"  // q13 = d12 * w01
@@ -1506,13 +1506,13 @@ void conv_depthwise_3x3s1p1_bias_s_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d15, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d15, d11, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d15, d9                 @ out1 = din3 * w21 \n"  // q13 = d12 * w01
 
@@ -1534,9 +1534,9 @@ void conv_depthwise_3x3s1p1_bias_s_int7(int* dout, const signed char* din,
             // "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
 
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             // "vbif q10, q3, q1                   @ bit select, deal with right
             // pad\n" "vbif q11, q7, q2                    @ bit select, deal
@@ -1931,21 +1931,21 @@ void conv_depthwise_3x3s2p1_bias_int7(int* dout, const signed char* din,
             "add %[din_ptr0], #15                   @add \n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "add %[din_ptr1], #15                   @add \n"
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "add %[din_ptr2], #15                   @add \n"
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "pld [%[din_ptr0]]                @ preload data\n"
             "pld [%[din_ptr1]]                @ preload data\n"
@@ -1998,21 +1998,21 @@ void conv_depthwise_3x3s2p1_bias_int7(int* dout, const signed char* din,
             // "add %[din_ptr0], #16                   @add \n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             // "add %[din_ptr1], #16                   @add \n"
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             // "add %[din_ptr2], #16                   @add \n"
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "pld [%[din_ptr0]]                @ preload data\n"
             "pld [%[din_ptr1]]                @ preload data\n"
@@ -2077,21 +2077,21 @@ void conv_depthwise_3x3s2p1_bias_int7(int* dout, const signed char* din,
             "9\n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "sub %[dout_ptr1], #16                  @ sub \n"
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vbif q11, q6, q1        @ bit select, deal with right pad\n"
             "vbif q12, q7, q2       @ bit select, deal with right pad\n"
@@ -2383,19 +2383,19 @@ void conv_depthwise_3x3s2p1_bias_s_int7(int* dout, const signed char* din,
             // "sub %[dout_ptr1], #16                  @ sub \n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             // "vbif q11, q6, q1        @ bit select, deal with right pad\n"
             // "vbif q12, q7, q2       @ bit select, deal with right pad\n"
@@ -3054,9 +3054,9 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d31, d12, d13, #1          @ ext \n"  // d11 = 12345678
             "vmull.s8 q13, d12, d3                 @ out1 = din1 * w01 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d12, d6                 @ out0 = din1 * w11 \n"  // q12 = d12 * w11
 
             "vld1.8 {d12-d13}, [%[din_ptr3]]    @ load din00= 0 1 2 3 4 5 6 7 "
@@ -3078,13 +3078,13 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d14, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d15, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d6                 @ out1 = din2 * w11 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d14, d9                 @ out1 = din2 * w21 \n"  // q13 = d12 * w01
@@ -3100,13 +3100,13 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d31, d12, d13, #1          @ ext \n"  // d11 = 12345678
             "vmov.u32 q0, #0                         @ mov \n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d12, d9                 @ out1 = din3 * w21 \n"  // q13 = d12 * w01
             "pld [%[din_ptr0]]                @ preload data\n"
@@ -3124,9 +3124,9 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
 
             "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vmax.s32 q10, q10, q0              @ max \n"
             "vmax.s32 q11, q11, q0              @ max \n"
@@ -3173,9 +3173,9 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d31, d12, d13, #2          @ ext \n"  // d11 = 12345678
             "vmull.s8 q13, d12, d2                 @ out1 = din1 * w01 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d12, d5                 @ out0 = din1 * w11 \n"  // q12 = d12 * w11
 
             "vld1.8 {d12-d13}, [%[din_ptr3]]    @ load din00= 0 1 2 3 4 5 6 7 "
@@ -3194,13 +3194,13 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d30, d14, d15, #1     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d15, #2          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d5                 @ out1 = din2 * w11 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d14, d8                 @ out1 = din2 * w21 \n"  // q13 = d12 * w01
@@ -3215,13 +3215,13 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d30, d12, d13, #1     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d12, d13, #2          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d12, d8                 @ out1 = din3 * w21 \n"  // q13 = d12 * w01
             "pld [%[din_ptr0]]                @ preload data\n"
@@ -3239,9 +3239,9 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
 
             "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vmax.s32 q10, q10, q0              @ max \n"
             "vmax.s32 q11, q11, q0              @ max \n"
@@ -3288,9 +3288,9 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
 
             "vmull.s8 q13, d14, d2                 @ out1 = din1 * w00 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d14, d5                 @ out0 = din1 * w10 \n"  // q12 = d12 * w11
 
             "vld1.8 {d14-d15}, [%[din_ptr3]]    @ load din00= 0 1 2 3 4 5 6 7 "
@@ -3311,13 +3311,13 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8 d31, d12, d13, #2               @ ext \n"  // d11 = 12345678
 
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d12, d5                 @ out1 = din2 * w10 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d12, d8                 @ out1 = din2 * w20 \n"  // q13 = d12 * w01
@@ -3346,13 +3346,13 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vext.8     d30, d14, d15, #1     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d15, #2          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d8                 @ out1 = din3 * w20 \n"  // q13 = d12 * w01
             "vld1.32 {d14-d15}, [%[dout_ptr2]]!    @ load din00= 0 1 2 3 4 5 6 "
@@ -3375,9 +3375,9 @@ void conv_depthwise_3x3s1p1_bias_relu_int7(int* dout, const signed char* din,
             "vst1.32 {d16-d17}, [%[dout_ptr1]]!         @ store\n"
             "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vmax.s32 q10, q10, q0              @ max \n"
             "vmax.s32 q11, q11, q0              @ max \n"
@@ -3755,9 +3755,9 @@ void conv_depthwise_3x3s1p1_bias_s_relu_int7(int* dout, const signed char* din,
             "vext.8     d31, d13, d11, #1          @ ext \n"  // d11 = 12345678
             "vmull.s8 q13, d13, d3                 @ out1 = din1 * w01 \n"  // q13 = d12 * w01
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
             "vmull.s8 q12, d13, d6                 @ out0 = din1 * w11 \n"  // q12 = d12 * w11
 
             "vdup.s8 d8, d0[6]               @ d8 = w20, w00, w00, w00\n"
@@ -3778,13 +3778,13 @@ void conv_depthwise_3x3s1p1_bias_s_relu_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d14, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d14, d11, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d14, d6                 @ out1 = din2 * w11 \n"  // q13 = d12 * w01
             "vmull.s8 q12, d14, d9                 @ out1 = din2 * w21 \n"  // q13 = d12 * w01
@@ -3804,13 +3804,13 @@ void conv_depthwise_3x3s1p1_bias_s_relu_int7(int* dout, const signed char* din,
             "vext.8     d30, d11, d15, #7     @ ext \n"       // d10 = 00123456
             "vext.8     d31, d15, d11, #1          @ ext \n"  // d11 = 12345678
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vaddw.s16 q8, q8, d24                 @addw \n"  // out0 +=
-                                                              // vget_low_s16(out00)
+            // vget_low_s16(out00)
             "vaddw.s16 q9, q9, d25                 @addw \n"  // out0_1 +=
-                                                              // vget_high_s16(out00)
+            // vget_high_s16(out00)
 
             "vmull.s8 q13, d15, d9                 @ out1 = din3 * w21 \n"  // q13 = d12 * w01
 
@@ -3833,9 +3833,9 @@ void conv_depthwise_3x3s1p1_bias_s_relu_int7(int* dout, const signed char* din,
             // with right pad\n"
 
             "vaddw.s16 q10, q10, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q11, q11, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vst1.32 {d16-d19}, [%[dout_ptr1]]         @ store\n"
             // "vst1.32 {d18-d19}, [%[dout_ptr1]]!         @ store\n"
@@ -4244,22 +4244,22 @@ void conv_depthwise_3x3s2p1_bias_relu_int7(int* dout, const signed char* din,
             "add %[din_ptr0], #15                   @add \n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vmov.u32 q8, #0                        @ max \n"  // max
             "add %[din_ptr1], #15                   @add \n"
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "add %[din_ptr2], #15                   @add \n"
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "pld [%[din_ptr0]]                @ preload data\n"
             "pld [%[din_ptr1]]                @ preload data\n"
@@ -4315,22 +4315,22 @@ void conv_depthwise_3x3s2p1_bias_relu_int7(int* dout, const signed char* din,
             // "add %[din_ptr0], #16                   @add \n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             // "add %[din_ptr1], #16                   @add \n"
             "vmov.u32 q8, #0                          @ mov \n"
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             // "add %[din_ptr2], #16                   @add \n"
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "pld [%[din_ptr0]]                @ preload data\n"
             "pld [%[din_ptr1]]                @ preload data\n"
@@ -4398,21 +4398,21 @@ void conv_depthwise_3x3s2p1_bias_relu_int7(int* dout, const signed char* din,
             "9\n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "sub %[dout_ptr1], #16                  @ sub \n"
             "vmov.u32 q8, #0                         @mov \n"
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vmax.s32 q11, q11, q8                      @ max\n"
             "vmax.s32 q12, q12, q8                      @ max\n"
@@ -4712,20 +4712,20 @@ void conv_depthwise_3x3s2p1_bias_s_relu_int7(int* dout, const signed char* din,
             // "sub %[dout_ptr1], #16                  @ sub \n"
 
             "vaddw.s16 q11, q11, d26                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d27                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
             "vmov.u32 q8, #0                         @ mov \n"
 
             "vaddw.s16 q11, q11, d28                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d29                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vaddw.s16 q11, q11, d30                 @addw \n"  // out1 +=
-                                                                // vget_low_s16(out10)
+            // vget_low_s16(out10)
             "vaddw.s16 q12, q12, d31                 @addw \n"  // out1_1 +=
-                                                                // vget_high_s16(out10)
+            // vget_high_s16(out10)
 
             "vmax.s32 q11, q11, q8                      @ max\n"
             "vmax.s32 q12, q12, q8                      @ max\n"
