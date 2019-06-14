@@ -105,7 +105,7 @@ class Conv2dCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
           param.x->raw_tensor().Slice(i, i + 1).Resize(input_shape.data()));
       lite::Tensor out_batch;
       out_batch.ShareDataWith(param.output->raw_tensor().Slice(i, i + 1).Resize(
-          input_shape.data()));
+          output_matrix_shape.data()));
 
       for (int g = 0; g < param.groups; g++) {
         lite::Tensor in_slice;

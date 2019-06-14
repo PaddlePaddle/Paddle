@@ -73,19 +73,22 @@ class ConvOpLite : public OpLite {
     std::vector<std::string> input_arg_names = op_desc.InputArgumentNames();
     if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
         input_arg_names.end()) {
-      auto bias_var = scope->FindVar(op_desc.Input("Bias").front());
-      if (bias_var != nullptr) {
-        param_.bias =
-            const_cast<lite::Tensor*>(&(bias_var->Get<lite::Tensor>()));
+      auto bias_arguments = op_desc.Input("Bias");
+      if (bias_arguments.size() != 0) {
+        auto bias_var = scope->FindVar(bias_arguments.front());
+        if (bias_var != nullptr) {
+          param_.bias = &bias_var->Get<lite::Tensor>();
+        }
       }
     }
     if (std::find(input_arg_names.begin(), input_arg_names.end(),
                   "ResidualData") != input_arg_names.end()) {
-      auto residual_data_var =
-          scope->FindVar(op_desc.Input("ResidualData").front());
-      if (residual_data_var != nullptr) {
-        param_.residualData = const_cast<lite::Tensor*>(
-            &(residual_data_var->Get<lite::Tensor>()));
+      auto res_argument = op_desc.Input("ResidualData");
+      if (res_argument.size() != 0) {
+        auto residual_data_var = scope->FindVar(res_argument.front());
+        if (residual_data_var != nullptr) {
+          param_.residualData = &residual_data_var->Get<lite::Tensor>();
+        }
       }
     }
 
