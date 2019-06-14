@@ -65,7 +65,7 @@ USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
 
-USE_LITE_OP(con2d);
+USE_LITE_OP(conv2d);
 // USE_LITE_OP(batch_norm);
 USE_LITE_OP(relu);
 USE_LITE_OP(depthwise_conv2d);
@@ -81,11 +81,11 @@ USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
 
-USE_LITE_KERNEL(con2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(depthwise_con2d, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW, def);
+// USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(elementwise_add, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
 
