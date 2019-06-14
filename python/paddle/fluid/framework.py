@@ -3060,7 +3060,7 @@ class Program(object):
                     print_prog(test_program)
 
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
-                    # instead of using test startup program
+                    # instead of using test startup program, while nothing is in test's startup program
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
