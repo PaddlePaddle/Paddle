@@ -13,24 +13,30 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
+namespace kernels {
 namespace arm {
-namespace math {
 
-template <typename T>
-void scale(const T* din, T* dout, int num, float scale, float bias);
+class BatchNormCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+ public:
+  using param_t = operators::BatchNormParam;
 
-template <typename T>
-void scale(const T* din, T* dout, int outer_dim, int scale_dim, int inner_dim,
-           const float* scale_data, const float* bias_data);
+  void PrepareForRun() override;
 
-template <typename T>
-void scale(const T* din, T* dout, int outer_dim, int scale_dim,
-           const float* scale_data, const float* bias_data);
+  void Run() override;
 
-}  // namespace math
+  virtual ~BatchNormCompute() = default;
+
+ private:
+  Tensor new_scale;
+  Tensor new_bias;
+};
+
 }  // namespace arm
+}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle
