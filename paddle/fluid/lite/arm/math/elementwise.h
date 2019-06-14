@@ -23,8 +23,8 @@ template <typename T>
 void elementwise_add(const T* dinx, const T* diny, T* dout, int num);
 
 template <typename T>
-void elementwise_add_axis<float>(const T* dinx, const T* diny, T* dout,
-                                 int batch, int channels, int num);
+void elementwise_add_axis(const T* dinx, const T* diny, T* dout, int batch,
+                          int channels, int num);
 
 }  // namespace math
 }  // namespace arm

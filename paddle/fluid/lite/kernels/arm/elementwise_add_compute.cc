@@ -31,7 +31,7 @@ void ElementwiseAddCompute::Run() {
   if (axis < 0) {
     axis = x_dims.size() - y_dims.size();
   }
-  if (axis == 0) {
+  if (x_dims.size() == y_dims.size()) {
     lite::arm::math::elementwise_add(x_data, y_data, out_data,
                                      x_dims.production());
   } else {
