@@ -18,7 +18,8 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
-'''
+
+
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -44,6 +45,7 @@ class TestSliceOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
+
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -54,7 +56,7 @@ class TestSliceOp_decs_dim(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'decrease_axis' : self.decrease_axis,
+            'decrease_axis': self.decrease_axis,
         }
 
     def config(self):
@@ -71,6 +73,7 @@ class TestSliceOp_decs_dim(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
+
 class TestSliceOp_decs_dim_2(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -81,7 +84,7 @@ class TestSliceOp_decs_dim_2(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'decrease_axis' : self.decrease_axis,
+            'decrease_axis': self.decrease_axis,
         }
 
     def config(self):
@@ -98,6 +101,7 @@ class TestSliceOp_decs_dim_2(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
+
 class TestSliceOp_decs_dim_3(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -108,7 +112,7 @@ class TestSliceOp_decs_dim_3(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'decrease_axis' : self.decrease_axis,
+            'decrease_axis': self.decrease_axis,
         }
 
     def config(self):
@@ -125,6 +129,7 @@ class TestSliceOp_decs_dim_3(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
+
 class TestSliceOp_decs_dim_5(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -135,7 +140,7 @@ class TestSliceOp_decs_dim_5(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'decrease_axis' : self.decrease_axis,
+            'decrease_axis': self.decrease_axis,
         }
 
     def config(self):
@@ -151,8 +156,6 @@ class TestSliceOp_decs_dim_5(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
-'''
 
 
 class TestSliceOp_decs_dim_6(OpTest):
@@ -183,7 +186,6 @@ class TestSliceOp_decs_dim_6(OpTest):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
-'''
 class TestCase1(TestSliceOp):
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
@@ -250,7 +252,6 @@ class TestFP16_2(TestSliceOp):
                 max_relative_error=0.006,
                 numeric_grad_delta=0.5)
 
-'''
 
 if __name__ == '__main__':
     unittest.main()

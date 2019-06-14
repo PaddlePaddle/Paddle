@@ -812,10 +812,8 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        print("slice item", item)
 
         if not isinstance(item, tuple):
-            print(item)
             item = [item]
 
         decrease_axis = []
@@ -826,24 +824,30 @@ class Variable(object):
 
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
-                start = slice_item.start if slice_item.start else 0
-                end = slice_item.stop if slice_item.stop else -1
+                start = slice_item.start
+                end = slice_item.stop
                 step = slice_item.step if slice_item.step else 1
 
                 assert (step == 1 or step == -1)
 
                 if step == -1:
                     reverse_axis.append(dim)
+                    assert (start is None and end is None)
 
-                if start == 0 and end == -1:
+                if start is None and end is None:
                     continue
+
+                if start is None:
+                    start = 0
+
+                if end is None:
+                    end = 10000000
 
                 slice_axis.append(dim)
                 slice_start.append(start)
                 slice_end.append(end)
             else:
                 # int
-                print("int", slice_item)
                 decrease_axis.append(dim)
                 slice_axis.append(dim)
                 slice_start.append(slice_item)

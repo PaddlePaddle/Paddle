@@ -54,6 +54,7 @@ class SliceOp : public framework::OperatorWithKernel {
         start = std::min(start, dim_value);
         end = std::min(end, dim_value);
         start = std::min(start, end);
+        PADDLE_ENFORCE_GT(end, start, "end should greater than start");
         out_dims[axes[i]] = end - start;
       }
     }
