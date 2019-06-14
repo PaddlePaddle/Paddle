@@ -26,6 +26,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
 from . import core
@@ -36,9 +37,8 @@ __all__ = [
     'load_persistables', 'save_inference_model', 'load_inference_model'
 ] + reader.__all__
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def is_parameter(var):
@@ -178,10 +178,6 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
-
-    if not isinstance(executor, Executor):
-        raise TypeError("executor should be as Executor")
-
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -500,18 +496,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                                        main_program=prog)
     """
 
-    if main_program is not None:
-        if isinstance(main_program, CompiledProgram):
-            raise TypeError(
-                "main program must be an instance of Program, can not be CompiledProgram"
-            )
-
-        if not isinstance(main_program, Program):
-            raise TypeError("main program must be an instance of Program")
-
-        if main_program._is_distributed:
-            _save_distributed_persistables(
-                executor, dirname=dirname, main_program=main_program)
+    if main_program and main_program._is_distributed:
+        _save_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program)
 
     else:
         save_vars(
@@ -608,19 +595,6 @@ def load_vars(executor,
             # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
-
-    if main_program is not None:
-        if isinstance(main_program, CompiledProgram):
-            raise TypeError(
-                "main program must be an instance of Program, can not be CompiledProgram"
-            )
-
-        if not isinstance(main_program, Program):
-            raise TypeError("main program must be an instance of Program")
-
-    if not isinstance(executor, Executor):
-        raise TypeError("executor should be as Executor")
-
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -757,18 +731,9 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
                                        main_program=None)
     """
 
-    if main_program is not None:
-        if isinstance(main_program, CompiledProgram):
-            raise TypeError(
-                "main program must be an instance of Program, can not be CompiledProgram"
-            )
-
-        if not isinstance(main_program, Program):
-            raise TypeError("main program must be an instance of Program")
-
-        if main_program._is_distributed:
-            _load_distributed_persistables(
-                executor, dirname=dirname, main_program=main_program)
+    if main_program and main_program._is_distributed:
+        _load_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program)
     else:
         load_vars(
             executor,
@@ -943,7 +908,8 @@ def save_inference_model(dirname,
                          main_program=None,
                          model_filename=None,
                          params_filename=None,
-                         export_for_deployment=True):
+                         export_for_deployment=True,
+                         program_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -974,6 +940,7 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
+        program_only(bool): If True, It will save inference program only, and do not save params of Program.
 
     Returns:
         target_var_name_list(list): The fetch variables' name list
@@ -1042,14 +1009,6 @@ def save_inference_model(dirname,
                                             is not suitable for saving inference model \
                                             we save the original program as inference model.",
                 RuntimeWarning)
-    else:
-        if isinstance(main_program, CompiledProgram):
-            raise TypeError(
-                "main program must be an instance of Program, can not be CompiledProgram"
-            )
-
-        if not isinstance(main_program, Program):
-            raise TypeError("main program must be an instance of Program")
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
@@ -1114,6 +1073,12 @@ def save_inference_model(dirname,
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
+
+    if program_only:
+        warnings.warn(
+            "save_inference_model specified the param `program_only` to True, It will not save params of Program."
+        )
+        return target_var_name_list
 
     main_program._copy_dist_param_info_from(origin_program)
 
