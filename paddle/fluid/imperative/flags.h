@@ -15,9 +15,6 @@
 #pragma once
 
 #include <cstdint>
-#include "gflags/gflags.h"
-
-DECLARE_uint64(dygraph_debug);
 
 namespace paddle {
 namespace imperative {

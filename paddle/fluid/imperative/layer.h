@@ -132,7 +132,7 @@ class ThreadSafeNameSet {
  */
 class VarBase {
  public:
-  static std::vector<std::string> LeftVarNames();
+  static std::vector<std::string> AliveVarNames();
 
   // Internal interface, create VarBase from exist variable
   VarBase(const std::string& name, std::unique_ptr<framework::Variable> var,
