@@ -161,10 +161,10 @@ if(WITH_MKLDNN)
   endif()
   
   if (NOT EXISTS ${INT8_DATA_DIR}/pascalvoc_data.bin)
-    inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "pascalvoc_val_200_head.tar.gz")
+    inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "pascalvoc_val_head_100.tar.gz")
   endif()
   set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
-  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_data.bin")
+  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_100.bin")
 
   #resnet50 int8
   set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
