@@ -15,12 +15,6 @@
 #pragma once
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
-namespace paddle {
-namespace lite {
-namespace mir {}  // namespace mir
-}  // namespace lite
-}  // namespace paddle
-
 USE_MIR_PASS(demo);
 USE_MIR_PASS(static_kernel_pick_pass);
 USE_MIR_PASS(variable_place_inference_pass);

@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
@@ -60,6 +61,11 @@ class LightPredictor {
     auto& fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
     CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
     return &fetch_list.at(offset);
+  }
+
+  const lite::Tensor* GetTensor(const std::string& name) const {
+    auto* var = program_->exec_scope()->FindVar(name);
+    return &var->Get<lite::Tensor>();
   }
 
  private:

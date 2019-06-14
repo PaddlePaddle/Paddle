@@ -78,6 +78,11 @@ class ExecutorLite {
     return &fetch_list.at(offset);
   }
 
+  const lite::Tensor* GetTensor(const std::string& name) const {
+    auto* var = program_->exec_scope()->FindVar(name);
+    return &var->Get<lite::Tensor>();
+  }
+
   void Run() { program_->Run(); }
 
   const framework::proto::ProgramDesc& program_desc() const {

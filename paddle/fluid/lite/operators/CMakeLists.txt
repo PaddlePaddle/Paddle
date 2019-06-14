@@ -38,7 +38,7 @@ set(ops_lite
         concat_op_lite
         conv_op_lite
         pool_op_lite
-        PARENT_SCOPE)
+        CACHE INTERNAL "lite operators")
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
              DEPS fc_op_lite memory_lite 

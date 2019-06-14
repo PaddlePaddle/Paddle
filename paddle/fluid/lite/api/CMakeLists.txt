@@ -6,7 +6,13 @@ if(LITE_WITH_CUDA)
     nv_test(test_cxx_api_lite_cuda SRCS cxx_api_test.cc DEPS cxx_api_lite_cuda)
 endif()
 
-cc_library(cxx_api_lite SRCS cxx_api.cc DEPS ${cxx_api_lite_deps} ${ops_lite})
+lite_cc_library(lite_api_test_helper SRCS lite_api_test_helper.cc
+  DEPS scope_lite optimizer_lite target_wrapper_host model_parser_lite program_lite
+       ${ops_lite} ${host_kernels}
+  CUDA_DEPS kernels_cuda
+  X86_DEPS ${x86_kernels}
+  )
+lite_cc_library(cxx_api_lite SRCS cxx_api.cc DEPS lite_api_test_helper)
 
 set(light_api_deps
     scope_lite target_wrapper_host model_parser_lite program_lite)
@@ -50,6 +56,12 @@ lite_cc_test(test_light_api SRCS light_api_test.cc
   X86_DEPS ${x86_kernels}
   ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt
   SERIAL)
+
+lite_cc_test(test_apis_lite SRCS apis_test.cc
+  DEPS cxx_api_lite light_api_lite ${ops_lite} mir_passes
+  X86_DEPS ${x86_kernels}
+  ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
+      --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
 lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     DEPS

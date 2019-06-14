@@ -90,6 +90,18 @@ class DDimBase {
     return os;
   }
 
+  friend bool operator==(const DDimBase &a, const DDimBase &b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  friend bool operator!=(const DDimBase &a, const DDimBase &b) {
+    return !(a == b);
+  }
+
  private:
   DDimT *self() { return static_cast<DDimT *>(this); }
   const DDimT *const_self() const { return static_cast<const DDimT *>(this); }
@@ -173,6 +185,15 @@ class TensorBase {
     return static_cast<const TensorT *>(this);
   }
 };
+
+template <typename TensorT>
+bool TensorCompareWith(const TensorT &a, const TensorT &b) {
+  if (a.dims() != b.dims()) return false;
+  if (a.data_size() != b.data_size()) return false;
+  LOG(INFO) << "data_size: " << a.data_size();
+  if (memcmp(a.raw_data(), b.raw_data(), a.data_size()) != 0) return false;
+  return true;
+}
 
 }  // namespace lite
 }  // namespace paddle

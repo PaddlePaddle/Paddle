@@ -15,7 +15,7 @@
 #include "paddle/fluid/lite/api/cxx_api.h"
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/lite/core/mir/passes.h"
+#include "paddle/fluid/lite/core/mir/use_passes.h"
 #endif
 
 #include "paddle/fluid/lite/core/op_registry.h"

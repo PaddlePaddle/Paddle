@@ -10,6 +10,7 @@ message(STATUS "LITE_WITH_ARM:\t${LITE_WITH_ARM}")
 message(STATUS "LITE_WITH_PROFILE:\t${LITE_WITH_PROFILE}")
 
 set(LITE_MODEL_DIR "${THIRD_PARTY_PATH}/install")
+set(ON_MOBILE NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
 
 function(lite_download_and_uncompress INSTALL_DIR URL FILENAME)
     message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
