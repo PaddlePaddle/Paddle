@@ -13,24 +13,34 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
+#include <vector>
+#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
-namespace arm {
-namespace math {
+namespace operators {
 
-template <typename T>
-void scale(const T* din, T* dout, int num, float scale, float bias);
+class BatchNormOp : public OpLite {
+ public:
+  BatchNormOp() {}
+  explicit BatchNormOp(const std::string &op_type) : OpLite(op_type) {}
 
-template <typename T>
-void scale(const T* din, T* dout, int outer_dim, int scale_dim, int inner_dim,
-           const float* scale_data, const float* bias_data);
+  bool CheckShape() const override;
 
-template <typename T>
-void scale(const T* din, T* dout, int outer_dim, int scale_dim,
-           const float* scale_data, const float* bias_data);
+  bool InferShape() const override;
 
-}  // namespace math
-}  // namespace arm
+  bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) override;
+
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+  std::string DebugString() const override { return "batch_norm"; }
+
+ private:
+  mutable BatchNormParam param_;
+};
+
+}  // namespace operators
 }  // namespace lite
 }  // namespace paddle

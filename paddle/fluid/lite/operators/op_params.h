@@ -146,6 +146,25 @@ struct ConvParam {
   std::string data_format{"Anylayout"};
 };
 
+// For BatchNorm op
+struct BatchNormParam {
+  lite::Tensor* x{};
+  lite::Tensor* bias{};
+  lite::Tensor* scale{};
+  lite::Tensor* mean{};
+  lite::Tensor* variance{};
+  lite::Tensor* y{};
+  lite::Tensor* mean_out{};
+  lite::Tensor* variance_out{};
+  lite::Tensor* saved_mean{};
+  lite::Tensor* saved_variance{};
+  bool is_test{true};
+  bool use_global_stats{false};
+  float epsilon;
+  float momentum;
+  DataLayoutType data_layout{DATALAYOUT(kNCHW)};
+};
+
 // For Pooling op
 struct PoolParam {
   lite::Tensor* x{};
