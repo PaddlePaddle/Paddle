@@ -25,8 +25,31 @@ void ElementwiseAddCompute::Run() {
   const float* x_data = param.X->data<float>();
   const float* y_data = param.Y->data<float>();
   float* out_data = param.Out->mutable_data<float>();
-  int n = param.X->dims().production();
-  lite::arm::math::elementwise_add(x_data, y_data, out_data, n);
+  int axis = param.axis;
+  auto x_dims = param.X->dims();
+  auto y_dims = param.Y->dims();
+  if (axis < 0) {
+    axis = x_dims.size() - y_dims.size();
+  }
+  if (axis == 0) {
+    lite::arm::math::elementwise_add(x_data, y_data, out_data,
+                                     x_dims.production());
+  } else {
+    int batch = 1;
+    int channels = 1;
+    int num = 1;
+    for (int i = 0; i < axis; ++i) {
+      batch *= x_dims[i];
+    }
+    for (int i = 0; i < y_dims.size(); ++i) {
+      channels *= y_dims[i];
+    }
+    for (int i = y_dims.size() + axis; i < x_dims.size(); ++i) {
+      num *= x_dims[i];
+    }
+    lite::arm::math::elementwise_add_axis(x_data, y_data, out_data, batch,
+                                          channels, num);
+  }
 }
 
 }  // namespace arm
