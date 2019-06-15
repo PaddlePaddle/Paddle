@@ -46,18 +46,19 @@ class Optimizer {
     SpecifyKernelPickTactic(kernel_pick_factor);
     InitTargetTypeTransformPass();
 
-    // #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
-          // "static_kernel_pick_pass",        //
-          // "variable_place_inference_pass",  //
-          // "argument_type_display_pass",     //
-          // "type_target_transform_pass",     //
-          // "argument_type_display_pass",     //
-          // "variable_place_inference_pass",  //
-          // "argument_type_display_pass",     //
-          // "io_copy_kernel_pick_pass",       //
-          // "variable_place_inference_pass",  //
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+          "static_kernel_pick_pass",        //
+          "variable_place_inference_pass",  //
+          "argument_type_display_pass",     //
+          "type_target_transform_pass",     //
+          "argument_type_display_pass",     //
+          "variable_place_inference_pass",  //
+          "argument_type_display_pass",     //
+          "io_copy_kernel_pick_pass",       //
+          "variable_place_inference_pass",  //
+#endif
           "runtime_context_assign_pass",  //
       }});
     } else {

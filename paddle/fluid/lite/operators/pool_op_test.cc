@@ -38,7 +38,7 @@ TEST(pool_op_lite, test) {
 
   // prepare op desc
   cpp::OpDesc desc;
-  desc.SetType("pool");
+  desc.SetType("pool2d");
   desc.SetInput("X", {"x"});
   desc.SetOutput("Out", {"output"});
 
