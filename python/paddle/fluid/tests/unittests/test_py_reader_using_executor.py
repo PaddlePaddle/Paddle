@@ -22,6 +22,7 @@ import numpy as np
 import threading
 import multiprocessing
 import os
+os.environ['CPU_NUM'] = str(4)
 
 
 def as_tensor(np_array_or_tensor, place=None):
