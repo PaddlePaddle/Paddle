@@ -46,7 +46,7 @@ TEST(batch_norm_op_lite, test) {
   desc.SetInput("Mean", {"mean"});
   desc.SetInput("Variance", {"variance"});
   desc.SetOutput("Y", {"y"});
-  desc.SetAttr("is_test", true);
+  desc.SetAttr("is_test", static_cast<int>(1));
   desc.SetAttr("use_global_stats", false);
   desc.SetAttr("epsilon", 1e-5f);
   desc.SetAttr("momentum", 0.9f);
@@ -101,7 +101,7 @@ TEST(batch_norm_op_lite, test_enable_is_test) {
   desc.SetOutput("VarianceOut", {"variance_out"});
   desc.SetOutput("SavedMean", {"saved_mean"});
   desc.SetOutput("SavedVariance", {"saved_variance"});
-  desc.SetAttr("is_test", false);
+  desc.SetAttr("is_test", static_cast<int>(0));
   desc.SetAttr("use_global_stats", false);
   desc.SetAttr("epsilon", 1e-5f);
   desc.SetAttr("momentum", 0.9f);

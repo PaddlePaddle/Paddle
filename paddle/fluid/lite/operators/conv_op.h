@@ -56,23 +56,26 @@ class ConvOpLite : public OpLite {
     if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
         input_arg_names.end()) {
       auto bias_arguments = op_desc.Input("Bias");
-      if (bias_arguments.size() != 0) {
+      if (bias_arguments.size() > 0) {
         auto bias_var = scope->FindVar(bias_arguments.front());
         if (bias_var != nullptr) {
-          param_.bias = bias_var->GetMutable<lite::Tensor>();
+          param_.bias =
+              const_cast<lite::Tensor*>(&(bias_var->Get<lite::Tensor>()));
         }
       }
     }
     if (std::find(input_arg_names.begin(), input_arg_names.end(),
                   "ResidualData") != input_arg_names.end()) {
-      auto res_argument = op_desc.Input("ResidualData");
-      if (res_argument.size() != 0) {
-        auto residual_data_var = scope->FindVar(res_argument.front());
+      auto res_data_arguments = op_desc.Input("ResidualData");
+      if (res_data_arguments.size() > 0) {
+        auto residual_data_var = scope->FindVar(res_data_arguments.front());
         if (residual_data_var != nullptr) {
-          param_.residualData = residual_data_var->GetMutable<lite::Tensor>();
+          param_.residualData = const_cast<lite::Tensor*>(
+              &(residual_data_var->Get<lite::Tensor>()));
         }
       }
     }
+    param_.fuse_relu = op_desc.GetAttr<bool>("fuse_relu");
     return true;
   }
 

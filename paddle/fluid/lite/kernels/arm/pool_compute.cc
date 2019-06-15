@@ -163,7 +163,7 @@ PrecisionType PoolCompute::precision() const { return PRECISION(kFloat); }
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(pool, kARM, kFloat, kNCHW,
+REGISTER_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::PoolCompute, def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
