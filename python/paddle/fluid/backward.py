@@ -22,7 +22,7 @@ import six
 from .. import compat as cpt
 from . import unique_name
 
-__all__ = ['append_backward', 'gradients']
+__all__ = ['append_backward']
 
 APPEND_GRADS_TIMES = collections.OrderedDict()
 
