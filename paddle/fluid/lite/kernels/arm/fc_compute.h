@@ -29,7 +29,15 @@ class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
 
   void Run() override;
 
-  virtual ~FcCompute() = default;
+  ~FcCompute() override {
+    if (transed_weight_) {
+      delete transed_weight_;
+    }
+  };
+
+ private:
+  lite::Tensor* transed_weight_{nullptr};
+  int m_, n_, k_;
 };
 
 }  // namespace arm
