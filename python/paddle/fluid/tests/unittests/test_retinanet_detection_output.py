@@ -51,6 +51,8 @@ def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
     selected_indices = {}
     num_det = 0
     for c in range(class_num):
+        if c not in prediction.keys():
+            continue
         cls_dets = prediction[c]
         indices = nms(cls_dets, nms_threshold)
 
@@ -94,7 +96,7 @@ def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
         anchors_per_level = anchors_list[lvl]
         anchors_per_level = anchors_per_level.flatten()
 
-        thresh = score_threshold if lvl < (num_level - 1) else 0.0
+        thresh = score_threshold if lvl < (num_level - 1) else score_threshold
         selected_indices = np.argwhere(scores_per_level > thresh)
         scores = scores_per_level[selected_indices]
         sorted_indices = np.argsort(-scores, axis=0, kind='mergesort')
@@ -181,13 +183,13 @@ def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
         lod.append(nmsed_num)
         det_outs.extend(nmsed_outs)
     if len(lod) == 0:
-        lod += [1]
+        lod += [0]
     return det_outs, lod
 
 
 class TestRetinanetDetectionOutOp1(OpTest):
     def set_argument(self):
-        self.score_threshold = 0.05
+        self.score_threshold = 2.0
         self.min_level = 3
         self.max_level = 7
         self.nms_threshold = 0.3
@@ -204,6 +206,13 @@ class TestRetinanetDetectionOutOp1(OpTest):
         self.batch_size = 1
         self.input_channels = 20
 
+        self.layer_h = []
+        self.layer_w = []
+        num_levels = self.max_level - self.min_level + 1
+        for i in range(num_levels):
+            self.layer_h.append(2**(num_levels - i))
+            self.layer_w.append(2**(num_levels - i))
+
     def init_test_input(self):
         anchor_num = len(self.aspect_ratios) * self.scales_per_octave
         num_levels = self.max_level - self.min_level + 1
@@ -212,8 +221,8 @@ class TestRetinanetDetectionOutOp1(OpTest):
         self.anchors_list = []
 
         for i in range(num_levels):
-            layer_h = 2**(num_levels - i)
-            layer_w = 2**(num_levels - i)
+            layer_h = self.layer_h[i]
+            layer_w = self.layer_w[i]
 
             input_feat = np.random.random((self.batch_size, self.input_channels,
                                            layer_h, layer_w)).astype('float32')
@@ -254,7 +263,11 @@ class TestRetinanetDetectionOutOp1(OpTest):
             self.bboxes_list, self.scores_list, self.anchors_list, self.im_info,
             self.score_threshold, self.nms_threshold, self.nms_top_k,
             self.keep_top_k)
-        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
+        #nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
+        if self.score_threshold > 1:
+            print(nmsed_outs, [lod])
+        if not nmsed_outs:
+            print(nmsed_outs, [lod])
         nmsed_outs = np.array(nmsed_outs).astype('float32')
         self.op_type = 'retinanet_detection_output'
         self.inputs = {
@@ -283,6 +296,7 @@ class TestRetinanetDetectionOutOp1(OpTest):
         self.check_output()
 
 
+'''
 class TestRetinanetDetectionOutOp2(OpTest):
     def set_argument(self):
         self.score_threshold = 0.05
@@ -301,52 +315,10 @@ class TestRetinanetDetectionOutOp2(OpTest):
         self.class_num = 80
         self.batch_size = 1
         self.input_channels = 20
-
-    def init_test_input(self):
-        anchor_num = len(self.aspect_ratios) * self.scales_per_octave
-        num_levels = self.max_level - self.min_level + 1
-        self.scores_list = []
-        self.bboxes_list = []
-        self.anchors_list = []
-
         # Here test the case there the shape of each FPN level
         # is irrelevant.
-        layer_hs = [1, 4, 8, 8, 16]
-        layer_ws = [1, 4, 8, 8, 16]
-        for i in range(num_levels):
-            layer_h = layer_hs[i]
-            layer_w = layer_ws[i]
-
-            input_feat = np.random.random((self.batch_size, self.input_channels,
-                                           layer_h, layer_w)).astype('float32')
-            score = np.random.random(
-                (self.batch_size, self.class_num * anchor_num, layer_h,
-                 layer_w)).astype('float32')
-            score = np.transpose(score, [0, 2, 3, 1])
-            score = score.reshape((self.batch_size, -1, self.class_num))
-            box = np.random.random((self.batch_size, self.box_size * anchor_num,
-                                    layer_h, layer_w)).astype('float32')
-            box = np.transpose(box, [0, 2, 3, 1])
-            box = box.reshape((self.batch_size, -1, self.box_size))
-            anchor_sizes = []
-            for octave in range(self.scales_per_octave):
-                anchor_sizes.append(
-                    float(self.anchor_strides[i] * (2**octave)) /
-                    float(self.scales_per_octave) * self.anchor_scale)
-            anchor, var = anchor_generator_in_python(
-                input_feat=input_feat,
-                anchor_sizes=anchor_sizes,
-                aspect_ratios=self.aspect_ratios,
-                variances=[1.0, 1.0, 1.0, 1.0],
-                stride=[self.anchor_strides[i], self.anchor_strides[i]],
-                offset=0.5)
-            anchor = np.reshape(anchor, [-1, 4])
-            self.scores_list.append(score.astype('float32'))
-            self.bboxes_list.append(box.astype('float32'))
-            self.anchors_list.append(anchor.astype('float32'))
-
-        self.im_info = np.array([[256., 256., 1.5]]).astype(
-            'float32')  #im_height, im_width, scale
+        self.layer_h = [1, 4, 8, 8, 16]
+        self.layer_w = [1, 4, 8, 8, 16]
 
 
 class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
@@ -369,6 +341,13 @@ class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
         self.class_num = 80
         self.batch_size = 1
         self.input_channels = 20
+        
+        self.layer_h = []
+        self.layer_w = []
+        num_levels = self.max_level - self.min_level + 1
+        for i in range(num_levels):
+            self.layer_h.append(2**(num_levels - i))
+            self.layer_w.append(2**(num_levels - i))
 
 
 class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
@@ -389,6 +368,15 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
         self.class_num = 80
         self.batch_size = 1
         self.input_channels = 20
+        
+        self.layer_h = []
+        self.layer_w = []
+        num_levels = self.max_level - self.min_level + 1
+        for i in range(num_levels):
+            self.layer_h.append(2**(num_levels - i))
+            self.layer_w.append(2**(num_levels - i))
+
+
 
     def setUp(self):
         self.set_argument()
@@ -398,7 +386,7 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
             self.bboxes_list, self.scores_list, self.anchors_list, self.im_info,
             self.score_threshold, self.nms_threshold, self.nms_top_k,
             self.keep_top_k)
-        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
+        #nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
         nmsed_outs = np.array(nmsed_outs).astype('float32')
         self.op_type = 'retinanet_detection_output'
         self.inputs = {
@@ -444,7 +432,15 @@ class TestRetinanetDetectionOutOpNo5(TestRetinanetDetectionOutOp1):
         self.class_num = 80
         self.batch_size = 1
         self.input_channels = 20
+        
+        self.layer_h = []
+        self.layer_w = []
+        num_levels = self.max_level - self.min_level + 1
+        for i in range(num_levels):
+            self.layer_h.append(2**(num_levels - i))
+            self.layer_w.append(2**(num_levels - i))
 
+'''
 
 if __name__ == '__main__':
     unittest.main()
