@@ -69,7 +69,7 @@ TEST(pool_op_lite, test) {
   bool use_quantizer{false};
   desc.SetAttr("use_quantizer", use_quantizer);
 
-  PoolOpLite pool("pool");
+  PoolOpLite pool("pool2d");
   pool.SetValidPlaces({Place{TARGET(kARM), PRECISION(kFloat)}});
   pool.Attach(desc, &scope);
   auto kernels = pool.CreateKernels({Place{TARGET(kARM), PRECISION(kFloat)}});
