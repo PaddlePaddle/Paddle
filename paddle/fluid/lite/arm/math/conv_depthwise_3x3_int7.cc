@@ -103,7 +103,7 @@ void conv_depthwise_3x3_int7(const int8_t* din, int32_t* dout, int num,
   int h_out = hout;
   int ch_out = chout;
   int stride_h = param.strides[0];
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   //   if (param.activation_param.has_active) {
   //     if (param.activation_param.active == Active_relu ||

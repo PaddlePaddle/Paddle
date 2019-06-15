@@ -37,7 +37,7 @@ bool SplitOp::InferShape() const {
   const auto &sections = param_.sections;
 
   const int outs_number = outs.size();
-  std::vector<lite::DDimHvy> outs_dims;
+  std::vector<lite::DDim> outs_dims;
   outs_dims.reserve(outs_number);
 
   if (num > 0) {
