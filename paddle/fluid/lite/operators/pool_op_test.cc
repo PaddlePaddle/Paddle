@@ -74,7 +74,11 @@ TEST(pool_op_lite, test) {
   pool.Attach(desc, &scope);
   auto kernels = pool.CreateKernels({Place{TARGET(kARM), PRECISION(kFloat)}});
   LOG(INFO) << "kernels.size(): " << kernels.size();
+#ifdef LITE_WITH_ARM
   ASSERT_FALSE(kernels.empty());
+#else
+  ASSERT_TRUE(kernels.empty());
+#endif
 }
 
 }  // namespace operators

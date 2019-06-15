@@ -57,6 +57,7 @@ struct FcParam {
   lite::Tensor* output{};
   lite::DDim in_mat_dims;
   int in_num_col_dims{1};
+  bool weight_transposed{false};
 };
 
 struct ReluParam {
@@ -143,6 +144,25 @@ struct ConvParam {
   float scale_weights{1.0f};      // only used with mkl-dnn int8
   bool force_fp32_output{false};  // only used in mkl-dnn int8
   std::string data_format{"Anylayout"};
+};
+
+// For BatchNorm op
+struct BatchNormParam {
+  lite::Tensor* x{};
+  lite::Tensor* bias{};
+  lite::Tensor* scale{};
+  lite::Tensor* mean{};
+  lite::Tensor* variance{};
+  lite::Tensor* y{};
+  lite::Tensor* mean_out{};
+  lite::Tensor* variance_out{};
+  lite::Tensor* saved_mean{};
+  lite::Tensor* saved_variance{};
+  bool is_test{true};
+  bool use_global_stats{false};
+  float epsilon;
+  float momentum;
+  DataLayoutType data_layout{DATALAYOUT(kNCHW)};
 };
 
 // For Pooling op

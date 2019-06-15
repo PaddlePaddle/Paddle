@@ -14,7 +14,7 @@ if(LITE_WITH_CUDA)
     set(light_api_deps ${light_api_deps} target_wrapper_cuda)
 endif()
 
-cc_library(light_api_lite SRCS light_api.cc DEPS ${light_api_deps} ${ops_lite} ${host_kernels})
+#cc_library(light_api_lite SRCS light_api.cc DEPS ${light_api_deps} ${ops_lite} ${host_kernels})
 
 message(STATUS "get ops ${ops_lite}")
 message(STATUS "get Host kernels ${host_kernels}")

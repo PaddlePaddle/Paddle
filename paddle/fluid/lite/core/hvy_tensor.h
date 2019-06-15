@@ -107,6 +107,8 @@ class TensorHvy : public TensorBase<TensorHvy> {
     data_.Resize(framework::make_ddim(dims.Vectorize()));
   }
 
+  void Resize(const std::vector<int64_t>& x) { Resize(DDimHvy(x)); }
+
   void ShareDataWith(const TensorHvy& other) {
     data_.ShareDataWith(other.data_);
   }

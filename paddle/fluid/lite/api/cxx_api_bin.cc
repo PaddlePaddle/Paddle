@@ -66,7 +66,7 @@ USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
 
 USE_LITE_OP(con2d);
-USE_LITE_OP(batch_norm);
+// USE_LITE_OP(batch_norm);
 USE_LITE_OP(relu);
 USE_LITE_OP(depthwise_conv2d);
 USE_LITE_OP(pool2d);

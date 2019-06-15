@@ -8,6 +8,7 @@ cc_library(mul_op_lite SRCS mul_op.cc DEPS ${op_DEPS})
 cc_library(scale_op_lite SRCS scale_op.cc DEPS ${op_DEPS})
 cc_library(softmax_op_lite SRCS softmax_op.cc DEPS ${op_DEPS})
 cc_library(reshape_op_lite SRCS reshape_op.cc DEPS ${op_DEPS} )
+cc_library(batch_norm_op_lite SRCS batch_norm_op.cc DEPS ${op_DEPS})
 cc_library(feed_op_lite SRCS feed_op.cc DEPS ${op_DEPS})
 cc_library(fetch_op_lite SRCS fetch_op.cc DEPS ${op_DEPS})
 cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
@@ -30,6 +31,7 @@ set(ops_lite
         scale_op_lite
         softmax_op_lite
         reshape_op_lite
+        batch_norm_op_lite
         feed_op_lite
         fetch_op_lite
         io_copy_op_lite
@@ -52,4 +54,6 @@ lite_cc_test(test_pool_op_lite SRCS pool_op_test.cc
 lite_cc_test(test_scale_op_lite SRCS scale_op_test.cc DEPS scale_op_lite memory_lite)
 lite_cc_test(test_softmax_op_lite SRCS softmax_op_test.cc DEPS softmax_op_lite memory_lite)
 lite_cc_test(test_reshape_op_lite SRCS reshape_op_test.cc DEPS reshape_op_lite memory_lite)
+lite_cc_test(test_batch_norm_op_lite SRCS batch_norm_op_test.cc DEPS batch_norm_op_lite memory_lite)
 lite_cc_test(test_concat_op_lite SRCS concat_op_test.cc DEPS concat_op_lite memory_lite)
+ 
