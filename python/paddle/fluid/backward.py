@@ -24,25 +24,6 @@ from . import unique_name
 
 __all__ = ['append_backward']
 
-APPEND_GRADS_TIMES = collections.OrderedDict()
-
-
-# Cache appeding backward times
-def _cache_appending_backward_times(program):
-    prog_id = str(id(program))
-    if prog_id in APPEND_GRADS_TIMES:
-        APPEND_GRADS_TIMES[prog_id] += 2
-    else:
-        APPEND_GRADS_TIMES[prog_id] = 1
-
-
-# Cache appeding backward times
-def _get_appending_backward_times(program):
-    prog_id = str(id(program))
-    if prog_id not in APPEND_GRADS_TIMES:
-        raise ValueError("The program has never been appended backward.")
-    return APPEND_GRADS_TIMES[prog_id]
-
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
     """
@@ -538,7 +519,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         isinstance(callbacks, list)
 
     program = loss.block.program
-    _cache_appending_backward_times(program)
+    program._appending_grad_times += 1
 
     if no_grad_set is None:
         no_grad_set = set()
@@ -573,12 +554,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
 
-    input_grad_names = None
-    grad_times = _get_appending_backward_times(program)
+    input_grad_names_set = None
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op.
-    if grad_times > 1:
-        input_grad_names = set([_append_grad_suffix_(loss.name)])
+    if program._appending_grad_times > 1:
+        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
 
     _append_backward_ops_(
         root_block,
@@ -587,7 +567,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         no_grad_dict,
         grad_to_var,
         callbacks,
-        input_grad_names_set=input_grad_names)
+        input_grad_names_set=input_grad_names_set)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
@@ -711,8 +691,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     block = targets[0].block
     prog = block.program
-    # cache appending gradients times
-    _cache_appending_backward_times(program)
+    # increase appending gradients times
+    prog._appending_grad_times += 1
     block_idx = block.idx
 
     if not target_gradients:
@@ -730,7 +710,6 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     fwd_op_num = block.desc.op_size()
 
-    grad_times = _append_grads_times(program)
     input_grad_names_set = set()
 
     target_grad_map = {}
@@ -759,12 +738,10 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
 
-    input_grad_names = None
-    grad_times = _get_appending_backward_times(program)
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op.
-    if grad_times > 1:
-        input_grad_names = set([_append_grad_suffix_(loss.name)])
+    if prog._appending_grad_times == 1:
+        input_grad_names_set = None
 
     for input in inputs:
         if input.block.program != prog:
