@@ -9,6 +9,8 @@ stages:
   - build_mobile
 
 check:prebuilt:
+    tags:
+        - lite
     stage: ci
     script:
         #- pip3 install pre-commit
@@ -24,6 +26,8 @@ check:prebuilt:
             - /root/.cache
 
 build:server:
+    tags:
+        - lite
     image: $SERVER_LITE_DOCKER_IMAGE
     stage: build_server
     cache:
@@ -49,6 +53,8 @@ build:server:
         - check:prebuilt
 
 build:mobile:
+    tags:
+        - lite
     stage: build_mobile
     image: $MOBILE_LITE_DOCKER_IMAGE
     cache:
