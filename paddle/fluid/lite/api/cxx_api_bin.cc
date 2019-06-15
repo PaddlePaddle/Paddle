@@ -13,17 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/cxx_api.h"
-
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include "paddle/fluid/lite/core/mir/passes.h"
-#endif
-
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 
 void Run(const char* model_dir) {
+#ifdef LITE_WITH_ARM
+  DeviceInfo::Init();
+#endif
   lite::ExecutorLite predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kARM), PRECISION(kFloat)}});
@@ -32,9 +31,9 @@ void Run(const char* model_dir) {
                   valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize(DDim(std::vector<DDim::value_type>({3, 224, 224})));
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < 3 * 224 * 224; i++) {
+  for (int i = 0; i < input_tensor->dims().production(); i++) {
     data[i] = i;
   }
 
@@ -65,8 +64,8 @@ USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
 
-USE_LITE_OP(con2d);
-// USE_LITE_OP(batch_norm);
+USE_LITE_OP(conv2d);
+USE_LITE_OP(batch_norm);
 USE_LITE_OP(relu);
 USE_LITE_OP(depthwise_conv2d);
 USE_LITE_OP(pool2d);
@@ -81,10 +80,10 @@ USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
 
-USE_LITE_KERNEL(con2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(depthwise_con2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(elementwise_add, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);

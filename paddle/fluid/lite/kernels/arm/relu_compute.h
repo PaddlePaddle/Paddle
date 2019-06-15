@@ -45,4 +45,6 @@ class ReluCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
 
 REGISTER_LITE_KERNEL(relu, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::ReluCompute, def)
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
