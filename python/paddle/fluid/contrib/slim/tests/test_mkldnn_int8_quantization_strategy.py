@@ -24,10 +24,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.core import Compressor
+from paddle.fluid.log_helper import get_logger
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def parse_args():
@@ -84,8 +84,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from('{}f'.format(img_ch * img_w *
-                                                          img_h), img)
+                    img = struct.unpack_from(
+                        '{}f'.format(img_ch * img_w * img_h), img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -137,12 +137,14 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype("int64")
                 labels = labels.reshape([-1, 1])
+                fluid.core.set_num_threads(int(os.environ['CPU_NUM_THREADS']))
                 out = exe.run(inference_program,
                               feed={
                                   feed_target_names[0]: images,
                                   feed_target_names[1]: labels
                               },
                               fetch_list=fetch_targets)
+                fluid.core.set_num_threads(1)
                 top1 += np.sum(out[1]) * len(data)
                 top5 += np.sum(out[2]) * len(data)
                 total_samples += len(data)
@@ -183,8 +185,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         accuracy_diff_threshold = test_case_args.accuracy_diff_threshold
 
         _logger.info(
-            'FP32 & INT8 prediction run: batch_size {0}, warmup batch size {1}.'.
-            format(batch_size, warmup_batch_size))
+            'FP32 & INT8 prediction run: batch_size {0}, warmup batch size {1}.'
+            .format(batch_size, warmup_batch_size))
 
         #warmup dataset, only use the first batch data
         warmup_reader = paddle.batch(

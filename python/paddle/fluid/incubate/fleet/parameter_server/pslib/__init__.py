@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 
 import sys
-from .optimizer_factory import *
+from optimizer_factory import *
 from google.protobuf import text_format
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
-from ...base.fleet_base import Fleet
-from ...base.fleet_base import Mode
-from ...base.role_maker import MPISymetricRoleMaker
-from ...base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class PSLib(Fleet):

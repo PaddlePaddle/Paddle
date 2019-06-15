@@ -23,24 +23,22 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
-function(inference_analysis_api_int8_test target model_dir data_dir filename)
+function(inference_analysis_api_int8_test target model_dir data_path filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
         ARGS --infer_model=${model_dir}/model
-             --infer_data=${data_dir}/data.bin
+             --infer_data=${data_path}
              --warmup_batch_size=100
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name mkl_debug)
-    if(mkl_debug) 
-        set(MKL_DEBUG_FLAG MKL_DEBUG_CPU_TYPE=7)
-    endif()
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name disable_fc)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model)
+        ARGS --infer_model=${install_dir}/model
+             --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
 function(inference_analysis_api_test_with_refer_result target install_dir filename)
@@ -161,55 +159,70 @@ if(WITH_MKLDNN)
   if (NOT EXISTS ${INT8_DATA_DIR})
     inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "imagenet_val_100_tail.tar.gz")
   endif()
+  
+  if (NOT EXISTS ${INT8_DATA_DIR}/pascalvoc_data.bin)
+    inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "pascalvoc_val_200_head.tar.gz")
+  endif()
+  set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
+  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_data.bin")
 
   #resnet50 int8
   set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
   if (NOT EXISTS ${INT8_RESNET50_MODEL_DIR})
     inference_download_and_uncompress(${INT8_RESNET50_MODEL_DIR} "${INFERENCE_URL}/int8" "resnet50_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
 
   #mobilenet int8
   set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
   if (NOT EXISTS ${INT8_MOBILENET_MODEL_DIR})
     inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv1_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
  
   #mobilenetv2 int8
   set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
   if (NOT EXISTS ${INT8_MOBILENETV2_MODEL_DIR})
     inference_download_and_uncompress(${INT8_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_v2_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
  
   #resnet101 int8
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
   if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
     inference_download_and_uncompress(${INT8_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8" "Res101_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
  
   #vgg16 int8
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   if (NOT EXISTS ${INT8_VGG16_MODEL_DIR})
     inference_download_and_uncompress(${INT8_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG16_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
  
   #vgg19 int8
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
   if (NOT EXISTS ${INT8_VGG19_MODEL_DIR})
     inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
 
   #googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   if (NOT EXISTS ${INT8_GOOGLENET_MODEL_DIR})
     inference_download_and_uncompress(${INT8_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8" "GoogleNet_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+  inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc SERIAL)
+
+  #mobilenet-ssd int8 model
+   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
+   if (NOT EXISTS ${INT8_MOBILENET_SSD_MODEL_DIR})
+     inference_download_and_uncompress(${INT8_MOBILENET_SSD_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_ssd_int8_model.tar.gz" )
+   endif()
+   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet_ssd ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH} analyzer_int8_object_detection_tester.cc)
+
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
@@ -218,7 +231,7 @@ download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_dat
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
 
 # anakin
-if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
+if (ANAKIN_FOUND AND WITH_MKL) # only needed in CI
     # anakin rnn1
     set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
     set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
