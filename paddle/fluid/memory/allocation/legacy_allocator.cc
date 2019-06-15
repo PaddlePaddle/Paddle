@@ -200,12 +200,12 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     platform::GpuMemoryUsage(&avail, &total);
     LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
                << " in GPU " << place.device << ", available "
-               << string::HumanReadableSize(avail) << "total " << total
-               << "GpuMinChunkSize "
+               << string::HumanReadableSize(avail) << ", total "
+               << string::HumanReadableSize(total) << ", GpuMinChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
-               << "GpuMaxChunkSize "
+               << ", GpuMaxChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
-               << "GPU memory used: "
+               << ", GPU memory used: "
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
   } else {
     if (FLAGS_benchmark) {

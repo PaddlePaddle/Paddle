@@ -71,6 +71,7 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
     if (local_scope_var != nullptr) {
       auto &local_scope = *local_scope_var->GetMutable<Scope *>();
       scope->DeleteScope(local_scope);
+      scope->EraseVars({std::string(details::kLocalExecScopeName)});
       VLOG(3) << "Drop local execution scope: " << local_scope;
     }
   }
