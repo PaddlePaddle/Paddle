@@ -65,20 +65,22 @@ void TypeTargetTransformPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
               << " for kernel " << inst.op->DebugString() << " "
               << *in->AsArg().type << " -> " << *decl_arg_type;
     // Add an IoCopy instruction to make the input compatible with other dist.
-    AddIoCopyInst(*in->AsArg().type, *decl_arg_type, in->AsArg().name, graph,
-                  inst_node, valid_places_);
+    AddIoCopyInst(*in->AsArg().type, *decl_arg_type, in, graph, inst_node,
+                  valid_places_);
   }
 }
 
 void TypeTargetTransformPass::AddIoCopyInst(
-    const Type& from, const Type& to, const std::string& var, SSAGraph* graph,
+    const Type& from, const Type& to, Node* in, SSAGraph* graph,
     Node* inst_node, const std::vector<Place>& valid_places) {
   CHECK(!valid_places.empty()) << "valid_place should be set";
   // var -> new_transform_op -> new_var -> inst
   // So there will be a new Argument node and a new IoCopy Statement Node.
 
+  CHECK(in->IsArg());
   auto node_id = [&] { return graph->nodes().size(); };
-  auto io_copy_output_name = var + "/trans/" + std::to_string(node_id());
+  auto io_copy_output_name =
+      in->AsArg().name + "/trans/" + std::to_string(node_id());
   auto* io_copy_output_arg = graph->NewArgumentNode(io_copy_output_name);
   auto* io_copy_inst = graph->NewInstructNode();
 
@@ -92,7 +94,7 @@ void TypeTargetTransformPass::AddIoCopyInst(
   // Create IoCopy Instruction.
   cpp::OpDesc op_desc;
   op_desc.SetType("io_copy");
-  op_desc.SetInput("Input", {var});
+  op_desc.SetInput("Input", {in->AsArg().name});
   op_desc.SetOutput("Out", {io_copy_output_name});
 
   io_copy_op->Attach(op_desc, inst_node->AsStmt().op->scope());
@@ -100,18 +102,18 @@ void TypeTargetTransformPass::AddIoCopyInst(
   io_copy_inst->AsStmt("io_copy", std::move(kernels), io_copy_op);
 
   // Remove the old link
-  RemoveDirectedLink(graph->Argument(var), inst_node);
+  RemoveDirectedLink(in, inst_node);
 
   // Update the original instruction OpDesc.
   // Update its input to the io_copy_output_name
 
   // Add new link, var -> new_inst, new_inst->newarg, newarg->inst
-  DirectedLink(graph->Argument(var), io_copy_inst);
+  DirectedLink(in, io_copy_inst);
   DirectedLink(io_copy_inst, io_copy_output_arg);
   DirectedLink(io_copy_output_arg, inst_node);
 
   // reset opdesc and update kernel information
-  UpdateInputTo(inst_node->AsStmt().op->mutable_op_info(), var,
+  UpdateInputTo(inst_node->AsStmt().op->mutable_op_info(), in->AsArg().name,
                 io_copy_output_name);
 
   inst_node->AsStmt().op->Attach(*inst_node->AsStmt().op->op_info(),

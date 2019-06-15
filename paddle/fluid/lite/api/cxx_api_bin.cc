@@ -13,13 +13,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/cxx_api.h"
+#include <chrono>
 #include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-
 namespace paddle {
 namespace lite {
 
-void Run(const char* model_dir) {
+using Time = decltype(std::chrono::high_resolution_clock::now());
+Time time() { return std::chrono::high_resolution_clock::now(); }
+double time_diff(Time t1, Time t2) {
+  typedef std::chrono::microseconds ms;
+  auto diff = t2 - t1;
+  ms counter = std::chrono::duration_cast<ms>(diff);
+  return counter.count() / 1000.0;
+}
+
+void Run(const char* model_dir, int repeat) {
 #ifdef LITE_WITH_ARM
   DeviceInfo::Init();
 #endif
@@ -34,10 +43,16 @@ void Run(const char* model_dir) {
   input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
   for (int i = 0; i < input_tensor->dims().production(); i++) {
-    data[i] = i;
+    data[i] = 1;
   }
 
-  predictor.Run();
+  for (int i = 0; i < 10; i++) predictor.Run();
+
+  auto time1 = time();
+  for (int i = 0; i < repeat; i++) predictor.Run();
+  auto time2 = time();
+  std::cout << " predict cost: " << time_diff(time1, time2) / repeat << "ms"
+            << std::endl;
 
   auto* out = predictor.GetOutput(0);
   LOG(INFO) << out << " memory size " << out->data_size();
@@ -52,7 +67,7 @@ void Run(const char* model_dir) {
 
 int main(int argc, char** argv) {
   CHECK_EQ(argc, 2) << "usage: ./cmd <model_dir>";
-  paddle::lite::Run(argv[1]);
+  paddle::lite::Run(argv[1], 1);
 
   return 0;
 }

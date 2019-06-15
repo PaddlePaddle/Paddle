@@ -30,25 +30,27 @@ class ConvOpLite : public OpLite {
  public:
   ConvOpLite() {}
 
-  explicit ConvOpLite(const std::string &type) : OpLite(type) {}
+  explicit ConvOpLite(const std::string& type) : OpLite(type) {}
 
   bool CheckShape() const override;
 
   bool InferShape() const override;
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
-    auto input = op_desc.Input("Input").front();
-    auto filter = op_desc.Input("Filter").front();
-    auto output = op_desc.Output("Output").front();
-    param_.x = scope->FindVar(input)->GetMutable<lite::Tensor>();
-    param_.filter = scope->FindVar(filter)->GetMutable<lite::Tensor>();
-    CHECK(scope->FindVar(output));
-    param_.output = scope->FindVar(output)->GetMutable<lite::Tensor>();
+  bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override {
+    auto X = op_desc.Input("Input").front();
+    auto Filter = op_desc.Input("Filter").front();
+    auto Out = op_desc.Output("Output").front();
+
+    param_.x = scope->FindVar(X)->GetMutable<lite::Tensor>();
+    param_.filter = scope->FindVar(Filter)->GetMutable<lite::Tensor>();
+    param_.output = scope->FindVar(Out)->GetMutable<lite::Tensor>();
+
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
     param_.groups = op_desc.GetAttr<int>("groups");
     param_.dilations = op_desc.GetAttr<std::vector<int>>("dilations");
+
     // optional params
     std::vector<std::string> input_arg_names = op_desc.InputArgumentNames();
     if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
@@ -58,7 +60,7 @@ class ConvOpLite : public OpLite {
         auto bias_var = scope->FindVar(bias_arguments.front());
         if (bias_var != nullptr) {
           param_.bias =
-              const_cast<lite::Tensor *>(&(bias_var->Get<lite::Tensor>()));
+              const_cast<lite::Tensor*>(&(bias_var->Get<lite::Tensor>()));
         }
       }
     }
@@ -68,7 +70,7 @@ class ConvOpLite : public OpLite {
       if (res_data_arguments.size() > 0) {
         auto residual_data_var = scope->FindVar(res_data_arguments.front());
         if (residual_data_var != nullptr) {
-          param_.residualData = const_cast<lite::Tensor *>(
+          param_.residualData = const_cast<lite::Tensor*>(
               &(residual_data_var->Get<lite::Tensor>()));
         }
       }
@@ -77,7 +79,7 @@ class ConvOpLite : public OpLite {
     return true;
   }
 
-  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
   std::string DebugString() const override { return "conv2d"; }
 

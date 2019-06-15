@@ -140,7 +140,7 @@ class RuntimeProgram {
 
   void Run() {
     for (auto& inst : instructions_) {
-      LOG(INFO) << ">> Running kernel: " << inst;
+      VLOG(4) << ">> Running kernel: " << inst;
       inst.Run();
     }
   }
