@@ -165,7 +165,7 @@ def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
 
 class TestRetinanetDetectionOutOp1(OpTest):
     def set_argument(self):
-        self.score_threshold = 2.0
+        self.score_threshold = 0.05
         self.min_level = 3
         self.max_level = 7
         self.nms_threshold = 0.3
