@@ -818,7 +818,6 @@ class Variable(object):
                 if self.shape[i] == -1:
                     fixedSize = False
                     break
-
             newitem = self._reconstructSliceinfo(item) or item
             if fixedSize:
                 check, info = self._detectContinuesSlice(newitem)
