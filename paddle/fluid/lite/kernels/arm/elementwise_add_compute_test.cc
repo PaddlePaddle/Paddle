@@ -41,40 +41,97 @@ void elementwise_add_compute_ref(const operators::ElementwiseParam& param) {
   const dtype* x_data = param.X->data<const dtype>();
   const dtype* y_data = param.Y->data<const dtype>();
   dtype* out_data = param.Out->mutable_data<dtype>();
-  DDim dim = param.X->dims();
-  ASSERT_EQ(dim.data(), param.Out->dims().data());
-  for (int i = 0; i < dim.production(); i++) {
-    out_data[i] = x_data[i] + y_data[i];
+  auto x_dims = param.X->dims();
+  auto y_dims = param.Y->dims();
+  int axis = param.axis;
+  if (axis < 0) {
+    axis = x_dims.size() - y_dims.size();
+  }
+  int batch = 1;
+  int channels = 1;
+  int num = 1;
+  for (int i = 0; i < axis; ++i) {
+    batch *= x_dims[i];
+  }
+  for (int i = 0; i < y_dims.size(); ++i) {
+    channels *= y_dims[i];
+  }
+  for (int i = y_dims.size() + axis; i < x_dims.size(); ++i) {
+    num *= x_dims[i];
+  }
+  for (int i = 0; i < batch; ++i) {
+    for (int j = 0; j < channels; ++j) {
+      int offset = (i * channels + j) * num;
+      const dtype* din_ptr = x_data + offset;
+      const dtype diny_data = y_data[j];
+      dtype* dout_ptr = out_data + offset;
+      for (int k = 0; k < num; ++k) {
+        *dout_ptr = *din_ptr + diny_data;
+        dout_ptr++;
+        din_ptr++;
+      }
+    }
   }
 }
 
 TEST(elementwise_add, compute) {
   ElementwiseAddCompute elementwise_add;
   operators::ElementwiseParam param;
+  lite::Tensor x, y, output, output_ref;
 
-  lite::Tensor x, y, out, out_ref;
-  x.Resize(DDim(std::vector<int64_t>({2, 3, 4, 5})));
-  y.Resize(DDim(std::vector<int64_t>({2, 3, 4, 5})));
-  out.Resize(DDim(std::vector<int64_t>({2, 3, 4, 5})));
-  out_ref.Resize(DDim(std::vector<int64_t>({2, 3, 4, 5})));
-  auto* x_data = x.mutable_data<float>();
-  auto* y_data = y.mutable_data<float>();
-  auto* out_data = out.mutable_data<float>();
-  auto* out_ref_data = out_ref.mutable_data<float>();
-  for (int i = 0; i < x.dims().production(); i++) {
-    x_data[i] = y_data[i] = i;
-  }
+  for (auto n : {1, 3, 4, 11}) {
+    for (auto c : {1, 3, 4, 11}) {
+      for (auto h : {1, 3, 4, 11}) {
+        for (auto w : {1, 3, 4, 11}) {
+          for (auto axis : {-1, 0, 1, 2, 3}) {
+            for (auto yd :
+                 {std::vector<int64_t>({n}), std::vector<int64_t>({c}),
+                  std::vector<int64_t>({h}), std::vector<int64_t>({w}),
+                  std::vector<int64_t>({n, c}), std::vector<int64_t>({c, h}),
+                  std::vector<int64_t>({h, w}), std::vector<int64_t>({n, c, h}),
+                  std::vector<int64_t>({c, h, w}),
+                  std::vector<int64_t>({n, c, h, w})}) {
+              auto x_dim = DDim(std::vector<int64_t>({n, c, h, w}));
+              auto y_dim = DDim(yd);
+              int axis_t = axis < 0 ? x_dim.size() - y_dim.size() : axis;
 
-  param.X = &x;
-  param.Y = &y;
-  param.Out = &out;
-  elementwise_add.SetParam(param);
-  elementwise_add.Run();
+              if (axis_t + y_dim.size() > 4) continue;
+              bool flag = false;
+              for (int i = 0; i < y_dim.size(); i++) {
+                if (x_dim[i + axis_t] != y_dim[i]) flag = true;
+              }
+              if (flag) continue;
 
-  param.Out = &out_ref;
-  elementwise_add_compute_ref<float>(param);
-  for (int i = 0; i < out.dims().production(); i++) {
-    EXPECT_NEAR(out_data[i], out_ref_data[i], 1e-5);
+              x.Resize(x_dim);
+              y.Resize(y_dim);
+              output.Resize(x_dim);
+              output_ref.Resize(x_dim);
+              auto* x_data = x.mutable_data<float>();
+              auto* y_data = y.mutable_data<float>();
+              auto* output_data = output.mutable_data<float>();
+              auto* output_ref_data = output_ref.mutable_data<float>();
+              for (int i = 0; i < x_dim.production(); i++) {
+                x_data[i] = i;
+              }
+              for (int i = 0; i < y_dim.production(); i++) {
+                y_data[i] = i;
+              }
+              param.X = &x;
+              param.Y = &y;
+              param.axis = axis;
+              param.Out = &output;
+              elementwise_add.SetParam(param);
+              elementwise_add.Run();
+              param.Out = &output_ref;
+              elementwise_add_compute_ref<float>(param);
+              for (int i = 0; i < output.dims().production(); i++) {
+                EXPECT_NEAR(output_data[i], output_ref_data[i], 1e-5);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 
