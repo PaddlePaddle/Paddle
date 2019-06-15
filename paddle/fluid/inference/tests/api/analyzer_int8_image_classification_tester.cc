@@ -130,11 +130,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
                                      label_batch_shape, "label");
 
   auto iterations_max = total_images / batch_size;
-  int32_t iterations = iterations_max;
-  if (FLAGS_iterations) {
-    iterations =
-        FLAGS_iterations > iterations_max ? iterations_max : FLAGS_iterations;
-  }
+  auto iterations =
+      FLAGS_iterations > iterations_max ? iterations_max : FLAGS_iterations;
   for (auto i = 0; i < iterations; i++) {
     auto images = image_reader.NextBatch();
     auto labels = label_reader.NextBatch();

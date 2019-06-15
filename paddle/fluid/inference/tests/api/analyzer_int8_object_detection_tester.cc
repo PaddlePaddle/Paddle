@@ -110,12 +110,9 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   TensorReader<float> bbox_reader(file, bbox_beginning_offset, "gt_bbox");
   TensorReader<int64_t> difficult_reader(file, difficult_beginning_offset,
                                          "gt_difficult");
-  int32_t iterations_max = total_images / batch_size;
-  int32_t iterations = iterations_max;
-  if (FLAGS_iterations) {
-    iterations =
-        FLAGS_iterations > iterations_max ? iterations_max : FLAGS_iterations;
-  }
+  auto iterations_max = total_images / batch_size;
+  auto iterations =
+      FLAGS_iterations > iterations_max ? iterations_max : FLAGS_iterations;
   for (auto i = 0; i < iterations; i++) {
     auto images_tensor = image_reader.NextBatch({batch_size, 3, 300, 300}, {});
     std::vector<size_t> batch_lod(lod_full.begin() + i * batch_size,

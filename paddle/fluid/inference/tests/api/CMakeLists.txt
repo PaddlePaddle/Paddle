@@ -160,7 +160,7 @@ if(WITH_MKLDNN)
     inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "imagenet_val_100_tail.tar.gz")
   endif()
   
-  if (NOT EXISTS ${INT8_DATA_DIR}/pascalvoc_data.bin)
+  if (NOT EXISTS ${INT8_DATA_DIR}/pascalvoc_val_head_100.bin)
     inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "pascalvoc_val_head_100.tar.gz")
   endif()
   set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
@@ -221,7 +221,6 @@ if(WITH_MKLDNN)
      inference_download_and_uncompress(${INT8_MOBILENET_SSD_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_ssd_int8_model.tar.gz" )
    endif()
    inference_analysis_api_int8_test(test_analyzer_int8_mobilenet_ssd ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH} analyzer_int8_object_detection_tester.cc)
-
 
 endif()
 
