@@ -73,6 +73,7 @@ class ConvOpLite : public OpLite {
         }
       }
     }
+    param_.fuse_relu = op_desc.GetAttr<bool>("fuse_relu");
     return true;
   }
 

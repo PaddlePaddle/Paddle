@@ -38,7 +38,7 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
   const int wout_block = 4;
   const int wout_round = ((ow + wout_block - 1) / wout_block) * wout_block;
   const int win_round = wout_round + 2;
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   // if (param.activation_param.has_active) {
   //   if (param.activation_param.active == Active_relu &&
@@ -540,7 +540,7 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
             inr2 += win_round;
             inr3 += win_round;
           }
-#endif  //__aarch64__
+#endif  // __aarch64__
           block_inr0 = block_inr2;
           block_inr1 = block_inr3;
           block_inr2 = block_inr1 + in_len;
@@ -918,7 +918,7 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
             inr2 += win_round;
             inr3 += win_round;
           }
-#endif  //__aarch64__
+#endif  // __aarch64__
           block_inr0 = block_inr2;
           block_inr1 = block_inr3;
           block_inr2 = block_inr1 + in_len;
