@@ -14,8 +14,12 @@
 
 from __future__ import print_function
 import os
-from .layer_function_generator import generate_layer_fn, generate_activation_fn
+from .layer_function_generator import generate_layer_fn, generate_activation_fn, templatedoc
+from ..layer_helper import LayerHelper
+from ..framework import Variable
+from ..core import VarDesc
 from .. import core
+from .tensor import cast
 from ..framework import convert_np_dtype_to_dtype_
 
 __activations_noattr__ = [
@@ -61,9 +65,8 @@ for _OP in set(__activations_noattr__):
 
 __all__ += ["uniform_random"]
 
-_uniform_random_ = generate_layer_fn('uniform_random')
 
-
+@templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     """
     This operator initializes a variable with random values sampled from a
@@ -80,21 +83,49 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             operator will always generate the same random numbers every time.
             Default 0.
 
+    Returns:
+        out (Variable): ${out_comment}
+        
     Examples:
         .. code-block:: python
-     
+
             import paddle.fluid as fluid
             result = fluid.layers.uniform_random(shape=[32, 784])
     """
 
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-    locals_var = locals()
-    kwargs = dict()
-    for name, val in locals_var.items():
-        if val is not None:
-            kwargs[name] = val
-    return _uniform_random_(**kwargs)
+    helper = LayerHelper('uniform_random', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    if isinstance(shape, Variable):
+        assert len(shape.shape) == 1, "Variable shape must be 1-D tensor."
+        assert shape.dtype in [VarDesc.VarType.INT32, VarDesc.VarType.INT64
+                               ], "Variable shape's type must be int32 or int64"
+        shape = cast(shape, dtype=VarDesc.VarType.INT64)
+        helper.append_op(
+            type='uniform_random',
+            inputs={'Shape': shape},
+            outputs={'Out': out},
+            attrs={
+                'shape': [],
+                'min': min,
+                'max': max,
+                'seed': seed,
+                'dtype': c_dtype
+            })
+    else:
+        helper.append_op(
+            type='uniform_random',
+            inputs={},
+            outputs={'Out': out},
+            attrs={
+                'shape': shape,
+                'min': min,
+                'max': max,
+                'seed': seed,
+                'dtype': c_dtype
+            })
+
+    return out
 
 
 __all__ += ['hard_shrink']
@@ -103,7 +134,7 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
@@ -124,7 +155,7 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
@@ -145,7 +176,7 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
