@@ -28,7 +28,7 @@ void GenerateProgramPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
   for (auto& item : graph->StmtTopologicalOrder()) {
     if (item->IsStmt()) {
       auto& stmt = item->AsStmt();
-      LOG(INFO) << stmt;
+      VLOG(4) << stmt;
       insts_.emplace_back(stmt.op, std::move(stmt.valid_kernels.front()));
     }
   }

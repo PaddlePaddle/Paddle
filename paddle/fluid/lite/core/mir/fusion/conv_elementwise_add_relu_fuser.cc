@@ -87,7 +87,6 @@ cpp::OpDesc ConvElementwiseAddReLUFuser::GenOpDesc(const key2nodes_t& matched) {
   op_desc.SetOutput("Output", {matched.at("output")->arg()->name});
   // Other inputs. See operators/conv_op.h
   std::vector<std::string> input_arg_names = desc->InputArgumentNames();
-  for (auto name : input_arg_names) LOG(INFO) << name;
 
   if (std::find(input_arg_names.begin(), input_arg_names.end(),
                 "ResidualData") != input_arg_names.end()) {
