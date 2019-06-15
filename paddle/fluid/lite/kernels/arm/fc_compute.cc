@@ -23,10 +23,6 @@ namespace kernels {
 namespace arm {
 
 void FcCompute::PrepareForRun() {
-  // TODO(TJ): transpose weight
-}
-
-void FcCompute::Run() {
   auto& param = this->Param<operators::FcParam>();
   auto x_dims = param.input->dims();
   auto w_dims = param.w->dims();
@@ -35,29 +31,52 @@ void FcCompute::Run() {
   CHECK_EQ(w_dims.size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
 
+  m_ = x_dims.Slice(0, param.in_num_col_dims).production();
+  k_ = x_dims.Slice(param.in_num_col_dims, x_dims.size()).production();
+  n_ = w_dims[1];
+  CHECK_EQ(k_, static_cast<int>(w_dims[0]));
+
+  if (m_ == 1) {
+    if (!transed_weight_) {
+      transed_weight_ = new Tensor;
+    }
+    transed_weight_->Resize({n_, k_});
+    const auto* w_data = param.w->data<float>();
+    auto* t_data = transed_weight_->mutable_data<float>();
+    int i = 0;
+
+    for (int nn = 0; nn < n_; ++nn) {
+      for (int kk = 0; kk < k_; ++kk) {
+        t_data[i++] = w_data[kk * n_ + nn];
+      }
+    }
+  }
+}
+
+void FcCompute::Run() {
+  auto& param = this->Param<operators::FcParam>();
+
   const auto* i_data = param.input->data<float>();
   const auto* w_data = param.w->data<float>();
   const auto* b_data = param.bias ? param.bias->data<float>() : nullptr;
   auto* o_data = param.output->mutable_data<float>();
 
-  int x_h = x_dims.Slice(0, param.in_num_col_dims).production();
-  int x_w = x_dims.Slice(param.in_num_col_dims, x_dims.size()).production();
-  int n = w_dims[1];
-  CHECK_EQ(x_w, static_cast<int>(w_dims[0]));
   auto& ctx = this->ctx_->template As<ARMContext>();
-  if (x_h > 1) {
+  if (m_ > 1) {
     float* packed_in = static_cast<float*>(ctx.workspace_data<float>()) +
                        ctx.l2_cache_size() / sizeof(float);
-    lite::arm::math::prepackA(packed_in, i_data, x_w, 0, x_h, 0, x_w, false,
-                              &ctx);
-    lite::arm::math::sgemm_prepack(packed_in, w_data, b_data, o_data, x_h, n,
-                                   x_w, false, false, false, &ctx);
+    lite::arm::math::prepackA(packed_in, i_data, k_, 0, m_, 0, k_, false, &ctx);
+    lite::arm::math::sgemm_prepack(packed_in, w_data, b_data, o_data, m_, n_,
+                                   k_, false, false, false, &ctx);
     if (param.bias) {
-      CHECK_EQ(param.bias->numel(), n);
-      lite::arm::math::fill_bias_fc(o_data, b_data, x_h, n);
+      CHECK_EQ(param.bias->numel(), n_);
+      lite::arm::math::fill_bias_fc(o_data, b_data, m_, n_);
     }
   } else {
-    lite::arm::math::sgemv(w_data, i_data, o_data, false, n, x_w,
+    CHECK(transed_weight_);
+    const auto* t_data = transed_weight_->data<float>();
+
+    lite::arm::math::sgemv(t_data, i_data, o_data, false, n_, k_,
                            b_data != nullptr, b_data, false);
   }
 }
