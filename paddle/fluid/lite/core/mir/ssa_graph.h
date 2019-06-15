@@ -40,8 +40,6 @@ class SSAGraph : GraphBase {
   void Build(const Program &program, const std::vector<Place> &valid_places);
   void RemoveNode(const mir::Node *node);
 
-  mir::Node *Argument(const std::string &name);
-
   std::vector<mir::Node *> StmtTopologicalOrder();
 
   // The inputs of the graph.
@@ -68,9 +66,7 @@ class SSAGraph : GraphBase {
                                 const std::vector<Place> &valid_places);
 
  private:
-  void GraphCreateTmpVarNodes(const Program &program);
-  void GraphCreateWeightVarNodes(const Program &program);
-
+  mir::Node *Argument(const std::string &name);
   // Check the bidirectional connection.
   bool CheckBidirectionalConnection();
   bool CheckNodesRoleSet();

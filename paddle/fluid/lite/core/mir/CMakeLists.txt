@@ -3,8 +3,13 @@ cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node program_lite)
 cc_library(mir_pass SRCS pass.cc DEPS mir_ssa_graph)
 cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph mir_passes)
 cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
+
+add_subdirectory(fusion)
 cc_library(mir_passes
-        SRCS static_kernel_pick_pass.cc
+        SRCS fc_fuse_pass.cc
+        conv_elementwise_add_relu_fuse_pass.cc
+        conv_bn_fuse_pass.cc 
+        static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
         type_target_transform_pass.cc
         io_copy_kernel_pick_pass.cc
@@ -13,13 +18,8 @@ cc_library(mir_passes
         argument_type_display_pass.cc
         demo_pass.cc
         runtime_context_assign_pass.cc
-        DEPS mir_pass types_lite context_lite)
+        DEPS mir_pass types_lite context_lite ${mir_fusers})
 
-# for mobile, unnecessary to compile the following testings.
-if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    return()
-endif()
-cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
 #cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         #mir_ssa_graph scope_lite op_lite
         #fc_op_lite
@@ -52,11 +52,37 @@ lite_cc_test(test_pattern_matcher_lite SRCS pattern_matcher_test.cc DEPS pattern
 
 lite_cc_library(pattern_matcher_high_api SRCS pattern_matcher_high_api.cc DEPS pattern_matcher_lite)
 
-# TODO(wz) replace framework/proto to lite proto.
+
+# for mobile, unnecessary to compile the following testings.
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    return()
+endif()
+cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
+
+
+# TODO(wz) replace framework/proto to lite proto.
+if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     # it depends on the fluid/framework/proto, that is too heavy for mobile execution.
     lite_cc_test(test_pattern_matcher_high_api SRCS pattern_matcher_high_api_test.cc DEPS
         pattern_matcher_high_api proto_desc mir_pass_manager fc_op_lite mul_op_lite elementwise_ops_lite
         mir_passes compatible_pb_lite program_lite ${ops_lite})
 endif()
- 
+
+message(STATUS "----> Ops lite: ${ops_lite}")
+message(STATUS "----> Host kernels: ${host_kernels}")
+message(STATUS "----> X86 kernels: ${x86_kernels}")
+
+lite_cc_test(test_lite_fc_fuse SRCS fc_fuse_pass_test.cc
+   DEPS cxx_api_lite mir_passes
+   ${ops_lite} ${host_kernels} ${x86_kernels} ${arm_kernels}
+   ARGS --model_dir=${LITE_MODEL_DIR}/lite_fc_model
+        --optimized_model=${LITE_MODEL_DIR}/lite_fc_model_opt SERIAL)
+
+lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_fc_model.tar.gz")
+add_dependencies(test_lite_fc_fuse extern_lite_download_lite_fc_model_tar_gz)
+
+
+lite_cc_test(test_lite_conv_elementwise_add_relu_fuse 
+             SRCS conv_elementwise_add_relu_fuse_pass_test.cc
+             DEPS cxx_api_lite mir_passes
+             ${ops_lite} ${host_kernels} ${x86_kernels})

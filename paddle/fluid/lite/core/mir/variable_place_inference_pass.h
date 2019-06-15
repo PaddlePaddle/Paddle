@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/lite/core/mir/pass.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
@@ -60,40 +63,44 @@ class VariablePlaceInferencePass : public DebugPass {
       // LOG(INFO) << "- inferencing type " <<
       // deal with inputs
       VLOG(4) << "inferencing op " << inst.op_type;
-      for (auto& arg_name : inst.op_info()->input_argnames()) {
-        VLOG(3) << "-- input arg_name " << arg_name;
-        // check if inputs's place is set, if not set, update them with the
-        // kernel's declaration.
-        auto type = inst.picked_kernel().GetInputDeclType(arg_name);
-        auto arg_names = inst.op_info()->inputs().at(arg_name);
+      // TODO(zhaolong): Add check if the node's name in op's arguments.
 
-        for (auto& arg_name : arg_names) {
-          VLOG(3) << "--- var " << arg_name;
-          auto* node = graph->RetrieveArgument(arg_name);
-          CHECK(node) << "argument " << arg_name << " not exists in the graph";
-          auto& arg_node = node->AsArg();
-          if (!arg_node.type) {
-            VLOG(4) << "set type " << *type << " " << node;
-            arg_node.type = type;
-          }
+      auto get_argname = [&](
+          const std::string& node_name,
+          const std::map<std::string, std::vector<std::string>>& argname_map)
+          -> std::string {
+            for (auto& ele : argname_map) {
+              auto it =
+                  std::find(ele.second.begin(), ele.second.end(), node_name);
+              if (it != ele.second.end()) return ele.first;
+            }
+            return "";
+          };
+
+      for (auto* x_in : x->inlinks) {
+        std::string node_name = x_in->AsArg().name;
+        std::string arg_name = get_argname(node_name, inst.op_info()->inputs());
+        CHECK(arg_name.size() > 0) << "can not found op arguments for node "
+                                   << node_name;
+        VLOG(3) << "-- input arg_name " << arg_name;
+        auto type = inst.picked_kernel().GetInputDeclType(arg_name);
+        if (!x_in->AsArg().type) {
+          VLOG(4) << "set type " << *type << " " << x_in;
+          x_in->AsArg().type = type;
         }
       }
 
-      for (auto& arg_name : inst.op_info()->output_argnames()) {
+      for (auto* x_out : x->outlinks) {
+        std::string node_name = x_out->AsArg().name;
+        std::string arg_name =
+            get_argname(node_name, inst.op_info()->outputs());
+        CHECK(arg_name.size() > 0) << "can not found op arguments for node "
+                                   << node_name;
         VLOG(3) << "-- output arg_name " << arg_name;
         auto type = inst.picked_kernel().GetOutputDeclType(arg_name);
-        auto arg_names = inst.op_info()->outputs().at(arg_name);
-        // check if outputs's place is set, if not set, update them with the
-        // kernel's declaration.
-        for (auto& arg_name : arg_names) {
-          VLOG(3) << "--- var " << arg_name;
-          auto* node = graph->RetrieveArgument(arg_name);
-          CHECK(node) << "argument " << arg_name << " not exists in the graph";
-          auto& arg_node = node->AsArg();
-          if (!arg_node.type) {
-            node->AsArg().type = type;
-            VLOG(3) << "set type " << *type;
-          }
+        if (!x_out->AsArg().type) {
+          VLOG(4) << "set type " << *type << " " << x_out;
+          x_out->AsArg().type = type;
         }
       }
     }
