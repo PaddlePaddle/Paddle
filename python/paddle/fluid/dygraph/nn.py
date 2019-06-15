@@ -2587,6 +2587,7 @@ class TreeConv(layers.Layer):
             is_bias=False)
 
     def forward(self, nodes_vector, edge_set):
+
         if self._name:
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)
