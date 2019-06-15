@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include <iostream>
+
 namespace paddle {
 namespace operators {
 
@@ -28,25 +28,27 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     auto out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
-      if(ctx.HasInput("Shape")){
-        const framework::Tensor *shapeTensor = ctx.Input<framework::Tensor>("Shape");
-        const int *shapeData = shapeTensor->data<int>();
-        std::vector<int> shape(shapeData, shapeData + shapeTensor->numel());
+      if (ctx.HasInput("Shape")) {
+        const framework::Tensor *shapeTensor =
+            ctx.Input<framework::Tensor>("Shape");
+        const int64_t *shapeData = shapeTensor->data<int64_t>();
+        std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
         tensor->Resize(framework::make_ddim(shape));
-      }else{
+      } else {
         auto shape = ctx.Attr<std::vector<int64_t>>("shape");
         tensor->Resize(framework::make_ddim(shape));
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
       tensor = selected_rows->mutable_value();
-      if(ctx.HasInput("Shape")){
-        const framework::Tensor *shapeTensor = ctx.Input<framework::Tensor>("Shape");
-        const T *shapeData = shapeTensor->data<T>();
+      if (ctx.HasInput("Shape")) {
+        const framework::Tensor *shapeTensor =
+            ctx.Input<framework::Tensor>("Shape");
+        const int64_t *shapeData = shapeTensor->data<int64_t>();
         std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
         tensor->Resize(framework::make_ddim(shape));
         selected_rows->mutable_rows()->reserve(shape[0]);
-      }else{
+      } else {
         auto shape = ctx.Attr<std::vector<int64_t>>("shape");
         tensor->Resize(framework::make_ddim(shape));
         selected_rows->mutable_rows()->reserve(shape[0]);
@@ -84,7 +86,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
-    if(!ctx->HasInput("Shape")) {
+    if (!ctx->HasInput("Shape")) {
       auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
       std::vector<int64_t> temp;
       temp.reserve(shape.size());
@@ -107,7 +109,10 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Shape", "The input tensor of uniform random op");
+    AddInput("Shape",
+             "(Tensor Tensor<int>) "
+             "the shape of the output tensor.")
+        .AsDispensable();
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(
 This operator initializes a tensor with random values sampled from a

@@ -29,12 +29,13 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
-    if(context.HasInput("Shape")){
-      const framework::Tensor *shapeTensor = context.Input<framework::Tensor>("Shape");
-      const int *shapeData = shapeTensor->data<int>();
-      std::vector<int> shape(shapeData, shapeData + shapeTensor->numel());
+    if (context.HasInput("Shape")) {
+      const framework::Tensor* shapeTensor =
+          context.Input<framework::Tensor>("Shape");
+      const int64_t* shapeData = shapeTensor->data<int64_t>();
+      std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
       tensor->Resize(framework::make_ddim(shape));
-    }else{
+    } else {
       auto shape = context.Attr<std::vector<int64_t>>("shape");
       tensor->Resize(framework::make_ddim(shape));
     }
@@ -60,7 +61,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GaussianRandomOp should not be null.");
-    if(!ctx->HasInput("Shape")) {
+    if (!ctx->HasInput("Shape")) {
       auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
       std::vector<int64_t> temp;
       temp.reserve(shape.size());
@@ -96,7 +97,10 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Shape", "input matrix of gaussian random op");
+    AddInput("Shape",
+             "(Tensor Tensor<int>) "
+             "the shape of the output tensor.")
+        .AsDispensable();
     AddOutput("Out", "Output matrix of gaussian random op");
 
     AddAttr<std::vector<int64_t>>("shape",
