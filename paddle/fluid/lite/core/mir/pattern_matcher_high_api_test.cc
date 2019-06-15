@@ -29,8 +29,8 @@ class FcFuser : public FuseBase {
  public:
   void BuildPattern() override {
     // create nodes.
-    auto* x = VarNode("x");
-    auto* W = VarNode("W");
+    auto* x = VarNode("x")->assert_is_op_input("mul", "X");
+    auto* W = VarNode("W")->assert_is_op_input("mul", "Y");
     auto* b = VarNode("b");
     auto* mul = OpNode("mul", "mul");
     auto* mul_out = VarNode("mul_out");
@@ -38,12 +38,10 @@ class FcFuser : public FuseBase {
     auto* Out = VarNode("Out");
 
     // create topology.
-    // std::vector<PMNode*>({W, x}) >> *mul >> *mul_out;
-    // std::vector<PMNode*>({mul_out, b}) >> *add >> *Out;
-    *W >> *mul;
-    *x >> *mul >> *mul_out;
-    *b >> *add;
-    *mul_out >> *add >> *Out;
+    std::vector<PMNode*> mul_inputs{W, x};
+    std::vector<PMNode*> add_inputs{mul_out, b};
+    mul_inputs >> *mul >> *mul_out;
+    add_inputs >> *add >> *Out;
 
     // Some op specialities.
     mul_out->AsIntermediate();
@@ -91,14 +89,12 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   main_block->Var("mul_out");
   main_block->Var("w");
   main_block->Var("out");
-  main_block->Var("out1");
 
   scope->Var("w")->GetMutable<lite::Tensor>();
   scope->Var("b")->GetMutable<lite::Tensor>();
   scope->Var("mul_out")->GetMutable<lite::Tensor>();
   scope->Var("w")->GetMutable<lite::Tensor>();
   scope->Var("out")->GetMutable<lite::Tensor>();
-  scope->Var("out1")->GetMutable<lite::Tensor>();
 
   mul->SetInput("X", {"x"});
   mul->SetInput("Y", {"w"});
@@ -122,18 +118,17 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   return graph;
 }
 
-TEST(pattern_matcher2, graph_test) {
+TEST(pattern_matcher_high_api, graph_test) {
   framework::ProgramDesc program_desc;
   std::vector<Place> places{{TARGET(kHost), PRECISION(kFloat)}};
   auto scope = std::make_shared<Scope>();
   auto graph = BuildGraph(&program_desc, scope, places);
 
-  ASSERT_EQ(graph->nodes().size(),
-            8UL /*real nodes*/ + 2UL /*feed op + fetch op*/);
+  ASSERT_EQ(graph->nodes().size(), 7UL /*real nodes*/);
   Visualize(graph.get());
 }
 
-TEST(pattern_matcher2, test) {
+TEST(pattern_matcher_high_api, fuse_test) {
   framework::ProgramDesc program_desc;
   std::vector<Place> places{{TARGET(kHost), PRECISION(kFloat)}};
   auto scope = std::make_shared<Scope>();
@@ -143,6 +138,7 @@ TEST(pattern_matcher2, test) {
   fuser(graph.get());
   ASSERT_EQ(graph->nodes().size(),
             num_nodes - 3UL /*nodes removed */ + 1UL /* fused fc node*/);
+  Visualize(graph.get());
 }
 
 }  // namespace mir

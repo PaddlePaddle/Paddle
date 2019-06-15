@@ -152,8 +152,8 @@ class BasicProfiler {
   }
 
   record_t *mutable_record(int id) {
-    CHECK_LT(id, records_.size());
     CHECK_GE(id, 0);
+    CHECK_LT(static_cast<size_t>(id), records_.size());
     return &records_[id];
   }
 
