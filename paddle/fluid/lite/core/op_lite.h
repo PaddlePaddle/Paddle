@@ -59,7 +59,7 @@ class OpLite : public Registry {
   }
 
   void SetValidPlaces(const std::vector<Place> &places) {
-    LOG(INFO) << "valid places " << valid_places_.size();
+    VLOG(3) << "valid places " << valid_places_.size();
     valid_places_ = places;
   }
   const std::vector<Place> &valid_places() const { return valid_places_; }

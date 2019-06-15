@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include <utility>
 
 namespace paddle {
@@ -93,31 +94,6 @@ std::vector<mir::Node *> SSAGraph::StmtTopologicalOrder() {
   return res;
 }
 
-void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
-  for (const auto &name : program.tmp_vars()) {
-    CHECK(!arguments_.count(name)) << "duplicate creating temp variable: "
-                                   << name;
-    VLOG(5) << "create arg node " << name;
-    node_storage_.emplace_back();
-    auto &new_node = node_storage_.back();
-    new_node.AsArg(name);
-    arguments_[name] = &new_node;
-  }
-}
-
-void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
-  // create weight nodes.
-  for (const auto &name : program.weights()) {
-    CHECK(!arguments_.count(name)) << "duplicate creating weight variable: "
-                                   << name;
-    VLOG(5) << "create arg node " << name;
-    node_storage_.emplace_back();
-    auto &new_node = node_storage_.back();
-    new_node.AsArg(name);
-    arguments_[name] = &new_node;
-  }
-}
-
 Node *SSAGraph::GraphCreateInstructNode(
     const std::shared_ptr<OpLite> &op, const std::vector<Place> &valid_places) {
   node_storage_.emplace_back();
@@ -135,29 +111,45 @@ Node *SSAGraph::GraphCreateInstructNode(
 void SSAGraph::Build(const Program &program,
                      const std::vector<Place> &valid_places) {
   CHECK(node_storage_.empty());
-  GraphCreateTmpVarNodes(program);
-  GraphCreateWeightVarNodes(program);
-  CHECK(CheckNodesRoleSet());
 
+  auto weights_name = program.weights();
+  auto is_weights = [&](const std::string &name) -> bool {
+    auto it = std::find(weights_name.begin(), weights_name.end(), name);
+    if (it == weights_name.end()) return false;
+    return true;
+  };
+
+  std::unordered_map<std::string, mir::Node *> arg_update_node_map_;
   for (auto &op : program.ops()) {
     auto *op_node = GraphCreateInstructNode(op, valid_places);
     for (const std::string &name : op->op_info()->input_names()) {
-      auto *arg = Argument(name);
-      CHECK(arg->IsRoleSet());
-      DirectedLink(arg, op_node);
+      mir::Node *arg_node = nullptr;
+      if (arg_update_node_map_.count(name)) {
+        arg_node = arg_update_node_map_.at(name);
+      } else {
+        node_storage_.emplace_back();
+        arg_node = &node_storage_.back();
+        arg_node->AsArg(name, node_storage_.size() - 1);
+        arg_update_node_map_[name] = arg_node;
+      }
+      if (is_weights(name)) arg_node->AsArg().is_weight = true;
+      CHECK(arg_node->IsRoleSet());
+      DirectedLink(arg_node, op_node);
     }
     for (const std::string &name : op->op_info()->output_names()) {
-      if (!arguments_.count(name)) {
-        NewArgumentNode(name);
-      }
-      auto *arg = arguments_.at(name);
-      CHECK(arg->IsRoleSet());
-      DirectedLink(op_node, arg);
+      node_storage_.emplace_back();
+      auto *arg_node = &node_storage_.back();
+      arg_node->AsArg(name, node_storage_.size() - 1);
+      arg_update_node_map_[name] = arg_node;
+
+      if (is_weights(name)) arg_node->AsArg().is_weight = true;
+      CHECK(arg_node->IsRoleSet());
+      DirectedLink(op_node, arg_node);
     }
     CHECK(CheckLinksRoleSet());
   }
 
-  MarkArgumentWeights(program);
+  CHECK(CheckNodesRoleSet());
   CheckValid();
 }
 
@@ -227,10 +219,9 @@ bool SSAGraph::CheckLinksRoleSet() {
 
 Node *SSAGraph::NewArgumentNode(const std::string &name) {
   node_storage_.emplace_back();
-  CHECK(!arguments_.count(name)) << "duplicate argument called " << name;
-  arguments_[name] = &node_storage_.back();
-  node_storage_.back().AsArg(name);
-  return &node_storage_.back();
+  auto &arg_node = node_storage_.back();
+  arg_node.AsArg(name, node_storage_.size() - 1);
+  return &arg_node;
 }
 
 Node *SSAGraph::NewInstructNode() {
