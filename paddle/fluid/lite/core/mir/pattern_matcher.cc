@@ -409,8 +409,8 @@ PMNode *PMNode::assert_is_op_output(const std::string &op_type) {
 
 bool IsNthOutput(const Node *var, const Node *op, const std::string &argument,
                  size_t nth) {
-  PADDLE_ENFORCE(var->IsArg());
-  PADDLE_ENFORCE(op->IsStmt());
+  CHECK(var->IsArg());
+  CHECK(op->IsStmt());
   auto op_info = op->stmt()->op_info();
   if (op_info->Output(argument).size() <= nth) return false;
   return var->arg()->name == op_info->Output(argument)[nth];
@@ -418,8 +418,8 @@ bool IsNthOutput(const Node *var, const Node *op, const std::string &argument,
 
 bool IsNthInput(const Node *var, const Node *op, const std::string &argument,
                 size_t nth) {
-  PADDLE_ENFORCE(var->IsArg());
-  PADDLE_ENFORCE(op->IsStmt());
+  CHECK(var->IsArg());
+  CHECK(op->IsStmt());
   auto op_info = op->stmt()->op_info();
   if (op_info->Input(argument).size() <= nth) return false;
   return var->arg()->name == op_info->Input(argument)[nth];
