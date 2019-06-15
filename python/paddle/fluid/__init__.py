@@ -55,6 +55,7 @@ from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
+from . import dygraph_grad_clip
 from . import profiler
 from . import unique_name
 from . import recordio_writer
@@ -94,6 +95,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'WeightNormParamAttr',
         'DataFeeder',
         'clip',
+        'dygraph_grad_clip',
         'profiler',
         'unique_name',
         'recordio_writer',

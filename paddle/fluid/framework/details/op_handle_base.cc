@@ -20,7 +20,7 @@ namespace framework {
 namespace details {
 std::string OpHandleBase::DebugString() const {
   std::stringstream ss;
-  ss << "(";
+  ss << Name() << "(";
   for (auto *var : inputs_) {
     ss << var->DebugString() << ", ";
   }
@@ -187,6 +187,11 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
     std::function<void()> method = callback;
     for (auto &p : dev_ctxes_) {
       method = [method, p, this]() {
+        VLOG(10) << "cudadevicecontext:"
+                 << static_cast<platform::CUDADeviceContext *>(p.second)
+                 << ", dev_id:"
+                 << boost::get<platform::CUDAPlace>(p.first).device;
+
         static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(
             events_.at(boost::get<platform::CUDAPlace>(p.first).device),
             method);
