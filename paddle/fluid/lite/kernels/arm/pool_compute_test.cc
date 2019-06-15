@@ -261,8 +261,8 @@ TEST(pool_arm, compute) {
 }
 
 TEST(pool, retrive_op) {
-  auto pool =
-      KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>("pool");
+  auto pool = KernelRegistry::Global().Create<TARGET(kARM), PRECISION(kFloat)>(
+      "pool2d");
   ASSERT_FALSE(pool.empty());
   ASSERT_TRUE(pool.front());
 }
