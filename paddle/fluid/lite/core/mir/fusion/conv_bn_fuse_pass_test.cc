@@ -88,6 +88,7 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   conv_op->SetAttr("paddings", paddings);
   conv_op->SetAttr("dilations", dilations);
   conv_op->SetAttr("groups", groups);
+  conv_op->SetAttr("fuse_relu", false);
 
   bn_op->SetType("batch_norm");
   bn_op->SetInput("X", {"conv_out"});
@@ -103,6 +104,10 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   bn_op->SetOutput("SavedVariance", {"bn_saved_var"});
   float eps = 1e-5;
   bn_op->SetAttr("epsilon", eps);
+  bn_op->SetAttr("is_test", static_cast<int>(1));
+  bn_op->SetAttr("use_global_stats", false);
+  bn_op->SetAttr("momentum", 0.9f);
+  bn_op->SetAttr("data_layout", std::string("NCHW"));
 
   program_desc->Flush();
 
