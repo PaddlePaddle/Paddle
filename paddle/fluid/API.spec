@@ -43,10 +43,10 @@ paddle.fluid.DataFeedDesc.set_use_slots (ArgSpec(args=['self', 'use_slots_name']
 paddle.fluid.CompiledProgram.__init__ (ArgSpec(args=['self', 'program_or_graph'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.CompiledProgram.with_data_parallel (ArgSpec(args=['self', 'loss_name', 'build_strategy', 'exec_strategy', 'share_vars_from', 'places'], varargs=None, keywords=None, defaults=(None, None, None, None, None)), ('document', '0e17773521634ef798fddd7d2ea3ef96'))
 paddle.fluid.CompiledProgram.with_inference_optimize (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=None), ('document', '9e5b009d850191a010e859189c127fd8'))
-paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.ExecutionStrategy) -> None
-paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
-paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.ReduceStrategy, arg0: int) -> None
-paddle.fluid.BuildStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy) -> None
+paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.ExecutionStrategy) -> None
+paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
+paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.BuildStrategy.ReduceStrategy, arg0: int) -> None
+paddle.fluid.BuildStrategy.__init__ __init__(self: paddle.fluid.core.ParallelExecutor.BuildStrategy) -> None
 paddle.fluid.io.save_vars (ArgSpec(args=['executor', 'dirname', 'main_program', 'vars', 'predicate', 'filename'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '869104f47e6fd21d897c3fcc426aa942'))
 paddle.fluid.io.save_params (ArgSpec(args=['executor', 'dirname', 'main_program', 'filename'], varargs=None, keywords=None, defaults=(None, None)), ('document', '07ffd5351b30cf47172ccfd61bd0de6f'))
 paddle.fluid.io.save_persistables (ArgSpec(args=['executor', 'dirname', 'main_program', 'filename'], varargs=None, keywords=None, defaults=(None, None)), ('document', '9141bb5f32caf7975eb3fd88c8a1b2da'))
@@ -192,7 +192,7 @@ paddle.fluid.layers.elementwise_min (ArgSpec(args=['x', 'y', 'axis', 'act', 'nam
 paddle.fluid.layers.elementwise_pow (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', 'b9e7e9fa1ca28d8b6f07cc59eadb4a02'))
 paddle.fluid.layers.elementwise_mod (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', '614984304f810f3ddae6b489ec01296b'))
 paddle.fluid.layers.elementwise_floordiv (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', 'a8c4b26d899246378e878f169582c7a4'))
-paddle.fluid.layers.uniform_random_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'input_dim_idx', 'output_dim_idx', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', 0, 0, -1.0, 1.0, 0)), ('document', 'c8c7518358cfbb3822a019e6b5fbea52'))
+paddle.fluid.layers.uniform_random_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'input_dim_idx', 'output_dim_idx', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', 0, 0, -1.0, 1.0, 0)), ('document', '889b7071a01a12db28ef2fbec759954b'))
 paddle.fluid.layers.gaussian_random (ArgSpec(args=['shape', 'mean', 'std', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0.0, 1.0, 0, 'float32')), ('document', '8c78ccb77e291e4a0f0673d34823ce4b'))
 paddle.fluid.layers.sampling_id (ArgSpec(args=['x', 'min', 'max', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0.0, 1.0, 0, 'float32')), ('document', '35428949368cad5121dd37f8522ef8b0'))
 paddle.fluid.layers.gaussian_random_batch_size_like (ArgSpec(args=['input', 'shape', 'input_dim_idx', 'output_dim_idx', 'mean', 'std', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0, 0, 0.0, 1.0, 0, 'float32')), ('document', '9e520987168f8ddb7dd71ffd68aa352c'))
@@ -336,7 +336,7 @@ paddle.fluid.layers.reciprocal (ArgSpec(args=['x', 'name'], varargs=None, keywor
 paddle.fluid.layers.square (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'fcc0d8ec2d2983f5d2ae0196fa83916b'))
 paddle.fluid.layers.softplus (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'a9bef6674dc20af1ae901656ed041cdf'))
 paddle.fluid.layers.softsign (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '5c1e9c619db82d6392826d0c2908ea55'))
-paddle.fluid.layers.uniform_random (ArgSpec(args=['shape', 'dtype', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', -1.0, 1.0, 0)), ('document', '6de6775d9e9ed885056e764982130cfd'))
+paddle.fluid.layers.uniform_random (ArgSpec(args=['shape', 'dtype', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', -1.0, 1.0, 0)), ('document', 'eb19d0a47a0b6770e766789dd3266c26'))
 paddle.fluid.layers.hard_shrink (ArgSpec(args=['x', 'threshold'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c142f5884f3255e0d6075c286bbd531e'))
 paddle.fluid.layers.cumsum (ArgSpec(args=['x', 'axis', 'exclusive', 'reverse'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '944d7c03057f5fc88bc78acd4d82f926'))
 paddle.fluid.layers.thresholded_relu (ArgSpec(args=['x', 'threshold'], varargs=None, keywords=None, defaults=(None,)), ('document', '90566ea449ea4c681435546e2f70610a'))
@@ -555,18 +555,18 @@ paddle.fluid.optimizer.PipelineOptimizer.split_program (ArgSpec(args=['self', 'm
 paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '08a5dd9f6f376ff3d55e0b1d92115cbd'))
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.regularizer.L2DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core_avx.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core_avx.LoDTensor) -> None
-paddle.fluid.LoDTensor.has_valid_recursive_sequence_lengths has_valid_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> bool
-paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
-paddle.fluid.LoDTensor.recursive_sequence_lengths recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
-paddle.fluid.LoDTensor.set_lod set_lod(self: paddle.fluid.core_avx.LoDTensor, lod: List[List[int]]) -> None
-paddle.fluid.LoDTensor.set_recursive_sequence_lengths set_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor, recursive_sequence_lengths: List[List[int]]) -> None
-paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core_avx.Tensor) -> List[int]
-paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_avx.LoDTensorArray) -> None
-paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_avx.LoDTensorArray, tensor: paddle.fluid.core_avx.LoDTensor) -> None
-paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core_avx.CPUPlace) -> None
-paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPlace, arg0: int) -> None
-paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
+paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core.LoDTensor) -> None
+paddle.fluid.LoDTensor.has_valid_recursive_sequence_lengths has_valid_recursive_sequence_lengths(self: paddle.fluid.core.LoDTensor) -> bool
+paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core.LoDTensor) -> List[List[int]]
+paddle.fluid.LoDTensor.recursive_sequence_lengths recursive_sequence_lengths(self: paddle.fluid.core.LoDTensor) -> List[List[int]]
+paddle.fluid.LoDTensor.set_lod set_lod(self: paddle.fluid.core.LoDTensor, lod: List[List[int]]) -> None
+paddle.fluid.LoDTensor.set_recursive_sequence_lengths set_recursive_sequence_lengths(self: paddle.fluid.core.LoDTensor, recursive_sequence_lengths: List[List[int]]) -> None
+paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core.Tensor) -> List[int]
+paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core.LoDTensorArray) -> None
+paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core.LoDTensorArray, tensor: paddle.fluid.core.LoDTensor) -> None
+paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core.CPUPlace) -> None
+paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core.CUDAPlace, arg0: int) -> None
+paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core.CUDAPinnedPlace) -> None
 paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.WeightNormParamAttr.__init__ (ArgSpec(args=['self', 'dim', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.DataFeeder.__init__ (ArgSpec(args=['self', 'feed_list', 'place', 'program'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
@@ -590,7 +590,7 @@ paddle.fluid.unique_name.switch (ArgSpec(args=['new_generator'], varargs=None, k
 paddle.fluid.unique_name.guard (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ead717d6d440a1eb11971695cd1727f4'))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_file (ArgSpec(args=['filename', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None)), ('document', '65c7523e86f0c50bb729b01667f36310'))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_files (ArgSpec(args=['filename', 'batch_per_file', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None)), ('document', 'bc643f0f5f1b9db57ff0d8a57d379bd7'))
-paddle.fluid.Scope Scope() -> paddle.fluid.core_avx._Scope
+paddle.fluid.Scope Scope() -> paddle.fluid.core._Scope
 paddle.fluid.install_check.run_check (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '66b7c84a17ed32fec2df9628367be2b9'))
 paddle.reader.cache (ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None), ('document', '1676886070eb607cb608f7ba47be0d3c'))
 paddle.reader.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '77cbadb09df588e21e5cc0819b69c87d'))
