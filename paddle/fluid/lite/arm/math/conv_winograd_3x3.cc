@@ -24,28 +24,6 @@ namespace math {
 void transpose(float* data_out, const float* data_in, int w_in, int h_in);
 void transform_input_f6x6(float* dout, const float* din);
 void transform_output_f6x6(float* output, const float* din, float bias);
-#if 0
-ConvWinogradF63::ConvWinogradF63() {
-
-}
-
-ConvWinogradF63::~ConvWinogradF63() {
-
-}
-
-bool ConvWinogradF63::init(const size_t l1_cache, const size_t l2_cache, \
-    const int chout, const int chin, const int hin, \
-    const int win, const int threads) {
-
-    return true;
-}
-
-bool ConvWinogradF63::operator()(const float *trans_weights, const float *din, \
-    float *dout, void *workspace) {
-
-    return true;
-}
-#endif
 void conv_winograd3x3(const float* din, float* dout, int num, int chout,
                       int hout, int wout, int chin, int hin, int win,
                       const float* weights, const float* bias,
@@ -58,12 +36,12 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
   int size_out_channel = wout * hout;
   bool flag_relu = false;
   bool flag_bias = param.bias != nullptr;
-//   if (param.activation_param.has_active) {
-//     if (param.activation_param.active == Active_relu &&
-//         fabs(param.activation_param.negative_slope) < 1e-6f) {
-//       flag_relu = true;
-//     }
-//   }
+  //   if (param.activation_param.has_active) {
+  //     if (param.activation_param.active == Active_relu &&
+  //         fabs(param.activation_param.negative_slope) < 1e-6f) {
+  //       flag_relu = true;
+  //     }
+  //   }
 
   //! transform input
   int tile_w = (wout + 5) / 6;
@@ -76,8 +54,8 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
   int n = size_tile;
   int k = chin;
 
-  float* tmp_work_space = ctx->workspace_data<float>() +
-                          ctx->l2_cache_size() / sizeof(float);
+  float* tmp_work_space =
+      ctx->workspace_data<float>() + ctx->l2_cache_size() / sizeof(float);
 
   //! tmp data buffer for input transform
   float* tmp_data1 = tmp_work_space;
@@ -91,8 +69,8 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
     const float* din_batch = din + i * chin * size_in_channel;
     float* dout_batch = dout + i * chout * size_out_channel;
 
-    // t1.start(ctx1);
-    //! transform input Bt * data * B
+// t1.start(ctx1);
+//! transform input Bt * data * B
 #pragma omp parallel for num_threads(threads)
     for (int j = 0; j < chin; ++j) {
       const float* din_channel = din_batch + j * size_in_channel;
@@ -120,7 +98,7 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
         }
       }
     }
-    //! end of transform input
+//! end of transform input
 
 #if 1
     ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +120,7 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
     // t1.start(ctx1);
 
     //! gemm
-    //#pragma omp parallel for
+    // #pragma omp parallel for
     for (int l = 0; l < 64; ++l) {
       const float* ptr_a = weights + l * stride_a;
       const float* ptr_b = tmp_data2 + l * stride_b;
@@ -156,16 +134,16 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
     //! transpose output, convert from 64 * ch_out * tile_h * tile_w to
     //! ch_out * tile_h * tile_w * 64
     transpose(tmp_data2, tmp_data1, stride_c, 64);
-    //! end of dot mul
+//! end of dot mul
 #endif
-    // t1.end(ctx1);
-    // LOG(INFO) << "winograd conv dot mul time: " << t1.get_average_ms();
+// t1.end(ctx1);
+// LOG(INFO) << "winograd conv dot mul time: " << t1.get_average_ms();
 
-    // t1.clear();
-    // t1.start(ctx1);
+// t1.clear();
+// t1.start(ctx1);
 #if 1
-    ///////////////////////////////////////////////////////////////////////////////
-    //! transform output
+///////////////////////////////////////////////////////////////////////////////
+//! transform output
 #pragma omp parallel for
     for (int i = 0; i < chout; ++i) {
       float bias_value = flag_bias ? bias[i] : 0.f;
@@ -198,7 +176,7 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
         }
       }
     }
-    //! end of transform output
+//! end of transform output
 #endif
     // t1.end(ctx1);
     // LOG(INFO) << "winograd conv transform output time: " <<
@@ -317,7 +295,7 @@ void winograd_transform_weights(void* dout, const void* din, int ch_out,
                              {32.0f / 45, -16.0f / 45, 8.0f / 45},
                              {0.0f, 0.0f, 1.0f}};
 
-  float* ptr_out = (float*)work_space;
+  float* ptr_out = static_cast<float*>(work_space);
 
   for (int i = 0; i < ch_out; i++) {
     for (int j = 0; j < ch_in; j++) {

@@ -18,10 +18,11 @@ if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
         DEPS scope_lite op_lite kernel_lite paddle_infer_gencode
     )
 
-    lite_cc_test(test_generated_code SRCS generated_code_test.cc DEPS __generated_code__
-      ${ops_lite} ${host_kernels}
-      X86_DEPS ${x86_kernels}
-      )
+  #    lite_cc_test(test_generated_code SRCS generated_code_test.cc DEPS __generated_code__
+  #    ${ops_lite} ${host_kernels}
+  #    X86_DEPS ${x86_kernels}
+  #    )
 
-    add_dependencies(__generated_code__ test_gen_code_lite)
+  #  add_dependencies(__generated_code__ test_gen_code_lite)
 endif()
+ 
