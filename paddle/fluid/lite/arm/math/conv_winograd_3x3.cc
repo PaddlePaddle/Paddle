@@ -34,7 +34,7 @@ void conv_winograd3x3(const float* din, float* dout, int num, int chout,
   const int pad_w = param.paddings[1];
   int size_in_channel = win * hin;
   int size_out_channel = wout * hout;
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   //   if (param.activation_param.has_active) {
   //     if (param.activation_param.active == Active_relu &&

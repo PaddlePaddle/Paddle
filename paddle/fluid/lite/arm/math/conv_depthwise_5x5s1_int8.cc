@@ -37,7 +37,7 @@ void conv_depthwise_5x5_int8(const int8_t* din, int32_t* dout, int num,
                              const operators::ConvParam& param, ARMContext* ctx,
                              PrecisionType out_type, const float* scale) {
   int stride_h = param.strides[0];
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   // if (param.activation_param.has_active){
   //     if (param.activation_param.active == Active_relu ||
@@ -120,7 +120,7 @@ void conv_depthwise_5x5s1_int8(
     signed char const* din_batch = din + n * chin * size_in_channel;
     int* dout_batch = dout + n * chout * size_out_channel;
 
-    //#pragma omp parallel for
+    // #pragma omp parallel for
     for (int c = 0; c < chout; c++) {
 #ifdef USE_OPENMP
       int const thno = omp_get_thread_num();
@@ -501,13 +501,15 @@ void conv_depthwise_5x5s1_int8(
                              hout, 0, wout_round, chout, hout, wout, flag_relu,
                              ptr_write);
       } else if (od_type == PRECISION(kFloat)) {
-        write2_to_output_numc(pre_out, (float*)dout_batch, 1, hout_round, c,
-                              c + 1, 0, hout, 0, wout_round, chout, hout, wout,
-                              flag_relu, (float*)ptr_write, scales);
+        write2_to_output_numc(pre_out, reinterpret_cast<float*>(dout_batch), 1,
+                              hout_round, c, c + 1, 0, hout, 0, wout_round,
+                              chout, hout, wout, flag_relu,
+                              reinterpret_cast<float*>(ptr_write), scales);
       } else if (od_type == PRECISION(kInt8)) {
-        write2_to_output_numc(pre_out, (signed char*)dout_batch, 1, hout_round,
-                              c, c + 1, 0, hout, 0, wout_round, chout, hout,
-                              wout, flag_relu, (signed char*)ptr_write, scales);
+        write2_to_output_numc(
+            pre_out, reinterpret_cast<signed char*>(dout_batch), 1, hout_round,
+            c, c + 1, 0, hout, 0, wout_round, chout, hout, wout, flag_relu,
+            reinterpret_cast<signed char*>(ptr_write), scales);
       }
       // else if (od_type == AK_INT32) {
       //     write2_to_output_numc(pre_out, (int*)dout_batch, 1, hout_round, c,

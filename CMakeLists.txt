@@ -166,6 +166,7 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     #include(external/zlib)     # download, build, install gtest
     include(external/protobuf)  # download, build, install protobuf
     include(external/eigen)     # download eigen3
+    include(ccache)             # set ccache for compilation
 
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration

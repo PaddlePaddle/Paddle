@@ -249,7 +249,7 @@ void conv1x1s1_gemm(const float* i_data, float* o_data, int num, int oc, int oh,
   const int n = oh * ow;
   const int k = ic / group;
 
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   // if (param.activation_param.has_active) {
   //   if (param.activation_param.active == Active_relu &&
@@ -309,7 +309,7 @@ void conv1x1s1_gemm(const float* i_data, float* o_data, int num, int oc, int oh,
 //   if (n > 1) {
 //     weights_size_per_group = ((m_roundup * k_roundup + 15) / 16) * 16;
 //   }
-//   bool flag_relu = false;
+//   bool flag_relu = param.fuse_relu;
 //   bool flag_bias = param.bias != nullptr;
 //   if (param.activation_param.has_active) {
 //     if (param.activation_param.active == Active_relu ||
@@ -380,7 +380,7 @@ void conv_im2col_gemm(const float* i_data, float* o_data, int num, int oc,
   const int chin_per_group = ic / group;
   int channel_size_out = ow * oh;
   int channel_size_in = win * ih;
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   // if (param.activation_param.has_active) {
   //   if (param.activation_param.active == Active_relu &&
@@ -455,7 +455,7 @@ void conv_im2col_gemm(const float* i_data, float* o_data, int num, int oc,
 //   const int chin_per_group = ic / group;
 //   int channel_size_out = ow * oh;
 //   int channel_size_in = win * ih;
-//   bool flag_relu = false;
+//   bool flag_relu = param.fuse_relu;
 //   bool flag_bias = param.bias != nullptr;
 //   // if (param.activation_param.has_active) {
 //   //   if (param.activation_param.active == Active_relu ||
@@ -543,7 +543,7 @@ void conv_depthwise_3x3(const float* i_data, float* o_data, int num, int oc,
                         const operators::ConvParam& param, ARMContext* ctx) {
   int pad = param.paddings[1];
   int stride = param.strides[1];
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   // if (param.activation_param.has_active) {
   //   if (param.activation_param.active == Active_relu &&
@@ -568,7 +568,7 @@ void conv_depthwise_5x5(const float* i_data, float* o_data, int num, int oc,
                         const operators::ConvParam& param, ARMContext* ctx) {
   int pad = param.paddings[1];
   int stride = param.strides[1];
-  bool flag_relu = false;
+  bool flag_relu = param.fuse_relu;
   bool flag_bias = param.bias != nullptr;
   // if (param.activation_param.has_active &&
   //     fabs(param.activation_param.negative_slope) < 1e-6f) {

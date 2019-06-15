@@ -9,6 +9,8 @@ stages:
   - build_mobile
 
 check:prebuilt:
+    tags:
+        - lite
     stage: ci
     script:
         #- pip3 install pre-commit
@@ -24,17 +26,21 @@ check:prebuilt:
             - /root/.cache
 
 build:server:
+    tags:
+        - lite
     image: $SERVER_LITE_DOCKER_IMAGE
     stage: build_server
     cache:
         key: server_thirdparty
         paths:
             - build/third_party
+            - /root/.ccache
     script:
-        #- export http_proxy=http://172.19.57.45:3128
-        #- export https_proxy=http://172.19.57.45:3128
-        - export http_proxy=http://agent.baidu.com:8118
-        - export https_proxy=http://agent.baidu.com:8118
+        - apt install ccache
+        - export http_proxy=http://172.19.57.45:3128
+        - export https_proxy=http://172.19.57.45:3128
+        #- export http_proxy=http://agent.baidu.com:8118
+        #- export https_proxy=http://agent.baidu.com:8118
         - mkdir -p build
         - cd build
         - ../paddle/fluid/lite/tools/build.sh cmake_x86
@@ -49,6 +55,8 @@ build:server:
         - check:prebuilt
 
 build:mobile:
+    tags:
+        - lite
     stage: build_mobile
     image: $MOBILE_LITE_DOCKER_IMAGE
     cache:
@@ -56,7 +64,9 @@ build:mobile:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
+            - /root/.ccache
     script:
+        - apt install ccache
         - export http_proxy=http://172.19.57.45:3128
         - export https_proxy=http://172.19.57.45:3128
         - ./paddle/fluid/lite/tools/build.sh build_test_arm

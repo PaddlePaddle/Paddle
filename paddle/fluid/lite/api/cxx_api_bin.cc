@@ -13,17 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/cxx_api.h"
-
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+#include <chrono>
 #include "paddle/fluid/lite/core/mir/passes.h"
-#endif
-
 #include "paddle/fluid/lite/core/op_registry.h"
-
 namespace paddle {
 namespace lite {
 
-void Run(const char* model_dir) {
+using Time = decltype(std::chrono::high_resolution_clock::now());
+Time time() { return std::chrono::high_resolution_clock::now(); }
+double time_diff(Time t1, Time t2) {
+  typedef std::chrono::microseconds ms;
+  auto diff = t2 - t1;
+  ms counter = std::chrono::duration_cast<ms>(diff);
+  return counter.count() / 1000.0;
+}
+
+void Run(const char* model_dir, int repeat) {
+#ifdef LITE_WITH_ARM
+  DeviceInfo::Init();
+#endif
   lite::ExecutorLite predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kARM), PRECISION(kFloat)}});
@@ -32,13 +40,19 @@ void Run(const char* model_dir) {
                   valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize(DDim(std::vector<DDim::value_type>({3, 224, 224})));
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < 3 * 224 * 224; i++) {
-    data[i] = i;
+  for (int i = 0; i < input_tensor->dims().production(); i++) {
+    data[i] = 1;
   }
 
-  predictor.Run();
+  for (int i = 0; i < 10; i++) predictor.Run();
+
+  auto time1 = time();
+  for (int i = 0; i < repeat; i++) predictor.Run();
+  auto time2 = time();
+  std::cout << " predict cost: " << time_diff(time1, time2) / repeat << "ms"
+            << std::endl;
 
   auto* out = predictor.GetOutput(0);
   LOG(INFO) << out << " memory size " << out->data_size();
@@ -53,7 +67,7 @@ void Run(const char* model_dir) {
 
 int main(int argc, char** argv) {
   CHECK_EQ(argc, 2) << "usage: ./cmd <model_dir>";
-  paddle::lite::Run(argv[1]);
+  paddle::lite::Run(argv[1], 1);
 
   return 0;
 }
@@ -66,7 +80,7 @@ USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
 
 USE_LITE_OP(conv2d);
-// USE_LITE_OP(batch_norm);
+USE_LITE_OP(batch_norm);
 USE_LITE_OP(relu);
 USE_LITE_OP(depthwise_conv2d);
 USE_LITE_OP(pool2d);
@@ -85,7 +99,7 @@ USE_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW, def);
-// USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(elementwise_add, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
 

@@ -100,15 +100,15 @@ void ConvCompute::Run() {
 REGISTER_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::ConvCompute, def)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
+    //  .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindInput("Filter", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("Output", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
 
 REGISTER_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::ConvCompute, def)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
+    //    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindInput("Filter", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("Output", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
