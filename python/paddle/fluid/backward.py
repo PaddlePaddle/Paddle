@@ -22,7 +22,7 @@ import six
 from .. import compat as cpt
 from . import unique_name
 
-__all__ = ['append_backward']
+__all__ = ['append_backward', 'gradients']
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -798,7 +798,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Return:
         (list[Variable]): list of gradients for inputs
         If an input does not affect targets, the corresponding gradient variable
-        will be None
+        will be None.
 
     Examples:
         .. code-block:: python
@@ -814,4 +814,5 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = fluid.gradients([y], x)
             print(z)
     """
-    return calc_gradient(targets, inputs, target_gradients, no_grad_set)
+    outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
+    return _as_list(outs)
