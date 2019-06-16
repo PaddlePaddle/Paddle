@@ -172,6 +172,17 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         com_pass.config(config_path)
         com_pass.run()
 
+    def _compare_accuracy(self, fp32_acc1, int8_acc1, threshold):
+        _logger.info('--- Accuracy summary ---')
+        _logger.info(
+            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'
+            .format(threshold))
+        _logger.info('FP32: avg top1 accuracy: {0:.4f}'.format(fp32_acc1))
+        _logger.info('INT8: avg top1 accuracy: {0:.4f}'.format(int8_acc1))
+        assert fp32_acc1 > 0.0
+        assert int8_acc1 > 0.0
+        assert fp32_acc1 - int8_acc1 <= threshold
+
     def test_compression(self):
         if not fluid.core.is_compiled_with_mkldnn():
             return
@@ -204,15 +215,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
             self._reader_creator(data_path, False), batch_size=batch_size)
         fp32_model_result = self._predict(val_reader, fp32_model_path)
 
-        _logger.info('--- comparing outputs ---')
-        _logger.info('Avg top1 INT8 accuracy: {0:.4f}'.format(int8_model_result[
-            0]))
-        _logger.info('Avg top1 FP32 accuracy: {0:.4f}'.format(fp32_model_result[
-            0]))
-        _logger.info('Accepted accuracy drop threshold: {0}'.format(
-            accuracy_diff_threshold))
-        assert fp32_model_result[0] - int8_model_result[
-            0] <= accuracy_diff_threshold
+        self._compare_accuracy(fp32_model_result[0], int8_model_result[0],
+                               accuracy_diff_threshold)
 
 
 if __name__ == '__main__':
