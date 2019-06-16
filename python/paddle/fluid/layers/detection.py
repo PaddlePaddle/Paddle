@@ -2619,8 +2619,8 @@ def retinanet_detection_output(bboxes,
                 append_batch_size=False, dtype='float32')
             anchors = layers.data(name='anchors', shape=[21, 4],
                 append_batch_size=False, dtype='float32')
-            im_info = layers.data(name="im_info", shape=[3],
-                dtype='float32', lod_level=1)
+            im_info = layers.data(name="im_info", shape=[1, 3],
+                append_batch_size=False, dtype='float32')
             nmsed_outs = fluid.layers.retinanet_detection_output(
                                                     bboxes=[bboxes, bboxes],
                                                     scores=[scores, scores],
