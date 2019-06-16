@@ -476,7 +476,7 @@ class RetinanetDetectionOutputOpMaker
     AddInput("Anchors",
              "(List) A list of tensors from multiple FPN levels. Each"
              "element is a 2-D Tensor with shape [Mi, 4] represents the "
-             "locations of Mi anchor bboxes from i-th FPN level. Each "
+             "locations of Mi anchor boxes from i-th FPN level. Each "
              "bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax].")
         .AsDuplicable();
@@ -498,10 +498,11 @@ class RetinanetDetectionOutputOpMaker
     AddAttr<float>("nms_eta",
                    "(float) "
                    "The parameter for adaptive NMS.");
-    AddAttr<int>("keep_top_k",
-                 "(int64_t) "
-                 "Number of total bboxes to be kept per image after NMS "
-                 "step.");
+    AddAttr<int>(
+        "keep_top_k",
+        "(int64_t) "
+        "Number of total bounding boxes to be kept per image after NMS "
+        "step.");
     AddOutput("Out",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
@@ -540,13 +541,13 @@ Then the top decoded prediction from all levels are merged followed by NMS.
 In the NMS step, this operator prunes away boxes that have high IOU
 (intersection over union) overlap with already selected boxes by adaptive
 threshold NMS based on parameters of nms_threshold and nms_eta.
-After NMS step, at most keep_top_k number of total bboxes are to be kept
+After NMS step, at most keep_top_k number of total bounding boxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
 image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
-means there is no detected bbox for this image. If there is no detected boxes
+means there is no detected bounding box for this image. If there is no detected boxes
 for all images, all the elements in LoD are set to 0, and the output tensor is
 empty (None).
 )DOC");

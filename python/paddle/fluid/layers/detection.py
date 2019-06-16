@@ -2347,7 +2347,7 @@ def retinanet_detection_output(bboxes,
             boxes from i-th FPN level. For each bounding box, there are total
             C scores.
         anchors(List): A 2-D Tensor with shape [Mi, 4] represents the locations
-            of Mi anchor bboxes from all FPN level. Each bounding box has four
+            of Mi anchor boxes from all FPN level. Each bounding box has four
             coordinate values and the layout is [xmin, ymin, xmax, ymax].
         im_info(Variable): A 2-D LoDTensor with shape [N, 3] represents the
             image information. N is the batch size, each image information
@@ -2356,8 +2356,8 @@ def retinanet_detection_output(bboxes,
             with a confidence score.
         nms_top_k(int): Maximum number of detections per FPN layer to be
             kept according to the confidences before NMS.
-        keep_top_k(int): Number of total bboxes to be kept per image after
-            NMS step. -1 means keeping all bboxes after NMS step.
+        keep_top_k(int): Number of total bounding boxes to be kept per image after
+            NMS step. -1 means keeping all bounding boxes after NMS step.
         nms_threshold(float): The threshold to be used in NMS.
         nms_eta(float): The parameter for adaptive NMS.
 
