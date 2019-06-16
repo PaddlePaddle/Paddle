@@ -311,7 +311,7 @@ def _append_backward_ops_(block,
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.
-        # But this stragety is not suited for while op for some control flow,
+        # But this strategy is not suited for while op for some control flow,
         # for example, for while op, the grads maybe generated in next loop.
         if input_grad_names_set is not None:
             is_append_grad = False
@@ -671,17 +671,20 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
 
 def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    Backpropagate the graidents of targets to inputs.
+    Backpropagate the gradients of targets to inputs.
 
     Args:
         targets(Variable|list[Variable]): The target variables
         inputs(Variable|list[Variable]): The input variables
+        target_gradients (Variable|list[Variable]|None): The gradient variables
+            of targets which has the same shape with targets, If None, ones will
+            be created for them.
         no_grad_set(set[string]): The names of variables that have no gradients
             in Block 0. All variables with `stop_gradient=True` from all blocks
             will be automatically added.
 
     Return:
-        (list[Variable]): list of gradients for inputs
+        (list[Variable]): A list of gradients for inputs
         If an input does not affect targets, the corresponding gradient variable
         will be None
     """
@@ -786,17 +789,20 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    Backpropagate the graidents of targets to inputs.
+    Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Variable|list[Variable]): The target variables.
-        inputs(Variable|list[Variable]): The input variables.
-        no_grad_set(set[string]): The names of variables that have no gradients
+        targets (Variable|list[Variable]): The target variables.
+        inputs (Variable|list[Variable]): The input variables.
+        target_gradients (Variable|list[Variable]|None): The gradient variables
+            of targets which has the same shape with targets, If None, ones will
+            be created for them.
+        no_grad_set (set[string]): The names of variables that have no gradients
             in Block 0. All variables with `stop_gradient=True` from all blocks
             will be automatically added.
 
     Return:
-        (list[Variable]): list of gradients for inputs
+        (list[Variable]): A list of gradients for inputs
         If an input does not affect targets, the corresponding gradient variable
         will be None.
 
