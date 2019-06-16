@@ -54,6 +54,15 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
+#if CUDA_VERSION >= 9000
+      LOG(WARNING)
+          << "The cudnnCTCLoss of CUDNN7 have some diff between "
+             "CUDA9/CUDA10 and CUDA8. You can close use_cudnn option to "
+             "use "
+             "baidu-research/warp-ctc(https://github.com/baidu-research/"
+             "warp-ctc)";
+#endif
+
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
