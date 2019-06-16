@@ -12,4 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/kernels/arm/relu_compute.h"
+#pragma once
+#include <algorithm>
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_registry.h"
+
+namespace paddle {
+namespace lite {
+namespace kernels {
+namespace arm {
+
+class ReluCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+ public:
+  using param_t = operators::ActivationParam;
+
+  void Run() override;
+
+  virtual ~ReluCompute() = default;
+};
+
+}  // namespace arm
+}  // namespace kernels
+}  // namespace lite
+}  // namespace paddle

@@ -12,31 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <algorithm>
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/kernels/arm/activation_compute.h"
+#include "paddle/fluid/lite/arm/math/funcs.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-class ReluCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
- public:
-  void Run() override {
-    auto& param = Param<operators::ReluParam>();
-    auto n = param.input->dims().production();
-    const float* input = param.input->data<float>();
-    float* output = param.output->mutable_data<float>();
-    for (int i = 0; i < n; i++) {
-      output[i] = std::max(0.f, input[i]);
-    }
-  }
-
-  TargetType target() const override { return TARGET(kARM); }
-  PrecisionType precision() const override { return PRECISION(kFloat); }
-};
+void ReluCompute::Run() {
+  auto& param = this->Param<param_t>();
+  auto& ctx = this->ctx_->template As<ARMContext>();
+  auto x_dims = param.X->dims();
+  auto x_data = param.X->data<float>();
+  auto output_data = param.Out->mutable_data<float>();
+  lite::arm::math::act_relu<float>(x_data, output_data, x_dims.production(),
+                                   ctx.threads());
+}
 
 }  // namespace arm
 }  // namespace kernels
