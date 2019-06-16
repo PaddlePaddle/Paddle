@@ -40,6 +40,7 @@ __all__ = [
     'ssd_loss',
     'rpn_target_assign',
     'retinanet_target_assign',
+    'sigmoid_focal_loss',
     'anchor_generator',
     'roi_perspective_transform',
     'generate_proposal_labels',
@@ -366,6 +367,74 @@ def rpn_target_assign(bbox_pred,
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
+
+
+def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
+    """
+    **Sigmoid Focal Loss Operator.**
+
+    Focal loss is used to address the foreground-background class imbalance existed
+    on the training phase of one-stage detectors. This operator computes the sigmoid
+    value for each element in the input tensor, after which focal loss is measured.
+    
+    The focal loss is given as followed:
+
+    .. math::
+        loss_j = (-label_j * alpha * {(1 - \\sigma(x_j))}^{gamma} * \\log(\\sigma(x_j)) -
+        (1 - labels_j) * (1 - alpha) * {(\sigma(x_j)}^{ gamma} * \\log(1 - \\sigma(x_j)))
+        / fg\_num, j = 1,...,K
+
+    We know that
+    
+    .. math::
+        \\sigma(x_j) = \\frac{1}{1 + \\exp(-x_j)}
+
+    Args:
+        x(Variable): A 2-D tensor with shape [N, D], where N is the batch size and D is the number
+            of classes (excluding background). This input is a tensor of logits computed by the
+            previous operator.
+        label(Variable): A 2-D tensor with shape [N, 1], which is the probabilistic labels.
+        fg_num(Variable): A 1-D tensor with shape [1], which is the number of foreground.
+
+        gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
+            set to 2.0.
+        alpha(float): Hyper-parameter to balance the positive and negative example. Default value
+            is set to 0.25.
+
+    Returns:
+        out(Variable): A 2-D tensor with shape [N, D], which is the focal loss.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(
+                name='data', shape=[10,80], append_batch_size=False, dtype='float32')
+            label = fluid.layers.data(
+                name='label', shape=[10,1], append_batch_size=False, dtype='int32')
+            fg_num = fluid.layers.data(
+                name='fg_num', shape=[1], append_batch_size=False, dtype='int32')
+            loss = fluid.layers.sigmoid_focal_loss(x=input,
+                                                   label=label,
+                                                   fg_num=fg_num,
+                                                   gamma=2.,
+                                                   alpha=0.25)
+    """
+
+    helper = LayerHelper("sigmoid_focal_loss", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="sigmoid_focal_loss",
+        inputs={"X": x,
+                "Label": label,
+                "FgNum": fg_num},
+        attrs={"gamma": gamma,
+               'alpha': alpha},
+        outputs={"Out": out})
+    return out
 
 
 def detection_output(loc,
