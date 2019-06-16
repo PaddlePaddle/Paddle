@@ -2599,7 +2599,7 @@ def retinanet_detection_output(bboxes,
 
     Returns:
         Variable:
-            The detection outputs is a LoDTensor with shape [No, 6].
+            The detection output is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
             instance, the offsets in first dimension are called LoD, the offset
