@@ -37,7 +37,7 @@ DEFAULT_BATCH_SIZE = 2
 
 def my_print(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
-    print_str = local_time + "\t" + class_name + "\t" + log_str
+    print_str = localtime + "\t" + class_name + "\t" + log_str
     if six.PY2:
         sys.stderr.write(pickle.dumps(print_str))
     else:
