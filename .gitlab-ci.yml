@@ -1,5 +1,6 @@
 before_script:
   - env
+  - export CI_USER_DIR=$(pwd)
 
 image: $SERVER_LITE_DOCKER_IMAGE
 
@@ -14,6 +15,8 @@ check:prebuilt:
     stage: ci
     script:
         - rm -rf ~/.pip
+        - export http_proxy=$CI_PROXY
+        - export https_proxy=$CI_PROXY
         - pip install pre-commit
         - pre-commit install
 
@@ -27,7 +30,7 @@ check:prebuilt:
     cache:
         key: check_style
         paths:
-            - /root/.cache
+            - $CI_USER_DIR/.cache
 
 build:server:
     tags:
@@ -38,7 +41,7 @@ build:server:
         key: server_thirdparty
         paths:
             - build/third_party
-            - /root/.ccache
+            - ~/.ccache
     script:
         - apt install ccache
         - export http_proxy=$CI_PROXY
@@ -73,7 +76,7 @@ build:mobile:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
-            - /root/.ccache
+            - ~/.ccache
     script:
         - apt install ccache
         - export http_proxy=$CI_PROXY
