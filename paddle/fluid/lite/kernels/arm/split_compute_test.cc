@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/kernels/arm/split_compute.h"
 #include <gtest/gtest.h>
+#include <cstring>
 #include <limits>
 #include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"

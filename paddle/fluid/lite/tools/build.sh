@@ -6,6 +6,8 @@ LIBS_FILE="./lite_libs.txt"
 
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 
+NUM_CORES_FOR_COMPILE=8
+
 # for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
 # here we fake an empty file to make cmake works.
 function prepare_for_codegen {
@@ -23,9 +25,17 @@ function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
+# This method is only called in CI.
 function cmake_x86_for_CI {
-    prepare_for_codegen
+    prepare_for_codegen # fake an empty __generated_code__.cc to pass cmake.
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=ON
+
+    # Compile and execute the gen_code related test, so it will generate some code, and make the compilation reasonable.
+    make test_gen_code_lite -j$NUM_CORES_FOR_COMPILE
+    make test_cxx_api_lite -j$NUM_CORES_FOR_COMPILE
+    ctest -R test_cxx_api_lite
+    ctest -R test_gen_code_lite
+    make test_generated_code -j$NUM_CORES_FOR_COMPILE
 }
 
 function cmake_gpu {
@@ -61,14 +71,11 @@ function cmake_arm {
 
 function build_single {
     #make $1 -j$(expr $(nproc) - 2)
-    make $1 -j8
+    make $1 -j$NUM_CORES_FOR_COMPILE
 }
 
 function build {
-    file=$1
-    for _test in $(cat $file); do
-        build_single $_test
-    done
+    make lite_compile_deps -j $NUM_CORES_FOR_COMPILE
 }
 
 # It will eagerly test all lite related unittests.
@@ -77,10 +84,6 @@ function test_lite {
     echo "file: ${file}"
 
     for _test in $(cat $file); do
-        # We move the build phase here to make the 'gen_code' test compiles after the
-        # corresponding test is executed and the C++ code generates.
-        #make $_test -j$(expr $(nproc) - 2)
-        make $_test -j8
         ctest -R $_test -V
     done
 }
@@ -91,10 +94,8 @@ function build_test_server {
     cd ./build
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
     cmake_x86_for_CI
-    # compile the tests and execute them.
+    build
     test_lite $TESTS_FILE
-    # build the remaining libraries to check compiling error.
-    build $LIBS_FILE
 }
 
 # test_arm_android <some_test_name> <adb_port_number>
@@ -135,6 +136,8 @@ function build_test_arm {
     echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
     sleep 1m
 
+    cur_dir=$(pwd)
+
     for os in "android" "armlinux" ; do
         for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
             # TODO(TJ): enable compile on v7-hf on andorid and all v7 on armlinux
@@ -148,9 +151,10 @@ function build_test_arm {
                 continue
             fi
 
-            build_dir=build.lite.${os}.${abi}
+            build_dir=$cur_dir/build.lite.${os}.${abi}
             mkdir -p $build_dir
             cd $build_dir
+
             cmake_arm ${os} ${abi}
             build $TESTS_FILE
 
@@ -179,7 +183,6 @@ function build_test_arm {
                     test_arm_android $_test $port
                 done
             fi
-            cd -
         done
     done
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
