@@ -80,6 +80,9 @@ function (lite_deps TARGET)
 
 endfunction()
 
+# A fake target to include all the libraries and tests the lite module depends.
+add_custom_target(lite_compile_deps COMMAND echo 1)
+
 # Add names for lite libraries for latter compile. We use this name list to avoid compiling
 # the whole fluid project to accelerate the compile speed.
 set(offline_lib_registry_file "${CMAKE_BINARY_DIR}/lite_libs.txt")
@@ -111,6 +114,9 @@ function(lite_cc_library TARGET)
             )
 
     cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+
+    # collect targets need to compile for lite
+    add_dependencies(lite_compile_deps ${TARGET})
 
     # register a library name.
     file(APPEND ${offline_lib_registry_file} "${TARGET}\n")
@@ -160,6 +166,9 @@ function(lite_cc_test TARGET)
             )
     _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
     file(APPEND ${offline_test_registry_file} "${TARGET}\n")
+
+    # collect targets need to compile for lite
+    add_dependencies(lite_compile_deps ${TARGET})
 endfunction()
 
 add_subdirectory(operators)
@@ -173,4 +182,3 @@ add_subdirectory(model_parser)
 add_subdirectory(utils)
 add_subdirectory(api)
 add_subdirectory(gen_code)
- 
