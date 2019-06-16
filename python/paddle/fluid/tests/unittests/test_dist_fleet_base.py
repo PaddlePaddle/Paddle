@@ -203,23 +203,29 @@ class TestFleetBase(unittest.TestCase):
 
         ps0.terminate()
         ps1.terminate()
-
+        '''
         with open("/tmp/tr0_out.log", "wb+") as wn:
             wn.write(tr0_out)
         with open("/tmp/tr1_out.log", "wb+") as wn:
             wn.write(tr1_out)
+        # print server log
+        '''
 
         # print server log
+        '''
         with open("/tmp/ps0_err.log", "r") as fn:
             sys.stderr.write("ps0 stderr: %s\n" % fn.read())
         with open("/tmp/ps1_err.log", "r") as fn:
             sys.stderr.write("ps1 stderr: %s\n" % fn.read())
+        '''
 
         # print log
+        '''
         with open("/tmp/tr0_err.log", "r") as fn:
             sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
         with open("/tmp/tr1_err.log", "r") as fn:
             sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
+        '''
 
         return 0, 0
 
