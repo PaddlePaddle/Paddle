@@ -4,9 +4,15 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor)
 endif()
 
-function(download_model install_dir model_name)
+function(download_data install_dir data_file)
     if (NOT EXISTS ${install_dir})
-        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${model_name})
+        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${data_file})
+    endif()
+endfunction()
+
+function(download_int8_data install_dir data_file)
+    if (NOT EXISTS ${install_dir})
+        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8 ${data_file})
     endif()
 endfunction()
 
@@ -23,9 +29,14 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
-function(inference_analysis_api_int8_test target model_dir data_path filename)
-    inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+function(inference_analysis_api_int8_test_build TARGET_NAME filename)
+	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark)
+endfunction()
+
+function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir data_path)
+	inference_analysis_test_run(${TARGET_NAME}
+	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
              --warmup_batch_size=100
@@ -33,11 +44,16 @@ function(inference_analysis_api_int8_test target model_dir data_path filename)
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name disable_fc)
-    download_model(${install_dir} ${model_name})
-    inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model
+
+function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
+	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
+endfunction()
+
+function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary model_dir disable_fc)
+    inference_analysis_test_run(${TARGET_NAME}
+	COMMAND ${test_binary}
+        ARGS --infer_model=${model_dir}/model
              --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
@@ -141,87 +157,97 @@ if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
 endif()
 inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
+### Image classification tests with fake data
+set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
+set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
+
+# build test binary to be used in subsequent tests
+inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP} ${IMG_CLASS_TEST_APP_SRC})
+
 # googlenet
-inference_analysis_api_test_with_fake_data(test_analyzer_googlenet
-  "${INFERENCE_DEMO_INSTALL_DIR}/googlenet" analyzer_resnet50_tester.cc "googlenet.tar.gz" false)
+set(GOOGLENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/googlenet")
+download_data(${GOOGLENET_MODEL_DIR} "googlenet.tar.gz")
+inference_analysis_api_test_with_fake_data_run(test_analyzer_googlenet ${IMG_CLASS_TEST_APP}
+	${GOOGLENET_MODEL_DIR} false)
 
 # resnet50
-inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
-  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz" true)
+set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+download_data(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
+inference_analysis_api_test_with_fake_data_run(test_analyzer_resnet50 ${IMG_CLASS_TEST_APP}
+	${RESNET50_MODEL_DIR} true)
 
 # mobilenet with depthwise_conv op
-inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
-  "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" false)
+set(MOBILENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv")
+download_data(${MOBILENET_MODEL_DIR} "mobilenet_model.tar.gz")
+inference_analysis_api_test_with_fake_data_run(test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
+	${MOBILENET_MODEL_DIR} false)
 
-# int8 image classification tests
+### INT8 tests
 if(WITH_MKLDNN)
+
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-  if (NOT EXISTS ${INT8_DATA_DIR})
-    inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "imagenet_val_100_tail.tar.gz")
-  endif()
-  
-  if (NOT EXISTS ${INT8_DATA_DIR}/pascalvoc_data.bin)
-    inference_download_and_uncompress(${INT8_DATA_DIR} "${INFERENCE_URL}/int8" "pascalvoc_val_200_head.tar.gz")
-  endif()
+
+  ### Image classification tests
   set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
-  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_data.bin")
+  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
+  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
 
-  #resnet50 int8
+  # download dataset if necessary
+  download_int8_data(${INT8_DATA_DIR} "imagenet_val_100_tail.tar.gz")
+
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_int8_test_build(${INT8_IMG_CLASS_TEST_APP} ${INT8_IMG_CLASS_TEST_APP_SRC})
+
+  # resnet50 int8
   set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
-  if (NOT EXISTS ${INT8_RESNET50_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_RESNET50_MODEL_DIR} "${INFERENCE_URL}/int8" "resnet50_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
+  download_int8_data(${INT8_RESNET50_MODEL_DIR} "resnet50_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_resnet50 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
-  #mobilenet int8
-  set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
-  if (NOT EXISTS ${INT8_MOBILENET_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv1_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
+  # mobilenetv1 int8
+  set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
+  download_int8_data(${INT8_MOBILENETV1_MODEL_DIR} "mobilenetv1_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv1 ${INT8_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
-  #mobilenetv2 int8
+  # mobilenetv2 int8
   set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
-  if (NOT EXISTS ${INT8_MOBILENETV2_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_v2_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
+  download_int8_data(${INT8_MOBILENETV2_MODEL_DIR} "mobilenet_v2_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv2 ${INT8_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
-  #resnet101 int8
+  # resnet101 int8
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
-  if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8" "Res101_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
+  download_int8_data(${INT8_RESNET101_MODEL_DIR} "Res101_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
-  #vgg16 int8
+  # vgg16 int8
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
-  if (NOT EXISTS ${INT8_VGG16_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG16_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
+  download_int8_data(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
-  #vgg19 int8
+  # vgg19 int8
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
-  if (NOT EXISTS ${INT8_VGG19_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc)
+  download_int8_data(${INT8_VGG19_MODEL_DIR} "VGG19_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
-  #googlenet int8
+  # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-  if (NOT EXISTS ${INT8_GOOGLENET_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8" "GoogleNet_int8_model.tar.gz" )
-  endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} analyzer_int8_image_classification_tester.cc SERIAL)
+  download_int8_data(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
-  #mobilenet-ssd int8 model
-   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
-   if (NOT EXISTS ${INT8_MOBILENET_SSD_MODEL_DIR})
-     inference_download_and_uncompress(${INT8_MOBILENET_SSD_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenet_ssd_int8_model.tar.gz" )
-   endif()
-   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet_ssd ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH} analyzer_int8_object_detection_tester.cc)
+  ### Object detection models
+  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_data.bin")
+  set(INT8_OBJ_DETECT_TEST_APP "test_analyzer_int8_object_detection")
+  set(INT8_OBJ_DETECT_TEST_APP_SRC "analyzer_int8_object_detection_tester.cc")
 
+  # download dataset if necessary
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_100_head.tar.gz")
+
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_int8_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
+
+  # mobilenet-ssd int8
+  set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
+  download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
+  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
 
 endif()
 
