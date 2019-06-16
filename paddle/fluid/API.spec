@@ -47,6 +47,7 @@ paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core_avx.Par
 paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
 paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.ReduceStrategy, arg0: int) -> None
 paddle.fluid.BuildStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy) -> None
+paddle.fluid.gradients (ArgSpec(args=['targets', 'inputs', 'target_gradients', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'e2097e1e0ed84ae44951437bfe269a1b'))
 paddle.fluid.io.save_vars (ArgSpec(args=['executor', 'dirname', 'main_program', 'vars', 'predicate', 'filename'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '869104f47e6fd21d897c3fcc426aa942'))
 paddle.fluid.io.save_params (ArgSpec(args=['executor', 'dirname', 'main_program', 'filename'], varargs=None, keywords=None, defaults=(None, None)), ('document', '07ffd5351b30cf47172ccfd61bd0de6f'))
 paddle.fluid.io.save_persistables (ArgSpec(args=['executor', 'dirname', 'main_program', 'filename'], varargs=None, keywords=None, defaults=(None, None)), ('document', '9141bb5f32caf7975eb3fd88c8a1b2da'))
@@ -556,6 +557,7 @@ paddle.fluid.optimizer.PipelineOptimizer.find_section_opt (ArgSpec(args=['self',
 paddle.fluid.optimizer.PipelineOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.PipelineOptimizer.split_program (ArgSpec(args=['self', 'main_program', 'cut_list'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '08a5dd9f6f376ff3d55e0b1d92115cbd'))
+paddle.fluid.backward.gradients (ArgSpec(args=['targets', 'inputs', 'target_gradients', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'e2097e1e0ed84ae44951437bfe269a1b'))
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.regularizer.L2DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core_avx.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core_avx.LoDTensor) -> None
