@@ -83,8 +83,8 @@ class TestQatInt8Comparison(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from('{}f'.format(img_ch * img_w *
-                                                          img_h), img)
+                    img = struct.unpack_from(
+                        '{}f'.format(img_ch * img_w * img_h), img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -147,6 +147,7 @@ class TestQatInt8Comparison(unittest.TestCase):
     def _predict(self,
                  test_reader=None,
                  model_path=None,
+                 batch_size=1,
                  batch_num=1,
                  skip_batch_num=0,
                  transform_to_int8=False):
@@ -199,7 +200,7 @@ class TestQatInt8Comparison(unittest.TestCase):
                 out = exe.run(inference_program,
                               feed={feed_target_names[0]: images},
                               fetch_list=fetch_targets)
-                batch_time = time.time() - start
+                batch_time = (time.time() - start) * 1000  # in miliseconds
                 outputs.append(out[0])
                 batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
                                                                   labels)
@@ -212,14 +213,15 @@ class TestQatInt8Comparison(unittest.TestCase):
                 fpses.append(fps)
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
-                _logger.info(
-                    'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
-                    'batch latency: {3:.4f} s, batch fps: {4:.2f}'.format(
-                        iters, batch_acc1, batch_acc5, batch_time, fps, appx))
+                _logger.info('batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
+                             'latency: {3:.4f} ms, fps: {4:.2f}'.format(
+                                 iters, batch_acc1, batch_acc5, batch_time /
+                                 batch_size, fps, appx))
 
             # Postprocess benchmark data
-            latencies = batch_times[skip_batch_num:]
-            latency_avg = np.average(latencies)
+            batch_latencies = batch_times[skip_batch_num:]
+            batch_latency_avg = np.average(batch_latencies)
+            latency_avg = batch_latency_avg / batch_size
             fpses = fpses[skip_batch_num:]
             fps_avg = np.average(fpses)
             infer_total_time = time.time() - infer_start_time
@@ -230,13 +232,25 @@ class TestQatInt8Comparison(unittest.TestCase):
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
+    def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
+        _logger.info('--- Performance summary ---')
+        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+            fp32_fps, fp32_lat))
+        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+            int8_fps, int8_lat))
+
     def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
                           threshold):
-        _logger.info('Accepted acc1 diff threshold: {0}'.format(threshold))
-        _logger.info('FP32: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(
-            fp32_acc1, fp32_acc5))
-        _logger.info('INT8: avg acc1: {0:.4f}, avg acc5: {1:.4f}'.format(
-            int8_acc1, int8_acc5))
+        _logger.info('--- Accuracy summary ---')
+        _logger.info(
+            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'
+            .format(threshold))
+        _logger.info(
+            'FP32: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.
+            format(fp32_acc1, fp32_acc5))
+        _logger.info(
+            'INT8: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.
+            format(int8_acc1, int8_acc5))
         assert fp32_acc1 > 0.0
         assert int8_acc1 > 0.0
         assert fp32_acc1 - int8_acc1 <= threshold
@@ -257,9 +271,7 @@ class TestQatInt8Comparison(unittest.TestCase):
         _logger.info('Dataset: {0}'.format(data_path))
         _logger.info('Batch size: {0}'.format(batch_size))
         _logger.info('Batch number: {0}'.format(batch_num))
-        _logger.info('Accuracy diff threshold: {0}. '
-                     '(condition: (fp32_acc - int8_acc) <= threshold)'
-                     .format(acc_diff_threshold))
+        _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
 
         _logger.info('--- QAT FP32 prediction start ---')
         val_reader = paddle.batch(
@@ -267,6 +279,7 @@ class TestQatInt8Comparison(unittest.TestCase):
         fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
             val_reader,
             qat_model_path,
+            batch_size,
             batch_num,
             skip_batch_num,
             transform_to_int8=False)
@@ -277,17 +290,12 @@ class TestQatInt8Comparison(unittest.TestCase):
         int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
             val_reader,
             qat_model_path,
+            batch_size,
             batch_num,
             skip_batch_num,
             transform_to_int8=True)
 
-        _logger.info('--- Performance summary ---')
-        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} s'.format(
-            fp32_fps, fp32_lat))
-        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} s'.format(
-            int8_fps, int8_lat))
-
-        _logger.info('--- Comparing accuracy ---')
+        self._summarize_performance(fp32_fps, fp32_lat, int8_fps, int8_lat)
         self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
                                acc_diff_threshold)
 
