@@ -54,6 +54,11 @@ def data(name,
     All the input variables of this function are passed in as local variables
     to the LayerHelper constructor.
 
+    Notice that paddle would only use :code:`shape` to infer the shapes of 
+    following variables in the network during compile-time. During run-time, 
+    paddle would not check whether the shape of the feeded data matches the 
+    :code:`shape` settings in this function. 
+
     Args:
        name(str): The name/alias of the function
        shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 

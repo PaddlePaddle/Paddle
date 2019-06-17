@@ -23,7 +23,7 @@ from paddle.fluid.framework import Program, Variable, name_scope, default_main_p
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward
+from .backward import append_backward, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
@@ -43,7 +43,7 @@ __all__ = [
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage'
+    'ExponentialMovingAverage', 'PipelineOptimizer'
 ]
 
 
@@ -2607,3 +2607,230 @@ class ExponentialMovingAverage(object):
             executor (Executor): The Executor to execute restoring.
         """
         executor.run(self.restore_program)
+
+
+class PipelineOptimizer(object):
+    def __init__(self,
+                 optimizer,
+                 cut_list=None,
+                 place_list=None,
+                 concurrency_list=None,
+                 queue_size=30,
+                 sync_steps=1,
+                 start_cpu_core_id=0):
+        # TODO: check properties
+        self._optimizer = optimizer
+        self._cut_list = cut_list
+        self._place_list = place_list
+        self._concurrency_list = concurrency_list
+        self._queue_size = queue_size
+        self._sync_steps = sync_steps
+        self._start_cpu_core_id = start_cpu_core_id
+
+    def create_vars(self, block, main_program):
+        used_var_set = set()
+        for op_idx in range(block.desc.op_size()):
+            op_desc = block.desc.op(op_idx)
+            vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+            for var in vars:
+                if var in used_var_set:
+                    continue
+                used_var_set.add(var)
+                source_var = main_program.block(0).var(str(var))
+                block._clone_variable(source_var, False)
+
+    def extract_section_opt_ops(self, ops, cut_point_name):
+        """
+        Extract opt ops in the given section
+        """
+        output_names = set(cut_point_name)
+        relevant_op_flags = [True] * len(ops)
+        for i, op in reversed(list(enumerate(ops))):
+            if _some_in_set_(op.desc.output_arg_names(), output_names):
+                for name in op.desc.input_arg_names():
+                    output_names.add(name)
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def find_input_output(self, ops, name, is_forward=True):
+        """
+        Find the inputs or outputs of a section
+        """
+        all_set = set()
+        part_set = set()
+        for op in ops:
+            if is_forward:
+                part_set.update(op.desc.output_arg_names())
+            else:
+                part_set.update(op.desc.input_arg_names())
+            all_set.update(op.desc.output_arg_names())
+            all_set.update(op.desc.input_arg_names())
+        return all_set - part_set
+
+    def find_persistable_vars(self, ops, whole_parameters):
+        """
+        find the persistable input vars in current section
+        """
+        res = set()
+        for op in ops:
+            vars = op.desc.input_arg_names()
+            for var in vars:
+                if var in whole_parameters:
+                    res.add(var)
+        return res
+
+    def _is_opt_role_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) & int(optimize_role) != 0:
+            return True
+        return False
+
+    def _is_lr_role_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.LRSched
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
+
+    def extract_section_ops(self, ops, cut_point_name):
+        """
+        Extract ops in the given section 
+        """
+        output_names = set(cut_point_name)
+        relevant_op_flags = [True] * len(ops)
+        for i, op in reversed(list(enumerate(ops))):
+            if not self._is_opt_role_op(op) and _some_in_set_(
+                    op.desc.output_arg_names(), output_names):
+                for name in op.desc.input_arg_names():
+                    output_names.add(name)
+            elif op.desc.type() == "print" and op.desc.input_arg_names()[
+                    0] in output_names:
+                continue
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def find_section_opt(self, ops, params):
+        res = self.extract_section_opt_ops(ops, params)
+        return res
+
+    def split_program(self, main_program, cut_list):
+        programs = []
+        block = main_program.block(0)
+        whole_parameters = [e.name for e in block.all_parameters()]
+        cut_var_names = []
+        cut_len = len(cut_list)
+        sec_params = []
+        for i, cut_vars in enumerate(cut_list[:-1]):
+            cut_var_names.append([cut_var.name for cut_var in cut_vars])
+        for i, cut_vars in reversed(list(enumerate(cut_list[:-1]))):
+            cut_var_names.append(
+                [_append_grad_suffix_(cut_var.name) for cut_var in cut_vars])
+            if i == 0:
+                cut_var_names[-1] += [var.name for var in cut_list[-1]]
+        ops = block.ops[:]
+        for i, cut_vars in enumerate(cut_var_names):
+            program = {
+                "program": Program(),
+                "input_set": set(),
+                "output_set": set()
+            }
+            cur_ops = self.extract_section_ops(ops, cut_vars)
+            if i == 0:
+                for op in ops:
+                    if self._is_lr_role_op(op):
+                        cur_ops.append(op)
+            #prevent inplace in/out
+            program["input_set"].update(
+                self.find_input_output(
+                    cur_ops, [], is_forward=True))
+            for e in cur_ops:
+                ops.remove(e)
+
+            if i < cut_len:
+                sec_params.append(
+                    self.find_persistable_vars(cur_ops, whole_parameters))
+            if i >= cut_len - 1:
+                opt_ops = self.find_section_opt(ops,
+                                                sec_params[2 * cut_len - 2 - i])
+
+                for e in opt_ops:
+                    ops.remove(e)
+                cur_ops += opt_ops
+
+            op_descs = [op.desc for op in cur_ops]
+            for op_desc in op_descs:
+                ap_op = program["program"].block(0).desc.append_op()
+                ap_op.copy_from(op_desc)
+            program["input_set"].update(
+                self.find_input_output(
+                    cur_ops, cut_vars, is_forward=True))
+            program["input_set"].update(sec_params[min(i, 2 * cut_len - 2 - i)])
+            program["output_set"].update(
+                self.find_input_output(
+                    cur_ops, cut_vars, is_forward=False))
+            programs.append(program)
+        program = {
+            "program": Program(),
+            "input_set": set(),
+            "output_set": set()
+        }
+        op_descs = [op.desc for op in ops]
+        for op_desc in op_descs:
+            ap_op = program["program"].block(0).desc.append_op()
+            ap_op.copy_from(op_desc)
+        program["input_set"].update(
+            [cut_var.name + "@GRAD" for cut_var in cut_list[0]])
+        program["input_set"].update(
+            self.find_input_output(
+                ops, [], is_forward=True))
+        program["input_set"].update(sec_params[0])
+        programs.append(program)
+        inputs = set()
+        for program in reversed(list(programs)):
+            output_list = list(program["output_set"])
+            for output in output_list:
+                if output not in inputs:
+                    program["output_set"].remove(output)
+            inputs.update(program["input_set"])
+        return programs
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        self._optimizer.minimize(loss, startup_program, parameter_list,
+                                 no_grad_set)
+        program = loss.block.program
+        program_list = self.split_program(program, self._cut_list)
+        for p in program_list:
+            self.create_vars(p["program"].block(0), program)
+        whole_parameters = [e.name for e in program.block(0).all_parameters()]
+        param_need_sync = []
+        for i, section_p in enumerate(program_list):
+            if not isinstance(self._place_list[i], core.CUDAPlace):
+                continue
+            section_var = [e for e in section_p["program"].block(0).vars]
+            for p in section_var:
+                if p in whole_parameters:
+                    param_need_sync.append(p)
+        program._pipeline_opt = {
+            "trainer": "PipelineTrainer",
+            "device_worker": "Section",
+            "section_program_list": program_list,
+            "place_list": self._place_list,
+            "concurrency_list": self._concurrency_list,
+            "queue_size": self._queue_size,
+            "start_cpu_core_id": self._start_cpu_core_id,
+            "sync_steps": self._sync_steps,
+            "param_need_sync": param_need_sync
+        }

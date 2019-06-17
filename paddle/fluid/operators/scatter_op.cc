@@ -80,6 +80,14 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ids", "The index input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of scatter op");
     AddOutput("Out", "The output of scatter op");
+    AddAttr<bool>("overwrite",
+                  "(bool, defalut: True) "
+                  "The mode that updating the output when has same index,"
+                  "If True, use the overwrite mode to update the output"
+                  "of the same index, if False, use the accumulate mode to"
+                  "update the output of the same index,Default value is True."
+                  "You can set overwrite=False to implement scatter_add.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Scatter Operator.
 
