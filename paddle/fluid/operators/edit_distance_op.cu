@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/edit_distance_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -76,20 +77,43 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
     auto* x2_t = ctx.Input<framework::LoDTensor>("Refs");
     auto* sequence_num = ctx.Output<framework::Tensor>("SequenceNum");
     sequence_num->mutable_data<int64_t>(ctx.GetPlace());
+    auto batch_size = x1_t->dims()[0];
 
     auto normalized = ctx.Attr<bool>("normalized");
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
                       .stream();
 
-    auto hyp_lod = x1_t->lod()[0];
-    auto ref_lod = x2_t->lod()[0];
-    PADDLE_ENFORCE(
-        hyp_lod.size() == ref_lod.size(),
-        "Input(Hyps) and Input(Refs) must have the same batch size.");
-    for (size_t i = 1; i < ref_lod.size(); ++i) {
-      PADDLE_ENFORCE(ref_lod[i] > ref_lod[i - 1],
-                     "Reference string %d is empty.", i);
+    framework::Vector<size_t> hyp_lod(batch_size + 1);
+    framework::Vector<size_t> ref_lod(batch_size + 1);
+
+    bool use_length = ctx.HasInput("HypsLength");
+
+    if (use_length) {
+      // build lod when using padding
+      auto* hyp_length = ctx.Input<framework::Tensor>("HypsLength");
+      auto* ref_length = ctx.Input<framework::Tensor>("RefsLength");
+
+      framework::Tensor hyp_length_cpu;
+      framework::Tensor ref_length_cpu;
+      framework::TensorCopy(*hyp_length, platform::CPUPlace(), &hyp_length_cpu);
+      framework::TensorCopy(*ref_length, platform::CPUPlace(), &ref_length_cpu);
+
+      for (auto i = 0; i < batch_size; i++) {
+        hyp_lod[i + 1] = hyp_lod[i] + hyp_length_cpu.data<int64_t>()[i];
+        ref_lod[i + 1] = ref_lod[i] + ref_length_cpu.data<int64_t>()[i];
+      }
+
+    } else {
+      hyp_lod = x1_t->lod()[0];
+      ref_lod = x2_t->lod()[0];
+    }
+
+    if (normalized) {
+      for (size_t i = 1; i < ref_lod.size(); ++i) {
+        PADDLE_ENFORCE(ref_lod[i] > ref_lod[i - 1],
+                       "Reference string %d is empty.", i);
+      }
     }
 
     const size_t num_strs = hyp_lod.size() - 1;
@@ -108,10 +132,6 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
       if (m == 0 || n == 0) {
         distance = std::max(m, n);
         if (normalized) {
-          PADDLE_ENFORCE(n > 0,
-                         "The reference string (#%d) cannot be empty "
-                         "when Attr(normalized) is enabled.",
-                         n);
           distance = distance / n;
         }
         memory::Copy(boost::get<Place>(ctx.GetPlace()), out + num,
@@ -121,14 +141,17 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         dist_t.Resize({m + 1, n + 1});
         dist_t.mutable_data<T>(ctx.GetPlace());
         auto dist = dist_t.data<T>();
-        auto x1 = x1_t->data<int64_t>() + hyp_lod[num];
-        auto x2 = x2_t->data<int64_t>() + ref_lod[num];
+        auto hyp_offset = use_length ? num * x1_t->dims()[1] : hyp_lod[num];
+        auto ref_offset = use_length ? num * x2_t->dims()[1] : ref_lod[num];
+        auto x1 = x1_t->data<int64_t>() + hyp_offset;
+        auto x2 = x2_t->data<int64_t>() + ref_offset;
 
         FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
                              PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
 
         FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n);
+
         // Compute the elements of distance matrix in the anti-diagonal diretion
         for (int64_t slice = 2; slice < m + n + 1; ++slice) {
           int z_m = slice < m + 1 ? 0 : slice - m;
