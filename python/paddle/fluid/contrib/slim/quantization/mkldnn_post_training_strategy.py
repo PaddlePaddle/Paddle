@@ -71,7 +71,7 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         infer_config.switch_ir_optim(True)
         infer_config.disable_gpu()
         infer_config.set_model(self.fp32_model_path)
-        infer_config.enable_mkldnn()
+        infer_config.enable_mkldnn(0)
         infer_config.set_cpu_math_library_num_threads(
             self.cpu_math_library_num_threads)
 
