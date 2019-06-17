@@ -406,7 +406,7 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < batch_size / im2col_step; ++i) {
       ModulatedDeformableIm2col(
-          ctx.device_context(), input_ptr + i * im2col_step * input_dim,
+          dev_ctx, input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
@@ -434,7 +434,7 @@ class DeformableConvCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename CUDADeviceContext, typename T>
+template <typename T>
 class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -565,8 +565,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
         T* offset_grad_ptr = offset_grad->data<T>();
         T* mask_grad_ptr = mask_grad->data<T>();
         ModulatedDeformableCol2imCoord(
-            ctx.device_context(), col_buffer_ptr,
-            input_ptr + i * im2col_step * input_dim,
+            dev_ctx, col_buffer_ptr, input_ptr + i * im2col_step * input_dim,
             offset_ptr + i * im2col_step * input_offset_dim,
             mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
             col_buffer_shape_vec, filter_shape_vec, paddings, strides,
@@ -577,7 +576,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
       if (input_grad) {
         T* input_grad_ptr = input_grad->data<T>();
         ModulatedDeformableCol2im(
-            ctx.device_context(), col_buffer_ptr,
+            dev_ctx, col_buffer_ptr,
             offset_ptr + i * im2col_step * input_offset_dim,
             mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
             col_buffer_shape_vec, filter_shape_vec, paddings, strides,
@@ -587,7 +586,7 @@ class DeformableConvGradCUDAKernel : public framework::OpKernel<T> {
       }
 
       ModulatedDeformableIm2col(
-          ctx.device_context(), input_ptr + i * im2col_step * input_dim,
+          dev_ctx, input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim, input_shape_vec,
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
