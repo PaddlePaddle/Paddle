@@ -20,7 +20,15 @@ set(ARMLINUX TRUE)
 add_definitions(-DLITE_WITH_LINUX)
 set(CMAKE_SYSTEM_NAME Linux)
 
-if(ARM_TARGET_ARCH_ABI STREQUAL "arm64-v8a")
+set(ARMLINUX_ARCH_ABI ${ARM_TARGET_ARCH_ABI} CACHE STRING "Choose Android Arch ABI")
+
+set(ARMLINUX_ARCH_ABI_LIST "armv8" "armv7" "armv7hf")
+set_property(CACHE ARMLINUX_ARCH_ABI PROPERTY STRINGS ${ARMLINUX_ARCH_ABI_LIST})
+if(NOT ARMLINUX_ARCH_ABI IN_LIST ARMLINUX_ARCH_ABI_LIST)
+    message(FATAL_ERROR "ARMLINUX_ARCH_ABI(${ARMLINUX_ARCH_ABI}) must be in one of ${ARMLINUX_ARCH_ABI_LIST}")
+endif()
+
+if(ARMLINUX_ARCH_ABI STREQUAL "armv8")
     set(CMAKE_SYSTEM_PROCESSOR aarch64)
     set(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc")
     set(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++")
@@ -30,13 +38,12 @@ if(ARM_TARGET_ARCH_ABI STREQUAL "arm64-v8a")
     message(STATUS "NEON is enabled on arm64-v8a")
 endif()
 
-if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a"
-    OR ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a-hf")
+if(ARMLINUX_ARCH_ABI STREQUAL "armv7" OR ARMLINUX_ARCH_ABI STREQUAL "armv7hf")
     message(FATAL_ERROR "Not supported building arm linux arm-v7 yet")
 endif()
 
 # TODO(TJ): make sure v7 works
-if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a")
+if(ARMLINUX_ARCH_ABI STREQUAL "armv7")
     set(CMAKE_SYSTEM_PROCESSOR arm)
     set(CMAKE_C_COMPILER "arm-linux-gnueabi-gcc")
     set(CMAKE_CXX_COMPILER "arm-linux-gnueabi-g++")
@@ -46,7 +53,7 @@ if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a")
     message(STATUS "NEON is enabled on arm-v7a with softfp")
 endif()
 
-if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a-hf")
+if(ARMLINUX_ARCH_ABI STREQUAL "armv7hf")
     set(CMAKE_SYSTEM_PROCESSOR arm)
     set(CMAKE_C_COMPILER "arm-linux-gnueabihf-gcc")
     set(CMAKE_CXX_COMPILER "arm-linux-gnueabihf-g++")

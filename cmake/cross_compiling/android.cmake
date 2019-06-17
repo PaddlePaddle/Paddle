@@ -26,7 +26,6 @@ if(NOT DEFINED ANDROID_NDK)
     endif()
 endif()
 
-
 if(NOT DEFINED ANDROID_API_LEVEL)
     set(ANDROID_API_LEVEL "22")
 endif()
@@ -35,19 +34,26 @@ if(NOT DEFINED ANDROID_STL_TYPE)
     set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type")
 endif()
 
-# TODO(TJ): enable me
-if(ARM_TARGET_ARCH_ABI STREQUAL "armeabi-v7a-hf")
-    message(FATAL_ERROR "Not supported building android armeabi-v7a-hf yet")
+if(ARM_TARGET_ARCH_ABI STREQUAL "armv7hf")
+    message(FATAL_ERROR "ANDROID does not support hardfp on v7 use armv7 instead.")
 endif()
 
 set(ANDROID_ARCH_ABI ${ARM_TARGET_ARCH_ABI} CACHE STRING "Choose Android Arch ABI")
+
+if(ARM_TARGET_ARCH_ABI STREQUAL "armv8")
+    set(ANDROID_ARCH_ABI "arm64-v8a")
+endif()
+
+if(ARM_TARGET_ARCH_ABI STREQUAL "armv7")
+    set(ANDROID_ARCH_ABI "armeabi-v7a")
+endif()
 
 if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a-softfp")
     set(ANDROID_ARCH_ABI "armeabi-v7a")
 endif()
 
 set(ANDROID_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v6" "armeabi"
-    "mips" "mips64" "x86" "x86_64" "armeabi-v7a-hf")
+    "mips" "mips64" "x86" "x86_64")
 set_property(CACHE ANDROID_ARCH_ABI PROPERTY STRINGS ${ANDROID_ARCH_ABI_LIST})
 if(NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
     message(FATAL_ERROR "ANDROID_ARCH_ABI must be in one of ${ANDROID_ARCH_ABI_LIST}")
@@ -57,13 +63,6 @@ if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
     message(STATUS "armeabi-v7a default use softfp")
     set(CMAKE_ANDROID_ARM_NEON ON)
     message(STATUS "NEON is enabled on arm-v7a with softfp")
-endif()
-
-if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a-hf")
-    set(ANDROID_ARCH_ABI "armeabi-v7a")
-    set(CMAKE_CXX_FLAGS "-std=c++11 -march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 ${CMAKE_CXX_FLAGS}" )
-    set(CMAKE_C_FLAGS "-march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 ${CMAKE_C_FLAGS}" )
-    message(STATUS "NEON is enabled on arm-v7a with hard float")
 endif()
 
 set(ANDROID_STL_TYPE_LITS "gnustl_static" "c++_static")
