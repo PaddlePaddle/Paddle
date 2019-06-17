@@ -35,7 +35,7 @@ namespace details {
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
-                                     const platform::MultiNCCLContextMap *ctxs)
+                                     const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
@@ -134,6 +134,7 @@ void AllReduceOpHandle::RunImpl() {
                       static_cast<ncclDataType_t>(dtype), ncclSum);
       });
     }
+    VLOG(10) << "allreduce size:" << numel * SizeOfType(lod_tensors[0]->type());
     RunAllReduceFuncs(all_reduce_calls);
 #else
     PADDLE_THROW("Not compiled with CUDA");

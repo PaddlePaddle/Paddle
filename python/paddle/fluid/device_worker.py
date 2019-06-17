@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
+__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section']
 
 
 class DeviceWorker(object):
@@ -179,6 +179,58 @@ class DownpourSGD(DeviceWorker):
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
+
+
+class Section(DeviceWorker):
+    """
+    SectionWorker
+    """
+
+    def __init__(self):
+        """
+        Init.
+        """
+        super(Section, self).__init__()
+
+    def _gen_worker_desc(self, trainer_desc):
+        """
+        Generator worker desc, which device worker is SectionWorker.
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
+        from google.protobuf import text_format
+        from . import core
+        trainer_desc.device_worker_name = "SectionWorker"
+        pipeline_opt = self._program._pipeline_opt
+        section_param = trainer_desc.section_param
+        section_param.queue_size = pipeline_opt["queue_size"]
+        section_param.sync_steps = pipeline_opt["sync_steps"]
+        section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
+        for e in pipeline_opt["param_need_sync"]:
+            section_param.param_need_sync.append(e)
+        for i, program in enumerate(pipeline_opt["section_program_list"]):
+            cfg = section_param.section_config.add()
+            cfg.program_desc.ParseFromString(program["program"]._get_desc()
+                                             .serialize_to_string())
+            # TODO: why does not work
+            #cfg.program_desc.CopyFrom(program.program._get_desc())
+            place = pipeline_opt["place_list"][i]
+            if isinstance(place, core.CPUPlace):
+                cfg.place = cfg.CPUPlace
+            elif isinstance(place, core.CUDAPlace):
+                cfg.place = cfg.CUDAPlace
+            elif isinstance(place, core.CUDAPinnedPlace):
+                cfg.place = cfg.CUDAPinnedPlace
+            else:
+                raise NotImplementedError(
+                    "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
+                )
+
+            cfg.concurrency = pipeline_opt["concurrency_list"][i]
+            for var in program["input_set"]:
+                cfg.section_in_var_names.append(var)
+            for var in program["output_set"]:
+                cfg.section_out_var_names.append(var)
 
 
 class DeviceWorkerFactory(object):

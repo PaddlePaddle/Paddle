@@ -71,7 +71,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   for (size_t i = 0; i < in_vars.size(); ++i) {
     if (in_vars[i]->IsType<framework::LoDTensor>()) {
       auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
-      if (in_i.numel() > 0) {
+      if (in_i.numel() > 0 && in_i.IsInitialized()) {
         inputs.push_back(&in_i);
       }
     } else if (in_vars[i]->IsType<framework::SelectedRows>()) {

@@ -122,8 +122,9 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
                               const std::string& trainer_desc_str) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
-  google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
-                                                &trainer_desc);
+  bool success = trainer_desc.ParseFromString(trainer_desc_str);
+  PADDLE_ENFORCE(success, "Fail to parse TrainerDesc from string:\n%s",
+                 trainer_desc_str.c_str());
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
@@ -334,7 +335,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 #ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph) {
+  if (FLAGS_use_ngraph && ctx->block_id_ == 0) {
     paddle::operators::NgraphEngine::FuseNgraphOps(
         ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
   }

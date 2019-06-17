@@ -75,7 +75,7 @@ RUN curl -s -q https://glide.sh/get | sh
 # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
-RUN wget -q https://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
+RUN wget -q https://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
     tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
     cp -rf /usr/local/TensorRT/lib /usr
@@ -92,17 +92,17 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3 --no-cache-dir install -U wheel && \
+RUN pip3 --no-cache-dir install -U wheel x86cpu==0.4 && \
     pip3 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.6 --no-cache-dir install -U wheel && \
+    pip3.6 --no-cache-dir install -U wheel x86cpu==0.4 && \
     pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.7 --no-cache-dir install -U wheel && \
+    pip3.7 --no-cache-dir install -U wheel x86cpu==0.4 && \
     pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     easy_install -U pip && \
-    pip --no-cache-dir install -U pip setuptools wheel && \
+    pip --no-cache-dir install -U pip setuptools wheel x86cpu==0.4 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 

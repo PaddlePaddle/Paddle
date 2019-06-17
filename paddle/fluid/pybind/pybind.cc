@@ -44,6 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -145,7 +146,12 @@ static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
-PYBIND11_MODULE(core, m) {
+#ifdef PADDLE_WITH_AVX
+PYBIND11_MODULE(core_avx, m) {
+#else
+PYBIND11_MODULE(core_noavx, m) {
+#endif
+
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
@@ -158,6 +164,8 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def(
       "_append_python_callable_object_and_return_id",
@@ -278,8 +286,8 @@ PYBIND11_MODULE(core, m) {
     LoD is short for Level of Details and is usually used for varied sequence
     length. You can skip the following comment if you don't need optional LoD.
 
-    For example, a LoDTensor X can look like the example below. It contains 
-    2 sequences. The first has length 2 and the second has length 3, as 
+    For example, a LoDTensor X can look like the example below. It contains
+    2 sequences. The first has length 2 and the second has length 3, as
     described by x.lod.
 
     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
@@ -287,7 +295,7 @@ PYBIND11_MODULE(core, m) {
     columns, hence [5, 2].
 
     x.lod  = [[2, 3]]
-     
+
     x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
 
     x.shape = [5, 2]
@@ -997,7 +1005,7 @@ All parameter, weight, gradient are variables in Paddle.
 
     Examples:
         .. code-block:: python
-        
+
           import paddle.fluid as fluid
 
           arr = fluid.LoDTensorArray()
@@ -1341,6 +1349,9 @@ All parameter, weight, gradient are variables in Paddle.
           "num_trainers",
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
+#ifdef WIN32
+            PADDLE_THROW("Windows has NO support to distribute mode.");
+#endif
             self.num_trainers_ = num_trainers;
           })
       .def_property(
@@ -1474,19 +1485,27 @@ All parameter, weight, gradient are variables in Paddle.
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
-          R"DOC(The type is BOOL, memory opitimize aims to save total memory 
+          R"DOC(The type is BOOL, memory opitimize aims to save total memory
                 consumption, set to True to enable it.
-                
-                Memory Optimize is our experimental feature, some variables 
+
+                Memory Optimize is our experimental feature, some variables
                 may be reused/removed by optimize strategy. If you need to
                 fetch some variable values when using this feature, please
                 set the persistable property of the variables to True.
-                
+
                 Default False)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
-          [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+          [](BuildStrategy &self, bool b) {
+#ifdef WIN32
+            if (b) {
+              PADDLE_THROW("Windows has NO support to distribute mode.");
+            }
+#else
+            self.is_distribution_ = b;
+#endif
+          })
       .def_property("async_mode",
                     [](const BuildStrategy &self) { return self.async_mode_; },
                     [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
@@ -1498,6 +1517,13 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property("enable_backward_optimizer_op_deps",
+                    [](const BuildStrategy &self) {
+                      return self.enable_backward_optimizer_op_deps_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.enable_backward_optimizer_op_deps_ = b;
+                    })
       .def_property(
           "cache_runtime_context",
           [](const BuildStrategy &self) { return self.cache_runtime_context_; },

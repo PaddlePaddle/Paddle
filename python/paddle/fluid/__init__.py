@@ -39,6 +39,7 @@ from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
+from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
@@ -72,7 +73,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
         'io',
         'initializer',
         'layers',
