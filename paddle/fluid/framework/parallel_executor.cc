@@ -366,8 +366,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                "Execution which can get better performance,"
             << "you can force it off by env FLAGS_enable_parallel_graph=0";
 
-  if (member_->use_cuda_) {
-// Bcast Parameters to all GPUs
+  if (member_->use_cuda_ && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     member_->InitNCCLCtxs(scope, build_strategy);
 
@@ -401,10 +400,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
     return false;
   };
-
+  // Bcast Parameters to all GPUs
   if (need_broadcast()) {
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
+
   // Startup Program has been run. All local scopes has correct parameters.
 
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
