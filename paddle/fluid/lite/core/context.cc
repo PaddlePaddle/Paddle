@@ -28,6 +28,10 @@
 #endif  // TARGET_OS_IPHONE
 #endif  // __APPLE__
 
+#ifdef ARM_WITH_OMP
+#include <omp.h>
+#endif
+
 namespace paddle {
 namespace lite {
 
@@ -84,7 +88,7 @@ ARMContext& Context<TargetType::kARM>::operator=(const ARMContext& ctx) {
 }
 
 void Context<TargetType::kARM>::BindDev() {
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
   int num_threads = active_ids_.size();
   omp_set_num_threads(num_threads);
 #ifdef LITE_WITH_LINUX
@@ -98,12 +102,12 @@ void Context<TargetType::kARM>::BindDev() {
   }
   for (int i = 0; i < num_threads; i++) {
     if (ssarets[i] != 0) {
-      LOGE("set cpu affinity failed, cpuID: %d\n", active_ids_[i]);
+      LOG(ERROR) << "set cpu affinity failed, cpuID: " << active_ids_[i];
       return;
     }
   }
 #endif  // LITE_WITH_LINUX
-#else   // USE_OPENMP
+#else   // ARM_WITH_OMP
 #ifdef LITE_WITH_LINUX
   std::vector<int> cpuid1;
   cpuid1.push_back(active_ids_[0]);
@@ -113,7 +117,7 @@ void Context<TargetType::kARM>::BindDev() {
     return;
   }
 #endif  // LITE_WITH_LINUX
-#endif  // USE_OPENMP
+#endif  // ARM_WITH_OMP
 }
 
 void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
@@ -123,7 +127,7 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
   if (threads > big_core_size + small_core_size) {
     threads = big_core_size + small_core_size;
   }
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
   count_++;
   int shift_num = (count_ / 10) % big_core_size;
   switch (mode) {
@@ -146,8 +150,8 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
       if (big_core_size > 0) {
         mode_ = LITE_POWER_HIGH;
         if (threads > big_core_size) {
-          LOGE("threads: %d, exceed the big cores size: %d\n", threads,
-               big_core_size);
+          LOG(ERROR) << "threads: " << threads
+                     << ", exceed the big cores size: " << big_core_size;
           active_ids_ = dev.big_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
@@ -156,7 +160,7 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
         }
       } else {
         mode_ = LITE_POWER_LOW;
-        LOGE("HIGH POWER MODE is not support, switch to little cores\n");
+        LOG(ERROR) << "HIGH POWER MODE is not support, switch to little cores";
         if (threads > small_core_size) {
           active_ids_ = dev.little_core_ids_;
         } else {
@@ -174,8 +178,8 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
       if (small_core_size > 0) {
         mode_ = LITE_POWER_LOW;
         if (threads > small_core_size) {
-          LOGW("threads: %d, exceed the little cores size: %d\n", threads,
-               small_core_size);
+          LOG(WARNING) << "threads: " << threads
+                       << ", exceed the little cores size: " << small_core_size;
           active_ids_ = dev.little_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
@@ -184,7 +188,7 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
         }
       } else {
         mode_ = LITE_POWER_HIGH;
-        LOGW("LOW POWER MODE is not support, switch to big cores\n");
+        LOG(WARNING) << "LOW POWER MODE is not support, switch to big cores";
         if (threads > big_core_size) {
           active_ids_ = dev.big_core_ids_;
         } else {
@@ -211,8 +215,8 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
       if (big_core_size > 0) {
         mode_ = LITE_POWER_RAND_HIGH;
         if (threads > big_core_size) {
-          LOGW("threads: %d, exceed the big cores size: %d\n", threads,
-               big_core_size);
+          LOG(WARNING) << "threads: " << threads
+                       << ", exceed the big cores size: " << big_core_size;
           active_ids_ = dev.big_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
@@ -222,7 +226,8 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
         }
       } else {
         mode_ = LITE_POWER_LOW;
-        LOGW("HIGH POWER MODE is not support, switch to little cores\n");
+        LOG(WARNING)
+            << "HIGH POWER MODE is not support, switch to little cores";
         if (threads > small_core_size) {
           active_ids_ = dev.little_core_ids_;
         } else {
@@ -240,8 +245,8 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
       if (small_core_size > 0) {
         mode_ = LITE_POWER_RAND_LOW;
         if (threads > small_core_size) {
-          LOGW("threads: %d, exceed the little cores size: %d\n", threads,
-               small_core_size);
+          LOG(WARNING) << "threads: " << threads
+                       << ", exceed the little cores size: " << small_core_size;
           active_ids_ = dev.little_core_ids_;
         } else {
           for (int i = 0; i < threads; ++i) {
@@ -251,7 +256,7 @@ void Context<TargetType::kARM>::SetRunMode(PowerMode mode, int threads) {
         }
       } else {
         mode_ = LITE_POWER_HIGH;
-        LOGW("LOW POWER MODE is not support, switch to big cores\n");
+        LOG(WARNING) << "LOW POWER MODE is not support, switch to big cores";
         if (threads > big_core_size) {
           active_ids_ = dev.big_core_ids_;
         } else {

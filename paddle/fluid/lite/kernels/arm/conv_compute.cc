@@ -28,6 +28,8 @@ void ConvCompute::PrepareForRun() {
   auto o_dims = param.output->dims();
 
   auto& ctx = this->ctx_->template As<ARMContext>();
+  // TODO(xxx): make api and expose it
+  ctx.SetRunMode(LITE_POWER_HIGH, 4);
 
   int win = x_dims[3];  // nchw
   int hin = x_dims[2];
