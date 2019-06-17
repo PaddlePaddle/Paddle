@@ -112,7 +112,9 @@ tar -xvf ${MODEL_NAME}_int8_model.tar.gz -C ${MODEL_NAME}
 
 To download and verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
 
-MODEL_NAME = GoogleNet, mobilenetv1, mobilenet_v2, Res101, resnet50, VGG16, VGG19
+```text
+MODEL_NAME=GoogleNet, mobilenetv1, mobilenet_v2, Res101, resnet50, VGG16, VGG19
+```
 
 * ### Commands to reproduce benchmark
 
