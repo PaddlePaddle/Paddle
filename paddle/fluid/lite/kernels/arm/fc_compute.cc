@@ -27,6 +27,9 @@ void FcCompute::PrepareForRun() {
   auto x_dims = param.input->dims();
   auto w_dims = param.w->dims();
 
+  auto& ctx = this->ctx_->template As<ARMContext>();
+  ctx.SetRunMode(LITE_POWER_HIGH, 4);
+
   CHECK_GE(x_dims.size(), 2UL);
   CHECK_EQ(w_dims.size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);

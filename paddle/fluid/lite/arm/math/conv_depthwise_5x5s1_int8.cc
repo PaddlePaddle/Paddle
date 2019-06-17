@@ -17,6 +17,9 @@
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/operators/op_params.h"
+#ifdef ARM_WITH_OMP
+#include <omp.h>
+#endif
 
 namespace paddle {
 namespace lite {
@@ -122,7 +125,7 @@ void conv_depthwise_5x5s1_int8(
 
     // #pragma omp parallel for
     for (int c = 0; c < chout; c++) {
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
       int const thno = omp_get_thread_num();
 #else
       int const thno = 0;

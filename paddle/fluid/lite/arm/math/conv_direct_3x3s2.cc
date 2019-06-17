@@ -15,6 +15,9 @@
 #include "paddle/fluid/lite/arm/math/conv_block_utils.h"
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/context.h"
+#ifdef ARM_WITH_OMP
+#include <omp.h>
+#endif
 
 namespace paddle {
 namespace lite {
@@ -109,7 +112,7 @@ void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
 
 #pragma omp parallel for num_threads(threads)
       for (int c = 0; c < c_round_down; c += hout_c_block) {
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
         float* pre_out =
             pre_din + pre_in_size + omp_get_thread_num() * pre_out_size;
 #else
@@ -627,7 +630,7 @@ void conv_3x3s2_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
 
 #pragma omp parallel for num_threads(threads)
       for (int c = 0; c < c_remain; ++c) {
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
         float* pre_out =
             pre_din + pre_in_size + omp_get_thread_num() * pre_out_size;
 #else
