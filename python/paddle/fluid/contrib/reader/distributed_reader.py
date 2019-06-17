@@ -15,10 +15,10 @@
 from __future__ import print_function
 import os
 
-__all__ = ["multi_process_reader"]
+__all__ = ["distributed_batch_reader"]
 
 
-def multi_process_reader(batch_reader):
+def distributed_batch_reader(batch_reader):
     """
     Create a multi-process reader. The input must be a batch reader.
 
@@ -33,7 +33,7 @@ def multi_process_reader(batch_reader):
 
            train_reader = paddle.batch(paddle.dataset.mnist.train(),
                     batch_size=32,drop_last=True)
-           train_reader = fluid.contrib.reader.multi_process_reader(
+           train_reader = fluid.contrib.reader.distributed_batch_reader(
                     train_reader)
 
     """
