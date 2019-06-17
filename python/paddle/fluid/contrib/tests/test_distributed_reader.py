@@ -32,7 +32,7 @@ class TestDistributedReader(unittest.TestCase):
         os.environ['PADDLE_TRAINER_ID'] = str(1)
         os.environ['PADDLE_TRAINERS_NUM'] = str(trainer_num)
 
-        reader = fluid.contrib.reader.multi_process_reader(data_generator)
+        reader = fluid.contrib.reader.distributed_batch_reader(data_generator)
         data = next(reader())
         assert data == 1
 
