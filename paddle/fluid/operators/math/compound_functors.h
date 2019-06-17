@@ -74,6 +74,8 @@ struct BinaryCompoundGradDxFunctor {
     return dout * d_binary_fun_.Dx(x, intermediate_out);
   }
 
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return unary_fun_(y); }
+
  private:
   DBinaryFun d_binary_fun_;
   UnaryFun unary_fun_;
@@ -104,6 +106,8 @@ struct BinaryCompoundGradDyFunctor {
              d_unary_fun_.UseXAndOut(y, intermediate_out);
     }
   }
+
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return unary_fun_(y); }
 
  private:
   DBinaryFun d_binary_fun_;
@@ -143,6 +147,8 @@ struct UnaryCompoundGradDxFunctor {
     return base * d_binary_fun_.Dx(x, y);
   }
 
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return binary_fun_(x, y); }
+
  private:
   DUnaryFun d_unary_fun_;
   BinaryFun binary_fun_;
@@ -181,6 +187,8 @@ struct UnaryCompoundGradDyFunctor {
     return base * d_binary_fun_.Dy(x, y);
   }
 
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return binary_fun_(x, y); }
+
  private:
   DUnaryFun d_unary_fun_;
   BinaryFun binary_fun_;
@@ -202,6 +210,8 @@ struct BinaryCompoundGradDIntermedaiteOutFunctor {
                                          T dout) {
     return dout * d_binary_fun_.Dy(x, intermediate_out);
   }
+
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return unary_fun_(y); }
 
  private:
   DBinaryFun d_binary_fun_;
@@ -231,6 +241,8 @@ struct UnaryCompoundGradDIntermediateFunctor {
       return dout * d_unary_fun_.UseXAndOut(intermediate_out, out);
     }
   }
+
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return binary_fun_(x, y); }
 
  private:
   DUnaryFun d_unary_fun_;

@@ -23,7 +23,6 @@ from itertools import product
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
-from paddle.fluid.backward import calc_gradient
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 
 
@@ -183,7 +182,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     dy = program.global_block().create_var(
         name=dy_name, shape=y.shape, dtype=np_type, persistable=True)
     # append backward
-    dx = calc_gradient(y, x, dy)
+    dx = fluid.gradients(y, x, dy)
 
     # init dy tensor in scope
     value = np.zeros(y.shape, dtype=np_type)
@@ -382,7 +381,7 @@ def double_grad_check(x,
         ]
 
     # append first order grads
-    target_grads = calc_gradient(y, x, y_grads)
+    target_grads = fluid.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.

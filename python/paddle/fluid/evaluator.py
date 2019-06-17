@@ -22,6 +22,7 @@ from .framework import Program, Variable, program_guard
 from . import unique_name
 from .layer_helper import LayerHelper
 from .initializer import Constant
+from .layers import detection
 
 __all__ = [
     'ChunkEvaluator',
@@ -374,7 +375,7 @@ class DetectionMAP(Evaluator):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = layers.detection_map(
+        map = detection.detection_map(
             input,
             label,
             class_num,
@@ -396,7 +397,7 @@ class DetectionMAP(Evaluator):
         self.has_state = var
 
         # calculate accumulative mAP
-        accum_map = layers.detection_map(
+        accum_map = detection.detection_map(
             input,
             label,
             class_num,
