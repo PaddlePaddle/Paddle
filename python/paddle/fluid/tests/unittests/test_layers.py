@@ -1988,7 +1988,7 @@ class TestBook(LayerTest):
                     filter_size=3,
                     padding=1)
                 return (out)
-    
+
     def test_retinanet_target_assign(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
