@@ -84,36 +84,45 @@ Notes:
 
 ## 4. How to reproduce the results
 
-Two steps to reproduce the above-mentioned accuracy results, and we take GoogleNet benchmark as an example:
+Three steps to reproduce the above-mentioned accuracy results, and we take GoogleNet benchmark as an example:
 
 * ### Prepare dataset
 
 You can run the following commands to download and preprocess the ILSVRC2012 Validation dataset.
 
 ```bash
-cd /PATH/TO/PADDLE/build
-python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
+cd /PATH/TO/PADDLE
+python ./paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 
 Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/int8/download/int8_full_val.bin`
 
-* ### Commands to reproduce GoogleNet benchmark
+* ### Prepare model
+
+You can run the following commands to download GoogleNet model.
+
+```bash
+mkdir -p /PATH/TO/DOWNLOAD/MODEL/
+cd /PATH/TO/DOWNLOAD/MODEL/
+export MODEL_NAME=GoogleNet
+wget http://paddle-inference-dist.bj.bcebos.com/int8/${MODEL_NAME}_int8_model.tar.gz
+mkdir -p ${MODEL_NAME}
+tar -xvf ${MODEL_NAME}_int8_model.tar.gz -C ${MODEL_NAME}
+```
+
+* ### Commands to reproduce benchmark
 
 You can run `test_mkldnn_int8_quantization_strategy.py` with the following arguments to reproduce the accuracy result on GoogleNet.
 
 ``` bash
-cd /PATH/TO/PADDLE/build/python/paddle/fluid/contrib/slim/tests/
-python ./test_mkldnn_int8_quantization_strategy.py --infer_model /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/googlenet/model --infer_data ~/.cache/paddle/dataset/int8/download/int8_full_val.bin --warmup_batch_size 100 --batch_size 1
+cd /PATH/TO/PADDLE/python/paddle/fluid/contrib/slim/tests/
+python ./test_mkldnn_int8_quantization_strategy.py --infer_model /PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}/model --infer_data ~/.cache/paddle/dataset/int8/download/int8_full_val.bin --warmup_batch_size 100 --batch_size 1
 ```
 
 Notes:
 
 * The above commands will cost maybe several hours in the prediction stage (include int8 prediction and fp32 prediction) since there have 50000 pictures need to be predicted in `int8_full_val.bin`
 
-To verify all the 7 models, you need to set the parameter of `--infer_model` to one of the following values in command line:
+To download and verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
 
-```bash
---infer_model /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/MODEL_NAME/model
-```
-
-MODEL_NAME = googlenet, mobilenet, mobilenetv2, resnet101, resnet50, vgg16, vgg19
+MODEL_NAME = GoogleNet, mobilenetv1, mobilenet_v2, Res101, resnet50, VGG16, VGG19

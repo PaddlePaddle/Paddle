@@ -86,7 +86,7 @@ python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 
 Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/int8/download/int8_full_val.bin`
 
-* ### Commands to reproduce GoogleNet benchmark
+* ### Commands to reproduce benchmark
 
 You can run `test_analyzer_int8_imagenet_classification` with the following arguments to reproduce the accuracy result on GoogleNet.
 
@@ -100,4 +100,4 @@ To verify all the 7 models, you need to set the parameter of `--infer_model` to 
 --infer_model /PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/MODEL_NAME/model
 ```
 
-MODEL_NAME = googlenet, mobilenet, mobilenetv2, resnet101, resnet50, vgg16, vgg19
+MODEL_NAME = googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg19
