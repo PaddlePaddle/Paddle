@@ -604,21 +604,21 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
-      if (ctx->HasOutput("DX")) {
+      if (HasOutputs("DX") && ctx->HasOutput("DX")) {
         ctx->ShareDim("X", "DX");
         ctx->ShareLoD("X", "DX");
       }
-      if (ctx->HasOutput("DDOut")) {
+      if (HasOutputs("DDOut") && ctx->HasOutput("DDOut")) {
         ctx->ShareDim("X", "DDOut");
         ctx->ShareLoD("X", "DDOut");
       }
     }
     if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
-      if (ctx->HasOutput("DOut")) {
+      if (HasOutputs("DOut") && ctx->HasOutput("DOut")) {
         ctx->ShareDim("Out", "DOut");
         ctx->ShareLoD("Out", "DOut");
       }
-      if (ctx->HasOutput("DDOut")) {
+      if (HasOutputs("DDOut") && ctx->HasOutput("DDOut")) {
         ctx->ShareDim("Out", "DDOut");
         ctx->ShareLoD("Out", "DDOut");
       }
@@ -635,7 +635,6 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
 //
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
-//               dy = 0
 //
 class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
  public:
@@ -650,9 +649,7 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
     // input2: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
-    // output1: ddy
-    op->SetOutput("DOut", InputGrad("Out"));
-    // output2: ddy
+    // output: ddy
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }
@@ -675,7 +672,6 @@ class LeakyReluDoubleGradMaker
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
     // Out@GRAD@GRAD: ddy
-    op->SetOutput("DX", InputGrad("X"));
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }

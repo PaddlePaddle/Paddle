@@ -31,7 +31,7 @@ class SimpleLayer(Layer):
         super(SimpleLayer, self).__init__(name_scope)
         self._fc1 = nn.FC(self.full_name(),
                           3,
-                          ParamAttr(initializer=Constant(value=0.1)))
+                          param_attr=ParamAttr(initializer=Constant(value=0.1)))
 
     def forward(self, inputs):
         x = self._fc1(inputs)

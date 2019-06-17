@@ -153,11 +153,12 @@ template class AnakinOpConverter<::anakin::saber::NV,
                                  ::anakin::Precision::FP32>;
 template class AnakinOpConverter<::anakin::saber::NV,
                                  ::anakin::Precision::INT8>;
-
+#ifdef ANAKIN_X86_PLACE
 template class AnakinOpConverter<::anakin::saber::X86,
                                  ::anakin::Precision::FP32>;
 template class AnakinOpConverter<::anakin::saber::X86,
                                  ::anakin::Precision::INT8>;
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
@@ -203,16 +204,16 @@ template class AnakinOpConverter<::anakin::saber::X86,
       CPU, ::anakin::saber::X86, precision_type__,                       \
       ::anakin::Precision::precision_type__)
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && defined(ANAKIN_X86_PLACE)
 #define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)       \
   REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32); \
   REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8); \
   REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32);  \
   REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8)
-#else
-#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)      \
-  REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32); \
-  REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8)
+#elif defined(PADDLE_WITH_CUDA)
+#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)       \
+  REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32); \
+  REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8)
 #endif
 
 #define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__, precision_type__)   \
@@ -221,12 +222,16 @@ template class AnakinOpConverter<::anakin::saber::X86,
       __attribute__((unused)) =                                                \
           Touch_anakin_##op_type__##_##place_type__##_##precision_type__();
 
+#if defined(PADDLE_WITH_CUDA) && defined(ANAKIN_X86_PLACE)
+#define USE_ANAKIN_CONVERTER(op_type__)            \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA, FP32) \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU, FP32)
+#define USE_INT8_ANAKIN_CONVERTER(op_type__)       \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA, INT8) \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU, INT8)
+#elif defined(PADDLE_WITH_CUDA)
 #define USE_ANAKIN_CONVERTER(op_type__) \
   USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA, FP32)
 #define USE_INT8_ANAKIN_CONVERTER(op_type__) \
   USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA, INT8)
-
-#define USE_CPU_ANAKIN_CONVERTER(op_type__) \
-  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU, FP32)
-#define USE_CPU_INT8_ANAKIN_CONVERTER(op_type__) \
-  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU, INT8)
+#endif
