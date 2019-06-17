@@ -167,6 +167,15 @@ class TestDistRunnerBase(object):
             build_strategy=build_stra,
             exec_strategy=exec_strategy)
 
+        if args.use_cuda and args.update_method == "nccl2":
+            # it just for test share_vars_from feature.
+            test_exe = fluid.ParallelExecutor(
+                use_cuda=True,
+                loss_name=avg_cost.name,
+                build_strategy=build_stra,
+                main_program=test_program,
+                share_vars_from=binary._executor)
+
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
             if var.is_data

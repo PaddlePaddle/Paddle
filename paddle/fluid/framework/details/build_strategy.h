@@ -149,7 +149,7 @@ struct BuildStrategy {
                    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                    const bool use_cuda,
-                   platform::MultiNCCLContextMap *nccl_ctxs) const;
+                   platform::NCCLCommunicator *nccl_ctxs) const;
 #else
                    const bool use_cuda) const;
 #endif
