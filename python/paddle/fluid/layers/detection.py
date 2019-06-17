@@ -54,6 +54,7 @@ __all__ = [
     'yolo_box',
     'box_clip',
     'multiclass_nms',
+    'retinanet_detection_output',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
     'collect_fpn_proposals',
@@ -2537,6 +2538,113 @@ def box_clip(input, im_info, name=None):
     inputs = {"Input": input, "ImInfo": im_info}
     helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
 
+    return output
+
+
+def retinanet_detection_output(bboxes,
+                               scores,
+                               anchors,
+                               im_info,
+                               score_threshold=0.05,
+                               nms_top_k=1000,
+                               keep_top_k=100,
+                               nms_threshold=0.3,
+                               nms_eta=1.):
+    """
+    **Detection Output Layer for Retinanet.**
+
+    This operation is to get the detection results by performing following
+    steps:
+
+    1. Decode top-scoring bounding box predictions per FPN level according 
+       to the anchor boxes.
+    2. Merge top predictions from all levels and apply multi-class non 
+       maximum suppression (NMS) on them to get the final detections.
+
+    Args:
+        bboxes(List): A list of tensors from multiple FPN levels. Each
+            element is a 3-D Tensor with shape [N, Mi, 4] representing the
+            predicted locations of Mi bounding boxes. N is the batch size,
+            Mi is the number of bounding boxes from i-th FPN level and each 
+            bounding box has four coordinate values and the layout is
+            [xmin, ymin, xmax, ymax].
+        scores(List): A list of tensors from multiple FPN levels. Each
+            element is a 3-D Tensor with shape [N, Mi, C] representing the
+            predicted confidence predictions. N is the batch size, C is the
+            class number (excluding background), Mi is the number of bounding
+            boxes from i-th FPN level. For each bounding box, there are total
+            C scores.
+        anchors(List): A 2-D Tensor with shape [Mi, 4] represents the locations
+            of Mi anchor boxes from all FPN level. Each bounding box has four
+            coordinate values and the layout is [xmin, ymin, xmax, ymax].
+        im_info(Variable): A 2-D LoDTensor with shape [N, 3] represents the
+            image information. N is the batch size, each image information
+            includes height, width and scale.
+        score_threshold(float): Threshold to filter out bounding boxes
+            with a confidence score.
+        nms_top_k(int): Maximum number of detections per FPN layer to be
+            kept according to the confidences before NMS.
+        keep_top_k(int): Number of total bounding boxes to be kept per image after
+            NMS step. -1 means keeping all bounding boxes after NMS step.
+        nms_threshold(float): The threshold to be used in NMS.
+        nms_eta(float): The parameter for adaptive NMS.
+
+    Returns:
+        Variable:
+            The detection output is a LoDTensor with shape [No, 6].
+            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
+            `No` is the total number of detections in this mini-batch. For each
+            instance, the offsets in first dimension are called LoD, the offset
+            number is N + 1, N is the batch size. The i-th image has
+            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            has no detected results. If all images have no detected results,
+            LoD will be set to 0, and the output tensor is empty (None).
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle.fluid as fluid
+
+            bboxes = layers.data(name='bboxes', shape=[1, 21, 4],
+                append_batch_size=False, dtype='float32')
+            scores = layers.data(name='scores', shape=[1, 21, 10],
+                append_batch_size=False, dtype='float32')
+            anchors = layers.data(name='anchors', shape=[21, 4],
+                append_batch_size=False, dtype='float32')
+            im_info = layers.data(name="im_info", shape=[1, 3],
+                append_batch_size=False, dtype='float32')
+            nmsed_outs = fluid.layers.retinanet_detection_output(
+                                                    bboxes=[bboxes, bboxes],
+                                                    scores=[scores, scores],
+                                                    anchors=[anchors, anchors],
+                                                    im_info=im_info,
+                                                    score_threshold=0.05,
+                                                    nms_top_k=1000,
+                                                    keep_top_k=100,
+                                                    nms_threshold=0.3,
+                                                    nms_eta=1.)
+    """
+
+    helper = LayerHelper('retinanet_detection_output', **locals())
+    output = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('scores'))
+    helper.append_op(
+        type="retinanet_detection_output",
+        inputs={
+            'BBoxes': bboxes,
+            'Scores': scores,
+            'Anchors': anchors,
+            'ImInfo': im_info
+        },
+        attrs={
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'keep_top_k': keep_top_k,
+            'nms_eta': 1.,
+        },
+        outputs={'Out': output})
+    output.stop_gradient = True
     return output
 
 
