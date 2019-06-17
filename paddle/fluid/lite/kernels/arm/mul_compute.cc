@@ -23,7 +23,8 @@ namespace kernels {
 namespace arm {
 
 void MulCompute::PrepareForRun() {
-  // TODO(TJ): transpose x or y if necessary
+  auto& ctx = this->ctx_->template As<ARMContext>();
+  ctx.SetRunMode(LITE_POWER_HIGH, 4);
 }
 
 void MulCompute::Run() {

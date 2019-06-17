@@ -56,7 +56,7 @@ function check_style {
 
 function cmake_arm {
     # $1: ARM_TARGET_OS in "android" , "armlinux"
-    # $2: ARM_TARGET_ARCH_ABI in "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
+    # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
     cmake .. \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
@@ -123,31 +123,24 @@ function test_arm_android {
 
 # Build the code and run lite arm tests. This is executed in the CI system.
 function build_test_arm {
-    port_armv8=5554
-    port_armv7=5556
-
-    adb kill-server
-    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
-    # start android arm64-v8a armeabi-v7a emulators first
-    echo n | avdmanager create avd -f -n paddle-armv8 -k "system-images;android-24;google_apis;arm64-v8a"
-    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8 -noaudio -no-window -gpu off -verbose -port ${port_armv8} &
-    sleep 1m
-    echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
-    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
-    sleep 1m
-
+    # 1. Build goes first
     cur_dir=$(pwd)
-
     for os in "android" "armlinux" ; do
-        for abi in "arm64-v8a" "armeabi-v7a" "armeabi-v7a-hf" ; do
-            # TODO(TJ): enable compile on v7-hf on andorid and all v7 on armlinux
-            if [[ ${abi} == "armeabi-v7a-hf" ]]; then
-                echo "armeabi-v7a-hf is not supported on both android and armlinux"
+        for abi in "armv8" "armv7" "armv7hf"; do 
+            # TODO(hongming): enable compile armv7 and armv7hf on armlinux
+            if [[ ${abi} == "armv7hf" ]]; then
+                echo "armv7hf is not supported on both android and armlinux yet"
+                continue
+            fi
+            
+            # TODO(hongming): enable armv7 on armlinux
+            if [[ ${os} == "armlinux" && ${abi} == "armv7" ]]; then
+                echo "armv7 is not supported on armlinux yet"
                 continue
             fi
 
-            if [[ ${os} == "armlinux" && ${abi} == "armeabi-v7a" ]]; then
-                echo "armeabi-v7a is not supported on armlinux yet"
+            if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
+                echo "android do not need armv7hf"
                 continue
             fi
 
@@ -157,34 +150,50 @@ function build_test_arm {
 
             cmake_arm ${os} ${abi}
             build $TESTS_FILE
-
-            # armlinux need in another docker
-            # TODO(TJ): enable test with armlinux
-            if [[ ${os} == "android" ]]; then
-                adb_abi=${abi}
-                if [[ ${adb_abi} == "armeabi-v7a-hf" ]]; then
-                    adb_abi="armeabi-v7a"
-                fi
-                if [[ ${adb_abi} == "armeabi-v7a" ]]; then
-                    # skip all armv7 tests
-                    # TODO(TJ): enable test with armv7
-                    continue
-                fi
-                local port=
-                if [[ ${adb_abi} == "armeabi-v7a" ]]; then
-                    port=${port_armv7}
-                fi
-
-                if [[ ${adb_abi} == "arm64-v8a" ]]; then
-                    port=${port_armv8}
-                fi
-                echo "test file: ${TESTS_FILE}"
-                for _test in $(cat $TESTS_FILE); do
-                    test_arm_android $_test $port
-                done
-            fi
         done
     done
+
+    # 2. Then test
+    port_armv8=5554
+    port_armv7=5556
+
+    adb kill-server
+    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+    # start android armv8 and armv7 emulators first
+    echo n | avdmanager create avd -f -n paddle-armv8 -k "system-images;android-24;google_apis;arm64-v8a"
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8 -noaudio -no-window -gpu off -verbose -port ${port_armv8} &
+    sleep 1m
+    echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
+    sleep 1m
+
+    # now can only test android.
+    for abi in "armv8" "armv7" ; do
+        # TODO(yuanshuai): enable armv7 on android
+        if [[ ${abi} == "armv7" ]]; then
+            continue
+        fi
+
+        build_dir=$cur_dir/build.lite.android.${abi}
+        cd $build_dir
+
+        local port=
+        if [[ ${abi} == "armv7" ]]; then
+            port=${port_armv7}
+        fi
+
+        if [[ ${abi} == "armv8" ]]; then
+            port=${port_armv8}
+        fi
+        echo "test file: ${TESTS_FILE}"
+        for _test in $(cat $TESTS_FILE); do
+            test_arm_android $_test $port
+        done
+    done
+
+    # armlinux need in another docker
+    # TODO(hongming): enable test armlinux on armv8, armv7 and armv7hf
+
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
 }
