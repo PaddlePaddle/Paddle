@@ -60,9 +60,9 @@ class SigmoidFocalLossKernel : public framework::OpKernel<T> {
 
       // (1 - p)**gamma * log(p) where
       T term_pos =
-          std::pow((1. - p), gamma) * std::log(p > FLT_MIN ? p : FLT_MIN);
+          std::pow(static_cast<T>(1. - p), gamma) * std::log(p > FLT_MIN ? p : FLT_MIN);
       // p**gamma * log(1 - p)
-      float term_neg =
+      T term_neg =
           std::pow(p, gamma) *
           (-1. * x * (x >= 0) - std::log(1. + std::exp(x - 2. * x * (x >= 0))));
       out_data[idx] = 0.0;
@@ -107,7 +107,7 @@ class SigmoidFocalLossGradKernel : public framework::OpKernel<T> {
       T p = 1. / (1. + std::exp(-x));
 
       // (1-p)**g * (1 - p - g*p*log(p))
-      T term_pos = std::pow((1. - p), gamma) *
+      T term_pos = std::pow(static_cast<T>(1. - p), gamma) *
                    (1. - p - (p * gamma * std::log(p > FLT_MIN ? p : FLT_MIN)));
       // (p**g) * (g*(1-p)*log(1-p) - p)
       T term_neg = std::pow(p, gamma) *
