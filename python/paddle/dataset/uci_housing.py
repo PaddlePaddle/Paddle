@@ -81,6 +81,11 @@ def load_data(filename, feature_num=14, ratio=0.8):
     UCI_TRAIN_DATA = data[:offset]
     UCI_TEST_DATA = data[offset:]
 
+    train_x, train_y = UCI_TRAIN_DATA[:, :-1], UCI_TRAIN_DATA[:, -1:]
+    test_x, test_y = UCI_TEST_DATA[:, :-1], UCI_TEST_DATA[:, -1:]
+
+    return train_x, train_y, test_x, test_y
+
 
 def train():
     """

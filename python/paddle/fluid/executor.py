@@ -357,7 +357,7 @@ class Executor(object):
 
     """
 
-    def __init__(self, place):
+    def __init__(self, place=fluid.CPUPlace()):
         self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
