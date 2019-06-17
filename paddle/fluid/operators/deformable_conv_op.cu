@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
