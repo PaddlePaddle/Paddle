@@ -33,6 +33,7 @@ cc_library(math_arm SRCS
     conv_winograd.cc
     split.cc
     activation.cc
+    dropout.cc
     DEPS ${lite_kernel_deps} eigen3 framework_proto_lite)
   # TODO(TJ): fix me do not deps proto
  
