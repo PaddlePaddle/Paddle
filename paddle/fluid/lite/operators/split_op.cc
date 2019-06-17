@@ -48,7 +48,7 @@ bool SplitOp::InferShape() const {
       outs_dims.push_back(dim);
     }
   } else if (sections.size() > 0) {
-    for (size_t i = 0; i < outs_number; ++i) {
+    for (int i = 0; i < outs_number; ++i) {
       auto dim = in_dims;
       dim[axis] = sections[i];
       outs_dims.push_back(dim);
@@ -66,9 +66,9 @@ bool SplitOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   param_.axis = opdesc.GetAttr<int>("axis");
   param_.num = opdesc.GetAttr<int>("num");
   param_.sections = opdesc.GetAttr<std::vector<int>>("sections");
-  param_.x = const_cast<lite::Tensor *>(
-      &scope->FindVar(opdesc.Input("X").front())->Get<lite::Tensor>());
+  auto input = opdesc.Input("Input").front();
   auto outs = opdesc.Output("Out");
+  param_.x = scope->FindVar(input)->GetMutable<lite::Tensor>();
   for (auto var : outs) {
     param_.output.push_back(scope->FindVar(var)->GetMutable<lite::Tensor>());
   }
