@@ -2024,6 +2024,110 @@ class TestBook(LayerTest):
                 trans_std=0.1)
         return (out)
 
+    def test_retinanet_target_assign(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            bbox_pred = layers.data(
+                name='bbox_pred',
+                shape=[1, 100, 4],
+                append_batch_size=False,
+                dtype='float32')
+            cls_logits = layers.data(
+                name='cls_logits',
+                shape=[1, 100, 10],
+                append_batch_size=False,
+                dtype='float32')
+            anchor_box = layers.data(
+                name='anchor_box',
+                shape=[100, 4],
+                append_batch_size=False,
+                dtype='float32')
+            anchor_var = layers.data(
+                name='anchor_var',
+                shape=[100, 4],
+                append_batch_size=False,
+                dtype='float32')
+            gt_boxes = layers.data(
+                name='gt_boxes',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            gt_labels = layers.data(
+                name='gt_labels',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='float32')
+            is_crowd = layers.data(
+                name='is_crowd',
+                shape=[1],
+                append_batch_size=False,
+                dtype='float32')
+            im_info = layers.data(
+                name='im_info',
+                shape=[1, 3],
+                append_batch_size=False,
+                dtype='float32')
+            return (layers.retinanet_target_assign(
+                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes,
+                gt_labels, is_crowd, im_info, 10))
+
+    def test_sigmoid_focal_loss(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='data',
+                shape=[10, 80],
+                append_batch_size=False,
+                dtype='float32')
+            label = layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='int32')
+            fg_num = layers.data(
+                name='fg_num',
+                shape=[1],
+                append_batch_size=False,
+                dtype='int32')
+            out = fluid.layers.sigmoid_focal_loss(
+                x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
+            return (out)
+
+    def test_retinanet_detection_output(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            bboxes = layers.data(
+                name='bboxes',
+                shape=[1, 21, 4],
+                append_batch_size=False,
+                dtype='float32')
+            scores = layers.data(
+                name='scores',
+                shape=[1, 21, 10],
+                append_batch_size=False,
+                dtype='float32')
+            anchors = layers.data(
+                name='anchors',
+                shape=[21, 4],
+                append_batch_size=False,
+                dtype='float32')
+            im_info = layers.data(
+                name="im_info",
+                shape=[1, 3],
+                append_batch_size=False,
+                dtype='float32')
+            nmsed_outs = layers.retinanet_detection_output(
+                bboxes=[bboxes, bboxes],
+                scores=[scores, scores],
+                anchors=[anchors, anchors],
+                im_info=im_info,
+                score_threshold=0.05,
+                nms_top_k=1000,
+                keep_top_k=100,
+                nms_threshold=0.3,
+                nms_eta=1.)
+            return (nmsed_outs)
+
 
 if __name__ == '__main__':
     unittest.main()
