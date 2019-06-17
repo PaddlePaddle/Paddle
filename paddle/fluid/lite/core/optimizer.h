@@ -48,9 +48,12 @@ class Optimizer {
 
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
-          "lite_conv_bn_fuse_pass",                   //
-          "lite_conv_elementwise_add_act_fuse_pass",  //
-          "lite_fc_fuse_pass",                        //
+          "lite_conv_bn_fuse_pass",                          //
+          "lite_conv_elementwise_add_activation_fuse_pass",  //
+          "lite_fc_fuse_pass",                               //
+#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+          "lite_elementwise_add_activation_fuse_pass",  //
+#endif
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
           "static_kernel_pick_pass",        //
           "variable_place_inference_pass",  //
