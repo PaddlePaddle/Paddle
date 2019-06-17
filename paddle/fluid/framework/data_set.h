@@ -49,14 +49,14 @@ class Dataset {
   virtual void SetTrainerNum(int trainer_num) = 0;
   // set fleet send batch size
   virtual void SetFleetSendBatchSize(int64_t size) = 0;
-  // set is_single_output
-  virtual void SetSingleOutput(bool is_single_output) = 0;
   // set fs name and ugi
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi) = 0;
   // set data fedd desc, which contains:
   //   data feed name, batch size, slots
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str) = 0;
+  // set channel num
+  virtual void SetChannelNum(int channel_num) = 0;
   // get file list
   virtual const std::vector<std::string>& GetFileList() = 0;
   // get thread num
@@ -69,6 +69,8 @@ class Dataset {
   virtual std::pair<std::string, std::string> GetHdfsConfig() = 0;
   // get data fedd desc
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() = 0;
+  // get channel num
+  virtual int GetChannelNum() = 0;
   // get readers, the reader num depend both on thread num
   // and filelist size
   virtual std::vector<paddle::framework::DataFeed*> GetReaders() = 0;
@@ -114,10 +116,10 @@ class DatasetImpl : public Dataset {
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
   virtual void SetFleetSendBatchSize(int64_t size);
-  virtual void SetSingleOutput(bool is_single_output);
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
+  virtual void SetChannelNum(int channel_num);
 
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
@@ -129,6 +131,7 @@ class DatasetImpl : public Dataset {
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
   }
+  virtual int GetChannelNum() { return channel_num_; }
   virtual std::vector<paddle::framework::DataFeed*> GetReaders();
   virtual void CreateChannel();
   virtual void RegisterClientToClientMsgHandler();
@@ -148,9 +151,7 @@ class DatasetImpl : public Dataset {
                                 const std::string& msg);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   paddle::framework::Channel<T> input_channel_;
-  bool is_single_output_;
-  paddle::framework::Channel<T> single_output_channel_;
-  paddle::framework::Channel<T> single_consume_channel_;
+  int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
   std::vector<paddle::framework::Channel<T>> multi_consume_channel_;
   // when read ins, we put ins from one channel to the other,

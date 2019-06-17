@@ -35,11 +35,11 @@ DatasetImpl<T>::DatasetImpl() {
   VLOG(3) << "DatasetImpl<T>::DatasetImpl() constructor";
   thread_num_ = 1;
   trainer_num_ = 1;
+  channel_num_ = 1;
   file_idx_ = 0;
   cur_channel_ = 0;
   fleet_send_batch_size_ = 80000;
   fleet_send_sleep_seconds_ = 2;
-  is_single_output_ = false;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -74,11 +74,6 @@ void DatasetImpl<T>::SetFleetSendBatchSize(int64_t size) {
 }
 
 template <typename T>
-void DatasetImpl<T>::SetSingleOutput(bool is_single_output) {
-  is_single_output_ = is_single_output;
-}
-
-template <typename T>
 void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
                                    const std::string& fs_ugi) {
   fs_name_ = fs_name;
@@ -95,8 +90,11 @@ void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
                                                 &data_feed_desc_);
 }
 
-// readers_.size() may not be equal to thread_num_,
-// it changes when filelist_.size() < thread_num_
+template <typename T>
+void DatasetImpl<T>::SetChannelNum(int channel_num) {
+  channel_num_ = channel_num;
+}
+
 template <typename T>
 std::vector<paddle::framework::DataFeed*> DatasetImpl<T>::GetReaders() {
   std::vector<paddle::framework::DataFeed*> ret;
@@ -112,18 +110,15 @@ void DatasetImpl<T>::CreateChannel() {
   if (input_channel_ == nullptr) {
     input_channel_ = paddle::framework::MakeChannel<T>();
   }
-  if (single_output_channel_ == nullptr) {
-    single_output_channel_ = paddle::framework::MakeChannel<T>();
-  }
   if (multi_output_channel_.size() == 0) {
-    multi_output_channel_.reserve(thread_num_);
-    for (int i = 0; i < thread_num_; ++i) {
+    multi_output_channel_.reserve(channel_num_);
+    for (int i = 0; i < channel_num_; ++i) {
       multi_output_channel_.push_back(paddle::framework::MakeChannel<T>());
     }
   }
   if (multi_consume_channel_.size() == 0) {
-    multi_consume_channel_.reserve(thread_num_);
-    for (int i = 0; i < thread_num_; ++i) {
+    multi_consume_channel_.reserve(channel_num_);
+    for (int i = 0; i < channel_num_; ++i) {
       multi_consume_channel_.push_back(paddle::framework::MakeChannel<T>());
     }
   }
@@ -195,10 +190,6 @@ void DatasetImpl<T>::ReleaseMemory() {
   if (input_channel_) {
     input_channel_->Clear();
     input_channel_ = nullptr;
-  }
-  if (single_output_channel_) {
-    single_output_channel_->Clear();
-    single_output_channel_ = nullptr;
   }
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
     if (!multi_output_channel_[i]) {
@@ -329,19 +320,22 @@ void DatasetImpl<T>::GlobalShuffle() {
 template <typename T>
 void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "Calling CreateReaders()";
+  VLOG(3) << "thread num in Dataset: " << thread_num_;
+  VLOG(3) << "Filelist size in Dataset: " << filelist_.size();
+  VLOG(3) << "channel num in Dataset: " << channel_num_;
   CHECK(thread_num_ > 0) << "thread num should > 0";
   CHECK(thread_num_ <= filelist_.size())
       << "thread num should <= filelist size";
-  VLOG(3) << "thread_num in Readers: " << thread_num_;
+  CHECK(channel_num_ > 0) << "channel num should > 0";
+  CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
-  VLOG(3) << "Filelist size in readers: " << filelist_.size();
   if (readers_.size() != 0) {
     VLOG(3) << "readers_.size() = " << readers_.size()
             << ", will not create again";
     return;
   }
   VLOG(3) << "data feed class name: " << data_feed_desc_.name();
-
+  int channel_idx = 0;
   for (int i = 0; i < thread_num_; ++i) {
     readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
     readers_[i]->Init(data_feed_desc_);
@@ -351,22 +345,16 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFileListIndex(&file_idx_);
     readers_[i]->SetFileList(filelist_);
     readers_[i]->SetInputChannel(input_channel_.get());
-    if (is_single_output_) {
-      if (cur_channel_ == 0) {
-        readers_[i]->SetOutputChannel(single_output_channel_.get());
-        readers_[i]->SetConsumeChannel(single_consume_channel_.get());
-      } else {
-        readers_[i]->SetOutputChannel(single_consume_channel_.get());
-        readers_[i]->SetConsumeChannel(single_output_channel_.get());
-      }
+    if (cur_channel_ == 0) {
+      readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
+      readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
     } else {
-      if (cur_channel_ == 0) {
-        readers_[i]->SetOutputChannel(multi_output_channel_[i].get());
-        readers_[i]->SetConsumeChannel(multi_consume_channel_[i].get());
-      } else {
-        readers_[i]->SetOutputChannel(multi_consume_channel_[i].get());
-        readers_[i]->SetConsumeChannel(multi_output_channel_[i].get());
-      }
+      readers_[i]->SetOutputChannel(multi_consume_channel_[channel_idx].get());
+      readers_[i]->SetConsumeChannel(multi_output_channel_[channel_idx].get());
+    }
+    ++channel_idx;
+    if (channel_idx >= channel_num_) {
+      channel_idx = 0;
     }
   }
   VLOG(3) << "readers size: " << readers_.size();
@@ -388,11 +376,8 @@ int64_t DatasetImpl<T>::GetMemoryDataSize() {
 
 template <typename T>
 int64_t DatasetImpl<T>::GetShuffleDataSize() {
-  if (is_single_output_) {
-    return single_output_channel_->Size();
-  }
   int64_t sum = 0;
-  for (size_t i = 0; i < thread_num_; ++i) {
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
     sum += multi_output_channel_[i]->Size() + multi_consume_channel_[i]->Size();
   }
   return sum;
@@ -418,14 +403,11 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   }
   CHECK(ar.Cursor() == ar.Finish());
 
-  if (is_single_output_) {
-    single_output_channel_->Write(std::move(data));
-  } else {
-    auto fleet_ptr = FleetWrapper::GetInstance();
-    int64_t index = fleet_ptr->LocalRandomEngine()() % thread_num_;
-    VLOG(3) << "ramdom index=" << index;
-    multi_output_channel_[index]->Write(std::move(data));
-  }
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
+  VLOG(3) << "ramdom index=" << index;
+  multi_output_channel_[index]->Write(std::move(data));
+
   data.clear();
   data.shrink_to_fit();
 #endif

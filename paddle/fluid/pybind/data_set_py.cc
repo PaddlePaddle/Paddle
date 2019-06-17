@@ -97,6 +97,8 @@ void BindDataset(py::module* m) {
       .def("get_memory_data_size", &framework::Dataset::GetMemoryDataSize,
            py::call_guard<py::gil_scoped_release>())
       .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_queue_num", &framework::Dataset::SetChannelNum,
            py::call_guard<py::gil_scoped_release>());
 }
 
