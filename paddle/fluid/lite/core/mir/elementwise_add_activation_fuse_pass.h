@@ -16,26 +16,17 @@
 
 #include <memory>
 #include <string>
-#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
+#include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
-namespace fusion {
 
-class ConvElementwiseAddReLUFuser : public FuseBase {
+class ElementwiseAddActivationFusePass : public ProgramPass {
  public:
-  explicit ConvElementwiseAddReLUFuser(const std::string& conv_type)
-      : conv_type_(conv_type) {}
-  void BuildPattern() override;
-  void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override;
-
- private:
-  cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override;
-  std::string conv_type_;
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 };
 
-}  // namespace fusion
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle

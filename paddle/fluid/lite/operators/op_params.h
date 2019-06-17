@@ -219,6 +219,14 @@ struct ElementwiseGradParam {
   int axis{-1};  // for broadcasting.
 };
 
+struct FusionElementwiseActivationParam : public ElementwiseParam {
+  std::string act_type;
+};
+
+struct FusionElementwiseActivationGradParam : public ElementwiseGradParam {
+  std::string act_type;
+};
+
 /// ----------------------- activation operators ----------------------
 struct ActivationParam {
   const lite::Tensor* X{};

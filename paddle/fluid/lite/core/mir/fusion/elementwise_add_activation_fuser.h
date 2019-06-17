@@ -13,26 +13,29 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+
+#include <memory>
+#include <string>
+#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {}  // namespace mir
+namespace mir {
+namespace fusion {
+
+class ElementwiseAddActivationFuser : public FuseBase {
+ public:
+  explicit ElementwiseAddActivationFuser(const std::string& act_type)
+      : act_type_(act_type) {}
+  void BuildPattern() override;
+  void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override;
+
+ private:
+  cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override;
+  std::string act_type_;
+};
+
+}  // namespace fusion
+}  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-USE_MIR_PASS(demo);
-USE_MIR_PASS(static_kernel_pick_pass);
-USE_MIR_PASS(variable_place_inference_pass);
-USE_MIR_PASS(type_target_transform_pass);
-USE_MIR_PASS(generate_program_pass);
-USE_MIR_PASS(io_copy_kernel_pick_pass);
-USE_MIR_PASS(argument_type_display_pass);
-#endif
-USE_MIR_PASS(runtime_context_assign_pass);
-USE_MIR_PASS(lite_conv_bn_fuse_pass);
-USE_MIR_PASS(graph_visualze);
-USE_MIR_PASS(lite_fc_fuse_pass);
-USE_MIR_PASS(lite_conv_elementwise_add_activation_fuse_pass);
-USE_MIR_PASS(lite_elementwise_add_activation_fuse_pass);

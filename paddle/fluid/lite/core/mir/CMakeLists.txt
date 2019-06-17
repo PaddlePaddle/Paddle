@@ -7,7 +7,8 @@ cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
 add_subdirectory(fusion)
 cc_library(mir_passes
         SRCS fc_fuse_pass.cc
-        conv_elementwise_add_relu_fuse_pass.cc
+        conv_elementwise_add_activation_fuse_pass.cc
+        elementwise_add_activation_fuse_pass.cc
         conv_bn_fuse_pass.cc 
         static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
@@ -82,7 +83,11 @@ lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_fc_model.tar.gz
 add_dependencies(test_lite_fc_fuse extern_lite_download_lite_fc_model_tar_gz)
 
 
-lite_cc_test(test_lite_conv_elementwise_add_relu_fuse 
-             SRCS conv_elementwise_add_relu_fuse_pass_test.cc
+lite_cc_test(test_lite_conv_elementwise_add_activation_fuse 
+             SRCS conv_elementwise_add_activation_fuse_pass_test.cc
+             DEPS cxx_api_lite mir_passes
+             ${ops_lite} ${host_kernels} ${x86_kernels})
+lite_cc_test(test_lite_elementwise_add_activation_fuse 
+             SRCS elementwise_add_activation_fuse_pass_test.cc
              DEPS cxx_api_lite mir_passes
              ${ops_lite} ${host_kernels} ${x86_kernels})
