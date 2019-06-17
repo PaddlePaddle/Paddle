@@ -12,21 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
+#include "paddle/fluid/lite/core/mir/conv_elementwise_add_activation_fuse_pass.h"
 #include <memory>
-#include <string>
-#include "paddle/fluid/lite/core/mir/pass.h"
+#include <vector>
+#include "paddle/fluid/lite/core/mir/fusion/conv_elementwise_add_activation_fuser.h"
+#include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-class ConvElementwiseAddReLUFusePass : public ProgramPass {
- public:
-  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
-};
+void ConvElementwiseAddActivationFusePass::Apply(
+    const std::unique_ptr<SSAGraph>& graph) {
+  fusion::ConvElementwiseAddActivationFuser fuser("conv2d", "relu");
+  fuser(graph.get());
+
+  fusion::ConvElementwiseAddActivationFuser depthwise_fuser("depthwise_conv2d",
+                                                            "relu");
+  depthwise_fuser(graph.get());
+}
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
+
+REGISTER_MIR_PASS(lite_conv_elementwise_add_activation_fuse_pass,
+                  paddle::lite::mir::ConvElementwiseAddActivationFusePass);
