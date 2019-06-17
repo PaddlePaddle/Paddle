@@ -110,6 +110,10 @@ mkdir -p ${MODEL_NAME}
 tar -xvf ${MODEL_NAME}_int8_model.tar.gz -C ${MODEL_NAME}
 ```
 
+To download and verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
+
+MODEL_NAME = GoogleNet, mobilenetv1, mobilenet_v2, Res101, resnet50, VGG16, VGG19
+
 * ### Commands to reproduce benchmark
 
 You can run `test_mkldnn_int8_quantization_strategy.py` with the following arguments to reproduce the accuracy result on GoogleNet.
@@ -122,7 +126,3 @@ python ./test_mkldnn_int8_quantization_strategy.py --infer_model /PATH/TO/DOWNLO
 Notes:
 
 * The above commands will cost maybe several hours in the prediction stage (include int8 prediction and fp32 prediction) since there have 50000 pictures need to be predicted in `int8_full_val.bin`
-
-To download and verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
-
-MODEL_NAME = GoogleNet, mobilenetv1, mobilenet_v2, Res101, resnet50, VGG16, VGG19
