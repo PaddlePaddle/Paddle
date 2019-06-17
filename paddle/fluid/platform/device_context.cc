@@ -406,7 +406,7 @@ thread_local int cur_thread_id = 0;
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
 
-#define MKLDNN_CAP 50
+#define MKLDNN_CAP 500
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
