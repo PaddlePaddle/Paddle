@@ -27,35 +27,11 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-
+import sys
 from .. import compat as cpt
 from .proto import framework_pb2
-try:
-    if os.name == 'nt':
-        import sys
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
 
-    from . import core
-except ImportError as e:
-    if os.name == 'nt':
-        executable_path = os.path.abspath(os.path.dirname(sys.executable))
-        raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
-        if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s""" %
-            (executable_path, executable_path, cpt.get_exception_message(e)))
-    else:
-        raise ImportError(
-            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-        if you encounters \"libmkldnn.so not found\" errors. If you have python
-        installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
-except Exception as e:
-    raise e
+from . import core
 from . import unique_name
 
 __all__ = [
@@ -106,7 +82,24 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+    if "CPU_NUM" not in os.environ.keys():
+        sys.stderr.write(
+            'The CPU_NUM is not specified, you should set CPU_NUM in '
+            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
+            'indicates that how many CPUPlace are used in the current task.\n'
+            '!!! The default number of CPUPlaces is 1.\n\n')
+        os.environ['CPU_NUM'] = str(1)
+    cpu_num = os.environ.get('CPU_NUM')
+    return int(cpu_num)
+
+
+def _cuda_ids():
+    gpus_env = os.getenv("FLAGS_selected_gpus")
+    if gpus_env:
+        device_ids = [int(s) for s in gpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
 
 
 def cuda_places(device_ids=None):
@@ -140,11 +133,7 @@ def cuda_places(device_ids=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            device_ids = [int(s) for s in gpus_env.split(",")]
-        else:
-            device_ids = six.moves.range(core.get_cuda_device_count())
+        device_ids = _cuda_ids()
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
@@ -654,6 +643,8 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
@@ -765,10 +756,8 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate(".".join(self.name)),
-                dtype=self.dtype,
-                persistable=self.persistable,
-                stop_gradient=self.stop_gradient, )
+                name=unique_name.generate_with_ignorable_key(self.name),
+                dtype=self.dtype)
         else:
             return self
 
@@ -1013,7 +1002,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1036,7 +1025,6 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1046,13 +1034,17 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
+                                )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1674,7 +1666,11 @@ class Block(object):
             attrs = kwargs.get("attrs", {})
             if _dygraph_tracer_._train_mode == False:
                 # eval mode
-                attrs['is_test'] = True
+                if ('trainable_statistics' not in attrs
+                    ) or not attrs['trainable_statistics']:
+                    attrs['is_test'] = True
+                else:
+                    attrs['is_test'] = False
 
             op = Operator(
                 block=self,
@@ -2776,6 +2772,12 @@ class Program(object):
         self._fleet_opt = None
         self._program_config = None
 
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
+
+        # appending gradients times
+        self._appending_grad_times = 0
+
     @property
     def _is_mem_optimized(self):
         # if the program is optimized, operator input/outputs
@@ -2969,12 +2971,15 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will not do any prune on program here, So if you just want an
+          forward program for testing, please use :code:`clone` before using
+          :code:`Opimizer.minimize`
 
-        Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please. E.g.
 
         .. code-block:: python
 
@@ -2991,7 +2996,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3101,6 +3111,7 @@ class Program(object):
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
+            p._appending_grad_times = self._appending_grad_times
 
             p._sync_with_cpp()
 
@@ -3685,8 +3696,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3714,9 +3725,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
-            None means do not change startup program.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

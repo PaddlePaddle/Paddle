@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,25 +16,25 @@ from __future__ import print_function
 
 import numpy as np
 from collections import defaultdict
-from functools import reduce
 
-from paddle.fluid import core
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
-from paddle.fluid.layers import tensor
 
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward
+from .backward import append_backward, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
-from .dygraph import base as imperative_base
-from .dygraph.learning_rate_scheduler import LearningRateDecay
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
+from paddle.fluid import core
+from paddle.fluid.layers import tensor
+from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
@@ -43,7 +43,7 @@ __all__ = [
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage'
+    'ExponentialMovingAverage', 'PipelineOptimizer'
 ]
 
 
@@ -55,6 +55,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
+    @imperative_base.no_grad
     def __init__(self, learning_rate, regularization=None, name=None):
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
@@ -62,14 +63,18 @@ class Optimizer(object):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
+            if name is not None:
+                self._name = unique_name.generate(name)
+            else:
+                self._name = unique_name.generate(self.__class__.__name__)
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
+            self._name = name
 
-        self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
@@ -87,6 +92,90 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+
+    def load(self, stat_dict):
+        """
+        load optimizer with learning rate decay in dygraph mode
+        :return: None
+
+        Args:
+            stat_dict: the dict load by load_persistable method
+
+        Examples:
+
+        .. code-block:: python
+
+            from __future__ import print_function
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+            from paddle.fluid.optimizer import SGDOptimizer
+            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.base import to_variable
+
+            class MLP(fluid.Layer):
+                def __init__(self, name_scope):
+                    super(MLP, self).__init__(name_scope)
+
+                    self._fc1 = FC(self.full_name(), 10)
+                    self._fc2 = FC(self.full_name(), 10)
+
+                def forward(self, inputs):
+                    y = self._fc1(inputs)
+                    y = self._fc2(y)
+                    return y
+
+            with fluid.dygraph.guard():
+                mlp = MLP('mlp')
+                optimizer2 = SGDOptimizer(
+                    learning_rate=fluid.layers.natural_exp_decay(
+                    learning_rate=0.1,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+
+                train_reader = paddle.batch(
+                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+                for batch_id, data in enumerate(train_reader()):
+                    dy_x_data = np.array(
+                            [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+
+                    y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                            128, 1)
+
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
+                    label._stop_gradient = True
+                    cost = mlp(img)
+                    avg_loss = fluid.layers.reduce_mean(cost)
+                    avg_loss.backward()
+                    optimizer.minimize(avg_loss)
+                    mlp.clear_gradients()
+                    fluid.dygraph.save_persistables(
+                            mlp.state_dict(), [optimizer, optimizer2], "save_dir_2")
+                    if batch_id == 2:
+                            break
+
+            with fluid.dygraph.guard():
+                mlp_load = MLP('mlp')
+                optimizer_load2 = SGDOptimizer(
+                        learning_rate=fluid.layers.natural_exp_decay(
+                        learning_rate=0.1,
+                        decay_steps=10000,
+                        decay_rate=0.5,
+                        staircase=True))
+                parameters, optimizers = fluid.dygraph.load_persistables(
+                    "save_dir_2")
+                mlp_load.load_dict(parameters)
+                optimizer_load2.load(optimizers)
+            self.assertTrue(optimizer2._learning_rate.__dict__ == optimizer_load2._learning_rate.__dict__)
+
+        """
+        if framework.in_dygraph_mode():
+            self._learning_rate = stat_dict[self._name]
+        else:
+            raise TypeError("load can only be used under DyGraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -472,6 +561,7 @@ class Optimizer(object):
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
+    @imperative_base.no_grad
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -2145,22 +2235,45 @@ class ModelAverage(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+
     Examples:
 
       .. code-block:: python
 
-        optimizer = fluid.optimizer.Momentum()
-        optimizer.minimize(cost)
-        model_average = fluid.optimizer.ModelAverage(0.15,
-                                                min_average_window=10000,
-                                                max_average_window=20000)
-        for pass_id in range(args.pass_num):
-            for data in train_reader():
-                exe.run(fluid.default_main_program()...)
+        import paddle.fluid as fluid
+        import numpy
 
+        # First create the Executor.
+        place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            # build net
+            data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer.minimize(loss)
+
+            # build ModelAverage optimizer
+            model_average = fluid.optimizer.ModelAverage(0.15,
+                                                         min_average_window=10000,
+                                                         max_average_window=20000)
+
+            exe.run(startup_program)
+            x = numpy.random.random(size=(10, 1)).astype('float32')
+            outs = exe.run(program=train_program,
+                           feed={'X': x},
+                           fetch_list=[loss.name])
+
+            # apply ModelAverage
             with model_average.apply(exe):
-                for data in test_reader():
-                    exe.run(inference_program...)
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                exe.run(program=train_program,
+                        feed={'X': x},
+                        fetch_list=[loss.name])
     """
 
     def __init__(self,
@@ -2275,6 +2388,10 @@ class ModelAverage(Optimizer):
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
+
+        Args:
+            executor(fluid.Executor): current executor.
+            need_restore(bool): If you finally need to do restore, set it to True. Default is True.
         """
         executor.run(self.apply_program)
         try:
@@ -2285,6 +2402,9 @@ class ModelAverage(Optimizer):
 
     def restore(self, executor):
         """Restore parameter values of current model.
+        
+        Args:
+            executor(fluid.Executor): current executor.
         """
         executor.run(self.restore_program)
 
@@ -2301,10 +2421,10 @@ class ExponentialMovingAverage(object):
 
 	\\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
 
-    The average results will be saved in temporary variables which are created 
-    and maintained by the object, and can be applied to parameters of current 
-    model by calling **apply()** method. And the **restore()** method is used to 
-    restore the parameters.
+    The average results calculated by **update()** method will be saved in 
+    temporary variables which are created and maintained by the object, and can 
+    be applied to parameters of current model by calling **apply()** method. And 
+    the **restore()** method is used to restore the parameters.
 
     **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be 
     zero biased, which can be corrected by divided by a factor 
@@ -2350,6 +2470,7 @@ class ExponentialMovingAverage(object):
 
              global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
              ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+             ema.update()
 
 	     # pseudo code
 	     for pass_id in range(args.pass_num):
@@ -2375,7 +2496,7 @@ class ExponentialMovingAverage(object):
         self._name = name if name is not None else ''
         self._decay_var = self._get_ema_decay()
 
-        self.params_tmps = []
+        self._params_tmps = []
         for param in default_main_program().global_block().all_parameters():
             if param.do_model_average != False:
                 tmp = param.block.create_var(
@@ -2384,22 +2505,22 @@ class ExponentialMovingAverage(object):
                     dtype=param.dtype,
                     persistable=False,
                     stop_gradient=True)
-                self.params_tmps.append((param, tmp))
+                self._params_tmps.append((param, tmp))
 
-        ema_vars = {}
-        for param, tmp in self.params_tmps:
+        self._ema_vars = {}
+        for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
-                ema_vars[param.name] = self._append_ema_ops(param)
+                self._ema_vars[param.name] = self._create_ema_vars(param)
 
         self.apply_program = Program()
         block = self.apply_program.global_block()
         with program_guard(main_program=self.apply_program):
             decay_pow = self._get_decay_pow(block)
-            for param, tmp in self.params_tmps:
+            for param, tmp in self._params_tmps:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
-                ema = block._clone_variable(ema_vars[param.name])
+                ema = block._clone_variable(self._ema_vars[param.name])
                 layers.assign(input=param, output=tmp)
                 # bias correction
                 ema = ema / (1.0 - decay_pow)
@@ -2408,7 +2529,7 @@ class ExponentialMovingAverage(object):
         self.restore_program = Program()
         block = self.restore_program.global_block()
         with program_guard(main_program=self.restore_program):
-            for param, tmp in self.params_tmps:
+            for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
                 layers.assign(input=tmp, output=param)
@@ -2440,7 +2561,7 @@ class ExponentialMovingAverage(object):
         decay_pow_acc = layers.elementwise_pow(decay_var, global_steps + 1)
         return decay_pow_acc
 
-    def _append_ema_ops(self, param):
+    def _create_ema_vars(self, param):
         param_ema = layers.create_global_var(
             name=unique_name.generate(self._name + param.name + '_ema'),
             shape=param.shape,
@@ -2448,9 +2569,20 @@ class ExponentialMovingAverage(object):
             dtype=param.dtype,
             persistable=True)
 
-        ema_t = param_ema * self._decay_var + param * (1 - self._decay_var)
-        layers.assign(input=ema_t, output=param_ema)
         return param_ema
+
+    def update(self):
+        """ 
+        Update Exponential Moving Average. Should only call this method in 
+        train program.
+        """
+        for param, tmp in self._params_tmps:
+            with param.block.program._optimized_guard(
+                [param, tmp]), name_scope('moving_average'):
+                param_ema = self._ema_vars[param.name]
+                ema_t = param_ema * self._decay_var + param * (1 -
+                                                               self._decay_var)
+                layers.assign(input=ema_t, output=param_ema)
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
@@ -2475,3 +2607,230 @@ class ExponentialMovingAverage(object):
             executor (Executor): The Executor to execute restoring.
         """
         executor.run(self.restore_program)
+
+
+class PipelineOptimizer(object):
+    def __init__(self,
+                 optimizer,
+                 cut_list=None,
+                 place_list=None,
+                 concurrency_list=None,
+                 queue_size=30,
+                 sync_steps=1,
+                 start_cpu_core_id=0):
+        # TODO: check properties
+        self._optimizer = optimizer
+        self._cut_list = cut_list
+        self._place_list = place_list
+        self._concurrency_list = concurrency_list
+        self._queue_size = queue_size
+        self._sync_steps = sync_steps
+        self._start_cpu_core_id = start_cpu_core_id
+
+    def create_vars(self, block, main_program):
+        used_var_set = set()
+        for op_idx in range(block.desc.op_size()):
+            op_desc = block.desc.op(op_idx)
+            vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+            for var in vars:
+                if var in used_var_set:
+                    continue
+                used_var_set.add(var)
+                source_var = main_program.block(0).var(str(var))
+                block._clone_variable(source_var, False)
+
+    def extract_section_opt_ops(self, ops, cut_point_name):
+        """
+        Extract opt ops in the given section
+        """
+        output_names = set(cut_point_name)
+        relevant_op_flags = [True] * len(ops)
+        for i, op in reversed(list(enumerate(ops))):
+            if _some_in_set_(op.desc.output_arg_names(), output_names):
+                for name in op.desc.input_arg_names():
+                    output_names.add(name)
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def find_input_output(self, ops, name, is_forward=True):
+        """
+        Find the inputs or outputs of a section
+        """
+        all_set = set()
+        part_set = set()
+        for op in ops:
+            if is_forward:
+                part_set.update(op.desc.output_arg_names())
+            else:
+                part_set.update(op.desc.input_arg_names())
+            all_set.update(op.desc.output_arg_names())
+            all_set.update(op.desc.input_arg_names())
+        return all_set - part_set
+
+    def find_persistable_vars(self, ops, whole_parameters):
+        """
+        find the persistable input vars in current section
+        """
+        res = set()
+        for op in ops:
+            vars = op.desc.input_arg_names()
+            for var in vars:
+                if var in whole_parameters:
+                    res.add(var)
+        return res
+
+    def _is_opt_role_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) & int(optimize_role) != 0:
+            return True
+        return False
+
+    def _is_lr_role_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        optimize_role = core.op_proto_and_checker_maker.OpRole.LRSched
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            return True
+        return False
+
+    def extract_section_ops(self, ops, cut_point_name):
+        """
+        Extract ops in the given section 
+        """
+        output_names = set(cut_point_name)
+        relevant_op_flags = [True] * len(ops)
+        for i, op in reversed(list(enumerate(ops))):
+            if not self._is_opt_role_op(op) and _some_in_set_(
+                    op.desc.output_arg_names(), output_names):
+                for name in op.desc.input_arg_names():
+                    output_names.add(name)
+            elif op.desc.type() == "print" and op.desc.input_arg_names()[
+                    0] in output_names:
+                continue
+            else:
+                relevant_op_flags[i] = False
+
+        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
+        return op_path
+
+    def find_section_opt(self, ops, params):
+        res = self.extract_section_opt_ops(ops, params)
+        return res
+
+    def split_program(self, main_program, cut_list):
+        programs = []
+        block = main_program.block(0)
+        whole_parameters = [e.name for e in block.all_parameters()]
+        cut_var_names = []
+        cut_len = len(cut_list)
+        sec_params = []
+        for i, cut_vars in enumerate(cut_list[:-1]):
+            cut_var_names.append([cut_var.name for cut_var in cut_vars])
+        for i, cut_vars in reversed(list(enumerate(cut_list[:-1]))):
+            cut_var_names.append(
+                [_append_grad_suffix_(cut_var.name) for cut_var in cut_vars])
+            if i == 0:
+                cut_var_names[-1] += [var.name for var in cut_list[-1]]
+        ops = block.ops[:]
+        for i, cut_vars in enumerate(cut_var_names):
+            program = {
+                "program": Program(),
+                "input_set": set(),
+                "output_set": set()
+            }
+            cur_ops = self.extract_section_ops(ops, cut_vars)
+            if i == 0:
+                for op in ops:
+                    if self._is_lr_role_op(op):
+                        cur_ops.append(op)
+            #prevent inplace in/out
+            program["input_set"].update(
+                self.find_input_output(
+                    cur_ops, [], is_forward=True))
+            for e in cur_ops:
+                ops.remove(e)
+
+            if i < cut_len:
+                sec_params.append(
+                    self.find_persistable_vars(cur_ops, whole_parameters))
+            if i >= cut_len - 1:
+                opt_ops = self.find_section_opt(ops,
+                                                sec_params[2 * cut_len - 2 - i])
+
+                for e in opt_ops:
+                    ops.remove(e)
+                cur_ops += opt_ops
+
+            op_descs = [op.desc for op in cur_ops]
+            for op_desc in op_descs:
+                ap_op = program["program"].block(0).desc.append_op()
+                ap_op.copy_from(op_desc)
+            program["input_set"].update(
+                self.find_input_output(
+                    cur_ops, cut_vars, is_forward=True))
+            program["input_set"].update(sec_params[min(i, 2 * cut_len - 2 - i)])
+            program["output_set"].update(
+                self.find_input_output(
+                    cur_ops, cut_vars, is_forward=False))
+            programs.append(program)
+        program = {
+            "program": Program(),
+            "input_set": set(),
+            "output_set": set()
+        }
+        op_descs = [op.desc for op in ops]
+        for op_desc in op_descs:
+            ap_op = program["program"].block(0).desc.append_op()
+            ap_op.copy_from(op_desc)
+        program["input_set"].update(
+            [cut_var.name + "@GRAD" for cut_var in cut_list[0]])
+        program["input_set"].update(
+            self.find_input_output(
+                ops, [], is_forward=True))
+        program["input_set"].update(sec_params[0])
+        programs.append(program)
+        inputs = set()
+        for program in reversed(list(programs)):
+            output_list = list(program["output_set"])
+            for output in output_list:
+                if output not in inputs:
+                    program["output_set"].remove(output)
+            inputs.update(program["input_set"])
+        return programs
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        self._optimizer.minimize(loss, startup_program, parameter_list,
+                                 no_grad_set)
+        program = loss.block.program
+        program_list = self.split_program(program, self._cut_list)
+        for p in program_list:
+            self.create_vars(p["program"].block(0), program)
+        whole_parameters = [e.name for e in program.block(0).all_parameters()]
+        param_need_sync = []
+        for i, section_p in enumerate(program_list):
+            if not isinstance(self._place_list[i], core.CUDAPlace):
+                continue
+            section_var = [e for e in section_p["program"].block(0).vars]
+            for p in section_var:
+                if p in whole_parameters:
+                    param_need_sync.append(p)
+        program._pipeline_opt = {
+            "trainer": "PipelineTrainer",
+            "device_worker": "Section",
+            "section_program_list": program_list,
+            "place_list": self._place_list,
+            "concurrency_list": self._concurrency_list,
+            "queue_size": self._queue_size,
+            "start_cpu_core_id": self._start_cpu_core_id,
+            "sync_steps": self._sync_steps,
+            "param_need_sync": param_need_sync
+        }

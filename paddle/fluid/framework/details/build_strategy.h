@@ -80,6 +80,8 @@ struct BuildStrategy {
 
   bool fuse_all_reduce_ops_{false};
 
+  bool enable_backward_optimizer_op_deps_{false};
+
   bool fuse_relu_depthwise_conv_{false};
 
   bool sync_batch_norm_{false};
@@ -147,7 +149,7 @@ struct BuildStrategy {
                    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                    const bool use_cuda,
-                   platform::MultiNCCLContextMap *nccl_ctxs) const;
+                   platform::NCCLCommunicator *nccl_ctxs) const;
 #else
                    const bool use_cuda) const;
 #endif

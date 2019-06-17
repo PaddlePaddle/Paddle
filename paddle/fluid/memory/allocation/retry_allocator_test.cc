@@ -32,7 +32,7 @@ TEST(RetryAllocator, RetryAllocator) {
   CPUAllocator cpu_allocator;
 
   size_t size = (1 << 20);
-  auto cpu_allocation = cpu_allocator.Allocate(size, cpu_allocator.kDefault);
+  auto cpu_allocation = cpu_allocator.Allocate(size);
 
   std::unique_ptr<BestFitAllocator> best_fit_allocator(
       new BestFitAllocator(cpu_allocation.get()));

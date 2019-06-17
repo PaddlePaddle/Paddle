@@ -165,8 +165,12 @@ def Print(input,
                 print the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor, same data with input tensor.
+        Variable: Output tensor.
 
+    NOTES:
+        The input and output are two different variables, and in the
+        following process, you should use the output variable but not the input,
+        otherwise, the print layer doesn't have backward.
 
     Examples:
         .. code-block:: python
@@ -174,16 +178,18 @@ def Print(input,
            import paddle.fluid as fluid
            
            input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           fluid.layers.Print(input, message = "The content of input layer:")
+           input = fluid.layers.Print(input, message = "The content of input layer:")
            # value = some_layer(...)
            # Print(value, summarize=10,
            #    message="The content of some_layer: ")
 
     '''
-    helper = LayerHelper('print', **locals())
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',
         inputs={'In': input},
+        outputs={'Out': output},
         attrs={
             'first_n': first_n,
             'summarize': summarize,
@@ -194,7 +200,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
-    return input
+    return output
 
 
 class BlockGuard(object):
@@ -882,6 +888,7 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[1], dtype='float32',
                                    append_batch_size=False)
           data = fluid.layers.increment(x=data, value=3.0, in_place=True)
@@ -922,9 +929,10 @@ def array_write(x, i, array=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_write(tmp, i=i)
+          arr = fluid.layers.array_write(tmp, i=i)
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
@@ -1130,6 +1138,9 @@ def equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          label = fluid.layers.data(name="label", shape=[3,10,32,32], dtype="float32")
+          limit = fluid.layers.data(name="limit", shape=[3,10,32,32], dtype="float32")
           less = fluid.layers.equal(x=label, y=limit)
     """
     helper = LayerHelper("equal", **locals())
@@ -1200,6 +1211,7 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           item = fluid.layers.array_read(array, i)
@@ -1274,6 +1286,7 @@ def array_length(array):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
