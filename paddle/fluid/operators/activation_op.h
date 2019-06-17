@@ -1321,10 +1321,6 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
       auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
       ddout.device(*d) = ddx * (out > static_cast<T>(0)).template cast<T>();
     }
-    if (dOut) {
-      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-      dout.device(*d) = dout.constant(static_cast<T>(0));
-    }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
@@ -1350,10 +1346,6 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
                           static_cast<T>(alpha) *
                               (x < static_cast<T>(0)).template cast<T>().eval())
                              .template cast<T>();
-    }
-    if (dX) {
-      auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-      dx.device(*d) = dx.constant(static_cast<T>(0));
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }

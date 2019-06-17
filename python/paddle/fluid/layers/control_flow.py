@@ -165,8 +165,12 @@ def Print(input,
                 print the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor, same data with input tensor.
+        Variable: Output tensor.
 
+    NOTES:
+        The input and output are two different variables, and in the
+        following process, you should use the output variable but not the input,
+        otherwise, the print layer doesn't have backward.
 
     Examples:
         .. code-block:: python
@@ -174,16 +178,18 @@ def Print(input,
            import paddle.fluid as fluid
            
            input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           fluid.layers.Print(input, message = "The content of input layer:")
+           input = fluid.layers.Print(input, message = "The content of input layer:")
            # value = some_layer(...)
            # Print(value, summarize=10,
            #    message="The content of some_layer: ")
 
     '''
-    helper = LayerHelper('print', **locals())
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',
         inputs={'In': input},
+        outputs={'Out': output},
         attrs={
             'first_n': first_n,
             'summarize': summarize,
@@ -194,7 +200,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
-    return input
+    return output
 
 
 class BlockGuard(object):
