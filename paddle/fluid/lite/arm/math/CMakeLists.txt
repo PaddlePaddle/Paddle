@@ -14,6 +14,7 @@ cc_library(math_arm SRCS
     scale.cc
     pooling.cc
     elementwise.cc
+    concat.cc
     sgemv.cc
     type_trans.cpp
     conv_impl.cc

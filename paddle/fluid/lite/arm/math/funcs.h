@@ -18,6 +18,7 @@
 #include <cmath>
 
 #include "paddle/fluid/lite/arm/math/activation.h"
+#include "paddle/fluid/lite/arm/math/concat.h"
 #include "paddle/fluid/lite/arm/math/conv_depthwise.h"
 #include "paddle/fluid/lite/arm/math/conv_direct.h"
 #include "paddle/fluid/lite/arm/math/conv_gemmlike.h"
