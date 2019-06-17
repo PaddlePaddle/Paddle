@@ -86,6 +86,9 @@ struct BuildStrategy {
   bool fuse_broadcast_ops_{false};
   bool sync_batch_norm_{false};
 
+  // TODO(paddle-dev): Add explanation about mkldnn_enabled_op_types_.
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+
   // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
   // to open them by default, we need to solve the fetch variable issue
   bool memory_optimize_{false};
@@ -99,9 +102,6 @@ struct BuildStrategy {
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
-
-  // TODO(paddle-dev): Add explanation about mkldnn_enabled_op_types_.
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   // NCCL config
   size_t nccl_comm_num_{1};
