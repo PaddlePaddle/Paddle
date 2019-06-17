@@ -136,9 +136,12 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key_pool_workspace_memory =
         key + "@pool_workspace_memory";
 
-    auto pool_p =
+    std::shared_ptr<pooling_forward> pool_p =
         std::static_pointer_cast<pooling_forward>(dev_ctx.GetBlob(key_pool_p));
     std::shared_ptr<mkldnn::memory> src_memory, dst_memory;
+    std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd;
+    std::shared_ptr<mkldnn::memory> pool_src_memory_p, pool_dst_memory_p;
+
     if (pool_p == nullptr) {
       const std::vector<int>& padding_left_top(paddings);
       std::vector<int> padding_right_bottom(paddings);
@@ -159,7 +162,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto propagation = src_md.data.data_type == mkldnn_f32
                              ? mkldnn::prop_kind::forward_training
                              : mkldnn::prop_kind::forward_scoring;
-      std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
+      pool_pd =
           CreatePrimitiveDesc(src_md, dst_md, propagation, strides,
                               padding_left_top, padding_right_bottom, ksize,
                               pooling_type, mkldnn_engine, ceil_mode, is_test);
@@ -175,11 +178,12 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       dev_ctx.SetBlob(key_pool_src_mem_p, src_memory);
       dev_ctx.SetBlob(key_pool_dst_mem_p, dst_memory);
 
+      std::shared_ptr<mkldnn::memory> workspace_memory;
       if (is_test) {
         pool_p = std::make_shared<pooling_forward>(*pool_pd, *src_memory,
                                                    *dst_memory);
       } else {
-        std::shared_ptr<mkldnn::memory> workspace_memory =
+        workspace_memory =
             CreateWorkspaceMemory(pool_pd, pooling_type, mkldnn_engine);
 
         // save pool_workspace_memory to be referred in backward path
@@ -195,11 +199,11 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           (memory::format)dst_memory->get_primitive_desc().desc().data.format;
     } else {
       // Primitives already exist
-      auto pool_src_memory_p =
+      pool_src_memory_p =
           std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_src_mem_p));
       PADDLE_ENFORCE(pool_src_memory_p != nullptr,
                      "Fail to find pooling src mem_p in device context");
-      auto pool_dst_memory_p =
+      pool_dst_memory_p =
           std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_dst_mem_p));
       PADDLE_ENFORCE(pool_dst_memory_p != nullptr,
                      "Fail to find pooling dst mem_p in device context");

@@ -188,7 +188,8 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<concat::primitive_desc> concat_pd;
     std::shared_ptr<std::vector<memory>> srcs;
     std::shared_ptr<memory> dst_mem;
-    auto concat_p = std::static_pointer_cast<concat>(dev_ctx.GetBlob(key_prim));
+    std::shared_ptr<concat> concat_p =
+        std::static_pointer_cast<concat>(dev_ctx.GetBlob(key_prim));
 
     if (concat_p == nullptr) {
       const auto& mkldnn_engine = dev_ctx.GetEngine();

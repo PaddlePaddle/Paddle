@@ -209,16 +209,18 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     // create mkldnn memory from input tensors (data/weights)
-    auto user_src_memory_p =
+    std::shared_ptr<mkldnn::memory> user_src_memory_p =
         handler.AcquireSrcMemory(user_src_md, to_void_cast<T>(input_data));
-    auto user_weights_memory_p = handler.AcquireWeightsMemory(
-        user_weights_md, to_void_cast<T>(filter_data));
+    std::shared_ptr<mkldnn::memory> user_weights_memory_p =
+        handler.AcquireWeightsMemory(user_weights_md,
+                                     to_void_cast<T>(filter_data));
 
     // create reorder primitive if the input format is not the preferred one
-    auto src_memory_p =
+    std::shared_ptr<mkldnn::memory> src_memory_p =
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
-    auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
-        user_weights_memory_p, pipeline, is_test);
+    std::shared_ptr<mkldnn::memory> weights_memory_p =
+        handler.AcquireWeightsMemoryFromPrimitive(user_weights_memory_p,
+                                                  pipeline, is_test);
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
     std::shared_ptr<mkldnn::memory> user_residual_memory_p;

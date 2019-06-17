@@ -406,6 +406,8 @@ thread_local int cur_thread_id = 0;
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
 
+#define MKLDNN_CAP 50
+
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();
@@ -414,7 +416,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   int tid = platform::get_cur_thread_id();
 
   // use tid to indicate if cache is enabled, tid > 0 means disable cache
-  if (tid > 0) return;
+  //  if (tid > 0) return;
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
@@ -433,10 +435,16 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   auto key_it = pBlob->find(name);
 
   if (key_it == pBlob->end()) {
+    if ((tid == 1) && pBlob->size() >= MKLDNN_CAP) {
+      VLOG(3) << "start remove head " << pBlob->begin()->first
+              << " in SetBlob\n";
+      pBlob->erase(pBlob->begin());
+    }
     (*pBlob)[name] = data;  // create new blob
   } else {
     key_it->second = data;  // set data to existing blob
   }
+
   VLOG(3) << "MKLDNNDeviceContext::SetBlob " << name << "\n";
   // lock will be automatically released when out of scope
   return;
