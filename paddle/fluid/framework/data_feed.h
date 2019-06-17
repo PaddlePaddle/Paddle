@@ -402,7 +402,8 @@ struct FeatureItem {
     return *(reinterpret_cast<FeatureKey*>(sign_buffer()));
   }
   const FeatureKey& sign() const {
-    return *(reinterpret_cast<const FeatureKey*>(sign_buffer()));
+    const FeatureKey* ret = reinterpret_cast<FeatureKey*>(sign_buffer());
+    return *ret;
   }
   uint16_t& slot() {
     return slot_;
@@ -410,9 +411,10 @@ struct FeatureItem {
   const uint16_t& slot() const {
     return slot_;
   }
+
  private:
   char* sign_buffer() const {
-    return reinterpret_cast<char*>(sign_);
+    return const_cast<char*>(sign_);
   }
   char sign_[sizeof(FeatureKey)];
   uint16_t slot_;
