@@ -32,18 +32,19 @@ HOSTDEVICE T DmcnGetGradientWeight(T argmax_h, T argmax_w, const int h,
   int argmax_w_high = argmax_w_low + 1;
 
   T weight = 0;
+
   weight = (h == argmax_h_low && w == argmax_w_low)
                ? (h + 1 - argmax_h) * (w + 1 - argmax_w)
-               : 0;
+               : weight;
   weight = (h == argmax_h_low && w == argmax_w_high)
                ? (h + 1 - argmax_h) * (argmax_w + 1 - w)
-               : 0;
+               : weight;
   weight = (h == argmax_h_high && w == argmax_w_low)
                ? (argmax_h + 1 - h) * (w + 1 - argmax_w)
-               : 0;
+               : weight;
   weight = (h == argmax_h_high && w == argmax_w_high)
                ? (argmax_h + 1 - h) * (argmax_w + 1 - w)
-               : 0;
+               : weight;
 
   return weight;
 }
@@ -79,12 +80,10 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h, T argmax_w, const int height,
                   ? (argmax_w_low + 1 - argmax_w) *
                         im_data[argmax_h_high * data_width + argmax_w_low]
                   : 0;
-
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_w - argmax_w_low) *
                         im_data[argmax_h_high * data_width + argmax_w_high]
                   : 0;
-
   } else if (bp_dir == 1) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_h_low + 1 - argmax_h) *
@@ -95,14 +94,15 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h, T argmax_w, const int height,
                         im_data[argmax_h_low * data_width + argmax_w_high]
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? weight += -1 * (argmax_h - argmax_h_low) *
-                              im_data[argmax_h_high * data_width + argmax_w_low]
+                  ? -1 * (argmax_h - argmax_h_low) *
+                        im_data[argmax_h_high * data_width + argmax_w_low]
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_h - argmax_h_low) *
                         im_data[argmax_h_high * data_width + argmax_w_high]
                   : 0;
   }
+
   return weight;
 }
 
@@ -130,7 +130,11 @@ HOSTDEVICE T DmcnIm2colBilinear(const T* bottom_data, const int data_width,
   T v4 = (h_high <= height - 1 && w_high <= width - 1)
              ? bottom_data[h_high * data_width + w_high]
              : 0;
-  T w1 = hh * hw, w2 = hh * lw, w3 = lh * hw, w4 = lh * lw;
+
+  T w1 = hh * hw;
+  T w2 = hh * lw;
+  T w3 = lh * hw;
+  T w4 = lh * lw;
 
   return w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
 }
