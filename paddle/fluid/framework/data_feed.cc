@@ -163,7 +163,6 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
   this->fp_ = nullptr;
-  this->queue_ = nullptr;
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->input_channel_ = nullptr;
@@ -175,7 +174,7 @@ template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
   this->CheckSetFileList();
-  if (output_channel_->Size() == 0) {
+  if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
     input_channel_->Read(data);
     output_channel_->Write(std::move(data));
@@ -196,14 +195,15 @@ int InMemoryDataFeed<T>::Next() {
           << ", thread_id=" << thread_id_;
   int index = 0;
   T instance;
-  T ins_vec;
+  std::vector<T> ins_vec;
+  ins_vec.reserve(this->default_batch_size_);
   while (index < this->default_batch_size_) {
     if (output_channel_->Size() == 0) {
       break;
     }
     output_channel_->Get(instance);
-
-    AddInstanceToInsVec(&ins_vec, instance, index++);
+    ins_vec.push_back(instance);
+    ++index;
     consume_channel_->Put(std::move(instance));
   }
   this->batch_size_ = index;
@@ -260,12 +260,15 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
     CHECK(this->fp_ != nullptr);
     __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+    paddle::framework::ChannelWriter<T> writer(input_channel_);
     T instance;
     platform::Timer timeline;
     timeline.Start();
     while (ParseOneInstanceFromPipe(&instance)) {
-      input_channel_->Put(std::move(instance));
+      writer << std::move(instance);
+      instance = T();
     }
+    writer.Flush();
     timeline.Pause();
     VLOG(3) << "LoadIntoMemory() read all lines, file=" << filename
             << ", cost time=" << timeline.ElapsedSec()
@@ -276,7 +279,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 }
 
 // explicit instantiation
-template class InMemoryDataFeed<std::vector<MultiSlotType>>;
+template class InMemoryDataFeed<Record>;
 
 void MultiSlotDataFeed::Init(
     const paddle::framework::DataFeedDesc& data_feed_desc) {
@@ -630,7 +633,6 @@ void MultiSlotInMemoryDataFeed::Init(
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
-  SetQueueSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
@@ -671,17 +673,13 @@ void MultiSlotInMemoryDataFeed::Init(
   finish_init_ = true;
 }
 
-bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
-    std::vector<MultiSlotType>* instance) {
+bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #ifdef _LINUX
   thread_local string::LineFileReader reader;
 
   if (!reader.getline(&*(fp_.get()))) {
     return false;
   } else {
-    int use_slots_num = use_slots_.size();
-    instance->resize(use_slots_num);
-
     const char* str = reader.get();
     std::string line = std::string(str);
     // VLOG(3) << line;
@@ -698,16 +696,27 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
           "characters.\nplease check this error line: %s",
           str);
       if (idx != -1) {
-        (*instance)[idx].Init(all_slots_type_[i]);
-        if ((*instance)[idx].GetType()[0] == 'f') {  // float
+        if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
-            (*instance)[idx].AddValue(feasign);
+            // if float feasign is equal to zero, ignore it
+            if (fabs(feasign) < 1e-6) {
+              continue;
+            }
+            FeatureKey f;
+            f.float_feasign_ = feasign;
+            instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
-        } else if ((*instance)[idx].GetType()[0] == 'u') {  // uint64
+        } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-            (*instance)[idx].AddValue(feasign);
+            // if uint64 feasign is equal to zero, ignore it
+            if (feasign == 0) {
+              continue;
+            }
+            FeatureKey f;
+            f.uint64_feasign_ = feasign;
+            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
           }
         }
         pos = endptr - str;
@@ -720,6 +729,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
         }
       }
     }
+    instance->float_feasigns_.shrink_to_fit();
+    instance->uint64_feasigns_.shrink_to_fit();
     return true;
   }
 #else
@@ -727,13 +738,10 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
 #endif
 }
 
-bool MultiSlotInMemoryDataFeed::ParseOneInstance(
-    std::vector<MultiSlotType>* instance) {
+bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
 #ifdef _LINUX
   std::string line;
   if (getline(file_, line)) {
-    int use_slots_num = use_slots_.size();
-    instance->resize(use_slots_num);
     VLOG(3) << line;
     // parse line
     const char* str = line.c_str();
@@ -751,16 +759,25 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(
           str);
 
       if (idx != -1) {
-        (*instance)[idx].Init(all_slots_type_[i]);
-        if ((*instance)[idx].GetType()[0] == 'f') {  // float
+        if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
-            (*instance)[idx].AddValue(feasign);
+            if (fabs(feasign) < 1e-6) {
+              continue;
+            }
+            FeatureKey f;
+            f.float_feasign_ = feasign;
+            instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
-        } else if ((*instance)[idx].GetType()[0] == 'u') {  // uint64
+        } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-            (*instance)[idx].AddValue(feasign);
+            if (feasign == 0) {
+              continue;
+            }
+            FeatureKey f;
+            f.uint64_feasign_ = feasign;
+            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
           }
         }
         pos = endptr - str;
@@ -770,6 +787,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(
         }
       }
     }
+    instance->float_feasigns_.shrink_to_fit();
+    instance->uint64_feasigns_.shrink_to_fit();
+    return true;
   } else {
     return false;
   }
@@ -777,46 +797,64 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(
   return false;
 }
 
-void MultiSlotInMemoryDataFeed::AddInstanceToInsVec(
-    std::vector<MultiSlotType>* ins_vec,
-    const std::vector<MultiSlotType>& instance, int index) {
+void MultiSlotInMemoryDataFeed::PutToFeedVec(
+    const std::vector<Record>& ins_vec) {
 #ifdef _LINUX
-  if (index == 0) {
-    ins_vec->resize(instance.size());
-    for (size_t i = 0; i < instance.size(); ++i) {
-      (*ins_vec)[i].Init(instance[i].GetType());
-      (*ins_vec)[i].InitOffset();
+  std::vector<std::vector<float>> batch_float_feasigns(
+      use_slots_.size(), std::vector<float>());
+  std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
+      use_slots_.size(), std::vector<uint64_t>());
+  std::vector<std::vector<size_t>> offset(
+      use_slots_.size(), std::vector<size_t>{0});
+  std::vector<bool> visit(use_slots_.size(), false);
+  for (size_t i = 0; i < ins_vec.size(); ++i) {
+    auto& r = ins_vec[i];
+    for (auto& item : r.float_feasigns_) {
+      batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
+      visit[item.slot()] = true;
+    }
+    for (auto& item : r.uint64_feasigns_) {
+      batch_uint64_feasigns[item.slot()].push_back(item.sign().uint64_feasign_);
+      visit[item.slot()] = true;
+    }
+    for (size_t j = 0; j < use_slots_.size(); ++j) {
+      const auto& type = all_slots_type_[j];
+      if (visit[j]) {
+         visit[j] = false;
+      } else {
+        // fill slot value with default value 0
+        if (type[0] == 'f') {  // float
+          batch_float_feasigns[j].push_back(0.0);
+        } else if (type[0] == 'u') {  // uint64
+          batch_uint64_feasigns[j].push_back(0);
+        }
+      }
+      // get offset of this ins in this slot
+      if (type[0] == 'f') {  // float
+        offset[j].push_back(batch_float_feasigns[j].size());
+      } else if (type[0] == 'u') {  // uint64
+        offset[j].push_back(batch_uint64_feasigns[j].size());
+      }
     }
   }
 
-  for (size_t i = 0; i < instance.size(); ++i) {
-    (*ins_vec)[i].AddIns(instance[i]);
-  }
-#endif
-}
-
-void MultiSlotInMemoryDataFeed::PutToFeedVec(
-    const std::vector<MultiSlotType>& ins_vec) {
-#ifdef _LINUX
   for (size_t i = 0; i < use_slots_.size(); ++i) {
-    const auto& type = ins_vec[i].GetType();
-    const auto& offset = ins_vec[i].GetOffset();
-    int total_instance = static_cast<int>(offset.back());
-
+    int total_instance = offset[i].back();
+    const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float
-      const auto& feasign = ins_vec[i].GetFloatData();
+      float* feasign = batch_float_feasigns[i].data();
       float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
           {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+      memcpy(tensor_ptr, feasign, total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
-      const auto& feasign = ins_vec[i].GetUint64Data();
+      uint64_t* feasign = batch_uint64_feasigns[i].data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+      memcpy(tensor_ptr, feasign, total_instance * sizeof(int64_t));
     }
-
-    LoD data_lod{offset};
+    auto& slot_offset = offset[i];
+    LoD data_lod{slot_offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {

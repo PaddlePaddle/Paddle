@@ -171,7 +171,7 @@ class DatasetImpl : public Dataset {
 };
 
 // use std::vector<MultiSlotType> as data type
-class MultiSlotDataset : public DatasetImpl<std::vector<MultiSlotType>> {
+class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual ~MultiSlotDataset() {}

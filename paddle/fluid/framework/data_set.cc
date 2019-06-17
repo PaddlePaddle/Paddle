@@ -434,6 +434,7 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 
 // explicit instantiation
 template class DatasetImpl<std::vector<MultiSlotType>>;
+template class DatasetImpl<Record>;
 
 }  // end namespace framework
 }  // end namespace paddle

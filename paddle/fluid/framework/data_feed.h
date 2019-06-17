@@ -202,7 +202,7 @@ class PrivateQueueDataFeed : public DataFeed {
 };
 
 template <typename T>
-class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
+class InMemoryDataFeed : public DataFeed {
  public:
   InMemoryDataFeed();
   virtual ~InMemoryDataFeed() {}
@@ -217,14 +217,14 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void LoadIntoMemory();
 
  protected:
-  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
-                                   int index) = 0;
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void PutToFeedVec(const T& ins_vec) = 0;
+  virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
 
   int thread_id_;
   int thread_num_;
+  std::ifstream file_;
+  std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;
   paddle::framework::ChannelObject<T>* output_channel_;
   paddle::framework::ChannelObject<T>* consume_channel_;
@@ -387,6 +387,94 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
+union FeatureKey {
+  uint64_t uint64_feasign_;
+  float float_feasign_;
+};
+
+struct FeatureItem {
+  FeatureItem() {}
+  FeatureItem(FeatureKey sign, uint16_t slot) {
+    this->sign() = sign;
+    this->slot() = slot;
+  }
+  FeatureKey& sign() {
+    return *(reinterpret_cast<FeatureKey*>(sign_buffer()));
+  }
+  const FeatureKey& sign() const {
+    return *(reinterpret_cast<const FeatureKey*>(sign_buffer()));
+  }
+  uint16_t& slot() {
+    return slot_;
+  }
+  const uint16_t& slot() const {
+    return slot_;
+  }
+ private:
+  char* sign_buffer() const {
+    return reinterpret_cast<char*>(sign_);
+  }
+  char sign_[sizeof(FeatureKey)];
+  uint16_t slot_;
+};
+
+// sizeof Record is much less than std::vector<MultiSlotType>
+struct Record {
+  std::vector<FeatureItem> uint64_feasigns_;
+  std::vector<FeatureItem> float_feasigns_;
+  std::string ins_id_;
+};
+
+template<class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const FeatureKey& fk) {
+  ar << fk.uint64_feasign_;
+  ar << fk.float_feasign_;
+  return ar;
+}
+
+template<class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           FeatureKey& fk) {
+  ar >> fk.uint64_feasign_;
+  ar >> fk.float_feasign_;
+  return ar;
+}
+
+template<class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const FeatureItem& fi) {
+  ar << fi.sign();
+  ar << fi.slot();
+  return ar;
+}
+
+template<class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           FeatureItem& fi) {
+  ar >> fi.sign();
+  ar >> fi.slot();
+  return ar;
+}
+
+template<class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const Record& r) {
+  ar << r.uint64_feasigns_;
+  ar << r.float_feasigns_;
+  ar << r.ins_id_;
+  return ar;
+}
+
+template<class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           Record& r) {
+  ar >> r.uint64_feasigns_;
+  ar >> r.float_feasigns_;
+  ar >> r.ins_id_;
+  return ar;
+}
+
 // This DataFeed is used to feed multi-slot type data.
 // The format of multi-slot type data:
 //   [n feasign_0 feasign_1 ... feasign_n]*
@@ -408,20 +496,16 @@ class MultiSlotDataFeed
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 };
 
-class MultiSlotInMemoryDataFeed
-    : public InMemoryDataFeed<std::vector<MultiSlotType>> {
+class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  public:
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
 
  protected:
-  virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
-                                   const std::vector<MultiSlotType>& instance,
-                                   int index);
-  virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
-  virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
-  virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
+  virtual bool ParseOneInstance(Record* instance);
+  virtual bool ParseOneInstanceFromPipe(Record* instance);
+  virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

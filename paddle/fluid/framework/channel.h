@@ -308,15 +308,16 @@ Channel<T> MakeChannel(const Channel<U>& other) {
 template <class T>
 class ChannelReader {
  public:
-  explicit ChannelReader(const Channel<T>& channel = nullptr) {
-    reset(channel);
+  explicit ChannelReader(ChannelObject<T>* channel = nullptr) {
+    Reset(channel);
   }
 
   ~ChannelReader() { CHECK(cursor_ == 0) << "Forgot to read buffer data"; }
 
-  const Channel<T>& channel() { return channel_; }
+  ChannelObject<T>* channel() { return channel_; }
 
-  void Reset(const Channel<T>& channel) {
+  void Reset(ChannelObject<T>* channel) {
+    CHECK(channel != nullptr) << "Channel can not be nullptr";
     channel_ = channel;
     cursor_ = 0;
     failed_ = !channel;
@@ -350,7 +351,7 @@ class ChannelReader {
   }
 
  private:
-  Channel<T> channel_;
+  ChannelObject<T>* channel_ = nullptr;
   std::vector<T> buffer_;
   size_t cursor_ = 0;
   bool failed_ = true;
@@ -359,16 +360,17 @@ class ChannelReader {
 template <class T>
 class ChannelWriter {
  public:
-  explicit ChannelWriter(const Channel<T>& channel = nullptr) {
-    reset(channel_);
+  explicit ChannelWriter(ChannelObject<T>* channel = nullptr) {
+    Reset(channel);
   }
 
   ~ChannelWriter() { CHECK(buffer_.empty()) << "Forgot to flush"; }
 
-  const Channel<T>& channel() { return channel_; }
+  ChannelObject<T>* channel() { return channel_; }
 
-  void Reset(const Channel<T>& channel) {
+  void Reset(ChannelObject<T>* channel) {
     CHECK(buffer_.empty()) << "Forgot to flush";
+    CHECK(channel != nullptr) << "Channel can not be nullptr";
     channel_ = channel;
     buffer_.clear();
     failed_ = !channel;
@@ -393,7 +395,7 @@ class ChannelWriter {
       return *this;
     }
     buffer_.push_back(val);
-    if (buffer_.size() >= channel_->block_size()) {
+    if (buffer_.size() >= channel_->BlockSize()) {
       Flush();
     }
     return *this;
@@ -410,7 +412,7 @@ class ChannelWriter {
   }
 
  private:
-  Channel<T> channel_;
+  ChannelObject<T>* channel_ = nullptr;
   std::vector<T> buffer_;
   bool failed_ = true;
 };  // NOLINT
@@ -443,14 +445,14 @@ struct ChannelIterator {
 };  // NOLINT
 
 template <class T>
-ChannelIterator<T> begin(const Channel<T>& chan) {
+ChannelIterator<T> begin(ChannelObject<T>* chan) {
   ChannelIterator<T> it{std::make_shared<ChannelReader<T>>(chan), T()};
   ++it;
   return it;
 }
 
 template <class T>
-ChannelIterator<T> end(const Channel<T>& chan) {
+ChannelIterator<T> end(ChannelObject<T>* chan) {
   return {nullptr, T()};
 }
 
