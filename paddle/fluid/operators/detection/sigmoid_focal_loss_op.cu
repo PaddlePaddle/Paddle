@@ -61,8 +61,8 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
     T p = 1. / (1. + real_exp(-x));
 
     // (1 - p)**gamma * log(p)
-    T term_pos =
-        std::pow(static_cast<T>(1. - p), gamma) * real_log(p > FLT_MIN ? p : FLT_MIN);
+    T term_pos = std::pow(static_cast<T>(1. - p), gamma) *
+                 real_log(p > FLT_MIN ? p : FLT_MIN);
     // p**gamma * log(1 - p)
     T term_neg =
         std::pow(p, gamma) *
