@@ -3108,11 +3108,11 @@ def batch_norm(input,
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
-            is set to None, batch_norm will not save mean, otherwise, batch_norm will save global Mean with
-            the string.
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+            will save global Mean with the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-            If it is set to None, batch_norm will not save mean, otherwise, batch_norm will save global Variance 
-            with the string.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            will save global Variance with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -6001,7 +6001,7 @@ def transpose(x, perm, name=None):
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
-            "Its length shoud be equal to Input(input)'s rank.")
+            "Its length should be equal to Input(input)'s rank.")
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
