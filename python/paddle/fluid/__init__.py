@@ -39,6 +39,7 @@ from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
+from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
@@ -72,7 +73,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -142,7 +143,7 @@ def __bootstrap__():
         'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
         'enable_parallel_graph', 'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname'
+        'tracer_profile_fname', 'dygraph_debug'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')

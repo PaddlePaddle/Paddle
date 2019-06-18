@@ -506,25 +506,20 @@ function assert_api_spec_approvals() {
       if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
           # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,xsrobin 50069408,qingqing01 7845005,junjun315 3124479. 
+          approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
           if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
-            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 50069408 46782768 30176695 6836917 7845005`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 50069408 46782768 30176695 6836917 7845005`
             if [ "${APPROVALS}" == "TRUE" ];then
-              APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-              python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
+              APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
             fi
           elif [ "${API_FILE}" == "CMakeLists.txt" ];then
-            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
           elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
+             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
           elif [ "${API_FILE}" == "python/requirements.txt" ];then
-             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 3124479`
+             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 3124479 6836917`
           else
-            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
           fi
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
@@ -533,7 +528,7 @@ function assert_api_spec_approvals() {
             elif [ "${API_FILE}" == "CMakeLists.txt" ];then
               echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE} for the management reason of the Compilation parameter."
             elif [ "${API_FILE}" == "python/requirements.txt" ];then
-              echo "You must have junjun315 approval for the python/requirements.txt change! ${API_FILE} for the management reason of the Compilation parameter."
+              echo "You must have one RD (junjun315 or luotao1) approval for the python/requirements.txt change! ${API_FILE} for the management reason of the Compilation parameter."
             elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
               echo "You must have xsrobin approval for the python/paddle/fluid/__init__.py change! ${API_FILE} for the management reason of the environment variables."
             else
@@ -845,7 +840,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install opencv-python x86cpu==0.4 && pip3 install /*.whl; apt-get install -f -y && \
+        pip3 install opencv-python py-cpuinfo==5.0.0 && pip3 install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         ${PADDLE_VERSION} && \
