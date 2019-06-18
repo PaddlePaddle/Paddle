@@ -80,7 +80,7 @@ def run_check():
                     if use_cuda:
                         places = [core.CUDAPlace(0), core.CUDAPlace(1)]
                     else:
-                        places = core.CPUPlace()
+                        places = [core.CPUPlace(), core.CPUPlace()]
                     loss = layers.mean(out)
                     loss.persistable = True
                     optimizer.SGD(learning_rate=0.01).minimize(loss)
