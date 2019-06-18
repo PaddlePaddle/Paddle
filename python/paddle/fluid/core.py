@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import sys
 import os
-from x86cpu import info as cpuinfo
+from cpuinfo import get_cpu_info
 
 try:
     if os.name == 'nt':
@@ -45,7 +45,7 @@ except Exception as e:
     raise e
 
 load_noavx = False
-if cpuinfo.supports_avx:
+if 'avx' in get_cpu_info()['flags']:
     try:
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
