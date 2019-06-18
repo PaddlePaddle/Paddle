@@ -72,15 +72,11 @@ class SliceKernel : public framework::OpKernel<T> {
           vec_origin_out_shape[decrease_axis[i]] = 1;
         }
 
-        int step_in = 0;
-        for (int i = 0; i < out_dims.size(); ++i) {
-          while (true) {
-            if (vec_origin_out_shape[step_in] == -1) {
-              vec_origin_out_shape[step_in] = out_dims[i];
-              break;
-            }
-
-            step_in++;
+        int index = 0;
+        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
+          if (vec_origin_out_shape[i] == -1) {
+            vec_origin_out_shape[i] = out_dims[index];
+            ++index;
           }
         }
 
@@ -176,15 +172,11 @@ class SliceGradKernel : public framework::OpKernel<T> {
           vec_origin_out_shape[decrease_axis[i]] = 1;
         }
 
-        int step_in = 0;
-        for (int i = 0; i < out_dims.size(); ++i) {
-          while (true) {
-            if (vec_origin_out_shape[step_in] == -1) {
-              vec_origin_out_shape[step_in] = out_dims[i];
-              break;
-            }
-
-            step_in++;
+        int index = 0;
+        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
+          if (vec_origin_out_shape[i] == -1) {
+            vec_origin_out_shape[i] = out_dims[index];
+            ++index;
           }
         }
 

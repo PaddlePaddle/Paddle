@@ -787,7 +787,6 @@ class Variable(object):
                 return self._cloneVar(True)
             start, stop, step = self._slice_indices(item, self.shape[axis])
             if step == 1:
-                print("22", start)
                 return self._sliceVar([axis], [start], [stop])
             else:
                 vars = []
