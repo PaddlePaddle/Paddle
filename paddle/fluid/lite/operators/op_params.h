@@ -203,6 +203,15 @@ struct SplitParam {
   std::vector<int> sections;
 };
 
+// For Transpose op
+struct TransposeParam {
+  const lite::Tensor* x{};
+  lite::Tensor* output{};
+  std::vector<int> axis;
+  bool use_mkldnn{false};
+  std::string data_format{"AnyLayout"};
+};
+
 /// ----------------------- element wise operators ----------------------
 struct ElementwiseParam {
   const lite::Tensor* X{};

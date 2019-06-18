@@ -22,6 +22,7 @@ cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framewo
 cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
 cc_library(split_op_lite SRCS split_op.cc DEPS ${op_DEPS})
+cc_library(transpose_op_lite SRCS transpose_op.cc DEPS ${op_DEPS})
 
 set(ops_lite
         conv_op_lite
@@ -44,6 +45,7 @@ set(ops_lite
         dropout_op_lite
         concat_op_lite
         split_op_lite
+        transpose_op_lite
         PARENT_SCOPE)
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
@@ -61,3 +63,4 @@ lite_cc_test(test_concat_op_lite SRCS concat_op_test.cc DEPS concat_op_lite memo
 lite_cc_test(test_fusion_elementwise_activation_ops_lite 
              SRCS fusion_elementwise_activation_ops_test.cc 
              DEPS fusion_elementwise_activation_ops_lite memory_lite)
+lite_cc_test(test_transpose_op_lite SRCS transpose_op_test.cc DEPS transpose_op_lite memory_lite)
