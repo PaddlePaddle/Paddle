@@ -18,10 +18,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    c_reducescatter, 
+    c_reducescatter,
     ops::CReduceScatterOpKernel<plat::CUDADeviceContext, float>,
     ops::CReduceScatterOpKernel<plat::CUDADeviceContext, double>,
     ops::CReduceScatterOpKernel<plat::CUDADeviceContext, int>,
     ops::CReduceScatterOpKernel<plat::CUDADeviceContext, int64_t>,
     ops::CReduceScatterOpKernel<plat::CUDADeviceContext, plat::float16>);
-
