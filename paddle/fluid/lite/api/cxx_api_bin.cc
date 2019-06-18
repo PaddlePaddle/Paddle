@@ -28,9 +28,10 @@ double time_diff(Time t1, Time t2) {
   return counter.count() / 1000.0;
 }
 
-void Run(const char* model_dir, int repeat) {
+void Run(const char* model_dir, int repeat, int thread_num) {
 #ifdef LITE_WITH_ARM
   DeviceInfo::Init();
+  DeviceInfo::Global().SetRunMode(LITE_POWER_HIGH, thread_num);
 #endif
   lite::ExecutorLite predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
@@ -66,8 +67,8 @@ void Run(const char* model_dir, int repeat) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  CHECK_EQ(argc, 3) << "usage: ./cmd <model_dir> <repeat>";
-  paddle::lite::Run(argv[1], std::stoi(argv[2]));
+  CHECK_EQ(argc, 4) << "usage: ./cmd <model_dir> <repeat> <thread_num>";
+  paddle::lite::Run(argv[1], std::stoi(argv[2]), std::stoi(argv[3]));
 
   return 0;
 }
