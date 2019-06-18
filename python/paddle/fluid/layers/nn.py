@@ -203,6 +203,7 @@ __all__ = [
     'where',
     'sign',
     'deformable_conv',
+    'shard_index',
 ]
 
 kIgnoreIndex = -100
@@ -6585,6 +6586,40 @@ def one_hot(input, depth):
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
+
+
+def shard_index(input, irange, nshards, shard_id):
+    """
+    This layer creates the sharding representations for input indices.
+
+    Args:
+        input(Variable): Input indices, last dimension must be 1.
+        range(scalar): An interger defining the range of the index.
+        nshards(scalar): An interger defining the shard number.
+        shard_id(scalar): An interger defining this shard index.
+
+    Returns:
+        Variable: The sharding representations of input.
+
+    Examples:
+        .. code-block:: python
+
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            shard_label = fluid.layers.shard_index(input=label,
+                    range=10, nshards=5, shard_id=0)
+    """
+    helper = LayerHelper("shard_index", **locals())
+
+    shard_index_out = helper.create_variable_for_type_inference(input.dtype)
+    helper.append_op(
+        type='shard_index',
+        inputs={'X': input},
+        outputs={'Out': shard_index_out},
+        attrs={'range': irange,
+               'nshards': nshards,
+               'shard_id': shard_id},
+        stop_gradient=True)
+    return shard_index_out
 
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):

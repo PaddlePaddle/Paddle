@@ -29,7 +29,7 @@ from ..framework import Program, default_main_program, default_startup_program
 from .details import wait_server_ready
 from ..core.op_proto_and_checker_maker import OpRole
 
-__all__ = ['SGD', 'LocalSGD']
+__all__ = ['GradAllReduce', 'LocalSGD']
 
 
 class Collective(object):
@@ -166,7 +166,7 @@ class Collective(object):
                 int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
 
 
-class SGD(Collective):
+class GradAllReduce(Collective):
     '''
     '''
 
@@ -191,7 +191,10 @@ class SGD(Collective):
                     type='scale',
                     inputs={'X': loss_grad_var},
                     outputs={'Out': loss_grad_var},
-                    attrs={'scale': 1.0 / self.nranks})
+                    attrs={
+                        'scale': 1.0 / self.nranks,
+                        self.op_role_key: OpRole.Collective
+                    })
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
@@ -207,7 +210,7 @@ class SGD(Collective):
 
                 block._insert_op(
                     idx + 1,
-                    type='c_sync_compute_stream',
+                    type='c_sync_calc_stream',
                     attrs={self.op_role_key: OpRole.Collective})
 
                 offset = 2
@@ -284,7 +287,7 @@ class LocalSGD(Collective):
                     attrs={self.op_role_key: OpRole.Collective})
                 block._insert_op(
                     idx + 2,
-                    type='c_sync_compute_stream',
+                    type='c_sync_calc_stream',
                     attrs={self.op_role_key: OpRole.Collective})
                 block._insert_op(
                     idx + 3,

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,55 +12,82 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
+#include <future>  // NOLINT
+#include <memory>
+#include <ostream>
 
-namespace paddle{
-namespace operators{
+namespace paddle {
+namespace operators {
 
-class CReduceScatterOp:public framework::OperatorWithKernel{
+class CReduceScatterOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override{
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                                 "Output(Out) of SyncFCGather op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    auto in_dim = ctx->GetInputDim("X");
-    in_dim[0] = in_dim[0]/nranks;
-    ctx->SetOutputDim("Out", in_dim);
+    framework::DDim dim = ctx->GetInputDim("X");
+    if (dim[0] > 0 || dim[0] < -1) {
+      PADDLE_ENFORCE(dim[0] % nranks == 0,
+                     "dim[0] (%d) is not divisible by nranks(%d)", dim[0],
+                     nranks);
+      dim[0] /= nranks;
+    }
+    ctx->SetOutputDim("Out", dim);
   }
 };
 
-class CReduceScatterOpMaker: public framework::OpProtoAndCheckerMaker{
+class CReduceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make(){
-   AddInput("X","(Tensor) tensor to be allgather");
-   AddOutput("Out","(Tensor) the allgather result");
-   AddAttr<int>("ring_id", "(int) communication ring id.").SetDefault(0);
-   AddAttr<int>("nranks","Total trainer count of the distributed training job").SetDefault(1);
-   AddComment(R"DOC(
-***CAllGather Operator***
+  void Make() {
+    AddInput("X", "(Tensor) tensor to be allgather");
+    AddOutput("Out", "(Tensor) the allgather result");
+    AddAttr<int>("ring_id", "(int default 0) communication ring id.")
+        .SetDefault(0);
+    AddAttr<int>("nranks",
+                 "Total trainer count of the distributed training job")
+        .SetDefault(1);
+    AddAttr<bool>(
+        "use_calc_stream",
+        "(bool default false) eject CUDA operations to calculation stream.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+***CReduceScatter Operator***
 
-Call NCCL collective  AllGather internally. Note that this op must be used when one
-thread is managing one GPU device.
+Call NCCL collective ReduceScatter internally.
 )DOC");
   }
 };
 
-} //namespace operators
-} //namespace paddle
+class CReduceScatterOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+    retv->SetType("c_allgather");
+    retv->SetInput("X", OutputGrad("Out"));
+    retv->SetOutput("Out", InputGrad("X"));
+    retv->SetAttrMap(Attrs());
+    return retv;
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter, ops::CReduceScatterOp,
-                             ops::CReduceScatterOpMaker);
+REGISTER_OPERATOR(c_reducescatter, ops::CReduceScatterOp,
+                  ops::CReduceScatterOpMaker);
+
 REGISTER_OP_CPU_KERNEL(
     c_reducescatter, ops::CReduceScatterOpKernel<plat::CPUDeviceContext, float>,
     ops::CReduceScatterOpKernel<plat::CPUDeviceContext, double>,
     ops::CReduceScatterOpKernel<plat::CPUDeviceContext, int>,
     ops::CReduceScatterOpKernel<plat::CPUDeviceContext, int64_t>,
     ops::CReduceScatterOpKernel<plat::CPUDeviceContext, plat::float16>);
-

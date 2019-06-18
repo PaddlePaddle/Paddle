@@ -335,8 +335,8 @@ class DistributeTranspiler(object):
             main_program = default_main_program()
 
         transpiler = None
-        if collective_mode == 'sgd':
-            transpiler = collective.SGD()
+        if collective_mode == 'grad_allreduce':
+            transpiler = collective.GradAllReduce()
         elif collective_mode == 'local_sgd':
             transpiler = collective.LocalSGD()
         else:
