@@ -61,26 +61,30 @@ class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor, Tensor<float>) Output tensor with same shape as X. "
         "The tensor consists of sharding representations of values in X.");
 
-    AddAttr<int>("range",
-                 "A positive integer to specify the range of the label.");
-    AddAttr<int>("nshards", "The number of shards for dividing label range");
+    AddAttr<int>("shard_range",
+                 "A positive integer to specify the range of each shard.");
     AddAttr<int>("shard_id", "The shard index");
     AddComment(R"DOC(
 Shard Index Operator. This operator creates the sharding representations for input
 index values. The following example will help to explain the function of this
 operator:
 
-X is a LoDTensor:
-  X.lod = [[0, 1, 4]]
+X is a Tensor:
   X.shape = [4, 1]
   X.data = [[1], [2], [3], [0]]
 
-set range = 4, nshards = 2
+set shard_range = 2
 
-Out is a LoDTensor:
-  Out.lod = [[0, 1, 4]]
+if shard_id == 0, we get the Out:
   Out.shape = [4, 1]
-  Out.data = [[1], [0], [1], [0]]
+  Out.data = [[1], [-1], [-1], [0]]
+
+if shard_id == 1, we get the Out:
+  Out.shape = [4, 1]
+  Out.data = [[-1], [0], [1], [-1]]
+
+so, the calculation is summarized as
+y = x % shard_range if x / shard_range == shard_id else -1
 
 )DOC");
   }
