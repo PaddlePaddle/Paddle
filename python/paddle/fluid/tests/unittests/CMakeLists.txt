@@ -175,7 +175,7 @@ py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext EN
 set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)

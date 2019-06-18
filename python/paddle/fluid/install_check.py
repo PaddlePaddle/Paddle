@@ -52,7 +52,10 @@ def run_check():
     place = core.CPUPlace() if not core.is_compiled_with_cuda(
     ) else core.CUDAPlace(0)
     np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-    os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+    if core.get_cuda_device_count() > 1:
+        os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+    else:
+        os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
     def test_parallerl_exe():
         train_prog = Program()
@@ -119,13 +122,13 @@ def run_check():
     try:
         test_parallerl_exe()
         print("Your Paddle Fluid works well on MUTIPLE GPU or CPU.")
-    except RuntimeError as e:
+    except Exception as e:
         logging.warning(
-            "Your Paddle Fluid has some problem with multiple GPU. This may be caused by"
-            "1. There is only 1 GPU visible on your Device;"
-            "2. No.1 or No.2 GPU or both of them are occupied now"
-            "3. Wrong installation of NVIDIA-NCCL2, please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
+            "Your Paddle Fluid has some problem with multiple GPU. This may be caused by:"
+            "\n 1. There is only 1 GPU visible on your Device;"
+            "\n 2. No.1 or No.2 GPU or both of them are occupied now"
+            "\n 3. Wrong installation of NVIDIA-NCCL2, please follow instruction on https://github.com/NVIDIA/nccl-tests "
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
         )
 
         print("\n Original Error is: {}".format(e))
