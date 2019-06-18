@@ -24,10 +24,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.core import Compressor
+from paddle.fluid.log_helper import get_logger
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def parse_args():
@@ -84,8 +84,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from('{}f'.format(img_ch * img_w *
-                                                          img_h), img)
+                    img = struct.unpack_from(
+                        '{}f'.format(img_ch * img_w * img_h), img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -137,12 +137,14 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype("int64")
                 labels = labels.reshape([-1, 1])
+                fluid.core.set_num_threads(int(os.environ['CPU_NUM_THREADS']))
                 out = exe.run(inference_program,
                               feed={
                                   feed_target_names[0]: images,
                                   feed_target_names[1]: labels
                               },
                               fetch_list=fetch_targets)
+                fluid.core.set_num_threads(1)
                 top1 += np.sum(out[1]) * len(data)
                 top5 += np.sum(out[2]) * len(data)
                 total_samples += len(data)
@@ -170,6 +172,17 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         com_pass.config(config_path)
         com_pass.run()
 
+    def _compare_accuracy(self, fp32_acc1, int8_acc1, threshold):
+        _logger.info('--- Accuracy summary ---')
+        _logger.info(
+            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'
+            .format(threshold))
+        _logger.info('FP32: avg top1 accuracy: {0:.4f}'.format(fp32_acc1))
+        _logger.info('INT8: avg top1 accuracy: {0:.4f}'.format(int8_acc1))
+        assert fp32_acc1 > 0.0
+        assert int8_acc1 > 0.0
+        assert fp32_acc1 - int8_acc1 <= threshold
+
     def test_compression(self):
         if not fluid.core.is_compiled_with_mkldnn():
             return
@@ -183,8 +196,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
         accuracy_diff_threshold = test_case_args.accuracy_diff_threshold
 
         _logger.info(
-            'FP32 & INT8 prediction run: batch_size {0}, warmup batch size {1}.'.
-            format(batch_size, warmup_batch_size))
+            'FP32 & INT8 prediction run: batch_size {0}, warmup batch size {1}.'
+            .format(batch_size, warmup_batch_size))
 
         #warmup dataset, only use the first batch data
         warmup_reader = paddle.batch(
@@ -202,15 +215,8 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
             self._reader_creator(data_path, False), batch_size=batch_size)
         fp32_model_result = self._predict(val_reader, fp32_model_path)
 
-        _logger.info('--- comparing outputs ---')
-        _logger.info('Avg top1 INT8 accuracy: {0:.4f}'.format(int8_model_result[
-            0]))
-        _logger.info('Avg top1 FP32 accuracy: {0:.4f}'.format(fp32_model_result[
-            0]))
-        _logger.info('Accepted accuracy drop threshold: {0}'.format(
-            accuracy_diff_threshold))
-        assert fp32_model_result[0] - int8_model_result[
-            0] <= accuracy_diff_threshold
+        self._compare_accuracy(fp32_model_result[0], int8_model_result[0],
+                               accuracy_diff_threshold)
 
 
 if __name__ == '__main__':
