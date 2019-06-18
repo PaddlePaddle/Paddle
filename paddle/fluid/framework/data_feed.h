@@ -419,7 +419,7 @@ struct Record {
   std::string ins_id_;
 };
 
-template<class AR>
+template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
                                            const FeatureKey& fk) {
   ar << fk.uint64_feasign_;
@@ -427,7 +427,7 @@ paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
-template<class AR>
+template <class AR>
 paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
                                            FeatureKey& fk) {
   ar >> fk.uint64_feasign_;
@@ -435,7 +435,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
-template<class AR>
+template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
                                            const FeatureItem& fi) {
   ar << fi.sign();
@@ -443,7 +443,7 @@ paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
-template<class AR>
+template <class AR>
 paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
                                            FeatureItem& fi) {
   ar >> fi.sign();
@@ -451,7 +451,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
-template<class AR>
+template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
                                            const Record& r) {
   ar << r.uint64_feasigns_;
@@ -460,7 +460,7 @@ paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
   return ar;
 }
 
-template<class AR>
+template <class AR>
 paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
                                            Record& r) {
   ar >> r.uint64_feasigns_;
