@@ -16,6 +16,7 @@ limitations under the License. */
 #include <set>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
@@ -317,9 +318,11 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
         context.GetPlace());
     auto* out_data = out.mutable_value()->data<T>();
 
+    const int thread_num = 4;
+
     if (merged_row_set.size() == row_num && !sorted_result) {
-      // no duplicated ids, just concat the result together
       std::vector<int64_t> merge_rows;
+      // no duplicated ids, just concat the result together
       merge_rows.reserve(row_num);
       // concat rows
       for (auto* in : inputs) {
@@ -342,11 +345,9 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     } else {
       std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                       merged_row_set.end());
-
       if (sorted_result) {
         std::sort(merge_rows.begin(), merge_rows.end());
       }
-
       out.set_rows(merge_rows);
 
       math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
@@ -356,22 +357,32 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       for (size_t i = 0; i < merge_rows.size(); ++i) {
         rows_to_id[merge_rows[i]] = i;
       }
-
       auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-      for (auto* input : inputs) {
-        if (input->rows().size() == 0) {
-          continue;
-        }
-        auto* input_data = input->value().data<T>();
-        auto& input_rows = input->rows();
 
-        for (size_t i = 0; i < input_rows.size(); i++) {
-          size_t out_i = rows_to_id[input_rows[i]];
-          elementwise_add_to<platform::CPUDeviceContext, T>(
-              context, &blas, static_cast<size_t>(input_width),
-              &input_data[i * input_width], &out_data[out_i * input_width]);
-        }
+      std::vector<std::future<void>> fs;
+      for (int thread_idx = 0; thread_idx < thread_num; ++thread_idx) {
+        fs.push_back(framework::Async([&inputs, &rows_to_id, &context, &blas,
+                                       &out_data, input_width, thread_idx]() {
+          for (auto* input : inputs) {
+            if (input->rows().size() == 0) {
+              continue;
+            }
+            auto* input_data = input->value().data<T>();
+            auto& input_rows = input->rows();
+
+            for (size_t i = 0; i < input_rows.size(); i++) {
+              if (input_rows[i] % thread_num == thread_idx) {
+                size_t out_i = rows_to_id[input_rows[i]];
+                elementwise_add_to<platform::CPUDeviceContext, T>(
+                    context, &blas, static_cast<size_t>(input_width),
+                    &input_data[i * input_width],
+                    &out_data[out_i * input_width]);
+              }
+            }
+          }
+        }));
       }
+      for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
     }
   }
 };
