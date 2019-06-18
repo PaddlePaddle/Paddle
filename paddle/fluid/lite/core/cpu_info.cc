@@ -150,7 +150,6 @@ void DeviceInfo::BindDev() {
 }
 
 void DeviceInfo::SetRunMode(PowerMode mode, int threads) {
-  LOG(INFO) << "ARM SetRunMode called";
   int big_core_size = big_core_ids_.size();
   int small_core_size = little_core_ids_.size();
   if (threads > big_core_size + small_core_size) {
