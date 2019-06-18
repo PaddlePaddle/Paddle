@@ -29,6 +29,7 @@
 #include <omp.h>
 #endif
 
+#include <cstdarg>
 #include "paddle/fluid/lite/core/cpu_info.h"
 
 namespace paddle {
