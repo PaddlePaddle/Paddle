@@ -92,17 +92,17 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3 --no-cache-dir install -U wheel && \
+RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.6 --no-cache-dir install -U wheel && \
+    pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.7 --no-cache-dir install -U wheel && \
+    pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     easy_install -U pip && \
-    pip --no-cache-dir install -U pip setuptools wheel && \
+    pip --no-cache-dir install -U pip setuptools wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
