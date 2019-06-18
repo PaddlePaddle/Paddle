@@ -65,9 +65,17 @@ class CAllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
+
+    cudaStream_t stream = nullptr;
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+    } else {
+      stream = comm->stream();
+    }
+
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, red_type, comm->comm(),
-        comm->stream()));
+        sendbuff, recvbuff, numel, dtype, red_type, comm->comm(), stream));
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

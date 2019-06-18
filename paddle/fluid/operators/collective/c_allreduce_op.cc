@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,13 +41,18 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
     AddOutput("Out", "(Tensor) the allreduced result.");
-    AddAttr<int>("reduce_type", "(int) determin the reduce type.")
+    AddAttr<int>("reduce_type", "(int default 0) determin the reduce type.")
         .SetDefault(0);
-    AddAttr<int>("ring_id", "(int) communication ring id.").SetDefault(0);
+    AddAttr<int>("ring_id", "(int default 0) communication ring id.")
+        .SetDefault(0);
+    AddAttr<bool>(
+        "use_calc_stream",
+        "(bool default false) eject CUDA operations to calculation stream.")
+        .SetDefault(false);
     AddComment(R"DOC(
 ***CAllReduce Operator***
 
-Call NCCL collective  AllReduce internally. Note that this op must be used when one
+Call NCCL collective AllReduce internally. Note that this op must be used when one
 thread is managing one GPU device.
 
 For speed reasons, reduce_type should be an integer:
@@ -55,8 +60,7 @@ For speed reasons, reduce_type should be an integer:
 0: sum
 1: prod
 2: max
-3: min
-
+3: min 
 If input and output are the same variable, in-place allreduce will be used.
 )DOC");
   }

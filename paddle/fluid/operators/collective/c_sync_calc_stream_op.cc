@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,12 +24,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class CSyncComputeStreamOp : public framework::OperatorBase {
+class CSyncCalcStreamOp : public framework::OperatorBase {
  public:
-  CSyncComputeStreamOp(const std::string& type,
-                       const framework::VariableNameMap& inputs,
-                       const framework::VariableNameMap& outputs,
-                       const framework::AttributeMap& attrs)
+  CSyncCalcStreamOp(const std::string& type,
+                    const framework::VariableNameMap& inputs,
+                    const framework::VariableNameMap& outputs,
+                    const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
@@ -50,7 +50,7 @@ class CSyncComputeStreamOp : public framework::OperatorBase {
   }
 };
 
-class CSyncComputeStreamOpMaker : public framework::OpProtoAndCheckerMaker {
+class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddComment(R"DOC(
@@ -66,5 +66,5 @@ Call cuda stream synchronize.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_sync_compute_stream, ops::CSyncComputeStreamOp,
-                  ops::CSyncComputeStreamOpMaker);
+REGISTER_OPERATOR(c_sync_calc_stream, ops::CSyncCalcStreamOp,
+                  ops::CSyncCalcStreamOpMaker);

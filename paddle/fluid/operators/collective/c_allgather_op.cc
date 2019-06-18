@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SyncFCGather op should not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    auto in_dim = ctx->GetInputDim("X");
-    in_dim[0] = in_dim[0] * nranks;
-    ctx->SetOutputDim("Out", in_dim);
+    framework::DDim dim = ctx->GetInputDim("X");
+    dim[0] = dim[0] * nranks;
+    ctx->SetOutputDim("Out", dim);
   }
 };
 
@@ -39,14 +39,18 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor) tensor to be allgather");
     AddOutput("Out", "(Tensor) the allgather result");
-    AddAttr<int>("ring_id", "(int) communication ring id.").SetDefault(0);
+    AddAttr<int>("ring_id", "(int default 0) communication ring id.")
+        .SetDefault(0);
+    AddAttr<bool>(
+        "use_calc_stream",
+        "(bool default false) eject CUDA operations to calculation stream.")
+        .SetDefault(false);
     AddAttr<int>("nranks",
                  "Total trainer count of the distributed training job");
     AddComment(R"DOC(
 ***CAllGather Operator***
 
-Call NCCL collective  AllGather internally. Note that this op must be used when one
-thread is managing one GPU device.
+Call NCCL collective AllGather internally.
 )DOC");
   }
 };
@@ -74,6 +78,7 @@ namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp, ops::CAllGatherOpGradMaker,
                   ops::CAllGatherOpMaker);
+
 REGISTER_OP_CPU_KERNEL(
     c_allgather, ops::CAllGatherOpKernel<plat::CPUDeviceContext, float>,
     ops::CAllGatherOpKernel<plat::CPUDeviceContext, double>,
