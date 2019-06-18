@@ -194,8 +194,13 @@ void BindImperative(pybind11::module *m_ptr) {
 
   m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
 
+  m.def("_is_dygraph_debug_enabled",
+        []() { return imperative::IsDebugEnabled(); });
+  m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
+
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase", R"DOC()DOC")
+      .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def(
           py::init<const std::string &, paddle::framework::proto::VarType::Type,
                    const std::vector<int64_t>, const paddle::platform::CPUPlace,
