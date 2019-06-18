@@ -14,10 +14,12 @@
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
 import numpy as np
+import os
 
 from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
+import logging
 
 __all__ = [
     'enabled',
@@ -134,6 +136,21 @@ def guard(place=None):
             with framework._dygraph_guard(tracer):
                 with framework._dygraph_place_guard(place):
                     yield
+
+
+def _print_debug_msg():
+    if not core._is_dygraph_debug_enabled():
+        logging.warn(
+            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
+        )
+        return
+
+    unique_name_size = len(framework.unique_name.generator.ids)
+    tracer_var_size = len(framework._dygraph_tracer()._vars)
+    alive_cpp_var_size = len(core.VarBase._alive_vars())
+    logging.warn(
+        'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
+        .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
 
 
 def to_variable(value, block=None, name=None):
