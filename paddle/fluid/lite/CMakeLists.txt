@@ -10,6 +10,9 @@ message(STATUS "LITE_WITH_ARM:\t${LITE_WITH_ARM}")
 message(STATUS "LITE_WITH_PROFILE:\t${LITE_WITH_PROFILE}")
 
 set(LITE_MODEL_DIR "${THIRD_PARTY_PATH}/install")
+
+set(LITE_ON_MOBILE LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+
 set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 
 function(lite_download_and_uncompress INSTALL_DIR URL FILENAME)
@@ -182,3 +185,8 @@ add_subdirectory(model_parser)
 add_subdirectory(utils)
 add_subdirectory(api)
 add_subdirectory(gen_code)
+
+
+if (WITH_TESTING)
+    lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
+endif()

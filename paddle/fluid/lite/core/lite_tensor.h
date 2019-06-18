@@ -90,6 +90,8 @@ class TensorLite : public TensorBase<TensorLite> {
   void *mutable_data(size_t memory_size);
   void *mutable_data(TargetType target, size_t memory_size);
 
+  const void *raw_data() const { return buffer_->data(); }
+
   size_t memory_size() const { return memory_size_; }
 
   bool IsInitialized() const { return buffer_->data(); }
