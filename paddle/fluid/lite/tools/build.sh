@@ -57,6 +57,7 @@ function check_style {
 function cmake_arm {
     # $1: ARM_TARGET_OS in "android" , "armlinux"
     # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+    # $3: ARM_TARGET_LANG in "gcc" "clang"
     cmake .. \
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF \
@@ -66,7 +67,7 @@ function cmake_arm {
         -DLITE_WITH_ARM=ON \
         -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
         -DWITH_TESTING=ON \
-        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
 }
 
 function build_single {
@@ -125,31 +126,36 @@ function test_arm_android {
 function build_test_arm {
     # 1. Build goes first
     cur_dir=$(pwd)
-    for os in "android" "armlinux" ; do
-        for abi in "armv8" "armv7" "armv7hf"; do 
-            # TODO(hongming): enable compile armv7 and armv7hf on armlinux
-            if [[ ${abi} == "armv7hf" ]]; then
-                echo "armv7hf is not supported on both android and armlinux yet"
+    for lang in "gcc" "clang"; do
+        for os in "android" "armlinux" ; do
+            if [[ ${os} == "armlinux" && ${lang} == "clang" ]]; then
                 continue
             fi
-            
-            # TODO(hongming): enable armv7 on armlinux
-            if [[ ${os} == "armlinux" && ${abi} == "armv7" ]]; then
-                echo "armv7 is not supported on armlinux yet"
-                continue
-            fi
+            for abi in "armv8" "armv7" "armv7hf"; do 
+                # TODO(hongming): enable compile armv7 and armv7hf on armlinux
+                if [[ ${abi} == "armv7hf" ]]; then
+                    echo "armv7hf is not supported on both android and armlinux yet"
+                    continue
+                fi
+                
+                # TODO(hongming): enable armv7 on armlinux
+                if [[ ${os} == "armlinux" && ${abi} == "armv7" ]]; then
+                    echo "armv7 is not supported on armlinux yet"
+                    continue
+                fi
 
-            if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
-                echo "android do not need armv7hf"
-                continue
-            fi
+                if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
+                    echo "android do not need armv7hf"
+                    continue
+                fi
 
-            build_dir=$cur_dir/build.lite.${os}.${abi}
-            mkdir -p $build_dir
-            cd $build_dir
+                build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
+                mkdir -p $build_dir
+                cd $build_dir
 
-            cmake_arm ${os} ${abi}
-            build $TESTS_FILE
+                cmake_arm ${os} ${abi} ${lang}
+                build $TESTS_FILE
+            done
         done
     done
 
@@ -168,26 +174,28 @@ function build_test_arm {
     sleep 1m
 
     # now can only test android.
-    for abi in "armv8" "armv7" ; do
-        # TODO(yuanshuai): enable armv7 on android
-        if [[ ${abi} == "armv7" ]]; then
-            continue
-        fi
+    for lang in "gcc" "clang"; do
+        for abi in "armv8" "armv7" ; do
+            # TODO(yuanshuai): enable armv7 on android
+            if [[ ${abi} == "armv7" ]]; then
+                continue
+            fi
 
-        build_dir=$cur_dir/build.lite.android.${abi}
-        cd $build_dir
+            build_dir=$cur_dir/build.lite.android.${abi}.${lang}
+            cd $build_dir
 
-        local port=
-        if [[ ${abi} == "armv7" ]]; then
-            port=${port_armv7}
-        fi
+            local port=
+            if [[ ${abi} == "armv7" ]]; then
+                port=${port_armv7}
+            fi
 
-        if [[ ${abi} == "armv8" ]]; then
-            port=${port_armv8}
-        fi
-        echo "test file: ${TESTS_FILE}"
-        for _test in $(cat $TESTS_FILE); do
-            test_arm_android $_test $port
+            if [[ ${abi} == "armv8" ]]; then
+                port=${port_armv8}
+            fi
+            echo "test file: ${TESTS_FILE}"
+            for _test in $(cat $TESTS_FILE); do
+                test_arm_android $_test $port
+            done
         done
     done
 
