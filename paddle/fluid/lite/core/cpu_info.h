@@ -16,21 +16,8 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/lite_tensor.h"
 #include "paddle/fluid/lite/utils/cp_logging.h"
-
-#ifdef LITE_WITH_LINUX
-#include <sys/syscall.h>
-#include <unistd.h>
-#endif
-
-#if __APPLE__
-#include "TargetConditionals.h"
-#if TARGET_OS_IPHONE
-#include <mach/machine.h>
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#endif  // TARGET_OS_IPHONE
-#endif  // __APPLE__
 
 namespace paddle {
 namespace lite {
@@ -80,6 +67,15 @@ class DeviceInfo {
   std::vector<int> cluster_ids_;
   std::vector<ARMArch> archs_;
 
+  ARMArch arch_;
+  // LITE_POWER_HIGH stands for using big cores,
+  // LITE_POWER_LOW stands for using small core,
+  // LITE_POWER_FULL stands for using all cores
+  PowerMode mode_;
+  std::vector<int> active_ids_;
+  TensorLite workspace_;
+  int64_t count_{0};
+
   static DeviceInfo& Global() {
     static auto* x = new DeviceInfo;
     return *x;
@@ -89,6 +85,25 @@ class DeviceInfo {
     auto& info = Global();
     InitInternal(&info);
   }
+
+  void SetRunMode(PowerMode mode, int threads);
+  void SetCache(int l1size, int l2size, int l3size);
+  void SetArch(ARMArch arch) { arch_ = arch; }
+  void BindDev();
+
+  PowerMode mode() const { return mode_; }
+  int threads() const { return active_ids_.size(); }
+  ARMArch arch() const { return arch_; }
+
+  template <typename T>
+  T* workspace_data() {
+    return workspace_.mutable_data<T>();
+  }
+
+  int l1_cache_size() const { return L1_cache_[active_ids_[0]]; }
+  int l2_cache_size() const { return L2_cache_[active_ids_[0]]; }
+  int l3_cache_size() const { return L3_cache_[active_ids_[0]]; }
+  bool ExtendWorkspace(DDimLite dims);
 
  private:
   DeviceInfo() = default;
