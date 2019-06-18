@@ -36,6 +36,19 @@ USE_LITE_KERNEL(depthwise_conv2d, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(pool2d, kX86, kFloat, kNCHW, def);
 #endif
 
+#ifdef LITE_WITH_ARM
+USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(elementwise_add, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
+#endif
+
 #ifdef LITE_WITH_CUDA
 USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
 USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
