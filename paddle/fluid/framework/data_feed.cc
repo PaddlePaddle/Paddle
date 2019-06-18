@@ -800,12 +800,12 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
 #ifdef _LINUX
-  std::vector<std::vector<float>> batch_float_feasigns(
-      use_slots_.size(), std::vector<float>());
+  std::vector<std::vector<float>> batch_float_feasigns(use_slots_.size(),
+                                                       std::vector<float>());
   std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
       use_slots_.size(), std::vector<uint64_t>());
-  std::vector<std::vector<size_t>> offset(
-      use_slots_.size(), std::vector<size_t>{0});
+  std::vector<std::vector<size_t>> offset(use_slots_.size(),
+                                          std::vector<size_t>{0});
   std::vector<bool> visit(use_slots_.size(), false);
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
@@ -820,7 +820,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
       if (visit[j]) {
-         visit[j] = false;
+        visit[j] = false;
       } else {
         // fill slot value with default value 0
         if (type[0] == 'f') {  // float

@@ -344,11 +344,13 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     readers_[i]->SetFileListIndex(&file_idx_);
     readers_[i]->SetFileList(filelist_);
-    readers_[i]->SetInputChannel(input_channel_.get());
-    if (cur_channel_ == 0) {
+    if (input_channel_ != nullptr) {
+      readers_[i]->SetInputChannel(input_channel_.get());
+    }
+    if (cur_channel_ == 0 && channel_idx < multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
-    } else {
+    } else if (channel_idx < multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_consume_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_output_channel_[channel_idx].get());
     }
