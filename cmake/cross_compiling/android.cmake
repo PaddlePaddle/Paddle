@@ -31,7 +31,7 @@ if(NOT DEFINED ANDROID_API_LEVEL)
 endif()
 
 if(NOT DEFINED ANDROID_STL_TYPE)
-    set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type")
+    set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type") # can also use shared
 endif()
 
 if(ARM_TARGET_ARCH_ABI STREQUAL "armv7hf")
@@ -71,8 +71,31 @@ if (NOT ANDROID_STL_TYPE IN_LIST ANDROID_STL_TYPE_LITS)
     message(FATAL_ERROR "ANDROID_STL_TYPE must be in one of ${ANDROID_STL_TYPE_LITS}")
 endif()
 
+if(ARM_TARGET_LANG STREQUAL "gcc")
+    # gcc do not need set lang
+    set(ARM_TARGET_LANG "")
+endif()
+
 set(CMAKE_SYSTEM_NAME Android)
 set(CMAKE_SYSTEM_VERSION ${ANDROID_API_LEVEL})
 set(CMAKE_ANDROID_ARCH_ABI ${ANDROID_ARCH_ABI})
 set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
+set(CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION ${ARM_TARGET_LANG})
 set(CMAKE_ANDROID_STL_TYPE ${ANDROID_STL_TYPE})
+
+if (ARM_TARGET_LANG STREQUAL "clang")
+    if(ARM_TARGET_ARCH_ABI STREQUAL "armv8")
+        set(triple aarch64-v8a-linux-android)
+    elseif(ARM_TARGET_ARCH_ABI STREQUAL "armv7")
+        set(triple arm-v7a-linux-android)
+    else()
+        message(FATAL_ERROR "Clang do not support this ${ARM_TARGET_ARCH_ABI}, use armv8 or armv7")
+    endif()
+
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_C_COMPILER_TARGET ${triple})
+    set(CMAKE_CXX_COMPILER clang++)
+    set(CMAKE_CXX_COMPILER_TARGET ${triple})
+
+    message(STATUS "CMAKE_CXX_COMPILER_TARGET: ${CMAKE_CXX_COMPILER_TARGET}")
+endif()

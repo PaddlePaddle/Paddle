@@ -26,6 +26,7 @@ $ git checkout incubate/lite
         - "armv8", 等效于 "arm64"。 default值为这个。
         - "armv7hf", 等效于使用`eabihf`且`-march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 `。
         - "armv7", 等效于使用`eabi`且`-march=armv7-a -mfloat-abi=softfp -mfpu=neon-vfpv4`。
+- `ARM_TARGET_LANG` 代表目标编译的语言， 默认为gcc，支持 gcc和clang两种。
 
 ### 编译
 
