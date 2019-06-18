@@ -122,6 +122,9 @@ def run_check():
     try:
         test_parallerl_exe()
         print("Your Paddle Fluid works well on MUTIPLE GPU or CPU.")
+        print(
+            "Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now"
+        )
     except Exception as e:
         logging.warning(
             "Your Paddle Fluid has some problem with multiple GPU. This may be caused by:"
@@ -132,7 +135,6 @@ def run_check():
         )
 
         print("\n Original Error is: {}".format(e))
-    finally:
         print(
-            "Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now"
-        )
+            "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
+            "\n Let's start deep Learning with Paddle Fluid now")
