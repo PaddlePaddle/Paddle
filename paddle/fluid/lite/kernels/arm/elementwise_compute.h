@@ -30,6 +30,14 @@ class ElementwiseAddCompute
   virtual ~ElementwiseAddCompute() = default;
 };
 
+class ElementwiseAddActivationCompute
+    : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+ public:
+  void Run() override;
+
+  virtual ~ElementwiseAddActivationCompute() = default;
+};
+
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite
