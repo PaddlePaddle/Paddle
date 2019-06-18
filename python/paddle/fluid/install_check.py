@@ -52,10 +52,12 @@ def run_check():
     place = core.CPUPlace() if not core.is_compiled_with_cuda(
     ) else core.CUDAPlace(0)
     np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-    if core.get_cuda_device_count() > 1:
-        os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-    else:
-        os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
+    if use_cuda:
+        if core.get_cuda_device_count() > 1:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+        else:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
     def test_parallerl_exe():
         train_prog = Program()
