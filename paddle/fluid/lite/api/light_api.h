@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
@@ -62,6 +63,11 @@ class LightPredictor {
     return &fetch_list.at(offset);
   }
 
+  const lite::Tensor* GetTensor(const std::string& name) const {
+    auto* var = program_->exec_scope()->FindVar(name);
+    return &var->Get<lite::Tensor>();
+  }
+
  private:
   void BuildRuntimeProgram(const framework::proto::ProgramDesc& prog) {
     std::vector<Instruction> insts;
@@ -72,9 +78,8 @@ class LightPredictor {
 
     // Create the kernels of the target places, and filter out the specific
     // kernel with the target alias.
-    for (auto& op : program.ops_) {
-      lite::pb::OpDesc desc(op->op_info()->desc());
-      auto kernel_type = desc.GetAttr(kKernelTypeAttr).get<std::string>();
+    for (auto& op : program.ops()) {
+      auto kernel_type = op->op_info()->GetAttr<std::string>(kKernelTypeAttr);
       std::string op_type, alias;
       Place place;
       KernelBase::ParseKernelType(kernel_type, &op_type, &alias, &place);
@@ -89,8 +94,8 @@ class LightPredictor {
       insts.emplace_back(op, std::move(*it));
     }
     program_.reset(new RuntimeProgram(std::move(insts)));
-    CHECK(program.exec_scope_);
-    program_->set_exec_scope(program.exec_scope_);
+    CHECK(program.exec_scope());
+    program_->set_exec_scope(program.exec_scope());
   }
 
  private:

@@ -18,8 +18,8 @@
 #include <utility>
 #include "paddle/fluid/lite/core/mir/generate_program_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
+#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/program_fake_utils.h"
 
 namespace paddle {
