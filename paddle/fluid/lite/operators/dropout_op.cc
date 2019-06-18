@@ -52,7 +52,7 @@ class DropoutOpLite : public OpLite {
     param_.mask = GetMutableVar<lite::Tensor>(scope, Mask);
 
     param_.dropout_prob = op_desc.GetAttr<float>("dropout_prob");
-    if (op_desc.HasAttr("axis")) {
+    if (op_desc.HasAttr("is_test")) {
       param_.is_test = op_desc.GetAttr<bool>("is_test");
     }
     param_.fix_seed = op_desc.GetAttr<bool>("fix_seed");
