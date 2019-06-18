@@ -75,7 +75,7 @@ function build_single {
 }
 
 function build {
-    make lite_compile_deps -j $NUM_CORES_FOR_COMPILE
+    make lite_compile_deps -j$NUM_CORES_FOR_COMPILE
 }
 
 # It will eagerly test all lite related unittests.
