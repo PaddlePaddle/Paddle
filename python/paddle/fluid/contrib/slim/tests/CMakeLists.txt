@@ -30,10 +30,10 @@ if(LINUX AND WITH_MKLDNN)
   inference_analysis_python_api_int8_test(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   # mobilenet int8
-  set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
+  set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
   inference_analysis_python_api_int8_test(test_slim_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
-  # temporarily adding WITH_SLIM_MKLDNN_FULL_TEST FLAG for QA testing the following UTs locally, 
+  # temporarily adding WITH_SLIM_MKLDNN_FULL_TEST FLAG for QA testing the following UTs locally,
   # since the following UTs cost too much time on CI test.
   if (WITH_SLIM_MKLDNN_FULL_TEST)
     # resnet50 int8
@@ -58,7 +58,7 @@ if(LINUX AND WITH_MKLDNN)
   endif()
 endif()
 
-# Since test_mkldnn_int8_quantization_strategy only supports testing on Linux 
+# Since test_mkldnn_int8_quantization_strategy only supports testing on Linux
 # with MKL-DNN, we remove it here for not repeating test, or not testing on other systems.
 list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy)
 
