@@ -285,7 +285,7 @@ class InMemoryDataset(DatasetBase):
               dataset.set_fleet_send_batch_size(800)
 
         """
-        self.set_fleet_send_batch_size = fleet_send_batch_size
+        self.fleet_send_batch_size = fleet_send_batch_size
 
     def load_into_memory(self):
         """
