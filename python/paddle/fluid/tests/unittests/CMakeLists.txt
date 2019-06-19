@@ -115,6 +115,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_install_check)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -171,6 +172,9 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+py_test_modules(test_install_check MODULES test_install_check ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
+set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
