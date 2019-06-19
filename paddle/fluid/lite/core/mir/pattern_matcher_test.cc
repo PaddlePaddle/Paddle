@@ -23,19 +23,19 @@ namespace mir {
 void BuildGraph(SSAGraph* g) {
   g->mutable_nodes().emplace_back();
   Node& o1 = g->mutable_nodes().back();
-  o1.AsStmt().op_type = "op1";
+  o1.AsStmt().desc = "op1";
   g->mutable_nodes().emplace_back();
   Node& o2 = g->mutable_nodes().back();
-  o2.AsStmt().op_type = "op2";
+  o2.AsStmt().desc = "op2";
   g->mutable_nodes().emplace_back();
   Node& o3 = g->mutable_nodes().back();
-  o3.AsStmt().op_type = "op3";
+  o3.AsStmt().desc = "op3";
   g->mutable_nodes().emplace_back();
   Node& o4 = g->mutable_nodes().back();
-  o4.AsStmt().op_type = "op4";
+  o4.AsStmt().desc = "op4";
   g->mutable_nodes().emplace_back();
   Node& o5 = g->mutable_nodes().back();
-  o5.AsStmt().op_type = "op5";
+  o5.AsStmt().desc = "op5";
   g->mutable_nodes().emplace_back();
   Node& v1 = g->mutable_nodes().back();
   v1.AsArg("var1");
@@ -108,11 +108,11 @@ TEST(PatternMatcher, MarkPMNodesInGraph) {
   //   v2 -> o3(a node named o3)
   auto* o2 = x.pattern_.NewNode([](const Node* node) {
     // The teller can be any condition, such as op type, or variable's shape.
-    return node && node->IsStmt() && node->stmt()->op_type == "op2";
+    return node && node->IsStmt() && node->stmt()->desc == "op2";
   });
   auto* o3 = x.pattern_.NewNode([](const Node* node) {
     // The teller can be any condition, such as op type, or variable's shape.
-    return node && node->IsStmt() && node->stmt()->op_type == "op3";
+    return node && node->IsStmt() && node->stmt()->desc == "op3";
   });
   auto* v2 = x.pattern_.NewNode([](const Node* node) {
     // The teller can be any condition, such as op type, or variable's shape.
@@ -153,8 +153,8 @@ TEST(PatternMatcher, MultiSubgraph) {
   //   op -> var
   auto* any_op = x.mutable_pattern()->NewNode(
       [](const Node* node) {
-        return node->IsStmt() && (node->stmt()->op_type == "op2" ||
-                                  node->stmt()->op_type == "op3");
+        return node->IsStmt() &&
+               (node->stmt()->desc == "op2" || node->stmt()->desc == "op3");
       },
       "OP0");
   auto* any_var =
@@ -170,9 +170,9 @@ TEST(PatternMatcher, MultiSubgraph) {
   int count = 0;
   PatternMatcher::handle_t handle = [&](const PatternMatcher::subgraph_t& s,
                                         SSAGraph* g) {
-    LOG(INFO) << "Detect " << s.at(any_op)->stmt()->op_type << " -> "
+    LOG(INFO) << "Detect " << s.at(any_op)->stmt()->desc << " -> "
               << s.at(any_var)->arg()->name << " -> "
-              << s.at(any_op1)->stmt()->op_type;
+              << s.at(any_op1)->stmt()->desc;
     count++;
   };
 
@@ -197,12 +197,12 @@ TEST(PatternMatcher, IntermediateCheck) {
   PatternMatcher matcher;
   auto* op2 = matcher.mutable_pattern()->NewNode(
       [](const Node* x) {
-        return x && x->IsStmt() && x->stmt()->op_type == "op2";
+        return x && x->IsStmt() && x->stmt()->desc == "op2";
       },
       "op2");
   auto* op3 = matcher.mutable_pattern()->NewNode(
       [](const Node* x) {
-        return x && x->IsStmt() && x->stmt()->op_type == "op3";
+        return x && x->IsStmt() && x->stmt()->desc == "op3";
       },
       "op3");
   auto* v2 = matcher.mutable_pattern()

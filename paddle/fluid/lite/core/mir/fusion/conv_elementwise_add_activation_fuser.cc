@@ -65,7 +65,7 @@ void ConvElementwiseAddActivationFuser::InsertNewNode(
     SSAGraph* graph, const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto conv_op = LiteOpRegistry::Global().Create(conv_type_);
-  auto conv_old = matched.at("conv2d")->stmt()->op;
+  auto conv_old = matched.at("conv2d")->stmt()->op();
   auto* scope = conv_old->scope();
   auto& valid_places = conv_old->valid_places();
   conv_op->Attach(op_desc, scope);

@@ -67,8 +67,8 @@ struct ReluParam {
 
 // For Mul Op
 struct MulParam {
-  lite::Tensor* x{};
-  lite::Tensor* y{};
+  const lite::Tensor* x{};
+  const lite::Tensor* y{};
   lite::Tensor* output{};
 
   int x_num_col_dims{1};

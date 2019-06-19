@@ -54,7 +54,7 @@ void ElementwiseAddActivationFuser::InsertNewNode(SSAGraph* graph,
   auto op_desc = GenOpDesc(matched);
   auto op =
       LiteOpRegistry::Global().Create("fusion_elementwise_add_activation");
-  auto old_op = matched.at("add")->stmt()->op;
+  auto old_op = matched.at("add")->stmt()->op();
   auto* scope = old_op->scope();
   auto& valid_places = old_op->valid_places();
   op->Attach(op_desc, scope);

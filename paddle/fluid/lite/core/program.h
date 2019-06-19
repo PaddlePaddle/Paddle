@@ -140,7 +140,7 @@ class RuntimeProgram {
 
   void Run() {
     for (auto& inst : instructions_) {
-      VLOG(4) << ">> Running kernel: " << inst;
+      VLOG(3) << ">> Running kernel: " << inst.op()->op_info()->Repr();
       inst.Run();
     }
   }
