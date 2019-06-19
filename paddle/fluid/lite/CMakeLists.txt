@@ -11,7 +11,7 @@ message(STATUS "LITE_WITH_PROFILE:\t${LITE_WITH_PROFILE}")
 
 set(LITE_MODEL_DIR "${THIRD_PARTY_PATH}/install")
 
-set(LITE_ON_MOBILE LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+set(LITE_ON_MOBILE ${LITE_WITH_LIGHT_WEIGHT_FRAMEWORK})
 
 set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 
@@ -189,4 +189,7 @@ add_subdirectory(gen_code)
 
 if (WITH_TESTING)
     lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
+    if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+        lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v2_relu.tar.gz")
+    endif()
 endif()
