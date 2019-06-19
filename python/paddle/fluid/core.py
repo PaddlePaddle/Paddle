@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import sys
 import os
-from x86cpu import info as cpuinfo
+from cpuinfo import get_cpu_info
 
 try:
     if os.name == 'nt':
@@ -45,7 +45,7 @@ except Exception as e:
     raise e
 
 load_noavx = False
-if cpuinfo.supports_avx:
+if 'avx' in get_cpu_info()['flags']:
     try:
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
@@ -57,6 +57,8 @@ if cpuinfo.supports_avx:
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
+        from .core_avx import _is_dygraph_debug_enabled
+        from .core_avx import _dygraph_debug_level
     except ImportError:
         sys.stderr.write(
             'WARNING: Can not import avx core. You may not build with AVX, '
@@ -78,6 +80,8 @@ if load_noavx:
         from .core_noavx import _set_eager_deletion_mode
         from .core_noavx import _set_fuse_parameter_group_size
         from .core_noavx import _set_fuse_parameter_memory_size
+        from .core_noavx import _is_dygraph_debug_enabled
+        from .core_noavx import _dygraph_debug_level
     except ImportError as error:
         sys.exit("Error: Can not load core_noavx.* ." +
                  error.__class__.__name__)
