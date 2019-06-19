@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 from . import core
-from .framework import program_guard
 from .data_feeder import DataToLoDTensorConverter
 import numpy as np
 
