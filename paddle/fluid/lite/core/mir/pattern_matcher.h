@@ -139,14 +139,13 @@ struct PMNode {
 
   template <typename T>
   PMNode* assert_op_attr(const std::string& attr_name, const T& attr) {
-    asserts_.emplace_back([=](Node* x) {
+    asserts_.push_back([=](const Node* x) {
       if (x && x->IsStmt()) {
         auto* op_info = x->stmt()->op_info();
         return op_info->HasAttr(attr_name) &&
                op_info->GetAttr<T>(attr_name) == attr;
-      } else {
-        return false;
       }
+      return false;
     });
     return this;
   }

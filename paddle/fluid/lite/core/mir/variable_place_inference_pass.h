@@ -39,7 +39,7 @@ class VariablePlaceInferencePass : public DebugPass {
     for (const auto& v : graph->inputs()) {
       // the feed op might in the inputs
       if (v->IsStmt()) {
-        LOG(INFO) << "found kernel in inputs " << v->AsStmt().op_type;
+        LOG(INFO) << "found kernel in inputs " << v->AsStmt().op_type();
         continue;
       }
     }
@@ -59,10 +59,10 @@ class VariablePlaceInferencePass : public DebugPass {
     for (auto& x : graph->StmtTopologicalOrder()) {
       auto& inst = x->AsStmt();
       // The IoCopyOp is a tool operator, it won't support the type inference.
-      if (inst.op_type == "io_copy") continue;
+      if (inst.op_type() == "io_copy") continue;
       // LOG(INFO) << "- inferencing type " <<
       // deal with inputs
-      VLOG(4) << "inferencing op " << inst.op_type;
+      VLOG(4) << "Infering op " << inst.op_info()->Repr();
       // TODO(zhaolong): Add check if the node's name in op's arguments.
 
       auto get_argname = [&](
@@ -90,12 +90,14 @@ class VariablePlaceInferencePass : public DebugPass {
         }
       }
 
+      VLOG(3) << "inst " << inst.op_info()->Repr();
       for (auto* x_out : x->outlinks) {
         std::string node_name = x_out->AsArg().name;
         std::string arg_name =
             get_argname(node_name, inst.op_info()->outputs());
         CHECK(arg_name.size() > 0) << "can not found op arguments for node "
-                                   << node_name;
+                                   << node_name << " in Inst "
+                                   << inst.op_type();
         VLOG(3) << "-- output arg_name " << arg_name;
         auto type = inst.picked_kernel().GetOutputDeclType(arg_name);
         if (!x_out->AsArg().type) {

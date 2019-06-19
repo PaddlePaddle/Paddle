@@ -191,7 +191,6 @@ class TensorBase {
 template <typename TensorT>
 bool TensorCompareWith(const TensorT &a, const TensorT &b) {
   if (a.dims() != b.dims()) return false;
-  LOG(INFO) << "data_size: " << a.data_size();
   if (memcmp(a.raw_data(), b.raw_data(), a.data_size()) != 0) return false;
   return true;
 }
