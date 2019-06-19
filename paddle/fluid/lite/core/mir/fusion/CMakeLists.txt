@@ -8,10 +8,15 @@ cc_library(fuse_conv_bn
         SRCS conv_bn_fuser.cc
         DEPS pattern_matcher_high_api)
 
+cc_library(fuse_quant_dequant
+        SRCS quant_dequant_op_fuser.cc
+        DEPS pattern_matcher_high_api)
+
 set(mir_fusers 
     fuse_fc 
     fuse_conv_elementwise_add_relu
     fuse_conv_bn
+    fuse_quant_dequant
     CACHE INTERNAL "fusers")
 
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

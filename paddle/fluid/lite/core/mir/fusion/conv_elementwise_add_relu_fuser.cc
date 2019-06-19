@@ -79,7 +79,7 @@ void ConvElementwiseAddReLUFuser::InsertNewNode(SSAGraph* graph,
 cpp::OpDesc ConvElementwiseAddReLUFuser::GenOpDesc(const key2nodes_t& matched) {
   auto* desc = matched.at("conv2d")->stmt()->op_info();
 
-  cpp::OpDesc op_desc;
+  cpp::OpDesc op_desc = *desc;
   op_desc.SetType(conv_type_);
   op_desc.SetInput("Input", {matched.at("input")->arg()->name});
   op_desc.SetInput("Filter", {matched.at("filter")->arg()->name});
@@ -92,7 +92,6 @@ cpp::OpDesc ConvElementwiseAddReLUFuser::GenOpDesc(const key2nodes_t& matched) {
                 "ResidualData") != input_arg_names.end()) {
     op_desc.SetInput("ResidualData", desc->Input("ResidualData"));
   }
-
   // Only consider strides, padding, groups, dilations, fuse_relu for now
   op_desc.SetAttr("strides", desc->GetAttr<std::vector<int>>("strides"));
   op_desc.SetAttr("paddings", desc->GetAttr<std::vector<int>>("paddings"));

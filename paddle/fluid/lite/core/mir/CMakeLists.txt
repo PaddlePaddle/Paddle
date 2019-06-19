@@ -9,6 +9,7 @@ cc_library(mir_passes
         SRCS fc_fuse_pass.cc
         conv_elementwise_add_relu_fuse_pass.cc
         conv_bn_fuse_pass.cc 
+        quant_dequant_fuse_pass.cc
         static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
         type_target_transform_pass.cc
