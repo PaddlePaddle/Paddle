@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/elementwise_add_activation_fuse_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/elementwise_add_activation_fuse_pass.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>

@@ -43,6 +43,8 @@ class Optimizer {
     CHECK(!graph_) << "duplicate optimize found";
     graph_.reset(new mir::SSAGraph);
     graph_->Build(program, valid_places);
+    graph_->SetValidPlaces(valid_places);
+
     SpecifyKernelPickTactic(kernel_pick_factor);
     InitTargetTypeTransformPass();
 
@@ -51,6 +53,7 @@ class Optimizer {
           "lite_conv_bn_fuse_pass",                          //
           "lite_conv_elementwise_add_activation_fuse_pass",  //
           "lite_fc_fuse_pass",                               //
+          "identity_scale_eliminate_pass",                   //
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
           "lite_elementwise_add_activation_fuse_pass",  //
 #endif

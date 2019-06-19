@@ -70,7 +70,7 @@ void ConvBNFuser::BuildPattern() {
 void ConvBNFuser::InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto eltwise_op = LiteOpRegistry::Global().Create("elementwise_add");
-  auto conv = matched.at("conv2d")->stmt()->op;
+  auto conv = matched.at("conv2d")->stmt()->op();
   auto* scope = conv->scope();
   auto& valid_places = conv->valid_places();
 

@@ -38,15 +38,19 @@ class MulOpLite : public OpLite {
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
+    CHECK(!op_desc.Input("X").empty());
+    CHECK(!op_desc.Input("Y").empty());
+    CHECK(!op_desc.Output("Out").empty());
+
     auto input = op_desc.Input("X").front();
     auto W = op_desc.Input("Y").front();
     auto out = op_desc.Output("Out").front();
     auto *var = scope->FindVar(input);
     CHECK(var);
-    param_.x = var->GetMutable<Tensor>();
+    param_.x = &var->Get<Tensor>();
     var = scope->FindVar(W);
     CHECK(var) << "no var called " << W;
-    param_.y = var->GetMutable<Tensor>();
+    param_.y = &var->Get<Tensor>();
     var = scope->FindVar(out);
     CHECK(var) << "no var called " << out;
     param_.output = var->GetMutable<Tensor>();
