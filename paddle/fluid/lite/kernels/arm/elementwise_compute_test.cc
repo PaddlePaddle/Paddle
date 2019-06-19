@@ -117,6 +117,19 @@ TEST(elementwise_add, compute) {
   operators::ElementwiseParam param;
   lite::Tensor x, y, output, output_ref;
 
+#if 1
+  for (auto n : {1, 3, 4}) {
+    for (auto c : {1, 3, 4}) {
+      for (auto h : {1, 3, 4}) {
+        for (auto w : {1, 3, 4}) {
+          for (auto axis : {-1, 0, 1, 3}) {
+            for (auto yd :
+                 {std::vector<int64_t>({n}), std::vector<int64_t>({c}),
+                  std::vector<int64_t>({h}), std::vector<int64_t>({w}),
+                  std::vector<int64_t>({n, c}), std::vector<int64_t>({c, h}),
+                  std::vector<int64_t>({c, h, w}),
+                  std::vector<int64_t>({n, c, h, w})}) {
+#else
   for (auto n : {1, 3, 4, 11}) {
     for (auto c : {1, 3, 4, 11}) {
       for (auto h : {1, 3, 4, 11}) {
@@ -129,6 +142,7 @@ TEST(elementwise_add, compute) {
                   std::vector<int64_t>({h, w}), std::vector<int64_t>({n, c, h}),
                   std::vector<int64_t>({c, h, w}),
                   std::vector<int64_t>({n, c, h, w})}) {
+#endif
               auto x_dim = DDim(std::vector<int64_t>({n, c, h, w}));
               auto y_dim = DDim(yd);
               int axis_t = axis < 0 ? x_dim.size() - y_dim.size() : axis;
@@ -192,6 +206,20 @@ TEST(fusion_elementwise_add_activation_arm, compute) {
   operators::FusionElementwiseActivationParam param;
   lite::Tensor x, y, output, output_ref;
 
+#if 1
+  for (auto act_type : {"relu"}) {
+    for (auto n : {1, 3, 4}) {
+      for (auto c : {1, 3, 4}) {
+        for (auto h : {1, 3, 4}) {
+          for (auto w : {1, 3, 4}) {
+            for (auto axis : {-1, 0, 1, 3}) {
+              for (auto yd :
+                   {std::vector<int64_t>({n}), std::vector<int64_t>({c}),
+                    std::vector<int64_t>({h}), std::vector<int64_t>({w}),
+                    std::vector<int64_t>({n, c}), std::vector<int64_t>({h, w}),
+                    std::vector<int64_t>({n, c, h}),
+                    std::vector<int64_t>({n, c, h, w})}) {
+#else
   for (auto act_type : {"relu"}) {
     for (auto n : {1, 3, 4, 11}) {
       for (auto c : {1, 3, 4, 11}) {
@@ -206,6 +234,7 @@ TEST(fusion_elementwise_add_activation_arm, compute) {
                     std::vector<int64_t>({n, c, h}),
                     std::vector<int64_t>({c, h, w}),
                     std::vector<int64_t>({n, c, h, w})}) {
+#endif
                 auto x_dim = DDim(std::vector<int64_t>({n, c, h, w}));
                 auto y_dim = DDim(yd);
                 int axis_t = axis < 0 ? x_dim.size() - y_dim.size() : axis;
