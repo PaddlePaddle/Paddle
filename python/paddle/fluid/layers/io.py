@@ -902,7 +902,7 @@ def open_files(filenames,
     Examples:
        .. code-block:: python
 
-         import paddle.fluid. as fluid
+         import paddle.fluid as fluid
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1,)],
