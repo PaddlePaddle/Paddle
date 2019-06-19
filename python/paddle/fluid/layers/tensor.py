@@ -443,7 +443,7 @@ def fill_constant_batch_size_like(input,
 
              import paddle.fluid as fluid
              like = fluid.layers.data(name='like', shape=[1], dtype='float32')
-             data = fluid.lgyers.fill_constant_batch_size_like(
+             data = fluid.layers.fill_constant_batch_size_like(
                          input=like, shape=[1], value=0, dtype='int64')
 
     """
@@ -957,7 +957,10 @@ def diag(diagonal):
           # [[3, 0, 0]
           #  [0, 4, 0]
           #  [0, 0, 5] 
-          data = fluid.layers.diag(np.arange(3, 6)) 
+
+          import paddle.fluid as fluid
+          import numpy as np
+          data = fluid.layers.diag(np.arange(3, 6, dtype='int32')) 
 
     """
 

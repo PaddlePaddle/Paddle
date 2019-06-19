@@ -51,6 +51,7 @@ from . import core
 from . import compiler
 import logging
 import numpy as np
+import os
 
 __all__ = ['run_check']
 

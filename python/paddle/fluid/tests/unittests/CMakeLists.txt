@@ -116,6 +116,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
 
 # Some ops need to check results when gc is enabled
@@ -227,5 +228,5 @@ if(WITH_DISTRIBUTE)
 endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf
+        test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
         PROPERTIES LABELS "RUN_TYPE=DIST")
