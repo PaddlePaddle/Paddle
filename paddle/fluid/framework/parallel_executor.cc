@@ -647,7 +647,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           "The number(%d) of samples of "
           "current batch is less than the count(%d) of "
           "devices(%s), currently, it is not allowed. ",
-          member_->places_.size(), lod_tensors.size(),
+          lod_tensors.size(), lod_tensors.size(),
           (is_cpu_place ? "CPU" : "GPU"));
       if (is_cpu_place) {
         error_info +=
