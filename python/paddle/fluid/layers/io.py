@@ -836,9 +836,9 @@ def create_py_reader_by_data(capacity,
              loss = fluid.layers.cross_entropy(input=predict, label=label)
              return fluid.layers.mean(loss)
 
-         dev_count = 1
-         memory_opt = False
-         use_cuda = False
+         DEV_COUNT = 1
+         MEMORY_OPT = False
+         USE_CUDA = False
 
          image = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -851,14 +851,14 @@ def create_py_reader_by_data(capacity,
          img, label = fluid.layers.read_file(reader)
          loss = network(img, label)  # some network definition
 
-         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+         place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
          exe = fluid.Executor(place)
          exe.run(fluid.default_startup_program())
 
          exec_strategy = fluid.ExecutionStrategy()
-         exec_strategy.num_threads = dev_count * 4 # the size of thread pool.
+         exec_strategy.num_threads = DEV_COUNT * 4 # the size of thread pool.
          build_strategy = fluid.BuildStrategy()
-         build_strategy.memory_optimize = True if memory_opt else False
+         build_strategy.memory_optimize = True if MEMORY_OPT else False
          compiled_prog = compiler.CompiledProgram(
              fluid.default_main_program()).with_data_parallel(
                  loss_name=loss.name,
