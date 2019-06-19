@@ -13,26 +13,34 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+
+#include <memory>
+#include <string>
+#include "paddle/fluid/lite/core/mir/pattern_matcher_high_api.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {}  // namespace mir
+namespace mir {
+namespace fusion {
+
+class QuantDequantOpFuser : public FuseBase {
+ public:
+  explicit QuantDequantOpFuser(const std::string& op_type,
+                               const std::string& quant_type, int times)
+      : op_type_(op_type), quant_type_(quant_type), times_(times) {}
+  void BuildPattern() override;
+  void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override;
+
+ private:
+  cpp::OpDesc GenOpDesc(const key2nodes_t& matched) override;
+
+ private:
+  std::string op_type_{"conv2d"};
+  std::string quant_type_;
+  int times_;
+};
+
+}  // namespace fusion
+}  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#endif
-USE_MIR_PASS(demo);
-USE_MIR_PASS(static_kernel_pick_pass);
-USE_MIR_PASS(variable_place_inference_pass);
-USE_MIR_PASS(type_target_transform_pass);
-USE_MIR_PASS(generate_program_pass);
-USE_MIR_PASS(io_copy_kernel_pick_pass);
-USE_MIR_PASS(argument_type_display_pass);
-USE_MIR_PASS(runtime_context_assign_pass);
-USE_MIR_PASS(lite_conv_bn_fuse_pass);
-USE_MIR_PASS(graph_visualze);
-USE_MIR_PASS(lite_fc_fuse_pass);
-USE_MIR_PASS(lite_conv_elementwise_add_act_fuse_pass);
-USE_MIR_PASS(lite_quant_dequant_fuse_pass);

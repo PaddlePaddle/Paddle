@@ -39,7 +39,12 @@ bool SoftmaxOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
       &scope->FindVar(opdesc.Input("X").front())->Get<lite::Tensor>());
   param_.output =
       scope->FindVar(opdesc.Output("Out").front())->GetMutable<lite::Tensor>();
-  param_.axis = opdesc.GetAttr<int>("axis");
+
+  if (opdesc.HasAttr("axis")) {
+    param_.axis = opdesc.GetAttr<int>("axis");
+  } else {
+    param_.axis = -1;
+  }
   CHECK(param_.x);
   CHECK(param_.output);
   return true;

@@ -115,7 +115,6 @@ void PatternMatcher::operator()(SSAGraph *graph,
 bool PatternMatcher::MarkPMNodesInGraph(SSAGraph *graph) {
   VLOG(3) << "mark pmnodes in graph";
   if (graph->nodes().empty()) return false;
-
   for (auto &node : graph->mutable_nodes()) {
     for (const auto &pmnode : pattern_.nodes()) {
       if (pmnode->Tell(&node)) {
@@ -398,7 +397,7 @@ PMNode *PMNode::assert_is_op_output(const std::string &op_type) {
   asserts_.emplace_back([=](const Node *x) {
     for (auto *op : x->inlinks) {
       if (op && op->IsStmt()) {
-        auto *op_info = x->stmt()->op_info();
+        auto *op_info = op->stmt()->op_info();
         if (op_info->Type() == op_type) return true;
       }
     }

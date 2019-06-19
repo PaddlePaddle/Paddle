@@ -55,8 +55,8 @@ enum class DataLayoutType : int {
 #define DATALAYOUT(item__) paddle::lite::DataLayoutType::item__
 
 static const std::string& TargetToStr(TargetType target) {
-  static const std::string target2string[] = {"unk", "host", "x86", "cuda",
-                                              "any"};
+  static const std::string target2string[] = {"unk",  "host", "x86",
+                                              "cuda", "arm",  "any"};
   auto x = static_cast<int>(target);
   CHECK_LT(x, static_cast<int>(TARGET(NUM)));
   return target2string[x];
