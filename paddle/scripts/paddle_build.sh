@@ -840,7 +840,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install opencv-python x86cpu==0.4 && pip3 install /*.whl; apt-get install -f -y && \
+        pip3 install opencv-python py-cpuinfo==5.0.0 && pip3 install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         ${PADDLE_VERSION} && \
