@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 
@@ -167,7 +168,8 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     return;
   }
 
-  *out = platform::is_gpu_place(place_) ? gpu_buffer_[i] : cpu_buffer_[i];
+  *out = std::move(platform::is_gpu_place(place_) ? gpu_buffer_[i]
+                                                  : cpu_buffer_[i]);
 
   // Do not push current position into ReadAsync. Push the previous position
   // Since all computation in fluid are async, change the data of
