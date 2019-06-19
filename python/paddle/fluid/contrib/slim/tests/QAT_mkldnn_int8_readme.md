@@ -6,7 +6,7 @@ This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle
 You need to install at least PaddlePaddle-1.5 python package `pip install paddlepaddle==1.5`.
 
 ## 1. How to generate INT8 MKL-DNN QAT model
-You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `TransformForMkldnnPass` to get the graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.5, this pass only support `conv2d` and `depthwise_conv2d`.
+You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `TransformForMkldnnPass` to get the graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.5, this pass only supports `conv2d` and `depthwise_conv2d` with single scale quantization for weights.
 
 ```python
     import paddle.fluid as fluid
@@ -28,15 +28,15 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 
 >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | Fake QAT Top1 Accuracy | MKL-DNN INT8 Top1 Accuracy | Accuracy Diff   |
-| :----------: | :--------------------: | :-----------------------:  | :--------------:|
-| GoogleNet    |         70.40%         |            70.39%          |     0.010%      |
-| MobileNet-V1 |         70.83%         |            70.84%          |    -0.010%      |
-| MobileNet-V2 |         72.09%         |            72.09%          |     0.000%      |
-| ResNet-101   |         77.47%         |            77.47%          |     0.000%      |
-| ResNet-50    |         76.66%         |            76.62%          |     0.040%      |
-| VGG16        |         72.71%         |            72.69%          |     0.020%      |
-| VGG19        |         73.37%         |            73.37%          |     0.000%      |
+| Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff   | MKL-DNN INT8 Top5 Accuracy | Top5 Diff  |
+| :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------: | :------------------------: | :--------: |
+| GoogleNet    |         70.40%         |          89.46%        |           70.39%          |     0.010%   |           89.46%           |   0.000%   |
+| MobileNet-V1 |         70.83%         |          89.56%        |           70.84%          |    -0.010%   |           89.56%           |   0.000%   |
+| MobileNet-V2 |         72.17%         |          90.67%        |           72.13%          |     0.040%   |           90.67%           |   0.000%   |
+| ResNet-101   |         77.49%         |          93.65%        |           77.51%          |    -0.020%   |           93.67%           |  -0.020%   |
+| ResNet-50    |         76.62%         |          93.08%        |           76.61%          |     0.010%   |           93.09%           |  -0.010%   |
+| VGG16        |         72.71%         |          91.11%        |           72.69%          |     0.020%   |           91.09%           |   0.020%   |
+| VGG19        |         73.37%         |          91.40%        |           73.37%          |     0.000%   |           91.41%           |  -0.010%   |
 
 Notes:
 
