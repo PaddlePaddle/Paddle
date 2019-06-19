@@ -60,9 +60,14 @@ cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
 
 if(ANAKIN_FOUND)
+  # Do not turn warnings into errors.
+  set_source_files_properties(api.cc api_anakin_engine.cc PROPERTIES COMPILE_FLAGS "-Wno-error")
   if (ANAKIN_MLU AND NOT WITH_GPU AND NOT ANAKIN_X86)
     message(STATUS "Compile with anakin mlu place.")
     add_definitions(-DANAKIN_MLU_PLACE)
+  elseif(ANAKIN_BM AND NOT WITH_GPU AND NOT ANAKIN_X86)
+    message(STATUS "Compile with anakin bm place.")
+    add_definitions(-DANAKIN_BM_PLACE)
   elseif(ANAKIN_X86)
     message(STATUS "Compile with anakin x86 place.")
     add_definitions(-DANAKIN_X86_PLACE)
