@@ -264,6 +264,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -486,6 +488,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
@@ -907,7 +911,8 @@ def save_inference_model(dirname,
                          main_program=None,
                          model_filename=None,
                          params_filename=None,
-                         export_for_deployment=True):
+                         export_for_deployment=True,
+                         program_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -938,6 +943,7 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
+        program_only(bool): If True, It will save inference program only, and do not save params of Program.
 
     Returns:
         target_var_name_list(list): The fetch variables' name list
@@ -1070,6 +1076,12 @@ def save_inference_model(dirname,
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
+
+    if program_only:
+        warnings.warn(
+            "save_inference_model specified the param `program_only` to True, It will not save params of Program."
+        )
+        return target_var_name_list
 
     main_program._copy_dist_param_info_from(origin_program)
 

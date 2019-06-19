@@ -2237,7 +2237,7 @@ def conv3d(input,
 
     Args:
         input (Variable): The input image with [N, C, D, H, W] format.
-            num_filters(int): The number of filter. It is as same as the output
+        num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
@@ -3098,18 +3098,24 @@ def batch_norm(input,
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-             will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. Default: None.
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. Default: None.
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+            will save global mean with the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -4493,7 +4499,7 @@ def lstm_unit(x_t,
 
             i_t = \sigma(L_{i_t})
 
-    This layer has two outputs including :math:`h_t` and :math:`o_t`.
+    This layer has two outputs including :math:`h_t` and :math:`c_t`.
 
     Args:
         x_t (Variable): The input value of current step, a 2-D tensor with shape
@@ -4905,15 +4911,19 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid.layers as layers
+            import numpy as np
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
-            # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_all(x)  # False 
-            fluid.layers.reduce_all(x, dim=0)  # [True, False]
-            fluid.layers.reduce_all(x, dim=-1)  # [False, True]
-            fluid.layers.reduce_all(x, dim=1,
-                                     keep_dim=True)  # [[False], [True]]
+            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = layers.cast(x, 'bool')
+
+            out = layers.reduce_all(x)  # False 
+            out = layers.reduce_all(x, dim=0)  # [True, False]
+            out = layers.reduce_all(x, dim=-1)  # [False, True]
+            out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
 
     """
     helper = LayerHelper('reduce_all', **locals())
@@ -4955,14 +4965,19 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
+            import numpy as np
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
-            # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_any(x)  # True
-            fluid.layers.reduce_any(x, dim=0)  # [True, False]
-            fluid.layers.reduce_any(x, dim=-1)  # [True, False]
-            fluid.layers.reduce_any(x, dim=1,
+            x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = layers.cast(x, 'bool')
+
+            out = layers.reduce_any(x)  # True
+            out = layers.reduce_any(x, dim=0)  # [True, False]
+            out = layers.reduce_any(x, dim=-1)  # [True, False]
+            out = layers.reduce_any(x, dim=1,
                                      keep_dim=True)  # [[True], [False]]
 
     """
@@ -5998,7 +6013,7 @@ def transpose(x, perm, name=None):
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
-            "It's length shoud be equal to Input(input)'s rank.")
+            "Its length should be equal to Input(input)'s rank.")
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
@@ -7876,7 +7891,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
-def gather(input, index):
+def gather(input, index, overwrite=True):
     """
     **Gather Layer**
 
@@ -7907,6 +7922,12 @@ def gather(input, index):
     Args:
         input (Variable): The source input with rank>=1.
         index (Variable): The index input with rank=1.
+        overwrite (bool): The mode that updating the grad when has same index.
+            If True, use the overwrite mode to update the grad of the same index,
+	    if False, use the accumulate mode to update the grad of the same index. 
+	    Default value is True.
+	    
+
 
     Returns:
         output (Variable): The output is a tensor with the same rank as input.
@@ -7926,11 +7947,12 @@ def gather(input, index):
         type="gather",
         inputs={"X": input,
                 "Index": index},
-        outputs={"Out": out})
+        outputs={"Out": out},
+        attrs={'overwrite': overwrite})
     return out
 
 
-def scatter(input, index, updates, name=None):
+def scatter(input, index, updates, name=None, overwrite=True):
     """
     **Scatter Layer**
 
@@ -7948,6 +7970,10 @@ def scatter(input, index, updates, name=None):
                           int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter op.
         name (str|None): The output variable name. Default None.
+        overwrite (bool): The mode that updating the output when has same index.
+            If True, use the overwrite mode to update the output of the same index,
+	    if False, use the accumulate mode to update the output of the same index. 
+	    Default value is True.You can set overwrite=False to implement scatter_add.
 
     Returns:
         output (Variable): The output is a tensor with the same shape as input.
@@ -7972,6 +7998,7 @@ def scatter(input, index, updates, name=None):
         inputs={"X": input,
                 "Ids": index,
                 "Updates": updates},
+        attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
 
@@ -9773,9 +9800,10 @@ def rank(input):
     Examples:
         .. code-block:: python
 
-            input = layers.data(
-                name="input", shape=[3, 100, 100], dtype="float32")
-            rank = layers.rank(input) # 4
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(name="input", shape=[3, 100, 100], dtype="float32")
+            rank = fluid.layers.rank(input) # 4
     """
 
     ndims = len(input.shape)
@@ -11858,14 +11886,24 @@ def where(condition):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid.layers as layers
+             import numpy as np
+
              # condition is a tensor [True, False, True]
-             out = fluid.layers.where(condition) # [[0], [2]]
+             condition = layers.assign(np.array([1, 0, 1], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[0], [2]]
 
              # condition is a tensor [[True, False], [False, True]]
-             out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+             condition = layers.assign(np.array([[1, 0], [0, 1]], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[0, 0], [1, 1]]
 
              # condition is a tensor [False, False, False]
-             out = fluid.layers.where(condition) # [[]]
+             condition = layers.assign(np.array([0, 0, 0], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[]]
+
     """
     helper = LayerHelper("where", **locals())
 
@@ -11892,8 +11930,12 @@ def sign(x):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          import numpy as np
+
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2])) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+
     """
 
     helper = LayerHelper("sign", **locals())

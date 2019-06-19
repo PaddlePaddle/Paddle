@@ -131,7 +131,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.fleet.base',
           'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.parameter_server.distributed_transpiler',
+          'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
           'paddle.fluid.incubate.fleet.collective']
 
@@ -145,7 +145,9 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 paddle_bins = ''
 if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-package_data={'paddle.fluid': ['core' + (ext_name if os.name != 'nt' else '.pyd')]}
+package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + (ext_name if os.name != 'nt' else '.pyd')]}
+if '${HAS_NOAVX_CORE}' == 'ON':
+    package_data['paddle.fluid'] += ['core_noavx' + (ext_name if os.name != 'nt' else '.pyd')]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -213,19 +215,19 @@ if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
 
-# change rpath of core.ext, add $ORIGIN/../libs/ to it.
+# change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
 # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
-# core.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+# ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 if '${CMAKE_BUILD_TYPE}' == 'Release':
     if os.name != 'nt':
-        # only change rpath in Release mode, since in Debug mode, core.xx is too large to be changed.
+        # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
         if "@APPLE@" == "1":
-            command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
+            command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + ext_name
         else:
-            command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
+            command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + ext_name
         if os.system(command) != 0:
-            raise Exception("patch core.%s failed, command: %s" % (ext_name, command))
+            raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
