@@ -197,6 +197,22 @@ class OpInfo : public cpp::OpDesc {
     }
     return false;
   }
+
+  void UpdateAllInputs(const std::string &from, const std::string &to) {
+    for (auto &item : inputs_) {
+      for (auto &var : item.second) {
+        if (var == from) var = to;
+      }
+    }
+  }
+
+  void UpdateAllOutputs(const std::string &from, const std::string &to) {
+    for (auto &item : outputs_) {
+      for (auto &var : item.second) {
+        if (var == from) var = to;
+      }
+    }
+  }
 };
 
 }  // namespace lite

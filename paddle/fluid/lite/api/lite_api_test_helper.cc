@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/lite_api_test_helper.h"
+#include <vector>
 
 DEFINE_string(model_dir, "", "");
 DEFINE_string(optimized_model, "", "");

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/conv_bn_fuse_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/conv_bn_fuse_pass.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>
