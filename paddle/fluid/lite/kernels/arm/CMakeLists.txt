@@ -16,6 +16,7 @@ cc_library(pool_compute_arm SRCS pool_compute.cc DEPS ${lite_kernel_deps} math_a
 cc_library(split_compute_arm SRCS split_compute.cc DEPS ${lite_kernel_deps} math_arm)
 cc_library(concat_compute_arm SRCS concat_compute.cc DEPS ${lite_kernel_deps} math_arm)
 cc_library(dropout_compute_arm SRCS dropout_compute.cc DEPS ${lite_kernel_deps} math_arm)
+cc_library(calib_compute_arm SRCS calib_compute.cc DEPS ${lite_kernel_deps} math_arm)
 cc_library(transpose_compute_arm SRCS transpose_compute.cc DEPS ${lite_kernel_deps} math_arm)
 
 lite_cc_test(test_fc_compute_arm SRCS fc_compute_test.cc DEPS fc_compute_arm math_arm)
@@ -30,6 +31,7 @@ lite_cc_test(test_mul_compute_arm SRCS mul_compute_test.cc DEPS mul_compute_arm)
 lite_cc_test(test_split_compute_arm SRCS split_compute_test.cc DEPS split_compute_arm)
 lite_cc_test(test_concat_compute_arm SRCS concat_compute_test.cc DEPS concat_compute_arm)
 lite_cc_test(test_dropout_compute_arm SRCS dropout_compute_test.cc DEPS dropout_compute_arm)
+lite_cc_test(test_calib_compute_arm SRCS calib_compute_test.cc DEPS calib_compute_arm)
 lite_cc_test(test_transpose_compute_arm SRCS transpose_compute_test.cc DEPS transpose_compute_arm)
 
 set(arm_kernels
