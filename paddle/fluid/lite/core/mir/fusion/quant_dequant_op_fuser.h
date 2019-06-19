@@ -23,6 +23,18 @@ namespace lite {
 namespace mir {
 namespace fusion {
 
+/* The model trained by fluid quantization is a simulation of real int8.
+ * The quantized Ops(conv2d, mul, depthwise conv2d etc) have fake_quantop
+ * in front  and fake_dequantop behind.
+ *
+ * When in int8 mode, the pattern like "fake_quant + quantized_op +
+ * fake_dequant"
+ * can be detected by this fuser. The fuser extract the input_scale and
+ * the weight_scale info from fake_quant, fake_dequant op and fuse those into
+ * the quantized_op.
+ * In addition, the fuser delete fake_quant and fake_dequant op in the graph at
+ * the last.
+ */
 class QuantDequantOpFuser : public FuseBase {
  public:
   explicit QuantDequantOpFuser(const std::string& op_type,
