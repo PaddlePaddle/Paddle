@@ -957,7 +957,10 @@ def diag(diagonal):
           # [[3, 0, 0]
           #  [0, 4, 0]
           #  [0, 0, 5] 
-          data = fluid.layers.diag(np.arange(3, 6)) 
+
+          import paddle.fluid as fluid
+          import numpy as np
+          data = fluid.layers.diag(np.arange(3, 6, dtype='int32')) 
 
     """
 

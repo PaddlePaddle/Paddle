@@ -4911,15 +4911,19 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid.layers as layers
+            import numpy as np
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
-            # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_all(x)  # False 
-            fluid.layers.reduce_all(x, dim=0)  # [True, False]
-            fluid.layers.reduce_all(x, dim=-1)  # [False, True]
-            fluid.layers.reduce_all(x, dim=1,
-                                     keep_dim=True)  # [[False], [True]]
+            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = layers.cast(x, 'bool')
+
+            out = layers.reduce_all(x)  # False 
+            out = layers.reduce_all(x, dim=0)  # [True, False]
+            out = layers.reduce_all(x, dim=-1)  # [False, True]
+            out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
 
     """
     helper = LayerHelper('reduce_all', **locals())
@@ -4961,14 +4965,19 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
+            import numpy as np
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
-            # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_any(x)  # True
-            fluid.layers.reduce_any(x, dim=0)  # [True, False]
-            fluid.layers.reduce_any(x, dim=-1)  # [True, False]
-            fluid.layers.reduce_any(x, dim=1,
+            x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = layers.cast(x, 'bool')
+
+            out = layers.reduce_any(x)  # True
+            out = layers.reduce_any(x, dim=0)  # [True, False]
+            out = layers.reduce_any(x, dim=-1)  # [True, False]
+            out = layers.reduce_any(x, dim=1,
                                      keep_dim=True)  # [[True], [False]]
 
     """
@@ -9791,9 +9800,10 @@ def rank(input):
     Examples:
         .. code-block:: python
 
-            input = layers.data(
-                name="input", shape=[3, 100, 100], dtype="float32")
-            rank = layers.rank(input) # 4
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(name="input", shape=[3, 100, 100], dtype="float32")
+            rank = fluid.layers.rank(input) # 4
     """
 
     ndims = len(input.shape)
@@ -11876,14 +11886,24 @@ def where(condition):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid.layers as layers
+             import numpy as np
+
              # condition is a tensor [True, False, True]
-             out = fluid.layers.where(condition) # [[0], [2]]
+             condition = layers.assign(np.array([1, 0, 1], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[0], [2]]
 
              # condition is a tensor [[True, False], [False, True]]
-             out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+             condition = layers.assign(np.array([[1, 0], [0, 1]], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[0, 0], [1, 1]]
 
              # condition is a tensor [False, False, False]
-             out = fluid.layers.where(condition) # [[]]
+             condition = layers.assign(np.array([0, 0, 0], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[]]
+
     """
     helper = LayerHelper("where", **locals())
 
@@ -11910,8 +11930,12 @@ def sign(x):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          import numpy as np
+
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2])) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+
     """
 
     helper = LayerHelper("sign", **locals())
