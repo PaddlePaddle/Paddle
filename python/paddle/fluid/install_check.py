@@ -42,6 +42,29 @@ class SimpleLayer(Layer):
         return x
 
 
+def process_env():
+    env = os.environ
+    device_list = []
+    if env.get('CUDA_VISIBLE_DEVICES') is not None:
+        cuda_devices = env['CUDA_VISIBLE_DEVICES']
+        if cuda_devices == "" or len(cuda_devices) == 0:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+            device_list = [0, 1]
+        elif len(cuda_devices) == 1:
+            device_list.append(0)
+        elif len(cuda_devices) > 1:
+            for i in range(len(cuda_devices.split(","))):
+                device_list.append(i)
+        return device_list
+    else:
+        if core.get_cuda_device_count() > 1:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+            return [0, 1]
+        else:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+            return [0]
+
+
 def run_check():
     ''' intall check to verify if install is success
 
@@ -49,15 +72,11 @@ def run_check():
     '''
     print("Running Verify Fluid Program ... ")
     use_cuda = False if not core.is_compiled_with_cuda() else True
+    if use_cuda:
+        device_list = process_env()
     place = core.CPUPlace() if not core.is_compiled_with_cuda(
     ) else core.CUDAPlace(0)
     np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-
-    if use_cuda:
-        if core.get_cuda_device_count() > 1:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-        else:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
     def test_parallerl_exe():
         train_prog = Program()
@@ -78,7 +97,8 @@ def run_check():
                     out = simple_layer(inp)
                     exe = executor.Executor(place)
                     if use_cuda:
-                        places = [core.CUDAPlace(0), core.CUDAPlace(1)]
+                        for i in device_list:
+                            places.append(core.CUDAPlace(i))
                     else:
                         places = [core.CPUPlace(), core.CPUPlace()]
                     loss = layers.mean(out)
