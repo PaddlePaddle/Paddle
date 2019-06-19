@@ -77,6 +77,61 @@ class DistributedOptimizerFactory(object):
         return globals()[classname](optimizer, strategy)
 
 
+class DistributedStrategy(object):
+    def __init__(self):
+        # precision configs
+        self.use_fp16 = False
+        self.use_fp32 = True
+        # algorithmic communication
+        self.local_sgd = False
+        self.dgc = False
+        # communication topology configs
+        self.h_allreduce = False
+
+    def build(self):
+        # make sure we set single precision config True
+        if self.use_fp32 and self.use_fp16:
+            self.use_fp16 = False
+        # make sure we set single algorithmic communication True
+        if self.local_sgd and self.dgc:
+            self.local_sgd = False
+        self.strategy_map["fp16"] = self.use_fp16
+        self.strategy_map["fp32"] = self.use_fp32
+        self.strategy_map["localsgd"] = self.local_sgd
+        self.strategy_map["dgc"] = self.dgc
+        self.strategy_map["h_allreduce"] = self.h_allreduce
+
+
+class DistributedOptimizerFactory(object):
+    def strategy_to_optimizer_map(self):
+        pattern = {}
+        pattern["fp16"] = [
+            "MixedPrecisionOptimizer", "MixedPrecisionLocalSGDOptimizer"
+        ]
+        pattern["fp32"] = ["FullPrecisionOptimizer", "LocalSGDOptimizer"]
+        pattern["localsgd"] = [
+            "MixedPrecisionLocalSGDOptimizer", "LocalSGDOptimizer"
+        ]
+        pattern["h_allreduce"] = [
+            "FullPrecisionOptimizer",
+            "LocalSGDOptimizer",
+            "MixedPrecisionOptimizer",
+            "MixedPrecisionLocalSGDOptimizer",
+        ]
+        self.pattern = pattern
+
+    def create_by_strategy(self, optimizer, strategy):
+        if strategy == None:
+            strategy = DistributedStrategy()
+        strategy.build()
+        strategy_list = []
+        for key in strategy.strategy_map:
+            if strategy.strategy_map[key]:
+                strategy_list.append(self.pattern[key])
+        classname = list(set.intersection(*map(set, strategy_list)))[0]
+        return globals()[classname](optimizer, strategy)
+
+
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)

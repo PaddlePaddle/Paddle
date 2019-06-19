@@ -28,6 +28,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SyncFCGather op should not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
+    PADDLE_ENFORCE_GE(nranks, 2, "nranks should be >=2");
     framework::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] * nranks;
     ctx->SetOutputDim("Out", dim);
@@ -49,8 +50,9 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Total trainer count of the distributed training job");
     AddComment(R"DOC(
 ***CAllGather Operator***
+each rank receives the aggregation of data from all ranks in the order of the ranks
 
-Call NCCL collective AllGather internally.
+Call NCCL collective AllGather internally.https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/colls.html#c.ncclAllGather
 )DOC");
   }
 };

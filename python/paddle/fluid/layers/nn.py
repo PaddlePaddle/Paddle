@@ -6618,14 +6618,13 @@ def one_hot(input, depth):
     return one_hot_out
 
 
-def shard_index(input, irange, nshards, shard_id):
+def shard_index(input, shard_range, shard_id):
     """
     This layer creates the sharding representations for input indices.
 
     Args:
-        input(Variable): Input indices, last dimension must be 1.
-        range(scalar): An interger defining the range of the index.
-        nshards(scalar): An interger defining the shard number.
+        input(Variable): Input indices.
+        shard_range(scalar): An interger defining the range of each shard.
         shard_id(scalar): An interger defining this shard index.
 
     Returns:
@@ -6636,7 +6635,7 @@ def shard_index(input, irange, nshards, shard_id):
 
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             shard_label = fluid.layers.shard_index(input=label,
-                    range=10, nshards=5, shard_id=0)
+                    shard_range=2, shard_id=0)
     """
     helper = LayerHelper("shard_index", **locals())
 
@@ -6645,8 +6644,7 @@ def shard_index(input, irange, nshards, shard_id):
         type='shard_index',
         inputs={'X': input},
         outputs={'Out': shard_index_out},
-        attrs={'range': irange,
-               'nshards': nshards,
+        attrs={'shard_range': shard_range,
                'shard_id': shard_id},
         stop_gradient=True)
     return shard_index_out

@@ -27,9 +27,10 @@ import numpy as np
 from .. import core, unique_name
 from ..framework import Program, default_main_program, default_startup_program
 from .details import wait_server_ready
-from ..core.op_proto_and_checker_maker import OpRole
 
 __all__ = ['GradAllReduce', 'LocalSGD']
+
+OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 class Collective(object):
