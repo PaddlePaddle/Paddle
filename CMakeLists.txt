@@ -22,6 +22,7 @@ include(system)
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cmake_minimum_required(VERSION 3.10)
     # TODO(TJ): make as function check_default
+    # check os
     if(NOT DEFINED ARM_TARGET_OS)
         set(ARM_TARGET_OS "android" CACHE STRING "Choose ARM Target OS")
     endif()
@@ -31,19 +32,27 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
         message(FATAL_ERROR "ARM_TARGET_OS must be in one of ${ARM_TARGET_OS_LIST}")
     endif()
 
+    # check arch abi
     if(NOT DEFINED ARM_TARGET_ARCH_ABI)
-        set(ARM_TARGET_ARCH_ABI "arm64-v8a" CACHE STRING "Choose ARM Target ARCH ABI")
+        set(ARM_TARGET_ARCH_ABI "armv8" CACHE STRING "Choose ARM Target ARCH ABI")
     endif()
-    set(ARM_TARGET_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v7a-softfp" "armeabi-v7a-hf")
+    set(ARM_TARGET_ARCH_ABI_LIST "armv8" "armv7" "armv7hf" "arm64-v8a" "armeabi-v7a")
     set_property(CACHE ARM_TARGET_ARCH_ABI PROPERTY STRINGS ${ARM_TARGET_ARCH_ABI_LIST})
     if (NOT ARM_TARGET_ARCH_ABI IN_LIST ARM_TARGET_ARCH_ABI_LIST)
         message(FATAL_ERROR "ARM_TARGET_ARCH_ABI must be in one of ${ARM_TARGET_ARCH_ABI_LIST}")
     endif()
 
-    if(NOT DEFINED TARGET_ARCH_ABI)
-        set(ARCH_ABI "arm64-v8a" CACHE STRING "Choose android platform")
+    # check arch abi
+    if(NOT DEFINED ARM_TARGET_LANG)
+        set(ARM_TARGET_LANG "clang" CACHE STRING "Choose ARM Target Language")
     endif()
-    
+    set(ARM_TARGET_LANG_LIST "gcc" "clang")
+    set_property(CACHE ARM_TARGET_LANG PROPERTY STRINGS ${ARM_TARGET_LANG_LIST})
+    if (NOT ARM_TARGET_LANG IN_LIST ARM_TARGET_LANG_LIST)
+        message(FATAL_ERROR "ARM_TARGET_LANG must be in one of ${ARM_TARGET_LANG_LIST}")
+    endif()
+
+    message(STATUS "Lite ARM Compile ${ARM_TARGET_OS} with ${ARM_TARGET_ARCH_ABI} ${ARM_TARGET_LANG}")
     include(cross_compiling/host)
     include(cross_compiling/armlinux)
     include(cross_compiling/android)
@@ -159,6 +168,9 @@ include_directories("${PADDLE_SOURCE_DIR}")
 # for mobile
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "Building the mobile framework")
+    if (ANDROID)
+        include(cross_compiling/findar)
+    endif()
     # include the necessary thirdparty dependencies
     include(external/gflags)    # download, build, install gflags
     include(external/glog)      # download, build, install glog
@@ -171,8 +183,20 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration
 
-    add_definitions(-std=c++11)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    find_package(OpenMP REQUIRED)
+    if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
+        add_definitions(-DARM_WITH_OMP)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        message(STATUS "Found OpenMP ${OpenMP_VERSION} ${OpenMP_CXX_VERSION}")
+        message(STATUS " |-- OpenMP C flags:  ${OpenMP_C_FLAGS}")
+        message(STATUS " |-- OpenMP CXX flags:  ${OpenMP_CXX_FLAGS}")
+        message(STATUS " |-- OpenMP OpenMP_CXX_LIB_NAMES:  ${OpenMP_CXX_LIB_NAMES}")
+        message(STATUS " `-- OpenMP OpenMP_CXX_LIBRARIES:  ${OpenMP_CXX_LIBRARIES}")
+    else()
+        message(FATAL_ERROR "Could not found openmp !")
+    endif()
     add_subdirectory(paddle)
 
     return()

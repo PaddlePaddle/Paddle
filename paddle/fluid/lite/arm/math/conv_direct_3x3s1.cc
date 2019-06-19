@@ -17,6 +17,9 @@
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/operators/op_params.h"
+#ifdef ARM_WITH_OMP
+#include <omp.h>
+#endif
 
 namespace paddle {
 namespace lite {
@@ -55,9 +58,9 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
   const int hin_r_block = hout_r_block + 2;
 
   float* tmp_work_space = ctx->workspace_data<float>();
-  float ptr_zero[win_round];
+  float ptr_zero[win_round];  // NOLINT
   memset(ptr_zero, 0, sizeof(float) * win_round);
-  float ptr_write[wout_round];
+  float ptr_write[wout_round];  // NOLINT
 
   int in_len = win_round * ic;
   int pre_in_size = hin_r_block * in_len;
@@ -92,7 +95,7 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
                         ptr_zero);
 #pragma omp parallel for num_threads(threads)
       for (int c = 0; c < oc - (hout_c_block - 1); c += hout_c_block) {
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
         float* pre_out =
             pre_din + pre_in_size + omp_get_thread_num() * pre_out_size;
 #else
@@ -553,7 +556,7 @@ void conv_3x3s1_direct_fp32(const float* i_data, float* o_data, int bs, int oc,
       const float* weight_remain_ptr = weights + c_round_down * w_stride;
 #pragma omp parallel for num_threads(threads)
       for (int c = 0; c < c_remain; ++c) {
-#ifdef USE_OPENMP
+#ifdef ARM_WITH_OMP
         float* pre_out =
             pre_din + pre_in_size + omp_get_thread_num() * pre_out_size;
 #else

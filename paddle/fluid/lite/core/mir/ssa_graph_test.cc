@@ -17,7 +17,7 @@
 #include <memory>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
-#include "paddle/fluid/lite/core/mir/passes.h"
+#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/program_fake_utils.h"
 

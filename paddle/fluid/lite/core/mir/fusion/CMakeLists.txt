@@ -1,11 +1,14 @@
 cc_library(fuse_fc
         SRCS fc_fuser.cc
         DEPS pattern_matcher_high_api)
-cc_library(fuse_conv_elementwise_add_relu
-        SRCS conv_elementwise_add_relu_fuser.cc
+cc_library(fuse_conv_elementwise_add_activation
+        SRCS conv_elementwise_add_activation_fuser.cc
         DEPS pattern_matcher_high_api)
 cc_library(fuse_conv_bn
         SRCS conv_bn_fuser.cc
+        DEPS pattern_matcher_high_api)
+cc_library(fuse_elementwise_add_activation
+        SRCS elementwise_add_activation_fuser.cc
         DEPS pattern_matcher_high_api)
 
 cc_library(fuse_quant_dequant
@@ -14,9 +17,10 @@ cc_library(fuse_quant_dequant
 
 set(mir_fusers 
     fuse_fc 
-    fuse_conv_elementwise_add_relu
+    fuse_conv_elementwise_add_activation
     fuse_conv_bn
     fuse_quant_dequant
+    fuse_elementwise_add_activation
     CACHE INTERNAL "fusers")
 
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

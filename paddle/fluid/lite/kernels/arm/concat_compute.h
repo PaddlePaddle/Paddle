@@ -15,19 +15,20 @@
 #pragma once
 #include <algorithm>
 #include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/operators/concat_op.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-class ElementwiseAddCompute
-    : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
+class ConcatCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
+  using param_t = operators::ConcatParam;
+
   void Run() override;
 
-  virtual ~ElementwiseAddCompute() = default;
+  virtual ~ConcatCompute() = default;
 };
 
 }  // namespace arm

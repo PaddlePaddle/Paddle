@@ -54,9 +54,7 @@ class OpLite : public Registry {
   OpLite() = default;
   explicit OpLite(const std::string &type) : op_type_(type) {}
   explicit OpLite(const std::vector<Place> &valid_places)
-      : valid_places_(valid_places) {
-    LOG(INFO) << "valid places " << valid_places.size();
-  }
+      : valid_places_(valid_places) {}
 
   void SetValidPlaces(const std::vector<Place> &places) {
     VLOG(3) << "valid places " << valid_places_.size();
