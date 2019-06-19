@@ -1,14 +1,23 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-function(inference_analysis_python_api_int8_test target model_dir data_dir filename)
+function(_inference_analysis_python_api_int8_test target model_dir data_dir filename use_mkldnn)
     py_test(${target} SRCS ${filename}
         ENVS CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+             FLAGS_use_mkldnn=${use_mkldnn}
         ARGS --infer_model ${model_dir}/model
              --infer_data ${data_dir}/data.bin
              --int8_model_save_path int8_models/${target}
              --warmup_batch_size 100
              --batch_size 50)
+endfunction()
+
+function(inference_analysis_python_api_int8_test target model_dir data_dir filename)
+    _inference_analysis_python_api_int8_test(${target} ${model_dir} ${data_dir} ${filename} False)
+endfunction()
+
+function(inference_analysis_python_api_int8_test_mkldnn target model_dir data_dir filename)
+    _inference_analysis_python_api_int8_test(${target} ${model_dir} ${data_dir} ${filename} True)
 endfunction()
 
 function(inference_qat_int8_test target model_dir data_dir test_script use_mkldnn)
@@ -44,6 +53,7 @@ if(LINUX AND WITH_MKLDNN)
   # mobilenet int8
   set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
   inference_analysis_python_api_int8_test(test_slim_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
+  inference_analysis_python_api_int8_test_mkldnn(test_slim_int8_mobilenet_mkldnn ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE})
 
   # temporarily adding WITH_SLIM_MKLDNN_FULL_TEST FLAG for QA testing the following UTs locally,
   # since the following UTs cost too much time on CI test.
