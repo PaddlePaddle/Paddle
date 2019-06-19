@@ -336,14 +336,20 @@ void PredictionRun(PaddlePredictor *predictor,
 #ifdef WITH_GPERFTOOLS
   ProfilerStart("paddle_inference.prof");
 #endif
+  int predicted_num = 0;
   if (!FLAGS_zero_copy) {
-    run_timer.tic();
     for (int i = 0; i < iterations; i++) {
+      run_timer.tic();
       for (int j = 0; j < num_times; j++) {
         predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
+      elapsed_time += run_timer.toc();
+
+      predicted_num += FLAGS_batch_size;
+      if (predicted_num % 100 == 0) {
+        LOG(INFO) << predicted_num << " samples";
+      }
     }
-    elapsed_time = run_timer.toc();
   } else {
     for (int i = 0; i < iterations; i++) {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
@@ -352,8 +358,14 @@ void PredictionRun(PaddlePredictor *predictor,
         predictor->ZeroCopyRun();
       }
       elapsed_time += run_timer.toc();
+
+      predicted_num += FLAGS_batch_size;
+      if (predicted_num % 100 == 0) {
+        LOG(INFO) << predicted_num << " samples";
+      }
     }
   }
+
 #ifdef WITH_GPERFTOOLS
   ProfilerStop();
 #endif
