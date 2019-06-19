@@ -14,8 +14,9 @@
 
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include <chrono>
-#include "paddle/fluid/lite/core/mir/passes.h"
+#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
+
 namespace paddle {
 namespace lite {
 
@@ -66,8 +67,8 @@ void Run(const char* model_dir, int repeat) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  CHECK_EQ(argc, 2) << "usage: ./cmd <model_dir>";
-  paddle::lite::Run(argv[1], 1);
+  CHECK_EQ(argc, 3) << "usage: ./cmd <model_dir> <repeat>";
+  paddle::lite::Run(argv[1], std::stoi(argv[2]));
 
   return 0;
 }

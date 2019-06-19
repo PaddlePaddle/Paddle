@@ -19,7 +19,7 @@ namespace lite {
 namespace profile {
 
 const int BasicTimer::data_w = 10;
-const int BasicTimer::name_w = 10;
+const int BasicTimer::name_w = 15;
 
 }  // namespace profile
 }  // namespace lite

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/fusion/conv_elementwise_add_relu_fuser.h"
+#include "paddle/fluid/lite/core/mir/fusion/conv_elementwise_add_activation_fuser.h"
 #include <memory>
 #include <vector>
 
@@ -21,7 +21,7 @@ namespace lite {
 namespace mir {
 namespace fusion {
 
-void ConvElementwiseAddReLUFuser::BuildPattern() {
+void ConvElementwiseAddActivationFuser::BuildPattern() {
   // create input nodes.
   auto* input =
       VarNode("input")->assert_is_op_input(conv_type_, "Input")->AsInput();
@@ -36,7 +36,8 @@ void ConvElementwiseAddReLUFuser::BuildPattern() {
   auto* add = OpNode("add", "elementwise_add")
                   ->assert_is_op("elementwise_add")
                   ->AsIntermediate();
-  auto* relu = OpNode("relu", "relu")->assert_is_op("relu")->AsIntermediate();
+  auto* act =
+      OpNode("act", act_type_)->assert_is_op(act_type_)->AsIntermediate();
 
   // create intermediate nodes
   auto* conv2d_out = VarNode("conv2d_out")
@@ -45,22 +46,23 @@ void ConvElementwiseAddReLUFuser::BuildPattern() {
                          ->AsIntermediate();
   auto* add_out = VarNode("add_out")
                       ->assert_is_op_output("elementwise_add", "Out")
-                      ->assert_is_op_input("relu", "X")
+                      ->assert_is_op_input(act_type_, "X")
                       ->AsIntermediate();
 
   // create output node
-  auto* out = VarNode("output")->assert_is_op_output("relu", "Out")->AsOutput();
+  auto* out =
+      VarNode("output")->assert_is_op_output(act_type_, "Out")->AsOutput();
 
   // create topology.
   std::vector<PMNode*> conv2d_inputs{filter, input};
   std::vector<PMNode*> add_inputs{conv2d_out, bias};
   conv2d_inputs >> *conv2d >> *conv2d_out;
   add_inputs >> *add >> *add_out;
-  *add_out >> *relu >> *out;
+  *add_out >> *act >> *out;
 }
 
-void ConvElementwiseAddReLUFuser::InsertNewNode(SSAGraph* graph,
-                                                const key2nodes_t& matched) {
+void ConvElementwiseAddActivationFuser::InsertNewNode(
+    SSAGraph* graph, const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto conv_op = LiteOpRegistry::Global().Create(conv_type_);
   auto conv_old = matched.at("conv2d")->stmt()->op;
@@ -76,7 +78,8 @@ void ConvElementwiseAddReLUFuser::InsertNewNode(SSAGraph* graph,
   IR_NODE_LINK_TO(new_op_node, matched.at("output"));
 }
 
-cpp::OpDesc ConvElementwiseAddReLUFuser::GenOpDesc(const key2nodes_t& matched) {
+cpp::OpDesc ConvElementwiseAddActivationFuser::GenOpDesc(
+    const key2nodes_t& matched) {
   auto* desc = matched.at("conv2d")->stmt()->op_info();
 
   cpp::OpDesc op_desc = *desc;
@@ -97,6 +100,7 @@ cpp::OpDesc ConvElementwiseAddReLUFuser::GenOpDesc(const key2nodes_t& matched) {
   op_desc.SetAttr("paddings", desc->GetAttr<std::vector<int>>("paddings"));
   op_desc.SetAttr("groups", desc->GetAttr<int>("groups"));
   op_desc.SetAttr("dilations", desc->GetAttr<std::vector<int>>("dilations"));
+  // TODO(sangoly): support other activation types
   op_desc.SetAttr("fuse_relu", true);
   return op_desc;
 }
