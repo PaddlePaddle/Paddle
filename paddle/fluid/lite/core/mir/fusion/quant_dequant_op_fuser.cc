@@ -99,15 +99,12 @@ void QuantDequantOpFuser::InsertNewNode(SSAGraph* graph,
   const int kNumFields = 5;
   const int kQuantizedWeightOffset = 0;
   const int kQuantizedOpOffset = 1;
-  const int kQuantizedOpOutOffset = 2;
   const int kDequantOpOffset = 3;
   const int kDequantOpOutOffset = 4;
 
   auto* quant_op_input = matched.at("quant_op_input");
   auto* quant_op_in_scale = matched.at("quant_op_in_scale");
   auto* quant_op = matched.at("quant_op");
-  auto* quant_op_out_scale = matched.at("quant_op_out_scale");
-  auto* quant_op_out = matched.at("quant_op_out");
 
   std::vector<Node*> nodes;
   for (int i = 0; i < times_; i++) {
