@@ -13,25 +13,28 @@
 // limitations under the License.
 
 #pragma once
-
-#include <stdint.h>
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/operators/calib_op.h"
 
 namespace paddle {
 namespace lite {
+namespace kernels {
 namespace arm {
-namespace math {
 
-template <typename dtype>
-void int32_to_dtype(const int* din, dtype* dout, const float* scale,
-                    int axis_size, int64_t outer_size, int64_t inner_size);
+class CalibCompute : public KernelLite<TARGET(kARM), PRECISION(kAny)> {
+ public:
+  using param_t = operators::CalibParam;
 
-void fp32_to_int8(const float* din, signed char* dout, const float* scale,
-                  int axis_size, int64_t outer_size, int64_t inner_size);
+  // void PrepareForRun() override;
 
-void int8_to_fp32(const signed char* in, float* out, const float* scale,
-                  int axis_size, int64_t outer_size, int64_t inner_size);
+  void Run() override;
 
-}  // namespace math
+  ~CalibCompute() override{};
+
+ private:
+};
+
 }  // namespace arm
+}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

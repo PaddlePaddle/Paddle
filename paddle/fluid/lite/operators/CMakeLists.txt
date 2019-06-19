@@ -21,6 +21,7 @@ cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
 cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
+cc_library(calib_op_lite SRCS calib_op.cc DEPS ${op_DEPS})
 cc_library(split_op_lite SRCS split_op.cc DEPS ${op_DEPS})
 cc_library(transpose_op_lite SRCS transpose_op.cc DEPS ${op_DEPS})
 
@@ -44,6 +45,7 @@ set(ops_lite
         activation_ops_lite
         dropout_op_lite
         concat_op_lite
+        calib_op_lite
         split_op_lite
         transpose_op_lite
         PARENT_SCOPE)
@@ -60,6 +62,7 @@ lite_cc_test(test_softmax_op_lite SRCS softmax_op_test.cc DEPS softmax_op_lite m
 lite_cc_test(test_reshape_op_lite SRCS reshape_op_test.cc DEPS reshape_op_lite memory_lite)
 lite_cc_test(test_batch_norm_op_lite SRCS batch_norm_op_test.cc DEPS batch_norm_op_lite memory_lite)
 lite_cc_test(test_concat_op_lite SRCS concat_op_test.cc DEPS concat_op_lite memory_lite)
+lite_cc_test(test_calib_op_lite SRCS calib_op_test.cc DEPS calib_op_lite memory_lite ARM_DEPS calib_compute_arm)
 lite_cc_test(test_fusion_elementwise_activation_ops_lite 
              SRCS fusion_elementwise_activation_ops_test.cc 
              DEPS fusion_elementwise_activation_ops_lite memory_lite)
