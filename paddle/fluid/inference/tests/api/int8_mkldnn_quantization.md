@@ -42,27 +42,27 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 
 >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff   |
-| :----------: | :-------------: | :------------:  | :--------------:|
-| GoogleNet    |  70.51%         |  70.20%         |  0.31%          |
-| MobileNet-V1 |  70.78%         |  70.36%         |  0.42%          |
-| MobileNet-V2 |  71.91%         |  71.58%         |  0.33%          |
-| ResNet-101   |  77.49%         |  77.53%         | -0.04%          |
-| ResNet-50    |  76.62%         |  76.47%         |  0.15%          |
-| VGG16        |  72.08%         |  72.01%         |  0.07%          |
-| VGG19        |  72.57%         |  72.56%         |  0.01%          |
+| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
+| :----------: | :-------------: | :------------:  | :--------------:           |
+| GoogleNet    |  70.50%         |  69.81%         |   0.69%                    |
+| MobileNet-V1 |  70.78%         |  70.42%         |   0.36%                    |
+| MobileNet-V2 |  71.90%         |  71.35%         |   0.55%                    |
+| ResNet-101   |  77.50%         |  77.42%         |   0.08%                    |
+| ResNet-50    |  76.63%         |  76.52%         |   0.11%                    |
+| VGG16        |  72.08%         |  72.03%         |   0.05%                    |
+| VGG19        |  72.57%         |  72.55%         |   0.02%                    |
 
 >**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
 
 | Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
 | :-----------:| :------------:             | :------------:            | :------------:  |
-| GoogleNet    |    38.62                   |    85.20                  |   2.21          |
-| MobileNet-V1 |    93.05                   |   270.36                  |   2.91          |
-| MobileNet-V2 |   117.35                   |   248.70                  |   2.12          |
-| ResNet-101   |     8.19                   |    30.56                  |   3.73          |
-| ResNet-50    |    15.35                   |    58.41                  |   3.80          |
-| VGG16        |     3.97                   |    11.36                  |   2.86          |
-| VGG19        |     3.20                   |     9.80                  |   3.06          |
+| GoogleNet    |    34.06                   |    72.79                  |   2.14          |
+| MobileNet-V1 |    80.02                   |   230.65                  |   2.88          |
+| MobileNet-V2 |    99.38                   |   206.92                  |   2.08          |
+| ResNet-101   |     7.38                   |    27.31                  |   3.70          |
+| ResNet-50    |    13.71                   |    50.55                  |   3.69          |
+| VGG16        |     3.64                   |    10.56                  |   2.90          |
+| VGG19        |     2.95                   |     9.02                  |   3.05          |
 
 Notes:
 

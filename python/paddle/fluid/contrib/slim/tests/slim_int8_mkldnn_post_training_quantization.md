@@ -68,15 +68,15 @@ We provide the results of accuracy measured on Intel(R) Xeon(R) Gold 6271.
 
 >**Dataset: ILSVRC2012 Validation dataset**
 
-| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff   |
-| :----------: | :-------------: | :------------:  | :--------------:|
-| GoogleNet    |  70.50%         |  70.20%         |  0.30%          |
-| MobileNet-V1 |  70.78%         |  70.36%         |  0.42%          |
-| MobileNet-V2 |  71.90%         |  71.57%         |  0.33%          |
-| ResNet-101   |  77.50%         |  77.53%         | -0.03%          |
-| ResNet-50    |  76.63%         |  76.48%         |  0.15%          |
-| VGG16        |  72.08%         |  72.01%         |  0.07%          |
-| VGG19        |  72.56%         |  72.56%         |  0.00%          |
+| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
+| :----------: | :-------------: | :------------:  | :--------------:           |
+| GoogleNet    |  70.50%         |  69.81%         |   0.69%                    |
+| MobileNet-V1 |  70.78%         |  70.42%         |   0.36%                    |
+| MobileNet-V2 |  71.90%         |  71.35%         |   0.55%                    |
+| ResNet-101   |  77.50%         |  77.42%         |   0.08%                    |
+| ResNet-50    |  76.63%         |  76.52%         |   0.11%                    |
+| VGG16        |  72.08%         |  72.03%         |   0.05%                    |
+| VGG19        |  72.57%         |  72.55%         |   0.02%                    |
 
 Notes:
 
