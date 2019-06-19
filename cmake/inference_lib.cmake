@@ -275,7 +275,7 @@ copy(inference_api_lib DEPS fluid_lib_dist
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )
 
-add_custom_target(inference_lib_dist DEPENDS third_party inference_api_lib)
+add_custom_target(inference_lib_dist DEPENDS third_party inference_api_lib inference_lib)
 
 # paddle fluid version
 function(version version_file)
