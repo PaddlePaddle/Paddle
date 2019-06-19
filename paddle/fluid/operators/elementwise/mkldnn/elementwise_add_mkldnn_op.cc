@@ -131,7 +131,6 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       std::vector<int> dst_tz = framework::vectorize2int(z_dims);
 
       std::vector<memory::primitive_desc> srcs_pd;
-      std::vector<std::shared_ptr<mkldnn::memory>> srcs;
       std::vector<float> scales = {1.0f, 1.0f};
 
       const std::string key = platform::MKLDNNHandler::GetHash(
@@ -144,21 +143,19 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
           {{src_x_tz}, platform::MKLDNNGetDataType<T>(), x->format()},
           paddle::platform::to_void_cast(x_data));
 
-      auto src_y_memory = handler.AcquireSrc2Memory(
+      auto src_y_memory = handler.AcquireSecondSrcMemory(
           {{src_y_tz}, platform::MKLDNNGetDataType<T>(), y->format()},
           paddle::platform::to_void_cast(y_data));
-
-      srcs.push_back(src_x_memory);
-      srcs.push_back(src_y_memory);
 
       auto dst_md = memory::desc({dst_tz}, platform::MKLDNNGetDataType<T>(),
                                  memory::format::any);
 
-      auto sum_pd = handler.AcquireSumPrimitiveDescriptor(srcs, scales, dst_md);
+      auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
+          {src_x_memory, src_y_memory}, scales, dst_md);
 
       auto dst_memory = handler.AcquireDstMemoryFromPrimitive(z_data);
 
-      std::vector<primitive::at> inputs({*srcs[0], *srcs[1]});
+      std::vector<primitive::at> inputs({*src_x_memory, *src_y_memory});
 
       auto sum_prim = handler.AcquireSum(dst_memory, &inputs);
 

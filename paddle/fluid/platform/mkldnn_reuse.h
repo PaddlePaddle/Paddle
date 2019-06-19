@@ -45,7 +45,7 @@ class MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_src_mem_p");
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrc2Memory(
+  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_src2_mem_p");
   }
