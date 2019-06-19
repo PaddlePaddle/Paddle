@@ -828,12 +828,17 @@ def create_py_reader_by_data(capacity,
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
+         import paddle.fluid.compiler as compiler
 
          def network(img, label):
              # User defined network. Here a simple regression as example
              predict = fluid.layers.fc(input=img, size=10, act='softmax')
              loss = fluid.layers.cross_entropy(input=predict, label=label)
              return fluid.layers.mean(loss)
+
+         dev_count = 1
+         memory_opt = False
+         use_cuda = False
 
          image = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -846,14 +851,25 @@ def create_py_reader_by_data(capacity,
          img, label = fluid.layers.read_file(reader)
          loss = network(img, label)  # some network definition
 
-         fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+         exe = fluid.Executor(place)
+         exe.run(fluid.default_startup_program())
 
-         exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-         for epoch_id in range(10):
+         exec_strategy = fluid.ExecutionStrategy()
+         exec_strategy.num_threads = dev_count * 4 # the size of thread pool.
+         build_strategy = fluid.BuildStrategy()
+         build_strategy.memory_optimize = True if memory_opt else False
+         compiled_prog = compiler.CompiledProgram(
+             fluid.default_main_program()).with_data_parallel(
+                 loss_name=loss.name,
+                 build_strategy=build_strategy,
+                 exec_strategy=exec_strategy)
+
+         for epoch_id in range(2):
              reader.start()
              try:
                  while True:
-                     exe.run(fetch_list=[loss.name])
+                     exe.run(compiled_prog, fetch_list=[loss.name])
              except fluid.core.EOFException:
                  reader.reset()
     """
