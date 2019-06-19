@@ -20,7 +20,7 @@ __all__ = ["distributed_batch_reader"]
 
 def distributed_batch_reader(batch_reader):
     """
-    Create a multi-process reader. The input must be a batch reader.
+    Create a reader for multi-process training. The input must be a batch reader.
 
     Args:
         batch_reader (callable): The input reader should be a batch reader.
