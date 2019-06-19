@@ -335,24 +335,26 @@ void PredictionRun(PaddlePredictor *predictor,
 #ifdef WITH_GPERFTOOLS
   ProfilerStart("paddle_inference.prof");
 #endif
-  if (!FLAGS_zero_copy) {
-    run_timer.tic();
-    for (int i = 0; i < iterations; i++) {
+
+  run_timer.tic();
+  for (int i = 0; i < iterations; i++) {
+    if (!FLAGS_zero_copy) {
       for (int j = 0; j < num_times; j++) {
         predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
-    }
-    elapsed_time = run_timer.toc();
-  } else {
-    for (int i = 0; i < iterations; i++) {
+    } else {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
-      run_timer.tic();
       for (int j = 0; j < num_times; j++) {
         predictor->ZeroCopyRun();
       }
-      elapsed_time += run_timer.toc();
+    }
+    int predicted_num = (i + 1) * FLAGS_batch_size;
+    if (predicted_num % 100 == 0) {
+      LOG(INFO) << predicted_num << " samples";
     }
   }
+  elapsed_time += run_timer.toc();
+
 #ifdef WITH_GPERFTOOLS
   ProfilerStop();
 #endif
