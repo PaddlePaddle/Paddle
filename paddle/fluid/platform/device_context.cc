@@ -408,6 +408,21 @@ thread_local int cur_thread_id = 0;
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
 
+void MKLDNNDeviceContext::AppendPrefixFunction(
+    const std::string& key, std::function<std::string()> func) {
+  std::lock_guard<std::mutex> lock(*p_mutex_);
+  prefixfunctions_[key] = func;
+}
+
+std::string MKLDNNDeviceContext::GetPrefix(void) const {
+  std::lock_guard<std::mutex> lock(*p_mutex_);
+  std::string prefix = "";
+  for (auto& func : prefixfunctions_) {
+    prefix += func.second();
+  }
+  return prefix;
+}
+
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();

@@ -188,6 +188,13 @@ bool AnalysisPredictor::PrepareExecutor() {
 void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 #ifdef PADDLE_WITH_MKLDNN
   platform::set_cur_thread_id(tid);
+  // When MKL-DNN is used we are to cache MKL-DNN primitives
+  // For Analysis Predictor this will be done per MkldnnThreadID
+  platform::CPUPlace cpu;
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx = static_cast<platform::MKLDNNDeviceContext *>(pool.Get(cpu));
+  dev_ctx->AppendPrefixFunction(
+      "AP", [](void) { return std::to_string(platform::get_cur_thread_id()); });
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
 #endif

@@ -392,6 +392,22 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
 #endif
   }
+
+#if defined(PADDLE_WITH_MKLDNN)
+  // When MKL-DNN is used we are to cache MKL-DNN primitives.
+  // For Parallel Executor this is to be done per std::thread,
+  // so hashing key has to contain Thread ID
+  platform::CPUPlace cpu;
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx = static_cast<platform::MKLDNNDeviceContext *>(pool.Get(cpu));
+  dev_ctx->AppendPrefixFunction("TID", [](void) {
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << tid;
+    return ss.str();
+  });
+#endif
+
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
     if (build_strategy.num_trainers_ > 1) {

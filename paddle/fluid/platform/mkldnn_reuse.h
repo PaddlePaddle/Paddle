@@ -33,11 +33,7 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    // TODO(jczaja): Make it faster
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    key_ = key_common_ + "-t:" + ss.str();
+    key_ = key_common_ + dev_ctx.GetPrefix();
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(

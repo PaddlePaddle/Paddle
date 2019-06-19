@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
@@ -394,6 +395,12 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Set data to blob (i.e. name/data pair). Create blob if not existing
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
+  //
+  void AppendPrefixFunction(const std::string& key,
+                            std::function<std::string()> func);
+
+  std::string GetPrefix(void) const;
+
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
 
@@ -401,6 +408,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
+  std::unordered_map<std::string, std::function<std::string()>>
+      prefixfunctions_;
 };
 #endif
 
