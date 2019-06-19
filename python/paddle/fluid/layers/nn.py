@@ -9416,8 +9416,9 @@ def expand(x, expand_times, name=None):
 
     Examples:
         .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+          
+            import paddle.fluid as fluid
+            x = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
             out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
     """
     helper = LayerHelper('expand', input=x, **locals())
