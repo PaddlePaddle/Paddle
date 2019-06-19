@@ -27,7 +27,7 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-
+import sys
 from .. import compat as cpt
 from .proto import framework_pb2
 
@@ -82,7 +82,24 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+    if "CPU_NUM" not in os.environ.keys():
+        sys.stderr.write(
+            'The CPU_NUM is not specified, you should set CPU_NUM in '
+            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
+            'indicates that how many CPUPlace are used in the current task.\n'
+            '!!! The default number of CPUPlaces is 1.\n\n')
+        os.environ['CPU_NUM'] = str(1)
+    cpu_num = os.environ.get('CPU_NUM')
+    return int(cpu_num)
+
+
+def _cuda_ids():
+    gpus_env = os.getenv("FLAGS_selected_gpus")
+    if gpus_env:
+        device_ids = [int(s) for s in gpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
 
 
 def cuda_places(device_ids=None):
@@ -116,11 +133,7 @@ def cuda_places(device_ids=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            device_ids = [int(s) for s in gpus_env.split(",")]
-        else:
-            device_ids = six.moves.range(core.get_cuda_device_count())
+        device_ids = _cuda_ids()
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
@@ -743,10 +756,8 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate(".".join(self.name)),
-                dtype=self.dtype,
-                persistable=self.persistable,
-                stop_gradient=self.stop_gradient, )
+                name=unique_name.generate_with_ignorable_key(self.name),
+                dtype=self.dtype)
         else:
             return self
 
@@ -2760,6 +2771,9 @@ class Program(object):
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
+
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
 
     @property
     def _is_mem_optimized(self):
