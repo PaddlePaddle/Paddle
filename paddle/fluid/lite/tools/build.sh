@@ -114,12 +114,45 @@ function test_arm_android {
 
     echo "test name: ${test_name}"
     adb_work_dir="/data/local/tmp"
-    skip_list="test_model_parser_lite" # add more with space
-    [[ $skip_list =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && continue || echo 'skip $test_name'
+
+    skip_list=("test_model_parser_lite" "test_cxx_api_lite")
+    for skip_name in ${skip_list[@]} ; do
+        [[ $skip_name =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && echo "skip $test_name" && return
+    done
+
     testpath=$(find ./paddle/fluid -name ${test_name})
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
     adb -s emulator-${port} shell "./${adb_work_dir}/${test_name}"
+}
+
+function test_arm_model {
+    local test_name=$1
+    local port=$2
+    local model_dir=$3
+
+    if [[ "${test_name}x" == "x" ]]; then
+        echo "test_name can not be empty"
+        exit 1
+    fi
+    if [[ "${port}x" == "x" ]]; then
+        echo "Port can not be empty"
+        exit 1
+    fi
+    if [[ "${model_dir}x" == "x" ]]; then
+        echo "Model dir can not be empty"
+        exit 1
+    fi
+
+    echo "test name: ${test_name}"
+    adb_work_dir="/data/local/tmp"
+
+    testpath=$(find ./paddle/fluid -name ${test_name})
+    adb -s emulator-${port} push ${model_dir} ${adb_work_dir}
+    adb -s emulator-${port} push ${testpath} ${adb_work_dir}
+    adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
+    local adb_model_path="./${adb_work_dir}/`basename ${model_dir}`"
+    adb -s emulator-${port} shell "./${adb_work_dir}/${test_name} --eval_model_dir=$adb_model_path"
 }
 
 # Build the code and run lite arm tests. This is executed in the CI system.
@@ -196,6 +229,8 @@ function build_test_arm {
             for _test in $(cat $TESTS_FILE); do
                 test_arm_android $_test $port
             done
+            # TODO(sangoly): refine this
+            test_arm_model "test_cxx_api_lite" $port "./third_party/install/mobilenet_v2_relu"
         done
     done
 

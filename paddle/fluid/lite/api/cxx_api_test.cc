@@ -19,7 +19,6 @@
 #include "paddle/fluid/lite/api/lite_api_test_helper.h"
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/mir/use_passes.h"
-#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/kernels/use_kernels.h"
 #include "paddle/fluid/lite/operators/use_ops.h"
@@ -28,9 +27,13 @@
 DEFINE_string(startup_program_path, "", "");
 DEFINE_string(main_program_path, "", "");
 
+// for eval
+DEFINE_string(eval_model_dir, "", "");
+
 namespace paddle {
 namespace lite {
 
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, test) {
   const lite::Tensor* out = RunHvyModel();
   LOG(INFO) << out << " memory size " << out->data_size();
@@ -41,7 +44,6 @@ TEST(CXXApi, test) {
   // LOG(INFO) << "out " << *out;
 }
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
   lite::ExecutorLite predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
@@ -52,9 +54,7 @@ TEST(CXXApi, save_model) {
   LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
   predictor.SaveModel(FLAGS_optimized_model);
 }
-#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 /*TEST(CXXTrainer, train) {
   Place prefer_place({TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)});
   std::vector<Place> valid_places({prefer_place});
@@ -87,6 +87,38 @@ TEST(CXXApi, save_model) {
   exe.Run();
 }*/
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+
+#ifdef LITE_WITH_ARM
+TEST(CXXApi, eval) {
+  DeviceInfo::Init();
+  lite::ExecutorLite predictor;
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kARM), PRECISION(kFloat)}});
+
+  predictor.Build(FLAGS_eval_model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
+                  valid_places);
+
+  auto* input_tensor = predictor.GetInput(0);
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
+  auto* data = input_tensor->mutable_data<float>();
+  for (int i = 0; i < input_tensor->dims().production(); i++) {
+    data[i] = 1;
+  }
+
+  predictor.Run();
+
+  auto* out = predictor.GetOutput(0);
+  std::vector<float> results({0.00097802, 0.00099822, 0.00103093, 0.00100121,
+                              0.00098268, 0.00104065, 0.00099962, 0.00095181,
+                              0.00099694, 0.00099406});
+  for (int i = 0; i < results.size(); ++i) {
+    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
+  }
+  ASSERT_EQ(out->dims().size(), 2);
+  ASSERT_EQ(out->dims()[0], 1);
+  ASSERT_EQ(out->dims()[1], 1000);
+}
+#endif
 
 }  // namespace lite
 }  // namespace paddle
