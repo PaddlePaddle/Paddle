@@ -33,7 +33,7 @@ DEFINE_uint64(conv_workspace_size_limit,
               "cuDNN convolution workspace limit in MB unit.");
 DEFINE_bool(cudnn_exhaustive_search, false,
             "Whether enable exhaustive search for cuDNN convolution or "
-            "not, defalut is False.");
+            "not, default is False.");
 
 namespace paddle {
 namespace operators {
@@ -102,7 +102,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
 #if CUDNN_VERSION_MIN(7, 0, 1)
-    // cudnn 7 can support groups, no need to do it mannually
+    // cudnn 7 can support groups, no need to do it manually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
     CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
@@ -300,7 +300,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     if (exhaustive_search && FLAGS_cudnn_deterministic) {
       PADDLE_THROW(
-          "Cann't set exhaustive_search True and "
+          "Can't set exhaustive_search True and "
           "FLAGS_cudnn_deterministic True at same time.");
     }
 
@@ -320,7 +320,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
 #if CUDNN_VERSION_MIN(7, 0, 1)
-    // cudnn 7 can support groups, no need to do it mannually
+    // cudnn 7 can support groups, no need to do it manually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
     CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
@@ -665,7 +665,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
     if (exhaustive_search && deterministic) {
       PADDLE_THROW(
-          "Cann't set exhaustive_search True and "
+          "Can't set exhaustive_search True and "
           "FLAGS_cudnn_deterministic True at same time.");
     }
 
