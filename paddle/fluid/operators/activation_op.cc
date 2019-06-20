@@ -604,20 +604,24 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
+      // some op has no output DX, check HasOutputs("DX") here
       if (HasOutputs("DX") && ctx->HasOutput("DX")) {
         ctx->ShareDim("X", "DX");
         ctx->ShareLoD("X", "DX");
       }
+      // some op has no output DDout, check HasOutputs("DDout") here
       if (HasOutputs("DDOut") && ctx->HasOutput("DDOut")) {
         ctx->ShareDim("X", "DDOut");
         ctx->ShareLoD("X", "DDOut");
       }
     }
     if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
+      // some op has no output DOut, check HasOutputs("DOut") here
       if (HasOutputs("DOut") && ctx->HasOutput("DOut")) {
         ctx->ShareDim("Out", "DOut");
         ctx->ShareLoD("Out", "DOut");
       }
+      // some op has no output DDOut, check HasOutputs("DDOut") here
       if (HasOutputs("DDOut") && ctx->HasOutput("DDOut")) {
         ctx->ShareDim("Out", "DDOut");
         ctx->ShareLoD("Out", "DDOut");
