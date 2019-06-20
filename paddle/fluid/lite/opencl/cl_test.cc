@@ -23,7 +23,7 @@ namespace lite {
 TEST(cl_test, engine_test) {
   auto* engine = CLEngine::Global();
   CHECK(engine->IsInitSuccess());
-  engine->set_cl_path("/work/Develop/Paddle/paddle/fluid/lite/opencl");
+  engine->set_cl_path("/data/local/tmp/opencl");
   engine->platform();
   engine->device();
   engine->command_queue();
@@ -37,9 +37,9 @@ TEST(cl_test, engine_test) {
 TEST(cl_test, context_test) {
   auto* engine = CLEngine::Global();
   CHECK(engine->IsInitSuccess());
-  engine->set_cl_path("/work/Develop/Paddle/paddle/fluid/lite/opencl");
+  engine->set_cl_path("/data/local/tmp/opencl");
   CLContext context;
-  context.GetKernel("batchnorm", "batchnorm_kernel.cl", "");
+  context.GetKernel("pool_max", "pool_kernel.cl", "");
   context.GetKernel("elementwise_add", "elementwise_add_kernel.cl", "");
   context.GetKernel("elementwise_add", "elementwise_add_kernel.cl", "");
 }
