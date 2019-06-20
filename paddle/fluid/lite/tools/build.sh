@@ -25,9 +25,18 @@ function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
-function cmake_cl {
-    prepare_for_codegen
-    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON -DLITE_WITH_CL=ON ${common_flags}
+function cmake_opencl {
+    cmake .. \
+        -DLITE_WITH_OPENCL=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_LITE=ON \
+        -DLITE_WITH_CUDA=OFF \
+        -DLITE_WITH_X86=OFF \
+        -DLITE_WITH_ARM=ON \
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+        -DWITH_TESTING=ON \
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
 }
 
 
@@ -428,8 +437,8 @@ function main {
                 cmake_x86
                 shift
                 ;;
-            cmake_cl)
-                cmake_cl
+            cmake_opencl)
+                cmake_opencl
                 shift
                 ;;
             cmake_cuda)
