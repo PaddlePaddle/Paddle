@@ -67,7 +67,7 @@ class Context<TargetType::kARM> {
   ARMContext& operator=(const ARMContext& ctx) {}
 
   // NOTE: InitOnce should only be used by ContextScheduler
-  void InitOnce() {}
+  void InitOnce() { DeviceInfo::Init(); }
 
   void CopyShared(const ARMContext* ctx) {}
 
@@ -78,20 +78,19 @@ class Context<TargetType::kARM> {
     return DeviceInfo::Global().SetCache(l1size, l2size, l3size);
   }
   void SetArch(ARMArch arch) { return DeviceInfo::Global().SetArch(arch); }
-  void BindDev() { return DeviceInfo::Global().BindDev(); }
 
   PowerMode mode() const { return DeviceInfo::Global().mode(); }
   int threads() const { return DeviceInfo::Global().threads(); }
   ARMArch arch() const { return DeviceInfo::Global().arch(); }
+  int l1_cache_size() const { return DeviceInfo::Global().l1_cache_size(); }
+  int l2_cache_size() const { return DeviceInfo::Global().l2_cache_size(); }
+  int l3_cache_size() const { return DeviceInfo::Global().l3_cache_size(); }
 
   template <typename T>
   T* workspace_data() {
     return DeviceInfo::Global().workspace_data<T>();
   }
 
-  int l1_cache_size() const { return DeviceInfo::Global().l1_cache_size(); }
-  int l2_cache_size() const { return DeviceInfo::Global().l2_cache_size(); }
-  int l3_cache_size() const { return DeviceInfo::Global().l3_cache_size(); }
   bool ExtendWorkspace(DDimLite dims) {
     return DeviceInfo::Global().ExtendWorkspace(dims);
   }
