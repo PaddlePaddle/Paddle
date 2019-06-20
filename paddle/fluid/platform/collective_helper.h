@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _WIN32
+// #ifndef _WIN32
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #pragma once
 
 #include <memory>
