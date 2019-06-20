@@ -264,6 +264,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -486,6 +488,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
