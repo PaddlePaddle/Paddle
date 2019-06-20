@@ -177,7 +177,6 @@ set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCL
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
