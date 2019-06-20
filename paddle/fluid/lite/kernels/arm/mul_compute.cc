@@ -24,7 +24,6 @@ namespace arm {
 
 void MulCompute::PrepareForRun() {
   auto& ctx = this->ctx_->template As<ARMContext>();
-  ctx.SetRunMode(LITE_POWER_HIGH, 4);
 }
 
 void MulCompute::Run() {
