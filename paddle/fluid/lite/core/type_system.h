@@ -165,8 +165,8 @@ class Type : public DataType {
 
 // -------------------------------- compatible check ---------------------------
 static bool TargetCompatibleTo(const Type& a, const Type& b) {
-  auto is_host = [](TargetType x) {
-    return x == TARGET(kHost) || x == TARGET(kX86);
+  auto is_host = [](TargetType x) -> bool {
+    return x == TARGET(kHost) || x == TARGET(kX86) || x == TARGET(kARM);
   };
   if (a.IsVoid() || b.IsVoid()) return true;
   if (a.IsTensor() || b.IsTensor()) {

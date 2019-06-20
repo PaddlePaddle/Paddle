@@ -12,28 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/fusion/conv_elementwise_add_relu_fuse_pass.h"
-#include <memory>
-#include <vector>
-#include "paddle/fluid/lite/core/mir/fusion/conv_elementwise_add_relu_fuser.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/operators/fake_dequantize_max_abs.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {
-
-void ConvElementwiseAddReLUFusePass::Apply(
-    const std::unique_ptr<SSAGraph>& graph) {
-  fusion::ConvElementwiseAddReLUFuser fuser("conv2d");
-  fuser(graph.get());
-
-  fusion::ConvElementwiseAddReLUFuser depthwise_fuser("depthwise_conv2d");
-  depthwise_fuser(graph.get());
-}
-
-}  // namespace mir
+namespace operators {}  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(lite_conv_elementwise_add_act_fuse_pass,
-                  paddle::lite::mir::ConvElementwiseAddReLUFusePass);
+REGISTER_LITE_OP(fake_dequantize_max_abs,
+                 paddle::lite::operators::FakeDequantizeMaxAbsOpLite);

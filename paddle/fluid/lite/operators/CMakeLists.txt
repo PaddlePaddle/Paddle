@@ -23,6 +23,8 @@ cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
 cc_library(split_op_lite SRCS split_op.cc DEPS ${op_DEPS})
 cc_library(transpose_op_lite SRCS transpose_op.cc DEPS ${op_DEPS})
+cc_library(fake_quant SRCS fake_quantize_moving_avg_max_abs.cc DEPS ${op_DEPS})
+cc_library(fake_dequant SRCS fake_dequantize_max_abs.cc DEPS ${op_DEPS})
 
 set(ops_lite
         conv_op_lite
@@ -46,6 +48,8 @@ set(ops_lite
         concat_op_lite
         split_op_lite
         transpose_op_lite
+        fake_quant
+        fake_dequant
         PARENT_SCOPE)
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 

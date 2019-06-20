@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "conv_elementwise_add_relu_fuse_pass.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/mir/fusion/conv_elementwise_add_activation_fuse_pass.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"

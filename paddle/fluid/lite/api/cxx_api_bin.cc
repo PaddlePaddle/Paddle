@@ -88,6 +88,8 @@ USE_LITE_OP(depthwise_conv2d);
 USE_LITE_OP(pool2d);
 USE_LITE_OP(elementwise_add);
 USE_LITE_OP(softmax);
+USE_LITE_OP(fake_quantize_moving_average_abs_max);
+USE_LITE_OP(fake_dequantize_max_abs);
 
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);

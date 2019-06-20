@@ -273,6 +273,28 @@ struct FillConstantParam {
   lite::Tensor* Out{};
 };
 
+//
+struct FakeQuantizeMovingAvgMaxAbsParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* in_scale{};
+  const lite::Tensor* in_accum{};
+  const lite::Tensor* in_state{};
+  lite::Tensor* out{};
+  lite::Tensor* out_scale{};
+  lite::Tensor* out_state{};
+  lite::Tensor* out_accum{};
+  int bit_length;
+  bool is_test{true};
+  float moving_rate{0.9};
+};
+
+struct FakeDequantizeMaxAbsParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* in_scale{};
+  lite::Tensor* out{};
+  float max_range;
+};
+
 /// ----------------------- sgd operators ----------------------
 struct SGDParam {
   int dtype{framework::proto::VarType::FP32};
