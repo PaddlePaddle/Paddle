@@ -52,7 +52,7 @@ class FcFuser : public FuseBase {
   void InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) override {
     auto op_desc = GenOpDesc(matched);
     auto fc_op = LiteOpRegistry::Global().Create("fc");
-    auto mul = matched.at("mul")->stmt()->op;
+    auto mul = matched.at("mul")->stmt()->op();
     auto* scope = mul->scope();
     auto& valid_places = mul->valid_places();
     fc_op->Attach(op_desc, scope);
@@ -90,7 +90,7 @@ std::unique_ptr<SSAGraph> BuildGraph(framework::ProgramDesc* program_desc,
   main_block->Var("w");
   main_block->Var("out");
 
-  scope->Var("w")->GetMutable<lite::Tensor>();
+  scope->Var("x")->GetMutable<lite::Tensor>();
   scope->Var("b")->GetMutable<lite::Tensor>();
   scope->Var("mul_out")->GetMutable<lite::Tensor>();
   scope->Var("w")->GetMutable<lite::Tensor>();

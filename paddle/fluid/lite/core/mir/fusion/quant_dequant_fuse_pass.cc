@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/quant_dequant_fuse_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/quant_dequant_fuse_pass.h"
 #include <memory>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/fusion/quant_dequant_op_fuser.h"

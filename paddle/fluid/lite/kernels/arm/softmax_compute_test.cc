@@ -80,12 +80,19 @@ TEST(softmax_arm, compute) {
   lite::Tensor x;
   lite::Tensor output;
   lite::Tensor output_ref;
-
+#if 1
+  for (auto n : {1, 3}) {
+    for (auto c : {1, 4}) {
+      for (auto h : {5, 1}) {
+        for (auto w : {1, 6}) {
+          for (auto axis : {-2, -1, 0, 1, 2}) {
+#else
   for (auto n : {1, 3, 4, 11}) {
     for (auto c : {1, 3, 11, 4}) {
       for (auto h : {3, 1, 11, 4}) {
         for (auto w : {1, 3, 4, 12}) {
           for (auto axis : {-4, -3, -2, -1, 0, 1, 2, 3}) {
+#endif
             x.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
             output.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
             output_ref.Resize(DDim(std::vector<int64_t>({n, c, h, w})));

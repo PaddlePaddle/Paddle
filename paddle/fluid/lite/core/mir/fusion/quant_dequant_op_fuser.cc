@@ -115,8 +115,8 @@ void QuantDequantOpFuser::InsertNewNode(SSAGraph* graph,
     nodes.push_back(matched.at("dequant_op_out" + std::to_string(i)));
   }
   int bit_length = quant_op->stmt()->op_info()->GetAttr<int>("bit_length");
-  auto* scope = quant_op->stmt()->op->scope();
-  auto& valid_places = quant_op->stmt()->op->valid_places();
+  auto* scope = quant_op->stmt()->op()->scope();
+  auto& valid_places = quant_op->stmt()->op()->valid_places();
   int range = ((1 << (bit_length - 1)) - 1);
   auto input_scale_t = scope->FindVar(quant_op_in_scale->arg()->name)
                            ->GetMutable<lite::Tensor>();

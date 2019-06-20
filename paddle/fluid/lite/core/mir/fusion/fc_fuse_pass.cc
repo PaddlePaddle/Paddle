@@ -12,31 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/generate_program_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/fc_fuse_pass.h"
 #include <memory>
-#include <utility>
 #include <vector>
-#include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/fc_fuser.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-void GenerateProgramPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
-  VLOG(4) << "final program \n" << Visualize(graph.get());
-  for (auto& item : graph->StmtTopologicalOrder()) {
-    if (item->IsStmt()) {
-      auto& stmt = item->AsStmt();
-      VLOG(4) << stmt;
-      insts_.emplace_back(stmt.op(), std::move(stmt.kernels().front()));
-    }
-  }
+void FcFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
+  fusion::FcFuser fuser;
+  fuser(graph.get());
 }
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(generate_program_pass,
-                  paddle::lite::mir::GenerateProgramPass);
+REGISTER_MIR_PASS(lite_fc_fuse_pass, paddle::lite::mir::FcFusePass);

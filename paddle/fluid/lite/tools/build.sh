@@ -54,22 +54,6 @@ function check_style {
     fi
 }
 
-function cmake_arm {
-    # $1: ARM_TARGET_OS in "android" , "armlinux"
-    # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
-    # $3: ARM_TARGET_LANG in "gcc" "clang"
-    cmake .. \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_LITE=ON \
-        -DLITE_WITH_CUDA=OFF \
-        -DLITE_WITH_X86=OFF \
-        -DLITE_WITH_ARM=ON \
-        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-        -DWITH_TESTING=ON \
-        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
-}
-
 function build_single {
     #make $1 -j$(expr $(nproc) - 2)
     make $1 -j$NUM_CORES_FOR_COMPILE
@@ -153,46 +137,102 @@ function test_arm_model {
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
     local adb_model_path="./${adb_work_dir}/`basename ${model_dir}`"
     adb -s emulator-${port} shell "./${adb_work_dir}/${test_name} --eval_model_dir=$adb_model_path"
+
+}
+
+function cmake_arm {
+    # $1: ARM_TARGET_OS in "android" , "armlinux"
+    # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+    # $3: ARM_TARGET_LANG in "gcc" "clang"
+    cmake .. \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_LITE=ON \
+        -DLITE_WITH_CUDA=OFF \
+        -DLITE_WITH_X86=OFF \
+        -DLITE_WITH_ARM=ON \
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+        -DWITH_TESTING=ON \
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
+}
+
+# $1: ARM_TARGET_OS in "android" , "armlinux"
+# $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+# $3: ARM_TARGET_LANG in "gcc" "clang"
+function build_arm {
+    os=$1
+    abi=$2
+    lang=$3
+
+    cur_dir=$(pwd)
+    if [[ ${os} == "armlinux" ]]; then
+        # TODO(hongming): enable compile armv7 and armv7hf on armlinux, and clang compile
+        if [[ ${lang} == "clang" ]]; then
+            echo "clang is not enabled on armlinux yet"
+            return 0
+        fi
+        if [[ ${abi} == "armv7hf" ]]; then
+            echo "armv7hf is not supported on armlinux yet"
+            return 0
+        fi
+        if [[ ${abi} == "armv7" ]]; then
+            echo "armv7 is not supported on armlinux yet"
+            return 0
+        fi
+    fi
+
+    if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
+        echo "android do not need armv7hf"
+        return 0
+    fi
+
+    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
+    mkdir -p $build_dir
+    cd $build_dir
+
+    cmake_arm ${os} ${abi} ${lang}
+    build $TESTS_FILE
+}
+
+# $1: ARM_TARGET_OS in "android" , "armlinux"
+# $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+# $3: ARM_TARGET_LANG in "gcc" "clang"
+# $4: android test port
+# Note: test must be in build dir
+function test_arm {
+    os=$1
+    abi=$2
+    lang=$3
+    port=$4
+    if [[ ${os} == "armlinux" ]]; then
+        # TODO(hongming): enable test armlinux on armv8, armv7 and armv7hf
+        echo "Skip test arm linux yet. armlinux must in another docker"
+        return 0
+    fi
+
+    if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
+        echo "android do not need armv7hf"
+        return 0
+    fi
+
+    # TODO(yuanshuai): enable armv7 on android
+    if [[ ${abi} == "armv7" ]]; then
+        echo "skip android v7 test yet"
+        return 0
+    fi
+
+    echo "test file: ${TESTS_FILE}"
+    for _test in $(cat $TESTS_FILE); do
+        test_arm_android $_test $port
+    done
+    # TODO(sangoly): refine this
+    test_arm_model "test_cxx_api_lite" $port "./third_party/install/mobilenet_v2_relu"
 }
 
 # Build the code and run lite arm tests. This is executed in the CI system.
 function build_test_arm {
-    # 1. Build goes first
-    cur_dir=$(pwd)
-    for lang in "gcc" "clang"; do
-        for os in "android" "armlinux" ; do
-            if [[ ${os} == "armlinux" && ${lang} == "clang" ]]; then
-                continue
-            fi
-            for abi in "armv8" "armv7" "armv7hf"; do 
-                # TODO(hongming): enable compile armv7 and armv7hf on armlinux
-                if [[ ${abi} == "armv7hf" ]]; then
-                    echo "armv7hf is not supported on both android and armlinux yet"
-                    continue
-                fi
-                
-                # TODO(hongming): enable armv7 on armlinux
-                if [[ ${os} == "armlinux" && ${abi} == "armv7" ]]; then
-                    echo "armv7 is not supported on armlinux yet"
-                    continue
-                fi
-
-                if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
-                    echo "android do not need armv7hf"
-                    continue
-                fi
-
-                build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
-                mkdir -p $build_dir
-                cd $build_dir
-
-                cmake_arm ${os} ${abi} ${lang}
-                build $TESTS_FILE
-            done
-        done
-    done
-
-    # 2. Then test
+    ########################################################################
+    # job 1-4 must be in one runner
     port_armv8=5554
     port_armv7=5556
 
@@ -206,38 +246,45 @@ function build_test_arm {
     echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
     sleep 1m
 
-    # now can only test android.
-    for lang in "gcc" "clang"; do
-        for abi in "armv8" "armv7" ; do
-            # TODO(yuanshuai): enable armv7 on android
-            if [[ ${abi} == "armv7" ]]; then
-                continue
-            fi
+    # job 1
+    build_arm "android" "armv8" "gcc"
+    test_arm "android" "armv8" "gcc" ${port_armv8}
+    cd -
 
-            build_dir=$cur_dir/build.lite.android.${abi}.${lang}
-            cd $build_dir
+    # job 2
+    build_arm "android" "armv8" "clang"
+    test_arm "android" "armv8" "clang" ${port_armv8}
+    cd -
 
-            local port=
-            if [[ ${abi} == "armv7" ]]; then
-                port=${port_armv7}
-            fi
+    # job 3
+    build_arm "android" "armv7" "gcc"
+    test_arm "android" "armv7" "gcc" ${port_armv7}
+    cd -
 
-            if [[ ${abi} == "armv8" ]]; then
-                port=${port_armv8}
-            fi
-            echo "test file: ${TESTS_FILE}"
-            for _test in $(cat $TESTS_FILE); do
-                test_arm_android $_test $port
-            done
-            # TODO(sangoly): refine this
-            test_arm_model "test_cxx_api_lite" $port "./third_party/install/mobilenet_v2_relu"
-        done
-    done
-
-    # armlinux need in another docker
-    # TODO(hongming): enable test armlinux on armv8, armv7 and armv7hf
+    # job 4
+    build_arm "android" "armv7" "clang"
+    test_arm "android" "armv7" "clang" ${port_armv7}
+    cd -
 
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+    echo "Done"
+    ########################################################################
+
+    # job 5
+    build_arm "armlinux" "armv8"
+    test_arm "armlinux" "armv8"
+    cd -
+
+    # job 6
+    build_arm "armlinux" "armv7"
+    test_arm "armlinux" "armv7"
+    cd -
+
+    # job 7
+    build_arm "armlinux" "armv7hf"
+    test_arm "armlinux" "armv7hf"
+    cd -
+
     echo "Done"
 }
 
@@ -279,6 +326,10 @@ function main {
                 ARM_ABI="${i#*=}"
                 shift
                 ;;
+            --arm_lang=*)
+                ARM_LANG="${i#*=}"
+                shift
+                ;;
             --arm_port=*)
                 ARM_PORT="${i#*=}"
                 shift
@@ -301,11 +352,19 @@ function main {
                 shift
                 ;;
             cmake_arm)
-                cmake_arm $ARM_OS $ARM_ABI
+                cmake_arm $ARM_OS $ARM_ABI $ARM_LANG
+                shift
+                ;;
+            build_arm)
+                build_arm $ARM_OS $ARM_ABI $ARM_LANG
                 shift
                 ;;
             test_server)
                 test_lite $TESTS_FILE
+                shift
+                ;;
+            test_arm)
+                build_arm $ARM_OS $ARM_ABI $ARM_LANG $ARM_PORT
                 shift
                 ;;
             test_arm_android)

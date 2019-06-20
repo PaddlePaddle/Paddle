@@ -10,7 +10,6 @@ cc_library(fuse_conv_bn
 cc_library(fuse_elementwise_add_activation
         SRCS elementwise_add_activation_fuser.cc
         DEPS pattern_matcher_high_api)
-
 cc_library(fuse_quant_dequant
         SRCS quant_dequant_op_fuser.cc
         DEPS pattern_matcher_high_api)
