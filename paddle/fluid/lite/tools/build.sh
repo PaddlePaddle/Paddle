@@ -25,6 +25,12 @@ function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
+function cmake_cl {
+    prepare_for_codegen
+    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON -DLITE_WITH_CL=ON ${common_flags}
+}
+
+
 # This method is only called in CI.
 function cmake_x86_for_CI {
     prepare_for_codegen # fake an empty __generated_code__.cc to pass cmake.
@@ -420,6 +426,10 @@ function main {
                 ;;
             cmake_x86)
                 cmake_x86
+                shift
+                ;;
+            cmake_cl)
+                cmake_cl
                 shift
                 ;;
             cmake_cuda)
