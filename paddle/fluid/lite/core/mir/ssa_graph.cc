@@ -24,8 +24,10 @@ namespace lite {
 namespace mir {
 
 bool SSAGraph::CheckBidirectionalConnection() {
-  LOG(INFO) << "node count " << node_storage_.size();
+  VLOG(4) << "node count " << node_storage_.size();
   for (auto &node : node_storage_) {
+    if (node.IsStmt()) VLOG(4) << node.AsStmt().op_info()->Type();
+    if (node.IsArg()) VLOG(4) << node.AsArg().name << " " << node.AsArg().id;
     for (auto *in : node.inlinks) {
       CHECK(in->outlinks.end() !=
             std::find(in->outlinks.begin(), in->outlinks.end(), &node));
@@ -121,6 +123,7 @@ void SSAGraph::Build(const Program &program,
 
   std::unordered_map<std::string, mir::Node *> arg_update_node_map_;
   for (auto &op : program.ops()) {
+    VLOG(3) << op->op_info()->Type();
     auto *op_node = GraphCreateInstructNode(op, valid_places);
     for (const std::string &name : op->op_info()->input_names()) {
       mir::Node *arg_node = nullptr;

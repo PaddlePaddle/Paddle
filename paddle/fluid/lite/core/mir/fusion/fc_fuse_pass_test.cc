@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/fc_fuse_pass.h"
+#include "fc_fuse_pass.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/fluid/lite/api/cxx_api.h"
-#include "paddle/fluid/lite/core/mir/passes.h"
+#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 DEFINE_string(model_dir, "", "");

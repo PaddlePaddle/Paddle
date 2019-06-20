@@ -13,26 +13,19 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+
+#include <gflags/gflags.h>
+#include "paddle/fluid/lite/api/cxx_api.h"
+#include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/op_registry.h"
+
+DECLARE_string(model_dir);
+DECLARE_string(optimized_model);
 
 namespace paddle {
 namespace lite {
-namespace mir {}  // namespace mir
+
+const lite::Tensor* RunHvyModel();
+
 }  // namespace lite
 }  // namespace paddle
-
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-USE_MIR_PASS(demo);
-USE_MIR_PASS(static_kernel_pick_pass);
-USE_MIR_PASS(variable_place_inference_pass);
-USE_MIR_PASS(type_target_transform_pass);
-USE_MIR_PASS(generate_program_pass);
-USE_MIR_PASS(io_copy_kernel_pick_pass);
-USE_MIR_PASS(argument_type_display_pass);
-#endif
-USE_MIR_PASS(runtime_context_assign_pass);
-USE_MIR_PASS(lite_conv_bn_fuse_pass);
-USE_MIR_PASS(graph_visualze);
-USE_MIR_PASS(lite_fc_fuse_pass);
-USE_MIR_PASS(lite_conv_elementwise_add_activation_fuse_pass);
-USE_MIR_PASS(lite_elementwise_add_activation_fuse_pass);

@@ -42,7 +42,17 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
         message(FATAL_ERROR "ARM_TARGET_ARCH_ABI must be in one of ${ARM_TARGET_ARCH_ABI_LIST}")
     endif()
 
-    message(STATUS "Lite ARM Compile ${ARM_TARGET_OS} with ${ARM_TARGET_ARCH_ABI}")
+    # check arch abi
+    if(NOT DEFINED ARM_TARGET_LANG)
+        set(ARM_TARGET_LANG "gcc" CACHE STRING "Choose ARM Target Language")
+    endif()
+    set(ARM_TARGET_LANG_LIST "gcc" "clang" "")
+    set_property(CACHE ARM_TARGET_LANG PROPERTY STRINGS ${ARM_TARGET_LANG_LIST})
+    if (NOT ARM_TARGET_LANG IN_LIST ARM_TARGET_LANG_LIST)
+        message(FATAL_ERROR "ARM_TARGET_LANG must be in one of ${ARM_TARGET_LANG_LIST}")
+    endif()
+
+    message(STATUS "Lite ARM Compile ${ARM_TARGET_OS} with ${ARM_TARGET_ARCH_ABI} ${ARM_TARGET_LANG}")
     include(cross_compiling/host)
     include(cross_compiling/armlinux)
     include(cross_compiling/android)
@@ -158,6 +168,9 @@ include_directories("${PADDLE_SOURCE_DIR}")
 # for mobile
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "Building the mobile framework")
+    if (ANDROID)
+        include(cross_compiling/findar)
+    endif()
     # include the necessary thirdparty dependencies
     include(external/gflags)    # download, build, install gflags
     include(external/glog)      # download, build, install glog

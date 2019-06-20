@@ -37,9 +37,9 @@ void StaticKernelPickPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
     if (!node.IsStmt()) continue;
     auto& instruct = node.AsStmt();
     std::vector<std::pair<size_t, std::unique_ptr<KernelBase>>> scored;
-    CHECK(!instruct.valid_kernels.empty()) << "No kernels found for "
-                                           << instruct.op_type;
-    for (auto&& kernel : instruct.valid_kernels) {
+    CHECK(!instruct.kernels().empty()) << "No kernels found for "
+                                       << instruct.op_type();
+    for (auto&& kernel : instruct.kernels()) {
       size_t score = KernelGrade(*kernel);
       scored.emplace_back(score, std::move(kernel));
     }
@@ -49,9 +49,9 @@ void StaticKernelPickPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
     // Move kernel back
     // Just keep a single best kernel.
     // TODO(Superjomn) reconsider this.
-    instruct.valid_kernels.clear();
-    instruct.valid_kernels.emplace_back(std::move(scored.front().second));
-    VLOG(2) << "pick " << instruct.valid_kernels.front()->name();
+    instruct.kernels().clear();
+    instruct.kernels().emplace_back(std::move(scored.front().second));
+    VLOG(2) << "pick " << instruct.kernels().front()->name();
   }
 }
 

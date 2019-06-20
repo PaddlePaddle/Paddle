@@ -39,7 +39,7 @@ std::string Visualize(mir::SSAGraph* graph) {
     if (node.IsArg()) {
       key = node.AsArg().name;
     } else {
-      key = node.AsStmt().op_type + std::to_string(id++);
+      key = node.AsStmt().op_type() + std::to_string(id++);
     }
 
     if (node.IsStmt()) {

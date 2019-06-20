@@ -1,5 +1,5 @@
 if (WITH_TESTING)
-    cc_library(lite_gtest_main SRCS lite_gtest_main.cc DEPS gtest)
+    cc_library(lite_gtest_main SRCS lite_gtest_main.cc DEPS gtest gflags)
 endif()
 lite_cc_library(target_wrapper_lite SRCS target_wrapper.cc
   DEPS target_wrapper_host
@@ -59,4 +59,3 @@ lite_cc_test(test_type_system SRCS type_system_test.cc DEPS type_system utils_li
 lite_cc_test(test_types_lite SRCS types_test.cc DEPS types_lite)
 lite_cc_test(test_memory_lite SRCS memory_test.cc DEPS memory_lite)
 lite_cc_test(test_context_lite SRCS context_test.cc DEPS context_lite X86_DEPS operator)
- 

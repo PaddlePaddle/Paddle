@@ -61,7 +61,6 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
     targets.insert(place.target);
   }
 
-  // CHECK(!kernels.empty()) << "No kernel found for Op " << op_type_;
   VLOG(2) << "op " << op_type_ << " get " << kernels.size() << " kernels";
   return kernels;
 }
@@ -83,7 +82,7 @@ bool OpLite::Attach(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   scope_ = scope;
   op_info_.reset(
       new OpInfo(opdesc));  // Force clean the out-of-date infomation.
-  return AttachImpl(opdesc, scope);
+  return AttachImpl(*op_info(), scope);
 }
 
 const Tensor *OpLite::GetTensor(lite::Scope *scope,
