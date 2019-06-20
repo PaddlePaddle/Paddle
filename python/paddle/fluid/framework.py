@@ -650,7 +650,7 @@ class Variable(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self._ivar.dtype
+            return self._ivar.type
         else:
             return self.desc.type()
 
