@@ -15,6 +15,8 @@
 #include "paddle/fluid/lite/kernels/x86/elementwise_compute.h"
 #include <gtest/gtest.h>
 #include <iostream>
+#include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"
 

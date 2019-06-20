@@ -40,12 +40,20 @@ class MulCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
     auto* x = &param.x->raw_tensor();
     auto* y = &param.y->raw_tensor();
 
-    const Tensor x_matrix = x->dims().size() > 2 ? framework::ReshapeToMatrix(
-                                                       *x, param.x_num_col_dims)
-                                                 : *x;
-    const Tensor y_matrix = y->dims().size() > 2 ? framework::ReshapeToMatrix(
-                                                       *y, param.y_num_col_dims)
-                                                 : *y;
+    Tensor x_matrix, y_matrix;
+
+    if (x->dims().size() > 2) {
+      x_matrix = framework::ReshapeToMatrix(*x, param.x_num_col_dims);
+    } else {
+      x_matrix = *x;
+    }
+
+    if (y->dims().size() > 2) {
+      y_matrix = framework::ReshapeToMatrix(*y, param.y_num_col_dims);
+
+    } else {
+      y_matrix = *y;
+    }
 
     auto* z = &param.output->raw_tensor();
     auto z_dim = z->dims();
@@ -75,12 +83,22 @@ class MulGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
     auto* x = &param.x->raw_tensor();
     auto* y = &param.y->raw_tensor();
-    auto x_matrix = x->dims().size() > 2
-                        ? framework::ReshapeToMatrix(*x, param.x_num_col_dims)
-                        : static_cast<const Tensor&>(*x);
-    auto y_matrix = y->dims().size() > 2
-                        ? framework::ReshapeToMatrix(*y, param.y_num_col_dims)
-                        : static_cast<const Tensor&>(*y);
+
+    Tensor x_matrix, y_matrix;
+
+    if (x->dims().size() > 2) {
+      x_matrix = framework::ReshapeToMatrix(*x, param.x_num_col_dims);
+    } else {
+      x_matrix = *x;
+    }
+
+    if (y->dims().size() > 2) {
+      y_matrix = framework::ReshapeToMatrix(*y, param.y_num_col_dims);
+
+    } else {
+      y_matrix = *y;
+    }
+
     auto* dout = &param.output_grad->raw_tensor();
 
     Tensor dout_mat;

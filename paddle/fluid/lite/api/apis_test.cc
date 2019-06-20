@@ -82,7 +82,7 @@ TEST(CXXApi_LightApi, save_and_load_model) {
   ASSERT_TRUE(TensorCompareWith(*cxx_out, *light_out));
 
   std::vector<std::string> tensors_with_order({
-      "a", "fc_0.w_0", "fc_0.tmp_0", "scale_0.tmp_0",
+      "a", "fc_0.w_0", "scale_0.tmp_0",
   });
 
   for (const auto& tensor_name : tensors_with_order) {

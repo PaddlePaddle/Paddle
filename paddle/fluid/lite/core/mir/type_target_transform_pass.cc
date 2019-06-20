@@ -62,7 +62,7 @@ void TypeTargetTransformPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
   CHECK(in->AsArg().type);
   if (!TargetCompatibleTo(*in->AsArg().type, *decl_arg_type)) {
     LOG(INFO) << "found Target unmatched tensor: " << in->AsArg().name
-              << " for kernel " << inst.op->DebugString() << " "
+              << " for kernel " << inst.op()->DebugString() << " "
               << *in->AsArg().type << " -> " << *decl_arg_type;
     // Add an IoCopy instruction to make the input compatible with other dist.
     AddIoCopyInst(*in->AsArg().type, *decl_arg_type, in, graph, inst_node,
@@ -89,7 +89,7 @@ void TypeTargetTransformPass::AddIoCopyInst(
   CHECK(io_copy_op) << "create op [" << io_copy_op << "] failed";
   // CHECK(io_copy_op);
   // Create the new var manually.
-  inst_node->AsStmt().op->scope()->Var(io_copy_output_name);
+  inst_node->AsStmt().op()->scope()->Var(io_copy_output_name);
 
   // Create IoCopy Instruction.
   cpp::OpDesc op_desc;
@@ -97,7 +97,7 @@ void TypeTargetTransformPass::AddIoCopyInst(
   op_desc.SetInput("Input", {in->AsArg().name});
   op_desc.SetOutput("Out", {io_copy_output_name});
 
-  io_copy_op->Attach(op_desc, inst_node->AsStmt().op->scope());
+  io_copy_op->Attach(op_desc, inst_node->AsStmt().op()->scope());
   auto kernels = io_copy_op->CreateKernels(valid_places);
   io_copy_inst->AsStmt("io_copy", std::move(kernels), io_copy_op);
 
@@ -113,19 +113,19 @@ void TypeTargetTransformPass::AddIoCopyInst(
   DirectedLink(io_copy_output_arg, inst_node);
 
   // reset opdesc and update kernel information
-  UpdateInputTo(inst_node->AsStmt().op->mutable_op_info(), in->AsArg().name,
+  UpdateInputTo(inst_node->AsStmt().op()->mutable_op_info(), in->AsArg().name,
                 io_copy_output_name);
 
-  inst_node->AsStmt().op->Attach(*inst_node->AsStmt().op->op_info(),
-                                 inst_node->AsStmt().op->scope());
+  inst_node->AsStmt().ResetOp(*inst_node->AsStmt().op_info(),
+                              graph->valid_places());
 
   std::string tmp;
   if (inst_node->AsStmt().op_info()->GetInputArgname("a", &tmp)) {
     CHECK(false) << "get old a " << tmp;
   }
 
-  for (auto& kernel : inst_node->AsStmt().valid_kernels) {
-    inst_node->AsStmt().op->AttachKernel(kernel.get());
+  for (auto& kernel : inst_node->AsStmt().kernels()) {
+    inst_node->AsStmt().op()->AttachKernel(kernel.get());
   }
 
   graph->CheckValid();

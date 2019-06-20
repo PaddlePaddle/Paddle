@@ -14,6 +14,7 @@
 
 #pragma once
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -79,6 +80,27 @@ class OpDescAPI {
   /// Get an attribute.
   template <typename T>
   T GetAttr(const std::string& name) const;
+
+  std::string Repr() const {
+    std::stringstream ss;
+    ss << Type();
+    ss << "(";
+    for (auto& arg : InputArgumentNames()) {
+      ss << arg << ":";
+      for (auto val : Input(arg)) {
+        ss << val << " ";
+      }
+    }
+    ss << ") -> (";
+    for (auto& arg : OutputArgumentNames()) {
+      ss << arg << ":";
+      for (auto val : Output(arg)) {
+        ss << val << " ";
+      }
+    }
+    ss << ")";
+    return ss.str();
+  }
 };
 
 }  // namespace lite
