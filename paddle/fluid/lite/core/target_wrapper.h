@@ -38,6 +38,7 @@ enum class PrecisionType : int {
   kUnk = 0,
   kFloat,
   kInt8,
+  kInt32,
   kAny,  // any precision
   NUM,   // number of fields.
 };
@@ -47,6 +48,17 @@ enum class DataLayoutType : int {
   kAny,  // any data layout
   NUM,   // number of fields.
 };
+
+static size_t PrecisionTypeLength(PrecisionType type) {
+  switch (type) {
+    case PrecisionType::kFloat:
+      return 4;
+    case PrecisionType::kInt8:
+      return 1;
+    default:
+      return 4;
+  }
+}
 
 // Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
