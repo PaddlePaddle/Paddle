@@ -75,7 +75,7 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     temp_allocator ${dgc_deps})
 
 if (WITH_DISTRIBUTE)
-  cc_library(collective_helper SRCS collective_helper.cc)
+  cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto)
 endif()
 
 if(WIN32)
