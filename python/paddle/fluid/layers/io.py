@@ -855,8 +855,6 @@ def create_py_reader_by_data(capacity,
          exe = fluid.Executor(place)
          exe.run(fluid.default_startup_program())
 
-         exec_strategy = fluid.ExecutionStrategy()
-         exec_strategy.num_threads = DEV_COUNT * 4 # the size of thread pool.
          build_strategy = fluid.BuildStrategy()
          build_strategy.memory_optimize = True if MEMORY_OPT else False
          compiled_prog = compiler.CompiledProgram(
