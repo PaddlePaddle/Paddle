@@ -50,7 +50,7 @@ void CalibCompute::Run() {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(calib, kARM, kAny, kAny,
+REGISTER_LITE_KERNEL(calib, kARM, kInt8, kNCHW,
                      paddle::lite::kernels::arm::CalibCompute, def)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})

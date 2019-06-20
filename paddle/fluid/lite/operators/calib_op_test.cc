@@ -48,9 +48,9 @@ TEST(calib_op_lite, TestARM) {
 
   CalibOpLite calib("calib");
 
-  calib.SetValidPlaces({Place{TARGET(kARM), PRECISION(kAny)}});
+  calib.SetValidPlaces({Place{TARGET(kARM), PRECISION(kInt8)}});
   calib.Attach(desc, &scope);
-  auto kernels = calib.CreateKernels({Place{TARGET(kARM), PRECISION(kAny)}});
+  auto kernels = calib.CreateKernels({Place{TARGET(kARM), PRECISION(kInt8)}});
   ASSERT_FALSE(kernels.empty());
 }
 #endif
@@ -60,5 +60,5 @@ TEST(calib_op_lite, TestARM) {
 }  // namespace paddle
 
 #ifdef LITE_WITH_ARM
-USE_LITE_KERNEL(calib, kARM, kAny, kAny, def);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, def);
 #endif
