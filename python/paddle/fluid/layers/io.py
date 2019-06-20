@@ -836,7 +836,6 @@ def create_py_reader_by_data(capacity,
              loss = fluid.layers.cross_entropy(input=predict, label=label)
              return fluid.layers.mean(loss)
 
-         DEV_COUNT = 1
          MEMORY_OPT = False
          USE_CUDA = False
 
