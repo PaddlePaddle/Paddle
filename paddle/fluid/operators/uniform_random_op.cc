@@ -34,9 +34,6 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         const int64_t *shapeData = shapeTensor->data<int64_t>();
         std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
         tensor->Resize(framework::make_ddim(shape));
-      } else {
-        auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-        tensor->Resize(framework::make_ddim(shape));
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
@@ -86,15 +83,17 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
-    if (!ctx->HasInput("Shape")) {
-      auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-      std::vector<int64_t> temp;
-      temp.reserve(shape.size());
-      for (auto dim : shape) {
-        temp.push_back(static_cast<int64_t>(dim));
-      }
-      ctx->SetOutputDim("Out", framework::make_ddim(temp));
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    std::vector<int64_t> temp;
+    temp.reserve(shape.size());
+    for (auto dim : shape) {
+      temp.push_back(static_cast<int64_t>(dim));
     }
+    if ((shape.size() == 0UL) && (!ctx->HasInputs("Shape"))) {
+      PADDLE_ENFORCE(shape.size() > 0UL,
+                     "shape can be one int or array. shape must be set.");
+    }
+    ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 
  protected:

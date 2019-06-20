@@ -49,9 +49,6 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
       const int64_t* shapeData = shapeTensor.data<int64_t>();
       std::vector<int64_t> shape(shapeData, shapeData + shapeTensor.numel());
       tensor->Resize(framework::make_ddim(shape));
-    } else {
-      auto shape = context.Attr<std::vector<int64_t>>("shape");
-      tensor->Resize(framework::make_ddim(shape));
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
