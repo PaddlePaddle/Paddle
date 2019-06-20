@@ -769,7 +769,7 @@ def dynamic_lstmp(input,
           the matrix of weights from the input gate to the input).
     * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
           matrices for peephole connections. In our implementation, \
-          we use vectors to reprenset these diagonal weight matrices.
+          we use vectors to represent these diagonal weight matrices.
     * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
           bias vector).
     * :math:`\sigma`: The activation, such as logistic sigmoid function.
@@ -5071,7 +5071,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
-            the defalut value is 1e-12.
+            the default value is 1e-12.
         name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
