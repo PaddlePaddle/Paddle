@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,15 +17,13 @@ import unittest
 from paddle import fluid
 from paddle.fluid import layers
 from paddle.fluid.layers.distributions import *
-#import torch
-#import torch.distributions as td
 import math
 
 
 class DistributionNumpy():
     """
         Distribution is the abstract base class for probability distributions.
-        """
+    """
 
     def sample(self):
         """Sampling from the distribution."""
@@ -46,8 +44,8 @@ class DistributionNumpy():
 
 class UniformNumpy(DistributionNumpy):
     def __init__(self, low, high):
-        self.low = np.array(low)
-        self.high = np.array(high)
+        self.low = np.array(low).astype('float32')
+        self.high = np.array(high).astype('float32')
 
     def sample(self, shape):
         shape = tuple(shape) + (self.low + self.high).shape
@@ -65,8 +63,8 @@ class UniformNumpy(DistributionNumpy):
 
 class NormalNumpy(DistributionNumpy):
     def __init__(self, loc, scale):
-        self.loc = np.array(loc)
-        self.scale = np.array(scale)
+        self.loc = np.array(loc).astype('float32')
+        self.scale = np.array(scale).astype('float32')
 
     def sample(self, shape):
         shape = tuple(shape) + (self.loc + self.scale).shape
@@ -79,11 +77,14 @@ class NormalNumpy(DistributionNumpy):
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
 
     def entropy(self):
-        return 0.5 + 0.5 * math.log(2 * math.pi) + np.log(self.scale)
+        return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
+            'float32')) + np.log(self.scale)
 
     def kl_divergence(self, other):
-        var_ratio = np.power((self.scale / other.scale), 2)
-        t1 = np.power(((self.loc - other.loc) / other.scale), 2)
+        var_ratio = (self.scale / other.scale)
+        var_ratio = var_ratio * var_ratio
+        t1 = ((self.loc - other.loc) / other.scale)
+        t1 = (t1 * t1)
         return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
 
 
@@ -98,7 +99,7 @@ class DistributionTest(unittest.TestCase):
             self.gpu_id = 0
         self.executor = fluid.Executor(place)
 
-    def test_normal_distribution(self, batch_size=2, dims=3, tolerance=1e-5):
+    def test_normal_distribution(self, batch_size=2, dims=3, tolerance=1e-6):
         test_program = fluid.Program()
         loc_np = np.random.randn(batch_size, dims).astype('float32')
         other_loc_np = np.random.randn(batch_size, dims).astype('float32')
@@ -251,7 +252,7 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(output_kl_np, gt_kl, rtol=tolerance)
         np.testing.assert_allclose(output_kl_variable, gt_kl, rtol=tolerance)
 
-    def test_uniform_distribution(self, batch_size=2, dims=3, tolerance=1e-5):
+    def test_uniform_distribution(self, batch_size=2, dims=3, tolerance=1e-6):
         test_program = fluid.Program()
 
         low_np = np.random.randn(batch_size, dims).astype('float32')

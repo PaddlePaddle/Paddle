@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -102,45 +102,61 @@ class Distribution(object):
 
 class Uniform(Distribution):
     """Uniform distribution with `low` and `high` parameters.
-    #### Mathematical Details
+
+    Mathematical Details
+
     The probability density function (pdf) is,
-    ```none
-    pdf(x; a, b) = I[a <= x < b] / Z
-    Z = b - a
-    ```
-    where
-    - `low = a`,
-    - `high = b`,
-    - `Z` is the normalizing constant, and
-    - `I[predicate]` is the [indicator function](
-    https://en.wikipedia.org/wiki/Indicator_function) for `predicate`.
+
+    .. math::
+
+        pdf(x; a, b) = \\frac{1}{Z}, \ a <=x <b
+
+    .. math::
+
+        Z = b - a
+
+    In the above equation:
+
+    * :math:`low = a`,
+    * :math:`high = b`,
+    * :math:`Z`: is the normalizing constant.
+
     The parameters `low` and `high` must be shaped in a way that supports
     broadcasting (e.g., `high - low` is a valid operation).
-    #### Examples
-    ```python
-    # Without broadcasting:
-    u1 = Uniform(low=3.0, high=4.0)  # a single uniform distribution [3, 4]
-    u2 = Uniform(low=[1.0, 2.0],
-               high=[3.0, 4.0])  # 2 distributions [1, 3], [2, 4]
-    u3 = Uniform(low=[[1.0, 2.0],
+
+    Examples:
+        .. code-block:: python
+
+          from paddle.fluid import layers
+          from paddle.fluid.layers import Uniform
+
+          # Without broadcasting, a single uniform distribution [3, 4]:
+          u1 = Uniform(low=3.0, high=4.0)
+          # 2 distributions [1, 3], [2, 4]
+          u2 = Uniform(low=[1.0, 2.0],
+                        high=[3.0, 4.0])
+          # 4 distributions
+          u3 = Uniform(low=[[1.0, 2.0],
                     [3.0, 4.0]],
                high=[[1.5, 2.5],
-                     [3.5, 4.5]])  # 4 distributions
-    ```
-    ```python
-    # With broadcasting:
-    u1 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])  # 3 distributions
-    ```
-    ```python
-    # Variable as input:
-    low_array = np.array([1.0, 2.0])
-    high_array = np.array([3.0, 4.0])
-    low_variable = layers.create_tensor(dtype='float32')
-    high_variable = layers.create_tensor(dtype='float32')
-    layers.assign(low_array, low_variable)
-    layers.assign(high_array, high_variable)
-    u1 = Uniform(low=low_variable, high=high_variable)
-    ```
+                     [3.5, 4.5]])
+
+          # With broadcasting:
+          u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
+
+          # Variable as input
+          dims = 3
+
+          low = layers.data(name='low', shape=[dims], dtype='float32')
+          high = layers.data(name='high', shape=[dims], dtype='float32')
+          values = layers.data(name='values', shape=[dims], dtype='float32')
+
+          uniform = Uniform(low, high)
+
+          sample = uniform.sample([2, 3])
+          entropy = uniform.entropy()
+          lp = uniform.log_prob(values)
+
     """
 
     def __init__(self, low, high):
@@ -157,12 +173,14 @@ class Uniform(Distribution):
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
-        
+
         Args:
-          shape: 1D `int32`. Shape of the generated samples.
-          seed: Python integer seed for RNG
+          shape (list): 1D `int32`. Shape of the generated samples.
+          seed (int): Python integer number.
+
         Returns:
-          samples: a `Variable` with prepended dimensions `shape`.
+          Variable: A tensor with prepended dimensions shape.
+
         """
         batch_shape = list((self.low + self.high).shape)
         if self.batch_size_unknown:
@@ -187,10 +205,13 @@ class Uniform(Distribution):
 
     def log_prob(self, value):
         """Log probability density/mass function.
+
         Args:
-          value: `Variable`.
+          value (Variable): The input tensor.
+
         Returns:
-          log_prob: a `Variable`.
+          Variable: log probability.
+
         """
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
@@ -199,44 +220,76 @@ class Uniform(Distribution):
         return nn.log(lb * ub) - nn.log(self.high - self.low)
 
     def entropy(self):
-        """Shannon entropy in nats."""
+        """Shannon entropy in nats.
+
+        Returns:
+          Variable: Shannon entropy of uniform distribution.
+
+        """
         return nn.log(self.high - self.low)
 
 
 class Normal(Distribution):
     """The Normal distribution with location `loc` and `scale` parameters.
-    #### Mathematical details
+
+    Mathematical details
+
     The probability density function (pdf) is,
-    ```none
-    pdf(x; mu, sigma) = exp(-0.5 (x - mu)**2 / sigma**2) / Z
-    Z = (2 pi sigma**2)**0.5
-    ```
-    where `loc = mu` is the mean, `scale = sigma` is the std. deviation, and, `Z`
-    is the normalization constant.
-    The Normal distribution is a member of the [location-scale family](
-    https://en.wikipedia.org/wiki/Location-scale_family), i.e., it can be
-    constructed as,
-    ```none
-    X ~ Normal(loc=0, scale=1)
-    Y = loc + scale * X
-    ```
-    #### Examples
-    Examples of initialization of one or a batch of distributions.
-    ```python
-    # Define a single scalar Normal distribution.
-    dist = Normal(loc=0., scale=3.)
-    # Define a batch of two scalar valued Normals.
-    # The first has mean 1 and standard deviation 11, the second 2 and 22.
-    dist = Normal(loc=[1, 2.], scale=[11, 22.])
-    # Get 3 samples, returning a 3 x 2 tensor.
-    dist.sample([3])
-    ```
-    Arguments are broadcast when possible.
-    ```python
-    # Define a batch of two scalar valued Normals.
-    # Both have mean 1, but different standard deviations.
-    dist = Normal(loc=1., scale=[11, 22.])
-    ```
+
+    .. math::
+
+        pdf(x; \mu, \sigma) = \\frac{1}{Z}e^{\\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
+
+    .. math::
+
+        Z = (2 \pi \sigma^2)^{0.5}
+
+    In the above equation:
+
+    * :math:`loc = \mu`: is the mean.
+    * :math:`scale = \sigma`: is the std.
+    * :math:`Z`: is the normalization constant.
+    
+    Examples:
+        .. code-block:: python
+
+          from paddle.fluid import layers
+          from paddle.fluid.layers import Normal
+
+          # Define a single scalar Normal distribution.
+          dist = Normal(loc=0., scale=3.)
+          # Define a batch of two scalar valued Normals.
+          # The first has mean 1 and standard deviation 11, the second 2 and 22.
+          dist = Normal(loc=[1, 2.], scale=[11, 22.])
+          # Get 3 samples, returning a 3 x 2 tensor.
+          dist.sample([3])
+
+          # Define a batch of two scalar valued Normals.
+          # Both have mean 1, but different standard deviations.
+          dist = Normal(loc=1., scale=[11, 22.])
+
+          # Define a batch of two scalar valued Normals.
+          # Both have mean 1, but different standard deviations.
+          dist = Normal(loc=1., scale=[11, 22.])
+
+          # Variable as input
+          dims = 3
+
+          loc = layers.data(name='loc', shape=[dims], dtype='float32')
+          scale = layers.data(name='scale', shape=[dims], dtype='float32')
+          other_loc = layers.data(
+              name='other_loc', shape=[dims], dtype='float32')
+          other_scale = layers.data(
+              name='other_scale', shape=[dims], dtype='float32')
+          values = layers.data(name='values', shape=[dims], dtype='float32')
+
+          normal = Normal(loc, scale)
+          other_normal = Normal(other_loc, other_scale)
+
+          sample = normal.sample([2, 3])
+          entropy = normal.entropy()
+          lp = normal.log_prob(values)
+          kl = normal.kl_divergence(other_normal)
     """
 
     def __init__(self, loc, scale):
@@ -253,11 +306,14 @@ class Normal(Distribution):
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
+
         Args:
-          shape: 1D `int32`. Shape of the generated samples.
-          seed: Python integer seed for RNG
+          shape (list): 1D `int32`. Shape of the generated samples.
+          seed (int): Python integer number.
+
         Returns:
-          samples: a `Variable` with prepended dimensions `shape`.
+          Variable: A tensor with prepended dimensions shape.
+
         """
         batch_shape = list((self.loc + self.scale).shape)
 
@@ -279,7 +335,12 @@ class Normal(Distribution):
                 return output
 
     def entropy(self):
-        """Shannon entropy in nats."""
+        """Shannon entropy in nats.
+
+        Returns:
+          Variable: Shannon entropy of normal distribution.
+
+        """
         batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, 'float32', 0.)
@@ -288,10 +349,13 @@ class Normal(Distribution):
 
     def log_prob(self, value):
         """Log probability density/mass function.
+
         Args:
-          value: `Variable`.
+          value (Variable): The input tensor.
+
         Returns:
-          log_prob: a `Variable`.
+          Variable: log probability.
+
         """
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
@@ -299,11 +363,14 @@ class Normal(Distribution):
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
 
     def kl_divergence(self, other):
-        """The KL-divergence between self normal distributions.
+        """The KL-divergence between two normal distributions.
+
         Args:
-            other: instance of Normal.
+            other (Normal): instance of Normal.
+
         Returns:
-            kl_divergence: a `Variable`.
+            Variable: kl-divergence between two normal distributions.
+
         """
         assert isinstance(other, Normal), "another distribution must be Normal"
         var_ratio = self.scale / other.scale
