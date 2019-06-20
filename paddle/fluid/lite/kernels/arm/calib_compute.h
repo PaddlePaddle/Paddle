@@ -21,11 +21,9 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-class CalibCompute : public KernelLite<TARGET(kARM), PRECISION(kAny)> {
+class CalibCompute : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
  public:
   using param_t = operators::CalibParam;
-
-  // void PrepareForRun() override;
 
   void Run() override;
 

@@ -27,6 +27,13 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+/*
+ * The data types used by the two adjacent layers in the model should
+ * be the same. When the two operators accept different data types,
+ * we may need to implicitly add a data type conversion operator.
+ * Currently, this operator only supports mutual conversion of int8
+ * and float32 types.
+ */
 class CalibOpLite : public OpLite {
  public:
   CalibOpLite() {}
@@ -36,14 +43,6 @@ class CalibOpLite : public OpLite {
   bool CheckShape() const override;
 
   bool InferShape() const override;
-
-  /*
-  bool Run() override {
-    CHECK(kernel_);
-    kernel_->Run();
-    return true;
-  }
-   */
 
   bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope);
 

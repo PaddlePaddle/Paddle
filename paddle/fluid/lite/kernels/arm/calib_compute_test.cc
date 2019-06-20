@@ -84,14 +84,14 @@ void calib_ref(const operators::CalibParam& param) {
 TEST(calib_arm, retrive_op) {
   auto calib =
       KernelRegistry::Global()
-          .Create<TARGET(kARM), PRECISION(kAny), DATALAYOUT(kAny)>("calib");
+          .Create<TARGET(kARM), PRECISION(kInt8), DATALAYOUT(kNCHW)>("calib");
   ASSERT_FALSE(calib.empty());
   ASSERT_TRUE(calib.front());
 }
 
 TEST(calib_arm, init) {
   CalibCompute calib;
-  ASSERT_EQ(calib.precision(), PRECISION(kAny));
+  ASSERT_EQ(calib.precision(), PRECISION(kInt8));
   ASSERT_EQ(calib.target(), TARGET(kARM));
 }
 
@@ -146,4 +146,4 @@ TEST(calib_arm, int8_to_fp32) {
 }  // namespace lite
 }  // namespace paddle
 
-USE_LITE_KERNEL(calib, kARM, kAny, kAny, def);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, def);

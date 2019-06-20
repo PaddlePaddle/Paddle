@@ -25,10 +25,10 @@ template <typename dtype>
 void int32_to_dtype(const int* din, dtype* dout, const float* scale,
                     int axis_size, int64_t outer_size, int64_t inner_size);
 
-void fp32_to_int8(const float* din, signed char* dout, const float* scale,
+void fp32_to_int8(const float* din, int8_t* dout, const float* scale,
                   int axis_size, int64_t outer_size, int64_t inner_size);
 
-void int8_to_fp32(const signed char* in, float* out, const float* scale,
+void int8_to_fp32(const int8_t* in, float* out, const float* scale,
                   int axis_size, int64_t outer_size, int64_t inner_size);
 
 }  // namespace math
