@@ -234,7 +234,7 @@ class TestDistRunnerBase(object):
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
             my_print(type(self).__name__, "run step %d finished" % i)
-        my_print("trainer run finished")
+        my_print(type(self).__name__, "trainer run finished")
 
         if six.PY2:
             print(pickle.dumps(out_losses))
