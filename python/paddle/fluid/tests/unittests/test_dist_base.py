@@ -240,7 +240,6 @@ class TestDistRunnerBase(object):
             print(pickle.dumps(out_losses))
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
-        my_print("send stdout buffer done.")
 
 
 class TestParallelDyGraphRunnerBase(object):
