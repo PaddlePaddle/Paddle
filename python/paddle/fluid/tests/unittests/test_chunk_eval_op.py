@@ -219,9 +219,9 @@ class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
                        constant_values=(-1, )))
             start = end
 
-        pad_infer = np.expand_dims(np.array(pad_infer), 2)
-        pad_label = np.expand_dims(np.array(pad_label), 2)
-        lod = np.array(lod)
+        pad_infer = np.expand_dims(np.array(pad_infer, dtype='int64'), 2)
+        pad_label = np.expand_dims(np.array(pad_label, dtype='int64'), 2)
+        lod = np.array(lod, dtype='int64')
         self.inputs = {
             'Inference': pad_infer,
             'Label': pad_label,
