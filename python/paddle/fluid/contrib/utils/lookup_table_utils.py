@@ -22,15 +22,17 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid import io
 from paddle.fluid import Program
+from paddle.fluid.log_helper import get_logger
 
 __all__ = [
     "load_persistables_for_increment", "load_persistables_for_inference",
     "convert_dist_to_sparse_program"
 ]
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
-_logger = logging.getLogger("lookup_table_utils")
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    'lookup_table_utils',
+    logging.INFO,
+    fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 model_filename = "__model__"
 lookup_table_dir = "__lookup_table__"

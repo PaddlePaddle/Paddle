@@ -30,16 +30,16 @@ class TestCalibrationForMobilenetv1(TestCalibration):
 
     def test_calibration(self):
         self.download_model()
-        print("Start FP32 inference for {0} on {1} images ...").format(
-            self.model, self.infer_iterations * self.batch_size)
+        print("Start FP32 inference for {0} on {1} images ...".format(
+            self.model, self.infer_iterations * self.batch_size))
         (fp32_throughput, fp32_latency,
          fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
-        print("Start INT8 calibration for {0} on {1} images ...").format(
-            self.model, self.sample_iterations * self.batch_size)
+        print("Start INT8 calibration for {0} on {1} images ...".format(
+            self.model, self.sample_iterations * self.batch_size))
         self.run_program(
             self.model_cache_folder + "/model", True, algo=self.algo)
-        print("Start INT8 inference for {0} on {1} images ...").format(
-            self.model, self.infer_iterations * self.batch_size)
+        print("Start INT8 inference for {0} on {1} images ...".format(
+            self.model, self.infer_iterations * self.batch_size))
         (int8_throughput, int8_latency,
          int8_acc1) = self.run_program(self.int8_model)
         delta_value = fp32_acc1 - int8_acc1

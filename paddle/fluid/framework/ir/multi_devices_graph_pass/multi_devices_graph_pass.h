@@ -96,7 +96,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
                          size_t device_id) const;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  mutable platform::NCCLContextMap *nccl_ctxs_;
+  mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
+  mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};
 #endif
 
   mutable std::string loss_var_name_;
