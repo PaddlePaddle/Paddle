@@ -46,7 +46,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
                               "strides (height, width) of unpooling operator.")
         .SetDefault({1, 1});
     AddAttr<std::vector<int>>("paddings",
-                              "(vector defalut:{0,0}), "
+                              "(vector default:{0,0}), "
                               "paddings (height, width) of unpooling operator.")
         .SetDefault({0, 0});
     AddAttr<std::string>(

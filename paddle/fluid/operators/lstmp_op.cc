@@ -177,20 +177,20 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
               "backward.")
         .AsIntermediate();
     AddAttr<bool>("use_peepholes",
-                  "(bool, defalut: True) "
+                  "(bool, default: True) "
                   "whether to enable diagonal/peephole connections.")
         .SetDefault(true);
     AddAttr<bool>("is_reverse",
-                  "(bool, defalut: False) "
+                  "(bool, default: False) "
                   "whether to compute reversed LSTMP.")
         .SetDefault(false);
     AddAttr<float>("cell_clip",
-                   "(float, defalut: 0.0) "
+                   "(float, default: 0.0) "
                    "Clip for Tensor for cell state tensor when clip value is "
                    "greater than 0.0")
         .SetDefault(0.0);
     AddAttr<float>("proj_clip",
-                   "(float, defalut: 0.0) "
+                   "(float, default: 0.0) "
                    "Clip for Tensor for projection tensor when clip value is "
                    "greater than 0.0")
         .SetDefault(0.0);
@@ -203,7 +203,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("cell_activation",
                          "(string, default: tanh)"
-                         "The activation for cell output, `tanh` by defalut.")
+                         "The activation for cell output, `tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("candidate_activation",
@@ -215,7 +215,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("proj_activation",
                          "(string, default: tanh)"
                          "The activation for projection output, "
-                         "`tanh` by defalut.")
+                         "`tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddComment(R"DOC(
@@ -248,7 +248,7 @@ $$
 where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
 of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
 are diagonal weight matrices for peephole connections. In our implementation,
-we use vectors to reprenset these diagonal weight matrices. The b terms
+we use vectors to represent these diagonal weight matrices. The b terms
 denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
 is the activation, such as logistic sigmoid function, and
 $i, f, o$ and $c$ are the input gate, forget gate, output gate,
