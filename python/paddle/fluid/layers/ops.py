@@ -73,7 +73,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     uniform distribution. The random result is in set [min, max].
 
     Args:
-        shape (list): The shape of output variable.
+        shape (list|Variable): The shape of output variable.
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data, such as
             float32, float64 etc. Default: float32.
         min (float): Minimum value of uniform random. Default -1.0.
@@ -91,6 +91,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
             import paddle.fluid as fluid
             result = fluid.layers.uniform_random(shape=[32, 784])
+            # Variable as input
+            Shape = fluid.layers.data(name='shape', shape=[-1], dtype='int')
+            result = fluid.layers.uniform_random(shape=Shape)
     """
 
     helper = LayerHelper('uniform_random', **locals())

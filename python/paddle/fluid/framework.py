@@ -822,35 +822,84 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        new_var = None
-        if isinstance(item, tuple):
-            if len(item) > len(self.shape):
-                raise IndexError("Too many indexes")
-            fixedSize = True
-            for i in range(len(self.shape)):
-                if self.shape[i] == -1:
-                    fixedSize = False
-                    break
 
-            newitem = self._reconstructSliceinfo(item) or item
-            if fixedSize:
-                check, info = self._detectContinuesSlice(newitem)
-                if check:
-                    starts = info[0]
-                    ends = info[1]
-                    axes = [i for i in range(len(starts))]
-                    return self._sliceVar(axes, starts, ends)
-                else:
-                    new_var = self
-                    for index, o in enumerate(newitem):
-                        new_var = new_var._sliceAndConcatVar(o, index)
+        if not isinstance(item, tuple):
+            item = [item]
+
+        decrease_axis = []
+        slice_axis = []
+        slice_start = []
+        slice_end = []
+        reverse_axis = []
+
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step if slice_item.step else 1
+
+                assert (step == 1 or step == -1)
+
+                if step == -1:
+                    reverse_axis.append(dim)
+                    assert (start is None and end is None)
+
+                if start is None and end is None:
+                    continue
+
+                if start is None:
+                    start = 0
+
+                if end is None:
+                    end = 10000000
+
+                slice_axis.append(dim)
+                slice_start.append(start)
+                slice_end.append(end)
             else:
-                new_var = self
-                for index, o in enumerate(newitem):
-                    new_var = new_var._sliceAndConcatVar(o, index)
-        else:
-            new_var = self._sliceAndConcatVar(item, 0)
-        return new_var
+                # int
+                decrease_axis.append(dim)
+                slice_axis.append(dim)
+                slice_start.append(slice_item)
+                slice_end.append(slice_item + 1
+                                 if slice_item != -1 else 10000000)
+
+        out = self
+        if len(slice_axis) > 0:
+            # append slice_op here
+
+            slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice"),
+                dtype=self.dtype)
+
+            self.block.append_op(
+                type="slice",
+                inputs={'Input': [out]},
+                outputs={'Out': [slice_out_var]},
+                attrs={
+                    'axes': slice_axis,
+                    'starts': slice_start,
+                    'ends': slice_end,
+                    'decrease_axis': decrease_axis
+                })
+
+            out = slice_out_var
+
+        if len(reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis})
+
+            out = reverse_out_var
+
+        return out
 
 
 def get_all_op_protos():
@@ -2775,6 +2824,9 @@ class Program(object):
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 
+        # appending gradients times
+        self._appending_grad_times = 0
+
     @property
     def _is_mem_optimized(self):
         # if the program is optimized, operator input/outputs
@@ -3108,6 +3160,7 @@ class Program(object):
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
+            p._appending_grad_times = self._appending_grad_times
 
             p._sync_with_cpp()
 

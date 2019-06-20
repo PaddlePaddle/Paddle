@@ -709,11 +709,11 @@ def py_reader(capacity,
          exe = fluid.ParallelExecutor(use_cuda=True)
          for epoch_id in range(10):
              reader.start()
-                 try:
-                     while True:
-                         exe.run(fetch_list=[loss.name])
-                 except fluid.core.EOFException:
-                     reader.reset()
+             try:
+                 while True:
+                     exe.run(fetch_list=[loss.name])
+             except fluid.core.EOFException:
+                 reader.reset()
 
          fluid.io.save_inference_model(dirname='./model',
                                        feeded_var_names=[img.name, label.name],
@@ -748,8 +748,8 @@ def py_reader(capacity,
                                                        dtypes=['float32', 'int64'],
                                                        name='train_reader')
                  train_reader.decorate_paddle_reader(
-                 paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
-                                       buf_size=500))
+                     paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                           buf_size=500))
                  train_loss = network(train_reader)  # some network definition
                  adam = fluid.optimizer.Adam(learning_rate=0.01)
                  adam.minimize(train_loss)
@@ -902,7 +902,7 @@ def open_files(filenames,
     Examples:
        .. code-block:: python
 
-         import paddle.fluid. as fluid
+         import paddle.fluid as fluid
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1,)],
@@ -1147,6 +1147,8 @@ class Preprocessor(object):
 
     Examples:
           .. code-block:: python
+
+           import paddle.fluid as fluid
 
            reader = fluid.layers.io.open_files(
                filenames=['./data1.recordio', './data2.recordio'],
