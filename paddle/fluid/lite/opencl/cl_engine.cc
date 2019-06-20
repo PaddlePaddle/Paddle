@@ -152,13 +152,12 @@ bool CLEngine::InitializeDevice() {
     return false;
   }
   auto ext_data = device_->getInfo<CL_DEVICE_EXTENSIONS>();
+  LOG(INFO) << "The extensions supported by this device: " << ext_data;
   if (ext_data.find("cl_khr_fp16") != std::string::npos) {
     LOG(INFO) << "The chosen device supports the half data type.";
   } else {
-    LOG(INFO) << "The chosen device doesn't support the half data type!";
-    LOG(INFO) << "The extensions supported by this device: " << ext_data;
-    // LOG(ERROR) << "The chosen platform doesn't support the half data type!";
-    // return false;
+    LOG(ERROR) << "The chosen device doesn't support the half data type!";
+    return false;
   }
   auto max_units = device_->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
   LOG(INFO) << "The chosen device has " << max_units << " compute units.";

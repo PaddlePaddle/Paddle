@@ -29,6 +29,8 @@ ExternalProject_Add(
                     -DBUILD_EXAMPLES=OFF
                     -DBUILD_TESTS=OFF
                     -DCMAKE_INSTALL_PREFIX=${OPENCL_CLHPP_INSTALL_DIR}
+  CMAKE_CACHE_ARGS  -DCMAKE_INSTALL_PREFIX:PATH=${OPENCL_CLHPP_INSTALL_DIR}
+                    -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
 ADD_DEPENDENCIES(opencl_clhpp opencl_headers)

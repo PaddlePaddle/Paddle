@@ -150,7 +150,7 @@ option(WITH_LITE "Enable lite framework" OFF)
 option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
 option(LITE_WITH_X86  "Enable X86 in lite mode"  ON)
 option(LITE_WITH_ARM  "Enable ARM in lite mode"  OFF)
-option(LITE_WITH_CL   "Enable OpenCL support in lite" OFF)
+option(LITE_WITH_OPENCL   "Enable OpenCL support in lite" OFF)
 option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" OFF)
 option(LITE_WITH_PROFILE  "Enable profile mode in lite framework"  OFF)
 
@@ -167,12 +167,6 @@ endif()
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
-# for opencl
-if (LITE_WITH_CL)
-    include(external/opencl-headers)
-    include(external/opencl-clhpp)
-endif()
-
 # for mobile
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "Building the mobile framework")
@@ -187,6 +181,12 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(external/protobuf)  # download, build, install protobuf
     include(external/eigen)     # download eigen3
     include(ccache)             # set ccache for compilation
+
+    # for opencl
+    if (LITE_WITH_OPENCL)
+        include(external/opencl-headers)
+        include(external/opencl-clhpp)
+    endif()
 
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration

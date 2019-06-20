@@ -12,15 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-__kernel void elementwise_add(__read_only image2d_t input, __read_only image2d_t bias, __write_only image2d_t outputImage) {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    const sampler_t sampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
-    int2 coords;
-    coords.x = x;
-    coords.y = y;
-    float4 in = read_imagef(input, sampler, coords);
-    float4 b = read_imagef(bias, sampler, coords);
-    float4 output = in + b;
-    write_imagef(outputImage, coords, output);
-}
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+__kernel void elementwise_add(__global image2d_t input, __global image2d_t bias,__write_only image2d_t outputImage) {
+     int x = get_global_id(0);
+     int y = get_global_id(1);
+     const sampler_t sampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+     int2 coords;
+     coords.x = x;
+     coords.y = y;
+     half4 in = read_imageh(input, sampler, coords);
+     half4 biase = read_imageh(bias, sampler, coords);
+     half4 output = in + biase;
+     write_imageh(outputImage,coords,output);
+ }
