@@ -15,7 +15,7 @@
 INCLUDE(ExternalProject)
 
 SET(OPENCL_HEADERS_SRCS_DIR    ${THIRD_PARTY_PATH}/opencl-headers)
-SET(OPENCL_HEADERS_INCLUDE_DIR "${OPENCL_HEADERS_SRCS_DIR}/src/opencl_headers/opencl20" CACHE PATH "opencl-headers include directory." FORCE)
+SET(OPENCL_HEADERS_INCLUDE_DIR "${OPENCL_HEADERS_SRCS_DIR}/src/opencl_headers" CACHE PATH "opencl-headers include directory." FORCE)
 
 INCLUDE_DIRECTORIES(${OPENCL_HEADERS_INCLUDE_DIR})
 
