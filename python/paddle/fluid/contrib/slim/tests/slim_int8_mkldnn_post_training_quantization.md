@@ -128,3 +128,4 @@ python ./test_mkldnn_int8_quantization_strategy.py --infer_model /PATH/TO/DOWNLO
 Notes:
 
 * The above commands will cost maybe several hours in the prediction stage (include int8 prediction and fp32 prediction) since there have 50000 pictures need to be predicted in `int8_full_val.bin`
+* Running the above command with environment variable `FLAGS_use_mkldnn=true` will make the FP32 part of the test running using MKL-DNN (the INT8 part uses MKL-DNN either way).
