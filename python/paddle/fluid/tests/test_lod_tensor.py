@@ -58,7 +58,8 @@ class TestLoDTensor(unittest.TestCase):
 
     def test_create_lod_tensor(self):
         # Create LoDTensor from a list
-        data = [[1, 2, 3], [3, 4]]
+        data = [[np.int64(1), np.int64(2), np.int64(3)],
+                [np.int64(3), np.int64(4)]]
         wrong_recursive_seq_lens = [[2, 2]]
         correct_recursive_seq_lens = [[3, 2]]
         self.assertRaises(AssertionError, create_lod_tensor, data,
