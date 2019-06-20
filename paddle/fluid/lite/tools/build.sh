@@ -26,6 +26,8 @@ function cmake_x86 {
 }
 
 function cmake_opencl {
+    # $1: ARM_TARGET_OS in "android" , "armlinux"
+    # $2: ARM_TARGET_ARCH_ABI in "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
     cmake .. \
         -DLITE_WITH_OPENCL=ON \
         -DWITH_GPU=OFF \
@@ -438,7 +440,7 @@ function main {
                 shift
                 ;;
             cmake_opencl)
-                cmake_opencl
+                cmake_opencl $ARM_OS $ARM_ABI
                 shift
                 ;;
             cmake_cuda)
