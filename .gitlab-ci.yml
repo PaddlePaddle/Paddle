@@ -2,6 +2,20 @@ before_script:
   - env
   - export CI_USER_DIR=$(pwd)
 
+  # prepare ccache
+  - apt install ccache
+
+  # for proxy
+  - export http_proxy=$CI_PROXY
+  - export https_proxy=$CI_PROXY
+
+  # merge the latest code
+  - git config --global user.email "you@example.com"
+  - git config --global user.name "Your Name"
+  - git fetch origin incubate/lite
+  - git merge --no-ff origin/incubate/lite
+
+
 image: $SERVER_LITE_DOCKER_IMAGE
 
 stages:
@@ -14,19 +28,13 @@ check:prebuilt:
         - lite
     stage: ci
     script:
+        # prepare for pre-commit
         - rm -rf ~/.pip
-        - export http_proxy=$CI_PROXY
-        - export https_proxy=$CI_PROXY
         - pip install pre-commit
         - pre-commit install
 
-        # merge the latest code
-        - git config --global user.email "you@example.com"
-        - git config --global user.name "Your Name"
-        - git fetch origin incubate/lite
-        - git merge --no-ff origin/incubate/lite
-
         - ./paddle/fluid/lite/tools/build.sh check_style
+
     cache:
         key: check_style
         paths:
@@ -42,17 +50,11 @@ build:server:
         paths:
             - build/third_party
             - ~/.ccache
+            - $CI_PROJECT_DIR/_build_server_ccache
     script:
-        - apt install ccache
-        - export http_proxy=$CI_PROXY
-        - export https_proxy=$CI_PROXY
-
-        # merge the latest code
-        - git config --global user.email "you@example.com"
-        - git config --global user.name "Your Name"
-        - git fetch origin incubate/lite
-        - git merge --no-ff origin/incubate/lite
-
+        # customize ccache path for specifying runner cache
+        - export CCACHE_DIR=$CI_PROJECT_DIR/_build_server_ccache
+        # run build and test
         - mkdir -p build
         - cd build
         - ../paddle/fluid/lite/tools/build.sh cmake_x86
@@ -66,7 +68,53 @@ build:server:
     dependencies:
         - check:prebuilt
 
-build:mobile:
+build:mobile_android:
+    tags:
+        - lite
+    stage: build_mobile
+    image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+            - $CI_PROJECT_DIR/build_mobile_ccache
+    script:
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_ccache
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_subtask_android
+
+    dependencies:
+        - build:server
+
+
+build:mobile_armlinux:
+    tags:
+        - lite
+    stage: build_mobile
+    image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+            - $CI_PROJECT_DIR/build_mobile_ccache2
+    script:
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_ccache2
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_subtask_armlinux
+
+    dependencies:
+        - build:server
+
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+
+build:mobile_model_mobilenetv2:
     tags:
         - lite
     stage: build_mobile
@@ -78,16 +126,16 @@ build:mobile:
             - $MOBILE_LITE_CACHE1
             - ~/.ccache
     script:
-        - apt install ccache
-        - export http_proxy=$CI_PROXY
-        - export https_proxy=$CI_PROXY
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model1
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_model1
 
-        # merge the latest code
-        - git config --global user.email "you@example.com"
-        - git config --global user.name "Your Name"
-        - git fetch origin incubate/lite
-        - git merge --no-ff origin/incubate/lite
-
-        - ./paddle/fluid/lite/tools/build.sh build_test_arm
     dependencies:
         - build:server
+
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+            - $CI_PROJECT_DIR/build_mobile_model1
