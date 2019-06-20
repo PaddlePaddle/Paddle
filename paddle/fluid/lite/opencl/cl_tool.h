@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <CL/cl.h>
+#include "paddle/fluid/lite/opencl/cl2_header.h"
 
 namespace paddle {
 namespace lite {
