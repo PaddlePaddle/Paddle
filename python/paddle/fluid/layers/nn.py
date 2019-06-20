@@ -12062,14 +12062,14 @@ def deformable_conv(input,
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                                 num_filters=2, filter_size=3, padding=1, modulated=True)
+                                             num_filters=2, filter_size=3, padding=1, modulated=True)
 
           #deformable conv v1:
          
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
-                                                 num_filters=2, filter_size=3, padding=1, modulated=False)
+                                             num_filters=2, filter_size=3, padding=1, modulated=False)
     """
 
     num_channels = input.shape[1]
