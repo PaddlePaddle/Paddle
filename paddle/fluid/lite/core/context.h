@@ -61,47 +61,41 @@ class Context<TargetType::kHost> {
 template <>
 class Context<TargetType::kARM> {
  public:
-  Context();
-  Context(PowerMode mode, int threads);
+  Context() {}
   explicit Context(const ARMContext& ctx);
 
-  ARMContext& operator=(const ARMContext& ctx);
+  ARMContext& operator=(const ARMContext& ctx) {}
 
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() { DeviceInfo::Init(); }
 
   void CopyShared(const ARMContext* ctx) {}
 
-  void SetRunMode(PowerMode mode, int threads);
-  void SetCache(int l1size, int l2size, int l3size);
-  void SetArch(ARMArch arch);
-  void BindDev();
+  void SetRunMode(PowerMode mode, int threads) {
+    return DeviceInfo::Global().SetRunMode(mode, threads);
+  }
+  void SetCache(int l1size, int l2size, int l3size) {
+    return DeviceInfo::Global().SetCache(l1size, l2size, l3size);
+  }
+  void SetArch(ARMArch arch) { return DeviceInfo::Global().SetArch(arch); }
 
-  PowerMode mode() const;
-  int threads() const;
-  ARMArch arch() const;
+  PowerMode mode() const { return DeviceInfo::Global().mode(); }
+  int threads() const { return DeviceInfo::Global().threads(); }
+  ARMArch arch() const { return DeviceInfo::Global().arch(); }
+  int l1_cache_size() const { return DeviceInfo::Global().l1_cache_size(); }
+  int l2_cache_size() const { return DeviceInfo::Global().l2_cache_size(); }
+  int l3_cache_size() const { return DeviceInfo::Global().l3_cache_size(); }
 
   template <typename T>
   T* workspace_data() {
-    return workspace_.mutable_data<T>();
+    return DeviceInfo::Global().workspace_data<T>();
   }
 
-  int l1_cache_size() const;
-  int l2_cache_size() const;
-  int l3_cache_size() const;
-  bool ExtendWorkspace(DDimLite dims);
+  bool ExtendWorkspace(DDimLite dims) {
+    return DeviceInfo::Global().ExtendWorkspace(dims);
+  }
 
   std::string name() const { return "ARMContext"; }
-
- private:
-  // LITE_POWER_HIGH stands for using big cores,
-  // LITE_POWER_LOW stands for using small core,
-  // LITE_POWER_FULL stands for using all cores
-  ARMArch arch_;
-  PowerMode mode_;
-  std::vector<int> active_ids_;
-  TensorLite workspace_;
-  int64_t count_{0};
 };
 #endif
 
