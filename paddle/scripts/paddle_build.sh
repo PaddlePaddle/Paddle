@@ -975,7 +975,7 @@ function build_document_preview() {
 
 function example() {
     cd ${PADDLE_ROOT}
-    sh tools/sampcd_processor.py
+    python tools/sampcd_processor.py
 }
 
 
