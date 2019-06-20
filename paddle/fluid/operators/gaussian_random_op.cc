@@ -58,7 +58,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GaussianRandomOp should not be null.");
-    // if (!ctx->HasInputs("Shape")) {
+
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
@@ -70,7 +70,6 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
                      "shape can be one int or array. shape must be set.");
     }
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
-    //}
   }
 
  protected:
