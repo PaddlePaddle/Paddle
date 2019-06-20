@@ -11,7 +11,7 @@ cc_library(fuse_elementwise_add_activation
         SRCS elementwise_add_activation_fuser.cc
         DEPS pattern_matcher_high_api)
 
-set(mir_fusers 
+set(mir_fusers
     fuse_fc 
     fuse_conv_elementwise_add_activation
     fuse_conv_bn

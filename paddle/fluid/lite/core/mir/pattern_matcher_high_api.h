@@ -49,7 +49,13 @@ class FuseBase {
   virtual void BuildPattern() = 0;
 
   // Generate an operator desc with a matched subgraph.
-  virtual cpp::OpDesc GenOpDesc(const key2nodes_t& matched) = 0;
+  virtual cpp::OpDesc GenOpDesc(const key2nodes_t& matched) {
+    return cpp::OpDesc();
+  }
+
+  PMNode* OpNode(const std::string& key) {
+    return GetOrCreateNode(key)->assert_is_op();
+  }
 
   PMNode* OpNode(const std::string& key, const std::string& op_type);
 

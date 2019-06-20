@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/passes/passes.h"
 #include "paddle/fluid/inference/analysis/passes/adjust_cudnn_workspace_size_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/inference/analysis/passes/passes.h"
 
 namespace paddle {
 namespace inference {

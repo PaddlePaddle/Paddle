@@ -16,59 +16,34 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <vector>
-#include "paddle/fluid/lite/core/mir/passes.h"
+#include "paddle/fluid/lite/api/lite_api_test_helper.h"
+#include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-
-DEFINE_string(model_dir, "", "");
-DEFINE_string(optimized_model, "", "");
+#include "paddle/fluid/lite/kernels/use_kernels.h"
+#include "paddle/fluid/lite/operators/use_ops.h"
 
 // For training.
 DEFINE_string(startup_program_path, "", "");
 DEFINE_string(main_program_path, "", "");
 
+// for eval
+DEFINE_string(eval_model_dir, "", "");
+
 namespace paddle {
 namespace lite {
 
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, test) {
-  lite::ExecutorLite predictor;
-#ifndef LITE_WITH_CUDA
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
-                                   Place{TARGET(kX86), PRECISION(kFloat)}});
-#else
-  std::vector<Place> valid_places({
-      Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
-      Place{TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW)},
-      Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kNCHW)},
-      Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kNCHW)},
-      Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)},
-      Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)},
-  });
-#endif
-
-  predictor.Build(FLAGS_model_dir,
-                  Place{TARGET(kX86), PRECISION(kFloat)},  // origin cuda
-                  valid_places);
-
-  auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize(DDim(std::vector<DDim::value_type>({100, 100})));
-  auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < 100 * 100; i++) {
-    data[i] = i;
-  }
-
-  // LOG(INFO) << "input " << *input_tensor;
-
-  predictor.Run();
-
-  auto* out = predictor.GetOutput(0);
+  const lite::Tensor* out = RunHvyModel();
   LOG(INFO) << out << " memory size " << out->data_size();
-  LOG(INFO) << "out " << out->data<float>()[0];
-  LOG(INFO) << "out " << out->data<float>()[1];
+  for (int i = 0; i < 10; i++) {
+    LOG(INFO) << "out " << out->data<float>()[i];
+  }
   LOG(INFO) << "dims " << out->dims();
   // LOG(INFO) << "out " << *out;
 }
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
   lite::ExecutorLite predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
@@ -79,9 +54,7 @@ TEST(CXXApi, save_model) {
   LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
   predictor.SaveModel(FLAGS_optimized_model);
 }
-#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 /*TEST(CXXTrainer, train) {
   Place prefer_place({TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)});
   std::vector<Place> valid_places({prefer_place});
@@ -115,46 +88,37 @@ TEST(CXXApi, save_model) {
 }*/
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
+#ifdef LITE_WITH_ARM
+TEST(CXXApi, eval) {
+  DeviceInfo::Init();
+  lite::ExecutorLite predictor;
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kARM), PRECISION(kFloat)}});
+
+  predictor.Build(FLAGS_eval_model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
+                  valid_places);
+
+  auto* input_tensor = predictor.GetInput(0);
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
+  auto* data = input_tensor->mutable_data<float>();
+  for (int i = 0; i < input_tensor->dims().production(); i++) {
+    data[i] = 1;
+  }
+
+  predictor.Run();
+
+  auto* out = predictor.GetOutput(0);
+  std::vector<float> results({0.00097802, 0.00099822, 0.00103093, 0.00100121,
+                              0.00098268, 0.00104065, 0.00099962, 0.00095181,
+                              0.00099694, 0.00099406});
+  for (int i = 0; i < results.size(); ++i) {
+    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
+  }
+  ASSERT_EQ(out->dims().size(), 2);
+  ASSERT_EQ(out->dims()[0], 1);
+  ASSERT_EQ(out->dims()[1], 1000);
+}
+#endif
+
 }  // namespace lite
 }  // namespace paddle
-
-USE_LITE_OP(mul);
-USE_LITE_OP(fc);
-USE_LITE_OP(relu);
-USE_LITE_OP(scale);
-USE_LITE_OP(feed);
-USE_LITE_OP(fetch);
-USE_LITE_OP(io_copy);
-USE_LITE_OP(elementwise_add)
-USE_LITE_OP(elementwise_sub)
-USE_LITE_OP(square)
-USE_LITE_OP(softmax)
-USE_LITE_OP(dropout)
-USE_LITE_OP(concat)
-USE_LITE_OP(conv2d)
-USE_LITE_OP(depthwise_conv2d)
-USE_LITE_OP(pool2d)
-USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
-USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
-
-#ifdef LITE_WITH_X86
-USE_LITE_KERNEL(relu, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(mul, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(scale, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(square, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(elementwise_sub, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(elementwise_add, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(softmax, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(dropout, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(concat, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(conv2d, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(depthwise_conv2d, kX86, kFloat, kNCHW, def);
-USE_LITE_KERNEL(pool2d, kX86, kFloat, kNCHW, def);
-#endif
-
-#ifdef LITE_WITH_CUDA
-USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
-USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
-USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, device_to_host);
-#endif

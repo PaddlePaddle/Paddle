@@ -12,48 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <Eigen/Core>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_lite.h"
-#include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/lite/core/type_system.h"
-#include "paddle/fluid/lite/operators/relu_op.h"
-
-namespace paddle {
-namespace lite {
-namespace kernels {
-namespace x86 {
-
-template <typename T>
-void scale_compute(const T* x, T* out, int size, float scale, float bias,
-                   bool bias_before) {
-  if (bias_before) bias *= scale;
-  for (int i = 0; i < size; i++) {
-    out[i] = x[i] * scale + bias;
-  }
-}
-
-template <typename T>
-class ScaleCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
- public:
-  using param_t = operators::ScaleParam;
-
-  void Run() override {
-    auto& param = *param_.get_mutable<param_t>();
-    scale_compute(param.x->data<T>(), param.output->mutable_data<T>(),
-                  param.x->dims().production(), param.scale, param.bias,
-                  param.bias_after_scale);
-  }
-
-  virtual ~ScaleCompute() = default;
-};
-
-}  // namespace x86
-}  // namespace kernels
-}  // namespace lite
-}  // namespace paddle
+#include "paddle/fluid/lite/kernels/x86/scale_compute.h"
 
 REGISTER_LITE_KERNEL(scale, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::ScaleCompute<float>, def)

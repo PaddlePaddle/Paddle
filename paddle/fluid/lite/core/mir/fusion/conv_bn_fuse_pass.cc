@@ -12,23 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/fc_fuse_pass.h"
+#include "paddle/fluid/lite/core/mir/fusion/conv_bn_fuse_pass.h"
 #include <memory>
 #include <vector>
-#include "paddle/fluid/lite/core/mir/fusion/fc_fuser.h"
+#include "paddle/fluid/lite/core/mir/fusion/conv_bn_fuser.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-void FcFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
-  fusion::FcFuser fuser;
+void ConvBNFusePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
+  fusion::ConvBNFuser fuser("conv2d");
   fuser(graph.get());
+
+  fusion::ConvBNFuser fuser2("depthwise_conv2d");
+  fuser2(graph.get());
 }
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(lite_fc_fuse_pass, paddle::lite::mir::FcFusePass);
+REGISTER_MIR_PASS(lite_conv_bn_fuse_pass, paddle::lite::mir::ConvBNFusePass);
