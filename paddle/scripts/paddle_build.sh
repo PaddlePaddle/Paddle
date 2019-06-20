@@ -973,6 +973,12 @@ function build_document_preview() {
 }
 
 
+function example() {
+    cd ${PADDLE_ROOT}
+    sh tools/sampcd_processor.py
+}
+
+
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -1076,6 +1082,9 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         build_document_preview
+        ;;
+      api_example)
+        example
         ;;
       *)
         print_usage
