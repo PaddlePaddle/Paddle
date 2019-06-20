@@ -39,14 +39,8 @@ TEST(Dim, Equality) {
   EXPECT_EQ(paddle::framework::get<0>(a), 5);
   EXPECT_EQ(paddle::framework::get<1>(a), 6);
 
-  // linearization
-  auto b = paddle::framework::make_dim(7, 8);
-  EXPECT_EQ(paddle::framework::linearize(a, b), 83);
-
-  // product
-  EXPECT_EQ(paddle::framework::product(a), 30);
-
   // mutate a Dim
+  auto b = paddle::framework::make_dim(7, 8);
   paddle::framework::get<1>(b) = 10;
   EXPECT_EQ(paddle::framework::get<0>(b), 7);
   EXPECT_EQ(paddle::framework::get<1>(b), 10);
@@ -64,34 +58,12 @@ TEST(Dim, Equality) {
   dyn_idx_gpu<<<1, 1>>>(thrust::raw_pointer_cast(r.data()));
   int64_t res = r[0];
   EXPECT_EQ(res, 6);
-
-  // ex_prefix_mul
-  paddle::framework::Dim<3> c =
-      paddle::framework::ex_prefix_mul(paddle::framework::Dim<3>(3, 4, 5));
-  EXPECT_EQ(paddle::framework::get<0>(c), 1);
-  EXPECT_EQ(paddle::framework::get<1>(c), 3);
-  EXPECT_EQ(paddle::framework::get<2>(c), 12);
-
-  // generate from an index
-  auto size = paddle::framework::make_dim(4, 5, 2);
-  c = paddle::framework::Dim<3>(14, size);
-  EXPECT_EQ(paddle::framework::get<0>(c), 2);
-  EXPECT_EQ(paddle::framework::get<1>(c), 3);
-  EXPECT_EQ(paddle::framework::get<2>(c), 0);
-  c = paddle::framework::Dim<3>(25, size);
-  EXPECT_EQ(paddle::framework::get<0>(c), 1);
-  EXPECT_EQ(paddle::framework::get<1>(c), 1);
-  EXPECT_EQ(paddle::framework::get<2>(c), 1);
 }
 
 TEST(Dim, Bool) {
   auto a = paddle::framework::make_dim(3, 4);
   auto b = paddle::framework::make_dim(5, 6);
   auto c = paddle::framework::make_dim(3, 4);
-
-  // in_bounds check
-  EXPECT_TRUE(paddle::framework::contained(a, b));
-  EXPECT_FALSE(paddle::framework::contained(b, a));
 
   // comparison
   EXPECT_TRUE(a == a);
