@@ -144,7 +144,11 @@ class TestDistRunnerBase(object):
                 "get trainer program done. with nccl2 mode")
             trainer_prog = fluid.default_main_program()
         else:
+            my_print(
+                type(self).__name__,
+                "do nothing about main program, just use it")
             trainer_prog = fluid.default_main_program()
+            my_print(type(self).__name__, "use main program done.")
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -224,15 +228,19 @@ class TestDistRunnerBase(object):
 
         my_print(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for _ in six.moves.xrange(RUN_STEP):
+        for i in six.moves.xrange(RUN_STEP):
             loss, = exe.run(binary,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
+            my_print(type(self).__name__, "run step %d finished" % i)
+        my_print("trainer run finished")
+
         if six.PY2:
             print(pickle.dumps(out_losses))
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
+        my_print("send stdout buffer done.")
 
 
 class TestParallelDyGraphRunnerBase(object):
