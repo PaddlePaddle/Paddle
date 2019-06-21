@@ -2756,6 +2756,15 @@ class Program(object):
     it will contains nested block.
     Please reference the framework.proto for details.
 
+    A set of Program usually contains startup program and main program.
+    A startup program is set to contain some initial work , and the main
+    program will contain the network structure and vars for train.
+
+    A set of Program can be used for test or train, in train program ,
+    Paddle will contain all content to build a train network,  in test
+    program Paddle will prune some content which is irrelevant to test, eg.
+    backward ops and vars.
+
     Notes: we have default_startup_program and default_main_program
     by default, a pair of them will shared the parameters.
     The default_startup_program only run once to initialize parameters,
@@ -3105,6 +3114,12 @@ class Program(object):
 
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
                     # instead of using test startup program, while nothing is in test's startup program
+
+                    # In Paddle Fluid we will share weights by using the same Variable name. In train and test program
+                    # all parameters will have the same name and this can make train and test program sharing parameters,
+                    # that's why we need to use startup program of train. And for startup program of test, it has nothing,
+                    # since it is a new program.
+
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
