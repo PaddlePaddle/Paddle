@@ -56,6 +56,16 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(cross_compiling/host)
     include(cross_compiling/armlinux)
     include(cross_compiling/android)
+
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+            "Default use Release in android" FORCE)
+    endif()
+    if(NOT THIRD_PARTY_BUILD_TYPE)
+        set(THIRD_PARTY_BUILD_TYPE "MinSizeRel" CACHE STRING
+            "Default use MinSizeRel in android" FORCE)
+    endif()
+
 endif()
 
 project(paddle CXX C)
@@ -133,15 +143,6 @@ if(ANDROID OR IOS OR ARMLINUX)
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL when cross-compiling for Android and iOS" FORCE)
-
-    if(NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-            "Default use Release in android" FORCE)
-    endif()
-    if(NOT THIRD_PARTY_BUILD_TYPE)
-        set(THIRD_PARTY_BUILD_TYPE "MinSizeRel" CACHE STRING
-            "Default use MinSizeRel in android" FORCE)
-    endif()
 endif()
 
 # for lite, both server and mobile framework.
