@@ -18,7 +18,7 @@ limitations under the License. */
 
 DEFINE_int64(cudnn_exhaustive_search_times, -1,
              "Exhaustive search times for cuDNN convolution, "
-             "defalut is -1, not exhaustive search");
+             "default is -1, not exhaustive search");
 
 namespace paddle {
 namespace operators {
