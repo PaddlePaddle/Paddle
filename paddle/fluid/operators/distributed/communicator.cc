@@ -41,7 +41,7 @@ DEFINE_int32(communicator_max_merge_var_num, 20,
 DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
 DEFINE_bool(communicator_merge_sparse_grad, true,
-            "merge sparse gradient before send");
+            "merge sparse gradient before sending");
 
 namespace paddle {
 namespace operators {
