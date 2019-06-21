@@ -9237,14 +9237,18 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     else:
         out = helper.create_variable_for_type_inference(dtype=dtype, name=name)
 
+    inputs = {'X': [x]}
+    attrs = {'out_dtype': out.dtype}
+    if maxlen is not None:
+        if isinstance(maxlen, Variable):
+            inputs['MaxLenTensor'] = maxlen
+        elif maxlen is not None:
+            attrs['maxlen'] = maxlen
+
     helper.append_op(
-        type='sequence_mask',
-        inputs={'X': [x]},
-        outputs={'Y': out},
-        attrs={
-            'maxlen': maxlen if maxlen is not None else -1,
-            'out_dtype': out.dtype
-        })
+        type='sequence_mask', inputs=inputs, outputs={'Y': out}, attrs=attrs)
+
+    out.stop_gradient = True
     return out
 
 
