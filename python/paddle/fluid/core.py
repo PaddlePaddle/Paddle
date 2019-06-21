@@ -103,7 +103,7 @@ if load_noavx:
     except ImportError as e:
         if has_noavx_core:
             sys.stderr.write(
-                'Error: Can not import noavx core while this file exsits ' +
+                'Error: Can not import noavx core while this file exists ' +
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
         raise e
     except Exception as e:

@@ -16,7 +16,7 @@ from __future__ import print_function
 import os
 import sys
 
-# The legacy core need be removed before import core,
+# The legacy core need to be removed before "import core",
 # in case of users installing paddlepadde without -U option
 core_suffix = 'so'
 if os.name == 'nt':
