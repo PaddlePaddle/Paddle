@@ -135,8 +135,8 @@ function test_arm_model {
     adb -s emulator-${port} push ${model_dir} ${adb_work_dir}
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
-    local adb_model_path="./${adb_work_dir}/`basename ${model_dir}`"
-    adb -s emulator-${port} shell "./${adb_work_dir}/${test_name} --eval_model_dir=$adb_model_path"
+    local adb_model_path="${adb_work_dir}/`basename ${model_dir}`"
+    adb -s emulator-${port} shell "${adb_work_dir}/${test_name} --eval_model_dir=$adb_model_path"
 
 }
 
@@ -225,16 +225,11 @@ function test_arm {
     for _test in $(cat $TESTS_FILE); do
         test_arm_android $_test $port
     done
-    # TODO(sangoly): refine this
-    test_arm_model "test_cxx_api_lite" $port "./third_party/install/mobilenet_v2_relu"
 }
 
-# Build the code and run lite arm tests. This is executed in the CI system.
-function build_test_arm {
-    ########################################################################
-    # job 1-4 must be in one runner
-    port_armv8=5554
-    port_armv7=5556
+function prepare_emulator {
+    local port_armv8=$1
+    local port_armv7=$2
 
     adb kill-server
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
@@ -245,6 +240,18 @@ function build_test_arm {
     echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
     echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
     sleep 1m
+}
+
+
+# We split the arm unittest into several sub-tasks to parallel and reduce the overall CI timetime.
+# sub-task1
+function build_test_arm_subtask_android {
+    ########################################################################
+    # job 1-4 must be in one runner
+    port_armv8=5554
+    port_armv7=5556
+
+    prepare_emulator $port_armv8 $port_armv7
 
     # job 1
     build_arm "android" "armv8" "gcc"
@@ -252,9 +259,9 @@ function build_test_arm {
     cd -
 
     # job 2
-    build_arm "android" "armv8" "clang"
-    test_arm "android" "armv8" "clang" ${port_armv8}
-    cd -
+    #build_arm "android" "armv8" "clang"
+    #test_arm "android" "armv8" "clang" ${port_armv8}
+    #cd -
 
     # job 3
     build_arm "android" "armv7" "gcc"
@@ -262,13 +269,22 @@ function build_test_arm {
     cd -
 
     # job 4
-    build_arm "android" "armv7" "clang"
-    test_arm "android" "armv7" "clang" ${port_armv7}
-    cd -
+    #build_arm "android" "armv7" "clang"
+    #test_arm "android" "armv7" "clang" ${port_armv7}
+    #cd -
 
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
+}
+
+# sub-task2
+function build_test_arm_subtask_armlinux {
     ########################################################################
+    # job 1-4 must be in one runner
+    port_armv8=5554
+    port_armv7=5556
+
+    prepare_emulator $port_armv8 $port_armv7
 
     # job 5
     build_arm "armlinux" "armv8"
@@ -285,8 +301,46 @@ function build_test_arm {
     test_arm "armlinux" "armv7hf"
     cd -
 
+    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
 }
+
+# sub-task3
+function build_test_arm_subtask3_mobilenet_v2 {
+    local port_armv8=5554
+    local port_armv7=5556
+    # We just test following single one environment to limit the CI time.
+    local os=android
+    local abi=armv8
+    local lang=gcc
+
+    cur_dir=$(pwd)
+    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
+    mkdir -p $build_dir
+    cd $build_dir
+    cmake_arm $os $abi $lang
+    make test_cxx_api_lite -j$NUM_CORES_FOR_COMPILE
+
+    prepare_emulator $port_armv8 $port_armv7
+
+    # just test the model on armv8
+    test_arm_model "test_cxx_api_lite" $port_armv8 "./third_party/install/mobilenet_v2_relu"
+
+    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+    echo "Done"
+}
+
+# Build the code and run lite arm tests. This is executed in the CI system.
+function build_test_arm {
+    ########################################################################
+    # job 1-4 must be in one runner
+    port_armv8=5554
+    port_armv7=5556
+
+    build_test_arm_subtask_android
+    build_test_arm_subtask_armlinux
+}
+
 
 ############################# MAIN #################################
 function print_usage {
@@ -379,6 +433,18 @@ function main {
                 build_test_arm
                 shift
                 ;;
+            build_test_arm_subtask_android)
+                build_test_arm_subtask_android
+                shift
+                ;;
+            build_test_arm_subtask_armlinux)
+                build_test_arm_subtask_armlinux
+                shift
+                ;;
+            build_test_arm_model1)
+                build_test_arm_subtask3_mobilenet_v2
+                shift
+                ;;
             check_style)
                 check_style
                 shift
@@ -397,4 +463,3 @@ function main {
 }
 
 main $@
- 
