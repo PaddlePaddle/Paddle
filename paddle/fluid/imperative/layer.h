@@ -14,8 +14,11 @@
 
 #pragma once
 
-#include <map>            // NOLINT
-#include <memory>         // NOLINT
+#include <cstdint>
+#include <map>     // NOLINT
+#include <memory>  // NOLINT
+#include <mutex>   // NOLINT
+#include <set>
 #include <string>         // NOLINT
 #include <unordered_map>  // NOLINT
 #include <utility>
@@ -34,6 +37,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/flags.h"
 
 namespace paddle {
 namespace imperative {
@@ -108,6 +112,19 @@ class PreparedOp {
 
 class OpBase;
 
+class ThreadSafeNameSet {
+ public:
+  void Insert(const std::string& name);
+
+  void Remove(const std::string& name);
+
+  std::vector<std::string> Names() const;
+
+ private:
+  std::multiset<std::string> set_;
+  mutable std::mutex mtx_;
+};
+
 /* The wrapper for Variable which holds a Variable and a VarBase of its
  * gradient. This object should be managed totally by Python intepreter.
  *
@@ -115,6 +132,8 @@ class OpBase;
  */
 class VarBase {
  public:
+  static std::vector<std::string> AliveVarNames();
+
   // Internal interface, create VarBase from exist variable
   VarBase(const std::string& name, std::unique_ptr<framework::Variable> var,
           VarBase* grad, bool stop_gradient)
@@ -180,6 +199,10 @@ class VarBase {
     }
     VLOG(8) << "create varbase: " << name_ << " type: " << dtype
             << " place: " << place << "Stop gradient: " << stop_gradient_;
+
+    if (IsDebugEnabled()) {
+      name_set_.Insert(name_);
+    }
   }
 
  public:
@@ -187,6 +210,9 @@ class VarBase {
     pre_op_ = nullptr;
     pre_op_out_idx_ = -1;
     VLOG(8) << "destruct varbase: " << name_;
+    if (IsDebugEnabled()) {
+      name_set_.Remove(name_);
+    }
   }
 
   inline void SetName(const std::string& name) { name_ = name; }
@@ -297,6 +323,9 @@ class VarBase {
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
+
+  // A private flag to check memory leak
+  static ThreadSafeNameSet name_set_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
