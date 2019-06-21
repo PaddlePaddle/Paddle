@@ -14,6 +14,23 @@
 
 from __future__ import print_function
 import os
+import sys
+
+# The legacy core need to be removed before "import core",
+# in case of users installing paddlepadde without -U option
+core_suffix = 'so'
+if os.name == 'nt':
+    core_suffix = 'pyd'
+
+legacy_core = os.path.abspath(os.path.dirname(
+    __file__)) + os.sep + 'core.' + core_suffix
+if os.path.exists(legacy_core):
+    sys.stderr.write('Deleting legacy file ' + legacy_core + '\n')
+    try:
+        os.remove(legacy_core)
+    except Exception as e:
+        raise e
+
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
