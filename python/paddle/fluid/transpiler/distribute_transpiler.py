@@ -171,8 +171,6 @@ class DistributeTranspilerConfig(object):
     use_hierarchical_allreduce = False
     #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
-    #Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to nodes number.
-    hierarchical_allreduce_exter_nranks = 0
 
 
 class DistributeTranspiler(object):
@@ -383,10 +381,22 @@ class DistributeTranspiler(object):
             self.origin_program._trainers_endpoints = trainers.split(",")
             self.origin_program._nccl_comm_num = self.config.nccl_comm_num
             self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
-            self.origin_program._hierarchical_allreduce_inter_nranks = \
-                int(self.config.hierarchical_allreduce_inter_nranks)
-            self.origin_program._hierarchical_allreduce_exter_nranks = \
-                int(self.config.hierarchical_allreduce_exter_nranks)
+            # check use_hierarchical_allreduce options
+            if args.use_hierarchical_allreduce:
+                trainers_num = len(trainers)
+                # selected automaticly
+                if self.config.hierarchical_allreduce_inter_nranks <= 1:
+                    self.config.hierarchical_allreduce_inter_nranks = fluid.core.get_cuda_device_count(
+                    )
+
+                assert trainers_num > self.hierarchical_allreduce_inter_nranks, \
+                        "trainers_num:{} must large than hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+
+                assert trainers_num % config.hierarchical_allreduce_inter_nranks == 0
+
+                self.origin_program._hierarchical_allreduce_inter_nranks = \
+                    int(self.config.hierarchical_allreduce_inter_nranks)
+
             self._transpile_nccl2(
                 trainer_id,
                 trainers,
