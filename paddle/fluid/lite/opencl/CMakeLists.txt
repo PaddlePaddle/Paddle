@@ -3,13 +3,7 @@ if (NOT LITE_WITH_OPENCL)
 endif()
 
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    add_library(opencl-lib SHARED IMPORTED)
-    set_target_properties(opencl-lib
-        PROPERTIES
-        IMPORTED_LOCATION
-        #${CMAKE_SOURCE_DIR}/opencl-lib/armeabi-v7a/libOpenCL.so)
-        ${CMAKE_SOURCE_DIR}/opencl-lib/armeabi-v7a/libGLES_mali.so)
-
+    cc_library(cl_wrapper SRCS cl_wrapper.cc)
     cc_library(cl_tool SRCS cl_tool.cc)
     target_compile_options(cl_tool BEFORE PUBLIC -Wno-ignored-qualifiers)
     cc_library(cl_half SRCS cl_half.cc)
@@ -20,7 +14,6 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cc_library(cl_image_converter SRCS cl_image_converter.cc DEPS cl_half lite_tensor)
     cc_library(cl_image SRCS cl_image.cc DEPS cl_half lite_tensor cl_image_converter cl_engine)
     cc_library(cl_caller SRCS cl_caller.cc  DEPS cl_helper cl_image)
-    lite_cc_test(test_cl_runtime SRCS cl_test.cc DEPS cl_helper cl_image cl_caller)
-    target_link_libraries(test_cl_runtime opencl-lib)
+    lite_cc_test(test_cl_runtime SRCS cl_test.cc DEPS cl_helper cl_image cl_caller cl_wrapper)
     add_dependencies(cl_tool opencl_clhpp)
 endif()
