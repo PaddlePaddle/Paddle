@@ -41,7 +41,7 @@ void FuseBase::DeleteInterNodes(SSAGraph *graph) {
     }
   }
 
-  LOG(INFO) << "keys: " << key2nodes_.size();
+  VLOG(4) << "keys: " << key2nodes_.size();
   std::unordered_set<const Node *> nodes2rm;
   for (auto &matched : key2nodes_) {
     for (const auto &key : keys) {

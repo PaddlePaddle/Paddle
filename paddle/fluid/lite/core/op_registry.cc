@@ -96,6 +96,7 @@ KernelRegistry::KernelRegistry()
   INIT_FOR(kX86, kAny, kAny);
 
   INIT_FOR(kARM, kFloat, kNCHW);
+  INIT_FOR(kARM, kInt8, kNCHW);
   INIT_FOR(kARM, kAny, kNCHW);
   INIT_FOR(kARM, kAny, kAny);
 #undef INIT_FOR
