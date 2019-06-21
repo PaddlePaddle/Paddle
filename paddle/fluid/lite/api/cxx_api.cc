@@ -61,5 +61,24 @@ const framework::proto::ProgramDesc &Predictor::program_desc() const {
   return program_desc_;
 }
 
+void Predictor::Build(const framework::proto::ProgramDesc &desc,
+                      const Place &prefer_place,
+                      const std::vector<Place> &valid_places) {
+  program_desc_ = desc;
+  Program program(desc, scope_, valid_places);
+
+  optimizer_.KernelPickPreferPlace(prefer_place);
+  core::KernelPickFactor factor;
+  factor.ConsiderTarget();
+  factor.ConsiderPrecision();
+  optimizer_.Run(std::move(program), valid_places, factor);
+  program_ = optimizer_.GenRuntimeProgram();
+}
+
+const lite::Tensor *Predictor::GetTensor(const std::string &name) const {
+  auto *var = program_->exec_scope()->FindVar(name);
+  return &var->Get<lite::Tensor>();
+}
+
 }  // namespace lite
 }  // namespace paddle
