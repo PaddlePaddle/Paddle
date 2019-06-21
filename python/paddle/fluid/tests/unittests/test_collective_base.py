@@ -219,16 +219,14 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={}):
         required_envs = {
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.1",
+            "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
             "PATH": os.getenv("PATH"),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "0",
-            "NCCL_SOCKET_IFNAME": "eth0",
-            "NCCL_IB_GID_INDEX": "3",
-            "NCCL_IB_RETRY_CNT": "0",
+            "NCCL_P2P_DISABLE": "1"
         }
         required_envs.update(need_envs)
         if check_error_log:
