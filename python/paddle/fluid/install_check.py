@@ -12,7 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .framework import Program, program_guard, unique_name, default_startup_program
+import os
+from . import core
+
+
+def process_env():
+    env = os.environ
+    device_list = []
+    if env.get('CUDA_VISIBLE_DEVICES') is not None:
+        cuda_devices = env['CUDA_VISIBLE_DEVICES']
+        if cuda_devices == "" or len(cuda_devices) == 0:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+            device_list = [0, 1]
+        elif len(cuda_devices) == 1:
+            device_list.append(0)
+        elif len(cuda_devices) > 1:
+            for i in range(len(cuda_devices.split(","))):
+                device_list.append(i)
+        return device_list
+    else:
+        if core.get_cuda_device_count() > 1:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+            return [0, 1]
+        else:
+            os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+            return [0]
+
+
+device_list = []
+if core.is_compiled_with_cuda():
+    device_list = process_env()
+else:
+    device_list = [0, 1]  # for CPU 0,1
+
+from .framework import Program, program_guard, unique_name
 from .param_attr import ParamAttr
 from .initializer import Constant
 from . import layers
@@ -24,7 +57,6 @@ from . import core
 from . import compiler
 import logging
 import numpy as np
-import os
 
 __all__ = ['run_check']
 
@@ -51,13 +83,12 @@ def run_check():
     use_cuda = False if not core.is_compiled_with_cuda() else True
     place = core.CPUPlace() if not core.is_compiled_with_cuda(
     ) else core.CUDAPlace(0)
-    np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-
-    if use_cuda:
-        if core.get_cuda_device_count() > 1:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-        else:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    np_inp_single = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+    inp = []
+    for i in range(len(device_list)):
+        inp.append(np_inp_single)
+    np_inp_muti = np.array(inp)
+    np_inp_muti = np_inp_muti.reshape(len(device_list), 2, 2)
 
     def test_parallerl_exe():
         train_prog = Program()
@@ -72,13 +103,13 @@ def run_check():
                     build_strategy = compiler.BuildStrategy()
                     build_strategy.enable_inplace = True
                     build_strategy.memory_optimize = True
-                    inp = layers.data(
-                        name="inp", shape=[2, 2], append_batch_size=False)
+                    inp = layers.data(name="inp", shape=[2, 2])
                     simple_layer = SimpleLayer("simple_layer")
                     out = simple_layer(inp)
                     exe = executor.Executor(place)
                     if use_cuda:
-                        places = [core.CUDAPlace(0), core.CUDAPlace(1)]
+                        for i in device_list:
+                            places.append(core.CUDAPlace(i))
                     else:
                         places = [core.CPUPlace(), core.CPUPlace()]
                     loss = layers.mean(out)
@@ -93,7 +124,7 @@ def run_check():
                     exe.run(startup_prog)
 
                     exe.run(compiled_prog,
-                            feed={inp.name: np_inp},
+                            feed={inp.name: np_inp_muti},
                             fetch_list=[loss.name])
 
     def test_simple_exe():
@@ -115,7 +146,7 @@ def run_check():
                                              if not core.is_compiled_with_cuda()
                                              else core.CUDAPlace(0))
                     exe0.run(startup_prog)
-                    exe0.run(feed={inp0.name: np_inp},
+                    exe0.run(feed={inp0.name: np_inp_single},
                              fetch_list=[out0.name, param_grads[1].name])
 
     test_simple_exe()
