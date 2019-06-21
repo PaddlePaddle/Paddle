@@ -14,15 +14,18 @@
 
 #pragma once
 
-#include <sys/stat.h>
+#ifndef LITE_WITH_ARM
+#include <bits/stdc++.h>
+#endif
 #include <fstream>
 #include <string>
 #include "paddle/fluid/lite/utils/cp_logging.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
 
-static bool IsFileExists(const std::string &path) {
+static bool IsFileExists(const std::string& path) {
   std::ifstream file(path);
   bool res = file.is_open();
   if (res) {
@@ -30,6 +33,14 @@ static bool IsFileExists(const std::string &path) {
   }
   return res;
 }
+
+// ARM mobile not support mkdir in C++
+#ifndef LITE_WITH_ARM
+static void MkDirRecur(const std::string& path) {
+  CHECK_EQ(system(string_format("mkdir -p %s", path.c_str()).c_str()), 0)
+      << "Cann't mkdir " << path;
+}
+#endif
 
 }  // namespace lite
 }  // namespace paddle

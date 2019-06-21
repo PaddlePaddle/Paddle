@@ -30,7 +30,7 @@ namespace lite {
 #ifdef LITE_WITH_ARM
 TEST(InceptionV4, test) {
   DeviceInfo::Init();
-  lite::ExecutorLite predictor;
+  lite::Predictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kARM), PRECISION(kFloat)}});
 
