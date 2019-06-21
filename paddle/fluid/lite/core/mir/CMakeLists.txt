@@ -52,8 +52,11 @@ cc_library(mir_passes
 #   X86_DEPS mul_compute_x86
 # )
 
-
-lite_cc_library(pattern_matcher_lite SRCS pattern_matcher.cc DEPS mir_node mir_ssa_graph op_lite)
+set(pattern_deps mir_node mir_ssa_graph op_lite)
+if (WITH_TESTING)
+  list(APPEND pattern_deps gtest)
+endif()
+lite_cc_library(pattern_matcher_lite SRCS pattern_matcher.cc DEPS ${pattern_deps})
 lite_cc_test(test_pattern_matcher_lite SRCS pattern_matcher_test.cc DEPS pattern_matcher_lite)
 
 lite_cc_library(pattern_matcher_high_api SRCS pattern_matcher_high_api.cc DEPS pattern_matcher_lite)
