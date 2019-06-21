@@ -22,12 +22,18 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class FusionElementwiseActivationOp : public ElementwiseOp {
+class FusionElementwiseActivationOp : public OpLite {
  public:
   explicit FusionElementwiseActivationOp(const std::string& type)
-      : ElementwiseOp(type) {}
+      : OpLite(type) {}
+
+  bool CheckShape() const override;
+
+  bool InferShape() const override;
 
   bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override;
+
+  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
   std::string DebugString() const override {
     return "fusion_elementwise_activation_op";
@@ -38,13 +44,18 @@ class FusionElementwiseActivationOp : public ElementwiseOp {
 };
 
 #ifdef LITE_WITH_X86
-class FusionElementwiseActivationGradExplicitOp
-    : public ElementwiseGradExplicitOp {
+class FusionElementwiseActivationGradExplicitOp : public OpLite {
  public:
   explicit FusionElementwiseActivationGradExplicitOp(const std::string& type)
-      : ElementwiseGradExplicitOp(type) {}
+      : OpLite(type) {}
+
+  bool CheckShape() const override;
+
+  bool InferShape() const override;
 
   bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override;
+
+  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
   std::string DebugString() const override {
     return "fusion_elementwise_activation_grad_explicit_op";

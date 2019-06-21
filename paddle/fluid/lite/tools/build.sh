@@ -99,7 +99,7 @@ function test_arm_android {
     echo "test name: ${test_name}"
     adb_work_dir="/data/local/tmp"
 
-    skip_list=("test_model_parser_lite" "test_cxx_api_lite")
+    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite")
     for skip_name in ${skip_list[@]} ; do
         [[ $skip_name =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && echo "skip $test_name" && return
     done
@@ -136,7 +136,7 @@ function test_arm_model {
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
     local adb_model_path="${adb_work_dir}/`basename ${model_dir}`"
-    adb -s emulator-${port} shell "${adb_work_dir}/${test_name} --eval_model_dir=$adb_model_path"
+    adb -s emulator-${port} shell "${adb_work_dir}/${test_name} --model_dir=$adb_model_path"
 
 }
 
@@ -305,8 +305,8 @@ function build_test_arm_subtask_armlinux {
     echo "Done"
 }
 
-# sub-task3
-function build_test_arm_subtask3_mobilenet_v2 {
+# sub-task-model
+function build_test_arm_subtask_model {
     local port_armv8=5554
     local port_armv7=5556
     # We just test following single one environment to limit the CI time.
@@ -314,17 +314,20 @@ function build_test_arm_subtask3_mobilenet_v2 {
     local abi=armv8
     local lang=gcc
 
+    local test_name=$1
+    local model_name=$2
+
     cur_dir=$(pwd)
     build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
     mkdir -p $build_dir
     cd $build_dir
     cmake_arm $os $abi $lang
-    make test_cxx_api_lite -j$NUM_CORES_FOR_COMPILE
+    make $test_name -j$NUM_CORES_FOR_COMPILE
 
     prepare_emulator $port_armv8 $port_armv7
 
     # just test the model on armv8
-    test_arm_model "test_cxx_api_lite" $port_armv8 "./third_party/install/mobilenet_v2_relu"
+    test_arm_model $test_name $port_armv8 "./third_party/install/$model_name"
 
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
@@ -441,8 +444,20 @@ function main {
                 build_test_arm_subtask_armlinux
                 shift
                 ;;
-            build_test_arm_model1)
-                build_test_arm_subtask3_mobilenet_v2
+            build_test_arm_model_mobilenetv1)
+                build_test_arm_subtask_model test_mobilenetv1_lite mobilenet_v1
+                shift
+                ;;
+            build_test_arm_model_mobilenetv2)
+                build_test_arm_subtask_model test_mobilenetv2_lite mobilenet_v2
+                shift
+                ;;
+            build_test_arm_model_resnet50)
+                build_test_arm_subtask_model test_resnet50_lite resnet50
+                shift
+                ;;
+            build_test_arm_model_inceptionv4)
+                build_test_arm_subtask_model test_inceptionv4_lite inception_v4
                 shift
                 ;;
             check_style)

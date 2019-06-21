@@ -27,9 +27,6 @@
 DEFINE_string(startup_program_path, "", "");
 DEFINE_string(main_program_path, "", "");
 
-// for eval
-DEFINE_string(eval_model_dir, "", "");
-
 namespace paddle {
 namespace lite {
 
@@ -87,38 +84,6 @@ TEST(CXXApi, save_model) {
   exe.Run();
 }*/
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-
-#ifdef LITE_WITH_ARM
-TEST(CXXApi, eval) {
-  DeviceInfo::Init();
-  lite::ExecutorLite predictor;
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
-                                   Place{TARGET(kARM), PRECISION(kFloat)}});
-
-  predictor.Build(FLAGS_eval_model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
-                  valid_places);
-
-  auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
-  auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < input_tensor->dims().production(); i++) {
-    data[i] = 1;
-  }
-
-  predictor.Run();
-
-  auto* out = predictor.GetOutput(0);
-  std::vector<float> results({0.00097802, 0.00099822, 0.00103093, 0.00100121,
-                              0.00098268, 0.00104065, 0.00099962, 0.00095181,
-                              0.00099694, 0.00099406});
-  for (int i = 0; i < results.size(); ++i) {
-    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
-  }
-  ASSERT_EQ(out->dims().size(), 2);
-  ASSERT_EQ(out->dims()[0], 1);
-  ASSERT_EQ(out->dims()[1], 1000);
-}
-#endif
 
 }  // namespace lite
 }  // namespace paddle

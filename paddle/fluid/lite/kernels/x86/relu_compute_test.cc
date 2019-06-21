@@ -53,10 +53,10 @@ TEST(relu_x86, run_test) {
   }
   // ReluCompute relu;
   ReluCompute<float> relu;
-  operators::ReluParam param;
+  operators::ActivationParam param;
 
-  param.input = &x;
-  param.output = &out;
+  param.X = &x;
+  param.Out = &out;
 
   relu.SetParam(param);
   relu.Run();

@@ -44,4 +44,5 @@ REGISTER_LITE_KERNEL(dropout, kARM, kFloat, kNCHW,
     .BindInput("dropout_prob", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindInput("dropout_implementation", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("Mask", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
