@@ -78,6 +78,7 @@ build:mobile_android:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
+            - $MOBILE_LITE_CACHE2
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_ccache
     script:
@@ -98,6 +99,7 @@ build:mobile_armlinux:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
+            - $MOBILE_LITE_CACHE2
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_ccache2
     script:
@@ -107,24 +109,13 @@ build:mobile_armlinux:
     dependencies:
         - build:server
 
-    cache:
-        key: mobile_thirdparty
-        paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - ~/.ccache
 
 build:mobile_model_mobilenetv1:
     tags:
         - lite
     stage: build_mobile
     image: $MOBILE_LITE_DOCKER_IMAGE
-    cache:
-        key: mobile_thirdparty
-        paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - ~/.ccache
+
     script:
         - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_mobilenetv1
         - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_mobilenetv1
@@ -137,6 +128,7 @@ build:mobile_model_mobilenetv1:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
+            - $MOBILE_LITE_CACHE2
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_model_mobilenetv1
 
@@ -145,12 +137,7 @@ build:mobile_model_mobilenetv2:
         - lite
     stage: build_mobile
     image: $MOBILE_LITE_DOCKER_IMAGE
-    cache:
-        key: mobile_thirdparty
-        paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - ~/.ccache
+
     script:
         - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_mobilenetv2
         - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_mobilenetv2
@@ -163,6 +150,7 @@ build:mobile_model_mobilenetv2:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
+            - $MOBILE_LITE_CACHE2
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_model_mobilenetv2
 
@@ -171,12 +159,7 @@ build:mobile_model_resnet50:
         - lite
     stage: build_mobile
     image: $MOBILE_LITE_DOCKER_IMAGE
-    cache:
-        key: mobile_thirdparty
-        paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - ~/.ccache
+
     script:
         - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_resnet50
         - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_resnet50
@@ -189,6 +172,7 @@ build:mobile_model_resnet50:
         paths:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
+            - $MOBILE_LITE_CACHE2
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_model_resnet50
 
