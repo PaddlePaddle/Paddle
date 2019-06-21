@@ -48,6 +48,14 @@ struct IoCopyParam {
   lite::Tensor* y{};
 };
 
+struct CalibParam {
+  const lite::Tensor* input{};
+  lite::Tensor* output{};
+  float in_scale;
+  PrecisionType in_dtype;
+  PrecisionType out_dtype;
+};
+
 /// -------------------------- NN operators ------------------------------------
 
 struct FcParam {
