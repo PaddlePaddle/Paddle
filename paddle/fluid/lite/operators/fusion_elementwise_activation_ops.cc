@@ -20,9 +20,29 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+bool FusionElementwiseActivationOp::CheckShape() const {
+  CHECK_OR_FALSE(param_.X);
+  CHECK_OR_FALSE(param_.Y);
+  CHECK_OR_FALSE(param_.Out);
+  return true;
+}
+
+bool FusionElementwiseActivationOp::InferShape() const {
+  CHECK_OR_FALSE(param_.X->dims().size() >= param_.Y->dims().size());
+  param_.Out->Resize(param_.X->dims());
+  return true;
+}
+
 bool FusionElementwiseActivationOp::AttachImpl(const cpp::OpDesc& opdesc,
                                                lite::Scope* scope) {
-  ElementwiseOp::AttachImpl(opdesc, scope);
+  auto X_name = opdesc.Input("X").front();
+  auto Y_name = opdesc.Input("Y").front();
+  auto Out_name = opdesc.Output("Out").front();
+
+  param_.X = GetVar<lite::Tensor>(scope, X_name);
+  param_.Y = GetVar<lite::Tensor>(scope, Y_name);
+  param_.Out = GetMutableVar<lite::Tensor>(scope, Out_name);
+  param_.axis = opdesc.GetAttr<int>("axis");
   param_.act_type = opdesc.GetAttr<std::string>("act_type");
   // TODO(sangoly): support more activation types.
   CHECK(param_.act_type == "relu") << "Only relu activation be supported now";
@@ -31,9 +51,31 @@ bool FusionElementwiseActivationOp::AttachImpl(const cpp::OpDesc& opdesc,
 }
 
 #ifdef LITE_WITH_X86
+bool FusionElementwiseActivationGradExplicitOp::CheckShape() const {
+  CHECK_OR_FALSE(param_.Y);
+  CHECK_OR_FALSE(param_.X_grad);
+  CHECK_OR_FALSE(param_.Y_grad);
+  CHECK_OR_FALSE(param_.Out_grad);
+  return true;
+}
+
+bool FusionElementwiseActivationGradExplicitOp::InferShape() const {
+  param_.X_grad->Resize(param_.Out_grad->dims());
+  param_.Y_grad->Resize(param_.Y->dims());
+  return true;
+}
+
 bool FusionElementwiseActivationGradExplicitOp::AttachImpl(
     const cpp::OpDesc& opdesc, lite::Scope* scope) {
-  ElementwiseGradExplicitOp::AttachImpl(opdesc, scope);
+  CHECK_EQ(opdesc.InputArgumentNames().size(), 1UL);
+  auto Out_name = opdesc.Input(framework::GradVarName("Out")).front();
+  auto X_name = opdesc.Output(framework::GradVarName("X")).front();
+  auto Y_name = opdesc.Output(framework::GradVarName("Y")).front();
+
+  param_.Out_grad = GetVar<lite::Tensor>(scope, Out_name);
+  param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_name);
+  param_.Y_grad = GetMutableVar<Tensor>(scope, Y_name);
+  param_.axis = opdesc.GetAttr<int>("axis");
   param_.act_type = opdesc.GetAttr<std::string>("act_type");
   // TODO(sangoly): support more activation types.
   CHECK(param_.act_type == "relu") << "Only relu activation be supported now";

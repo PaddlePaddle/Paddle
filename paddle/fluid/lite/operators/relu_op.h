@@ -38,7 +38,7 @@ class ReluOp : public OpLite {
   std::string DebugString() const override { return "relu"; }
 
  private:
-  mutable ReluParam param_;
+  mutable ActivationParam param_;
 };
 
 }  // namespace operators

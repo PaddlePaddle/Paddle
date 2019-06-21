@@ -31,13 +31,13 @@ namespace x86 {
 template <typename T>
 class ReluCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
-  using param_t = operators::ReluParam;
+  using param_t = operators::ActivationParam;
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    auto n = param.input->dims().production();
-    const float* input = param.input->data<float>();
-    float* output = param.output->mutable_data<float>();
+    auto n = param.X->dims().production();
+    const float* input = param.X->data<float>();
+    float* output = param.Out->mutable_data<float>();
     for (int i = 0; i < n; i++) {
       output[i] = std::max(0.f, input[i]);
     }
