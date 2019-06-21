@@ -60,11 +60,6 @@ struct FcParam {
   bool weight_transposed{false};
 };
 
-struct ReluParam {
-  lite::Tensor* input{};
-  lite::Tensor* output{};
-};
-
 // For Mul Op
 struct MulParam {
   const lite::Tensor* x{};
