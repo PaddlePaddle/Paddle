@@ -218,22 +218,7 @@ void pooling_global(const void* din, void* dout, int num, int chout, int hout,
   int size_channel_in = win * hin;
   float* data_out = static_cast<float*>(dout);
   const float* data_in = static_cast<const float*>(din);
-
   int cnt = size_channel_in / 8;
-
-#if 0
-    LOG(INFO) << "size_channel_in:" << size_channel_in;
-    LOG(INFO) << "cnt:" << cnt;
-    LOG(INFO) << "num:" << num;
-    LOG(INFO) << "chout:" << chout;
-    LOG(INFO) << "hout:" << hout;
-    LOG(INFO) << "wout:" << wout;
-
-    LOG(INFO) << "chin:" << chin;
-    LOG(INFO) << "hin:" << hin;
-    LOG(INFO) << "win:" << win;
-    LOG(INFO) << "pooling_type " << pooling_type;
-#endif
 
   for (int n = 0; n < num; ++n) {
     float* data_out_batch = data_out + n * chout;
@@ -254,24 +239,12 @@ void pooling_global(const void* din, void* dout, int num, int chout, int hout,
           data_in_channel += 8;
         }
 #else
-        int num = cnt;
-        if (num > 0) {
-          asm volatile(
-              "max_loop:                                        @main loop\n"
-              "vld1.f32   {d0-d1}, [%[data_in_channel]]!        @load q1, "
-              "data_in_channel\n"
-              "vmax.f32   %q[vmax], %q[vmax], q0                @max vmax, "
-              "vmax, data_in_channel\n"
-              "vld1.f32   {d2-d3}, [%[data_in_channel]]!        @ load 2nd 4 "
-              "data"
-              "vmax.f32   %q[vmax], %q[vmax], q1                @ compare 2nd "
-              "4 datas\n"
-              "subs       %[num], #1                            @subs num, 1\n"
-              "bne        max_loop                              @bne num\n"
-              : [data_in_channel] "+r"(data_in_channel), [num] "+r"(num),
-                [vmax] "+w"(vmax)
-              :
-              : "cc", "memory", "q0", "q1");
+        for (; i < cnt; i++) {
+          float32x4_t vdin1 = vld1q_f32(data_in_channel);
+          vmax = vmaxq_f32(vdin1, vmax);
+          float32x4_t vdin2 = vld1q_f32(data_in_channel + 4);
+          vmax = vmaxq_f32(vmax, vdin2);
+          data_in_channel += 8;
         }
 #endif  // __aarch64__
         float32x2_t vmax_tmp =
