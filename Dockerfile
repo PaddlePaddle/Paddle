@@ -25,6 +25,17 @@ RUN apt-get update && \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
 
+# Downgrade gcc to 4.8
+WORKDIR /usr/bin
+RUN apt install -y gcc-4.8 g++-4.8
+RUN cp gcc gcc.bak
+RUN cp g++ g++.bak
+RUN rm gcc
+RUN rm g++
+RUN ln -s gcc-4.8 gcc
+RUN ln -s g++-4.8 g++
+
+WORKDIR /home
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
