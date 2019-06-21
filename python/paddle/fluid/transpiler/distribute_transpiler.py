@@ -389,10 +389,11 @@ class DistributeTranspiler(object):
                     self.config.hierarchical_allreduce_inter_nranks = fluid.core.get_cuda_device_count(
                     )
 
-                assert trainers_num > self.hierarchical_allreduce_inter_nranks, \
-                        "trainers_num:{} must large than hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \
+                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
 
-                assert trainers_num % config.hierarchical_allreduce_inter_nranks == 0
+                assert trainers_num % self.config.hierarchical_allreduce_inter_nranks == 0, \
+                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = \
                     int(self.config.hierarchical_allreduce_inter_nranks)

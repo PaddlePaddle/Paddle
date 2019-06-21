@@ -129,6 +129,9 @@ class TestDistRunnerBase(object):
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.nccl_comm_num = args.nccl_comm_num
+            if args.use_hallreduce:
+                config.use_hierarchical_allreduce = True
+                config.hierarchical_allreduce_inter_nranks = args.hallreduce_inter_nranks
             my_print(
                 type(self).__name__,
                 "begin to run transpile on trainer with nccl2 mode")
@@ -328,7 +331,11 @@ def runtime_main(test_class):
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument(
-        '--enable_backward_deps', type=bool, required=False, default=1)
+        '--enable_backward_deps', type=bool, required=False, default=False)
+    parser.add_argument(
+        '--use_hallreduce', type=bool, required=False, default=False)
+    parser.add_argument(
+        '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
@@ -410,6 +417,7 @@ class TestDistBase(unittest.TestCase):
         self._setup_config()
         self._after_setup_config()
         self._enable_backward_deps = False
+        self._use_hallreduce = False
 
     def _find_free_port(self):
         def __free_port():
@@ -671,6 +679,13 @@ class TestDistBase(unittest.TestCase):
         if self._mp_mode:
             env0 = {"FLAGS_selected_gpus": "0"}
             env1 = {"FLAGS_selected_gpus": "1"}
+
+        if self._use_hallreduce:
+            env0.update({"FLAGS_selected_gpus": "0,1"})
+            env1.update({"FLAGS_selected_gpus": "2,3"})
+
+            tr0_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
+            tr1_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
 
         if self._enable_backward_deps:
             tr0_cmd += " --enable_backward_deps 1"
