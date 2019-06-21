@@ -214,7 +214,7 @@ function test_arm {
         echo "android do not need armv7hf"
         return 0
     fi
-
+    
     # TODO(yuanshuai): enable armv7 on android
     if [[ ${abi} == "armv7" ]]; then
         echo "skip android v7 test yet"
