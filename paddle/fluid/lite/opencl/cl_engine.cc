@@ -133,10 +133,10 @@ bool CLEngine::InitializePlatform() {
 
 bool CLEngine::InitializeDevice() {
   std::vector<cl::Device> all_devices;
-  status_ = platform_->getDevices(CL_DEVICE_TYPE_DEFAULT, &all_devices);
+  status_ = platform_->getDevices(CL_DEVICE_TYPE_GPU, &all_devices);
   CL_CHECK_ERRORS(status_);
   if (all_devices.empty()) {
-    LOG(ERROR) << "No OpenCL device found!";
+    LOG(ERROR) << "No OpenCL GPU device found!";
     return false;
   }
   device_ = std::make_shared<cl::Device>();

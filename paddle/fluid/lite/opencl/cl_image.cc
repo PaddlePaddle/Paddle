@@ -27,12 +27,12 @@ std::ostream& operator<<(std::ostream& os, const CLImage& cl_image) {
   int height = cl_image.image_dims_[1];
 
   half_t* image_data = new half_t[height * width * 4];
-  cl::Image2D& image = cl_image.cl_image();
+  cl::Image* image = cl_image.cl_image();
   const std::array<size_t, 3> origin{0, 0, 0};
   const std::array<size_t, 3> region{static_cast<size_t>(width),
                                      static_cast<size_t>(height), 1};
   cl_int err = CLEngine::Global()->command_queue().enqueueReadImage(
-      image, CL_TRUE, origin, region, 0, 0, image_data, nullptr, nullptr);
+      *image, CL_TRUE, origin, region, 0, 0, image_data, nullptr, nullptr);
   CL_CHECK_ERRORS(err);
 
   float* tensor_data = new float[cl_image.numel()];
@@ -53,7 +53,7 @@ std::ostream& operator<<(std::ostream& os, const CLImage& cl_image) {
   return os;
 }
 
-void CLImage::SetTensorData(float* tensor_data, const DDim& dim) {
+void CLImage::set_tensor_data(float* tensor_data, const DDim& dim) {
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
   auto numel = dim.product();
 #else
@@ -65,28 +65,30 @@ void CLImage::SetTensorData(float* tensor_data, const DDim& dim) {
 }
 
 void CLImage::InitCLImage(const cl::Context& context) {
-  CHECK(tensor_data_ != nullptr) << " Please call SetTensorData first!";
+  CHECK(tensor_data_ != nullptr) << " Please call "
+                                    "set_tensohelper->DefaultWorkSize(out_"
+                                    "image)r_data first!";
   image_converter_.reset(new CLImageConverterFolder);
   InitCLImage(context, image_converter_.get());
 }
 
 void CLImage::InitNormalCLImage(const cl::Context& context) {
-  CHECK(tensor_data_ != nullptr) << " Please call SetTensorData first!";
+  CHECK(tensor_data_ != nullptr) << " Please call set_tensor_data first!";
   image_converter_.reset(new CLImageConverterNormal);
   InitCLImage(context, image_converter_.get());
 }
 
 void CLImage::InitNImage(const cl::Context& context) {
-  CHECK(tensor_data_ != nullptr) << " Please call SetTensorData first!";
+  CHECK(tensor_data_ != nullptr) << " Please call set_tensor_data first!";
   CHECK(tensor_dims_.size() == 4) << " Tensor dim is not 4.";
-  image_converter_.reset(new CLImageConverterNWBlock());
+  image_converter_.reset(new CLImageConverterNWBlock);
   InitCLImage(context, image_converter_.get());
 }
 
 void CLImage::InitDWImage(const cl::Context& context) {
-  CHECK(tensor_data_ != nullptr) << " Please call SetTensorData first!";
+  CHECK(tensor_data_ != nullptr) << " Please call set_tensor_data first!";
   CHECK(tensor_dims_.size() == 4) << " Tensor dim is not 4.";
-  image_converter_.reset(new CLImageConverterDWBlock());
+  image_converter_.reset(new CLImageConverterDWBlock);
   InitCLImage(context, image_converter_.get());
 }
 
@@ -95,7 +97,7 @@ void CLImage::InitEmptyImage(const cl::Context& context, const DDim& dim) {
       << " Empty image tensor data shouldn't have value";
 
   tensor_dims_ = dim;
-  image_converter_.reset(new CLImageConverterNormal());
+  image_converter_.reset(new CLImageConverterNormal);
 
   VLOG(3) << " to get image dims ";
   image_dims_ = image_converter_->InitImageDimInfoWith(tensor_dims_);
@@ -123,7 +125,7 @@ void CLImage::InitEmptyWithImageDim(const cl::Context& context,
 
 void CLImage::InitCLImage(const cl::Context& context,
                           CLImageConverterBase* converter) {
-  CHECK(tensor_data_ != nullptr) << " Please call SetTensorData first!";
+  CHECK(tensor_data_ != nullptr) << " Please call set_tensor_data first!";
 
   VLOG(3) << " begin init cl image ";
   image_dims_ = converter->InitImageDimInfoWith(tensor_dims_);
