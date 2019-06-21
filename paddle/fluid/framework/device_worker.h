@@ -113,7 +113,7 @@ class DeviceWorker {
   // will make this zero copy in the future
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
-  virtual void SetDataFeed(const std::shared_ptr<DataFeed>& data_feed);
+  virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -121,7 +121,7 @@ class DeviceWorker {
  protected:
   Scope* root_scope_;
   paddle::platform::Place place_;
-  std::shared_ptr<DataFeed> device_reader_;
+  DataFeed* device_reader_;
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;

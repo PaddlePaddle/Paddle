@@ -889,6 +889,7 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
 
+        dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -900,11 +901,11 @@ class Executor(object):
             print_period=print_period)
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
-        dataset._prepare_to_run()
         self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._finish_to_run()
         return None
 
     def train_from_dataset(self,
@@ -969,6 +970,7 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
 
+        dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -979,9 +981,9 @@ class Executor(object):
             fetch_info=fetch_info,
             print_period=print_period)
         trainer._gen_trainer_desc()
-        dataset._prepare_to_run()
         self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._finish_to_run()
         return None

@@ -21,14 +21,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-typedef std::shared_ptr<Dataset> (*CreateDatasetFunction)();
+typedef std::unique_ptr<Dataset> (*CreateDatasetFunction)();
 typedef std::unordered_map<std::string, CreateDatasetFunction> datasetMap;
 datasetMap g_dataset_map;
 
 #define REGISTER_DATASET_CLASS(dataset_class)                   \
   namespace {                                                   \
-  std::shared_ptr<Dataset> Creator_##dataset_class() {          \
-    return std::shared_ptr<Dataset>(new dataset_class);         \
+  std::unique_ptr<Dataset> Creator_##dataset_class() {          \
+    return std::unique_ptr<Dataset>(new dataset_class);         \
   }                                                             \
   class __Registerer_##dataset_class {                          \
    public:                                                      \
@@ -50,7 +50,7 @@ std::string DatasetFactory::DatasetTypeList() {
   return dataset_types;
 }
 
-std::shared_ptr<Dataset> DatasetFactory::CreateDataset(
+std::unique_ptr<Dataset> DatasetFactory::CreateDataset(
     std::string dataset_class) {
   if (g_dataset_map.count(dataset_class) < 1) {
     LOG(WARNING) << "Your Dataset " << dataset_class
