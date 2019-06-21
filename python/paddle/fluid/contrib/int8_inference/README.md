@@ -6,7 +6,7 @@ PaddlePaddle supports offline INT8 calibration to accelerate the inference speed
 You need to install at least PaddlePaddle-1.3 python package `pip install paddlepaddle==1.3`.
 
 ## 1. How to generate INT8 model
-You can refer to the unit test in [test_calibration.py](../tests/test_calibration.py). Basically, there are three steps:
+You can refer to the unit test in [test_calibration_resnet50.py](../tests/test_calibration_resnet50.py). Basically, there are three steps:
 * Construct calibration object.
 
 ```python
@@ -68,18 +68,19 @@ Notes:
 * The INT8 theoretical speedup is 4X on Intel® Xeon® Cascadelake Server (please refer to `The theoretical peak compute gains are 4x int8 OPS over fp32 OPS.` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")). Therefore, op-level gain is 4X and topology-level is smaller.
 
 ## 4. How to reproduce the results
-* Small dataset (Single core)
+* Small dataset for ResNet-50 (Single core)
 ```bash
-FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/tests/test_calibration.py
+FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/tests/test_calibration_resnet50.py
+```
+>Note: Change `test_calibration_resnet50.py` to `test_calibration_mobilenetv1.py` for MobileNet-V1. Same for the following commands.
+
+* Full dataset for ResNet-50 (Single core)
+```bash
+FLAGS_use_mkldnn=true DATASET=full python python/paddle/fluid/contrib/tests/test_calibration_resnet50.py
 ```
 
-* Full dataset (Single core)
+* Full dataset for ResNet-50 (Multi-core)
 ```bash
-FLAGS_use_mkldnn=true DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
-```
-
-* Full dataset (Multi-core)
-```bash
-FLAGS_use_mkldnn=true OMP_NUM_THREADS=20 DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
+FLAGS_use_mkldnn=true OMP_NUM_THREADS=20 DATASET=full python python/paddle/fluid/contrib/tests/test_calibration_resnet50.py
 ```
 > Notes: This is an example command with 20 cores by using set `OMP_NUM_THREADS` value.
