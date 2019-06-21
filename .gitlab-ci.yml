@@ -114,6 +114,32 @@ build:mobile_armlinux:
             - $MOBILE_LITE_CACHE1
             - ~/.ccache
 
+build:mobile_model_mobilenetv1:
+    tags:
+        - lite
+    stage: build_mobile
+    image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+    script:
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_mobilenetv1
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_mobilenetv1
+
+    dependencies:
+        - build:server
+
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+            - $CI_PROJECT_DIR/build_mobile_model_mobilenetv1
+
 build:mobile_model_mobilenetv2:
     tags:
         - lite
@@ -126,8 +152,8 @@ build:mobile_model_mobilenetv2:
             - $MOBILE_LITE_CACHE1
             - ~/.ccache
     script:
-        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model1
-        - ./paddle/fluid/lite/tools/build.sh build_test_arm_model1
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_mobilenetv2
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_mobilenetv2
 
     dependencies:
         - build:server
@@ -138,4 +164,56 @@ build:mobile_model_mobilenetv2:
             - $MOBILE_LITE_CACHE0
             - $MOBILE_LITE_CACHE1
             - ~/.ccache
-            - $CI_PROJECT_DIR/build_mobile_model1
+            - $CI_PROJECT_DIR/build_mobile_model_mobilenetv2
+
+build:mobile_model_resnet50:
+    tags:
+        - lite
+    stage: build_mobile
+    image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+    script:
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_resnet50
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_resnet50
+
+    dependencies:
+        - build:server
+
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - $MOBILE_LITE_CACHE0
+            - $MOBILE_LITE_CACHE1
+            - ~/.ccache
+            - $CI_PROJECT_DIR/build_mobile_model_resnet50
+
+#build:mobile_model_inceptionv4:
+#    tags:
+#        - lite
+#    stage: build_mobile
+#    image: $MOBILE_LITE_DOCKER_IMAGE
+#    cache:
+#        key: mobile_thirdparty
+#        paths:
+#            - $MOBILE_LITE_CACHE0
+#            - $MOBILE_LITE_CACHE1
+#            - ~/.ccache
+#    script:
+#        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_model_inceptionv4
+#        - ./paddle/fluid/lite/tools/build.sh build_test_arm_model_inceptionv4
+#
+#    dependencies:
+#        - build:server
+#
+#    cache:
+#        key: mobile_thirdparty
+#        paths:
+#            - $MOBILE_LITE_CACHE0
+#            - $MOBILE_LITE_CACHE1
+#            - ~/.ccache
+#            - $CI_PROJECT_DIR/build_mobile_model_inceptionv4

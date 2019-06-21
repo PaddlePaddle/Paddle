@@ -33,24 +33,37 @@ include(ExternalProject)
 set(LITE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
         "A path setting inference demo download directories.")
 
-if(WITH_TESTING)
-    set(eval_model_dir "")
-    set(test_cxx_api_deps cxx_api_lite mir_passes ${ops_lite} ${host_kernels} ${x86_kernels})
-
-    if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-        set(eval_model_dir ${LITE_MODEL_DIR}/mobilenet_v2_relu)
-        set(test_cxx_api_deps ${test_cxx_api_deps} ${arm_kernels})
-    endif()
+if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc
-       DEPS ${test_cxx_api_deps}
+       DEPS cxx_api_lite mir_passes 
+       ${ops_lite} ${host_kernels} ${x86_kernels}
        ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
-            --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt 
-            --eval_model_dir=eval_model_dir SERIAL)
-
+            --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
     add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
-    if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-        add_dependencies(test_cxx_api_lite extern_lite_download_mobilenet_v2_relu_tar_gz)
-    endif()
+endif()
+
+if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
+    set(lite_model_test_DEPS cxx_api_lite mir_passes ${ops_lite} ${host_kernels} ${arm_kernels})
+
+    lite_cc_test(test_mobilenetv1_lite SRCS mobilenetv1_test.cc
+       DEPS ${lite_model_test_DEPS} 
+       ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v1 SERIAL)
+    add_dependencies(test_mobilenetv1_lite extern_lite_download_mobilenet_v1_tar_gz)
+
+    lite_cc_test(test_mobilenetv2_lite SRCS mobilenetv2_test.cc
+       DEPS ${lite_model_test_DEPS} 
+       ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v2 SERIAL)
+    add_dependencies(test_mobilenetv2_lite extern_lite_download_mobilenet_v2_tar_gz)
+
+    lite_cc_test(test_resnet50_lite SRCS resnet50_test.cc
+       DEPS ${lite_model_test_DEPS} 
+       ARGS --model_dir=${LITE_MODEL_DIR}/resnet50 SERIAL)
+    add_dependencies(test_resnet50_lite extern_lite_download_resnet50_tar_gz)
+
+    lite_cc_test(test_inceptionv4_lite SRCS inceptionv4_test.cc
+       DEPS ${lite_model_test_DEPS} 
+       ARGS --model_dir=${LITE_MODEL_DIR}/inception_v4 SERIAL)
+    add_dependencies(test_inceptionv4_lite extern_lite_download_inception_v4_tar_gz)
 endif()
 
 # These tests needs CLI arguments, and is not supported in ARM CI.
