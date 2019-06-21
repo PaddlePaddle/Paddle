@@ -16,7 +16,7 @@ cc_library(math_arm SRCS
     elementwise.cc
     concat.cc
     sgemv.cc
-    type_trans.cpp
+    type_trans.cc
     conv_impl.cc
     conv_direct_3x3s1.cc
     conv_direct_3x3s2.cc

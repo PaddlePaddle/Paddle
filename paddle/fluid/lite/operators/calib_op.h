@@ -13,53 +13,46 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/operators/op_params.h"
+#include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
 namespace operators {
 
-class ElementwiseOp : public OpLite {
+/*
+ * The data types used by the two adjacent layers in the model should
+ * be the same. When the two operators accept different data types,
+ * we may need to implicitly add a data type conversion operator.
+ * Currently, this operator only supports mutual conversion of int8
+ * and float32 types.
+ */
+class CalibOpLite : public OpLite {
  public:
-  explicit ElementwiseOp(const std::string& op_type) : OpLite(op_type) {}
+  CalibOpLite() {}
+
+  explicit CalibOpLite(const std::string &type) : OpLite(type) {}
 
   bool CheckShape() const override;
 
   bool InferShape() const override;
 
-  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override;
+  bool AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope);
 
-  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
-  std::string DebugString() const override { return "elementwise_op"; }
-
- private:
-  mutable operators::ElementwiseParam param_;
-};
-
-#ifdef LITE_WITH_X86
-class ElementwiseGradExplicitOp : public OpLite {
- public:
-  explicit ElementwiseGradExplicitOp(const std::string& type) : OpLite(type) {}
-
-  bool CheckShape() const override;
-
-  bool InferShape() const override;
-
-  bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override;
-
-  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
-
-  std::string DebugString() const override {
-    return "elementwise_grad_explicit_op";
-  }
+  std::string DebugString() const override { return "calib"; }
 
  private:
-  mutable operators::ElementwiseGradParam param_;
+  mutable CalibParam param_;
 };
-#endif
 
 }  // namespace operators
 }  // namespace lite
