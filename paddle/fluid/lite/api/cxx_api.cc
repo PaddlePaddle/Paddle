@@ -17,19 +17,49 @@
 #include <string>
 #include <utility>
 #include <vector>
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/platform/port.h"
-#endif
+#include "paddle/fluid/lite/utils/io.h"
 
 namespace paddle {
 namespace lite {
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-void ExecutorLite::SaveModel(const std::string &dir) {
-  MkDirRecursively(dir.c_str());
+void Predictor::SaveModel(const std::string &dir) {
+#ifndef LITE_WITH_ARM
+  LOG(INFO) << "Save model to " << dir;
+  MkDirRecur(dir);
   program_->PersistModel(dir, program_desc_);
-}
+#else
+  LOG(INFO) << "Save model to ./";
+  program_->PersistModel("./", program_desc_);
 #endif
+}
+
+lite::Tensor *Predictor::GetInput(size_t offset) {
+  auto *_feed_list = program_->exec_scope()->FindVar("feed");
+  CHECK(_feed_list) << "no feed variable in exec_scope";
+  auto *feed_list = _feed_list->GetMutable<std::vector<lite::Tensor>>();
+  if (offset >= feed_list->size()) {
+    feed_list->resize(offset + 1);
+  }
+  return &feed_list->at(offset);
+}
+
+const lite::Tensor *Predictor::GetOutput(size_t offset) {
+  auto *_fetch_list = program_->exec_scope()->FindVar("fetch");
+  CHECK(_fetch_list) << "no fatch variable in exec_scope";
+  auto &fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
+  CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
+  return &fetch_list.at(offset);
+}
+
+void Predictor::Build(const std::string &model_path, const Place &prefer_place,
+                      const std::vector<Place> &valid_places) {
+  LoadModel(model_path, scope_.get(), &program_desc_);
+  Build(program_desc_, prefer_place, valid_places);
+}
+
+const framework::proto::ProgramDesc &Predictor::program_desc() const {
+  return program_desc_;
+}
 
 }  // namespace lite
 }  // namespace paddle

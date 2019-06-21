@@ -34,7 +34,7 @@ void Run(const char* model_dir, int repeat, int thread_num) {
   DeviceInfo::Init();
   DeviceInfo::Global().SetRunMode(LITE_POWER_HIGH, thread_num);
 #endif
-  lite::ExecutorLite predictor;
+  lite::Predictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kARM), PRECISION(kFloat)}});
 
