@@ -312,13 +312,15 @@ class DataFeeder(object):
                 
                 def reader(limit=10):
                     for i in range(limit):
-                        yield [random.random([784]).astype('float32'), random.randint(10)],
+                        yield [random.random([784]).astype('float32'), random.random([1]).astype('float32')],
                 
                 x = fluid.layers.data(name='x', shape=[1, 28, 28])
-                y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                
+                fluid.layers.elementwise_add(x, y)
                 
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2
+                place_num = 2 
                 places = [fluid.CPUPlace() for x in range(place_num)]
                 data = []
                 exe = fluid.Executor(fluid.CPUPlace())
@@ -398,7 +400,7 @@ class DataFeeder(object):
                     for i in range(limit):
                         yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
                 
-                place=fluid.CUDAPlace(0)
+                place=fluid.CPUPlace()
                 data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
                 
