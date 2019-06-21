@@ -219,7 +219,7 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={}):
         required_envs = {
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.99",
+            "FLAGS_fraction_of_gpu_memory_to_use": "0.1",
             "FLAGS_eager_delete_tensor_gb": "0.0",
             "PATH": os.getenv("PATH"),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
