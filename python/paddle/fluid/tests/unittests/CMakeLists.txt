@@ -18,11 +18,15 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
+endif(NOT WITH_DISTRIBUTE)
+
+if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
-endif(NOT WITH_DISTRIBUTE)
+endif()
+
 
 LIST(REMOVE_ITEM TEST_OPS test_launch)
 

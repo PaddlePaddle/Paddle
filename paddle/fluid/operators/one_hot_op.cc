@@ -90,7 +90,7 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
                   "If it is set true and the input data is out of range, "
                   "the output tensor will be filled zeros. The default value "
                   "is false.")
-        .SetDefault(paddle::framework::proto::VarType::FP32);
+        .SetDefault(false);
     AddComment(R"DOC(
 One Hot Operator. This operator creates the one-hot representations for input
 index values. The following example will help to explain the function of this
