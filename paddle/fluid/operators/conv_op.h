@@ -143,83 +143,152 @@ class GemmConvKernel : public framework::OpKernel<T> {
     std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
     // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
     std::vector<int64_t> output_shape_vec(framework::vectorize(output->dims()));
+    std::vector<int64_t> input_shape_vec(framework::vectorize(input->dims()));
 
-    // use col_shape in the im2col calculation
-    // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w, o_d,
-    // o_h, o_w}
+    auto filter_ndims = filter_shape_vec.size();
     size_t data_dim = filter_shape_vec.size() - 2;
-    std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-    col_shape_vec[0] = input->dims()[1] / groups;
-    for (size_t j = 0; j < data_dim; ++j) {
-      col_shape_vec[j + 1] = filter_shape_vec[j + 2];
-      col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
+    auto filter_w = filter_shape_vec[filter_ndims - 1];
+    auto filter_h = filter_shape_vec[filter_ndims - 2];
+    auto filter_d = 1;
+    if (data_dim == 3U) {
+      filter_d = filter_shape_vec[filter_ndims - 3];
     }
-    framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+    auto filter_o = filter_shape_vec[0];
+    auto filter_c = filter_shape_vec[1];
 
-    // use col_matrix_shape in the gemm calculation
-    // size: (i_c/g * k_h * k_w, o_h * o_w) or (i_c/g * k_d * k_h * k_w, o_d *
-    // o_h * o_w)
-    framework::DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, data_dim + 1);
-
-    bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
-    Tensor col;
-    // col_matrix shares the same piece of data with col,
-    // but will be reshaped into a two-dimensional matrix shape
-    // to call the matrix multiplication interface.
-    Tensor col_matrix;
-    if (is_expand) {
-      col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
-      col_matrix.ShareDataWith(col);
-      col_matrix.Resize(col_matrix_shape);
+    bool is_filter_1x1 = filter_h == 1 && filter_w == 1 && dilations[0] == 1 &&
+                         dilations[0] == 1;
+    bool is_filter_1x1x1 = false;
+    if (data_dim == 3U) {
+      is_filter_1x1x1 = filter_d == 1 && filter_h == 1 && filter_w == 1 &&
+                        dilations[2] == 1 && dilations[1] == 1 &&
+                        dilations[0] == 1;
     }
+    if ((is_filter_1x1 || is_filter_1x1x1) && groups == 1) {
+      auto count = batch_size * filter_o;
+      std::vector<const T *> vec_input(count), vec_filter(count);
+      std::vector<T*> vec_output(count);
 
-    framework::DDim input_shape =
-        framework::slice_ddim(input->dims(), 1, input->dims().size());
+      auto input_data = input->data<T>();
+      auto output_data = output->data<T>();
+      auto filter_data = filter.data<T>();
 
-    framework::DDim filter_matrix_shape = {filter.dims()[0],
-                                           filter.numel() / filter.dims()[0]};
-    filter.Resize(filter_matrix_shape);
+      framework::DDim input_matrix_shape =
+          framework::flatten_to_2d(input->dims(), 1);
+      framework::DDim filter_matrix_shape =
+          framework::flatten_to_2d(filter.dims(), 1);
+      framework::DDim output_matrix_shape =
+          framework::flatten_to_2d(output->dims(), 2);
 
-    framework::DDim output_matrix_shape = {
-        output->dims()[1],
-        output->numel() / (output->dims()[0] * output->dims()[1])};
-
-    // convolution operator: im2col(or vol2col) + gemm
-    int in_step = static_cast<int>(input->dims()[1]) / groups;
-    int out_step = static_cast<int>(output->dims()[1]) / groups;
-
-    math::Vol2ColFunctor<DeviceContext, T> vol2col;
-    math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
-
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    for (int i = 0; i < batch_size; i++) {
-      Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
-      Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
-
-      for (int g = 0; g < groups; g++) {
-        Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
-
-        if (!is_expand) {
-          col.ShareDataWith(in_slice);
-          col_matrix.ShareDataWith(col);
-          col_matrix.Resize(col_matrix_shape);
-        } else if (data_dim == 2U) {
-          // im2col
-          im2col(dev_ctx, in_slice, dilations, strides,
-                 std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                  paddings[1]},
-                 &col);
-        } else if (data_dim == 3U) {
-          // vol2col
-          vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
+      for (int n = 0, idx = 0; n < batch_size; n++) {
+        int n_offset = n * input_matrix_shape[1];
+        for (int o = 0; o < filter_o; o++, idx++) {
+          int o_offset = o * filter_matrix_shape[1];
+          int out_offset = (n * filter_o + o) * output_matrix_shape[1];
+          vec_input[idx] = input_data + n_offset;
+          vec_filter[idx] = filter_data + o_offset;
+          vec_output[idx] = output_data + out_offset;
         }
+      }
 
-        // gemm
-        Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
-        Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-        blas.MatMul(filter_slice, false, col_matrix, false, T(1.0), &out_slice,
-                    T(0.0));
+      input_matrix_shape = framework::flatten_to_2d(input->dims(), 2);
+
+      auto m = 1;
+      auto k = filter_c;
+      auto n = input_matrix_shape[1];
+
+      auto mat_dim_a = math::CreateMatrixDescriptor(
+          framework::make_ddim({count, m, k}), 0, false);
+      auto mat_dim_b = math::CreateMatrixDescriptor(
+          framework::make_ddim({count, k, n}), 0, false);
+
+      auto ld_a = mat_dim_a.width_;
+      auto ld_b = mat_dim_b.width_;
+      auto ld_out = mat_dim_b.width_;
+
+      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+      blas.MatMul(&vec_filter, mat_dim_a, ld_a, &vec_input, mat_dim_b, ld_b,
+                  T(1), &vec_output, ld_out, T(0));
+
+    } else {
+      // use col_shape in the im2col calculation
+      // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w,
+      // o_d,
+      // o_h, o_w}
+      size_t data_dim = filter_shape_vec.size() - 2;
+      std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
+      col_shape_vec[0] = input->dims()[1] / groups;
+      for (size_t j = 0; j < data_dim; ++j) {
+        col_shape_vec[j + 1] = filter_shape_vec[j + 2];
+        col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
+      }
+      framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+
+      // use col_matrix_shape in the gemm calculation
+      // size: (i_c/g * k_h * k_w, o_h * o_w) or (i_c/g * k_d * k_h * k_w, o_d *
+      // o_h * o_w)
+      framework::DDim col_matrix_shape =
+          framework::flatten_to_2d(col_shape, data_dim + 1);
+
+      bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
+      Tensor col;
+      // col_matrix shares the same piece of data with col,
+      // but will be reshaped into a two-dimensional matrix shape
+      // to call the matrix multiplication interface.
+      Tensor col_matrix;
+      if (is_expand) {
+        col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
+        col_matrix.ShareDataWith(col);
+        col_matrix.Resize(col_matrix_shape);
+      }
+
+      framework::DDim input_shape =
+          framework::slice_ddim(input->dims(), 1, input->dims().size());
+
+      framework::DDim filter_matrix_shape = {filter.dims()[0],
+                                             filter.numel() / filter.dims()[0]};
+      filter.Resize(filter_matrix_shape);
+
+      framework::DDim output_matrix_shape = {
+          output->dims()[1],
+          output->numel() / (output->dims()[0] * output->dims()[1])};
+
+      // convolution operator: im2col(or vol2col) + gemm
+      int in_step = static_cast<int>(input->dims()[1]) / groups;
+      int out_step = static_cast<int>(output->dims()[1]) / groups;
+
+      math::Vol2ColFunctor<DeviceContext, T> vol2col;
+      math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
+
+      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+      for (int i = 0; i < batch_size; i++) {
+        Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
+        Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
+
+        for (int g = 0; g < groups; g++) {
+          Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
+
+          if (!is_expand) {
+            col.ShareDataWith(in_slice);
+            col_matrix.ShareDataWith(col);
+            col_matrix.Resize(col_matrix_shape);
+          } else if (data_dim == 2U) {
+            // im2col
+            im2col(dev_ctx, in_slice, dilations, strides,
+                   std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                    paddings[1]},
+                   &col);
+          } else if (data_dim == 3U) {
+            // vol2col
+            vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
+          }
+
+          // gemm
+          Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
+          blas.MatMul(filter_slice, false, col_matrix, false, T(1.0),
+                      &out_slice, T(0.0));
+        }
       }
     }
   }

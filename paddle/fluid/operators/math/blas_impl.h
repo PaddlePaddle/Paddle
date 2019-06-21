@@ -565,6 +565,35 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 
 template <typename DeviceContext>
 template <typename T>
+void Blas<DeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, std::vector<const T *> *a_array, const int lda,
+    std::vector<const T *> *b_array, const int ldb, T beta,
+    std::vector<T *> *c_array, const int ldc, int batchCount) const {
+  PADDLE_ENFORCE(a_array != nullptr && a_array->size() == (size_t)batchCount);
+  PADDLE_ENFORCE(b_array != nullptr && b_array->size() == (size_t)batchCount);
+  PADDLE_ENFORCE(c_array != nullptr && c_array->size() == (size_t)batchCount);
+
+  if (std::is_same<DeviceContext, platform::CPUDeviceContext>::value) {
+#ifdef PADDLE_WITH_MKLML
+    CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                         a_array->data(), &lda, b_array->data(), &ldb, &beta,
+                         c_array->data(), &ldc, 1 /* group_count */,
+                         &batchCount);
+    return;
+#endif
+  }
+  for (int k = 0; k < batchCount; ++k) {
+    auto *Ak = (*a_array)[k];
+    auto *Bk = (*b_array)[k];
+    auto *Ck = (*c_array)[k];
+    this->template GEMM<T>(transA == CblasTrans, transB == CblasTrans, M, N, K,
+                           alpha, Ak, lda, Bk, ldb, beta, Ck, ldc);
+  }
+}
+
+template <typename DeviceContext>
+template <typename T>
 void Blas<DeviceContext>::MatMul(const int M, const int N, const int K,
                                  const T *A, const T *B, T *C) const {
   this->template GEMM<T>(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
@@ -623,6 +652,36 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
         dim_a.stride_, dim_b.stride_);
   }
 }
+
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(std::vector<const T *> *a_array,
+                                 const MatDescriptor &dim_a, const int ld_a,
+                                 std::vector<const T *> *b_array,
+                                 const MatDescriptor &dim_b, const int ld_b,
+                                 T alpha, std::vector<T *> *c_array,
+                                 const int ld_out, T beta) const {
+  PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    PADDLE_ENFORCE(a_array != nullptr && a_array->size() > 0 &&
+                   b_array != nullptr && b_array->size() > 0 &&
+                   c_array != nullptr && c_array->size() > 0);
+    this->template GEMM<T>(dim_a.trans_, dim_b.trans_, dim_a.height_,
+                           dim_b.width_, dim_a.width_, alpha, (*a_array)[0],
+                           ld_a, (*b_array)[0], ld_b, beta, (*c_array)[0],
+                           ld_out);
+  } else {
+    PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
+                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+    this->template BatchedGEMM<T>(
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
+        a_array, ld_a, b_array, ld_b, beta, c_array, ld_out,
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_);
+  }
+}
+
 template <typename DeviceContext>
 template <typename T>
 void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {

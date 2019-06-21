@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -177,9 +178,22 @@ class Blas {
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
   template <typename T>
+  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
+                   int K, T alpha, std::vector<const T*>* a_array,
+                   const int lda, std::vector<const T*>* b_array, const int ldb,
+                   T beta, std::vector<T*>* c_array, const int ldc,
+                   int batchCount) const;
+
+  template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
+
+  template <typename T>
+  void MatMul(std::vector<const T*>* a_array, const MatDescriptor& dim_a,
+              const int ld_a, std::vector<const T*>* b_array,
+              const MatDescriptor& dim_b, const int ld_b, T alpha,
+              std::vector<T*>* c_array, const int ld_out, T beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
