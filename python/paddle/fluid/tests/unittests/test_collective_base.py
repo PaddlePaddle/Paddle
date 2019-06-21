@@ -243,31 +243,43 @@ class TestDistBase(unittest.TestCase):
             input2 = pickle.load(in1)
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
-            self.assertTrue((tr0_out == need_result).all())
-            self.assertTrue((tr1_out == need_result).all())
+            self.assertTrue(np.allclose(tr0_out, need_result))
+            self.assertTrue(np.allclose(tr1_out, need_result))
+            print(tr0_out)
+            print(need_result)
+            #self.assertTrue((tr0_out == need_result).all())
+            #self.assertTrue((tr1_out == need_result).all())
         elif col_type == "broadcast":
             need_result = input2
-            self.assertTrue((tr0_out == need_result).all())
-            self.assertTrue((tr1_out == need_result).all())
+            self.assertTrue(np.allclose(tr0_out, need_result))
+            self.assertTrue(np.allclose(tr1_out, need_result))
+            #self.assertTrue((tr0_out == need_result).all())
+            #self.assertTrue((tr1_out == need_result).all())
         elif col_type == "allreduce":
             need_result = input1 + input2
-            self.assertTrue((tr0_out == need_result).all())
-            self.assertTrue((tr1_out == need_result).all())
+            self.assertTrue(np.allclose(tr0_out, need_result))
+            self.assertTrue(np.allclose(tr1_out, need_result))
+            #self.assertTrue((tr0_out == need_result).all())
+            #self.assertTrue((tr1_out == need_result).all())
         elif col_type == "reduce_scatter":
             tmp = input1 + input2
             need_result1 = tmp[0:tmp.shape[0] / 2]
             need_result2 = tmp[tmp.shape[0] / 2:]
-            self.assertTrue((tr0_out == need_result1).all())
-            self.assertTrue((tr1_out == need_result2).all())
+            self.assertTrue(np.allclose(tr0_out, need_result1))
+            self.assertTrue(np.allclose(tr1_out, need_result2))
+            #self.assertTrue((tr0_out == need_result1).all())
+            #self.assertTrue((tr1_out == need_result2).all())
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] / 2
             tmp10 = input1[0:slicesize]
             tmp11 = input2[0:slicesize]
-            need_out1 = np.concatenate((tmp10, tmp11), axis=1)
+            need_result1 = np.concatenate((tmp10, tmp11), axis=1)
             tmp20 = input1[slicesize:]
             tmp21 = input2[slicesize:]
-            need_out2 = np.concatenate((tmp20, tmp21), axis=1)
-            self.assertTrue((tr0_out == need_out1).all())
-            self.assertTrue((tr1_out == need_out2).all())
+            need_result2 = np.concatenate((tmp20, tmp21), axis=1)
+            self.assertTrue(np.allclose(tr0_out, need_result1))
+            self.assertTrue(np.allclose(tr1_out, need_result2))
+            #self.assertTrue((tr0_out == need_out1).all())
+            #self.assertTrue((tr1_out == need_out2).all())
         else:
             pass
