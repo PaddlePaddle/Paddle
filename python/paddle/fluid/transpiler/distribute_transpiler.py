@@ -383,7 +383,7 @@ class DistributeTranspiler(object):
             self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
             # check use_hierarchical_allreduce options
             if args.use_hierarchical_allreduce:
-                trainers_num = len(trainers)
+                trainers_num = len(self.origin_program._trainers_endpoints)
                 # selected automaticly
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
                     self.config.hierarchical_allreduce_inter_nranks = fluid.core.get_cuda_device_count(

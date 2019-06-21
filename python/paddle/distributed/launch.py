@@ -154,7 +154,7 @@ def start_procs(args):
         for i in range(selected_gpus_num):
             if trainers_endpoints != "":
                 trainers_endpoints += ","
-            trainers_endpoints += "%s:617%d" % (ip, i)
+            trainers_endpoints += "%s:%d" % (ip, args.started_port + i)
 
     nranks = num_nodes * selected_gpus_num
 
