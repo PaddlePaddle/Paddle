@@ -58,7 +58,6 @@ class Optimizer {
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
           "lite_elementwise_add_activation_fuse_pass",  //
 #endif
-          "lite_fc_fuse_pass",              //
           "static_kernel_pick_pass",        //
           "variable_place_inference_pass",  //
           "argument_type_display_pass",     //

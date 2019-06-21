@@ -50,6 +50,7 @@ class ExecutorLite {
     optimizer_.KernelPickPreferPlace(prefer_place);
     core::KernelPickFactor factor;
     factor.ConsiderTarget();
+    factor.ConsiderPrecision();
     optimizer_.Run(std::move(program), valid_places, factor);
     program_ = optimizer_.GenRuntimeProgram();
   }

@@ -25,7 +25,7 @@ namespace fusion {
 
 /* The model trained by fluid quantization is a simulation of real int8.
  * The quantized Ops(conv2d, mul, depthwise conv2d etc) have fake_quantop
- * in front  and fake_dequantop behind.
+ * in front and fake_dequantop behind.
  *
  * When in int8 mode, the pattern like "fake_quant + quantized_op +
  * fake_dequant"

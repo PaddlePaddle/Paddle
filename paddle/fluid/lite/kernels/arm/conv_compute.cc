@@ -92,6 +92,9 @@ void ConvCompute::Run() {
   // }
 }
 
+void ConvComputeInt8::PrepareForRun() {}
+void ConvComputeInt8::Run() {}
+
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite
@@ -111,4 +114,24 @@ REGISTER_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW,
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindInput("Filter", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Output", {LiteType::GetTensorTy(TARGET(kARM))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW,
+                     paddle::lite::kernels::arm::ConvComputeInt8, def)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})
+    .BindInput("Filter",
+               {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindOutput("Output",
+                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(depthwise_conv2d, kARM, kInt8, kNCHW,
+                     paddle::lite::kernels::arm::ConvComputeInt8, def)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})
+    .BindInput("Filter",
+               {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindOutput("Output",
+                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
     .Finalize();
