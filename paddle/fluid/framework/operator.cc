@@ -909,6 +909,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
+  VLOG(2) << "OP: " << type_;
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
     ChooseKernel(*runtime_ctx, scope, place);
   }
