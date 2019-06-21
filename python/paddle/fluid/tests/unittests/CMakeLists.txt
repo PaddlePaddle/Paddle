@@ -116,6 +116,8 @@ list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
+list(REMOVE_ITEM TEST_OPS test_install_check)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -172,7 +174,9 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-
+py_test_modules(test_install_check MODULES test_install_check ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
+set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -180,10 +184,10 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
-        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
-        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 250)
-        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 200)
-        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
+        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 300)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
         bash_test_modules(test_launch MODULES test_launch.sh)
@@ -223,5 +227,5 @@ if(WITH_DISTRIBUTE)
 endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf
+        test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
         PROPERTIES LABELS "RUN_TYPE=DIST")
