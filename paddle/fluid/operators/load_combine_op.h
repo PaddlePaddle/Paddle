@@ -68,7 +68,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(
           static_cast<bool>(*buffer),
           "There is a problem with loading model parameters. "
-          "Please check whether the model file is complete or damaged.");
+          "Please check whether the model file is complete or damaged. ");
 
       // Get data from fin to tensor
       DeserializeFromStream(*buffer, tensor, dev_ctx);
