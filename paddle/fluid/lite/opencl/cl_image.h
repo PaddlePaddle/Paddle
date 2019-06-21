@@ -33,11 +33,11 @@ class CLImage {
   /*
    * Will not hold input tensor data, memcpy in this method.
    * */
-  void SetTensorData(float* tensor_data, const DDim& dim);
+  void set_tensor_data(float* tensor_data, const DDim& dim);
 
   bool IsInit() { return initialized_; }
   /*
-   * Need call SetTensorData first.
+   * Need call set_tensor_data first.
    * Folder when one dim or two dim.
    * */
   void InitCLImage(const cl::Context& context);
@@ -53,7 +53,7 @@ class CLImage {
   void InitEmptyWithImageDim(const cl::Context& context,
                              const DDim& image_dims);
 
-  cl::Image2D& cl_image() const { return *cl_image_; }
+  cl::Image* cl_image() const { return cl_image_.get(); }
 
   const DDim& image_dims() const { return image_dims_; }
 
@@ -63,7 +63,7 @@ class CLImage {
 
   const DDim& tensor_dims() const { return tensor_dims_; }
 
-  /*
+  /*with_da
    * Resize original tensor dim.
    * */
   inline CLImage& Resize(const DDim& dims) {

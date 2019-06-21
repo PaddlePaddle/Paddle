@@ -14,39 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <string>
-#include <vector>
-#include "paddle/fluid/lite/opencl/cl2_header.h"
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/opencl/cl_context.h"
-#include "paddle/fluid/lite/opencl/cl_image.h"
 
 namespace paddle {
 namespace lite {
 
-class CLHelper {
- public:
-  CLHelper() = default;
-
-  explicit CLHelper(CLContext *context) : context_(context) {}
-
-  void set_context(CLContext *context);
-
-  void AddKernel(const std::string &kernel_name, const std::string &file_name,
-                 const std::string &options = "");
-
-  cl::Kernel &KernelAt(const int index);
-
-  cl::CommandQueue &OpenCLCommandQueue();
-
-  cl::Context &OpenCLContext();
-
-  cl::NDRange DefaultWorkSize(const CLImage &image);
-
- private:
-  CLContext *context_{nullptr};
-  std::vector<std::unique_ptr<cl::Kernel>> kernels;
-};
+bool InitOpenCLEngine(std::string cl_path);
+void elementwise_add(CLContext* context, float* in, const DDim& in_dim,
+                     float* bias, const DDim& bias_dim, float* out,
+                     const DDim& out_dim);
 
 }  // namespace lite
 }  // namespace paddle
