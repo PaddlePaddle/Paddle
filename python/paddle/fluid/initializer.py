@@ -712,7 +712,7 @@ class BilinearInitializer(Initializer):
 
 	    factor = 2
 	    C = 2
-	    w_attr = fluid.initializer.ParamAttr(
+	    w_attr = fluid.param_attr.ParamAttr(
 		learning_rate=0., 
 		regularizer=fluid.regularizer.L2Decay(0.),
                 initializer=fluid.initializer.Bilinear())
