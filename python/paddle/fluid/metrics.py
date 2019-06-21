@@ -759,9 +759,6 @@ class DetectionMAP(object):
 
             cur_map, accum_map = map_evaluator.get_map_var()
 
-            # see detailed examples at 
-            https://github.com/PaddlePaddle/models/blob/43cdafbb97e52e6d93cc5bbdc6e7486f27665fc8/PaddleCV/object_detection
-
  
     """
 
