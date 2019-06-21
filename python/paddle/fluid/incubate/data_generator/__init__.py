@@ -312,7 +312,7 @@ class MultiSlotDataGenerator(DataGenerator):
                     )
                 if name != self._proto_info[index][0]:
                     raise ValueError(
-                        "the field name of two given line are not match: require<%s>, get<%d>."
+                        "the field name of two given line are not match: require<%s>, get<%s>."
                         % (self._proto_info[index][0], name))
                 if output:
                     output += " "
