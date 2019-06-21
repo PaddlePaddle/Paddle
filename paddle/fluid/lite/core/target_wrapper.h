@@ -55,6 +55,8 @@ static size_t PrecisionTypeLength(PrecisionType type) {
       return 4;
     case PrecisionType::kInt8:
       return 1;
+    case PrecisionType::kInt32:
+      return 4;
     default:
       return 4;
   }
@@ -99,7 +101,7 @@ static const std::string& TargetRepr(TargetType target) {
 
 static const std::string& PrecisionRepr(PrecisionType precision) {
   static const std::string precision2string[] = {"kUnk", "kFloat", "kInt8",
-                                                 "kAny"};
+                                                 "kInt32", "kAny"};
   auto x = static_cast<int>(precision);
   CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
   return precision2string[x];
