@@ -363,9 +363,9 @@ def load_persistables_for_inference(dirname, executor, program,
                 })
             sums.append(param_var)
         global_block.append_op(
-            type='merge_sparse_lookup_table', 
-            inputs={"X": sums}, 
-            outputs={'Out': emb_var}, 
+            type='merge_sparse_lookup_table',
+            inputs={"X": sums},
+            outputs={'Out': emb_var},
             attrs={})
         global_block.append_op(
             type='save',
