@@ -26,7 +26,7 @@ template <typename dtype>
 void int32_to_dtype(const int* din, dtype* dout, const float* scale,
                     int axis_size, int64_t outer_size, int64_t inner_size);
 
-void fp32_to_int8(const float* din, signed char* dout, const float* scale,
+void fp32_to_int8(const float* din, int8_t* dout, const float* scale,
                   int axis_size, int64_t outer_size, int64_t inner_size) {
   int cnt = inner_size / 16;
   int remain = inner_size & 15;
@@ -198,7 +198,7 @@ void fp32_to_int16(const float* din, int16_t* dout, const float* scale,
   }
 }
 
-void int8_to_fp32(const signed char* in, float* out, const float* scale,
+void int8_to_fp32(const int8_t* in, float* out, const float* scale,
                   int axis_size, int64_t outer_size, int64_t inner_size) {
   int cnt = inner_size / 16;
   int remain = inner_size & 15;
