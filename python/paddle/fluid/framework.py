@@ -2775,6 +2775,9 @@ class Program(object):
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 
+        # appending gradients times
+        self._appending_grad_times = 0
+
     @property
     def _is_mem_optimized(self):
         # if the program is optimized, operator input/outputs
@@ -3108,6 +3111,7 @@ class Program(object):
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
+            p._appending_grad_times = self._appending_grad_times
 
             p._sync_with_cpp()
 
