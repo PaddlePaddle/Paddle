@@ -39,7 +39,7 @@ void SetConstInput(lite::Tensor* x) {
   }
 }
 
-bool CompareTensors(const std::string& name, const ExecutorLite& cxx_api,
+bool CompareTensors(const std::string& name, const Predictor& cxx_api,
                     const LightPredictor& light_api) {
   const auto* a = cxx_api.GetTensor(name);
   const auto* b = light_api.GetTensor(name);
@@ -48,8 +48,8 @@ bool CompareTensors(const std::string& name, const ExecutorLite& cxx_api,
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi_LightApi, save_and_load_model) {
-  lite::ExecutorLite cxx_api;
-  lite::LightPredictor light_api;
+  lite::Predictor cxx_api;
+  lite::LightPredictor light_api(FLAGS_optimized_model);
 
   // CXXAPi
   {
@@ -69,8 +69,6 @@ TEST(CXXApi_LightApi, save_and_load_model) {
 
   // LightApi
   {
-    light_api.Build(FLAGS_optimized_model);
-
     auto* x = light_api.GetInput(0);
     SetConstInput(x);
 

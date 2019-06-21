@@ -85,8 +85,8 @@ function build_test_server {
 
 # test_arm_android <some_test_name> <adb_port_number>
 function test_arm_android {
-    test_name=$1
-    port=$2
+    local test_name=$1
+    local port=$2
     if [[ "${test_name}x" == "x" ]]; then
         echo "test_name can not be empty"
         exit 1
@@ -99,12 +99,18 @@ function test_arm_android {
     echo "test name: ${test_name}"
     adb_work_dir="/data/local/tmp"
 
-    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite")
+    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite" "test_light_api")
     for skip_name in ${skip_list[@]} ; do
         [[ $skip_name =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && echo "skip $test_name" && return
     done
 
-    testpath=$(find ./paddle/fluid -name ${test_name})
+    local testpath=$(find ./paddle/fluid -name ${test_name})
+
+    # if [[ "$test_name" == "test_light_api" ]]; then
+    #     local model_path=$(find . -name "lite_naive_model")
+    #     arm_push_necessary_file $port $model_path $adb_work_dir
+    # fi
+
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
     adb -s emulator-${port} shell "./${adb_work_dir}/${test_name}"
@@ -204,6 +210,7 @@ function test_arm {
     abi=$2
     lang=$3
     port=$4
+
     if [[ ${os} == "armlinux" ]]; then
         # TODO(hongming): enable test armlinux on armv8, armv7 and armv7hf
         echo "Skip test arm linux yet. armlinux must in another docker"
@@ -220,6 +227,7 @@ function test_arm {
         echo "skip android v7 test yet"
         return 0
     fi
+
 
     echo "test file: ${TESTS_FILE}"
     for _test in $(cat $TESTS_FILE); do
@@ -240,6 +248,14 @@ function prepare_emulator {
     echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
     echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
     sleep 1m
+}
+
+function arm_push_necessary_file {
+    local port=$1
+    local testpath=$2
+    local adb_work_dir=$3
+
+    adb -s emulator-${port} push ${testpath} ${adb_work_dir}
 }
 
 
@@ -286,20 +302,22 @@ function build_test_arm_subtask_armlinux {
 
     prepare_emulator $port_armv8 $port_armv7
 
+    cur=$PWD
+
     # job 5
-    build_arm "armlinux" "armv8"
-    test_arm "armlinux" "armv8"
-    cd -
+    build_arm "armlinux" "armv8" "gcc" $port_armv8
+    test_arm "armlinux" "armv8" "gcc" $port_armv8
+    cd $cur
 
     # job 6
-    build_arm "armlinux" "armv7"
-    test_arm "armlinux" "armv7"
-    cd -
+    build_arm "armlinux" "armv7" "gcc" $port_armv8
+    test_arm "armlinux" "armv7" "gcc" $port_armv8
+    cd $cur
 
     # job 7
-    build_arm "armlinux" "armv7hf"
-    test_arm "armlinux" "armv7hf"
-    cd -
+    build_arm "armlinux" "armv7hf" "gcc" $port_armv8
+    test_arm "armlinux" "armv7hf" "gcc" $port_armv8
+    cd $cur
 
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"

@@ -74,5 +74,15 @@ static std::string Repr(const std::vector<std::string>& v) {
   return "{" + Join(tmp, ",") + "}";
 }
 
+static std::vector<std::string> Split(const std::string& s, char delim) {
+  std::stringstream ss(s);
+  std::string line;
+  std::vector<std::string> res;
+  while (std::getline(ss, line, delim)) {
+    res.push_back(line);
+  }
+  return res;
+}
+
 }  // namespace lite
 }  // namespace paddle

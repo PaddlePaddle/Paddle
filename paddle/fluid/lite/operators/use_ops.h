@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #pragma once
-/*
- * ATTENTION this header file can only include in .cc file.
- */
+
+// ATTENTION This can only include in a .cc file.
+
+#include "paddle/fluid/lite/core/op_registry.h"
 
 USE_LITE_OP(mul);
 USE_LITE_OP(fc);

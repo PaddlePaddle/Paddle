@@ -22,7 +22,7 @@ namespace paddle {
 namespace lite {
 
 const lite::Tensor* RunHvyModel() {
-  lite::ExecutorLite predictor;
+  lite::Predictor predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kX86), PRECISION(kFloat)}});
