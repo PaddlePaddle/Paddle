@@ -307,6 +307,7 @@ class StaticRNN(object):
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
                 rnn.update_memory(prev, hidden)  # set prev to hidden
                 rnn.step_output(hidden)
+                rnn.output(word)
 
             result = rnn()
 
