@@ -411,6 +411,7 @@ class Categorical(Distribution):
           a.kl_divergence(b)
 
     """
+
     def __init__(self, logits):
         """
         Args:
@@ -434,13 +435,17 @@ class Categorical(Distribution):
         assert isinstance(other, Categorical)
 
         logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        other_logits = other.logits - nn.reduce_max(other.logits, dim=-1, keep_dim=True)
+        other_logits = other.logits - nn.reduce_max(
+            other.logits, dim=-1, keep_dim=True)
         e_logits = ops.exp(logits)
         other_e_logits = ops.exp(other_logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
-        kl = nn.reduce_sum( prob * (logits - nn.log(z) - other_logits + nn.log(other_z)), dim=-1, keep_dim=True)
+        kl = nn.reduce_sum(
+            prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
+            dim=-1,
+            keep_dim=True)
 
         return kl
 
@@ -455,7 +460,8 @@ class Categorical(Distribution):
         e_logits = ops.exp(logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
-        entropy = -1.0 * nn.reduce_sum(prob * (logits - nn.log(z)), dim=-1, keep_dim=True)
+        entropy = -1.0 * nn.reduce_sum(
+            prob * (logits - nn.log(z)), dim=-1, keep_dim=True)
 
         return entropy
 
@@ -504,23 +510,27 @@ class MultivariateNormalDiag(Distribution):
             self.scale = scale
         else:
             self.loc, self.scale = self._to_variable(loc, scale)
-    
+
     def _det(self, value):
-       
+
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype="float32") 
-        one_diag = tensor.diag(tensor.ones(shape=[batch_shape[0]], dtype='float32'))
+        one_all = tensor.ones(shape=batch_shape, dtype="float32")
+        one_diag = tensor.diag(
+            tensor.ones(
+                shape=[batch_shape[0]], dtype='float32'))
         det_diag = nn.reduce_prod(value + one_all - one_diag)
-        
+
         return det_diag
-   
+
     def _inv(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape = batch_shape, dtype="float32") 
-        one_diag = tensor.diag(tensor.ones(shape = [batch_shape[0]], dtype='float32'))
-        inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag ))
-        
+        one_all = tensor.ones(shape=batch_shape, dtype="float32")
+        one_diag = tensor.diag(
+            tensor.ones(
+                shape=[batch_shape[0]], dtype='float32'))
+        inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag))
+
         return inv_diag
 
     def entropy(self):
@@ -530,9 +540,10 @@ class MultivariateNormalDiag(Distribution):
           Variable: Shannon entropy of Multivariate Normal distribution.
 
         """
-        entropy = 0.5 * ( self.scale.shape[0] * (1.0 + math.log (2 * math.pi)) + 
-            nn.log(self._det(self.scale)))
-        
+        entropy = 0.5 * (
+            self.scale.shape[0] *
+            (1.0 + math.log(2 * math.pi)) + nn.log(self._det(self.scale)))
+
         return entropy
 
     def kl_divergence(self, other):
@@ -546,12 +557,13 @@ class MultivariateNormalDiag(Distribution):
 
         """
         assert isinstance(other, MultivariateNormalDiag)
-        
+
         tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
-        loc_matmul_cov = nn.matmul((other.loc - self.loc), self._inv(other.scale))
+        loc_matmul_cov = nn.matmul((other.loc - self.loc),
+                                   self._inv(other.scale))
         tri_matmul = nn.matmul(loc_matmul_cov, (other.loc - self.loc))
         k = list(self.scale.shape)[0]
         ln_cov = nn.log(self._det(other.scale)) - nn.log(self._det(self.scale))
         kl = 0.5 * (tr_cov_matmul + tri_matmul - k + ln_cov)
-        
+
         return kl
