@@ -317,9 +317,8 @@ def rpn_target_assign(bbox_pred,
                             append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
                             append_batch_size=False, dtype='float32')
-            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight=
-                fluid.layers.rpn_target_assign(bbox_pred, cls_logits,
-                anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
+            loc, score, loc_target, score_target, inside_weight = fluid.layers.rpn_target_assign(
+                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
 
     """
 
@@ -2200,8 +2199,7 @@ def generate_proposal_labels(rpn_rois,
                            append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_info', shape=[10, 3],
                            append_batch_size=False, dtype='float32')
-            rois, labels_int32, bbox_targets, bbox_inside_weights,
-            bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            rois, labels, bbox, inside_weights, outside_weights = fluid.layers.generate_proposal_labels(
                            rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                            class_nums=10)
 
