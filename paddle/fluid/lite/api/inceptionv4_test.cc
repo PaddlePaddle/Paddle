@@ -16,13 +16,11 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/fluid/lite/api/cxx_api.h"
+#include "paddle/fluid/lite/api/test_helper.h"
 #include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/kernels/use_kernels.h"
 #include "paddle/fluid/lite/operators/use_ops.h"
-
-// for eval
-DEFINE_string(model_dir, "", "");
 
 namespace paddle {
 namespace lite {
@@ -30,6 +28,7 @@ namespace lite {
 #ifdef LITE_WITH_ARM
 TEST(InceptionV4, test) {
   DeviceInfo::Init();
+  DeviceInfo::Global().SetRunMode(LITE_POWER_HIGH, FLAGS_threads);
   lite::Predictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kARM), PRECISION(kFloat)}});
@@ -44,7 +43,20 @@ TEST(InceptionV4, test) {
     data[i] = 1;
   }
 
-  predictor.Run();
+  for (int i = 0; i < FLAGS_warmup; ++i) {
+    predictor.Run();
+  }
+
+  auto start = GetCurrentUS();
+  for (int i = 0; i < FLAGS_repeats; ++i) {
+    predictor.Run();
+  }
+
+  LOG(INFO) << "================== Speed Report ===================";
+  LOG(INFO) << "Model: " << FLAGS_model_dir << ", threads num " << FLAGS_threads
+            << ", warmup: " << FLAGS_warmup << ", repeats: " << FLAGS_repeats
+            << ", spend " << (GetCurrentUS() - start) / FLAGS_repeats / 1000.0
+            << " ms in average.";
 
   auto* out = predictor.GetOutput(0);
   std::vector<float> results({0.00078033, 0.00083865, 0.00060029, 0.00057083,
