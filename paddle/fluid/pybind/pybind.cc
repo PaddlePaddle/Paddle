@@ -810,6 +810,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          fluid.layers.less_than(x=label
           cpu_place = fluid.CPUPlace()
 
         )DOC")
@@ -1127,6 +1128,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[13], dtype='float32')
           y = fluid.layers.data(name='y', shape=[1], dtype='float32')
           y_predict = fluid.layers.fc(input=x, size=1, act=None)

@@ -72,6 +72,7 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy
 
             new_scope = fluid.Scope()

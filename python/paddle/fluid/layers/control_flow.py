@@ -965,6 +965,7 @@ def create_array(dtype):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.create_array(dtype='float32')
 
     """

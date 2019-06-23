@@ -49,6 +49,7 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
     helper = LayerHelper("create_tensor", **locals())
@@ -157,6 +158,7 @@ def cast(x, dtype):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(name='x', shape=[13], dtype='float32')
             result = fluid.layers.cast(x=data, dtype='float64')
     """
@@ -190,6 +192,7 @@ def concat(input, axis=0, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
             b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
             c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
@@ -482,6 +485,7 @@ def argmin(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out = fluid.layers.argmin(x, axis=0)
             out = fluid.layers.argmin(x, axis=-1)
@@ -514,6 +518,7 @@ def argmax(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out = fluid.layers.argmax(x, axis=0)
             out = fluid.layers.argmax(x, axis=-1)
@@ -565,6 +570,7 @@ def argsort(input, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out, indices = fluid.layers.argsort(input=x, axis=0)
     """
@@ -843,6 +849,7 @@ def range(start, end, step, dtype):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              data = fluid.layers.range(0, 10, 2, 'int32')
 
     """
@@ -884,6 +891,7 @@ def linspace(start, stop, num, dtype):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
@@ -925,6 +933,7 @@ def zeros_like(x, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 

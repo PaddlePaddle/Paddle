@@ -257,6 +257,7 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             import numpy as np
 

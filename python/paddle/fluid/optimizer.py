@@ -827,6 +827,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             optimizer = fluid.optimizer.DGCMomentumOptimizer(
                         learning_rate=0.0001,
                         momentum=0.9,
