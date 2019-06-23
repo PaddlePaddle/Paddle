@@ -24,13 +24,11 @@ namespace lite {
 
 void Predictor::SaveModel(const std::string &dir) {
 #ifndef LITE_WITH_ARM
-  LOG(INFO) << "Save model to " << dir;
   MkDirRecur(dir);
-  program_->PersistModel(dir, program_desc_);
 #else
-  LOG(INFO) << "Save model to ./";
-  program_->PersistModel("./", program_desc_);
 #endif
+  program_->PersistModel(dir, program_desc_);
+  LOG(INFO) << "Save model to " << dir;
 }
 
 lite::Tensor *Predictor::GetInput(size_t offset) {
