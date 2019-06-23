@@ -76,9 +76,8 @@ build:mobile_android:
     cache:
         key: mobile_thirdparty
         paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - $MOBILE_LITE_CACHE2
+            - build.lite.android.armv8.gcc/third_party
+            - build.lite.android.armv7.gcc/third_party
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_ccache
     script:
@@ -97,9 +96,9 @@ build:mobile_armlinux:
     cache:
         key: mobile_thirdparty
         paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - $MOBILE_LITE_CACHE2
+            - build.lite.armlinux.armv8.gcc
+            - build.lite.armlinux.armv7.gcc
+            - build.lite.armlinux.armv7hf.gcc
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_ccache2
     script:
@@ -126,9 +125,7 @@ build:mobile_model_mobilenetv1:
     cache:
         key: mobile_thirdparty
         paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - $MOBILE_LITE_CACHE2
+            - build.lite.android.armv8.gcc
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_model_mobilenetv1
 
@@ -148,9 +145,7 @@ build:mobile_model_mobilenetv2:
     cache:
         key: mobile_thirdparty
         paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - $MOBILE_LITE_CACHE2
+            - build.lite.android.armv8.gcc
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_model_mobilenetv2
 
@@ -170,9 +165,7 @@ build:mobile_model_resnet50:
     cache:
         key: mobile_thirdparty
         paths:
-            - $MOBILE_LITE_CACHE0
-            - $MOBILE_LITE_CACHE1
-            - $MOBILE_LITE_CACHE2
+            - build.lite.android.armv8.gcc
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_model_resnet50
 
