@@ -623,6 +623,72 @@ class TestDistBase(unittest.TestCase):
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
+    def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
+                               trainer_num):
+        env = {}
+        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+        tr_cmd = tr_cmd % \
+                  (self._python_interp, model, self._ps_endpoints,
+                   trainer_id, ep, update_method, self._lr)
+        #tr1_cmd = tr_cmd % \
+        #          (self._python_interp, model, self._ps_endpoints,
+        #           1, w1_ep, update_method, self._lr)
+
+        if self._mem_opt:
+            tr_cmd += " --mem_opt"
+            #tr1_cmd += " --mem_opt"
+        if self._use_reduce:
+            tr_cmd += " --use_reduce"
+            #tr1_cmd += " --use_reduce"
+        if self._use_reader_alloc:
+            tr_cmd += " --use_reader_alloc"
+            #tr1_cmd += " --use_reader_alloc"
+        if self.__use_cuda:
+            tr_cmd += " --use_cuda"
+            #tr1_cmd += " --use_cuda"
+            env = {
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
+                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id)
+            }
+            """
+            env1 = {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ID": "1"
+            }
+            """
+        else:
+            env = {'CPU_NUM': '1'}
+            #env1 = {'CPU_NUM': '1'}
+
+        if self._use_dgc:
+            tr_cmd += " --use_dgc"
+            #tr1_cmd += " --use_dgc"
+
+        if self._nccl_comm_num > 1:
+            tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+            #tr1_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+
+        if self._mp_mode or self._use_hallreduce:
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
+            #env1 = {"FLAGS_selected_gpus": "1"}
+
+        if self._use_hallreduce:
+            #env0.update({"FLAGS_selected_gpus": "0,1"})
+            #env1.update({"FLAGS_selected_gpus": "2,3"})
+
+            tr_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
+            #tr1_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
+
+        if self._enable_backward_deps:
+            tr_cmd += " --enable_backward_deps 1"
+            #tr1_cmd += " --enable_backward_deps 1"
+
+        #env0.update(envs)
+        #env1.update(envs)
+        return tr_cmd, env
+
     def _run_cluster_nccl2(self, model, envs, nccl2_reduce_layer,
                            check_error_log):
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -633,97 +699,39 @@ class TestDistBase(unittest.TestCase):
         else:
             update_method = "nccl2"
 
-        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
-        tr0_cmd = tr_cmd % \
-                  (self._python_interp, model, self._ps_endpoints,
-                   0, w0_ep, update_method, self._lr)
-        tr1_cmd = tr_cmd % \
-                  (self._python_interp, model, self._ps_endpoints,
-                   1, w1_ep, update_method, self._lr)
-
-        if self._mem_opt:
-            tr0_cmd += " --mem_opt"
-            tr1_cmd += " --mem_opt"
-        if self._use_reduce:
-            tr0_cmd += " --use_reduce"
-            tr1_cmd += " --use_reduce"
-        if self._use_reader_alloc:
-            tr0_cmd += " --use_reader_alloc"
-            tr1_cmd += " --use_reader_alloc"
-        if self.__use_cuda:
-            tr0_cmd += " --use_cuda"
-            tr1_cmd += " --use_cuda"
-            env0 = {
-                "CUDA_VISIBLE_DEVICES": "0",
-                # for test nccl2 layer
-                "PADDLE_TRAINERS_NUM": "2",
-                "PADDLE_TRAINER_ID": "0"
-            }
-            env1 = {
-                "CUDA_VISIBLE_DEVICES": "1",
-                "PADDLE_TRAINERS_NUM": "2",
-                "PADDLE_TRAINER_ID": "1"
-            }
-        else:
-            env0 = {'CPU_NUM': '1'}
-            env1 = {'CPU_NUM': '1'}
-
-        if self._use_dgc:
-            tr0_cmd += " --use_dgc"
-            tr1_cmd += " --use_dgc"
-
-        if self._nccl_comm_num > 1:
-            tr0_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
-            tr1_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
-
-        if self._mp_mode:
-            env0 = {"FLAGS_selected_gpus": "0"}
-            env1 = {"FLAGS_selected_gpus": "1"}
-
+        trainer_num = 2
         if self._use_hallreduce:
-            env0.update({"FLAGS_selected_gpus": "0,1"})
-            env1.update({"FLAGS_selected_gpus": "2,3"})
+            trainer_num = 4
 
-            tr0_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
-            tr1_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
+        procs = []
+        pipes = []
+        for i in range(0, trainer_num):
+            tr_cmd, tr_env = _get_nccl2_trainer_cmd()
+            print("tr_cmd:{}, env: {}".format(tr_cmd, env))
+            tr_env.update(envs)
 
-        if self._enable_backward_deps:
-            tr0_cmd += " --enable_backward_deps 1"
-            tr1_cmd += " --enable_backward_deps 1"
+            tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
 
-        env0.update(envs)
-        env1.update(envs)
+            my_print(
+                type(self).__name__,
+                "going to start process {} with nccl2".format(i))
+            tr_proc = subprocess.Popen(
+                tr_cmd.strip().split(" "),
+                stdout=subprocess.PIPE,
+                stderr=tr_pipe,
+                env=tr_env)
 
-        print("tr0_cmd:{}, env: {}".format(tr0_cmd, env0))
-        print("tr1_cmd:{}, env: {}".format(tr1_cmd, env1))
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
+            procs.append(tr_proc)
+            pipes.append(tr_pipe)
 
-        my_print(type(self).__name__, "going to start process 0 with nccl2")
-        tr0_proc = subprocess.Popen(
-            tr0_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=tr0_pipe,
-            env=env0)
-        my_print(type(self).__name__, "going to start process 1 with nccl2")
-        tr1_proc = subprocess.Popen(
-            tr1_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=tr1_pipe,
-            env=env1)
+        outs = []
+        for i in range(0, trainer_num):
+            tr_out, tr_err = procs[i].communicate()
+            outs.append(tr_out)
+            pipes[i].close()
+            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
 
-        tr0_out, tr0_err = tr0_proc.communicate()
-        tr1_out, tr1_err = tr1_proc.communicate()
-
-        # close trainer file
-        tr0_pipe.close()
-        tr1_pipe.close()
-
-        # print log
-        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
-
-        return pickle.loads(tr0_out), pickle.loads(tr1_out)
+        return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def check_with_place(self,
                          model_file,
