@@ -221,7 +221,7 @@ function test_arm {
         echo "android do not need armv7hf"
         return 0
     fi
-    
+
     # TODO(yuanshuai): enable armv7 on android
     if [[ ${abi} == "armv7" ]]; then
         echo "skip android v7 test yet"
@@ -243,10 +243,10 @@ function prepare_emulator {
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     # start android armv8 and armv7 emulators first
     echo n | avdmanager create avd -f -n paddle-armv8 -k "system-images;android-24;google_apis;arm64-v8a"
-    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8 -noaudio -no-window -gpu off -verbose -port ${port_armv8} &
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv8 -noaudio -no-window -gpu off -port ${port_armv8} &
     sleep 1m
     echo n | avdmanager create avd -f -n paddle-armv7 -k "system-images;android-24;google_apis;armeabi-v7a"
-    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -verbose -port ${port_armv7} &
+    echo -ne '\n' | ${ANDROID_HOME}/emulator/emulator -avd paddle-armv7 -noaudio -no-window -gpu off -port ${port_armv7} &
     sleep 1m
 }
 
