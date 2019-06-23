@@ -116,7 +116,7 @@ function test_arm_android {
     echo "test name: ${test_name}"
     adb_work_dir="/data/local/tmp"
 
-    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite" "test_light_api")
+    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite" "test_light_api_lite" "test_apis_lite")
     for skip_name in ${skip_list[@]} ; do
         [[ $skip_name =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && echo "skip $test_name" && return
     done
@@ -367,6 +367,22 @@ function build_test_arm_subtask_model {
     adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
 }
+
+
+# this test load a model, optimize it and check the prediction result of both cxx and light APIS.
+function test_arm_predict_apis {
+    local port=$1
+    local workspace=$2
+    local naive_model_path=$3
+    local api_test_path=$(find . -name "test_apis_lite")
+    # the model is pushed to ./lite_naive_model
+    adb -s emulator-${port} push ${naive_model_path} ${workspace}
+    adb -s emulator-${port} push $api_test_path ${workspace}
+
+    # test cxx_api first to store the optimized model.
+    adb -s emulator-${port} shell ./test_apis_lite --model_dir ./lite_naive_model --optimized_model ./lite_naive_model_opt
+}
+
 
 # Build the code and run lite arm tests. This is executed in the CI system.
 function build_test_arm {

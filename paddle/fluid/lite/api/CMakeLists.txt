@@ -74,18 +74,16 @@ endif()
 
 # These tests needs CLI arguments, and is not supported in ARM CI.
 # TODO(Superjomn) support latter.
-lite_cc_test(test_light_api SRCS light_api_test.cc
+lite_cc_test(test_light_api_lite SRCS light_api_test.cc
     DEPS light_api_lite program_lite mir_passes
     ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt
     SERIAL)
 
-if(NOT LITE_ON_MOBILE)
-    lite_cc_test(test_apis_lite SRCS apis_test.cc
-      DEPS cxx_api_lite light_api_lite ${ops_lite}
-      X86_DEPS ${x86_kernels} operator
-      ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
-          --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
-endif()
+lite_cc_test(test_apis_lite SRCS apis_test.cc
+  DEPS cxx_api_lite light_api_lite ${ops_lite}
+  X86_DEPS ${x86_kernels} operator
+  ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
+      --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
 #lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     #X86_DEPS operator
