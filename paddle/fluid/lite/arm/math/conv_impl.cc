@@ -20,6 +20,8 @@
 
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include <arm_neon.h>
+#include "paddle/fluid/lite/arm/math/gemm_prepacked_int8.h"
+#include "paddle/fluid/lite/arm/math/gemv_arm_int8.h"
 #include "paddle/fluid/lite/arm/math/packed_sgemm.h"
 #include "paddle/fluid/lite/arm/math/sgemv.h"
 #include "paddle/fluid/lite/core/context.h"
@@ -139,8 +141,8 @@ void im2col(const Dtype* data_im, const int channels, const int height,
 void compute_offset(int* idx_out, int h, int w, int kernel_h, int kernel_w,
                     int height, int width, int pad_h, int pad_w, int dilation_h,
                     int dilation_w) {
-  int idx_h[kernel_h];
-  int idx_w[kernel_w];
+  int idx_h[kernel_h];  // NOLINT
+  int idx_w[kernel_w];  // NOLINT
   for (int i = 0; i < kernel_h; ++i) {
     idx_h[i] = h - pad_h + i * dilation_h;
   }
@@ -289,77 +291,69 @@ void conv1x1s1_gemm(const float* i_data, float* o_data, int num, int oc, int oh,
   }
 }
 
-// void conv1x1s1_gemm_int8(const int8_t* i_data, int32_t* o_data, int num, int
-// oc,
-//                          int oh, int ow, int ic, int ih, int win,
-//                          const int8_t* weights, const int32_t* bias,
-//                          operators::ConvParam& param, ARMContext* ctx,
-//                          PrecisionType out_type, const float* scale,
-//                          const int32_t* idx_ptr) {
-//   int group = param.groups;
-//   int channel_size_out = ow * oh;
-//   int channel_size_in = win * ih;
-//   const int m = oc / group;
-//   const int n = oh * ow;
-//   const int k = ic / group;
-//   int hblock = get_hblock_int8(ctx->arch());
-//   int k_roundup = ROUNDUP(k, KBLOCK_INT8);
-//   int m_roundup = ROUNDUP(m, hblock);
-//   int weights_size_per_group = m * k;
-//   if (n > 1) {
-//     weights_size_per_group = ((m_roundup * k_roundup + 15) / 16) * 16;
-//   }
-//   bool flag_relu = param.fuse_relu;
-//   bool flag_bias = param.bias != nullptr;
-//   if (param.activation_param.has_active) {
-//     if (param.activation_param.active == Active_relu ||
-//         fabs(param.activation_param.negative_slope) > 1e-6f) {
-//       flag_relu = true;
-//     }
-//   }
-//   //! use gemv when the output channel size = 1
-//   for (int b = 0; b < num; ++b) {
-//     // dC
-//     for (int g = 0; g < group; ++g) {
-//       signed char* dout_group =
-//           reinterpret_cast<signed char*>(o_data) +
-//           (b * oc + g * m) * channel_size_out * type_length(out_type);
-//       const int8_t* din_group = i_data + (b * ic + g * k) * channel_size_in;
-//       const int8_t* weights_group = weights + g * weights_size_per_group;
-//       const int* bias_group = bias + g * m;
-//       const float* scale_group = scale + g * m;
-//       if (n == 1) {
-//         if (out_type == PRECISION(kFloat)) {
-//           gemv_int8(weights_group, din_group,
-//                     reinterpret_cast<float*>(dout_group), false, m, k,
-//                     scale_group, flag_bias, bias_group, flag_relu);
-//         } else if (out_type == PRECISION(kInt8)) {  // int8
-//           gemv_int8(weights_group, din_group, dout_group, false, m, k,
-//                     scale_group, flag_bias, bias_group, flag_relu);
-//         } else {
-//           gemv_int8(weights_group, din_group,
-//                     reinterpret_cast<int*>(dout_group), false, m, k,
-//                     scale_group, flag_bias, bias_group, flag_relu);
-//         }
-//       } else {
-//         if (out_type == PRECISION(kFloat)) {
-//           gemm_prepack_int8(weights_group, din_group, bias_group,
-//                             reinterpret_cast<float*>(dout_group), m, n, k,
-//                             flag_bias, flag_relu, false, scale_group, ctx);
-//         } else if (out_type == PRECISION(kInt8)) {  // int8
-//           gemm_prepack_int8(weights_group, din_group, bias_group, dout_group,
-//           m,
-//                             n, k, flag_bias, flag_relu, false, scale_group,
-//                             ctx);
-//         } else {
-//           gemm_prepack_int8(weights_group, din_group, bias_group,
-//                             reinterpret_cast<int*>(dout_group), m, n, k,
-//                             flag_bias, flag_relu, false, scale_group, ctx);
-//         }
-//       }
-//     }
-//   }
-// }
+void conv1x1s1_gemm_int8(const int8_t* i_data, int32_t* o_data, int num, int oc,
+                         int oh, int ow, int ic, int ih, int win,
+                         const int8_t* weights, const int32_t* bias,
+                         const operators::ConvParam& param, ARMContext* ctx,
+                         PrecisionType out_type, const float* scale,
+                         const int32_t* idx_ptr) {
+  int group = param.groups;
+  int channel_size_out = ow * oh;
+  int channel_size_in = win * ih;
+  const int m = oc / group;
+  const int n = oh * ow;
+  const int k = ic / group;
+  int hblock = get_hblock_int8(ctx->arch());
+  int k_roundup = ROUNDUP(k, KBLOCK_INT8);
+  int m_roundup = ROUNDUP(m, hblock);
+  int weights_size_per_group = m * k;
+  if (n > 1) {
+    weights_size_per_group = ((m_roundup * k_roundup + 15) / 16) * 16;
+  }
+  bool flag_relu = param.fuse_relu;
+  bool flag_bias = param.bias != nullptr;
+  //! use gemv when the output channel size = 1
+  for (int b = 0; b < num; ++b) {
+    // dC
+    for (int g = 0; g < group; ++g) {
+      signed char* dout_group =
+          reinterpret_cast<signed char*>(o_data) +
+          (b * oc + g * m) * channel_size_out * PrecisionTypeLength(out_type);
+      const int8_t* din_group = i_data + (b * ic + g * k) * channel_size_in;
+      const int8_t* weights_group = weights + g * weights_size_per_group;
+      const int* bias_group = bias + g * m;
+      const float* scale_group = scale + g * m;
+      if (n == 1) {
+        if (out_type == PRECISION(kFloat)) {
+          gemv_int8(weights_group, din_group,
+                    reinterpret_cast<float*>(dout_group), false, m, k,
+                    scale_group, flag_bias, bias_group, flag_relu);
+        } else if (out_type == PRECISION(kInt8)) {  // int8
+          gemv_int8(weights_group, din_group, dout_group, false, m, k,
+                    scale_group, flag_bias, bias_group, flag_relu);
+        } else {
+          gemv_int8(weights_group, din_group,
+                    reinterpret_cast<int*>(dout_group), false, m, k,
+                    scale_group, flag_bias, bias_group, flag_relu);
+        }
+      } else {
+        if (out_type == PRECISION(kFloat)) {
+          gemm_prepack_int8(weights_group, din_group, bias_group,
+                            reinterpret_cast<float*>(dout_group), m, n, k,
+                            flag_bias, flag_relu, false, scale_group, ctx);
+        } else if (out_type == PRECISION(kInt8)) {  // int8
+          gemm_prepack_int8(weights_group, din_group, bias_group, dout_group, m,
+                            n, k, flag_bias, flag_relu, false, scale_group,
+                            ctx);
+        } else {
+          gemm_prepack_int8(weights_group, din_group, bias_group,
+                            reinterpret_cast<int*>(dout_group), m, n, k,
+                            flag_bias, flag_relu, false, scale_group, ctx);
+        }
+      }
+    }
+  }
+}
 
 /**
  * \brief convolution function for kernel size 3x3, stride size 2, gemm
@@ -433,109 +427,97 @@ void conv_im2col_gemm(const float* i_data, float* o_data, int num, int oc,
   }
 }
 
-// void conv_im2col_gemm_int8(const int8_t* i_data, int32_t* o_data, int num,
-// int oc,
-//                            int oh, int ow, int ic, int ih, int win,
-//                            const int8_t* weights, const int32_t* bias,
-//                            operators::ConvParam& param, ARMContext* ctx,
-//                            PrecisionType out_type, const float* scale,
-//                            const int32_t* idx_ptr) {
-//   int group = param.groups;
-//   int kernel_h = param.weight()->height();
-//   int kernel_w = param.weight()->width();
-//   int stride_h = param.strides[0];
-//   int stride_w = param.strides[1];
-//   int dila_h = param.dilations[0];
-//   int dila_w = param.dilations[1];
-//   int pad_h = param.paddings[0];
-//   int pad_w = param.paddings[1];
-//   const int m = oc / group;
-//   const int n = oh * ow;
-//   const int k = ic * kernel_h * kernel_w / group;
-//   const int chin_per_group = ic / group;
-//   int channel_size_out = ow * oh;
-//   int channel_size_in = win * ih;
-//   bool flag_relu = param.fuse_relu;
-//   bool flag_bias = param.bias != nullptr;
-//   // if (param.activation_param.has_active) {
-//   //   if (param.activation_param.active == Active_relu ||
-//   //       fabs(param.activation_param.negative_slope) > 1e-6f) {
-//   //     flag_relu = true;
-//   //   }
-//   // }
-//   int hblock = get_hblock_int8(ctx->arch());
-//   int k_roundup = ROUNDUP(k, KBLOCK_INT8);
-//   int m_roundup = ROUNDUP(m, hblock);
-//   int weights_size_per_group = m * k;
-//   if (n > 1) {
-//     weights_size_per_group = ((m_roundup * k_roundup + 15) / 16) * 16;
-//   }
+void conv_im2col_gemm_int8(const int8_t* i_data, int32_t* o_data, int num,
+                           int oc, int oh, int ow, int ic, int ih, int win,
+                           const int8_t* weights, const int32_t* bias,
+                           const operators::ConvParam& param, ARMContext* ctx,
+                           PrecisionType out_type, const float* scale,
+                           const int32_t* idx_ptr) {
+  int group = param.groups;
+  auto filter_dims = param.filter->dims();
+  int kernel_h = filter_dims[2];
+  int kernel_w = filter_dims[3];
+  int stride_h = param.strides[0];
+  int stride_w = param.strides[1];
+  int dila_h = param.dilations[0];
+  int dila_w = param.dilations[1];
+  int pad_h = param.paddings[0];
+  int pad_w = param.paddings[1];
+  const int m = oc / group;
+  const int n = oh * ow;
+  const int k = ic * kernel_h * kernel_w / group;
+  const int chin_per_group = ic / group;
+  int channel_size_out = ow * oh;
+  int channel_size_in = win * ih;
+  bool flag_relu = param.fuse_relu;
+  bool flag_bias = param.bias != nullptr;
 
-//   bool flag_im2col2 = (kernel_h == 3 && kernel_w == 3 && stride_h == 1 &&
-//                        stride_w == 1 && n > 1);
+  int hblock = get_hblock_int8(ctx->arch());
+  int k_roundup = ROUNDUP(k, KBLOCK_INT8);
+  int m_roundup = ROUNDUP(m, hblock);
+  int weights_size_per_group = m * k;
+  if (n > 1) {
+    weights_size_per_group = ((m_roundup * k_roundup + 15) / 16) * 16;
+  }
 
-//   int8_t* tmp_work_space =
-//       static_cast<int8_t*>(ctx->get_work_space()) + ctx->l2_cache_size();
+  bool flag_im2col2 = (kernel_h == 3 && kernel_w == 3 && stride_h == 1 &&
+                       stride_w == 1 && n > 1);
 
-//   //! use gemv when the output channel size = 1
-//   for (int b = 0; b < num; ++b) {
-//     // dC
-//     for (int g = 0; g < group; ++g) {
-//       signed char* dout_group =
-//           reinterpret_cast<signed char*>(o_data) +
-//           (b * oc + g * m) * channel_size_out * type_length(out_type);
-//       const int8_t* din_group =
-//           static_cast<const int8_t*>(i_data) +
-//           (b * ic + g * chin_per_group) * channel_size_in;
-//       const int8_t* weights_group =
-//           static_cast<const int8_t*>(weights) + g * weights_size_per_group;
-//       const int* bias_group = static_cast<const int*>(bias) + g * m;
-//       int8_t* dB = tmp_work_space;
-//       const float* scale_group = scale + g * m;
+  int8_t* tmp_work_space = ctx->workspace_data<int8_t>() + ctx->l2_cache_size();
 
-//       if (flag_im2col2) {
-//         im2col3x3(din_group, chin_per_group, ih, win, kernel_h, kernel_w,
-//                   pad_h, pad_w, stride_h, stride_w, dila_h, dila_w, dB,
-//                   idx_ptr);
+  //! use gemv when the output channel size = 1
+  for (int b = 0; b < num; ++b) {
+    // dC
+    for (int g = 0; g < group; ++g) {
+      signed char* dout_group =
+          reinterpret_cast<signed char*>(o_data) +
+          (b * oc + g * m) * channel_size_out * PrecisionTypeLength(out_type);
+      const int8_t* din_group = static_cast<const int8_t*>(i_data) +
+                                (b * ic + g * chin_per_group) * channel_size_in;
+      const int8_t* weights_group =
+          static_cast<const int8_t*>(weights) + g * weights_size_per_group;
+      const int* bias_group = static_cast<const int*>(bias) + g * m;
+      int8_t* dB = tmp_work_space;
+      const float* scale_group = scale + g * m;
 
-//       } else {
-//         im2col(din_group, chin_per_group, ih, win, kernel_h, kernel_w, pad_h,
-//                pad_w, stride_h, stride_w, dila_h, dila_w, dB);
-//       }
-//       if (n == 1) {
-//         if (out_type == PRECISION(kFloat)) {
-//           gemv_int8(weights_group, dB, reinterpret_cast<float*>(dout_group),
-//                     false, m, k, scale_group, flag_bias, bias_group,
-//                     flag_relu);
-//         } else if (out_type == PRECISION(kInt8)) {  // int8
-//           gemv_int8(weights_group, dB, dout_group, false, m, k, scale_group,
-//                     flag_bias, bias_group, flag_relu);
-//         } else {
-//           gemv_int8(weights_group, dB, reinterpret_cast<int*>(dout_group),
-//                     false, m, k, scale_group, flag_bias, bias_group,
-//                     flag_relu);
-//         }
-//       } else {
-//         if (out_type == PRECISION(kFloat)) {
-//           gemm_prepack_int8(weights_group, dB, bias_group,
-//                             reinterpret_cast<float*>(dout_group), m, n, k,
-//                             flag_bias, flag_relu, flag_im2col2, scale_group,
-//                             ctx);
-//         } else if (out_type == PRECISION(kInt8)) {  // int8
-//           gemm_prepack_int8(weights_group, dB, bias_group, dout_group, m, n,
-//           k,
-//                             flag_bias, flag_relu, flag_im2col2, scale_group,
-//                             ctx);
-//         } else {
-//           gemm_prepack_int8(
-//               weights_group, dB, bias_group,
-//               reinterpret_cast<int*>(dout_group),
-//               m, n, k, flag_bias, flag_relu, flag_im2col2, scale_group, ctx);
-//         }
-//       }
-//     }
-//   }
-// }
+      if (flag_im2col2) {
+        im2col3x3(din_group, chin_per_group, ih, win, kernel_h, kernel_w, pad_h,
+                  pad_w, stride_h, stride_w, dila_h, dila_w, dB, idx_ptr);
+
+      } else {
+        im2col(din_group, chin_per_group, ih, win, kernel_h, kernel_w, pad_h,
+               pad_w, stride_h, stride_w, dila_h, dila_w, dB);
+      }
+      if (n == 1) {
+        if (out_type == PRECISION(kFloat)) {
+          gemv_int8(weights_group, dB, reinterpret_cast<float*>(dout_group),
+                    false, m, k, scale_group, flag_bias, bias_group, flag_relu);
+        } else if (out_type == PRECISION(kInt8)) {  // int8
+          gemv_int8(weights_group, dB, dout_group, false, m, k, scale_group,
+                    flag_bias, bias_group, flag_relu);
+        } else {
+          gemv_int8(weights_group, dB, reinterpret_cast<int*>(dout_group),
+                    false, m, k, scale_group, flag_bias, bias_group, flag_relu);
+        }
+      } else {
+        if (out_type == PRECISION(kFloat)) {
+          gemm_prepack_int8(weights_group, dB, bias_group,
+                            reinterpret_cast<float*>(dout_group), m, n, k,
+                            flag_bias, flag_relu, flag_im2col2, scale_group,
+                            ctx);
+        } else if (out_type == PRECISION(kInt8)) {  // int8
+          gemm_prepack_int8(weights_group, dB, bias_group, dout_group, m, n, k,
+                            flag_bias, flag_relu, flag_im2col2, scale_group,
+                            ctx);
+        } else {
+          gemm_prepack_int8(
+              weights_group, dB, bias_group, reinterpret_cast<int*>(dout_group),
+              m, n, k, flag_bias, flag_relu, flag_im2col2, scale_group, ctx);
+        }
+      }
+    }
+  }
+}
 
 void conv_depthwise_3x3(const float* i_data, float* o_data, int num, int oc,
                         int oh, int ow, int ic, int ih, int win,

@@ -41,6 +41,25 @@ class ConvCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
       nullptr};
 };
 
+class ConvComputeInt8 : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
+ public:
+  using param_t = operators::ConvParam;
+
+  void PrepareForRun() override;
+
+  void Run() override;
+
+  ~ConvComputeInt8() {
+    if (impl_ != nullptr) {
+      delete impl_;
+    }
+  }
+
+ private:
+  lite::arm::math::ImplBase<TARGET(kARM), PRECISION(kInt8), param_t>* impl_{
+      nullptr};
+};
+
 }  // namespace arm
 }  // namespace kernels
 }  // namespace lite

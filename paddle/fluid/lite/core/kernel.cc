@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/kernel.h"
+#include <cstdlib>
 
 namespace paddle {
 namespace lite {
@@ -46,6 +47,36 @@ const Type *KernelBase::GetOutputDeclType(const std::string &arg_name) {
 std::string KernelBase::GenParamTypeKey() const {
   std::stringstream ss;
   ss << op_type() << "/" << alias_;
+  return ss.str();
+}
+
+void KernelBase::ParseKernelType(const std::string &kernel_type,
+                                 std::string *op_type, std::string *alias,
+                                 Place *place) {
+  std::stringstream ss(kernel_type);
+  std::getline(ss, *op_type, '/');
+  std::getline(ss, *alias, '/');
+  std::string target, precision, layout;
+  std::getline(ss, target, '/');
+  std::getline(ss, precision, '/');
+  std::getline(ss, layout, '/');
+
+  place->target = static_cast<TargetType>(std::atoi(target.c_str()));
+  place->precision = static_cast<PrecisionType>(std::atoi(precision.c_str()));
+  place->layout = static_cast<DataLayoutType>(std::atoi(layout.c_str()));
+}
+
+std::string KernelBase::SerializeKernelType(const std::string &op_type,
+                                            const std::string &alias,
+                                            const Place &place) {
+  std::stringstream ss;
+  ss << op_type << "/";
+  ss << alias << "/";
+  // We serialize the place value not the string representation here for
+  // easier deserialization.
+  ss << static_cast<int>(place.target) << "/";
+  ss << static_cast<int>(place.precision) << "/";
+  ss << static_cast<int>(place.layout);
   return ss.str();
 }
 

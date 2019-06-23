@@ -35,6 +35,8 @@ cc_library(math_arm SRCS
     split.cc
     activation.cc
     dropout.cc
+    gemm_prepacked_int8.cc
+    gemv_arm_int8.cc
     DEPS ${lite_kernel_deps} eigen3 framework_proto_lite)
   # TODO(TJ): fix me do not deps proto
  
