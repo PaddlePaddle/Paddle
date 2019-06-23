@@ -154,6 +154,8 @@ class RuntimeProgram {
 
   size_t num_instructions() const { return instructions_.size(); }
 
+  const std::vector<Instruction>& instructions() const { return instructions_; }
+
  protected:
   std::string SerializeProgram(const framework::proto::ProgramDesc& desc);
   void SaveParams(const std::string& dir,

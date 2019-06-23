@@ -187,6 +187,7 @@ add_subdirectory(model_parser)
 add_subdirectory(utils)
 add_subdirectory(api)
 add_subdirectory(gen_code)
+add_subdirectory(tools)
 
 
 if (WITH_TESTING)

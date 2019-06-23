@@ -74,14 +74,21 @@ static std::string Repr(const std::vector<std::string>& v) {
   return "{" + Join(tmp, ",") + "}";
 }
 
-static std::vector<std::string> Split(const std::string& s, char delim) {
-  std::stringstream ss(s);
-  std::string line;
-  std::vector<std::string> res;
-  while (std::getline(ss, line, delim)) {
-    res.push_back(line);
+static std::vector<std::string> Split(const std::string& original,
+                                      const std::string& separator) {
+  std::vector<std::string> results;
+  std::string::size_type pos1, pos2;
+  pos2 = original.find(separator);
+  pos1 = 0;
+  while (std::string::npos != pos2) {
+    results.push_back(original.substr(pos1, pos2 - pos1));
+    pos1 = pos2 + separator.size();
+    pos2 = original.find(separator, pos1);
   }
-  return res;
+  if (pos1 != original.length()) {
+    results.push_back(original.substr(pos1));
+  }
+  return results;
 }
 
 }  // namespace lite

@@ -39,10 +39,12 @@ class Predictor {
 
   // Build from a model, with places set for hardware config.
   void Build(const std::string& model_path, const Place& prefer_place,
-             const std::vector<Place>& valid_places);
+             const std::vector<Place>& valid_places,
+             const std::vector<std::string>& passes = {});
 
   void Build(const framework::proto::ProgramDesc& desc,
-             const Place& prefer_place, const std::vector<Place>& valid_places);
+             const Place& prefer_place, const std::vector<Place>& valid_places,
+             const std::vector<std::string>& passes = {});
 
   // Run the predictor for a single batch of data.
   void Run() { program_->Run(); }
@@ -53,9 +55,9 @@ class Predictor {
   // Get offset-th col of fetch results.
   const lite::Tensor* GetOutput(size_t offset);
 
-  // Return the program desc for debug.
   const framework::proto::ProgramDesc& program_desc() const;
   const lite::Tensor* GetTensor(const std::string& name) const;
+  const RuntimeProgram& runtime_program() const;
 
   // This method is disabled in mobile, for unnecessary dependencies required.
   void SaveModel(const std::string& dir);
