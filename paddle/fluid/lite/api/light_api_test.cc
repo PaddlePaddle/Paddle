@@ -25,8 +25,10 @@ namespace paddle {
 namespace lite {
 
 TEST(LightAPI, load) {
-  LightPredictor predictor;
-  predictor.Build(FLAGS_optimized_model);
+  if (FLAGS_optimized_model.empty()) {
+    FLAGS_optimized_model = "lite_naive_model";
+  }
+  LightPredictor predictor(FLAGS_optimized_model);
 
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize(DDim(std::vector<int64_t>({100, 100})));

@@ -39,23 +39,41 @@ void SetConstInput(lite::Tensor* x) {
   }
 }
 
-bool CompareTensors(const std::string& name, const ExecutorLite& cxx_api,
+bool CompareTensors(const std::string& name, const Predictor& cxx_api,
                     const LightPredictor& light_api) {
   const auto* a = cxx_api.GetTensor(name);
   const auto* b = light_api.GetTensor(name);
   return TensorCompareWith(*a, *b);
 }
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+TEST(CXXApi_LightApi, optim_model) {
+  lite::Predictor cxx_api;
+  std::vector<Place> valid_places({
+      Place{TARGET(kHost), PRECISION(kFloat)},
+      Place{TARGET(kX86), PRECISION(kFloat)},
+      Place{TARGET(kARM), PRECISION(kFloat)},  // Both works on X86 and ARM
+  });
+  // On ARM devices, the preferred X86 target not works, but it can still
+  // select ARM kernels.
+  cxx_api.Build(FLAGS_model_dir, Place{TARGET(kX86), PRECISION(kFloat)},
+                valid_places);
+  cxx_api.SaveModel(FLAGS_optimized_model);
+}
+
 TEST(CXXApi_LightApi, save_and_load_model) {
-  lite::ExecutorLite cxx_api;
-  lite::LightPredictor light_api;
+  lite::Predictor cxx_api;
+  lite::LightPredictor light_api(FLAGS_optimized_model);
 
   // CXXAPi
   {
-    std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
-                                     Place{TARGET(kX86), PRECISION(kFloat)}});
-    cxx_api.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
+    std::vector<Place> valid_places({
+        Place{TARGET(kHost), PRECISION(kFloat)},
+        Place{TARGET(kX86), PRECISION(kFloat)},
+        Place{TARGET(kARM), PRECISION(kFloat)},  // Both works on X86 and ARM
+    });
+    // On ARM devices, the preferred X86 target not works, but it can still
+    // select ARM kernels.
+    cxx_api.Build(FLAGS_model_dir, Place{TARGET(kX86), PRECISION(kFloat)},
                   valid_places);
 
     auto* x = cxx_api.GetInput(0);
@@ -69,8 +87,6 @@ TEST(CXXApi_LightApi, save_and_load_model) {
 
   // LightApi
   {
-    light_api.Build(FLAGS_optimized_model);
-
     auto* x = light_api.GetInput(0);
     SetConstInput(x);
 
@@ -89,7 +105,6 @@ TEST(CXXApi_LightApi, save_and_load_model) {
     ASSERT_TRUE(CompareTensors(tensor_name, cxx_api, light_api));
   }
 }
-#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 }  // namespace lite
 }  // namespace paddle

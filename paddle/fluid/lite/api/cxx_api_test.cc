@@ -42,7 +42,7 @@ TEST(CXXApi, test) {
 }
 
 TEST(CXXApi, save_model) {
-  lite::ExecutorLite predictor;
+  lite::Predictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
                                    Place{TARGET(kX86), PRECISION(kFloat)}});
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},

@@ -14,25 +14,23 @@
 
 #pragma once
 
-// ATTENTION This can only include in a .cc file.
+#include <gflags/gflags.h>
+#include <time.h>
 
-#include "paddle/fluid/lite/core/op_registry.h"
+// for eval
+DEFINE_string(model_dir, "", "model dir");
+DEFINE_int32(warmup, 0, "warmup times");
+DEFINE_int32(repeats, 1, "repeats times");
+DEFINE_int32(threads, 1, "threads num");
 
-USE_LITE_OP(mul);
-USE_LITE_OP(fc);
-USE_LITE_OP(relu);
-USE_LITE_OP(scale);
-USE_LITE_OP(feed);
-USE_LITE_OP(fetch);
-USE_LITE_OP(io_copy);
-USE_LITE_OP(elementwise_add)
-USE_LITE_OP(elementwise_sub)
-USE_LITE_OP(square)
-USE_LITE_OP(softmax)
-USE_LITE_OP(dropout)
-USE_LITE_OP(concat)
-USE_LITE_OP(conv2d)
-USE_LITE_OP(depthwise_conv2d)
-USE_LITE_OP(pool2d)
-USE_LITE_OP(batch_norm)
-USE_LITE_OP(fusion_elementwise_sub_activation)
+namespace paddle {
+namespace lite {
+
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
+}
+
+}  // namespace lite
+}  // namespace paddle
