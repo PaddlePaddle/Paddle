@@ -1092,6 +1092,7 @@ def double_buffer(reader, place=None, name=None):
         >>> import paddle.fluid as fluid
         >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
         >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  lod_levels=[0, 0],
         >>>                                  dtypes=['float32', 'int64'])
         >>> reader = fluid.layers.double_buffer(reader)
         >>> img, label = fluid.layers.read_file(reader)
