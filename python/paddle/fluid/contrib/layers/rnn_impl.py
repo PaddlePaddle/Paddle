@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+from paddle.fluid import layers
+from paddle.fluid.dygraph import Layer
 from paddle.fluid.layers.control_flow import StaticRNN
 
+__all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 
-class BasicGRUUnit(fluid.Layer):
+
+class BasicGRUUnit(Layer):
     """
     ****
     BasicGRUUnit class, Using basic operator to build GRU
@@ -75,13 +78,12 @@ class BasicGRUUnit(fluid.Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or fluid.layers.sigmoid
-        self._activation = activation or fluid.layers.tanh
+        self._gate_activation = gate_activation or layers.sigmoid
+        self._activation = activation or layers.tanh
         self._dtype = dtype
 
     def _build_once(self, input, pre_hidden):
         self._input_size = input.shape[-1]
-        print("self.", self._input_size)
         assert (self._input_size > 0)
 
         self._gate_weight = self.create_parameter(
@@ -106,22 +108,20 @@ class BasicGRUUnit(fluid.Layer):
             is_bias=True)
 
     def forward(self, input, pre_hidden):
-        concat_input_hidden = fluid.layers.concat([input, pre_hidden], 1)
+        concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = fluid.layers.matmul(
-            x=concat_input_hidden, y=self._gate_weight)
+        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
 
-        gate_input = fluid.layers.elementwise_add(gate_input, self._gate_bias)
+        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
-        r, u = fluid.layers.split(gate_input, num_or_sections=2, dim=1)
+        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
 
         r_hidden = r * pre_hidden
 
-        candidate = fluid.layers.matmul(
-            fluid.layers.concat([input, pre_hidden], 1), self._candidate_weight)
-        candidate = fluid.layers.elementwise_add(candidate,
-                                                 self._candidate_bias)
+        candidate = layers.matmul(
+            layers.concat([input, pre_hidden], 1), self._candidate_weight)
+        candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
         new_hidden = u * pre_hidden + (1 - u) * c
@@ -236,20 +236,20 @@ def basic_gru(input,
                              gate_activation, activation, dtype))
 
     if batch_first:
-        input = fluid.layers.transpose(input, [1, 0, 2])
+        input = layers.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
-        max_seq_len = fluid.layers.shape(input)[0]
-        mask = fluid.layers.sequence_mask(
+        max_seq_len = layers.shape(input)[0]
+        mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32')
-        mask = fluid.layers.transpose(mask, [1, 0])
+        mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
     if init_hidden:
-        init_hidden = fluid.layers.reshape(
+        init_hidden = layers.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size])
 
     def get_single_direction_output(rnn_input,
@@ -275,9 +275,8 @@ def basic_gru(input,
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
-                    new_hidden = fluid.layers.elementwise_mul(
-                        new_hidden, step_mask,
-                        axis=0) - fluid.layers.elementwise_mul(
+                    new_hidden = layers.elementwise_mul(
+                        new_hidden, step_mask, axis=0) - layers.elementwise_mul(
                             pre_hidden, (step_mask - 1), axis=0)
                 rnn.update_memory(pre_hidden, new_hidden)
 
@@ -285,7 +284,7 @@ def basic_gru(input,
 
                 step_input = new_hidden
                 if dropout_prob != None and dropout_prob > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob, )
 
@@ -300,8 +299,8 @@ def basic_gru(input,
             last_hidden = last_hidden[-1]
             last_hidden_array.append(last_hidden)
 
-        last_hidden_output = fluid.layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = fluid.layers.reshape(
+        last_hidden_output = layers.concat(last_hidden_array, axis=0)
+        last_hidden_output = layers.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size])
 
         return rnn_output, last_hidden_output
@@ -311,24 +310,23 @@ def basic_gru(input,
         input, fw_unit_list, mask, direc_index=0)
 
     if bidirectional:
-        bw_input = fluid.layers.reverse(input, axis=[0])
+        bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = fluid.layers.reverse(mask, axis=[0])
+            bw_mask = layers.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1)
 
-        bw_rnn_out = fluid.layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
 
-        rnn_out = fluid.layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
-        last_hidden = fluid.layers.concat(
-            [fw_last_hidden, bw_last_hidden], axis=1)
+        rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
+        last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
 
-        last_hidden = fluid.layers.reshape(
+        last_hidden = layers.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size])
 
         if batch_first:
-            rnn_out = fluid.layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden
     else:
 
@@ -477,24 +475,24 @@ def basic_lstm(input,
                     dtype=dtype))
 
     if batch_first:
-        input = fluid.layers.transpose(input, [1, 0, 2])
+        input = layers.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
-        max_seq_len = fluid.layers.shape(input)[0]
-        mask = fluid.layers.sequence_mask(
+        max_seq_len = layers.shape(input)[0]
+        mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32')
 
-        mask = fluid.layers.transpose(mask, [1, 0])
+        mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
         # convert to [num_layers, 2, batch_size, hidden_size]
     if init_hidden:
-        init_hidden = fluid.layers.reshape(
+        init_hidden = layers.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size])
-        init_cell = fluid.layers.reshape(
+        init_cell = layers.reshape(
             init_cell, shape=[num_layers, direc_num, -1, hidden_size])
 
     # forward direction
@@ -523,13 +521,11 @@ def basic_lstm(input,
                                                     pre_cell)
 
                 if mask:
-                    new_hidden = fluid.layers.elementwise_mul(
-                        new_hidden, step_mask,
-                        axis=0) - fluid.layers.elementwise_mul(
+                    new_hidden = layers.elementwise_mul(
+                        new_hidden, step_mask, axis=0) - layers.elementwise_mul(
                             pre_hidden, (step_mask - 1), axis=0)
-                    new_cell = fluid.layers.elementwise_mul(
-                        new_cell, step_mask,
-                        axis=0) - fluid.layers.elementwise_mul(
+                    new_cell = layers.elementwise_mul(
+                        new_cell, step_mask, axis=0) - layers.elementwise_mul(
                             pre_cell, (step_mask - 1), axis=0)
 
                 rnn.update_memory(pre_hidden, new_hidden)
@@ -540,7 +536,7 @@ def basic_lstm(input,
 
                 step_input = new_hidden
                 if dropout_prob != None and dropout_prob > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,
                         dropout_implementation='upscale_in_train')
@@ -560,11 +556,11 @@ def basic_lstm(input,
             last_cell = last_cell[-1]
             last_cell_array.append(last_cell)
 
-        last_hidden_output = fluid.layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = fluid.layers.reshape(
+        last_hidden_output = layers.concat(last_hidden_array, axis=0)
+        last_hidden_output = layers.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size])
-        last_cell_output = fluid.layers.concat(last_cell_array, axis=0)
-        last_cell_output = fluid.layers.reshape(
+        last_cell_output = layers.concat(last_cell_array, axis=0)
+        last_cell_output = layers.reshape(
             last_cell_output, shape=[num_layers, -1, hidden_size])
 
         return rnn_output, last_hidden_output, last_cell_output
@@ -574,27 +570,26 @@ def basic_lstm(input,
         input, fw_unit_list, mask, direc_index=0)
 
     if bidirectional:
-        bw_input = fluid.layers.reverse(input, axis=[0])
+        bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = fluid.layers.reverse(mask, axis=[0])
+            bw_mask = layers.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden, bw_last_cell = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1)
 
-        bw_rnn_out = fluid.layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
 
-        rnn_out = fluid.layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
-        last_hidden = fluid.layers.concat(
-            [fw_last_hidden, bw_last_hidden], axis=1)
-        last_hidden = fluid.layers.reshape(
+        rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
+        last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
+        last_hidden = layers.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size])
 
-        last_cell = fluid.layers.concat([fw_last_cell, bw_last_cell], axis=1)
-        last_cell = fluid.layers.reshape(
+        last_cell = layers.concat([fw_last_cell, bw_last_cell], axis=1)
+        last_cell = layers.reshape(
             last_cell, shape=[num_layers * direc_num, -1, hidden_size])
 
         if batch_first:
-            rnn_out = fluid.layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden, last_cell
     else:
 
@@ -603,12 +598,12 @@ def basic_lstm(input,
         last_cell = fw_last_cell
 
         if batch_first:
-            rnn_out = fluid.layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden, last_cell
 
 
-class BasicLSTMUnit(fluid.Layer):
+class BasicLSTMUnit(Layer):
     """
     ****
     BasicLSTMUnit class, Using basic operator to build LSTM
@@ -682,8 +677,8 @@ class BasicLSTMUnit(fluid.Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or fluid.layers.sigmoid
-        self._activation = activation or fluid.layers.tanh
+        self._gate_activation = gate_activation or layers.sigmoid
+        self._activation = activation or layers.tanh
         self._forget_bias = forget_bias
         self._dtype = dtype
 
@@ -703,14 +698,13 @@ class BasicLSTMUnit(fluid.Layer):
             is_bias=True)
 
     def forward(self, input, pre_hidden, pre_cell):
-        concat_input_hidden = fluid.layers.concat([input, pre_hidden], 1)
-        gate_input = fluid.layers.matmul(x=concat_input_hidden, y=self._weight)
+        concat_input_hidden = layers.concat([input, pre_hidden], 1)
+        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
 
-        gate_input = fluid.layers.elementwise_add(gate_input, self._bias)
-        i, j, f, o = fluid.layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = pre_cell * fluid.layers.sigmoid(
-            f + self._forget_bias) + fluid.layers.sigmoid(
-                i) * fluid.layers.tanh(j)
-        new_hidden = fluid.layers.tanh(new_cell) * fluid.layers.sigmoid(o)
+        gate_input = layers.elementwise_add(gate_input, self._bias)
+        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        new_cell = pre_cell * layers.sigmoid(
+            f + self._forget_bias) + layers.sigmoid(i) * layers.tanh(j)
+        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
 
         return new_hidden, new_cell
