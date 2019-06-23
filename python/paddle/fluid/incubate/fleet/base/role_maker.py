@@ -298,10 +298,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def generate_role(self):
         if not self._role_is_generated:
+            import os
             self.port = os.getenv("PADDLE_PORT", "6174")
             self.pserver_ips = os.getenv("PADDLE_PSERVERS", "")
             eplist = []
-            for ip in pserver_ips.split(","):
+            for ip in self.pserver_ips.split(","):
                 eplist.append(':'.join([ip, port]))
                 self.endpoints = ",".join(eplist)
                 self.trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
