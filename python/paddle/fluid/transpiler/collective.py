@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -143,6 +143,8 @@ class Collective(object):
                 })
         block.append_op(
             type='c_sync_comm_stream',
+            inputs={'X': var},
+            outputs={'Out': var},
             attrs={
                 'ring_id': self.global_ring_id,
                 self.op_role_key: OpRole.Collective
@@ -212,6 +214,8 @@ class GradAllReduce(Collective):
                 block._insert_op(
                     idx + 1,
                     type='c_sync_calc_stream',
+                    inputs={'X': block.vars[grad]},
+                    outputs={'Out': block.vars[grad]},
                     attrs={self.op_role_key: OpRole.Collective})
 
                 offset = 2
@@ -233,6 +237,8 @@ class GradAllReduce(Collective):
                 block._insert_op(
                     idx,
                     type='c_sync_comm_stream',
+                    inputs={'X': block.vars[grad]},
+                    outputs={'Out': block.vars[grad]},
                     attrs={
                         'ring_id': self.global_ring_id,
                         self.op_role_key: OpRole.Collective
@@ -289,6 +295,8 @@ class LocalSGD(Collective):
                 block._insert_op(
                     idx + 2,
                     type='c_sync_calc_stream',
+                    inputs={'X': param},
+                    outputs={'Out': param},
                     attrs={self.op_role_key: OpRole.Collective})
                 block._insert_op(
                     idx + 3,
@@ -304,6 +312,8 @@ class LocalSGD(Collective):
 
         block.append_op(
             type='c_sync_comm_stream',
+            inputs={'X': param},
+            outputs={'Out': param},
             attrs={
                 'ring_id': self.global_ring_id,
                 self.op_role_key: OpRole.Collective

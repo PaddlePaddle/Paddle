@@ -51,6 +51,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     } else {
       GetIdByServer(&local_scope, dev_ctx);
     }
+    scope.DeleteScope(&local_scope);
   }
 
  private:

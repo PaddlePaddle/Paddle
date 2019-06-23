@@ -47,7 +47,7 @@ class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
             toutdata = main_prog.current_block().create_var(
-                name="outofgather",
+                name="outofrs",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
@@ -58,8 +58,10 @@ class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
                 attrs={'ring_id': ring_id,
                        'nranks': nranks},
                 outputs={'Out': toutdata})
+            main_prog.global_block().append_op(
+                type="c_sync_comm_stream", attrs={'ring_id': ring_id})
             return toutdata
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveReduceScatter)
+    runtime_main(TestCollectiveReduceScatter, "reduce_scatter", 0)

@@ -2758,9 +2758,6 @@ class Program(object):
         # the distributed lookup table names
         self._distributed_lookup_table = None
 
-        # the original program before collective transpiling
-        self.origin_program = None
-
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
         self._nccl_comm_num = 1

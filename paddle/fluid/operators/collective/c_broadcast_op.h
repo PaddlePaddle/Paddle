@@ -55,6 +55,9 @@ class CBroadcastOpKernel : public framework::OpKernel<T> {
     }
 
     int root = ctx.Attr<int>("root");
+    int nranks = comm->nranks();
+    PADDLE_ENFORCE(root >= 0 && root < nranks,
+                   "Expected root in range of [0,%d),but get %d", nranks, root);
     if (root == comm->rank()) {
       PADDLE_ENFORCE(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,

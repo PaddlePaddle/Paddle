@@ -58,8 +58,10 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                 attrs={'ring_id': ring_id,
                        'reduce_type': reduce_type},
                 outputs={'Out': toutdata})
+            main_prog.global_block().append_op(
+                type="c_sync_comm_stream", attrs={'ring_id': ring_id})
             return toutdata
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllreduce)
+    runtime_main(TestCollectiveAllreduce, "allreduce", 0)

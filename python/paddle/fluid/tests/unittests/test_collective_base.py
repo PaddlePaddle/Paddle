@@ -109,15 +109,8 @@ class TestCollectiveRunnerBase(object):
             device_id)  #if args.use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
-
-        if rank == 0:
-            indata = np.random.random((10, 1000))
-            with open("/tmp/input0.in", "wb") as f:
-                pickle.dump(indata, f)
-        else:
-            indata = np.random.random((10, 1000))
-            with open("/tmp/input1.in", "wb") as f:
-                pickle.dump(indata, f)
+        np.random.seed(os.getpid())
+        indata = np.random.random((10, 1000))
         out = exe.run(train_prog,
                       feed={'tindata': indata},
                       fetch_list=[result.name])
@@ -127,7 +120,7 @@ class TestCollectiveRunnerBase(object):
             sys.stdout.buffer.write(pickle.dumps(out))
 
 
-def runtime_main(test_class, col_type="allgather"):
+def runtime_main(test_class, col_type, sub_type):
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_gpus")
@@ -135,6 +128,7 @@ def runtime_main(test_class, col_type="allgather"):
     args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
+    args["col_type"] = col_type
     model.run_trainer(args)
 
 
@@ -211,7 +205,8 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        return pickle.loads(tr0_out), pickle.loads(tr1_out)
+        return pickle.loads(tr0_out), pickle.loads(
+            tr1_out), tr0_proc.pid, tr1_proc.pid
 
     def check_with_place(self,
                          model_file,
@@ -232,43 +227,40 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
-        tr0_out, tr1_out = self._run_cluster(model_file, required_envs)
-        #print("@@@@@@@@@@@@@@@@:",tr0_out[0])
-        #print("@@@@@@@@@@@@@@@@:",tr1_out[0])
-        with open("/tmp/input0.in", "rb") as in0:
-            input1 = pickle.load(in0)
-        with open("/tmp/input1.in", "rb") as in1:
-            input2 = pickle.load(in1)
+        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
+                                                         required_envs)
+        np.random.seed(pid0)
+        input1 = np.random.random((10, 1000))
+        np.random.seed(pid1)
+        input2 = np.random.random((10, 1000))
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
-            print(tr0_out)
-            print(need_result)
-            #self.assertTrue((tr0_out == need_result).all())
-            #self.assertTrue((tr1_out == need_result).all())
         elif col_type == "broadcast":
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
-            #self.assertTrue((tr0_out == need_result).all())
-            #self.assertTrue((tr1_out == need_result).all())
         elif col_type == "allreduce":
             need_result = input1 + input2
-            self.assertTrue(np.allclose(tr0_out, need_result))
-            self.assertTrue(np.allclose(tr1_out, need_result))
-            #self.assertTrue((tr0_out == need_result).all())
-            #self.assertTrue((tr1_out == need_result).all())
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "reduce_scatter":
             tmp = input1 + input2
-            need_result1 = tmp[0:tmp.shape[0] / 2]
-            need_result2 = tmp[tmp.shape[0] / 2:]
-            self.assertTrue(np.allclose(tr0_out, need_result1))
-            self.assertTrue(np.allclose(tr1_out, need_result2))
-            #self.assertTrue((tr0_out == need_result1).all())
-            #self.assertTrue((tr1_out == need_result2).all())
+            need_result1 = tmp[0:tmp.shape[0] // 2]
+            need_result2 = tmp[tmp.shape[0] // 2:]
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         elif col_type == "reduce_slicegather":
-            slicesize = input1.shape[0] / 2
+            slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]
             tmp11 = input2[0:slicesize]
             need_result1 = np.concatenate((tmp10, tmp11), axis=1)
@@ -277,7 +269,5 @@ class TestDistBase(unittest.TestCase):
             need_result2 = np.concatenate((tmp20, tmp21), axis=1)
             self.assertTrue(np.allclose(tr0_out, need_result1))
             self.assertTrue(np.allclose(tr1_out, need_result2))
-            #self.assertTrue((tr0_out == need_out1).all())
-            #self.assertTrue((tr1_out == need_out2).all())
         else:
             pass

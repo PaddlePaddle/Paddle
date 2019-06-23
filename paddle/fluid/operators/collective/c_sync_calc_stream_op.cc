@@ -57,6 +57,8 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
 class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Tensor) Dependency of last param need to sync");
+    AddOutput("Out", "(Tensor) Dependency of last param need to sync");
     AddComment(R"DOC(
 ***Sync Operator***
 

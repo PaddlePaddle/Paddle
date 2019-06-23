@@ -23,7 +23,7 @@ class TestAllReduceOp(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_allgather(self, col_type="allreduce"):
+    def test_allreduce(self, col_type="allreduce"):
         self.check_with_place("collective_allreduce_op.py", col_type)
 
 

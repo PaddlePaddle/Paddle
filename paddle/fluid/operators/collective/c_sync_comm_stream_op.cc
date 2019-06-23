@@ -57,6 +57,8 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Tensor) Dependency of last param need to sync");
+    AddOutput("Out", "(Tensor) Dependency of last param need to sync");
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 ***Sync Operator***
