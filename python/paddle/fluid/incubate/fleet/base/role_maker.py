@@ -303,11 +303,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.pserver_ips = os.getenv("PADDLE_PSERVERS", "")
             eplist = []
             for ip in self.pserver_ips.split(","):
-                eplist.append(':'.join([ip, port]))
+                eplist.append(':'.join([ip, self.port]))
                 self.endpoints = ",".join(eplist)
                 self.trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
                 self.current_endpoint = os.getenv("POD_IP",
-                                                  "localhost") + ":" + port
+                                                  "localhost") + ":" + self.port
                 self.role = os.getenv("TRAINING_ROLE", "TRAINER")
                 self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
             self.eplist = eplist
