@@ -25,7 +25,7 @@ namespace arm {
 namespace math {
 
 // !pooling fp32 Op
-void pooling_basic(const void* din, void* dout, int num, int chout, int hout,
+void pooling_basic(const float* din, float* dout, int num, int chout, int hout,
                    int wout, int chin, int hin, int win,
                    const std::vector<int>& ksize,
                    const std::vector<int>& strides,
@@ -33,77 +33,39 @@ void pooling_basic(const void* din, void* dout, int num, int chout, int hout,
                    bool exclusive, bool adaptive, bool ceil_mode,
                    bool use_quantizer, const std::string& pooling_type);
 
-void pooling_global(const void* din, void* dout, int num, int chout, int hout,
-                    int wout, int chin, int hin, int win,
-                    const std::vector<int>& ksize,
-                    const std::vector<int>& strides,
-                    const std::vector<int>& paddings, bool global_pooling,
-                    bool exclusive, bool adaptive, bool ceil_mode,
-                    bool use_quantizer, const std::string& pooling_type);
+void pooling_global_max(const float* din, float* dout, int num, int chout,
+                        int hout, int wout, int chin, int hin, int win);
 
-void pooling2x2s2_max(const void* din, void* dout, int num, int chout, int hout,
-                      int wout, int chin, int hin, int win,
-                      const std::vector<int>& ksize,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings, bool global_pooling,
-                      bool exclusive, bool adaptive, bool ceil_mode,
-                      bool use_quantizer, const std::string& pooling_type);
+void pooling_global_avg(const float* din, float* dout, int num, int chout,
+                        int hout, int wout, int chin, int hin, int win);
 
-void pooling2x2s2_ave(const void* din, void* dout, int num, int chout, int hout,
-                      int wout, int chin, int hin, int win,
-                      const std::vector<int>& ksize,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings, bool global_pooling,
-                      bool exclusive, bool adaptive, bool ceil_mode,
-                      bool use_quantizer, const std::string& pooling_type);
+void pooling2x2s2_max(const float* din, float* dout, int num, int chout,
+                      int hout, int wout, int chin, int hin, int win);
 
-void pooling3x3s1p1_max(const void* din, void* dout, int num, int chout,
+void pooling2x2s2_avg(const float* din, float* dout, int num, int chout,
+                      int hout, int wout, int chin, int hin, int win,
+                      bool exclusive);
+
+void pooling3x3s1p1_max(const float* din, float* dout, int num, int chout,
+                        int hout, int wout, int chin, int hin, int win);
+
+void pooling3x3s1p1_avg(const float* din, float* dout, int num, int chout,
                         int hout, int wout, int chin, int hin, int win,
-                        const std::vector<int>& ksize,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings, bool global_pooling,
-                        bool exclusive, bool adaptive, bool ceil_mode,
-                        bool use_quantizer, const std::string& pooling_type);
+                        bool exclusive);
 
-void pooling3x3s1p1_ave(const void* din, void* dout, int num, int chout,
-                        int hout, int wout, int chin, int hin, int win,
-                        const std::vector<int>& ksize,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings, bool global_pooling,
-                        bool exclusive, bool adaptive, bool ceil_mode,
-                        bool use_quantizer, const std::string& pooling_type);
+void pooling3x3s2p1_max(const float* din, float* dout, int num, int chout,
+                        int hout, int wout, int chin, int hin, int win);
 
-void pooling3x3s2p1_max(const void* din, void* dout, int num, int chout,
+void pooling3x3s2p1_avg(const float* din, float* dout, int num, int chout,
                         int hout, int wout, int chin, int hin, int win,
-                        const std::vector<int>& ksize,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings, bool global_pooling,
-                        bool exclusive, bool adaptive, bool ceil_mode,
-                        bool use_quantizer, const std::string& pooling_type);
+                        bool exclusive);
 
-void pooling3x3s2p0_max(const void* din, void* dout, int num, int chout,
-                        int hout, int wout, int chin, int hin, int win,
-                        const std::vector<int>& ksize,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings, bool global_pooling,
-                        bool exclusive, bool adaptive, bool ceil_mode,
-                        bool use_quantizer, const std::string& pooling_type);
+void pooling3x3s2p0_max(const float* din, float* dout, int num, int chout,
+                        int hout, int wout, int chin, int hin, int win);
 
-void pooling3x3s2p1_ave(const void* din, void* dout, int num, int chout,
+void pooling3x3s2p0_avg(const float* din, float* dout, int num, int chout,
                         int hout, int wout, int chin, int hin, int win,
-                        const std::vector<int>& ksize,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings, bool global_pooling,
-                        bool exclusive, bool adaptive, bool ceil_mode,
-                        bool use_quantizer, const std::string& pooling_type);
-
-void pooling3x3s2p0_ave(const void* din, void* dout, int num, int chout,
-                        int hout, int wout, int chin, int hin, int win,
-                        const std::vector<int>& ksize,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings, bool global_pooling,
-                        bool exclusive, bool adaptive, bool ceil_mode,
-                        bool use_quantizer, const std::string& pooling_type);
+                        bool exclusive);
 
 }  // namespace math
 }  // namespace arm
