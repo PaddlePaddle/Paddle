@@ -29,9 +29,6 @@ class PoolCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
   void PrepareForRun() override;
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
-
   virtual ~PoolCompute() = default;
 };
 
