@@ -9242,7 +9242,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     if maxlen is not None:
         if isinstance(maxlen, Variable):
             inputs['MaxLenTensor'] = maxlen
-        elif maxlen is not None:
+        else:
             attrs['maxlen'] = maxlen
 
     helper.append_op(
