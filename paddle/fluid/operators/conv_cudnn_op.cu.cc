@@ -96,7 +96,11 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     auto dtype = platform::CudnnDataType<T>::type;
-    auto layout = GetCudnnTensorFormat(DataLayout::kNCHW);
+    DataLayout layout = DataLayout::kNCHW;
+    if (input->dims().size() == 5) {
+      layout = DataLayout::kNCDHW;
+    }
+    auto layout_format = GetCudnnTensorFormat(layout);
 
     args.handle = handle;
     args.cdesc.set(dtype, paddings, strides, dilations);
@@ -109,7 +113,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     groups = 1;
 #endif
     args.idesc.set(*input, groups);
-    args.wdesc.set(*filter, layout, groups);
+    args.wdesc.set(*filter, layout_format, groups);
     args.odesc.set(*output, groups);
     int i_n, i_c, i_d, i_h, i_w;
     GetNCDHW(input->dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h, &i_w);
@@ -201,7 +205,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // conv_cudnn_helper.h
     auto handle = dev_ctx.cudnn_handle();
     auto dtype = platform::CudnnDataType<T>::type;
-    auto layout = GetCudnnTensorFormat(DataLayout::kNCHW);
+    DataLayout layout = DataLayout::kNCHW;
+    if (input->dims().size() == 5) {
+      layout = DataLayout::kNCDHW;
+    }
+    auto layout_tensor = GetCudnnTensorFormat(layout);
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int i_n, i_c, i_d, i_h, i_w;
@@ -232,7 +240,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       args1.handle = handle;
       args1.idesc.set(*input_grad, iwo_groups);
-      args1.wdesc.set(*filter, layout, iwo_groups);
+      args1.wdesc.set(*filter, layout_tensor, iwo_groups);
       args1.odesc.set(*output_grad, iwo_groups);
       args1.cdesc.set(dtype, paddings, strides, dilations, c_groups);
 
@@ -248,7 +256,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       args2.handle = handle;
       args2.idesc.set(*input, iwo_groups);
-      args2.wdesc.set(*filter_grad, layout, iwo_groups);
+      args2.wdesc.set(*filter_grad, layout_tensor, iwo_groups);
       args2.odesc.set(*output_grad, iwo_groups);
       args2.cdesc.set(dtype, paddings, strides, dilations, c_groups);
 
