@@ -37,7 +37,12 @@ class MemOptVarInfo {
     return ref_cnt_ == 1 || (runtime_ref_cnt_.fetch_sub(1) == 1);
   }
 
-  void ResetRefCnt() { runtime_ref_cnt_ = ref_cnt_; }
+  void ResetRuntimeRefCnt() { runtime_ref_cnt_ = ref_cnt_; }
+
+  void SetRefCnt(size_t ref_cnt) {
+    ref_cnt_ = ref_cnt;
+    runtime_ref_cnt_ = ref_cnt;
+  }
 
   bool IsSkipped() const { return skipped_; }
 
@@ -87,7 +92,7 @@ class SkipMemOptVarsGuard {
       if (need_reset_ref_cnt_) {
         for (auto &map : *list_) {
           for (auto &pair : map) {
-            pair.second->ResetRefCnt();
+            pair.second->ResetRuntimeRefCnt();
           }
         }
       }

@@ -40,8 +40,6 @@ DEFINE_string(pe_profile_fname, "",
 DEFINE_bool(enable_parallel_graph, false,
             "Force disable parallel graph execution mode if set false.");
 
-DEFINE_bool(use_buffer_shared_inplace_pass, true, "");
-
 namespace paddle {
 namespace framework {
 
@@ -79,7 +77,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-  ir::Graph *PrepareGCAndRefCnts(ir::Graph *graph, size_t max_memory_size);
+  ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
@@ -172,11 +170,19 @@ class ParallelExecutorPrivate {
   }
 #endif
 
+  inline bool IsPersistable(const std::string &name) const {
+    auto iter = is_persistable_.find(name);
+    return iter == is_persistable_.end() || iter->second;
+  }
+
   BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> local_exec_scopes_;
   Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
+
+  std::unordered_map<std::string, bool> is_persistable_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   platform::MultiNCCLContextMap nccl_ctxs_;
@@ -190,8 +196,7 @@ class ParallelExecutorPrivate {
   ir::GarbageCollectorMap gcs_;
 };
 
-ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
-    ir::Graph *graph, size_t max_memory_size) {
+ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -200,7 +205,7 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
   graph = ref_cnt_pass->Apply(graph);
   VLOG(10) << "ReferenceCountPass Applied";
 
-  if (FLAGS_use_buffer_shared_inplace_pass) {
+  if (build_strategy_.enable_inplace_) {
     auto inplace_pass =
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
@@ -211,7 +216,12 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
     VLOG(10) << "buffer_shared_inplace_pass Applied";
   }
 
-  if (GetEagerDeletionThreshold() < 0) return graph;
+  // TODO(zjl): refactor MemoryOptimizePass as well!!!
+
+  if (GetEagerDeletionThreshold() < 0) {
+    return graph;
+  }
+  size_t max_memory_size = static_cast<size_t>(GetEagerDeletionThreshold());
 
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &place = places_[i];
@@ -420,11 +430,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-  auto max_memory_size = GetEagerDeletionThreshold();
-  VLOG(10) << "Eager Deletion Threshold "
-           << static_cast<float>(max_memory_size) / (1 << 30);
-  graph =
-      member_->PrepareGCAndRefCnts(graph, static_cast<size_t>(max_memory_size));
+  graph = member_->ApplyMemoryOptimizePass(graph);
 
   async_graphs[0] = graph;
 
@@ -437,6 +443,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       var_infos.back().name_ = node->Var()->Name();
       var_infos.back().type_ = node->Var()->GetType();
       var_infos.back().persistable_ = node->Var()->Persistable();
+
+      member_->is_persistable_.emplace(node->Var()->Name(),
+                                       node->Var()->Persistable());
     }
   }
 
@@ -487,6 +496,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, std::move(var_infos),
         member_->places_, std::move(member_->executor_)));
+  }
+
+  for (auto *scope : member_->local_scopes_) {
+    member_->local_exec_scopes_.emplace_back();
+    member_->local_exec_scopes_.back() =
+        *(scope->FindVar(details::kLocalExecScopeName)->GetMutable<Scope *>());
   }
 }
 
@@ -596,9 +611,11 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
-    auto *scope = member_->local_scopes_[i];
     for (auto &pair : map) {
-      auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
+      Scope *feed_scope = member_->IsPersistable(pair.first)
+                              ? member_->local_scopes_[i]
+                              : member_->local_exec_scopes_[i];
+      auto *trg = feed_scope->Var(pair.first)->GetMutable<LoDTensor>();
       trg->ShareDataWith(pair.second);
       trg->set_lod(pair.second.lod());
     }
@@ -607,17 +624,20 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
-  for (auto pair : tensors) {
+  for (auto &pair : tensors) {
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
     PADDLE_ENFORCE_EQ(
         member_->places_.size(), lod_tensors.size(),
         "The number of samples of current batch is less than the count of "
         "devices, currently, it is not allowed. (%d vs %d)",
         member_->places_.size(), lod_tensors.size());
+
+    bool is_persistable = member_->IsPersistable(pair.first);
     for (size_t j = 0; j < member_->places_.size(); ++j) {
-      // TODO(panxy0718): Do I need to delete this var?
-      auto t =
-          member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
+      Scope *feed_scope = is_persistable ? member_->local_scopes_[j]
+                                         : member_->local_exec_scopes_[j];
+
+      auto t = feed_scope->Var(pair.first)->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
     }
@@ -654,11 +674,12 @@ bool ParallelExecutor::EnableParallelGraphExecution(
     }
   }
 
-  if (!member_->use_all_reduce_ || !member_->use_cuda_)
-
+  if (!member_->use_all_reduce_ || !member_->use_cuda_) {
     if (build_strategy.enable_sequential_execution_ ||
-        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
+        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
       enable_parallel_graph = false;
+    }
+  }
   return enable_parallel_graph;
 }
 

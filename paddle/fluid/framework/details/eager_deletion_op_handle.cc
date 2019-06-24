@@ -65,28 +65,35 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #endif
 }
 
+void EagerDeletionOpHandle::InitOnce() {
+  PADDLE_ENFORCE(vars_.empty(), "vars_ must be initialized here");
+  Scope *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  for (auto *var_info : var_infos_) {
+    auto *var = exec_scope->FindVar(var_info->Name());
+    PADDLE_ENFORCE_NOT_NULL(var, "Variable %s should not be nullptr",
+                            var_info->Name());
+    vars_.emplace_back(var);
+  }
+}
+
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
+  if (vars_.size() != var_infos_.size()) {
+    InitOnce();
+  }
+
   platform::RecordEvent record_event(Name());
-  Scope *exec_scope = nullptr;
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
-  for (auto *var_info : var_infos_) {
+  for (size_t i = 0; i < var_infos_.size(); ++i) {
+    auto *var_info = var_infos_[i];
     if (var_info->IsSkipped() || !var_info->DecreaseRefCnt()) {
       continue;
     }
 
-    if (!exec_scope) {
-      exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
-    }
-
-    // Var not found
-    auto *var = exec_scope->FindVar(var_info->Name());
-    if (var == nullptr) {
-      continue;
-    }
-
     VLOG(2) << "Erase variable " << var_info->Name();
+
+    Variable *var = vars_[i];
 
     if (var->IsType<LoDTensor>()) {
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());

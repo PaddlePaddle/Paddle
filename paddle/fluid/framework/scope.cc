@@ -200,6 +200,27 @@ Variable* Scope::FindVarLocally(const std::string& name) const {
   return nullptr;
 }
 
+void Scope::ClearWithPreserve(const std::unordered_set<Variable*>& vars) {
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    for (Scope* s : kids_) {
+      delete s;
+    }
+    kids_.clear();
+  }
+
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    for (auto iter = vars_.begin(); iter != vars_.end();) {
+      if (vars.count(iter->second.get()) != 0) {
+        ++iter;
+      } else {
+        vars_.erase(iter++);
+      }
+    }
+  }
+}
+
 std::string GenScopeTreeDebugInfo(Scope* root) {
   std::stringstream os;
 

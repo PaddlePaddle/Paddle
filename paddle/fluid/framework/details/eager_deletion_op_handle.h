@@ -56,9 +56,12 @@ class EagerDeletionOpHandle : public OpHandleBase {
  private:
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
+  void InitOnce();
+
   const Scope *scope_;
   std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
   GarbageCollector *gc_;                        // not own
+  std::vector<Variable *> vars_;
 #ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceContext *dev_ctx_{nullptr};
   cudaEvent_t event_{nullptr};

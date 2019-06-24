@@ -34,46 +34,36 @@ namespace details {
 
 class ShareTensorBufferOpHandle : public OpHandleBase {
  public:
-  ShareTensorBufferOpHandle(ir::Node *node, const Scope *scope,
-                            size_t scope_idx,
-                            const std::vector<ir::MemOptVarInfo *> &in_vars,
-                            const std::vector<std::string> &out_vars);
+  ShareTensorBufferOpHandle(
+      ir::Node *node, const Scope *scope, size_t scope_idx,
+      const std::string &op_type,
+      const std::vector<ir::MemOptVarInfo *> &in_vars_infos,
+      const std::vector<std::string> &out_var_names);
 
   std::unordered_set<std::string> ReusedVarSet() const;
 
+  Priority GetPriority() const override { return Priority::kHighest; }
+
   size_t GetScopeIdx() const { return scope_idx_; }
 
+  void Add(ir::MemOptVarInfo *in_var_info, const std::string &ou_var_name);
+
  protected:
+  std::string Name() const override { return "buffer_share"; }
+
   void RunImpl() final;
 
-  virtual std::string MemoryReuseDebugString(size_t i) const = 0;
-
-  Tensor *GetTensor(Scope **exec_scope, const std::string &name);
+ private:
+  void InitOnce();
 
   const Scope *scope_;
   size_t scope_idx_;
-  std::vector<ir::MemOptVarInfo *> in_vars_;
-  std::vector<std::string> out_vars_;
-  std::vector<bool> is_shared_;
-};
-
-class InplaceShareTensorBufferOpHandle : public ShareTensorBufferOpHandle {
- public:
-  InplaceShareTensorBufferOpHandle(
-      ir::Node *node, const Scope *scope, size_t scope_idx,
-      const std::string &op_type,
-      const std::vector<std::pair<std::string, std::string>> &in_out_params,
-      const std::vector<ir::MemOptVarInfo *> &in_vars,
-      const std::vector<std::string> &out_vars);
-
- protected:
-  std::string Name() const override { return "inplace"; }
-
-  std::string MemoryReuseDebugString(size_t i) const override;
-
- private:
   std::string op_type_;
-  std::vector<std::pair<std::string, std::string>> in_out_params_;
+  std::vector<ir::MemOptVarInfo *> in_var_infos_;
+  std::vector<std::string> out_var_names_;
+  std::vector<bool> is_shared_;
+
+  std::vector<std::pair<Variable *, Variable *>> in_out_vars_;
 };
 
 }  // namespace details

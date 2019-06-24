@@ -24,44 +24,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
-    ir::Node *node, const Scope *scope, size_t scope_idx,
-    const std::vector<ir::MemOptVarInfo *> &in_vars,
-    const std::vector<std::string> &out_vars)
-    : OpHandleBase(node),
-      scope_(scope),
-      scope_idx_(scope_idx),
-      in_vars_(in_vars),
-      out_vars_(out_vars),
-      is_shared_(in_vars.size(), false) {
-  PADDLE_ENFORCE(!in_vars_.empty(), "in_vars_ cannot be empty");
-  for (auto &in_var : in_vars_) {
-    PADDLE_ENFORCE_NOT_NULL(in_var, "in_var cannot be nullptr");
-  }
-  PADDLE_ENFORCE_EQ(in_vars_.size(), out_vars_.size());
-}
-
-std::unordered_set<std::string> ShareTensorBufferOpHandle::ReusedVarSet()
-    const {
-  std::unordered_set<std::string> result;
-  for (auto &in_var : in_vars_) {
-    result.insert(in_var->Name());
-  }
-  return result;
-}
-
-Tensor *ShareTensorBufferOpHandle::GetTensor(Scope **exec_scope,
-                                             const std::string &name) {
-  if (*exec_scope == nullptr) {
-    *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  }
-
-  auto *var = (*exec_scope)->FindVar(name);
-  if (var == nullptr) {
-    return nullptr;
-  }
-
-  // TODO(zjl): to support SelectedRows
+static inline Tensor *GetTensorFromVar(Variable *var) {
+  // TODO(zjl): support SelectedRows
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else {
@@ -69,25 +33,68 @@ Tensor *ShareTensorBufferOpHandle::GetTensor(Scope **exec_scope,
   }
 }
 
+ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
+    ir::Node *node, const Scope *scope, size_t scope_idx,
+    const std::string &op_type,
+    const std::vector<ir::MemOptVarInfo *> &in_var_infos,
+    const std::vector<std::string> &out_var_names)
+    : OpHandleBase(node),
+      scope_(scope),
+      scope_idx_(scope_idx),
+      op_type_(op_type),
+      in_var_infos_(in_var_infos),
+      out_var_names_(out_var_names) {
+  for (auto &in_var_info : in_var_infos_) {
+    PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
+  }
+  PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size());
+}
+
+std::unordered_set<std::string> ShareTensorBufferOpHandle::ReusedVarSet()
+    const {
+  std::unordered_set<std::string> result;
+  for (auto &in_var_info : in_var_infos_) {
+    result.insert(in_var_info->Name());
+  }
+  return result;
+}
+
+void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
+                                    const std::string &out_var_name) {
+  PADDLE_ENFORCE_NOT_NULL(in_var_info);
+  in_var_infos_.emplace_back(in_var_info);
+  out_var_names_.emplace_back(out_var_name);
+}
+
+void ShareTensorBufferOpHandle::InitOnce() {
+  PADDLE_ENFORCE(in_out_vars_.empty(), "in_out_vars_ must be initialized here");
+  Scope *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
+    auto *in_var = exec_scope->FindVar(in_var_infos_[i]->Name());
+    auto *out_var = exec_scope->FindVar(out_var_names_[i]);
+    PADDLE_ENFORCE_NOT_NULL(in_var);
+    PADDLE_ENFORCE_NOT_NULL(out_var);
+    in_out_vars_.emplace_back(in_var, out_var);
+  }
+  is_shared_.assign(in_var_infos_.size(), false);
+}
+
 void ShareTensorBufferOpHandle::RunImpl() {
-  Scope *exec_scope = nullptr;
-  for (size_t i = 0; i < in_vars_.size(); ++i) {
-    auto in_var = in_vars_[i];
-    if (in_var->IsSkipped()) {
-      VLOG(1) << MemoryReuseDebugString(i)
-              << " is disabled, because we want to fetch " << in_var->Name();
+  if (in_var_infos_.size() != in_out_vars_.size()) {
+    InitOnce();
+  }
+
+  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
+    auto in_var_info = in_var_infos_[i];
+    if (in_var_info->IsSkipped()) {
       // If in_var is inplaced in the previous batch and we want to fetch
       // in_var in the current batch, we have to reset memory of out_var
       // to avoid wrong calcualtion result.
       if (is_shared_[i]) {
         // You have to reset memory here to avoid caculation wrong!
-        VLOG(1) << MemoryReuseDebugString(i)
-                << " is performed in previous batch, "
-                << "we have to reset " << out_vars_[i];
-
         // Clear out_tensor because this tensor may be shared in the previous
         // batch
-        auto *out_tensor = GetTensor(&exec_scope, out_vars_[i]);
+        auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
         if (out_tensor) {
           out_tensor->clear();
         }
@@ -99,41 +106,22 @@ void ShareTensorBufferOpHandle::RunImpl() {
 
     is_shared_[i] = false;
 
-    auto *in_tensor = GetTensor(&exec_scope, in_var->Name());
+    auto *in_tensor = GetTensorFromVar(in_out_vars_[i].first);
     if (!in_tensor) {
       continue;
     }
 
-    auto *out_tensor = GetTensor(&exec_scope, out_vars_[i]);
+    auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
     if (!out_tensor) {
       continue;
     }
 
-    VLOG(2) << "Perform " << MemoryReuseDebugString(i);
-
     out_tensor->ShareBufferWith(*in_tensor);
+    VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
+            << in_var_info->Name() << " -> " << out_var_names_[i];
 
     is_shared_[i] = true;
   }
-}
-
-InplaceShareTensorBufferOpHandle::InplaceShareTensorBufferOpHandle(
-    ir::Node *node, const Scope *scope, size_t scope_idx,
-    const std::string &op_type,
-    const std::vector<std::pair<std::string, std::string>> &in_out_params,
-    const std::vector<ir::MemOptVarInfo *> &in_vars,
-    const std::vector<std::string> &out_vars)
-    : ShareTensorBufferOpHandle(node, scope, scope_idx, in_vars, out_vars),
-      op_type_(op_type),
-      in_out_params_(in_out_params) {
-  PADDLE_ENFORCE_EQ(in_out_params_.size(), in_vars_.size());
-}
-
-std::string InplaceShareTensorBufferOpHandle::MemoryReuseDebugString(
-    size_t i) const {
-  return "\"Inplace " + op_type_ + ": " + in_out_params_[i].first + "(" +
-         in_vars_[i]->Name() + ") -> " + in_out_params_[i].second + "(" +
-         out_vars_[i] + ")\"";
 }
 
 }  // namespace details

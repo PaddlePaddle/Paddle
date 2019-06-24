@@ -88,7 +88,11 @@ struct BuildStrategy {
   // to open them by default, we need to solve the fetch variable issue
   bool memory_optimize_{false};
 
-  bool enable_inplace_{false};
+  // Turn on inplace by default.
+  bool enable_inplace_{true};
+
+  // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
+  bool use_legacy_memory_optimize_strategy_{false};
 
   bool enable_sequential_execution_{false};
 

@@ -96,10 +96,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // 2. manually configured inplace should put
     // before inplace_pass
 
-    // Add automatically inplace.
-    if (strategy_.enable_inplace_) {
-      VLOG(5) << "Add inplace_pass";
-      AppendPass("inplace_pass");
+    // TODO(zjl): refactor MemoryOptimizePass to fix
+    // new strategy, which does not need to set
+    // var.persistable = True
+    if (strategy_.use_legacy_memory_optimize_strategy_) {
+      if (strategy_.enable_inplace_) {
+        VLOG(5) << "Add inplace_pass";
+        AppendPass("inplace_pass");
+      }
     }
 
     if (strategy_.fuse_elewise_add_act_ops_) {
@@ -158,9 +162,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // the de-fact IR, any reuse on Graph is meaningless.
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy_.memory_optimize_) {
-      VLOG(5) << "Add memory_optimize_pass";
-      AppendPass("memory_optimize_pass");
+    if (strategy_.use_legacy_memory_optimize_strategy_) {
+      if (strategy_.memory_optimize_) {
+        VLOG(5) << "Add memory_optimize_pass";
+        AppendPass("memory_optimize_pass");
+      }
     }
 
     // runtime_context_cache pass should be the last pass to enable the attr of
