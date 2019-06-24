@@ -37,6 +37,7 @@ USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(transpose, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(transpose2, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
 #endif
 
 #ifdef LITE_WITH_X86

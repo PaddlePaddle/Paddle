@@ -50,18 +50,22 @@ const lite::Tensor *Predictor::GetOutput(size_t offset) {
 }
 
 void Predictor::Build(const std::string &model_path, const Place &prefer_place,
-                      const std::vector<Place> &valid_places) {
+                      const std::vector<Place> &valid_places,
+                      const std::vector<std::string> &passes) {
   LoadModel(model_path, scope_.get(), &program_desc_);
-  Build(program_desc_, prefer_place, valid_places);
+  Build(program_desc_, prefer_place, valid_places, passes);
 }
 
 const framework::proto::ProgramDesc &Predictor::program_desc() const {
   return program_desc_;
 }
 
+const RuntimeProgram &Predictor::runtime_program() const { return *program_; }
+
 void Predictor::Build(const framework::proto::ProgramDesc &desc,
                       const Place &prefer_place,
-                      const std::vector<Place> &valid_places) {
+                      const std::vector<Place> &valid_places,
+                      const std::vector<std::string> &passes) {
   program_desc_ = desc;
   Program program(desc, scope_, valid_places);
 
@@ -69,7 +73,7 @@ void Predictor::Build(const framework::proto::ProgramDesc &desc,
   core::KernelPickFactor factor;
   factor.ConsiderTarget();
   factor.ConsiderPrecision();
-  optimizer_.Run(std::move(program), valid_places, factor);
+  optimizer_.Run(std::move(program), valid_places, factor, passes);
   program_ = optimizer_.GenRuntimeProgram();
 }
 
