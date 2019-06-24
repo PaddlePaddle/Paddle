@@ -73,6 +73,10 @@ option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+option(SANITIZE_ADDRESS "Enable AddressSanitizer for sanitized targets" OFF)
+option(SANITIZE_LEAK "Enable LeakSanitizer for sanitized targets" OFF)
+option(SANITIZE_MEMORY "Enable MemorySanitizer for sanitized targets" OFF)
+option(SANITIZE_THREAD "Enable ThreadSanitizer for sanitized targets." OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)

@@ -37,6 +37,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 function(safe_set_flag is_c src_list flag_name)
     string(REPLACE "-" "_" safe_name ${flag_name})
     string(REPLACE "=" "_" safe_name ${safe_name})
+
+    if(${flag_name} MATCHES "fsanitize")
+        set(CMAKE_REQUIRED_FLAGS_RETAINED ${CMAKE_REQUIRED_FLAGS})
+        set(CMAKE_REQUIRED_FLAGS ${flag_name})
+    endif()
+
     if(is_c)
         CHECK_C_COMPILER_FLAG(${flag_name} C_COMPILER_SUPPORT_FLAG_${safe_name})
         set(safe_name C_COMPILER_SUPPORT_FLAG_${safe_name})
@@ -46,6 +52,10 @@ function(safe_set_flag is_c src_list flag_name)
     endif()
     if(${safe_name})
         set(${src_list} "${${src_list}} ${flag_name}" PARENT_SCOPE)
+    endif()
+
+    if(${flag_name} MATCHES "fsanitize")
+        set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_RETAINED})
     endif()
 endfunction()
 
@@ -108,6 +118,17 @@ if(BARRIER_FOUND)
 endif(BARRIER_FOUND)
 SET(CMAKE_EXTRA_INCLUDE_FILES "")
 
+# Only one sanitizer is allowed in compile time
+if(SANITIZE_ADDRESS)
+    set(fsanitize "-fsanitize=address")
+elseif(SANITIZE_LEAK)
+    set(fsanitize "-fsanitize=leak")
+elseif(SANITIZE_MEMORY)
+    set(fsanitize "-fsanitize=memory")
+elseif(SANITIZE_THREAD)
+    set(fsanitize "-fsanitize=thread")
+endif()
+
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
 
@@ -132,6 +153,7 @@ set(COMMON_FLAGS
     -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
     -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
+    ${fsanitize}
 )
 
 set(GPU_COMMON_FLAGS
@@ -173,7 +195,6 @@ endif(UNIX AND NOT APPLE)
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
-
 endforeach()
 
 foreach(flag ${GPU_COMMON_FLAGS})
