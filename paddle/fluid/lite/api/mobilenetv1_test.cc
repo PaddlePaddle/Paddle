@@ -61,7 +61,7 @@ void TestModel(const std::vector<Place>& valid_places,
                               3.13812525e-05, 6.52209565e-05, 4.78087313e-05,
                               2.58822285e-04});
   for (int i = 0; i < results.size(); ++i) {
-    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
+    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-6);
   }
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 1);

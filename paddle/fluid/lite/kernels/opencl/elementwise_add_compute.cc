@@ -31,10 +31,10 @@ class ElementwiseAddCompute
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
     auto& context = ctx_->As<OpenClContext>();
-    CHECK(context.cl_context());
+    CHECK(context.cl_helper() != nullptr);
 
     elementwise_add(
-        context.cl_context(), static_cast<const float*>(param.X->raw_data()),
+        context.cl_helper(), static_cast<const float*>(param.X->raw_data()),
         param.X->dims(), static_cast<const float*>(param.Y->raw_data()),
         param.Y->dims(), param.Out->mutable_data<float>(), param.Out->dims());
   }
