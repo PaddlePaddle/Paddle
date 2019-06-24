@@ -36,6 +36,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
 
     const int64_t* seq_len_ptr = nullptr;
     if (platform::is_gpu_place(ctx.GetPlace())) {
+      std::cout << "len dims: " << len_t->dims() << "\t";
       LoDTensor seq_len_cpu;
       seq_len_cpu.Resize(len_t->dims());
       seq_len_ptr = seq_len_cpu.mutable_data<int64_t>(platform::CPUPlace());
@@ -55,6 +56,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     framework::LoD out_lod;
     out_lod.push_back(out_lod0);
     out_t->set_lod(out_lod);
+    std::cout << out_lod << "\t";
 
     std::vector<int64_t> out_dims_vec{static_cast<int64_t>(out_lod0.back())};
     if (x_t->dims().size() == 2) {
@@ -65,7 +67,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
       }
     }
     out_t->Resize(framework::make_ddim(out_dims_vec));
-
+    std::cout << "out_t dim: " << out_t->dims() << std::endl;
     // after set the lod of output, allocate the memory
     out_t->mutable_data<T>(ctx.GetPlace());
 
