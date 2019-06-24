@@ -32,13 +32,7 @@ class MKLDNNHandler {
  public:
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
-      : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    // TODO(jczaja): Make it faster
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    key_ = key_common_ + "-t:" + ss.str();
-  }
+      : dev_ctx_(dev_ctx), engine_(engine), key_(base_key) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
@@ -259,7 +253,6 @@ class MKLDNNHandler {
   const MKLDNNDeviceContext& dev_ctx_;
   mkldnn::engine engine_;
   std::string key_;
-  std::string key_common_;
 
  public:
   static constexpr int MaxKeyLength = 256;
@@ -665,16 +658,12 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     // Conv PD has to be passed to Grad op that
     // may be exxecuted by diffrent thread, hence
     // for that one we use key that does not contain TID
-    const std::string key_conv_pd = key_common_ + "@conv_pd";
+    const std::string key_conv_pd = key_ + "@conv_pd";
 
     conv_pd_ = std::static_pointer_cast<typename forward_t::primitive_desc>(
         dev_ctx_.GetBlob(key_conv_pd));
 
     if (conv_pd_ == nullptr) {
-      static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
-          acquire_barrier);
-
       conv_pd_ = std::static_pointer_cast<typename forward_t::primitive_desc>(
           dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {

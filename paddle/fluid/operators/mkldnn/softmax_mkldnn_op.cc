@@ -57,14 +57,11 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     // Softmax PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
-    const std::string key_softmax_pd = key_common_ + "@softmax_pd";
+    const std::string key_softmax_pd = key_ + "@softmax_pd";
 
     softmax_pd_ = std::static_pointer_cast<softmax_forward::primitive_desc>(
         dev_ctx_.GetBlob(key_softmax_pd));
     if (softmax_pd_ == nullptr) {
-      static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
-          acquire_barrier);
       softmax_pd_ = std::static_pointer_cast<softmax_forward::primitive_desc>(
           dev_ctx_.GetBlob(key_softmax_pd));
       if (softmax_pd_ == nullptr) {

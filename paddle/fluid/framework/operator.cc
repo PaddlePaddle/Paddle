@@ -880,6 +880,9 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::set_cur_scope(reinterpret_cast<const void*>(&scope));
+#endif
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
   if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))

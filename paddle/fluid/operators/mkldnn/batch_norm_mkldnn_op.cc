@@ -64,14 +64,11 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     // BatchNorm PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
-    const std::string key_batch_norm_fwd_pd = key_common_ + "@bn_fwd_pd";
+    const std::string key_batch_norm_fwd_pd = key_ + "@bn_fwd_pd";
     batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
         dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
 
     if (batch_norm_pd_ == nullptr) {
-      static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
-          acquire_barrier);
       batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
           dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
       if (batch_norm_pd_ == nullptr) {
