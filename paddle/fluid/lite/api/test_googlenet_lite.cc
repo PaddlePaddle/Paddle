@@ -28,8 +28,6 @@
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
-#include <ctime>
-#include <iostream>
 #include <vector>
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include "paddle/fluid/lite/api/lite_api_test_helper.h"
