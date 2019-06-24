@@ -20,6 +20,7 @@
 #include <vector>
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
@@ -80,7 +81,7 @@ void TypeTargetTransformPass::AddIoCopyInst(
   CHECK(in->IsArg());
   auto node_id = [&] { return graph->nodes().size(); };
   auto io_copy_output_name =
-      in->AsArg().name + "/trans/" + std::to_string(node_id());
+      string_format("%s/trans/%d", in->AsArg().name.c_str(), node_id());
   auto* io_copy_output_arg = graph->NewArgumentNode(io_copy_output_name);
   auto* io_copy_inst = graph->NewInstructNode();
 

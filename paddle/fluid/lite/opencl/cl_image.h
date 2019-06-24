@@ -33,7 +33,7 @@ class CLImage {
   /*
    * Will not hold input tensor data, memcpy in this method.
    * */
-  void set_tensor_data(float* tensor_data, const DDim& dim);
+  void set_tensor_data(const float* tensor_data, const DDim& dim);
 
   bool IsInit() { return initialized_; }
   /*

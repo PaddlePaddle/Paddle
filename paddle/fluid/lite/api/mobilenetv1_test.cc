@@ -25,16 +25,13 @@
 namespace paddle {
 namespace lite {
 
-#ifdef LITE_WITH_ARM
-TEST(MobileNetV1, test) {
+void TestModel(const std::vector<Place>& valid_places,
+               const Place& preferred_place) {
   DeviceInfo::Init();
   DeviceInfo::Global().SetRunMode(LITE_POWER_HIGH, FLAGS_threads);
   lite::Predictor predictor;
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
-                                   Place{TARGET(kARM), PRECISION(kFloat)}});
 
-  predictor.Build(FLAGS_model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
-                  valid_places);
+  predictor.Build(FLAGS_model_dir, preferred_place, valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
@@ -70,7 +67,26 @@ TEST(MobileNetV1, test) {
   ASSERT_EQ(out->dims()[0], 1);
   ASSERT_EQ(out->dims()[1], 1000);
 }
-#endif
+
+TEST(MobileNetV1, test_arm) {
+  std::vector<Place> valid_places({
+      Place{TARGET(kHost), PRECISION(kFloat)},
+      Place{TARGET(kARM), PRECISION(kFloat)},
+      // Place{TARGET(kOpenCL), PRECISION(kFloat)},
+  });
+
+  TestModel(valid_places, Place({TARGET(kARM), PRECISION(kFloat)}));
+}
+
+TEST(MobileNetV1, test_opencl) {
+  std::vector<Place> valid_places({
+      Place{TARGET(kHost), PRECISION(kFloat)},
+      Place{TARGET(kARM), PRECISION(kFloat)},
+      Place{TARGET(kOpenCL), PRECISION(kFloat)},
+  });
+
+  TestModel(valid_places, Place({TARGET(kOpenCL), PRECISION(kFloat)}));
+}
 
 }  // namespace lite
 }  // namespace paddle

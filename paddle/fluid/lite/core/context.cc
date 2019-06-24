@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/lite/core/context.h"
 
+#ifdef LITE_WITH_OPENCL
+DEFINE_string(cl_path, "/data/local/tmp/opencl", "The OpenCL kernels path.");
+#endif
+
 namespace paddle {
 namespace lite {}  // namespace lite
 }  // namespace paddle

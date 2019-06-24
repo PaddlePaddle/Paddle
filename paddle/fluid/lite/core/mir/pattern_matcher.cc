@@ -325,7 +325,7 @@ std::string PMPattern::DotString() const {
   // Create Nodes
   std::unordered_map<PMNode *, std::string> node2dot;
   for (const auto &node : nodes()) {
-    std::string node_id = "Node" + std::to_string(id++);
+    std::string node_id = string_format("Node%d", id++);
     dot.AddNode(node_id, {}, node->name());
     node2dot[node.get()] = node_id;
   }
