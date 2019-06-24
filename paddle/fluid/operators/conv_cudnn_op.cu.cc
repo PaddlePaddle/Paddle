@@ -120,7 +120,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
-    size_t workspace_size;  // final workspace to allocate.
+    size_t workspace_size = 0;  // final workspace to allocate.
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo{};
     

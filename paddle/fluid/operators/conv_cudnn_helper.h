@@ -57,8 +57,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
+    bool has_got_workspace_size = true;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
+    size_t workspace_size = 0;
     algo_t algo; 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -88,7 +90,23 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           args.odesc.desc(), kNUM_CUDNN_FWD_ALGS, &perf_count,
 	  perf_results.get()));      
       algo = (perf_results.get())[best_algo_idx].algo;
-#else
+      workspace_size = GetWorkspaceSize(args, algo);
+
+      if (workspace_size > workspace_size_limit){
+	has_got_workspace_size = false;
+	VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+		"the workspace size request("
+		<< workspace_size << ") exceeds the limit("
+	        << workspace_size_limit << ")";
+      }
+      if(!has_got_workspace_size){
+
+        CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+            args.handle, args.idesc.desc(), args.wdesc.desc(), args.cdesc.desc(),
+            args.odesc.desc(), CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+            workspace_size_limit, &algo));
+      }
+#else 
       CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           args.handle, args.idesc.desc(), args.wdesc.desc(), args.cdesc.desc(),
           args.odesc.desc(), CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
@@ -155,10 +173,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
-
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-
+    size_t workspace_size =0;
+    bool has_got_workspace_size = true;
     algo_t algo;
+
     if (!exhaustive && !deterministic) {
 #if CUDNN_VERSION >= 7001
     int perf_count;
@@ -169,7 +188,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         args.idesc.desc(), kNUM_CUDNN_BWD_DATA_ALGS, &perf_count,
         perf_results.get()));
     algo = (perf_results.get())[best_algo_idx].algo;
-#elif CUDNN_VERSION < 7500
+#if CUDNN_VERSION < 7500
     int stride_dim = args.x->dims().size() - 2;
     bool blacklist = std::any_of(args.s.begin(), args.s.begin() + stride_dim,
                         [=](int n) { return n != 1; });
@@ -181,6 +200,21 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                               CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)) {
           algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
         }
+#endif
+      workspace_size = GetWorkspaceSize(args, algo);
+      if (workspace_size > workspace_size_limit){
+	has_got_workspace_size = false;
+	VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+		"the workspace size request("
+		<< workspace_size << ") exceeds the limit("
+	        << workspace_size_limit << ")";
+      }
+      if(!has_got_workspace_size){
+        CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
+            args.handle, args.wdesc.desc(), args.odesc.desc(), args.cdesc.desc(),
+            args.idesc.desc(), CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+            workspace_size_limit, &algo));
+      }
 #else
       CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
           args.handle, args.wdesc.desc(), args.odesc.desc(), args.cdesc.desc(),
@@ -253,8 +287,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
-
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
+    size_t workspace_size = 0;
+    bool has_got_workspace_size = true;
 
     algo_t algo;
     if (!exhaustive && !deterministic) {
@@ -270,6 +305,22 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               args.cdesc.desc(), args.wdesc.desc(), kNUM_CUDNN_BWD_FILTER_ALGS,
 	      &perf_count, perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
+      workspace_size = GetWorkspaceSize(args, algo);
+      if (workspace_size > workspace_size_limit){
+	has_got_workspace_size = false;
+	VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+		"the workspace size request("
+		<< workspace_size << ") exceeds the limit("
+	        << workspace_size_limit << ")";
+      }
+      if(!has_got_workspace_size){
+        CUDNN_ENFORCE(
+            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+                args.handle, args.idesc.desc(), args.odesc.desc(),
+                args.cdesc.desc(), args.wdesc.desc(),
+                CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+                workspace_size_limit, &algo));
+      }
 #else
       CUDNN_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
