@@ -49,6 +49,7 @@ class TestFillConstantOp2(OpTest):
     def test_check_output(self):
         self.check_output()
 
+
 class TestFillConstantOp3(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified int64 value
@@ -75,6 +76,7 @@ class TestFillConstantOp4(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
 
 class TestFillConstantOpWithSelectedRows(OpTest):
     def check_with_place(self, place):
