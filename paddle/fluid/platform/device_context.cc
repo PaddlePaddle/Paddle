@@ -407,6 +407,8 @@ thread_local int cur_thread_id = 0;
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
+#define MKLDNN_CAP 100
+#define MKLDNN_CLEAR_PERCENTAGE 10
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
@@ -429,14 +431,23 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   }
 
   // Find Key in found (or newly created) KeyBlob
-  auto key_it = pBlob->find(name);
+  auto key_it = std::find_if(
+      pBlob->begin(), pBlob->end(),
+      [=](std::pair<std::string, std::shared_ptr<void>> const& obj) {
+        return obj.first == name;
+      });
 
   if (key_it == pBlob->end()) {
-    (*pBlob)[name] = data;  // create new blob
+    if ((tid == 1) && (pBlob->size() >= MKLDNN_CAP)) {
+      VLOG(3) << "remove head " << pBlob->begin()->first << " in SetBlob\n";
+      pBlob->erase(pBlob->begin());
+      //         pBlob->clear();
+    }
+    pBlob->push_back(std::make_pair(name, data));
   } else {
     key_it->second = data;  // set data to existing blob
   }
-
+  VLOG(3) << "SetBlob " << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -456,7 +467,11 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
   pBlob = map_it->second;
 
   // Find Blob via name
-  auto key_it = pBlob->find(name);
+  auto key_it = std::find_if(
+      pBlob->begin(), pBlob->end(),
+      [=](std::pair<std::string, std::shared_ptr<void>> const& obj) {
+        return obj.first == name;
+      });
 
   if (key_it == pBlob->end()) return nullptr;
 
