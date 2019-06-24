@@ -208,3 +208,33 @@ if (WITH_TESTING)
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "GoogleNet_inference.tar.gz")
     endif()
 endif()
+
+# for publish
+set(INFER_LITE_PUBLISH_ROOT "${CMAKE_BINARY_DIR}/inference_lite_lib" CACHE STRING "inference publish path")
+message(STATUS "publish inference lib to ${INFER_LITE_PUBLISH_ROOT}")
+
+# The final target for publish lite lib
+add_custom_target(publish_inference_lite)
+
+#cc_library(inference_cxx_lib DEPS cxx_api_lite)
+add_custom_target(publish_inference_cxx_lib ${TARGET}
+        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+        COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+        COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/libpaddle_api_full.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+        )
+add_dependencies(publish_inference_cxx_lib paddle_api_full)
+add_dependencies(publish_inference_lite publish_inference_cxx_lib)
+
+if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    #cc_library(inference_mobile_lib DEPS light_api_lite)
+
+    add_custom_target(publish_inference_mobile_lib ${TARGET}
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/lib"
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/include"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/libpaddle_api_light.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+            )
+    add_dependencies(publish_inference_mobile_lib paddle_api_light)
+    add_dependencies(publish_inference_lite publish_inference_mobile_lib)
+endif()

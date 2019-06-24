@@ -15,9 +15,9 @@
 #include "paddle/fluid/lite/api/light_api.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
-#include "paddle/fluid/lite/core/mir/use_passes.h"
-#include "paddle/fluid/lite/kernels/use_kernels.h"
-#include "paddle/fluid/lite/operators/use_ops.h"
+#include "paddle/fluid/lite/api/paddle_use_kernels.h"
+#include "paddle/fluid/lite/api/paddle_use_ops.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 
 DEFINE_string(optimized_model, "", "");
 

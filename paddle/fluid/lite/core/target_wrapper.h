@@ -16,7 +16,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "paddle/fluid/lite/api/place.h"
+#include "paddle/fluid/lite/api/paddle_place.h"
 #include "paddle/fluid/lite/utils/cp_logging.h"
 
 #ifdef LITE_WITH_CUDA

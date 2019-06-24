@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/api/place.h"
+#include "paddle/fluid/lite/api/paddle_place.h"
 #include <glog/logging.h>
 #include "paddle/fluid/lite/utils/hash.h"
 
