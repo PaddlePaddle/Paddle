@@ -58,9 +58,11 @@ class Dot {
     std::vector<Attr> attrs;
 
     Node(const std::string& name, const std::vector<Attr>& attrs)
-        : name(name),
-          attrs(attrs),
-          id_("node_" + std::to_string(dot_node_counter++)) {}
+        : name(name), attrs(attrs) {
+      std::stringstream ss;
+      ss << "node_" << dot_node_counter++;
+      id_ = ss.str();
+    }
 
     std::string id() const { return id_; }
 

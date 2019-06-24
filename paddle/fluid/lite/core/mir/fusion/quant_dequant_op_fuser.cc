@@ -15,6 +15,7 @@
 #include "paddle/fluid/lite/core/mir/fusion/quant_dequant_op_fuser.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
@@ -57,24 +58,24 @@ void QuantDequantOpFuser::BuildPattern() {
                            ->AsIntermediate();
   std::vector<PMNode*> nodes;
   for (int i = 0; i < times_; i++) {
-    nodes.push_back(VarNode("quantized_op_weight" + std::to_string(i))
+    nodes.push_back(VarNode(string_format("quantized_op_weight%d", i))
                         ->assert_is_op_input(op_type_, weight_name)
                         ->AsInput());
 
-    nodes.push_back(OpNode("quantized_op" + std::to_string(i), op_type_)
+    nodes.push_back(OpNode(string_format("quantized_op%d", i), op_type_)
                         ->assert_is_op(op_type_)
                         ->AsIntermediate());
 
-    nodes.push_back(VarNode("quantized_op_out" + std::to_string(i))
+    nodes.push_back(VarNode(string_format("quantized_op_out%d", i))
                         ->assert_is_op_output(op_type_)
                         ->assert_is_op_input("fake_dequantize_max_abs", "X")
                         ->AsIntermediate());
 
     nodes.push_back(
-        OpNode("dequant_op" + std::to_string(i), "fake_dequantize_max_abs")
+        OpNode(string_format("dequant_op%d", i), "fake_dequantize_max_abs")
             ->assert_is_op("fake_dequantize_max_abs")
             ->AsIntermediate());
-    nodes.push_back(VarNode("dequant_op_out" + std::to_string(i))
+    nodes.push_back(VarNode(string_format("dequant_op_out%d", i))
                         ->assert_is_op_output("fake_dequantize_max_abs", "Out")
                         ->AsOutput());
   }
@@ -108,11 +109,11 @@ void QuantDequantOpFuser::InsertNewNode(SSAGraph* graph,
 
   std::vector<Node*> nodes;
   for (int i = 0; i < times_; i++) {
-    nodes.push_back(matched.at("quantized_op_weight" + std::to_string(i)));
-    nodes.push_back(matched.at("quantized_op" + std::to_string(i)));
-    nodes.push_back(matched.at("quantized_op_out" + std::to_string(i)));
-    nodes.push_back(matched.at("dequant_op" + std::to_string(i)));
-    nodes.push_back(matched.at("dequant_op_out" + std::to_string(i)));
+    nodes.push_back(matched.at(string_format("quantized_op_weight%d", i)));
+    nodes.push_back(matched.at(string_format("quantized_op%d", i)));
+    nodes.push_back(matched.at(string_format("quantized_op_out%d", i)));
+    nodes.push_back(matched.at(string_format("dequant_op%d", i)));
+    nodes.push_back(matched.at(string_format("dequant_op_out%d", i)));
   }
   int bit_length = quant_op->stmt()->op_info()->GetAttr<int>("bit_length");
   auto* scope = quant_op->stmt()->op()->scope();

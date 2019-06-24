@@ -31,6 +31,7 @@ enum class TargetType : int {
   kX86,
   kCUDA,
   kARM,
+  kOpenCL,
   kAny,  // any target
   NUM,   // number of fields.
 };
@@ -69,8 +70,8 @@ static size_t PrecisionTypeLength(PrecisionType type) {
 #define DATALAYOUT(item__) paddle::lite::DataLayoutType::item__
 
 static const std::string& TargetToStr(TargetType target) {
-  static const std::string target2string[] = {"unk",  "host", "x86",
-                                              "cuda", "arm",  "any"};
+  static const std::string target2string[] = {"unk", "host",   "x86", "cuda",
+                                              "arm", "opencl", "any"};
   auto x = static_cast<int>(target);
   CHECK_LT(x, static_cast<int>(TARGET(NUM)));
   return target2string[x];
@@ -92,8 +93,8 @@ static const std::string& DataLayoutToStr(DataLayoutType layout) {
 }
 
 static const std::string& TargetRepr(TargetType target) {
-  static const std::string target2string[] = {"kUnk", "kHost", "kX86", "kCUDA",
-                                              "kAny"};
+  static const std::string target2string[] = {
+      "kUnk", "kHost", "kX86", "kCUDA", "kARM", "kOpenCL", "kAny"};
   auto x = static_cast<int>(target);
   CHECK_LT(x, static_cast<int>(TARGET(NUM)));
   return target2string[x];

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -35,7 +36,12 @@ class CLHelper {
   void AddKernel(const std::string &kernel_name, const std::string &file_name,
                  const std::string &options = "");
 
-  cl::Kernel &KernelAt(const int index);
+  cl::Kernel &GetKernel(const int index);
+  cl::Kernel &GetKernel(const std::string &name) {
+    auto it = kernel_offset_.find(name);
+    CHECK(it != kernel_offset_.end());
+    return GetKernel(it->second);
+  }
 
   cl::CommandQueue &OpenCLCommandQueue();
 
@@ -45,7 +51,8 @@ class CLHelper {
 
  private:
   CLContext *context_{nullptr};
-  std::vector<std::unique_ptr<cl::Kernel>> kernels;
+  std::map<std::string, int> kernel_offset_;
+  std::vector<std::unique_ptr<cl::Kernel>> kernels_;
 };
 
 }  // namespace lite

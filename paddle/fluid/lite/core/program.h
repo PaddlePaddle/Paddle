@@ -140,7 +140,8 @@ class RuntimeProgram {
 
   void Run() {
     for (auto& inst : instructions_) {
-      VLOG(3) << ">> Running kernel: " << inst.op()->op_info()->Repr();
+      VLOG(4) << ">> Running kernel: " << inst.op()->op_info()->Repr()
+              << " on Target " << TargetToStr(inst.kernel()->target());
       inst.Run();
     }
   }

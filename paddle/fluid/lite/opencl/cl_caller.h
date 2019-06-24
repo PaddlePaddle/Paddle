@@ -22,8 +22,13 @@ namespace paddle {
 namespace lite {
 
 bool InitOpenCLEngine(std::string cl_path);
-void elementwise_add(CLContext* context, float* in, const DDim& in_dim,
-                     float* bias, const DDim& bias_dim, float* out,
+
+/// An elementwise_add method to embed OpenCL logic inside, it is used as a
+/// black box so that the framework can remain simple.
+/// NOTE Currently, these methods are quite expensive, we will optimize them
+/// latter.
+void elementwise_add(CLContext* context, const float* in, const DDim& in_dim,
+                     const float* bias, const DDim& bias_dim, float* out,
                      const DDim& out_dim);
 
 }  // namespace lite

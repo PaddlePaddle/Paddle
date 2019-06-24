@@ -65,7 +65,7 @@ TEST(cl_test, kernel_test) {
   helper->AddKernel("elementwise_add", "elementwise_add_kernel.cl");
   helper->AddKernel("pool_max", "pool_kernel.cl");
   helper->AddKernel("elementwise_add", "elementwise_add_kernel.cl");
-  auto kernel = helper->KernelAt(2);
+  auto kernel = helper->GetKernel(2);
 
   std::unique_ptr<float[]> in_data(new float[1024 * 512]);
   for (int i = 0; i < 1024 * 512; i++) {

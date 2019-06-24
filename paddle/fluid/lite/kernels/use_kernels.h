@@ -61,3 +61,6 @@ USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
 USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
 USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, device_to_host);
 #endif
+#ifdef LITE_WITH_OPENCL
+USE_LITE_KERNEL(elementwise_add, kOpenCL, kFloat, kNCHW, def);
+#endif
