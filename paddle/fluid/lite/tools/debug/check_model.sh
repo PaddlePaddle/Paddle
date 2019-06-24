@@ -158,10 +158,10 @@ function main {
                 PY_OUTPUT_TENSOR="${i#*=}"
                 shift
                 ;;
-	    --build_root_dir=*)
-		BUILD_ROOT_DIR="${i#*=}"
-		shift
-		;;
+            --build_root_dir=*)
+                BUILD_ROOT_DIR="${i#*=}"
+                shift
+                ;;
             debug_cpp_stage)
                 run_cpp_debug_tool
                 shift
