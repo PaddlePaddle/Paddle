@@ -189,7 +189,7 @@ class Conv2D(layers.Layer):
         def _get_default_param_initializer():
             filter_elem_num = filter_size[0] * filter_size[
                 1] * self._num_channels
-            std = (2.0 / filter_elem_num) ** 0.5
+            std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
@@ -406,7 +406,7 @@ class Conv3D(layers.Layer):
         def _get_default_param_initializer():
             filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
                 2] * num_channels
-            std = (2.0 / filter_elem_num) ** 0.5
+            std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
@@ -632,8 +632,8 @@ class Conv3DTranspose(layers.Layer):
                 self._filter_size, 3, 'conv3d_transpose.filter_size')
 
         filter_shape = [
-                           self._input_channel, self._num_filters // self._groups
-                       ] + self._filter_size
+            self._input_channel, self._num_filters // self._groups
+        ] + self._filter_size
         self._img_filter = self.create_parameter(
             dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
         if self._bias_attr:
@@ -916,9 +916,9 @@ class FC(layers.Layer):
             input_shape = inp.shape
 
             param_shape = [
-                              reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
-                                     1)
-                          ] + [self._size]
+                reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
+                       1)
+            ] + [self._size]
             self.__w.append(
                 self.add_parameter(
                     '_w%d' % i,
@@ -1244,7 +1244,7 @@ class Embedding(layers.Layer):
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-                size[0] + padding_idx)
+            size[0] + padding_idx)
 
         self._param_attr = param_attr
         self._dtype = dtype
