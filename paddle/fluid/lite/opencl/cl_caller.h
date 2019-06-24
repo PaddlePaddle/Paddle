@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
-#include "paddle/fluid/lite/opencl/cl_context.h"
+#include "paddle/fluid/lite/opencl/cl_helper.h"
 
 namespace paddle {
 namespace lite {
@@ -27,7 +27,7 @@ bool InitOpenCLEngine(std::string cl_path);
 /// black box so that the framework can remain simple.
 /// NOTE Currently, these methods are quite expensive, we will optimize them
 /// latter.
-void elementwise_add(CLContext* context, const float* in, const DDim& in_dim,
+void elementwise_add(CLHelper* helper, const float* in, const DDim& in_dim,
                      const float* bias, const DDim& bias_dim, float* out,
                      const DDim& out_dim);
 

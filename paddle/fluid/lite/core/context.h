@@ -236,12 +236,15 @@ class Context<TargetType::kOpenCL> {
 
   void CopySharedTo(const OpenClContext* ctx) {
     ctx->cl_context_ = cl_context_;
+    ctx->cl_helper_ = cl_helper_;
   }
 
  private:
   void PrepareKernels() {
     cl_helper_->AddKernel("elementwise_add", "elementwise_add_kernel.cl");
+    cl_helper_->AddKernel("channel_add", "channel_add_kernel.cl");
     cl_helper_->AddKernel("pool_max", "pool_kernel.cl");
+    cl_helper_->AddKernel("pool_avg", "pool_kernel.cl");
   }
 };
 #endif

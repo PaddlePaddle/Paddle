@@ -156,8 +156,7 @@ bool CLEngine::InitializeDevice() {
   if (ext_data.find("cl_khr_fp16") != std::string::npos) {
     LOG(INFO) << "The chosen device supports the half data type.";
   } else {
-    LOG(ERROR) << "The chosen device doesn't support the half data type!";
-    return false;
+    LOG(INFO) << "The chosen device doesn't support the half data type!";
   }
   auto max_units = device_->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
   LOG(INFO) << "The chosen device has " << max_units << " compute units.";
