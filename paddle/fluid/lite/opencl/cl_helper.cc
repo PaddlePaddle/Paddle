@@ -29,17 +29,18 @@ void CLHelper::AddKernel(const std::string &kernel_name,
   CHECK(context_ != nullptr) << "Please use set_context first!";
   VLOG(3) << " --- begin to add kernel ---";
   auto kernel = context_->GetKernel(kernel_name, file_name, options);
-  kernels.emplace_back(std::move(kernel));
+  kernels_.emplace_back(std::move(kernel));
+  kernel_offset_[kernel_name] = kernels_.size() - 1;
   VLOG(3) << " --- end to add kernel --- ";
 }
 
-cl::Kernel &CLHelper::KernelAt(const int index) {
-  VLOG(3) << " --- kernel count: " << kernels.size() << " --- ";
-  CHECK(static_cast<size_t>(index) < kernels.size())
+cl::Kernel &CLHelper::GetKernel(const int index) {
+  VLOG(3) << " --- kernel count: " << kernels_.size() << " --- ";
+  CHECK(static_cast<size_t>(index) < kernels_.size())
       << "The index must be less than the size of kernels.";
-  CHECK(kernels[index] != nullptr)
+  CHECK(kernels_[index] != nullptr)
       << "The target kernel pointer cannot be null.";
-  return *(kernels[index]);
+  return *(kernels_[index]);
 }
 
 cl::CommandQueue &CLHelper::OpenCLCommandQueue() {

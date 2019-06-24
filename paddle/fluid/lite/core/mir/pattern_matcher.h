@@ -30,6 +30,7 @@
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/model_parser/pb/op_desc.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
@@ -228,7 +229,7 @@ class PMPattern {
   FRIEND_TEST(PMPattern, NewNode);
 #endif
 
-  static std::string NewID() { return "pmnode-" + std::to_string(id_++); }
+  static std::string NewID() { return string_format("pmnode-%d", id_++); }
 
   std::vector<std::unique_ptr<PMNode>> nodes_;
   std::vector<edge_t> edges_;
