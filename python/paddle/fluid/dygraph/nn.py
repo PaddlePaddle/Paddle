@@ -688,10 +688,10 @@ class Pool2D(layers.Layer):
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
-        pool_type: (string), pooling type, can be “max” for max-pooling and “avg” for average-pooling
-        pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int.
+        pool_type: (string), pooling type, can be "max" for max-pooling and "avg" for average-pooling
+        pool_stride (int|list|tuple): The pool stride size. if pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
+            the pool stride size will be a square of an int.
         pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
             Otherwise, the pool padding size will be a square of an int.
