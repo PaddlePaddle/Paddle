@@ -22,8 +22,8 @@ __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 class BasicGRUUnit(Layer):
     """
     ****
-    BasicGRUUnit class, Using basic operator to build GRU
-    The algorithm can be described as the code below.
+    BasicGRUUnit class, using basic operators to build GRU
+    The algorithm can be described as the equations below.
 
         .. math::
             u_t & = actGate(W_ux xu_{t} + W_uh h_{t-1} + b_u)
@@ -35,7 +35,7 @@ class BasicGRUUnit(Layer):
             h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
 
     Args:
-        name_scope(string) : The name scope used to identify parameter and bias name
+        name_scope(string) : The name scope used to identify parameters and biases
         hidden_size (integer): The hidden size used in the Unit.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
@@ -169,7 +169,7 @@ def basic_gru(input,
         init_hidden(Variable|None): The initial hidden state of the GRU
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-                       can be reshape to tensor with ( num_layers x 2 x batch_size x hidden_size) to use.
+                       and can be reshaped to tensor with ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
         hidden_size (int): Hidden size of the GRU
         num_layers (int): The total number of layers of the GRU
@@ -198,7 +198,7 @@ def basic_gru(input,
 
     Returns:
         rnn_out(Tensor),last_hidden(Tensor)
-            - rnn_out is result of GRU hidden, shape is (seq_len x batch_size x hidden_size) \
+            - rnn_out is result of GRU hidden, with shape (seq_len x batch_size x hidden_size) \
               if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
             - last_hidden is the hidden state of the last step of GRU \
               shape is ( num_layers x batch_size x hidden_size ) \
@@ -367,7 +367,7 @@ def basic_lstm(input,
                dtype='float32',
                name='basic_lstm'):
     """
-    LSTM implementation using basic operator, support multiple layers and bidirection LSTM.
+    LSTM implementation using basic operators, supports multiple layers and bidirection LSTM.
 
     .. math::
            i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)
@@ -423,17 +423,17 @@ def basic_lstm(input,
         name(string): Name used to identify parameters and biases
 
     Returns:
-        rnn_out(Tensor), last_hidden(Tensor), la
-            - rnn_out is result of LSTM hidden, shape is (seq_len x batch_size x hidden_size) \
-              if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+        rnn_out(Tensor), last_hidden(Tensor), last_cell(Tensor)
+            - rnn_out is the result of LSTM hidden, shape is (seq_len x batch_size x hidden_size) \
+              if is_bidirec set to True, it's shape will be ( seq_len x batch_sze x hidden_size*2)
             - last_hidden is the hidden state of the last step of LSTM \
-              shape is ( num_layers x batch_size x hidden_size ) \
-              if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size),
-              can be reshape to a tensor ( num_layers x 2 x batch_size x hidden_size)  to use.
+              with shape ( num_layers x batch_size x hidden_size ) \
+              if is_bidirec set to True, it's shape will be ( num_layers*2 x batch_size x hidden_size),
+              and can be reshaped to a tensor ( num_layers x 2 x batch_size x hidden_size)  to use.
             - last_cell is the hidden state of the last step of LSTM \
-              shape is ( num_layers x batch_size x hidden_size ) \
-              if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size),
-              can be reshape to a tensor ( num_layers x 2 x batch_size x hidden_size)  to use.
+              with shape ( num_layers x batch_size x hidden_size ) \
+              if is_bidirec set to True, it's shape will be ( num_layers*2 x batch_size x hidden_size),
+              and can be reshaped to a tensor ( num_layers x 2 x batch_size x hidden_size)  to use.
 
     Examples:
         .. code-block:: python
@@ -663,10 +663,10 @@ class BasicLSTMUnit(Layer):
             of LSTM unit.
             If it is set to None or one attribute of ParamAttr, lstm_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
+            is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
                                   Default: 'fluid.layers.sigmoid'
-        activation (function|None): The activation function for cell (actNode).
+        activation (function|None): The activation function for cells (actNode).
                              Default: 'fluid.layers.tanh'
         forget_bias(float|1.0): forget bias used when computing forget gate
         dtype(string): data type used in this unit
