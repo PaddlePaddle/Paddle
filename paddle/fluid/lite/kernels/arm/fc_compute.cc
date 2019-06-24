@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
+#include <vector>
 #include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
-
 namespace paddle {
 namespace lite {
 namespace kernels {
@@ -52,6 +52,12 @@ void FcCompute::PrepareForRun() {
         t_data[i++] = w_data[kk * n_ + nn];
       }
     }
+  }
+
+  if (m_ > 1) {
+    int hblock = lite::arm::math::get_hblock(ctx.arch());
+    int m_round = hblock * ((m_ + hblock - 1) / hblock);
+    ctx.ExtendWorkspace(DDimLite(std::vector<int64_t>({m_round * k_})));
   }
 }
 
