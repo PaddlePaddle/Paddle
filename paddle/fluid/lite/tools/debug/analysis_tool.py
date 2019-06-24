@@ -355,8 +355,6 @@ class Analyser(object):
         self._output_diff_nodes(results, diff_vars)
 
     def _output_diff_nodes(self, results, diff_vars):
-        logger.info('is here')
-
         def output_param_info(inputs, outputs, infos, fd):
             def tensor_repr(name):
                 return '\t'.join([

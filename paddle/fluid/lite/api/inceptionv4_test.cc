@@ -63,9 +63,7 @@ TEST(InceptionV4, test) {
                               0.00070094, 0.00080584, 0.00044525, 0.00074907,
                               0.00059774, 0.00063654});
   for (int i = 0; i < results.size(); ++i) {
-    // TODO(sangoly): fix assert
-    // EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
-    LOG(INFO) << "out -> " << out->data<float>()[i];
+    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
   }
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 1);
