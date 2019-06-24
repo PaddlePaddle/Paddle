@@ -1,4 +1,4 @@
-cc_library(debug_utils_lite SRCS debug_utils.cc)
+cc_library(debug_utils_lite SRCS debug_utils.cc DEPS op_params_lite)
 
 lite_cc_binary(lite_model_debug_tool SRCS model_debug_tool.cc
     DEPS
