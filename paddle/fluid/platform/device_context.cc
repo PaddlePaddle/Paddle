@@ -439,7 +439,8 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 
   if (key_it == pBlob->end()) {
     if ((tid == 1) && (pBlob->size() >= MKLDNN_CAP)) {
-      VLOG(3) << "remove head " << pBlob->begin()->first << " in SetBlob\n";
+      VLOG(3) << "SetBlob: tid=" << tid << ", remove head blob "
+              << pBlob->begin()->first << "\n";
       pBlob->erase(pBlob->begin());
       //         pBlob->clear();
     }
@@ -447,7 +448,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   } else {
     key_it->second = data;  // set data to existing blob
   }
-  VLOG(3) << "SetBlob " << name << "\n";
+  VLOG(3) << "SetBlob: tid=" << tid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -463,7 +464,10 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);
-  if (map_it == pMap->end()) return nullptr;
+  if (map_it == pMap->end()) {
+    VLOG(3) << "GetBlob: tid=" << tid << ", miss tid\n";
+    return nullptr;
+  }
   pBlob = map_it->second;
 
   // Find Blob via name
@@ -473,8 +477,12 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
         return obj.first == name;
       });
 
-  if (key_it == pBlob->end()) return nullptr;
+  if (key_it == pBlob->end()) {
+    VLOG(3) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
+    return nullptr;
+  }
 
+  VLOG(3) << "GetBlob tid=" << tid << ", get blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return key_it->second;
 }
