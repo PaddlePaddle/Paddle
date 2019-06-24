@@ -106,13 +106,17 @@ size_t get_mem_size() {
 }
 
 void get_cpu_arch(std::vector<ARMArch>* archs, const int cpu_num) {
-  archs->clear();
+  archs->resize(cpu_num);
+  for (int i = 0; i < cpu_num; ++i) {
+    archs->at(i) = kARMArch_UNKOWN;
+  }
 #ifdef LITE_WITH_LINUX
   //! get CPU ARCH
   FILE* fp = fopen("/proc/cpuinfo", "rb");
   if (!fp) {
     return;
   }
+  int cpu_idx = 0;
   char line[1024];
   while (!feof(fp)) {
     char* s = fgets(line, 1024, fp);
@@ -120,77 +124,73 @@ void get_cpu_arch(std::vector<ARMArch>* archs, const int cpu_num) {
       break;
     }
     if (strstr(line, "part") != NULL) {
+      ARMArch arch_type = kARMArch_UNKOWN;
       int arch_id = 0;
       sscanf(s, "CPU part\t: %x", &arch_id);
       switch (arch_id) {
         case 0xd03:
-          archs->push_back(kA53);
+          arch_type = kA53;
           break;
         case 0xd05:
-          archs->push_back(kA55);
+          arch_type = kA55;
           break;
         case 0xd07:
-          archs->push_back(kA57);
+          arch_type = kA57;
           break;
         case 0xd08:
-          archs->push_back(kA72);
+          arch_type = kA72;
           break;
         case 0xd09:
-          archs->push_back(kA73);
+          arch_type = kA73;
           break;
         case 0xd0a:
-          archs->push_back(kA75);
+          arch_type = kA75;
           break;
         case 0xd40:
-          archs->push_back(kA76);
+          arch_type = kA76;
           break;
         case 0x804:
           // 855
-          archs->push_back(kA76);
+          arch_type = kA76;
           break;
         case 0x805:
           // 855
-          archs->push_back(kA55);
+          arch_type = kA55;
           break;
         case 0x802:
           // 845
-          archs->push_back(kA75);
+          arch_type = kA75;
           break;
         case 0x803:
           // 845
-          archs->push_back(kA55);
+          arch_type = kA55;
           break;
         case 0x801:
           // 835
-          archs->push_back(kA73);
+          arch_type = kA73;
           break;
         case 0x800:
           // 835
-          archs->push_back(kA73);
+          arch_type = kA73;
           break;
         case 0x205:
           // 820
-          archs->push_back(kA72);
+          arch_type = kA72;
           break;
         default:
           LOG(ERROR) << "Unknow cpu arch: " << arch_id;
-          archs->push_back(kARMArch_UNKOWN);
       }
+      archs->at(cpu_idx) = arch_type;
+      cpu_idx++;
     }
   }
   fclose(fp);
-  if (archs->size() < cpu_num) {
-    for (int i = archs->size(); i < cpu_num; ++i) {
-      archs->push_back(archs->at(i - 1));
-    }
+  for (; cpu_idx > 0 && cpu_idx < cpu_num; ++cpu_idx) {
+    archs->at(cpu_idx) = archs->at(cpu_idx - 1);
   }
 #elif defined(TARGET_IOS)
   for (int i = 0; i < cpu_num; ++i) {
-    archs->push_back(APPLE);
-  }
-#else
-  for (int i = 0; i < cpu_num; ++i) {
-    archs->push_back(kARMArch_UNKOWN);
+    archs->at(i) = APPLE;
   }
 #endif
 }
@@ -829,9 +829,10 @@ int DeviceInfo::Setup() {
   mem_size_ = get_mem_size();
   get_cpu_arch(&archs_, core_num_);
   // set defalut CPU info
-  SetCacheInfo(0, DEFAULT_L1_CACHE_SIZE);
-  SetCacheInfo(1, DEFAULT_L2_CACHE_SIZE);
-  SetCacheInfo(2, DEFAULT_L3_CACHE_SIZE);
+  SetCacheInfo(0, 1, DEFAULT_L1_CACHE_SIZE);
+  SetCacheInfo(1, 1, DEFAULT_L2_CACHE_SIZE);
+  SetCacheInfo(2, 1, DEFAULT_L3_CACHE_SIZE);
+  LOG(INFO) << "Done";
 #ifdef LITE_WITH_LINUX
   // get max&min freq
   max_freqs_.resize(core_num_);
@@ -936,9 +937,9 @@ void DeviceInfo::SetRunMode(PowerMode mode, int thread_num) {
 }
 
 void DeviceInfo::SetCache(int l1size, int l2size, int l3size) {
-  SetCacheInfo(0, l1size);
-  SetCacheInfo(1, l2size);
-  SetCacheInfo(2, l3size);
+  SetCacheInfo(0, 1, l1size);
+  SetCacheInfo(1, 1, l2size);
+  SetCacheInfo(2, 1, l3size);
   workspace_.Resize({2 * (l1size + l2size)});
 }
 
