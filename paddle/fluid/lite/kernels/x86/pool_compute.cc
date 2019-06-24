@@ -16,6 +16,6 @@
 
 REGISTER_LITE_KERNEL(pool2d, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::PoolCompute<float>, def)
-    .BindInput("x", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();
