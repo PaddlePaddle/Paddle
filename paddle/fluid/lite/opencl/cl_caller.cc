@@ -49,12 +49,12 @@ bool InitOpenCLEngine(std::string cl_path) {
   return engine->IsInitSuccess();
 }
 
-void elementwise_add(CLContext* context, float* in, const DDim& in_dim,
-                     float* bias, const DDim& bias_dim, float* out,
+void elementwise_add(CLContext* context, const float* in, const DDim& in_dim,
+                     const float* bias, const DDim& bias_dim, float* out,
                      const DDim& out_dim) {
   CLHelper helper(context);
   helper.AddKernel("elementwise_add", "elementwise_add_kernel.cl");
-  auto kernel = helper.KernelAt(0);
+  auto kernel = helper.GetKernel(0);
   CLImage in_image;
   in_image.set_tensor_data(in, in_dim);
   in_image.InitNormalCLImage(helper.OpenCLContext());

@@ -23,10 +23,7 @@ namespace paddle {
 namespace lite {
 
 void Predictor::SaveModel(const std::string &dir) {
-#ifndef LITE_WITH_ARM
   MkDirRecur(dir);
-#else
-#endif
   program_->PersistModel(dir, program_desc_);
   LOG(INFO) << "Save model to " << dir;
 }

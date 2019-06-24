@@ -53,7 +53,7 @@ std::ostream& operator<<(std::ostream& os, const CLImage& cl_image) {
   return os;
 }
 
-void CLImage::set_tensor_data(float* tensor_data, const DDim& dim) {
+void CLImage::set_tensor_data(const float* tensor_data, const DDim& dim) {
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
   auto numel = dim.product();
 #else
