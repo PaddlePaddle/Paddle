@@ -85,6 +85,9 @@ function build_single {
 
 function build {
     make lite_compile_deps -j$NUM_CORES_FOR_COMPILE
+
+    # test publish inference lib
+    make publish_inference_lite
 }
 
 # It will eagerly test all lite related unittests.
@@ -104,6 +107,7 @@ function build_test_server {
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
     cmake_x86_for_CI
     build
+
     test_lite $TESTS_FILE
 }
 
@@ -223,6 +227,9 @@ function build_arm {
 
     cmake_arm ${os} ${abi} ${lang}
     build $TESTS_FILE
+
+    # test publish inference lib
+    make publish_inference_lite
 }
 
 # $1: ARM_TARGET_OS in "android" , "armlinux"

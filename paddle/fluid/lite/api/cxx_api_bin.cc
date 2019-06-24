@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include <chrono>  // NOLINT
-#include "paddle/fluid/lite/core/mir/use_passes.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
