@@ -10,10 +10,17 @@ NUM_CORES_FOR_COMPILE=8
 
 # for code gen, a source file is generated after a test, but is dependended by some targets in cmake.
 # here we fake an empty file to make cmake works.
-function prepare_for_codegen {
+function prepare_workspace {
     # in build directory
-    mkdir -p ./paddle/fluid/lite/gen_code
-    touch ./paddle/fluid/lite/gen_code/__generated_code__.cc
+    # 1. Prepare gen_code file
+    GEN_CODE_PATH_PREFIX=paddle/fluid/lite/gen_code
+    mkdir -p ./${GEN_CODE_PATH_PREFIX}
+    touch ./${GEN_CODE_PATH_PREFIX}/__generated_code__.cc
+
+    # 2.Prepare debug tool
+    DEBUG_TOOL_PATH_PREFIX=paddle/fluid/lite/tools/debug
+    mkdir -p ./${DEBUG_TOOL_PATH_PREFIX}
+    cp ../${DEBUG_TOOL_PATH_PREFIX}/analysis_tool.py ./${DEBUG_TOOL_PATH_PREFIX}/
 }
 
 function check_need_ci {
@@ -21,7 +28,7 @@ function check_need_ci {
 }
 
 function cmake_x86 {
-    prepare_for_codegen
+    prepare_workspace
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
@@ -44,7 +51,7 @@ function cmake_opencl {
 
 # This method is only called in CI.
 function cmake_x86_for_CI {
-    prepare_for_codegen # fake an empty __generated_code__.cc to pass cmake.
+    prepare_workspace # fake an empty __generated_code__.cc to pass cmake.
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=ON
 
     # Compile and execute the gen_code related test, so it will generate some code, and make the compilation reasonable.
@@ -56,7 +63,7 @@ function cmake_x86_for_CI {
 }
 
 function cmake_gpu {
-    prepare_for_codegen
+    prepare_workspace
     cmake .. " -DWITH_GPU=ON {common_flags} -DLITE_WITH_GPU=ON"
 }
 
@@ -164,6 +171,7 @@ function test_arm_model {
 }
 
 function cmake_arm {
+    prepare_workspace
     # $1: ARM_TARGET_OS in "android" , "armlinux"
     # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
     # $3: ARM_TARGET_LANG in "gcc" "clang"
