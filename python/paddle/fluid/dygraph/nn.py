@@ -697,7 +697,7 @@ class Pool2D(layers.Layer):
             Otherwise, the pool padding size will be a square of an int.
         global_pooling (bool): (bool, default false) Whether to use the global pooling. If global_pooling = true,
             kernel size and paddings will be ignored
-        use_cudnn (bool): (bool, default True) Onlyceil_mode (bool) – (bool, default false) Whether to use the ceil
+        use_cudnn (bool): (bool, default True) Onlyceil_mode (bool) - (bool, default false) Whether to use the ceil
             function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used.
         exclusive (bool): Whether to exclude padding points in average pooling
