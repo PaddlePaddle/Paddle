@@ -195,31 +195,35 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       auto loc_loss_dims = ctx->GetInputDim("LocLoss");
       PADDLE_ENFORCE_EQ(loc_loss_dims.size(), 2UL,
                         "The shape of LocLoss is [N, Np].");
-      PADDLE_ENFORCE_EQ(cls_loss_dims[0], loc_loss_dims[0],
-                        "Batch size of ClsLoss and LocLoss must be the same.");
-      PADDLE_ENFORCE_EQ(
-          cls_loss_dims[1], loc_loss_dims[1],
-          "Prior box number of ClsLoss and LocLoss must be the same.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(cls_loss_dims[0], loc_loss_dims[0],
+            "Batch size of ClsLoss and LocLoss must be the same.");
+        PADDLE_ENFORCE_EQ(
+            cls_loss_dims[1], loc_loss_dims[1],
+            "Prior box number of ClsLoss and LocLoss must be the same.");
+      }
     }
 
-    PADDLE_ENFORCE_EQ(
-        cls_loss_dims[0], idx_dims[0],
-        "Batch size of ClsLoss and MatchIndices must be the same.");
-    PADDLE_ENFORCE_EQ(
-        cls_loss_dims[1], idx_dims[1],
-        "Prior box number of ClsLoss and MatchIndices must be the same.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[0], idx_dims[0],
+          "Batch size of ClsLoss and MatchIndices must be the same.");
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[1], idx_dims[1],
+          "Prior box number of ClsLoss and MatchIndices must be the same.");
 
-    PADDLE_ENFORCE_EQ(cls_loss_dims[0], dis_dims[0],
-                      "Batch size of ClsLoss and MatchDist must be the same.");
-    PADDLE_ENFORCE_EQ(
-        cls_loss_dims[1], idx_dims[1],
-        "Prior box number of ClsLoss and MatchDist must be the same.");
+      PADDLE_ENFORCE_EQ(cls_loss_dims[0], dis_dims[0],
+          "Batch size of ClsLoss and MatchDist must be the same.");
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[1], idx_dims[1],
+          "Prior box number of ClsLoss and MatchDist must be the same.");
+    }
 
     auto mining_type =
         GetMiningType(ctx->Attrs().Get<std::string>("mining_type"));
 
     PADDLE_ENFORCE_NE(mining_type, MiningType::kNone,
-                      "mining_type must be hard_example or max_negative");
+        "mining_type must be hard_example or max_negative");
 
     if (mining_type == MiningType::kMaxNegative) {
       auto neg_pos_ratio = ctx->Attrs().Get<float>("neg_pos_ratio");
