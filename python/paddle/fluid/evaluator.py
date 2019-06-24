@@ -324,11 +324,11 @@ class DetectionMAP(Evaluator):
         class_num (int): The class number.
         background_label (int): The index of background label, the background
             label will be ignored. If set to -1, then all categories will be
-            considered, 0 by defalut.
+            considered, 0 by default.
         overlap_threshold (float): The threshold for deciding true/false
-            positive, 0.5 by defalut.
+            positive, 0.5 by default.
         evaluate_difficult (bool): Whether to consider difficult ground truth
-            for evaluation, True by defalut. This argument does not work when
+            for evaluation, True by default. This argument does not work when
             gt_difficult is None.
         ap_version (string): The average precision calculation ways, it must be
             'integral' or '11point'. Please check

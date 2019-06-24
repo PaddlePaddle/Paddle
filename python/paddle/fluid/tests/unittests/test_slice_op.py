@@ -46,6 +46,146 @@ class TestSliceOp(OpTest):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
+class TestSliceOp_decs_dim(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'decrease_axis': self.decrease_axis,
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.starts = [1, 0, 2]
+        self.ends = [2, 3, 4]
+        self.axes = [0, 1, 2]
+        self.decrease_axis = [0]
+        self.out = self.input[1, 0:3, 2:4, :]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
+
+class TestSliceOp_decs_dim_2(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'decrease_axis': self.decrease_axis,
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.starts = [1, 0, 2]
+        self.ends = [2, 1, 4]
+        self.axes = [0, 1, 2]
+        self.decrease_axis = [0, 1]
+        self.out = self.input[1, 0, 2:4, :]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
+
+class TestSliceOp_decs_dim_3(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'decrease_axis': self.decrease_axis,
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.starts = [-1, 0, 2]
+        self.ends = [1000000, 1, 4]
+        self.axes = [0, 1, 2]
+        self.decrease_axis = [0, 1]
+        self.out = self.input[-1, 0, 2:4, :]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
+
+class TestSliceOp_decs_dim_5(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'decrease_axis': self.decrease_axis,
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.starts = [-1]
+        self.ends = [1000000]
+        self.axes = [3]
+        self.decrease_axis = [3]
+        self.out = self.input[:, :, :, -1]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
+
+class TestSliceOp_decs_dim_6(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': self.input}
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'decrease_axis': self.decrease_axis,
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.starts = [0, 1, 2, 3]
+        self.ends = [1, 2, 3, 4]
+        self.axes = [0, 1, 2, 3]
+        self.decrease_axis = [0, 1, 2, 3]
+        self.out = self.input[0, 1, 2, 3:4]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
+
 class TestCase1(TestSliceOp):
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")

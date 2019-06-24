@@ -307,6 +307,7 @@ class StaticRNN(object):
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
                 rnn.update_memory(prev, hidden)  # set prev to hidden
                 rnn.step_output(hidden)
+                rnn.output(word)
 
             result = rnn()
 
@@ -1031,6 +1032,10 @@ def less_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.less_equal(x=label, y=limit)
     """
     helper = LayerHelper("less_equal", **locals())
@@ -1067,6 +1072,10 @@ def greater_than(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.greater_than(x=label, y=limit)
     """
     helper = LayerHelper("greater_than", **locals())
@@ -1103,7 +1112,12 @@ def greater_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.greater_equal(x=label, y=limit)
+
     """
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
@@ -1169,6 +1183,10 @@ def not_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
     helper = LayerHelper("not_equal", **locals())

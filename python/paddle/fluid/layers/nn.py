@@ -637,6 +637,9 @@ def lstm(input,
     Examples:
         .. code-block:: python
             
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
             emb_dim = 256
             vocab_size = 10000
             data = fluid.layers.data(name='x', shape=[-1, 100, 1],
@@ -770,7 +773,7 @@ def dynamic_lstmp(input,
           the matrix of weights from the input gate to the input).
     * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
           matrices for peephole connections. In our implementation, \
-          we use vectors to reprenset these diagonal weight matrices.
+          we use vectors to represent these diagonal weight matrices.
     * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
           bias vector).
     * :math:`\sigma`: The activation, such as logistic sigmoid function.
@@ -2237,7 +2240,7 @@ def conv3d(input,
 
     Args:
         input (Variable): The input image with [N, C, D, H, W] format.
-            num_filters(int): The number of filter. It is as same as the output
+        num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
@@ -3098,18 +3101,24 @@ def batch_norm(input,
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-             will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. Default: None.
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. Default: None.
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+            will save global mean with the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -4905,15 +4914,19 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid.layers as layers
+            import numpy as np
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
-            # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_all(x)  # False 
-            fluid.layers.reduce_all(x, dim=0)  # [True, False]
-            fluid.layers.reduce_all(x, dim=-1)  # [False, True]
-            fluid.layers.reduce_all(x, dim=1,
-                                     keep_dim=True)  # [[False], [True]]
+            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = layers.cast(x, 'bool')
+
+            out = layers.reduce_all(x)  # False 
+            out = layers.reduce_all(x, dim=0)  # [True, False]
+            out = layers.reduce_all(x, dim=-1)  # [False, True]
+            out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
 
     """
     helper = LayerHelper('reduce_all', **locals())
@@ -4955,14 +4968,19 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
+            import numpy as np
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
-            # Each example is followed by the correspending output tensor.
-            fluid.layers.reduce_any(x)  # True
-            fluid.layers.reduce_any(x, dim=0)  # [True, False]
-            fluid.layers.reduce_any(x, dim=-1)  # [True, False]
-            fluid.layers.reduce_any(x, dim=1,
+            x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = layers.cast(x, 'bool')
+
+            out = layers.reduce_any(x)  # True
+            out = layers.reduce_any(x, dim=0)  # [True, False]
+            out = layers.reduce_any(x, dim=-1)  # [True, False]
+            out = layers.reduce_any(x, dim=1,
                                      keep_dim=True)  # [[True], [False]]
 
     """
@@ -5068,7 +5086,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
-            the defalut value is 1e-12.
+            the default value is 1e-12.
         name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
@@ -5998,7 +6016,7 @@ def transpose(x, perm, name=None):
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
-            "It's length shoud be equal to Input(input)'s rank.")
+            "Its length should be equal to Input(input)'s rank.")
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
@@ -6360,6 +6378,8 @@ def softmax_with_cross_entropy(logits,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -9161,7 +9181,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -9401,8 +9423,9 @@ def expand(x, expand_times, name=None):
 
     Examples:
         .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+          
+            import paddle.fluid as fluid
+            x = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
             out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
     """
     helper = LayerHelper('expand', input=x, **locals())
@@ -9785,9 +9808,10 @@ def rank(input):
     Examples:
         .. code-block:: python
 
-            input = layers.data(
-                name="input", shape=[3, 100, 100], dtype="float32")
-            rank = layers.rank(input) # 4
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(name="input", shape=[3, 100, 100], dtype="float32")
+            rank = fluid.layers.rank(input) # 4
     """
 
     ndims = len(input.shape)
@@ -10422,7 +10446,7 @@ def space_to_depth(x, blocksize, name=None):
             space_to_depthed = fluid.layers.space_to_depth(
                 x=data, blocksize=2)
 
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            exe = fluid.Executor(fluid.CPUPlace())
             data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
@@ -11870,14 +11894,24 @@ def where(condition):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid.layers as layers
+             import numpy as np
+
              # condition is a tensor [True, False, True]
-             out = fluid.layers.where(condition) # [[0], [2]]
+             condition = layers.assign(np.array([1, 0, 1], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[0], [2]]
 
              # condition is a tensor [[True, False], [False, True]]
-             out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+             condition = layers.assign(np.array([[1, 0], [0, 1]], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[0, 0], [1, 1]]
 
              # condition is a tensor [False, False, False]
-             out = fluid.layers.where(condition) # [[]]
+             condition = layers.assign(np.array([0, 0, 0], dtype='int32'))
+             condition = layers.cast(condition, 'bool')
+             out = layers.where(condition) # [[]]
+
     """
     helper = LayerHelper("where", **locals())
 
@@ -11904,8 +11938,12 @@ def sign(x):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          import numpy as np
+
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2])) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+
     """
 
     helper = LayerHelper("sign", **locals())

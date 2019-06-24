@@ -58,7 +58,7 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
     AddComment(R"DOC(
 
 Used to initialize tensors with gaussian random generator.
-The defalut mean of the distribution is 0. and defalut standard
+The default mean of the distribution is 0. and default standard
 deviation (std) of the distribution is 1.. Uers can set mean and std
 by input arguments.
 )DOC");

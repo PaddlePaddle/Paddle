@@ -1070,8 +1070,22 @@ class LarsMomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.LarsMomentum(learning_rate=0.2, momentum=0.1, lars_weight_decay=0.001)
-            optimizer.minimize(cost)
+            import paddle.fluid as fluid
+            import numpy as np
+
+            np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+            inp = fluid.layers.data(
+                name="inp", shape=[2, 2], append_batch_size=False)
+            out = fluid.layers.fc(inp, size=3)
+            out = fluid.layers.reduce_sum(out)
+            optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+            optimizer.minimize(out)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            exe.run(
+                feed={"inp": np_inp},
+                fetch_list=[out.name])
     """
     _velocity_acc_str = "velocity"
 
@@ -2458,36 +2472,50 @@ class ExponentialMovingAverage(object):
     Examples:
 
 	.. code-block:: python
-	     
-	     import paddle.fluid as fluid 
 
-	     data = fluid.layers.data(name='x', shape=[5], dtype='float32')
-	     hidden = fluid.layers.fc(input=data, size=10)
-	     cost = fluid.layers.mean(hidden)
+	    import numpy
+	    import paddle
+	    import paddle.fluid as fluid
 
-	     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	     optimizer.minimize(cost)
+	    data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+	    hidden = fluid.layers.fc(input=data, size=10)
+	    cost = fluid.layers.mean(hidden)
 
-             global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
-             ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-             ema.update()
+	    test_program = fluid.default_main_program().clone(for_test=True)
 
-	     # pseudo code
-	     for pass_id in range(args.pass_num):
-		 for data in train_reader():
-		     exe.run(fluid.default_main_program()...)
-                 
-                 # usage 1
-		 with ema.apply(exe):
-		     for data in test_reader():
-			 exe.run(inference_program...)
+	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	    optimizer.minimize(cost)
 
-                 # usage 2
-		 with ema.apply(exe, need_restore=False):
-		     for data in test_reader():
-			 exe.run(inference_program...)
-                 ...
-                 ema.restore(exe)
+	    global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+	    ema.update()
+
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+
+	    for pass_id in range(3):
+		for batch_id in range(6):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=fluid.default_main_program(),
+			feed={'x': data}, 
+			fetch_list=[cost.name])
+
+		# usage 1
+		with ema.apply(exe):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=test_program,
+			    feed={'x': data}, 
+			    fetch_list=[hidden.name])
+			    
+
+		 # usage 2
+		with ema.apply(exe, need_restore=False):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=test_program,
+			    feed={'x': data}, 
+			    fetch_list=[hidden.name])
+		ema.restore(exe)
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
@@ -2576,13 +2604,29 @@ class ExponentialMovingAverage(object):
         Update Exponential Moving Average. Should only call this method in 
         train program.
         """
+        param_master_emas = []
         for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
                 param_ema = self._ema_vars[param.name]
-                ema_t = param_ema * self._decay_var + param * (1 -
-                                                               self._decay_var)
-                layers.assign(input=ema_t, output=param_ema)
+                if self._ema_vars.has_key(param.name + '.master'):
+                    master_ema = self._ema_vars[param.name + '.master']
+                    param_master_emas.append([param_ema, master_ema])
+                else:
+                    ema_t = param_ema * self._decay_var + param * (
+                        1 - self._decay_var)
+                    layers.assign(input=ema_t, output=param_ema)
+
+        # for fp16 params
+        for param_ema, master_ema in param_master_emas:
+            default_main_program().global_block().append_op(
+                type="cast",
+                inputs={"X": master_ema},
+                outputs={"Out": param_ema},
+                attrs={
+                    "in_dtype": master_ema.dtype,
+                    "out_dtype": param_ema.dtype
+                })
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
