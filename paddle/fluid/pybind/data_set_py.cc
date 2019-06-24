@@ -42,33 +42,64 @@ namespace paddle {
 namespace pybind {
 
 void BindDataset(py::module* m) {
-  py::class_<framework::Dataset, std::shared_ptr<framework::Dataset>>(*m,
+  py::class_<framework::Dataset, std::unique_ptr<framework::Dataset>>(*m,
                                                                       "Dataset")
       .def(py::init([](const std::string& name = "MultiSlotDataset") {
         return framework::DatasetFactory::CreateDataset(name);
       }))
-      .def("set_filelist", &framework::Dataset::SetFileList)
-      .def("set_thread_num", &framework::Dataset::SetThreadNum)
-      .def("set_trainer_num", &framework::Dataset::SetTrainerNum)
+      .def("set_filelist", &framework::Dataset::SetFileList,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_thread_num", &framework::Dataset::SetThreadNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_trainer_num", &framework::Dataset::SetTrainerNum,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_fleet_send_batch_size",
-           &framework::Dataset::SetFleetSendBatchSize)
-      .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig)
-      .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
-      .def("get_filelist", &framework::Dataset::GetFileList)
-      .def("get_thread_num", &framework::Dataset::GetThreadNum)
-      .def("get_trainer_num", &framework::Dataset::GetTrainerNum)
+           &framework::Dataset::SetFleetSendBatchSize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_filelist", &framework::Dataset::GetFileList,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_thread_num", &framework::Dataset::GetThreadNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_trainer_num", &framework::Dataset::GetTrainerNum,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_fleet_send_batch_size",
-           &framework::Dataset::GetFleetSendBatchSize)
-      .def("get_hdfs_config", &framework::Dataset::GetHdfsConfig)
-      .def("get_data_feed_desc", &framework::Dataset::GetDataFeedDesc)
+           &framework::Dataset::GetFleetSendBatchSize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_hdfs_config", &framework::Dataset::GetHdfsConfig,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_data_feed_desc", &framework::Dataset::GetDataFeedDesc,
+           py::call_guard<py::gil_scoped_release>())
       .def("register_client2client_msg_handler",
-           &framework::Dataset::RegisterClientToClientMsgHandler)
-      .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
-      .def("release_memory", &framework::Dataset::ReleaseMemory)
-      .def("local_shuffle", &framework::Dataset::LocalShuffle)
-      .def("global_shuffle", &framework::Dataset::GlobalShuffle)
-      .def("get_memory_data_size", &framework::Dataset::GetMemoryDataSize)
-      .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize);
+           &framework::Dataset::RegisterClientToClientMsgHandler,
+           py::call_guard<py::gil_scoped_release>())
+      .def("create_channel", &framework::Dataset::CreateChannel,
+           py::call_guard<py::gil_scoped_release>())
+      .def("create_readers", &framework::Dataset::CreateReaders,
+           py::call_guard<py::gil_scoped_release>())
+      .def("destroy_readers", &framework::Dataset::DestroyReaders,
+           py::call_guard<py::gil_scoped_release>())
+      .def("load_into_memory", &framework::Dataset::LoadIntoMemory,
+           py::call_guard<py::gil_scoped_release>())
+      .def("preload_into_memory", &framework::Dataset::PreLoadIntoMemory,
+           py::call_guard<py::gil_scoped_release>())
+      .def("wait_preload_done", &framework::Dataset::WaitPreLoadDone,
+           py::call_guard<py::gil_scoped_release>())
+      .def("release_memory", &framework::Dataset::ReleaseMemory,
+           py::call_guard<py::gil_scoped_release>())
+      .def("local_shuffle", &framework::Dataset::LocalShuffle,
+           py::call_guard<py::gil_scoped_release>())
+      .def("global_shuffle", &framework::Dataset::GlobalShuffle,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_memory_data_size", &framework::Dataset::GetMemoryDataSize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_queue_num", &framework::Dataset::SetChannelNum,
+           py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind

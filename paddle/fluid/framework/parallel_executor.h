@@ -89,6 +89,5 @@ class ParallelExecutor {
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
 };
-
 }  // namespace framework
 }  // namespace paddle

@@ -54,6 +54,11 @@ def data(name,
     All the input variables of this function are passed in as local variables
     to the LayerHelper constructor.
 
+    Notice that paddle would only use :code:`shape` to infer the shapes of 
+    following variables in the network during compile-time. During run-time, 
+    paddle would not check whether the shape of the feeded data matches the 
+    :code:`shape` settings in this function. 
+
     Args:
        name(str): The name/alias of the function
        shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
@@ -62,9 +67,12 @@ def data(name,
                     should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
-            For example if shape=[1], the resulting shape is [-1, 1].
-          2. If shape contains -1, such as shape=[1, -1],
-            append_batch_size will be enforced to be be False (ineffective).
+            For example if shape=[1], the resulting shape is [-1, 1]. This will 
+            be useful to set different batch size at run time.
+          2. If shape contains -1, such as shape=[1, -1].
+            append_batch_size will be enforced to be be False (ineffective)
+            because PaddlePaddle cannot set more than 1 unknown number on the
+            shape.
        dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
@@ -652,11 +660,11 @@ def py_reader(capacity,
     This layer returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source in Python side. When :code:`Executor::Run()` is invoked in C++
-    side, the data from the generator would be read automatically. Unlike
-    :code:`DataFeeder.feed()`, the data reading process and
-    :code:`Executor::Run()` process can run in parallel using
-    :code:`py_reader`. The :code:`start()` method of the Reader should be
+    source. More details :ref:`user_guide_use_py_reader_en` .  When
+    :code:`Executor::Run()` is invoked in C++ side, the data from the generator
+    would be read automatically. Unlike :code:`DataFeeder.feed()`, the data
+    reading process and :code:`Executor::Run()` process can run in parallel
+    using :code:`py_reader`. The :code:`start()` method of the Reader should be
     called when each pass begins, while the :code:`reset()` method should be
     called when the pass ends and :code:`fluid.core.EOFException` raises.
     Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
@@ -701,11 +709,11 @@ def py_reader(capacity,
          exe = fluid.ParallelExecutor(use_cuda=True)
          for epoch_id in range(10):
              reader.start()
-                 try:
-                     while True:
-                         exe.run(fetch_list=[loss.name])
-                 except fluid.core.EOFException:
-                     reader.reset()
+             try:
+                 while True:
+                     exe.run(fetch_list=[loss.name])
+             except fluid.core.EOFException:
+                 reader.reset()
 
          fluid.io.save_inference_model(dirname='./model',
                                        feeded_var_names=[img.name, label.name],
@@ -740,8 +748,8 @@ def py_reader(capacity,
                                                        dtypes=['float32', 'int64'],
                                                        name='train_reader')
                  train_reader.decorate_paddle_reader(
-                 paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
-                                       buf_size=500))
+                     paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                           buf_size=500))
                  train_loss = network(train_reader)  # some network definition
                  adam = fluid.optimizer.Adam(learning_rate=0.01)
                  adam.minimize(train_loss)
@@ -820,12 +828,16 @@ def create_py_reader_by_data(capacity,
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
+         import paddle.fluid.compiler as compiler
 
          def network(img, label):
              # User defined network. Here a simple regression as example
              predict = fluid.layers.fc(input=img, size=10, act='softmax')
              loss = fluid.layers.cross_entropy(input=predict, label=label)
              return fluid.layers.mean(loss)
+
+         MEMORY_OPT = False
+         USE_CUDA = False
 
          image = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -838,14 +850,23 @@ def create_py_reader_by_data(capacity,
          img, label = fluid.layers.read_file(reader)
          loss = network(img, label)  # some network definition
 
-         fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+         place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
+         exe = fluid.Executor(place)
+         exe.run(fluid.default_startup_program())
 
-         exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-         for epoch_id in range(10):
+         build_strategy = fluid.BuildStrategy()
+         build_strategy.memory_optimize = True if MEMORY_OPT else False
+         compiled_prog = compiler.CompiledProgram(
+             fluid.default_main_program()).with_data_parallel(
+                 loss_name=loss.name,
+                 build_strategy=build_strategy,
+                 exec_strategy=exec_strategy)
+
+         for epoch_id in range(2):
              reader.start()
              try:
                  while True:
-                     exe.run(fetch_list=[loss.name])
+                     exe.run(compiled_prog, fetch_list=[loss.name])
              except fluid.core.EOFException:
                  reader.reset()
     """
@@ -894,7 +915,7 @@ def open_files(filenames,
     Examples:
        .. code-block:: python
 
-         import paddle.fluid. as fluid
+         import paddle.fluid as fluid
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1,)],
@@ -1071,6 +1092,7 @@ def double_buffer(reader, place=None, name=None):
         >>> import paddle.fluid as fluid
         >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
         >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  lod_levels=[0, 0],
         >>>                                  dtypes=['float32', 'int64'])
         >>> reader = fluid.layers.double_buffer(reader)
         >>> img, label = fluid.layers.read_file(reader)
@@ -1139,6 +1161,8 @@ class Preprocessor(object):
 
     Examples:
           .. code-block:: python
+
+           import paddle.fluid as fluid
 
            reader = fluid.layers.io.open_files(
                filenames=['./data1.recordio', './data2.recordio'],
