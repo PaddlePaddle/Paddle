@@ -38,7 +38,7 @@ lite::Tensor *Predictor::GetInput(size_t offset) {
   return &feed_list->at(offset);
 }
 
-const lite::Tensor *Predictor::GetOutput(size_t offset) {
+const lite::Tensor *Predictor::GetOutput(size_t offset) const {
   auto *_fetch_list = program_->exec_scope()->FindVar("fetch");
   CHECK(_fetch_list) << "no fatch variable in exec_scope";
   auto &fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();

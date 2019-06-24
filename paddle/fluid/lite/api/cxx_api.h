@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/lite/api/paddle_api.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/optimizer.h"
 #include "paddle/fluid/lite/core/program.h"
@@ -53,7 +54,7 @@ class Predictor {
   lite::Tensor* GetInput(size_t offset);
 
   // Get offset-th col of fetch results.
-  const lite::Tensor* GetOutput(size_t offset);
+  const lite::Tensor* GetOutput(size_t offset) const;
 
   const framework::proto::ProgramDesc& program_desc() const;
   const lite::Tensor* GetTensor(const std::string& name) const;

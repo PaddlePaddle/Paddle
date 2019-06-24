@@ -2,7 +2,7 @@ if (WITH_TESTING)
     cc_library(lite_gtest_main SRCS lite_gtest_main.cc DEPS gtest gflags)
 endif()
 lite_cc_library(target_wrapper_lite SRCS target_wrapper.cc
-  DEPS target_wrapper_host
+  DEPS target_wrapper_host place_lite
   X86_DEPS target_wrapper_x86
   CUDA_DEPS target_wrapper_cuda)
 lite_cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite)
