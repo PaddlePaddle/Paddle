@@ -898,23 +898,10 @@ static void SetDstMemoryQuantized(
   memory::format dst_fmt;
   PADDLE_ENFORCE(dst_dims <= 5,
                  "Dst memory for quantization can not have dims > 5");
-  switch (dst_dims) {
-    case 1:
-      dst_fmt = memory::format::x;
-      break;
-    case 2:
-      dst_fmt = memory::format::nc;
-      break;
-    case 3:
-      dst_fmt = memory::format::nwc;
-      break;
-    case 4:
-      dst_fmt = memory::format::nhwc;
-      break;
-    case 5:
-      dst_fmt = memory::format::ndhwc;
-      break;
-  }
+
+  dst_fmt = (dst_dims == 4)
+                ? memory::format::nhwc
+                : platform::MKLDNNFormatForSize(dst_dims, memory::format::nhwc);
 
   auto dst_md = platform::MKLDNNMemDesc(
       {dst_tz}, paddle::framework::ToMKLDNNDataType(
