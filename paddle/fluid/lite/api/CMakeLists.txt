@@ -45,6 +45,11 @@ if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
        ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
             --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
     add_dependencies(test_cxx_api_lite extern_lite_download_lite_naive_model_tar_gz)
+    lite_cc_test(test_googlenet_lite SRCS test_googlenet_lite.cc
+       DEPS cxx_api_lite mir_passes lite_api_test_helper
+       ${ops_lite} ${host_kernels} ${x86_kernels}
+       ARGS --model_dir=${LITE_MODEL_DIR}/googlenet)
+    add_dependencies(test_googlenet_lite extern_lite_download_GoogleNet_inference_tar_gz)
 endif()
 
 
