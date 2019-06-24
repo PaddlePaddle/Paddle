@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/arm/mul_compute.h"
+#include <vector>
 #include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
@@ -33,7 +34,7 @@ void MulCompute::Run() {
   const auto* y_data = param.y->data<float>();
   auto* o_data = param.output->mutable_data<float>();
 
-  int m = static_cast<int>(
+  m_ = static_cast<int>(
       param.x->dims().Slice(0, param.x_num_col_dims).production());
   int x_w =
       static_cast<int>(param.x->dims()
@@ -41,26 +42,29 @@ void MulCompute::Run() {
                            .production());
   int y_h = static_cast<int>(
       param.y->dims().Slice(0, param.y_num_col_dims).production());
-  int n =
-      static_cast<int>(param.y->dims()
-                           .Slice(param.y_num_col_dims, param.y->dims().size())
-                           .production());
+  n_ = static_cast<int>(param.y->dims()
+                            .Slice(param.y_num_col_dims, param.y->dims().size())
+                            .production());
 
   CHECK_EQ(x_w, y_h) << "x_w must be equal with y_h";
-  auto k = x_w;
-  if (n == 1) {
-    lite::arm::math::sgemv(x_data, y_data, o_data, false, m, k, false, nullptr,
-                           false);
+  k_ = x_w;
+
+  if (n_ == 1) {
+    lite::arm::math::sgemv(x_data, y_data, o_data, false, m_, k_, false,
+                           nullptr, false);
 
   } else {
     constexpr bool is_tranposed_y = false;
     auto& ctx = this->ctx_->template As<ARMContext>();
+    int hblock = lite::arm::math::get_hblock(ctx.arch());
+    int m_round = hblock * ((m_ + hblock - 1) / hblock);
+    ctx.ExtendWorkspace(DDimLite(std::vector<int64_t>({m_round * k_})));
 
     float* packed_x = static_cast<float*>(ctx.workspace_data<float>()) +
                       ctx.l2_cache_size() / sizeof(float);
-    lite::arm::math::prepackA(packed_x, x_data, k, 0, m, 0, k, false, &ctx);
-    lite::arm::math::sgemm_prepack(packed_x, y_data, nullptr, o_data, m, n, k,
-                                   false, false, is_tranposed_y, &ctx);
+    lite::arm::math::prepackA(packed_x, x_data, k_, 0, m_, 0, k_, false, &ctx);
+    lite::arm::math::sgemm_prepack(packed_x, y_data, nullptr, o_data, m_, n_,
+                                   k_, false, false, is_tranposed_y, &ctx);
   }
 }
 

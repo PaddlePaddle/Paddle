@@ -31,6 +31,9 @@ class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
   void Run() override;
 
   virtual ~MulCompute() = default;
+
+ private:
+  int m_, n_, k_;
 };
 
 }  // namespace arm
