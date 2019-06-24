@@ -31,11 +31,11 @@
 #include <vector>
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include "paddle/fluid/lite/api/lite_api_test_helper.h"
+#include "paddle/fluid/lite/api/paddle_use_kernels.h"
+#include "paddle/fluid/lite/api/paddle_use_ops.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/core/compatible_tensor.h"
-#include "paddle/fluid/lite/core/mir/use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/lite/kernels/use_kernels.h"
-#include "paddle/fluid/lite/operators/use_ops.h"
 
 // for googlenet
 DEFINE_string(model_dir, "", "");

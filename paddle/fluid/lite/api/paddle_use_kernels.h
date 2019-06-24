@@ -17,7 +17,7 @@
  */
 
 #pragma once
-#include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle_lite_factory_helper.h"  // NOLINT
 
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
@@ -61,6 +61,7 @@ USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
 USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
 USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, device_to_host);
 #endif
+
 #ifdef LITE_WITH_OPENCL
 USE_LITE_KERNEL(elementwise_add, kOpenCL, kFloat, kNCHW, def);
 #endif

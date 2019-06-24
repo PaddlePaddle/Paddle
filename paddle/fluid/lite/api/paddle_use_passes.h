@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle_lite_factory_helper.h"  // NOLINT
 
 USE_MIR_PASS(demo);
 USE_MIR_PASS(static_kernel_pick_pass);
