@@ -42,7 +42,7 @@ class Conv2D(layers.Layer):
     and W is the width of the filter. If the groups is greater than 1,
     C will equal the number of input image channels divided by the groups.
     Please refer to UFLDL's `convolution
-    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
+    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`
     for more detials.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
@@ -124,11 +124,7 @@ class Conv2D(layers.Layer):
 
     Examples:
         .. code-block:: python
-          
-          with fluid.dygraph.guard():
-             conv2d = Conv2D( "conv2d", 2, 3)
-             data = to_variable( data )
-             conv = conv2d( data )
+
           from paddle.fluid.dygraph.base import to_variable
           import paddle.fluid as fluid
           from paddle.fluid.dygraph import Conv2D
@@ -193,7 +189,7 @@ class Conv2D(layers.Layer):
         def _get_default_param_initializer():
             filter_elem_num = filter_size[0] * filter_size[
                 1] * self._num_channels
-            std = (2.0 / filter_elem_num)**0.5
+            std = (2.0 / filter_elem_num) ** 0.5
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
@@ -306,6 +302,9 @@ class Conv3D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
+        input (Variable): The input image with [N, C, D, H, W] format.
+            num_filters(int): The number of filter. It is as same as the output
+            image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
@@ -356,7 +355,6 @@ class Conv3D(layers.Layer):
 
           with fluid.dygraph.guard():
               data = numpy.random.random((5, 3, 12, 32, 32)).astype('float32')
-
               conv3d = fluid.dygraph.nn.Conv3D(
                     'Conv3D', num_filters=2, filter_size=3, act="relu")
               ret = conv3d(fluid.dygraph.base.to_variable(data))
@@ -408,7 +406,7 @@ class Conv3D(layers.Layer):
         def _get_default_param_initializer():
             filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
                 2] * num_channels
-            std = (2.0 / filter_elem_num)**0.5
+            std = (2.0 / filter_elem_num) ** 0.5
             return Normal(0.0, std, 0)
 
         self._filter_param = self.create_parameter(
@@ -508,6 +506,7 @@ class Conv3DTranspose(layers.Layer):
            W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
 
     Args:
+        input(Variable): The input image with [N, C, D, H, W] format.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
@@ -633,8 +632,8 @@ class Conv3DTranspose(layers.Layer):
                 self._filter_size, 3, 'conv3d_transpose.filter_size')
 
         filter_shape = [
-            self._input_channel, self._num_filters // self._groups
-        ] + self._filter_size
+                           self._input_channel, self._num_filters // self._groups
+                       ] + self._filter_size
         self._img_filter = self.create_parameter(
             dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
         if self._bias_attr:
@@ -677,27 +676,30 @@ class Conv3DTranspose(layers.Layer):
 
 
 class Pool2D(layers.Layer):
-    # TODO, should delete this class
     """
-    ${comment}
+    The pooling2d operation calculates the output based on the input, pooling_type and ksize, strides,
+    paddings parameters.Input(X) and output(Out) are in NCHW format, where N is batch size, C is the number of channels,
+    H is the height of the feature, and W is the width of the feature.
+    Parameters(ksize, strides, paddings) are two elements. These two elements represent height and width, respectively.
+    The input(X) size and output(Out) size may be different.
 
     Args:
         name_scope(str) : The name of this class.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
-        pool_type: ${pooling_type_comment}
+        pool_type: (string), pooling type, can be “max” for max-pooling and “avg” for average-pooling
         pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
         pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
             Otherwise, the pool padding size will be a square of an int.
-        global_pooling (bool): ${global_pooling_comment}
-        use_cudnn (bool): ${use_cudnn_comment}
-        ceil_mode (bool): ${ceil_mode_comment}
-        name (str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+        global_pooling (bool): (bool, default false) Whether to use the global pooling. If global_pooling = true,
+            kernel size and paddings will be ignored
+        use_cudnn (bool): (bool, default True) Onlyceil_mode (bool) – (bool, default false) Whether to use the ceil
+            function to calculate output height and width. False is the default.
+            If it is set to False, the floor function will be used.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true
 
@@ -713,14 +715,18 @@ class Pool2D(layers.Layer):
 
         .. code-block:: python
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          pool2d = fluid.Pool2D("pool2d",pool_size=2,
+          import paddle.fluid as fluid
+          import numpy
+
+          with fluid.dygraph.guard():
+             data = numpy.random.random((3, 32, 32)).astype('float32')
+
+             pool2d = fluid.dygraph.Pool2D("pool2d",pool_size=2,
                             pool_type='max',
                             pool_stride=1,
                             global_pooling=False)
+             pool2d_res = pool2d(data)
 
-          pool2d_res = pool2d(data)
     """
 
     def __init__(self,
@@ -836,7 +842,7 @@ class FC(layers.Layer):
             out.shape = (1, 2)
 
     Args:
-        name(str): The name of this class.
+        name_scope(str): The name of this class.
         size(int): The number of output units in this layer.
         num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
@@ -861,11 +867,12 @@ class FC(layers.Layer):
 
     Examples:
         .. code-block:: python
-        
+
           from paddle.fluid.dygraph.base import to_variable
           import paddle.fluid as fluid
           from paddle.fluid.dygraph import FC
           import numpy as np
+
           data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
           with fluid.dygraph.guard():
               fc = FC( "fc", 64, num_flatten_dims=2)
@@ -909,9 +916,9 @@ class FC(layers.Layer):
             input_shape = inp.shape
 
             param_shape = [
-                reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
-                       1)
-            ] + [self._size]
+                              reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
+                                     1)
+                          ] + [self._size]
             self.__w.append(
                 self.add_parameter(
                     '_w%d' % i,
@@ -1011,7 +1018,7 @@ class BatchNorm(layers.Layer):
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        name_scope(str): The name of this class.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
@@ -1032,8 +1039,6 @@ class BatchNorm(layers.Layer):
              is not set, the bias is initialized zero. Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        name(string, Default None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
@@ -1050,12 +1055,12 @@ class BatchNorm(layers.Layer):
         Variable: A tensor variable which is the result after applying batch normalization on the input.
 
     Examples:
-
         .. code-block:: python
-            fc = fluid.FC('fc', size=200, param_attr='fc1.w')
-            hidden1 = fc(x)
-            batch_norm = fluid.BatchNorm("batch_norm", 10)
-            hidden2 = batch_norm(hidden1)
+
+          fc = fluid.FC('fc', size=200, param_attr='fc1.w')
+          hidden1 = fc(x)
+          batch_norm = fluid.BatchNorm("batch_norm", 10)
+          hidden2 = batch_norm(hidden1)
     """
 
     def __init__(self,
@@ -1193,11 +1198,13 @@ class Embedding(layers.Layer):
 
     Args:
         name_scope: See base class.
-        size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size of the dictionary of embeddings and the size of each embedding vector respectively.
-
+        size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
+            of the dictionary of embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup. Otherwise the given :attr:`padding_idx` indicates padding the output with zeros whenever lookup encounters it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
+            Otherwise the given :attr:`padding_idx` indicates padding the output with zeros whenever lookup encounters
+            it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
@@ -1209,15 +1216,19 @@ class Embedding(layers.Layer):
 
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          import paddle.fluid.dygraph.base as base
+          import numpy as np
+
           inp_word = np.array([[[1]]]).astype('int64')
           dict_size = 20
           with fluid.dygraph.guard():
-              emb = fluid.Embedding(
+              emb = fluid.dygraph.Embedding(
                   name_scope='embedding',
                   size=[dict_size, 32],
                   param_attr='emb.w',
                   is_sparse=False)
-            static_rlt3 = emb2(base.to_variable(inp_word))
+              static_rlt3 = emb(base.to_variable(inp_word))
     """
 
     def __init__(self,
@@ -1228,13 +1239,12 @@ class Embedding(layers.Layer):
                  padding_idx=None,
                  param_attr=None,
                  dtype='float32'):
-
         super(Embedding, self).__init__(name_scope, dtype)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            size[0] + padding_idx)
+                size[0] + padding_idx)
 
         self._param_attr = param_attr
         self._dtype = dtype
@@ -1481,6 +1491,26 @@ class GRUUnit(layers.Layer):
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import paddle.fluid.dygraph.base as base
+          import numpy
+
+          lod = [[2, 4, 3]]
+          D = 5
+          T = sum(lod[0])
+
+          hidden_input = numpy.random.rand(T, D).astype('float32')
+          with fluid.dygraph.guard():
+              x = numpy.random.random((3, 32, 32)).astype('float32')
+              gru = fluid.dygraph.GRUUnit('gru', size=D * 3)
+              dy_ret = gru(
+                base.to_variable(input), base.to_variable(hidden_input))
+
     """
 
     def __init__(self,
@@ -1544,15 +1574,12 @@ class NCE(layers.Layer):
     Compute and return the noise-contrastive estimation training loss. See
     `Noise-contrastive estimation: A new estimation principle for unnormalized
     statistical models
-     <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
+     <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`.
     By default this operator uses a uniform distribution for sampling.
 
     Args:
         name_scope (str): See base class.
         num_total_classes (int): Total number of classes in all samples
-        sample_weight (Variable|None): A Variable of shape [batch_size, 1]
-            storing a weight for each sample. The default weight for each
-            sample is 1.0.
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of nce. If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -1563,8 +1590,6 @@ class NCE(layers.Layer):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
         num_neg_samples (int): The number of negative classes. The default value is 10.
-        name (str|None): A name for this layer(optional). If set None, the layer
-             will be named automatically. Default: None.
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
@@ -1789,8 +1814,6 @@ class PRelu(layers.Layer):
           element:each element has a weight
         param_attr(ParamAttr|None): The parameter attribute for the learnable
           weight (alpha).
-        name(str|None): A name for this layer(optional). If set None, the layer
-          will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -1799,14 +1822,18 @@ class PRelu(layers.Layer):
 
         .. code-block:: python
 
-        inp_np = np.ones([5, 200, 100, 100]).astype('float32')
-        with fluid.dygraph.guard():
-            mode = 'channel'
-            prelu = fluid.PRelu(
-                'prelu',
-                mode=mode,
-                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
-            dy_rlt = prelu(fluid.dygraph.base.to_variable(inp_np))
+          import paddle.fluid as fluid
+          import numpy as np
+
+          inp_np = np.ones([5, 200, 100, 100]).astype('float32')
+          with fluid.dygraph.guard():
+              mode = 'channel'
+              prelu = fluid.PRelu(
+                 'prelu',
+                 mode=mode,
+                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+              dy_rlt = prelu(fluid.dygraph.base.to_variable(inp_np))
+
     """
 
     def __init__(self, name_scope, mode, param_attr=None):
@@ -2329,7 +2356,6 @@ class GroupNorm(layers.Layer):
                 If it is set to None, the bias is initialized zero. Default: None.
             act(str): Activation to be applied to the output of group normalizaiton.
             data_layout(string|NCHW): Only NCHW is supported.
-            dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
         Returns:
             Variable: A tensor variable which is the result after applying group normalization on the input.
@@ -2536,7 +2562,9 @@ class TreeConv(layers.Layer):
             out(Variable): (Tensor) The feature vector of subtrees. The shape of the output tensor is [max_tree_node_size, output_size, num_filters]. The output tensor could be a new feature vector for next tree convolution layers
 
         Examples:
+
             .. code-block:: python
+
               import paddle.fluid as fluid
               import numpy
 
@@ -2587,6 +2615,7 @@ class TreeConv(layers.Layer):
             is_bias=False)
 
     def forward(self, nodes_vector, edge_set):
+
         if self._name:
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)
