@@ -1122,7 +1122,7 @@ def bipartite_match(dist_matrix,
 
     Examples:
 
-        import paddle.fluid as fluid
+        >>> import paddle.fluid as fluid
         >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
         >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
         >>> iou = fluid.layers.iou_similarity(x=x, y=y)
@@ -1345,7 +1345,7 @@ def ssd_loss(location,
 
     Examples:
     
-        import paddle.fluid as fluid
+        >>> import paddle.fluid as fluid
         >>> pb = fluid.layers.data(
         >>>                   name='prior_box',
         >>>                   shape=[10, 4],

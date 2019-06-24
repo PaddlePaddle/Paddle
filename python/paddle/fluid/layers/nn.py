@@ -640,6 +640,8 @@ def lstm(input,
         .. code-block:: python
             
             import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
             emb_dim = 256
             vocab_size = 10000
             data = fluid.layers.data(name='x', shape=[-1, 100, 1],
@@ -3433,7 +3435,7 @@ def layer_norm(input,
 
     Examples:
 
-            import paddle.fluid as fluid
+        >>> import paddle.fluid as fluid
         >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
         >>>                          dtype='float32')
         >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
@@ -3515,7 +3517,7 @@ def group_norm(input,
 
     Examples:
 
-            import paddle.fluid as fluid
+        >>> import paddle.fluid as fluid
         >>> data = fluid.layers.data(name='data', shape=[8, 32, 32],
         >>>                          dtype='float32')
         >>> x = fluid.layers.group_norm(input=data, groups=4)
@@ -8140,7 +8142,7 @@ def random_crop(x, shape, seed=None):
 
     Examples:
 
-            import paddle.fluid as fluid
+        >>> import paddle.fluid as fluid
         >>> img = fluid.layers.data("img", [3, 256, 256])
         >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
@@ -9239,7 +9241,8 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
+
+            x = fluid.layers.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -10518,7 +10521,7 @@ def space_to_depth(x, blocksize, name=None):
             space_to_depthed = fluid.layers.space_to_depth(
                 x=data, blocksize=2)
 
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            exe = fluid.Executor(fluid.CPUPlace())
             data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},

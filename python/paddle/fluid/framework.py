@@ -66,8 +66,8 @@ def in_dygraph_mode():
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid 
-           if fluid.in_dygraph_mode():
+            import paddle.fluid as fluid 
+            if fluid.in_dygraph_mode():
                 pass
 
     """
@@ -158,8 +158,8 @@ def cpu_places(device_count=None):
     Examples:
         .. code-block:: python
 
-        import paddle.fluid as fluid   
-        cpu_places = fluid.cpu_places()
+            import paddle.fluid as fluid   
+            cpu_places = fluid.cpu_places()
     """
 
     if device_count is None:
@@ -237,8 +237,8 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          with fluid.name_scope("s1"):
+            import paddle.fluid as fluid
+            with fluid.name_scope("s1"):
               a = fluid.layers.data(name='data', shape=[1], dtype='int32')
               b = a + 1
               with fluid.name_scope("s2"):
