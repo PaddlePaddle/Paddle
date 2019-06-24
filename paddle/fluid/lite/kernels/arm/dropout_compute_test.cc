@@ -44,7 +44,7 @@ void dropout_compute_ref(const operators::DropoutParam& param) {
   int num = param.x->dims().production();
   const float prob_data = param.dropout_prob;
   if (param.dropout_implementation.compare(
-          std::string({"downgrade_in_infer"}))) {
+          std::string({"downgrade_in_infer"})) == 0) {
     float scale = 1.0 - prob_data;
     for (int i = 0; i < num; i++) {
       output_data[i] = x_data[i] * scale;

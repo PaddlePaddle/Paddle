@@ -27,10 +27,11 @@ void DropoutCompute::Run() {
   float* out_data = param.output->mutable_data<float>();
   int num = param.x->dims().production();
   const float prob_data = param.dropout_prob;
-  if (param.dropout_implementation.compare(std::string({"downgrade_in_infer"})))
-    lite::arm::math::dropout_down(x_data, out_data, num, prob_data);
-  else
+  if (param.dropout_implementation == "upscale_in_train") {
     lite::arm::math::dropout_up(x_data, out_data, num);
+  } else {
+    lite::arm::math::dropout_down(x_data, out_data, num, prob_data);
+  }
 }
 
 }  // namespace arm
@@ -41,8 +42,5 @@ void DropoutCompute::Run() {
 REGISTER_LITE_KERNEL(dropout, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::DropoutCompute, def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindInput("dropout_prob", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindInput("dropout_implementation", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Mask", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
