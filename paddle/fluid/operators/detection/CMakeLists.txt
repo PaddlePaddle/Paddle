@@ -35,6 +35,8 @@ detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
 detection_library(yolo_box_op SRCS yolo_box_op.cc yolo_box_op.cu)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc box_decoder_and_assign_op.cu)
+detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc sigmoid_focal_loss_op.cu)
+detection_library(retinanet_detection_output_op SRCS retinanet_detection_output_op.cc)
 
 if(WITH_GPU)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)

@@ -27,7 +27,7 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-
+import sys
 from .. import compat as cpt
 from .proto import framework_pb2
 
@@ -82,7 +82,24 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+    if "CPU_NUM" not in os.environ.keys():
+        sys.stderr.write(
+            'The CPU_NUM is not specified, you should set CPU_NUM in '
+            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
+            'indicates that how many CPUPlace are used in the current task.\n'
+            '!!! The default number of CPUPlaces is 1.\n\n')
+        os.environ['CPU_NUM'] = str(1)
+    cpu_num = os.environ.get('CPU_NUM')
+    return int(cpu_num)
+
+
+def _cuda_ids():
+    gpus_env = os.getenv("FLAGS_selected_gpus")
+    if gpus_env:
+        device_ids = [int(s) for s in gpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
 
 
 def cuda_places(device_ids=None):
@@ -116,11 +133,7 @@ def cuda_places(device_ids=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            device_ids = [int(s) for s in gpus_env.split(",")]
-        else:
-            device_ids = six.moves.range(core.get_cuda_device_count())
+        device_ids = _cuda_ids()
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
@@ -743,10 +756,8 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate(".".join(self.name)),
-                dtype=self.dtype,
-                persistable=self.persistable,
-                stop_gradient=self.stop_gradient, )
+                name=unique_name.generate_with_ignorable_key(self.name),
+                dtype=self.dtype)
         else:
             return self
 
@@ -811,35 +822,84 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        new_var = None
-        if isinstance(item, tuple):
-            if len(item) > len(self.shape):
-                raise IndexError("Too many indexes")
-            fixedSize = True
-            for i in range(len(self.shape)):
-                if self.shape[i] == -1:
-                    fixedSize = False
-                    break
 
-            newitem = self._reconstructSliceinfo(item) or item
-            if fixedSize:
-                check, info = self._detectContinuesSlice(newitem)
-                if check:
-                    starts = info[0]
-                    ends = info[1]
-                    axes = [i for i in range(len(starts))]
-                    return self._sliceVar(axes, starts, ends)
-                else:
-                    new_var = self
-                    for index, o in enumerate(newitem):
-                        new_var = new_var._sliceAndConcatVar(o, index)
+        if not isinstance(item, tuple):
+            item = [item]
+
+        decrease_axis = []
+        slice_axis = []
+        slice_start = []
+        slice_end = []
+        reverse_axis = []
+
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step if slice_item.step else 1
+
+                assert (step == 1 or step == -1)
+
+                if step == -1:
+                    reverse_axis.append(dim)
+                    assert (start is None and end is None)
+
+                if start is None and end is None:
+                    continue
+
+                if start is None:
+                    start = 0
+
+                if end is None:
+                    end = 10000000
+
+                slice_axis.append(dim)
+                slice_start.append(start)
+                slice_end.append(end)
             else:
-                new_var = self
-                for index, o in enumerate(newitem):
-                    new_var = new_var._sliceAndConcatVar(o, index)
-        else:
-            new_var = self._sliceAndConcatVar(item, 0)
-        return new_var
+                # int
+                decrease_axis.append(dim)
+                slice_axis.append(dim)
+                slice_start.append(slice_item)
+                slice_end.append(slice_item + 1
+                                 if slice_item != -1 else 10000000)
+
+        out = self
+        if len(slice_axis) > 0:
+            # append slice_op here
+
+            slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice"),
+                dtype=self.dtype)
+
+            self.block.append_op(
+                type="slice",
+                inputs={'Input': [out]},
+                outputs={'Out': [slice_out_var]},
+                attrs={
+                    'axes': slice_axis,
+                    'starts': slice_start,
+                    'ends': slice_end,
+                    'decrease_axis': decrease_axis
+                })
+
+            out = slice_out_var
+
+        if len(reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis})
+
+            out = reverse_out_var
+
+        return out
 
 
 def get_all_op_protos():
@@ -2764,6 +2824,9 @@ class Program(object):
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 
+        # appending gradients times
+        self._appending_grad_times = 0
+
     @property
     def _is_mem_optimized(self):
         # if the program is optimized, operator input/outputs
@@ -3097,6 +3160,7 @@ class Program(object):
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
+            p._appending_grad_times = self._appending_grad_times
 
             p._sync_with_cpp()
 
@@ -3642,7 +3706,8 @@ def default_main_program():
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
-            print(fluid.default_main_program())
+            print(fluid.default_main_program().num_blocks)
+            print(fluid.default_main_program().blocks[0].var('image'))
     """
     return _main_program_
 

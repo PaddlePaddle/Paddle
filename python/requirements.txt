@@ -1,16 +1,19 @@
-requests==2.9.2
+requests>=2.20.0
 numpy>=1.12
 protobuf>=3.1.0
 recordio>=0.1.0
-matplotlib==2.2.3 # TODO: let python3 paddlepaddle package use latest matplotlib
+matplotlib<=2.2.4 ; python_version<"3.6"
+scipy>=0.19.0, <=1.2.1 ; python_version<"3.5"
+nltk>=3.2.2, <=3.4 ; python_version<"3.5"
+matplotlib ; python_version>="3.6"
+scipy ; python_version>="3.5"
+nltk ; python_version>="3.5"
 rarfile
-scipy>=0.19.0,<=1.2.1
 Pillow
-nltk>=3.2.2
 graphviz
 six
 funcsigs
 pyyaml
 decorator
 prettytable
-x86cpu==0.4
+py-cpuinfo==5.0.0

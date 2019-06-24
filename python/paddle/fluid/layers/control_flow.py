@@ -165,8 +165,12 @@ def Print(input,
                 print the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor, same data with input tensor.
+        Variable: Output tensor.
 
+    NOTES:
+        The input and output are two different variables, and in the
+        following process, you should use the output variable but not the input,
+        otherwise, the print layer doesn't have backward.
 
     Examples:
         .. code-block:: python
@@ -174,16 +178,18 @@ def Print(input,
            import paddle.fluid as fluid
            
            input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           fluid.layers.Print(input, message = "The content of input layer:")
+           input = fluid.layers.Print(input, message = "The content of input layer:")
            # value = some_layer(...)
            # Print(value, summarize=10,
            #    message="The content of some_layer: ")
 
     '''
-    helper = LayerHelper('print', **locals())
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',
         inputs={'In': input},
+        outputs={'Out': output},
         attrs={
             'first_n': first_n,
             'summarize': summarize,
@@ -194,7 +200,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
-    return input
+    return output
 
 
 class BlockGuard(object):
@@ -301,6 +307,7 @@ class StaticRNN(object):
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
                 rnn.update_memory(prev, hidden)  # set prev to hidden
                 rnn.step_output(hidden)
+                rnn.output(word)
 
             result = rnn()
 
@@ -1025,6 +1032,10 @@ def less_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.less_equal(x=label, y=limit)
     """
     helper = LayerHelper("less_equal", **locals())
@@ -1061,6 +1072,10 @@ def greater_than(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.greater_than(x=label, y=limit)
     """
     helper = LayerHelper("greater_than", **locals())
@@ -1097,7 +1112,12 @@ def greater_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.greater_equal(x=label, y=limit)
+
     """
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
@@ -1163,6 +1183,10 @@ def not_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
     helper = LayerHelper("not_equal", **locals())

@@ -16,8 +16,10 @@ from __future__ import print_function
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker'
+    'UserDefinedCollectiveRoleMaker', 'PaddleCloudRoleMaker'
 ]
+
+import os
 
 
 class Role:
@@ -292,6 +294,67 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             self._role_is_generated = True
 
 
+class PaddleCloudRoleMaker(RoleMakerBase):
+    def __init__(self):
+        super(PaddleCloudRoleMaker, self).__init__()
+        self._role_is_generated = False
+
+    def generate_role(self):
+        if not self._role_is_generated:
+            self.port = os.getenv("PADDLE_PORT", "6174")
+            self.pserver_ips = os.getenv("PADDLE_PSERVERS", "")
+            eplist = []
+            for ip in self.pserver_ips.split(","):
+                eplist.append(':'.join([ip, self.port]))
+            self.endpoints = ",".join(eplist)
+            self._trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+            self.current_endpoint = os.getenv("POD_IP",
+                                              "localhost") + ":" + self.port
+            self.role = os.getenv("TRAINING_ROLE", "TRAINER")
+            self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+            self.eplist = eplist
+            print("PaddleCloudRoleMaker() endpoints: %s" % self.endpoints)
+            self.endpoints = self.endpoints.split(",")
+            self._server_endpoints = self.endpoints
+            if self.role.upper() == "PSERVER":
+                self._current_id = self.endpoints.index(self.current_endpoint)
+                self._role = Role.SERVER
+            else:
+                self._current_id = self.trainer_id
+                self._role = Role.WORKER
+            self._role_is_generated = True
+
+    def is_worker(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER
+
+    def is_server(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.SERVER
+
+    def is_first_worker(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER and self._current_id == 0
+
+    def worker_index(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def server_index(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def worker_num(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._trainers
+
+
 class UserDefinedRoleMaker(RoleMakerBase):
     def __init__(self,
                  current_id=0,
@@ -328,6 +391,9 @@ class UserDefinedRoleMaker(RoleMakerBase):
             raise TypeError("server_endpoints must be as string list")
         else:
             self._server_endpoints = server_endpoints
+
+    def generate_role(self):
+        self._role_is_generated = True
 
     def is_worker(self):
         return self._role == Role.WORKER
@@ -368,6 +434,9 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
         else:
             self._worker_endpoints = worker_endpoints
         self._worker_num = len(self._worker_endpoints)
+
+    def generate_role(self):
+        self._role_is_generated = True
 
     def is_worker(self):
         return True
