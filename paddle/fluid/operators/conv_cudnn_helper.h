@@ -62,23 +62,6 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     algo_t algo;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    // Tensor core is supported since the volta GPU and
-    // is only enabled when input and filter data are float16
-    if (dev_ctx.GetComputeCapability() >= 70 &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-      VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args.cdesc.desc(), CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
-    }
-#endif
 
     if (!exhaustive) {
 #if CUDNN_VERSION >= 7001

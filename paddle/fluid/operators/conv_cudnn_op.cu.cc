@@ -130,6 +130,21 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     algo = search::Find<T>(args, exhaustive_search, false, 0, ctx);
     workspace_size = search::GetWorkspaceSize(args, algo);
 
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    // Tensor core is supported since the volta GPU and
+    // is only enabled when input and filter data are float16
+    if (dev_ctx.GetComputeCapability() >= 70 &&
+        std::type_index(typeid(T)) ==
+            std::type_index(typeid(platform::float16))) {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math";
+    } else {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
+    }
+#endif
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
@@ -244,6 +259,25 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                                 search2::GetWorkspaceSize(args2, filter_algo));
     }
 
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    // Tensor core is supported since the volta GPU and
+    // is only enabled when input and filter data are float16
+    if (dev_ctx.GetComputeCapability() >= 70 &&
+        std::type_index(typeid(T)) ==
+            std::type_index(typeid(platform::float16))) {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args1.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args2.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math";
+    } else {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args1.cdesc.desc(), CUDNN_DEFAULT_MATH));
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args2.cdesc.desc(), CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
+    }
+#endif
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     if (input_grad) {
