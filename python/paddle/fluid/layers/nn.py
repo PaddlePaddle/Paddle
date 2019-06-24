@@ -636,6 +636,9 @@ def lstm(input,
     Examples:
         .. code-block:: python
             
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
             emb_dim = 256
             vocab_size = 10000
             data = fluid.layers.data(name='x', shape=[-1, 100, 1],
@@ -6360,6 +6363,8 @@ def softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
@@ -9160,7 +9165,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -10421,7 +10428,7 @@ def space_to_depth(x, blocksize, name=None):
             space_to_depthed = fluid.layers.space_to_depth(
                 x=data, blocksize=2)
 
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            exe = fluid.Executor(fluid.CPUPlace())
             data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
