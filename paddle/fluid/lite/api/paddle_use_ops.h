@@ -16,7 +16,7 @@
 
 // ATTENTION This can only include in a .cc file.
 
-#include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle_lite_factory_helper.h"  // NOLINT
 
 USE_LITE_OP(mul);
 USE_LITE_OP(fc);

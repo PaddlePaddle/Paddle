@@ -22,7 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "place.h"  // NOLINT
+#include "paddle_place.h"  // NOLINT
 
 namespace paddle {
 namespace lite_api {

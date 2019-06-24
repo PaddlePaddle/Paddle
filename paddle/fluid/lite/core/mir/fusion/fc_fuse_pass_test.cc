@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/fluid/lite/api/cxx_api.h"
-#include "paddle/fluid/lite/core/mir/use_passes.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 DEFINE_string(model_dir, "", "");

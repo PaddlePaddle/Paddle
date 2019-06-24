@@ -6,7 +6,7 @@ if(LITE_WITH_CUDA)
     nv_test(test_cxx_api_lite_cuda SRCS cxx_api_test.cc DEPS cxx_api_lite_cuda)
 endif()
 
-lite_cc_library(place_lite SRCS place.cc DEPS glog)
+lite_cc_library(place_lite SRCS paddle_place.cc DEPS glog)
 
 lite_cc_library(lite_api_test_helper SRCS lite_api_test_helper.cc
   DEPS scope_lite optimizer_lite target_wrapper_host model_parser_lite program_lite
@@ -103,8 +103,11 @@ lite_cc_test(test_apis_lite SRCS apis_test.cc
 lite_cc_library(cxx_api_impl_lite SRCS cxx_api_impl.cc DEPS cxx_api_lite)
 lite_cc_library(light_api_impl_lite SRCS light_api_impl.cc DEPS light_api_lite)
 
-lite_cc_library(paddle_api_lite SRCS paddle_api.cc DEPS cxx_api_impl_lite light_api_impl_lite)
-lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS cxx_api_lite light_api_lite paddle_api_lite
+lite_cc_library(paddle_api_full SRCS paddle_api.cc DEPS cxx_api_impl_lite light_api_impl_lite)
+lite_cc_library(paddle_api_light SRCS paddle_api.cc DEPS light_api_impl_lite)
+
+
+lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS cxx_api_lite light_api_lite paddle_api_full
   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model SERIAL)
 if (WITH_TESTING)
     add_dependencies(test_paddle_api_lite test_apis_lite)
