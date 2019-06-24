@@ -832,7 +832,6 @@ int DeviceInfo::Setup() {
   SetCacheInfo(0, 1, DEFAULT_L1_CACHE_SIZE);
   SetCacheInfo(1, 1, DEFAULT_L2_CACHE_SIZE);
   SetCacheInfo(2, 1, DEFAULT_L3_CACHE_SIZE);
-  LOG(INFO) << "Done";
 #ifdef LITE_WITH_LINUX
   // get max&min freq
   max_freqs_.resize(core_num_);
