@@ -57,10 +57,17 @@ class BasicGRUUnit(Layer):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.contrib.layers import BasicGRUUnit
 
+            input_size = 128
+            hidden_size = 256
+            input = layers.data( name = "input", shape = [-1, input_size], dtype='float32')
+            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
 
+            gru_unit = BasicGRUUnit( "gru_unit", hidden_size )
 
+            new_hidden = gru_unit( input, pre_hidden )
 
     """
 
@@ -144,7 +151,7 @@ def basic_gru(input,
               dtype='float32',
               name='basic_gru'):
     """
-    GRU implementation using basic operator, supprt mutil layers and bidirection gru.
+    GRU implementation using basic operator, supports multiple layers and bidirection gru.
 
     .. math::
             u_t & = actGate(W_ux xu_{t} + W_uh h_{t-1} + b_u)
@@ -164,12 +171,12 @@ def basic_gru(input,
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
                        can be reshape to tensor with ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
-        hidden_size (int): hidden size of the GRU
-        num_layers (int): total layers number of the GRU
-        sequence_length (Variabe|None): Tensor (shape [batch_size]) store each real length of each instance,
-                        This tensor will convert to a mask to mask the padding ids
+        hidden_size (int): Hidden size of the GRU
+        num_layers (int): The total number of layers of the GRU
+        sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
+                        This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         param_attr(ParamAttr|None): The parameter attribute for the learnable
@@ -187,7 +194,7 @@ def basic_gru(input,
         activation (function|None): The activation function for cell (actNode).
                              Default: 'fluid.layers.tanh'
         dtype(string): data type used in this unit
-        name(string): name used to indentify parameter and bias name
+        name(string): name used to identify parameters and biases
 
     Returns:
         rnn_out(Tensor),last_hidden(Tensor)
@@ -196,27 +203,31 @@ def basic_gru(input,
             - last_hidden is the hidden state of the last step of GRU \
               shape is ( num_layers x batch_size x hidden_size ) \
               if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size),
-              can be reshape to a tensor with shape( num_layers x 2 x batch_size x hidden_size)
+              can be reshaped to a tensor with shape( num_layers x 2 x batch_size x hidden_size)
 
     Examples:
         .. code-block:: python
             
-            emb_dim = 256
-            vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
-                         dtype='int32')
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            import paddle.fluid.layers as layers
+            from paddle.fluid.contrib.layers import basic_gru
+
             batch_size = 20
-            max_len = 100
-            dropout_prob = 0.2
-            input_size = 100
-            hidden_size = 150
-            num_layers = 1
-            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
-                    max_len, hidden_size, num_layers, \
-                    dropout_prob=dropout_prob)
+            input_size = 128
+            hidden_size = 256
+            num_layers = 2
+            dropout = 0.5
+            bidirectional = True
+            batch_first = False
+
+            input = layers.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
+            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            sequence_length = layers.data( name="sequence_length", shape=[-1], dtype='int32')
+
+
+            rnn_out, last_hidden = basic_gru( input, pre_hidden, hidden_size, num_layers = num_layers, \
+                    sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
+                    batch_first = batch_first)
+
     """
 
     fw_unit_list = []
@@ -356,7 +367,7 @@ def basic_lstm(input,
                dtype='float32',
                name='basic_lstm'):
     """
-    LSTM implementation using basic operator, supprt mutil layers and bidirection LSTM.
+    LSTM implementation using basic operator, support multiple layers and bidirection LSTM.
 
     .. math::
            i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)
@@ -378,38 +389,38 @@ def basic_lstm(input,
         init_hidden(Variable|None): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-                       can be reshape to tensor with ( num_layers x 2 x batch_size x hidden_size) to use.
+                       and can be reshaped to a tensor with shape ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
         init_cell(Variable|None): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
                        if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-                       can be reshape to tensor with ( num_layers x 2 x batch_size x hidden_size) to use.
+                       and can be reshaped to a tensor with shape ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
-        hidden_size (int): Hidden size of the GRU
-        num_layers (int): Total layers number of the GRU
-        sequence_length (Variabe|None): Tensor (shape [batch_size]) store each real length of each instance,
-                        This tensor will convert to a mask to mask the padding ids
+        hidden_size (int): Hidden size of the LSTM
+        num_layers (int): The total number of layers of the LSTM
+        sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
+                        This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
-            If it is set to None or one attribute of ParamAttr, gru_unit will
+            If it is set to None or one attribute of ParamAttr, lstm_unit will
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
-            of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will 
+            of LSTM unit.
+            If it is set to None or one attribute of ParamAttr, lstm_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
                                   Default: 'fluid.layers.sigmoid'
         activation (function|None): The activation function for cell (actNode).
                              Default: 'fluid.layers.tanh'
-        forget_bias (float|1.0) : forget bias used to compute the forget gate
-        dtype(string): data type used in this unit
-        name(string): name used to indentify parameter and bias name
+        forget_bias (float|1.0) : Forget bias used to compute the forget gate
+        dtype(string): Data type used in this unit
+        name(string): Name used to identify parameters and biases
 
     Returns:
         rnn_out(Tensor), last_hidden(Tensor), la
@@ -427,22 +438,27 @@ def basic_lstm(input,
     Examples:
         .. code-block:: python
             
-            emb_dim = 256
-            vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
-                         dtype='int32')
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            import paddle.fluid.layers as layers
+            from paddle.fluid.contrib.layers import basic_lstm
+
             batch_size = 20
-            max_len = 100
-            dropout_prob = 0.2
-            input_size = 100
-            hidden_size = 150
-            num_layers = 1
-            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
-                    max_len, hidden_size, num_layers, \
-                    dropout_prob=dropout_prob)
+            input_size = 128
+            hidden_size = 256
+            num_layers = 2
+            dropout = 0.5
+            bidirectional = True
+            batch_first = False
+
+            input = layers.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
+            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            pre_cell = layers.data( name = "pre_cell", shape=[-1, hidden_size], dtype='float32')
+            sequence_length = layers.data( name="sequence_length", shape=[-1], dtype='int32')
+
+            rnn_out, last_hidden, last_cell = basic_lstm( input, pre_hidden, pre_cell, \
+                    hidden_size, num_layers = num_layers, \
+                    sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
+                    batch_first = batch_first)
+
     """
     fw_unit_list = []
 
@@ -640,26 +656,38 @@ class BasicLSTMUnit(Layer):
         hidden_size (integer): The hidden size used in the Unit.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
-            If it is set to None or one attribute of ParamAttr, gru_unit will
+            If it is set to None or one attribute of ParamAttr, lstm_unit will
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
-            of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will 
+            of LSTM unit.
+            If it is set to None or one attribute of ParamAttr, lstm_unit will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
                                   Default: 'fluid.layers.sigmoid'
         activation (function|None): The activation function for cell (actNode).
                              Default: 'fluid.layers.tanh'
-        forget_bias(float|1.0): forget bias used in compute forget gate
+        forget_bias(float|1.0): forget bias used when computing forget gate
         dtype(string): data type used in this unit
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.contrib.layers import BasicLSTMUnit
+
+            input_size = 128
+            hidden_size = 256
+            input = layers.data( name = "input", shape = [-1, input_size], dtype='float32')
+            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            pre_cell = layers.data( name = "pre_cell", shape=[-1, hidden_size], dtype='float32')
+
+            lstm_unit = BasicLSTMUnit( "gru_unit", hidden_size)
+
+            new_hidden, new_cell = lstm_unit( input, pre_hidden, pre_cell )
+
     """
 
     def __init__(self,
