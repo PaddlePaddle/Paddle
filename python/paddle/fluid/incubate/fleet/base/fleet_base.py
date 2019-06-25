@@ -188,17 +188,8 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
-        if isinstance(role_maker, MPISymetricRoleMaker):
-            self._role_maker = role_maker
-            self._role_maker.generate_role()
-
-        elif isinstance(role_maker, UserDefinedRoleMaker):
-            self._role_maker = role_maker
-
-        else:
-            raise ValueError(
-                "role_maker must be an instance of UserDefinedRoleMaker/MPISymetricRoleMaker"
-            )
+        self._role_maker = role_maker
+        self._role_maker.generate_role()
 
         self._is_initialized = True
 

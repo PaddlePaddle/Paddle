@@ -16,12 +16,25 @@ from __future__ import print_function
 
 import sys
 import os
-from x86cpu import info as cpuinfo
+from cpuinfo import get_cpu_info
+
+core_suffix = 'so'
+if os.name == 'nt':
+    core_suffix = 'pyd'
+
+has_avx_core = False
+has_noavx_core = False
+
+current_path = os.path.abspath(os.path.dirname(__file__))
+if os.path.exists(current_path + os.sep + 'core_avx.' + core_suffix):
+    has_avx_core = True
+
+if os.path.exists(current_path + os.sep + 'core_noavx.' + core_suffix):
+    has_noavx_core = True
 
 try:
     if os.name == 'nt':
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
+        third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] += ';' + third_lib_path
         sys.path.append(third_lib_path)
 
@@ -45,7 +58,7 @@ except Exception as e:
     raise e
 
 load_noavx = False
-if cpuinfo.supports_avx:
+if 'avx' in get_cpu_info()['flags']:
     try:
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
@@ -57,12 +70,19 @@ if cpuinfo.supports_avx:
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
-    except ImportError:
-        sys.stderr.write(
-            'WARNING: Can not import avx core. You may not build with AVX, '
-            'but AVX is supported on local machine, you could build paddle '
-            'WITH_AVX=ON to get better performance. ')
-        load_noavx = True
+        from .core_avx import _is_dygraph_debug_enabled
+        from .core_avx import _dygraph_debug_level
+    except ImportError as e:
+        if has_avx_core:
+            raise e
+        else:
+            sys.stderr.write(
+                'WARNING: Do not have avx core. You may not build with AVX, '
+                'but AVX is supported on local machine.\n You could build paddle '
+                'WITH_AVX=ON to get better performance.\n')
+            load_noavx = True
+    except Exception as e:
+        raise e
 else:
     load_noavx = True
 
@@ -78,7 +98,13 @@ if load_noavx:
         from .core_noavx import _set_eager_deletion_mode
         from .core_noavx import _set_fuse_parameter_group_size
         from .core_noavx import _set_fuse_parameter_memory_size
-    except ImportError as error:
-        sys.exit("Error: Can not load core_noavx.* ." +
-                 error.__class__.__name__)
-        load_noavx = True
+        from .core_noavx import _is_dygraph_debug_enabled
+        from .core_noavx import _dygraph_debug_level
+    except ImportError as e:
+        if has_noavx_core:
+            sys.stderr.write(
+                'Error: Can not import noavx core while this file exists ' +
+                current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
+        raise e
+    except Exception as e:
+        raise e
