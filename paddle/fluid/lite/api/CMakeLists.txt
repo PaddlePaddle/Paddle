@@ -74,7 +74,7 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     lite_cc_test(test_mobilenetv2_lite SRCS mobilenetv2_test.cc
        DEPS ${lite_model_test_DEPS}
        ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v2 SERIAL)
-    add_dependencies(test_mobilenetv2_lite extern_lite_download_mobilenet_v2_tar_gz)
+    add_dependencies(test_mobilenetv2_lite extern_lite_download_mobilenet_v2_relu_tar_gz)
 
     lite_cc_test(test_resnet50_lite SRCS resnet50_test.cc
        DEPS ${lite_model_test_DEPS}
@@ -84,7 +84,7 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     lite_cc_test(test_inceptionv4_lite SRCS inceptionv4_test.cc
        DEPS ${lite_model_test_DEPS}
        ARGS --model_dir=${LITE_MODEL_DIR}/inception_v4 SERIAL)
-    add_dependencies(test_inceptionv4_lite extern_lite_download_inception_v4_tar_gz)
+    add_dependencies(test_inceptionv4_lite extern_lite_download_inception_v4_simple_tar_gz)
 endif()
 
 # These tests needs CLI arguments, and is not supported in ARM CI.

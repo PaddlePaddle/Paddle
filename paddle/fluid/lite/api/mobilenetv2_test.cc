@@ -39,7 +39,8 @@ TEST(MobileNetV2, test) {
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < input_tensor->dims().production(); i++) {
+  auto item_size = input_tensor->dims().production();
+  for (int i = 0; i < item_size; i++) {
     data[i] = 1;
   }
 
@@ -58,16 +59,26 @@ TEST(MobileNetV2, test) {
             << ", spend " << (GetCurrentUS() - start) / FLAGS_repeats / 1000.0
             << " ms in average.";
 
+  std::vector<std::vector<float>> results;
+  // i = 1
+  results.emplace_back(std::vector<float>(
+      {0.00017082224, 5.699624e-05,  0.000260885,   0.00016412718,
+       0.00034818667, 0.00015230637, 0.00032959113, 0.0014772735,
+       0.0009059976,  9.5378724e-05, 5.386537e-05,  0.0006427285,
+       0.0070957416,  0.0016094646,  0.0018807327,  0.00010506048,
+       6.823785e-05,  0.00012269315, 0.0007806194,  0.00022354358}));
   auto* out = predictor.GetOutput(0);
-  std::vector<float> results({0.00097802, 0.00099822, 0.00103093, 0.00100121,
-                              0.00098268, 0.00104065, 0.00099962, 0.00095181,
-                              0.00099694, 0.00099406});
-  for (int i = 0; i < results.size(); ++i) {
-    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
-  }
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 1);
   ASSERT_EQ(out->dims()[1], 1000);
+
+  int step = 50;
+  for (int i = 0; i < results.size(); ++i) {
+    for (int j = 0; j < results[i].size(); ++j) {
+      EXPECT_NEAR(out->data<float>()[j * step + (out->dims()[1] * i)],
+                  results[i][j], 1e-6);
+    }
+  }
 }
 #endif
 
