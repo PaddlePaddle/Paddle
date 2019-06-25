@@ -23,7 +23,7 @@ namespace framework {
 class DatasetFactory {
  public:
   static std::string DatasetTypeList();
-  static std::shared_ptr<Dataset> CreateDataset(std::string dataset_class);
+  static std::unique_ptr<Dataset> CreateDataset(std::string dataset_class);
 };
 }  // namespace framework
 }  // namespace paddle

@@ -74,7 +74,7 @@ class MultiTrainer : public TrainerBase {
  protected:
   int thread_num_;
   std::vector<std::thread> threads_;
-  std::vector<std::shared_ptr<DataFeed>> readers_;
+  std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
 };
 
@@ -136,7 +136,7 @@ class PipelineTrainer : public TrainerBase {
   std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
   std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
 
-  std::vector<std::shared_ptr<DataFeed>> readers_;
+  std::vector<DataFeed*> readers_;
 
   void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
                            const ProgramDesc& main_program);

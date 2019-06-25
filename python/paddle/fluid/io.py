@@ -86,13 +86,21 @@ def is_persistable(var):
 
 def _clone_var_in_block_(block, var):
     assert isinstance(var, Variable)
-    return block.create_var(
-        name=var.name,
-        shape=var.shape,
-        dtype=var.dtype,
-        type=var.type,
-        lod_level=var.lod_level,
-        persistable=True)
+    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True)
+    else:
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            persistable=True)
 
 
 def save_vars(executor,
@@ -263,6 +271,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
@@ -486,6 +496,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
