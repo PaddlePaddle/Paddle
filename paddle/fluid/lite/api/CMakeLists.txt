@@ -108,9 +108,12 @@ lite_cc_library(paddle_api_light SRCS paddle_api.cc DEPS light_api_impl_lite)
 
 
 lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS cxx_api_lite light_api_lite paddle_api_full
+  ${ops_lite}
+  ARM_DEPS ${arm_kernels}
+  X86_DEPS ${x86_kernels}
   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model SERIAL)
 if (WITH_TESTING)
-    add_dependencies(test_paddle_api_lite test_apis_lite)
+    add_dependencies(test_paddle_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif()
 
 #lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
