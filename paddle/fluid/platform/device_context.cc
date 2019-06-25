@@ -425,6 +425,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
     // 1st time to set blob in current thread
     pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
     (*pMap)[tid] = pBlob;
+    VLOG(2) << "SetBlob: tid=" << tid << ", add new tid\n";
   } else {
     pBlob = map_it->second;
   }
@@ -439,7 +440,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   if (key_it == pBlob->end()) {
     // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
     if ((tid == -1) && (pBlob->size() > MKLDNN_CAP)) {
-      VLOG(3) << "SetBlob: tid=" << tid << ", remove head blob "
+      VLOG(2) << "SetBlob: tid=" << tid << ", remove head blob "
               << pBlob->begin()->first << "\n";
       pBlob->erase(pBlob->begin());
     }
@@ -447,7 +448,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   } else {
     key_it->second = data;  // set data to existing blob
   }
-  VLOG(3) << "SetBlob: tid=" << tid << ", add blob=" << name << "\n";
+  VLOG(2) << "SetBlob: tid=" << tid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -464,7 +465,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);
   if (map_it == pMap->end()) {
-    VLOG(3) << "GetBlob: tid=" << tid << ", miss tid\n";
+    VLOG(2) << "GetBlob: tid=" << tid << ", miss tid\n";
     return nullptr;
   }
   pBlob = map_it->second;
@@ -477,11 +478,11 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
       });
 
   if (key_it == pBlob->end()) {
-    VLOG(3) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
+    VLOG(2) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
     return nullptr;
   }
 
-  VLOG(3) << "GetBlob tid=" << tid << ", get blob=" << name << "\n";
+  VLOG(2) << "GetBlob tid=" << tid << ", get blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return key_it->second;
 }
