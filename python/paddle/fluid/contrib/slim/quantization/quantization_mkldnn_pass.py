@@ -187,7 +187,7 @@ class TransformForMkldnnPass(object):
                     'Y': weight_var_node},
             outputs={'Out': output_var_node})
 
-        # Based on the QAT's scales to calculate the scales of MKL-DNN INT8 mul
+        # Based on the QAT's scales to calculate MKL-DNN INT8 mul's scales
         scale_in = self.s8_max / self.InScale[output_name]
         scale_w = []
         scale_w = [self.max_range[output_name] / self.s8_max]
