@@ -116,6 +116,12 @@ list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
+list(REMOVE_ITEM TEST_OPS test_install_check)
+list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
+list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
+list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
+list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -159,6 +165,10 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_
 py_test_modules(test_warpctc_op MODULES test_warpctc_op)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
+py_test_modules(test_basic_gru_api MODULES test_basic_gru_api ENVS MKL_CBWR=COMPATIBLE)
+py_test_modules(test_basic_gru_unit_op MODULES test_basic_gru_unit_op ENVS MKL_CBWR=COMPATIBLE)
+py_test_modules(test_basic_lstm_api MODULES test_basic_lstm_api ENVS MKL_CBWR=COMPATIBLE)
+py_test_modules(test_basic_lstm_unit_op MODULES test_basic_lstm_unit_op ENVS MKL_CBWR=COMPATIBLE)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
