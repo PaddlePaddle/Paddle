@@ -65,5 +65,5 @@ def run_check():
                         fetch_list=[out.name, param_grads[1].name])
 
     print(
-        "Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now"
+        "Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now!"
     )
