@@ -2472,36 +2472,50 @@ class ExponentialMovingAverage(object):
     Examples:
 
 	.. code-block:: python
-	     
-	     import paddle.fluid as fluid 
 
-	     data = fluid.layers.data(name='x', shape=[5], dtype='float32')
-	     hidden = fluid.layers.fc(input=data, size=10)
-	     cost = fluid.layers.mean(hidden)
+	    import numpy
+	    import paddle
+	    import paddle.fluid as fluid
 
-	     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	     optimizer.minimize(cost)
+	    data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+	    hidden = fluid.layers.fc(input=data, size=10)
+	    cost = fluid.layers.mean(hidden)
 
-             global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
-             ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-             ema.update()
+	    test_program = fluid.default_main_program().clone(for_test=True)
 
-	     # pseudo code
-	     for pass_id in range(args.pass_num):
-		 for data in train_reader():
-		     exe.run(fluid.default_main_program()...)
-                 
-                 # usage 1
-		 with ema.apply(exe):
-		     for data in test_reader():
-			 exe.run(inference_program...)
+	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	    optimizer.minimize(cost)
 
-                 # usage 2
-		 with ema.apply(exe, need_restore=False):
-		     for data in test_reader():
-			 exe.run(inference_program...)
-                 ...
-                 ema.restore(exe)
+	    global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+	    ema.update()
+
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+
+	    for pass_id in range(3):
+		for batch_id in range(6):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=fluid.default_main_program(),
+			feed={'x': data}, 
+			fetch_list=[cost.name])
+
+		# usage 1
+		with ema.apply(exe):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=test_program,
+			    feed={'x': data}, 
+			    fetch_list=[hidden.name])
+			    
+
+		 # usage 2
+		with ema.apply(exe, need_restore=False):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=test_program,
+			    feed={'x': data}, 
+			    fetch_list=[hidden.name])
+		ema.restore(exe)
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
@@ -2590,13 +2604,29 @@ class ExponentialMovingAverage(object):
         Update Exponential Moving Average. Should only call this method in 
         train program.
         """
+        param_master_emas = []
         for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
                 param_ema = self._ema_vars[param.name]
-                ema_t = param_ema * self._decay_var + param * (1 -
-                                                               self._decay_var)
-                layers.assign(input=ema_t, output=param_ema)
+                if self._ema_vars.has_key(param.name + '.master'):
+                    master_ema = self._ema_vars[param.name + '.master']
+                    param_master_emas.append([param_ema, master_ema])
+                else:
+                    ema_t = param_ema * self._decay_var + param * (
+                        1 - self._decay_var)
+                    layers.assign(input=ema_t, output=param_ema)
+
+        # for fp16 params
+        for param_ema, master_ema in param_master_emas:
+            default_main_program().global_block().append_op(
+                type="cast",
+                inputs={"X": master_ema},
+                outputs={"Out": param_ema},
+                attrs={
+                    "in_dtype": master_ema.dtype,
+                    "out_dtype": param_ema.dtype
+                })
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
@@ -2624,6 +2654,61 @@ class ExponentialMovingAverage(object):
 
 
 class PipelineOptimizer(object):
+    """
+    Pipeline Optimizer
+    Train with pipeline mode. The program will be splited by cut_list.
+    If the len of cut_list is k, then the whole program (including 
+    backward part) will be splited to 2*k-1 sections. So the length of place_list
+    and concurrency_list must be also 2*k-1.
+    Note: Though the asynchronous mode is applied in pipeline training to speed up,
+    the final performance depends on the training progress of each pipeline heavily.
+    And we will try the synchronous mode in the future
+    Args:
+        optimizer (Optimizer): The based optimizer, such as SGD
+        cut_list (list of Variable list): The cut variable of the main_program
+        place_list (list of Place): The place where the section will run on
+        concurrency_list (list of int): The concurrency degree
+        queue_size (int): Each section will consume scopes from its in-scope queue 
+                        and produce scopes to out-scope queue. And this parameter 
+                        specify the scope queue size. [Optional. Default: 30]
+        sync_steps (int): The synchronization steps between different cards. [Optional. Default: 1]
+        start_cpu_core_id (int): specify the first cpu core id. [Optional. Default:0]
+    Examples:
+        .. code-block:: python
+        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+        emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+        emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+        concat = layers.concat([emb_x, emb_y], axis=1)
+        fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+        loss = layers.reduce_mean(fc)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+        optimizer = fluid.optimizer.PipelineOptimizer(optimizer,
+                cut_list=[[emb_x, emb_y], [loss]],
+                place_list=[fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()],
+                concurrency_list=[1, 1, 4],
+                queue_size=2,
+                sync_steps=1,
+                )
+        optimizer.minimize(loss)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+        dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
+        dataset.set_use_var([x,y])
+        dataset.set_batch_size(batch_size)
+        dataset.set_filelist(filelist)
+        exe.train_from_dataset(
+                    fluid.default_main_program(),
+                    dataset,
+                    thread=2,
+                    debug=False,
+                    fetch_list=[],
+                    fetch_info=[],
+                    print_period=1)
+    """
+
     def __init__(self,
                  optimizer,
                  cut_list=None,

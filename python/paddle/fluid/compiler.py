@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import multiprocessing
 import os
 import six
@@ -215,7 +214,8 @@ class CompiledProgram(object):
                 self._build_strategy.enable_inplace = False
             elif not self._build_strategy.memory_optimize or not self._build_strategy.enable_inplace:
                 # remind the user to try our memmory optimize strategy
-                logging.warn("""
+                six.print_(
+                    """
      You can try our memory optimize feature to save your memory usage:
          # create a build_strategy variable to set memory optimize option
          build_strategy = compiler.BuildStrategy()
@@ -236,7 +236,8 @@ class CompiledProgram(object):
          # if you need to fetch conv1, then:
          conv1.persistable = True
 
-                 """)
+                 """,
+                    file=sys.stderr)
 
         return self
 
