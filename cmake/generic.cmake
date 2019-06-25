@@ -115,10 +115,6 @@ function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
-
-  if (WITH_JEMALLOC)
-    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
-  endif()
 endfunction()
 
 
