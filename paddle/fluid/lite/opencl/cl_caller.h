@@ -31,5 +31,10 @@ void elementwise_add(CLHelper* helper, const float* in, const DDim& in_dim,
                      const float* bias, const DDim& bias_dim, float* out,
                      const DDim& out_dim);
 
+void pool(CLHelper* helper, const std::string pooling_type, const int pad_h,
+          const int pad_w, const int stride_h, const int stride_w,
+          const int ksize_h, const int ksize_w, const float* in,
+          const DDim& in_dim, float* out, const DDim& out_dim);
+
 }  // namespace lite
 }  // namespace paddle

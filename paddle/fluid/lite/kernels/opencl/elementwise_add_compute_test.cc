@@ -40,23 +40,23 @@ TEST(elementwise_add, init) {
   kernel->SetParam(param);
   kernel->SetContext(std::move(context));
 
-  X.Resize({1, 1, 1, 10});
-  Y.Resize({1, 1, 1, 10});
-  Out.Resize({1, 1, 1, 10});
+  X.Resize({4, 3, 10, 10});
+  Y.Resize({4, 3, 10, 10});
+  Out.Resize({4, 3, 10, 10});
 
   auto* x_data = X.mutable_data<float>();
   auto* y_data = Y.mutable_data<float>();
   auto* out_data = Out.mutable_data<float>();
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 4 * 3 * 10 * 10; i++) {
     x_data[i] = 1.1 * i;
     y_data[i] = 2.3 * i;
   }
 
   kernel->Launch();
 
-  for (int i = 0; i < 10; i++) {
-    EXPECT_NEAR(out_data[i], 3.4 * i, 1e-6);
+  for (int i = 0; i < 4 * 3 * 10 * 10; i++) {
+    EXPECT_NEAR(out_data[i], static_cast<float>(3.4 * i), 1e-6);
   }
 }
 
