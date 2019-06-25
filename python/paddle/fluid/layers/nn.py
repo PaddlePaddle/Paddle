@@ -1781,10 +1781,10 @@ def chunk_eval(input,
     num_correct_chunks = helper.create_variable_for_type_inference(
         dtype="int64")
 
-    this_input = {"Inference": [input], "Label": [Label]}
+    this_input = {"Inference": [input], "Label": [label]}
 
     if seq_length:
-        this_input["SeqLength"] = [seq_lenth]
+        this_input["SeqLength"] = [seq_length]
 
     helper.append_op(
         type="chunk_eval",
