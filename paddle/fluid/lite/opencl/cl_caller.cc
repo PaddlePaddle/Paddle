@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/lite/opencl/cl_helper.h"
 #include "paddle/fluid/lite/opencl/cl_image.h"
 #include "paddle/fluid/lite/opencl/cl_tool.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
@@ -84,6 +85,63 @@ void elementwise_add(CLHelper* helper, const float* in, const DDim& in_dim,
   size_t width = in_image.ImageWidth();
   size_t height = in_image.ImageHeight();
   auto global_work_size = cl::NDRange{width, height};
+  status = helper->OpenCLCommandQueue().enqueueNDRangeKernel(
+      kernel, cl::NullRange, global_work_size, cl::NullRange, nullptr, nullptr);
+  CL_CHECK_ERRORS(status);
+
+  status = helper->OpenCLCommandQueue().finish();
+  CL_CHECK_ERRORS(status);
+  VLOG(3) << " --- Out image: " << out_image << " --- ";
+  CopyImageData(helper, out_image, out);
+}
+
+void pool(CLHelper* helper, const std::string pooling_type, const int pad_h,
+          const int pad_w, const int stride_h, const int stride_w,
+          const int ksize_h, const int ksize_w, const float* in,
+          const DDim& in_dim, float* out, const DDim& out_dim) {
+  auto kernel =
+      helper->GetKernel(string_format("pool_%s", pooling_type.c_str()));
+  CLImage in_image;
+  in_image.set_tensor_data(in, in_dim);
+  in_image.InitNormalCLImage(helper->OpenCLContext());
+  VLOG(3) << " --- Inpu image: " << in_image << " --- ";
+  CLImage out_image;
+  out_image.InitEmptyImage(helper->OpenCLContext(), out_dim);
+  auto global_work_size = helper->DefaultWorkSize(out_image);
+  auto* in_converter =
+      dynamic_cast<CLImageConverterNormal*>(in_image.image_converter());
+  auto* out_converter =
+      dynamic_cast<CLImageConverterNormal*>(out_image.image_converter());
+  const int in_height = in_converter->HeightOfOneBlock();
+  const int in_width = in_converter->WidthOfOneBlock();
+  const int out_height = out_converter->HeightOfOneBlock();
+  const int out_width = out_converter->WidthOfOneBlock();
+  cl_int status;
+  status = kernel.setArg(0, in_height);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(1, in_width);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(2, out_height);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(3, out_width);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(4, pad_h);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(5, pad_w);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(6, stride_h);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(7, stride_w);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(8, ksize_h);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(9, ksize_w);
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(10, *in_image.cl_image());
+  CL_CHECK_ERRORS(status);
+  status = kernel.setArg(11, *out_image.cl_image());
+  CL_CHECK_ERRORS(status);
+
   status = helper->OpenCLCommandQueue().enqueueNDRangeKernel(
       kernel, cl::NullRange, global_work_size, cl::NullRange, nullptr, nullptr);
   CL_CHECK_ERRORS(status);
