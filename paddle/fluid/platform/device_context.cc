@@ -407,8 +407,7 @@ thread_local int cur_thread_id = 0;
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
-#define MKLDNN_CAP 100
-#define MKLDNN_CLEAR_PERCENTAGE 10
+#define MKLDNN_CAP 10000
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
@@ -438,11 +437,11 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
       });
 
   if (key_it == pBlob->end()) {
-    if ((tid == 1) && (pBlob->size() >= MKLDNN_CAP)) {
+    // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
+    if ((tid == -1) && (pBlob->size() > MKLDNN_CAP)) {
       VLOG(3) << "SetBlob: tid=" << tid << ", remove head blob "
               << pBlob->begin()->first << "\n";
       pBlob->erase(pBlob->begin());
-      //         pBlob->clear();
     }
     pBlob->push_back(std::make_pair(name, data));
   } else {

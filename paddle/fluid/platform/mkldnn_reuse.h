@@ -38,6 +38,9 @@ class MKLDNNHandler {
     std::stringstream ss;
     ss << tid;
     key_ = key_common_ + "-t:" + ss.str();
+    if (platform::get_cur_thread_id() == -1) {
+      key_ = key_common_;
+    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(

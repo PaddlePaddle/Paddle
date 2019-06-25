@@ -114,6 +114,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
+  CP_MEMBER(mkldnn_thread_id_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -159,6 +160,15 @@ void AnalysisConfig::EnableMKLDNN() {
 #endif
 
   Update();
+}
+
+void AnalysisConfig::SetMKLDNNThreadId(int id) {
+#ifdef PADDLE_WITH_MKLDNN
+  mkldnn_thread_id_ = id;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
+  mkldnn_thread_id_ = 0;
+#endif
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {
