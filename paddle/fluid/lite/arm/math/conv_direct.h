@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -34,11 +35,6 @@ class DirectConv : public ImplBase<TARGET(kARM), Ptype, operators::ConvParam> {
                                    const operators::ConvParam& param,
                                    Context<TARGET(kARM)>* ctx);
 
-  typedef void (*conv_direct_int8_impl)(
-      const int8_t* din, int32_t* dout, int num, int chout, int hout, int wout,
-      int chin, int hin, int win, const int8_t* weights, const int32_t* bias,
-      const operators::ConvParam& param, Context<TARGET(kARM)>* ctx,
-      PrecisionType out_type, const float* scale);
   DirectConv() = default;
   ~DirectConv() {}
 
@@ -50,13 +46,40 @@ class DirectConv : public ImplBase<TARGET(kARM), Ptype, operators::ConvParam> {
 
   virtual bool run(const operators::ConvParam& param);
 
- private:
-  conv_direct_impl impl_{nullptr};
+ protected:
   bool is_weights_transed_{false};
   Tensor weights_trans_;
   Tensor _tmp_out;
 
-  // for int8
+ private:
+  conv_direct_impl impl_{nullptr};
+};
+
+template <PrecisionType Ptype_out>
+class DirectConvInt8
+    : public ImplBase<TARGET(kARM), PRECISION(kInt8), operators::ConvParam> {
+ public:
+  typedef void (*conv_direct_int8_impl)(
+      const int8_t* din, int32_t* dout, int num, int chout, int hout, int wout,
+      int chin, int hin, int win, const int8_t* weights, const int32_t* bias,
+      const operators::ConvParam& param, Context<TARGET(kARM)>* ctx,
+      PrecisionType out_type, const float* scale);
+
+  DirectConvInt8() = default;
+  ~DirectConvInt8() {}
+
+  virtual bool init(const operators::ConvParam& param,
+                    Context<TARGET(kARM)>* ctx);
+
+  virtual bool create(const operators::ConvParam& param,
+                      Context<TARGET(kARM)>* ctx);
+
+  virtual bool run(const operators::ConvParam& param);
+
+ private:
+  bool is_weights_transed_{false};
+  Tensor weights_trans_;
+  Tensor _tmp_out;
   conv_direct_int8_impl _impl_int8{nullptr};
   std::vector<float> _w_scale;
 };
