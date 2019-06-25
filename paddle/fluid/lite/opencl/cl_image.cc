@@ -16,7 +16,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <array>
 #include "paddle/fluid/lite/opencl/cl_engine.h"
-#include "paddle/fluid/lite/opencl/cl_half.h"
 #include "paddle/fluid/lite/opencl/cl_tool.h"
 
 namespace paddle {
@@ -26,7 +25,7 @@ std::ostream& operator<<(std::ostream& os, const CLImage& cl_image) {
   int width = cl_image.image_dims_[0];
   int height = cl_image.image_dims_[1];
 
-  half_t* image_data = new half_t[height * width * 4];
+  float* image_data = new float[height * width * 4];
   cl::Image* image = cl_image.cl_image();
   const std::array<size_t, 3> origin{0, 0, 0};
   const std::array<size_t, 3> region{static_cast<size_t>(width),
@@ -131,9 +130,9 @@ void CLImage::InitCLImage(const cl::Context& context,
   image_dims_ = converter->InitImageDimInfoWith(tensor_dims_);
 
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-  half_t* image_data = new half_t[image_dims_.product() * 4];
+  float* image_data = new float[image_dims_.product() * 4];
 #else
-  half_t* image_data = new half_t[image_dims_.production() * 4];
+  float* image_data = new float[image_dims_.production() * 4];
 #endif
 
   VLOG(3) << " convert to image ";
@@ -151,7 +150,7 @@ void CLImage::InitCLImage(const cl::Context& context,
 
 void CLImage::InitCLImage(const cl::Context& context, int width, int height,
                           void* data) {
-  cl::ImageFormat img_format(CL_RGBA, CL_HALF_FLOAT);
+  cl::ImageFormat img_format(CL_RGBA, CL_FLOAT);
   cl_int err;
   cl_image_.reset(new cl::Image2D(
       context, CL_MEM_READ_WRITE | (data ? CL_MEM_COPY_HOST_PTR : 0),

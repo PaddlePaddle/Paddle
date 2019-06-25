@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma OPENCL EXTENSION cl_khr_fp16 : enable
 #define MIN_VALUE -FLT_MAX
 
 __kernel void pool_max(
@@ -41,16 +40,16 @@ __kernel void pool_max(
 
   const int pos_in_x = out_c * in_width;
   const int pos_in_y = out_n * in_height;
-  half4 max_value = (half4)(MIN_VALUE);
+  float4 max_value = (float4)(MIN_VALUE);
   for (int y = start_h; y < end_h; ++y) {
     for (int x = start_w; x < end_w; ++x) {
-      half4 tmp = read_imageh(input, sampler, (int2)(pos_in_x + x, pos_in_y + y));
+      float4 tmp = read_imagef(input, sampler, (int2)(pos_in_x + x, pos_in_y + y));
       max_value = max(max_value, tmp);
     }
   }
 
   const int pos_out_x = mad24(out_c, out_width, out_w);
-  write_imageh(output, (int2)(pos_out_x, out_nh), max_value);
+  write_imagef(output, (int2)(pos_out_x, out_nh), max_value);
 }
 
 __kernel void pool_avg(
@@ -77,15 +76,15 @@ __kernel void pool_avg(
 
   const int pos_in_x = out_c * in_width;
   const int pos_in_y = out_n * in_height;
-  half4 sum = (half4)(0.0f);
+  float4 sum = (float4)(0.0f);
   int num = 0;
   for (int y = start_h; y < end_h; ++y) {
     for (int x = start_w; x < end_w; ++x) {
-      sum += read_imageh(input, sampler, (int2)(pos_in_x + x, pos_in_y + y));
+      sum += read_imagef(input, sampler, (int2)(pos_in_x + x, pos_in_y + y));
       num++;
     }
   }
-  half4 avg = sum / num;
+  float4 avg = sum / num;
   const int pos_out_x = mad24(out_c, out_width, out_w);
-  write_imageh(output, (int2)(pos_out_x, out_nh), avg);
+  write_imagef(output, (int2)(pos_out_x, out_nh), avg);
 }
