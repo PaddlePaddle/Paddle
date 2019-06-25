@@ -47,6 +47,22 @@ class DDimLite : public DDimBase<DDimLite> {
                            std::multiplies<value_type>());
   }
   const std::vector<value_type> &data() const { return data_; }
+  value_type count(int start, int end) {
+    if (start < 0) {
+      start = 0;
+    }
+    if (end > size()) {
+      end = size();
+    }
+    if (end < start) {
+      end = start;
+    }
+    value_type sum = 1;
+    for (auto i = start; i < end; ++i) {
+      sum *= data_[i];
+    }
+    return sum;
+  }
 
  private:
   std::vector<value_type> data_;

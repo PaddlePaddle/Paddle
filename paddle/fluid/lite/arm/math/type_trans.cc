@@ -15,6 +15,7 @@
 #include "paddle/fluid/lite/arm/math/type_trans.h"
 #include <arm_neon.h>
 #include <string.h>
+#include <vector>
 #include "paddle/fluid/lite/arm/math/saturate.h"
 
 namespace paddle {
@@ -571,6 +572,67 @@ template <>
 void int32_to_dtype(const int* din, int* dout, const float* scale,
                     int axis_size, int64_t outer_size, int64_t inner_size) {
   return int32_to_int32(din, dout, scale, axis_size, outer_size, inner_size);
+}
+
+bool trans_tensor_int32_to_int8(Tensor* tin, Tensor* tout, float input_scale,
+                                float output_scale,
+                                std::vector<float> weights_scale, int axis) {
+  tout->Resize(tin->dims());
+
+  // compute scale
+  std::vector<float> scale(weights_scale.size());
+  for (int i = 0; i < weights_scale.size(); ++i) {
+    scale[i] = input_scale * weights_scale[i] / output_scale;
+  }
+
+  auto i_dims = tin->dims();
+  int outer_size = i_dims.count(0, axis);
+  int axis_size = i_dims[axis];
+  int inner_size = i_dims.count(axis + 1, i_dims.size());
+
+  const int* i_data = tin->data<int32_t>();
+  signed char* o_data = tout->mutable_data<signed char>();
+  int32_to_int8(i_data, o_data, scale.data(), axis_size, outer_size,
+                inner_size);
+  return true;
+}
+
+bool trans_tensor_int32_to_fp32(Tensor* tin, Tensor* tout, float input_scale,
+                                std::vector<float> weights_scale, int axis) {
+  tout->Resize(tin->dims());
+
+  // compute scale
+  std::vector<float> scale(weights_scale.size());
+  for (int i = 0; i < weights_scale.size(); ++i) {
+    scale[i] = input_scale * weights_scale[i];
+  }
+
+  auto i_dims = tin->dims();
+  int outer_size = i_dims.count(0, axis);
+  int axis_size = i_dims[axis];
+  int inner_size = i_dims.count(axis + 1, i_dims.size());
+
+  const auto* i_data = tin->data<int32_t>();
+  float* o_data = tout->mutable_data<float>();
+  //! convert to fp32
+  int32_to_fp32(i_data, o_data, scale.data(), axis_size, outer_size,
+                inner_size);
+  return true;
+}
+
+template <>
+bool trans_tensor_dtype<PRECISION(kInt32), PRECISION(kInt8)>(
+    Tensor* tin, Tensor* tout, float input_scale, float output_scale,
+    std::vector<float> weights_scale) {
+  return trans_tensor_int32_to_int8(tin, tout, input_scale, output_scale,
+                                    weights_scale, 1);
+}
+
+template <>
+bool trans_tensor_dtype<PRECISION(kInt32), PRECISION(kFloat)>(
+    Tensor* tin, Tensor* tout, float input_scale, float output_scale,
+    std::vector<float> weights_scale) {
+  return trans_tensor_int32_to_fp32(tin, tout, input_scale, weights_scale, 1);
 }
 
 }  // namespace math

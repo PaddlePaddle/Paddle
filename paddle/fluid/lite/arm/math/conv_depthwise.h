@@ -29,19 +29,11 @@ template <PrecisionType Ptype>
 class DepthwiseConv
     : public ImplBase<TARGET(kARM), Ptype, operators::ConvParam> {
  public:
-  typedef void (*conv_dw_impl)(const float* din, float* dout, int num,
-                               int chout, int hout, int wout, int chin, int hin,
-                               int win, const float* weights, const float* bias,
+  typedef void (*conv_dw_impl)(const float* i_data, float* o_data, int bs,
+                               int oc, int oh, int ow, int ic, int ih, int kw,
+                               const float* w_data, const float* b_data,
                                const operators::ConvParam& param,
                                Context<TARGET(kARM)>* ctx);
-
-  typedef void (*conv_dw_int8_impl)(const int8_t* din, int32_t* dout, int num,
-                                    int chout, int hout, int wout, int chin,
-                                    int hin, int win, const int8_t* weights,
-                                    const int32_t* bias,
-                                    const operators::ConvParam& param,
-                                    Context<TARGET(kARM)>* ctx,
-                                    PrecisionType out_type, const float* scale);
   DepthwiseConv() = default;
   ~DepthwiseConv() {}
 
@@ -55,9 +47,39 @@ class DepthwiseConv
 
  private:
   conv_dw_impl impl_{nullptr};
-  conv_dw_int8_impl _impl_int8{nullptr};
-  std::vector<float> _w_scale;
-  Tensor _tmp_out;
+};
+
+template <PrecisionType Ptype_out>
+class DepthwiseConvInt8
+    : public ImplBase<TARGET(kARM), PRECISION(kInt8), operators::ConvParam> {
+ public:
+  typedef void (*conv_dw_int8_impl)(const int8_t* i_data, int32_t* o_data,
+                                    int bs, int oc, int oh, int ow, int ic,
+                                    int ih, int kw, const int8_t* w_data,
+                                    const int32_t* b_data,
+                                    const operators::ConvParam& param,
+                                    Context<TARGET(kARM)>* ctx,
+                                    PrecisionType out_type, const float* scale);
+
+  DepthwiseConvInt8() = default;
+  ~DepthwiseConvInt8() {
+    if (tmp_int32_out_) {
+      delete tmp_int32_out_;
+    }
+  }
+
+  virtual bool init(const operators::ConvParam& param,
+                    Context<TARGET(kARM)>* ctx);
+
+  virtual bool create(const operators::ConvParam& param,
+                      Context<TARGET(kARM)>* ctx);
+
+  virtual bool run(const operators::ConvParam& param);
+
+ private:
+  conv_dw_int8_impl impl_{nullptr};
+  std::vector<float> w_scale_;
+  Tensor* tmp_int32_out_;
 };
 
 }  // namespace math

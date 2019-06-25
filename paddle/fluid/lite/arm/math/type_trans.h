@@ -15,11 +15,31 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
 namespace lite {
 namespace arm {
 namespace math {
+
+template <PrecisionType IN, PrecisionType OUT>
+bool trans_tensor_dtype(Tensor* tin, Tensor* tout, float input_scale,
+                        float output_scale, std::vector<float> weights_scale) {
+  LOG(FATAL) << "trans_tensor_dtype has no impl";
+  return false;
+}
+
+template <>
+bool trans_tensor_dtype<PRECISION(kInt32), PRECISION(kInt8)>(
+    Tensor* tin, Tensor* tout, float input_scale, float output_scale,
+    std::vector<float> weights_scale);
+
+template <>
+bool trans_tensor_dtype<PRECISION(kInt32), PRECISION(kFloat)>(
+    Tensor* tin, Tensor* tout, float input_scale, float output_scale,
+    std::vector<float> weights_scale);
 
 template <typename dtype>
 void int32_to_dtype(const int* din, dtype* dout, const float* scale,
