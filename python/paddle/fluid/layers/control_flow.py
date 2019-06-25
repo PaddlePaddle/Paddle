@@ -448,7 +448,7 @@ class StaticRNN(object):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
-        elif self.seq_len != x.shape[0]:
+        elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
