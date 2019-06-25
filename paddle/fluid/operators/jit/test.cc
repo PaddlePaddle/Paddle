@@ -530,6 +530,113 @@ void TestKernelLayerNorm() {
 }
 
 template <typename KernelTuple, typename PlaceType>
+void TestKernelLayerNormGrad() {
+  using T = typename KernelTuple::data_type;
+  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
+  const T epsilon = 9.99999975e-06;
+  for (int n : {1, 2, 10}) {
+    for (int x_dim_0 : {1, 9, 17, 50}) {
+      int left = n * x_dim_0;
+      for (int x_dim_1 : TestSizes()) {
+        int right = x_dim_1;
+        auto ref = jit::GetReferFunc<KernelTuple>();
+        EXPECT_TRUE(ref != nullptr);
+        int sz = left * right;
+        std::vector<T> x(sz), d_y(sz), mean(left), var(left), scale(right),
+            bias(right), y(sz), temp(sz), temp_norm(sz), d_scale_ref(right),
+            d_bias_ref(right), d_x_ref(sz);
+        RandomVec<T>(sz, x.data());
+        RandomVec<T>(sz, d_y.data());
+        RandomVec<T>(left, mean.data());
+        RandomVec<T>(left, var.data());
+        RandomVec<T>(right, scale.data());
+        RandomVec<T>(right, bias.data());
+        RandomVec<T>(sz, temp.data());
+        RandomVec<T>(sz, temp_norm.data());
+        RandomVec<T>(sz, y.data());
+        RandomVec<T>(sz, d_x_ref.data());
+        RandomVec<T>(right, d_scale_ref.data());
+        RandomVec<T>(right, d_bias_ref.data());
+
+        const T* scale_data = scale.data();
+        const T* d_y_data = d_y.data();
+        const T* bias_data = bias.data();
+        T* x_data = x.data();
+        T* mean_data = mean.data();
+        T* var_data = var.data();
+        T* temp_data = temp.data();
+        T* temp_norm_data = temp_norm.data();
+        T* d_x_ref_data = d_x_ref.data();
+        T* d_scale_ref_data = d_scale_ref.data();
+        T* d_bias_ref_data = d_bias_ref.data();
+        T* y_data = y.data();
+
+        // Cacluate the mean and var value.
+        auto layer_norm_ref = jit::GetReferFunc<jit::LayerNormTuple<T>>();
+        layer_norm_ref(x_data, y_data, mean_data, var_data, scale_data,
+                       bias_data, left, epsilon, right);
+
+        // Get the reference value of d_x, d_scale and d_bias.
+        ref(d_y_data, d_x_ref_data, x_data, mean_data, var_data, scale_data,
+            d_scale_ref_data, d_bias_ref_data, temp_data, temp_norm_data, left,
+            epsilon, right);
+
+        auto verifier = [](
+            const typename KernelTuple::func_type tgt,
+            const std::vector<T>& d_y_, const std::vector<T>& d_x_ref_,
+            const std::vector<T>& x_, const std::vector<T>& mean_,
+            const std::vector<T>& var_, const std::vector<T>& scale_,
+            const std::vector<T>& d_scale_ref_,
+            const std::vector<T>& d_bias_ref_, const int& left,
+            const float& epsilon,
+            const typename KernelTuple::attr_type& right) {
+          EXPECT_TRUE(tgt != nullptr);
+          std::vector<T> temp(d_x_ref_.size());
+          std::vector<T> temp_norm(d_x_ref_.size());
+          std::vector<T> d_x_tgt(d_x_ref_.size());
+          std::vector<T> d_scale_tgt(d_scale_ref_.size());
+          std::vector<T> d_bias_tgt(d_bias_ref_.size());
+
+          EXPECT_EQ(d_y_.size(), static_cast<size_t>(left * right));
+          EXPECT_EQ(x_.size(), static_cast<size_t>(left * right));
+          EXPECT_EQ(d_x_ref_.size(), static_cast<size_t>(left * right));
+          EXPECT_EQ(mean_.size(), static_cast<size_t>(left));
+          EXPECT_EQ(var_.size(), static_cast<size_t>(left));
+          EXPECT_EQ(d_scale_ref_.size(), static_cast<size_t>(right));
+          EXPECT_EQ(d_bias_ref_.size(), static_cast<size_t>(right));
+
+          const T* scale_data = scale_.data();
+          const T* x_data = x_.data();
+          const T* d_y_data = d_y_.data();
+          const T* mean_data = mean_.data();
+          const T* var_data = var_.data();
+          const T* d_x_ref_data = d_x_ref_.data();
+          const T* d_scale_ref_data = d_scale_ref_.data();
+          const T* d_bias_ref_data = d_bias_ref_.data();
+          T* temp_data = temp.data();
+          T* temp_norm_data = temp_norm.data();
+          T* d_x_tgt_data = d_x_tgt.data();
+          T* d_scale_tgt_data = d_scale_tgt.data();
+          T* d_bias_tgt_data = d_bias_tgt.data();
+
+          // Get the output value of d_x, d_scale and d_bias from the jit
+          // kernels.
+          tgt(d_y_data, d_x_tgt_data, x_data, mean_data, var_data, scale_data,
+              d_scale_tgt_data, d_bias_tgt_data, temp_data, temp_norm_data,
+              left, epsilon, right);
+          ExpectEQ<T>(d_x_tgt_data, d_x_ref_data, left * right);
+          ExpectEQ<T>(d_scale_tgt_data, d_scale_ref_data, right);
+          ExpectEQ<T>(d_bias_tgt_data, d_bias_ref_data, right);
+        };
+        TestAllImpls<KernelTuple, PlaceType>(right, verifier, d_y, d_x_ref, x,
+                                             mean, var, scale, d_scale_ref,
+                                             d_bias_ref, left, epsilon, right);
+      }
+    }
+  }
+}
+
+template <typename KernelTuple, typename PlaceType>
 void TestKernelCRFDecoding() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -1369,6 +1476,7 @@ TEST_CPU_KERNEL(GRUHtPart2);
 
 TEST_CPU_KERNEL(NCHW16CMulNC);
 TEST_CPU_KERNEL(LayerNorm);
+TEST_CPU_KERNEL(LayerNormGrad);
 TEST_CPU_KERNEL(CRFDecoding);
 
 TEST_CPU_KERNEL(SeqPool);

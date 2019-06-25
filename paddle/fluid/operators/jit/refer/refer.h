@@ -342,6 +342,84 @@ void LayerNorm(T* x, T* out, T* mean, T* var, const T* scale, const T* bias,
 }
 
 template <typename T>
+void LayerNormGrad(const T* d_y, T* d_x, const T* x, const T* mean,
+                   const T* var, const T* scale, T* d_scale, T* d_bias, T* temp,
+                   T* temp_norm, int height, const float epsilon, int right) {
+  if (d_scale || d_x) {
+    // get x_norm
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < right; ++j) {
+        temp_norm[i * right + j] =
+            (x[i * right + j] - mean[i]) / std::sqrt(var[i] + epsilon);
+      }
+    }
+  }
+
+  if (d_bias) {
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < right; ++j) {
+        if (i != 0) {
+          d_bias[j] += d_y[i * right + j];
+        } else {
+          d_bias[j] = d_y[i * right + j];
+        }
+      }
+    }
+  }
+
+  if (d_scale) {
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < right; ++j) {
+        if (i != 0) {
+          d_scale[j] += d_y[i * right + j] * temp_norm[i * right + j];
+        } else {
+          d_scale[j] = d_y[i * right + j] * temp_norm[i * right + j];
+        }
+      }
+    }
+  }
+
+  if (d_x) {
+    if (d_scale) {
+      // dy_dx
+      for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < right; ++j) {
+          d_x[i * right + j] = d_y[i * right + j] * scale[j];
+        }
+      }
+    }
+    // dy_dmean_dx && dy_var_dx
+    for (int i = 0; i < height; i++) {
+      T sum = 0.0;
+      int offset = i * right;
+      for (int j = 0; j < right; j++) {
+        sum += d_x[offset + j];
+      }
+      auto mean = sum / right;
+      for (int j = 0; j < right; j++) {
+        temp[offset + j] = d_x[offset + j] * temp_norm[offset + j];
+      }
+      for (int j = 0; j < right; j++) {
+        d_x[offset + j] -= mean;
+      }
+    }
+    // dy_var_dx
+    for (int i = 0; i < height; i++) {
+      T sum = 0.0;
+      int offset = i * right;
+      for (int j = 0; j < right; j++) {
+        sum += temp[offset + j];
+      }
+      auto mean = sum / right;
+      for (int j = 0; j < right; j++) {
+        d_x[offset + j] = (d_x[offset + j] - (temp_norm[offset + j] * mean)) /
+                          std::sqrt(var[i] + epsilon);
+      }
+    }
+  }
+}
+
+template <typename T>
 void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
   int offset = 0;
   for (int h = 0; h < height; ++h) {
@@ -564,6 +642,7 @@ DECLARE_REFER_KERNEL(StrideASum);
 // others
 DECLARE_REFER_KERNEL(CRFDecoding);
 DECLARE_REFER_KERNEL(LayerNorm);
+DECLARE_REFER_KERNEL(LayerNormGrad);
 DECLARE_REFER_KERNEL(NCHW16CMulNC);
 DECLARE_REFER_KERNEL(SeqPool);
 DECLARE_REFER_KERNEL(MatMul);

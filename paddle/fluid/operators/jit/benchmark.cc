@@ -431,6 +431,72 @@ void BenchKernelLayerNorm() {
 }
 
 template <typename KernelTuple, typename PlaceType>
+void BenchKernelLayerNormGrad() {
+  using T = typename KernelTuple::data_type;
+  const T epsilon = 9.99999975e-06;
+  for (int n : {1, 2, 10}) {
+    for (int x_dim_0 : {1, 9, 17, 50}) {
+      int left = n * x_dim_0;
+      for (int x_dim_1 : TestSizes()) {
+        int right = x_dim_1;
+        int sz = left * right;
+        Tensor x, d_y, mean, var, scale, bias, y, temp, temp_norm, d_scale,
+            d_bias, d_x;
+        x.Resize({n, x_dim_0, x_dim_1});
+        d_x.Resize({n, x_dim_0, x_dim_1});
+        y.Resize({n, x_dim_0, x_dim_1});
+        d_y.Resize({n, x_dim_0, x_dim_1});
+        temp.Resize({n, x_dim_0, x_dim_1});
+        temp_norm.Resize({n, x_dim_0, x_dim_1});
+        mean.Resize({n, x_dim_0});
+        var.Resize({n, x_dim_0});
+        scale.Resize({x_dim_1});
+        bias.Resize({x_dim_1});
+        d_scale.Resize({x_dim_1});
+        d_bias.Resize({x_dim_1});
+
+        RandomVec<T>(sz, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(sz, d_x.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(sz, y.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(sz, d_y.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(sz, temp.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(sz, temp_norm.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(left, mean.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(left, var.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(right, scale.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(right, bias.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(right, d_scale.mutable_data<T>(PlaceType()), -2.f, 2.f);
+        RandomVec<T>(right, d_bias.mutable_data<T>(PlaceType()), -2.f, 2.f);
+
+        const T* scale_data = scale.data<T>();
+        const T* d_y_data = d_y.data<T>();
+        const T* bias_data = bias.data<T>();
+        T* x_data = x.data<T>();
+        T* mean_data = mean.data<T>();
+        T* var_data = var.data<T>();
+        T* temp_data = temp.data<T>();
+        T* temp_norm_data = temp_norm.data<T>();
+        T* d_x_data = d_x.data<T>();
+        T* d_scale_data = d_scale.data<T>();
+        T* d_bias_data = d_bias.data<T>();
+        T* y_data = y.data<T>();
+
+        // Cacluate the mean and var value.
+        auto layer_norm_ref = jit::GetReferFunc<jit::LayerNormTuple<T>>();
+        layer_norm_ref(x_data, y_data, mean_data, var_data, scale_data,
+                       bias_data, left, epsilon, right);
+
+        // Run the benchmark.
+        BenchAllImpls<KernelTuple, PlaceType>(
+            right, d_y_data, d_x_data, x_data, mean_data, var_data, scale_data,
+            d_scale_data, d_bias_data, temp_data, temp_norm_data, left, epsilon,
+            right);
+      }
+    }
+  }
+}
+
+template <typename KernelTuple, typename PlaceType>
 void BenchKernelCRFDecoding() {
   using T = typename KernelTuple::data_type;
   constexpr int state_trans_base_idx = 2;
@@ -542,6 +608,7 @@ BENCH_FP32_CPU(GRUHtPart1);
 BENCH_FP32_CPU(GRUHtPart2);
 
 BENCH_FP32_CPU(LayerNorm);
+BENCH_FP32_CPU(LayerNormGrad);
 BENCH_FP32_CPU(CRFDecoding);
 
 BENCH_FP32_CPU(SeqPool);

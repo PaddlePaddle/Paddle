@@ -157,6 +157,226 @@ bool LayerNormKernel::CanBeUsed(const int& d) const {
   return platform::MayIUse(platform::avx) && d >= YMM_FLOAT_BLOCK;
 }
 
+void LayerNormGrad(const float* d_y, float* d_x, const float* x,
+                   const float* mean, const float* var, const float* scale,
+                   float* d_scale, float* d_bias, float* temp, float* temp_norm,
+                   int height, const float epsilon, int right) {
+  size_t offset;
+  size_t j;
+  int block = YMM_FLOAT_BLOCK;
+
+  __m256 sum;
+  __m256 mean_vec, var_vec;
+  __m128 hi, lo;
+  __m256 tmp, last_vec;
+
+  const int rest = right % block;
+  const int end = right - rest;
+
+  __m256 reverse_num_vec =
+      _mm256_div_ps(_mm256_set1_ps(1.0), _mm256_set1_ps(right));
+  __m256 epsilon_vec = _mm256_set1_ps(epsilon);
+  int rest_mask =
+      ((-1) & (~((~0U) >> (sizeof(int) * 8 - (block - rest))))) & 0x0ff;
+  __m256i mask_vec = _mm256_set_epi32(
+      rest_mask & 0x80 ? 0xffffffff : 0, rest_mask & 0x40 ? 0xffffffff : 0,
+      rest_mask & 0x20 ? 0xffffffff : 0, rest_mask & 0x10 ? 0xffffffff : 0,
+      rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
+      rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
+
+  for (int i = 0; i < height; ++i) {
+    offset = i * right;
+    if (d_scale || d_x) {
+      // get x_norm
+      mean_vec = _mm256_set1_ps(mean[i]);
+      var_vec = _mm256_set1_ps(var[i]);
+
+      for (j = offset; j < end + offset; j += block) {
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
+        tmp = _mm256_div_ps(
+            tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
+        _mm256_storeu_ps(reinterpret_cast<float*>(temp_norm) + j, tmp);
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
+        tmp = _mm256_div_ps(
+            tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
+        _mm256_storeu_ps(reinterpret_cast<float*>(temp_norm) + j, tmp);
+      }
+    }
+
+    if (d_bias) {
+      if (rest != 0) {
+        j = offset + right - block;
+        if (i != 0) {
+          last_vec =
+              _mm256_loadu_ps(reinterpret_cast<float*>(d_bias) + j - offset);
+        }
+      }
+      for (j = offset; j < end + offset; j += block) {
+        tmp = _mm256_loadu_ps((const float*)d_y + j);
+        if (i != 0) {
+          tmp = _mm256_add_ps(
+              _mm256_loadu_ps(reinterpret_cast<float*>(d_bias) + j - offset),
+              tmp);
+        }
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_bias) + j - offset, tmp);
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_loadu_ps((const float*)d_y + j);
+        if (i != 0) {
+          tmp = _mm256_add_ps(last_vec, tmp);
+        }
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_bias) + j - offset, tmp);
+      }
+    }
+
+    if (d_scale) {
+      if (rest != 0) {
+        j = offset + right - block;
+        if (i != 0) {
+          last_vec =
+              _mm256_loadu_ps(reinterpret_cast<float*>(d_scale) + j - offset);
+        }
+      }
+
+      for (j = offset; j < end + offset; j += block) {
+        tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)d_y + j),
+                            _mm256_loadu_ps((const float*)temp_norm + j));
+        if (i != 0) {
+          tmp = _mm256_add_ps(
+              _mm256_loadu_ps(reinterpret_cast<float*>(d_scale) + j - offset),
+              tmp);
+        }
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_scale) + j - offset, tmp);
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)d_y + j),
+                            _mm256_loadu_ps((const float*)temp_norm + j));
+        if (i != 0) {
+          tmp = _mm256_add_ps(last_vec, tmp);
+        }
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_scale) + j - offset, tmp);
+      }
+    }
+
+    if (d_x) {
+      if (d_scale) {
+        // dy_dx
+        for (j = offset; j < end + offset; j += block) {
+          tmp =
+              _mm256_mul_ps(_mm256_loadu_ps((const float*)d_y + j),
+                            _mm256_loadu_ps((const float*)scale + j - offset));
+          _mm256_storeu_ps(reinterpret_cast<float*>(d_x) + j, tmp);
+        }
+        if (rest != 0) {
+          j = offset + right - block;
+          tmp =
+              _mm256_mul_ps(_mm256_loadu_ps((const float*)d_y + j),
+                            _mm256_loadu_ps((const float*)scale + j - offset));
+          _mm256_storeu_ps(reinterpret_cast<float*>(d_x) + j, tmp);
+        }
+      }
+
+      // dy_dmean_dx && dy_var_dx
+      sum = _mm256_setzero_ps();
+      for (j = offset; j < end + offset; j += block) {
+        sum = _mm256_add_ps(sum, _mm256_loadu_ps((const float*)d_x + j));
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_loadu_ps((const float*)d_x + j);
+        tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
+                               *(__m256*)&mask_vec);  // NOLINT
+        sum = _mm256_add_ps(sum, tmp);
+      }
+      hi = _mm256_extractf128_ps(sum, 1);
+      lo = _mm256_extractf128_ps(sum, 0);
+      sum = _mm256_add_ps(
+          sum, _mm256_insertf128_ps(
+                   _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
+      sum = _mm256_hadd_ps(sum, sum);
+      sum = _mm256_hadd_ps(sum, sum);
+      mean_vec = _mm256_mul_ps(sum, reverse_num_vec);
+
+      // dy_dmean_dx && dy_var_dx
+      if (rest != 0) {
+        j = offset + right - block;
+        last_vec = _mm256_loadu_ps(reinterpret_cast<float*>(d_x) + j);
+      }
+
+      for (j = offset; j < end + offset; j += block) {
+        tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)d_x + j),
+                            _mm256_loadu_ps((const float*)temp_norm + j));
+        _mm256_storeu_ps(reinterpret_cast<float*>(temp) + j, tmp);
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)d_x + j), mean_vec);
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_x) + j, tmp);
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_mul_ps(last_vec,
+                            _mm256_loadu_ps((const float*)temp_norm + j));
+        _mm256_storeu_ps(reinterpret_cast<float*>(temp) + j, tmp);
+        tmp = _mm256_sub_ps(last_vec, mean_vec);
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_x) + j, tmp);
+      }
+      // dy_var_dx
+      sum = _mm256_setzero_ps();
+      for (j = offset; j < end + offset; j += block) {
+        sum = _mm256_add_ps(sum, _mm256_loadu_ps((const float*)temp + j));
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_loadu_ps((const float*)temp + j);
+        tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
+                               *(__m256*)&mask_vec);  // NOLINT
+        sum = _mm256_add_ps(sum, tmp);
+      }
+      hi = _mm256_extractf128_ps(sum, 1);
+      lo = _mm256_extractf128_ps(sum, 0);
+      sum = _mm256_add_ps(
+          sum, _mm256_insertf128_ps(
+                   _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
+      sum = _mm256_hadd_ps(sum, sum);
+      sum = _mm256_hadd_ps(sum, sum);
+      mean_vec = _mm256_mul_ps(sum, reverse_num_vec);
+
+      var_vec = _mm256_set1_ps(var[i]);
+
+      // dy_dmean_dx && dy_var_dx
+      if (rest != 0) {
+        j = offset + right - block;
+        last_vec = _mm256_loadu_ps(reinterpret_cast<float*>(d_x) + j);
+      }
+
+      for (j = offset; j < end + offset; j += block) {
+        tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)temp_norm + j),
+                            mean_vec);
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)d_x + j), tmp);
+        tmp = _mm256_div_ps(
+            tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_x) + j, tmp);
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_mul_ps(_mm256_loadu_ps((const float*)temp_norm + j),
+                            mean_vec);
+        tmp = _mm256_sub_ps(last_vec, tmp);
+        tmp = _mm256_div_ps(
+            tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
+        _mm256_storeu_ps(reinterpret_cast<float*>(d_x) + j, tmp);
+      }
+    }
+  }
+}
+
+bool LayerNormGradKernel::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx) && d >= YMM_FLOAT_BLOCK;
+}
+
 }  // namespace intrinsic
 }  // namespace more
 }  // namespace jit
@@ -166,3 +386,5 @@ bool LayerNormKernel::CanBeUsed(const int& d) const {
 namespace intrinsic = paddle::operators::jit::more::intrinsic;
 
 REGISTER_JITKERNEL_MORE(kLayerNorm, intrinsic, intrinsic::LayerNormKernel);
+REGISTER_JITKERNEL_MORE(kLayerNormGrad, intrinsic,
+                        intrinsic::LayerNormGradKernel);

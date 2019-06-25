@@ -35,6 +35,19 @@ class LayerNormKernel : public KernelMore<LayerNormTuple<float>> {
   const char* ImplType() const override { return "Intrinsic"; }
 };
 
+void LayerNormGrad(const float* d_y, float* d_x, const float* x,
+                   const float* mean, const float* var, const float* scale,
+                   float* d_scale, float* d_bias, float* temp, float* temp_norm,
+                   int height, const float epsilon, int right);
+
+class LayerNormGradKernel : public KernelMore<LayerNormGradTuple<float>> {
+ public:
+  LayerNormGradKernel() { this->func = LayerNormGrad; }
+  bool CanBeUsed(
+      const typename LayerNormGradTuple<float>::attr_type&) const override;
+  const char* ImplType() const override { return "Intrinsic"; }
+};
+
 }  // namespace intrinsic
 }  // namespace more
 }  // namespace jit

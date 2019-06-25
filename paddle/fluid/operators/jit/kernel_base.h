@@ -34,6 +34,7 @@ typedef enum {
   kLSTMCtHt,
   kLSTMC1H1,
   kLayerNorm,
+  kLayerNormGrad,
   kMatMul,
   kNCHW16CMulNC,
   kSeqPool,
@@ -300,6 +301,15 @@ struct LayerNormTuple {
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
                             const float, int);
+};
+
+template <typename T>
+struct LayerNormGradTuple {
+  static constexpr KernelType kernel_type = kLayerNormGrad;
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, const T*, const T*, const T*,
+                            const T*, T*, T*, T*, T*, int, const float, int);
 };
 
 template <typename T>

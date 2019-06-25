@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
+#include <algorithm>
 #include "paddle/fluid/operators/jit/kernels.h"
 #endif
 #include "paddle/fluid/operators/math/math_function.h"
@@ -263,6 +264,8 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
     framework::DDim matrix_shape({left, right});
 
     d_y.Resize(matrix_shape);
+#if defined(PADDLE_WITH_CUDA) || defined(_WIN32) || defined(__APPLE__) || \
+    defined(__OSX__)
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     ColwiseSum2D<DeviceContext, T> colwise_sum(left, right,
                                                ctx.device_context());
@@ -342,6 +345,53 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
           DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), d_x);
       d_x->Resize(dx_dim);
     }
+#else
+    Tensor temp;
+    Tensor temp_norm;
+
+    auto d_y_data = d_y.data<T>();
+    T* temp_data = nullptr;
+    T* temp_norm_data = nullptr;
+    T* d_scale_data = nullptr;
+    T* d_bias_data = nullptr;
+    T* d_x_data = nullptr;
+
+    if (d_scale || d_x) {
+      x.Resize(matrix_shape);
+      temp_data = temp.mutable_data<T>(matrix_shape, ctx.GetPlace());
+
+      temp_norm_data = temp_norm.mutable_data<T>(matrix_shape, ctx.GetPlace());
+    }
+
+    if (d_bias) {
+      d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
+    }
+
+    if (d_scale) {
+      d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
+    }
+
+    if (d_x) {
+      d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
+      if (!d_scale_data) {
+        // dy_dx
+        std::memcpy(d_x_data, d_y_data,
+                    std::min(d_x->memory_size(), d_y.memory_size()));
+      }
+    }
+
+    auto x_data = x.data<T>();
+    auto mean_data = mean->data<T>();
+    auto var_data = var->data<T>();
+    auto scale_data = scale->data<T>();
+
+    auto ker = jit::KernelFuncs<jit::LayerNormGradTuple<T>,
+                                platform::CPUPlace>::Cache()
+                   .At(right);
+    ker(d_y_data, d_x_data, x_data, mean_data, var_data, scale_data,
+        d_scale_data, d_bias_data, temp_data, temp_norm_data,
+        static_cast<int>(left), static_cast<const float>(epsilon), right);
+#endif
   }
 };
 
