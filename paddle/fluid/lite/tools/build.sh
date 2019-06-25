@@ -512,7 +512,7 @@ function main {
                 shift
                 ;;
             build_test_arm_model_mobilenetv2)
-                build_test_arm_subtask_model test_mobilenetv2_lite mobilenet_v2
+                build_test_arm_subtask_model test_mobilenetv2_lite mobilenet_v2_relu
                 shift
                 ;;
             build_test_arm_model_resnet50)
@@ -520,7 +520,7 @@ function main {
                 shift
                 ;;
             build_test_arm_model_inceptionv4)
-                build_test_arm_subtask_model test_inceptionv4_lite inception_v4
+                build_test_arm_subtask_model test_inceptionv4_lite inception_v4_simple
                 shift
                 ;;
             check_style)
