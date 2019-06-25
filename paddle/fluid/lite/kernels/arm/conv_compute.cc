@@ -127,7 +127,7 @@ void ConvComputeInt8<Ptype_out>::PrepareForRun() {
     VLOG(3) << "DepthwiseConv Int8";
   } else if (param.groups == 1 && kw == 3 && (sw == 1 || sw == 2) &&
              kps_equal && no_dilation) {
-    // impl_ = new lite::arm::math::DirectConv<Ptype_out>;
+    impl_ = new lite::arm::math::DirectConvInt8<Ptype_out>;
   } else {
     VLOG(3) << "GemmLikeConvInt8";
     impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
