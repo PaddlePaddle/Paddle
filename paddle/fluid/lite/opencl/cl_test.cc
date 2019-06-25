@@ -160,12 +160,11 @@ TEST(cl_test, channel_add_test) {
   for (int i = 0; i < 4 * 16 * 256 * 512; i += stride) {
     std::cout << out[i] << " ";
   }
+  std::cout << std::endl;
 
   for (int i = 0; i < 4 * 16 * 256 * 512; i++) {
     EXPECT_NEAR(out[i], out_ref[i], 1e-6);
   }
-
-  std::cout << std::endl;
 }
 
 TEST(cl_test, elementwise_add_test) {
@@ -205,12 +204,86 @@ TEST(cl_test, elementwise_add_test) {
   for (int i = 0; i < 4 * 16 * 256 * 512; i += stride) {
     std::cout << out[i] << " ";
   }
+  std::cout << std::endl;
 
   for (int i = 0; i < 4 * 16 * 256 * 512; i++) {
     EXPECT_NEAR(out[i], out_ref[i], 1e-6);
   }
+}
 
-  std::cout << std::endl;
+void pool_avg(const int padding_height, const int padding_width,
+              const int stride_height, const int stride_width,
+              const int ksize_height, const int ksize_width,
+              const float* input_data, const DDim& in_dim, float* output_data,
+              const DDim& out_dim) {
+  const int batch_size = in_dim[0];
+  const int input_height = in_dim[2];
+  const int input_width = in_dim[3];
+  const int output_channels = out_dim[1];
+  const int output_height = out_dim[2];
+  const int output_width = out_dim[3];
+
+  const size_t input_spatial_size = input_height * input_width;
+  const size_t output_spatial_size = output_height * output_width;
+
+  for (int i = 0; i < batch_size; i++) {
+    for (int c = 0; c < output_channels; ++c) {
+      int channel = i * output_channels + c;
+      const float* input_ptr = input_data + channel * input_spatial_size;
+      float* output_ptr = output_data + channel * output_spatial_size;
+
+      for (int ph = 0; ph < output_height; ++ph) {
+        int hstart = ph * stride_height - padding_height;
+        int hend = std::min(hstart + ksize_height, input_height);
+        hstart = std::max(hstart, 0);
+        for (int pw = 0; pw < output_width; ++pw) {
+          int wstart = pw * stride_width - padding_width;
+          int wend = std::min(wstart + ksize_width, input_width);
+          wstart = std::max(wstart, 0);
+
+          float val = 0.f;
+          int count = 0;
+          for (int h = hstart; h < hend; ++h) {
+            for (int w = wstart; w < wend; ++w) {
+              val += input_ptr[h * input_width + w];
+              ++count;
+            }
+          }
+          output_ptr[ph * output_width + pw] =
+              (count > 0) ? val * (1.f / count) : 0.f;
+        }
+      }
+    }
+  }
+}
+
+TEST(cl_test, pool_test) {
+  std::default_random_engine engine;
+  std::uniform_real_distribution<float> dist(-5, 5);
+
+  const DDim in_dim = DDim(std::vector<DDim::value_type>{4, 1024, 7, 7});
+  std::unique_ptr<float[]> in_data(new float[4 * 1024 * 7 * 7]);
+  for (int i = 0; i < 4 * 1024 * 7 * 7; i++) {
+    in_data[i] = dist(engine);
+  }
+
+  const DDim out_dim = DDim(std::vector<DDim::value_type>{4, 1024, 1, 1});
+  std::unique_ptr<float[]> out(new float[4 * 1024 * 1 * 1]);
+  std::unique_ptr<float[]> out_ref(new float[4 * 1024 * 1 * 1]);
+
+  bool status = InitOpenCLEngine(FLAGS_cl_path);
+  CHECK(status) << "Fail to initialize OpenCL engine.";
+  std::unique_ptr<CLContext> context(new CLContext);
+  std::unique_ptr<CLHelper> helper(new CLHelper(context.get()));
+  helper->AddKernel("pool_max", "pool_kernel.cl");
+  helper->AddKernel("pool_avg", "pool_kernel.cl");
+  pool(helper.get(), "avg", 0, 0, 1, 1, 7, 7, in_data.get(), in_dim, out.get(),
+       out_dim);
+  pool_avg(0, 0, 1, 1, 7, 7, in_data.get(), in_dim, out_ref.get(), out_dim);
+
+  for (int i = 0; i < 4 * 1024 * 1 * 1; i++) {
+    EXPECT_NEAR(out[i], out_ref[i], 1e-6);
+  }
 }
 
 }  // namespace lite
