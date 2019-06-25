@@ -302,9 +302,8 @@ class Conv3D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, D, H, W] format.
-            num_filters(int): The number of filter. It is as same as the output
-            image channel.
+        name_scope(str) : The name for this class.
+        num_filters(int): The number of filter. It is as same as the output image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
@@ -696,12 +695,11 @@ class Pool2D(layers.Layer):
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
             Otherwise, the pool padding size will be a square of an int.
         global_pooling (bool): (bool, default false) Whether to use the global pooling. If global_pooling = true,
-            kernel size and paddings will be ignored
-        use_cudnn (bool): (bool, default True) Onlyceil_mode (bool) - (bool, default false) Whether to use the ceil
-            function to calculate output height and width. False is the default.
-            If it is set to False, the floor function will be used.
-        exclusive (bool): Whether to exclude padding points in average pooling
-                          mode, default is true
+            kernel size and paddings will be ignored.
+        use_cudnn (bool): (bool, default True) Only used in cudnn kernel, need install cudnn.
+        ceil_mode (bool): (bool, default false) Whether to use the ceil function to calculate output height and width.
+            False is the default. If it is set to False, the floor function will be used.
+        exclusive (bool): (bool, default True) Whether to exclude padding points in average pooling mode, default is true
 
     Returns:
         Variable: The pooling result.
@@ -1056,11 +1054,13 @@ class BatchNorm(layers.Layer):
 
     Examples:
         .. code-block:: python
+          import paddle.fluid as fluid
 
-          fc = fluid.FC('fc', size=200, param_attr='fc1.w')
-          hidden1 = fc(x)
-          batch_norm = fluid.BatchNorm("batch_norm", 10)
-          hidden2 = batch_norm(hidden1)
+          with fluid.dygraph.guard():
+              fc = fluid.FC('fc', size=200, param_attr='fc1.w')
+              hidden1 = fc(x)
+              batch_norm = fluid.BatchNorm("batch_norm", 10)
+              hidden2 = batch_norm(hidden1)
     """
 
     def __init__(self,
@@ -1421,7 +1421,7 @@ class GRUUnit(layers.Layer):
 
     if origin_mode is True, then the equation of a gru step is from paper
     `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1459,9 +1459,7 @@ class GRUUnit(layers.Layer):
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
     Args:
-        input (Variable): The fc transformed input value of current step.
         name_scope (str): See base class.
-        hidden (Variable): The hidden value of gru unit from previous step.
         size (integer): The input dimension value.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             hidden-hidden weight matrix. Note:
@@ -2064,8 +2062,6 @@ class Conv2DTranspose(layers.Layer):
             library is installed. Default: True.
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
-        name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: True.
 
     Returns:
         Variable: The tensor variable storing the convolution transpose result.
@@ -2213,8 +2209,6 @@ class SequenceConv(layers.Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
 
     Returns:
         Variable: output of sequence_conv
@@ -2291,7 +2285,8 @@ class RowConv(layers.Layer):
         act (str): Non-linear activation to be applied to output variable.
 
     Returns:
-        the output(Out) is a LodTensor, which supports variable time-length input sequences. The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
+        the output(Out) is a LodTensor, which supports variable time-length input sequences.
+        The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
 
     Examples:
         .. code-block:: python
