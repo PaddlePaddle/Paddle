@@ -5029,7 +5029,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             input = fluid.layers.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=2)
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
             # x0.shape [-1, 3, 3, 5]
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 3, 5]
@@ -6479,7 +6479,7 @@ def sampled_softmax_with_cross_entropy(logits,
             import paddle.fluid as fluid
 
             input = fluid.layers.data(name='data', shape=[256], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[5], dtype='int64')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc = fluid.layers.fc(input=input, size=100)
             out = fluid.layers.sampled_softmax_with_cross_entropy(
                       logits=fc, label=label, num_samples=25)

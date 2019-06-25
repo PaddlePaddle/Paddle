@@ -327,12 +327,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
   if (!member_->use_all_reduce_) {
-    PADDLE_ENFORCE(places.size() > 1,
-                   "If you set build_strategy.reduce with 'Reduce',"
-                   "the number of places must be greater than 1.");
+    if (places.size() == 1) {
+      LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
+                   "the number of places should be greater than 1.";
+      member_->use_all_reduce_ = true;
+    }
   }
 
-  LOG(WARNING) << string::Sprintf(
+  LOG(INFO) << string::Sprintf(
       "The number of %s, which is used in ParallelExecutor, is %lu. And "
       "the Program will be copied %lu copies",
       (member_->use_cuda_ ? "CUDAPlace" : "CPUPlace"), places.size(),
@@ -371,10 +373,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // choice the execution strategy.
   build_strategy.enable_parallel_graph_ =
       EnableParallelGraphExecution(*graph, exec_strategy, build_strategy);
-  if (build_strategy.enable_parallel_graph_)
-    VLOG(0) << "The Executor would execute the graph by ParallelGraph "
-               "Execution which can get better performance,"
-            << "you can force it off by env FLAGS_enable_parallel_graph=0";
+  if (build_strategy.enable_parallel_graph_) {
+    LOG(INFO) << "The Executor would execute the graph by ParallelGraph "
+                 "Execution which can get better performance,"
+              << "you can force it off by env FLAGS_enable_parallel_graph=0";
+  }
 
   if (member_->use_cuda_ && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
