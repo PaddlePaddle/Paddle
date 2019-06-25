@@ -317,9 +317,8 @@ def rpn_target_assign(bbox_pred,
                             append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
                             append_batch_size=False, dtype='float32')
-            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight=
-                fluid.layers.rpn_target_assign(bbox_pred, cls_logits,
-                anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
+            loc, score, loc_target, score_target, inside_weight = fluid.layers.rpn_target_assign(
+                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
 
     """
 
