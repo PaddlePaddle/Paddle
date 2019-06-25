@@ -22,8 +22,7 @@ namespace lite {
 namespace arm {
 namespace math {
 
-/****************************************** Gemmlike Conv Precision Is Float
- * ******************************************/
+/********************* Gemmlike Conv Precision Is Float ***********************/
 template <>
 bool GemmLikeConv<PRECISION(kFloat)>::create(const operators::ConvParam& param,
                                              ARMContext* ctx) {
@@ -131,9 +130,7 @@ bool GemmLikeConv<PRECISION(kFloat)>::run(const operators::ConvParam& param) {
   return true;
 }
 
-/****************************************** Gemmlike Conv Precision Is Int8
- * ******************************************/
-
+/********************* Gemmlike Conv Precision Is Int8 ************************/
 template <PrecisionType Ptype_out>
 bool GemmLikeConvInt8<Ptype_out>::create(const operators::ConvParam& param,
                                          ARMContext* ctx) {
