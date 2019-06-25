@@ -317,9 +317,8 @@ def rpn_target_assign(bbox_pred,
                             append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
                             append_batch_size=False, dtype='float32')
-            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight=
-                fluid.layers.rpn_target_assign(bbox_pred, cls_logits,
-                anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
+            loc, score, loc_target, score_target, inside_weight = fluid.layers.rpn_target_assign(
+                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
 
     """
 
@@ -921,8 +920,9 @@ def yolo_box(x,
 
         import paddle.fluid as fluid
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+        img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, img_size=608, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -2199,8 +2199,7 @@ def generate_proposal_labels(rpn_rois,
                            append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_info', shape=[10, 3],
                            append_batch_size=False, dtype='float32')
-            rois, labels_int32, bbox_targets, bbox_inside_weights,
-            bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            rois, labels, bbox, inside_weights, outside_weights = fluid.layers.generate_proposal_labels(
                            rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                            class_nums=10)
 

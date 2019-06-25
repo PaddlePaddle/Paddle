@@ -139,4 +139,4 @@ def run_check():
         print("\n Original Error is: {}".format(e))
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
-            "\n Let's start deep Learning with Paddle Fluid now")
+            "\n Let's start deep Learning with Paddle Fluid now!")

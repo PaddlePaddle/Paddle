@@ -23,6 +23,8 @@ from paddle.fluid.backward import append_backward
 import numpy as np
 import paddle.fluid.core as core
 
+np.random.seed(123)
+
 
 class PyRNNBase(object):
     def __init__(self, input_shape, output_shape):
