@@ -62,7 +62,7 @@ function(copy TARGET)
                 endforeach ()
             endif()
         else (WIN32) # not windows
-            add_custom_command(TARGET ${TARGET} PRE_BUILD
+            add_custom_command(TARGET ${TARGET} POST_BUILD
                     COMMAND mkdir -p "${dst}"
                     COMMAND cp -r "${src}" "${dst}"
                     COMMENT "copying ${src} -> ${dst}")
