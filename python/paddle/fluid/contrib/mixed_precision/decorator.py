@@ -18,7 +18,7 @@ from ... import layers
 from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import create_master_params_grads, master_param_to_train_param
-from .fp16_utils import update_loss_scaling
+from .fp16_utils import update_loss_scaling, rewrite_program
 
 __all__ = ["decorate"]
 
@@ -120,6 +120,7 @@ class OptimizerWithMixedPrecison(object):
             A list of (param, grad), which is a tuple of a parameter and its 
             gradient respectively, and the scaled loss.
         """
+        rewrite_program(self._train_program)
         scaled_loss = loss * self._loss_scaling
         self._param_grads = self._optimizer.backward(
             scaled_loss, startup_program, parameter_list, no_grad_set,
