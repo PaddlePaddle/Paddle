@@ -39,7 +39,8 @@ TEST(InceptionV4, test) {
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < input_tensor->dims().production(); i++) {
+  auto item_size = input_tensor->dims().production();
+  for (int i = 0; i < item_size; i++) {
     data[i] = 1;
   }
 
@@ -58,16 +59,30 @@ TEST(InceptionV4, test) {
             << ", spend " << (GetCurrentUS() - start) / FLAGS_repeats / 1000.0
             << " ms in average.";
 
+  // std::vector<float> results({0.00078033, 0.00083865, 0.00060029, 0.00057083,
+  //                            0.00070094, 0.00080584, 0.00044525, 0.00074907,
+  //                            0.00059774, 0.00063654});
+  //
+  std::vector<std::vector<float>> results;
+  // i = 1
+  results.emplace_back(std::vector<float>(
+      {0.0011684548,  0.0010390386,  0.0011301535,  0.0010133048,
+       0.0010259597,  0.0010982729,  0.00093195855, 0.0009141837,
+       0.00096620916, 0.00089982944, 0.0010064574,  0.0010474789,
+       0.0009782845,  0.0009230255,  0.0010548076,  0.0010974824,
+       0.0010612885,  0.00089107914, 0.0010112736,  0.00097655767}));
   auto* out = predictor.GetOutput(0);
-  std::vector<float> results({0.00078033, 0.00083865, 0.00060029, 0.00057083,
-                              0.00070094, 0.00080584, 0.00044525, 0.00074907,
-                              0.00059774, 0.00063654});
-  for (int i = 0; i < results.size(); ++i) {
-    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-5);
-  }
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 1);
   ASSERT_EQ(out->dims()[1], 1000);
+
+  int step = 50;
+  for (int i = 0; i < results.size(); ++i) {
+    for (int j = 0; j < results[i].size(); ++j) {
+      EXPECT_NEAR(out->data<float>()[j * step + (out->dims()[1] * i)],
+                  results[i][j], 1e-6);
+    }
+  }
 }
 #endif
 

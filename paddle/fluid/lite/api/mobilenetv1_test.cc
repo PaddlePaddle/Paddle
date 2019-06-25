@@ -36,7 +36,8 @@ void TestModel(const std::vector<Place>& valid_places,
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
   auto* data = input_tensor->mutable_data<float>();
-  for (int i = 0; i < input_tensor->dims().production(); i++) {
+  auto item_size = input_tensor->dims().production();
+  for (int i = 0; i < item_size; i++) {
     data[i] = 1;
   }
 
@@ -55,17 +56,26 @@ void TestModel(const std::vector<Place>& valid_places,
             << ", spend " << (GetCurrentUS() - start) / FLAGS_repeats / 1000.0
             << " ms in average.";
 
+  std::vector<std::vector<float>> results;
+  // i = 1
+  results.emplace_back(std::vector<float>(
+      {0.00019130898, 9.467885e-05,  0.00015971427, 0.0003650665,
+       0.00026431272, 0.00060884043, 0.0002107942,  0.0015819625,
+       0.0010323516,  0.00010079765, 0.00011006987, 0.0017364529,
+       0.0048292773,  0.0013995157,  0.0018453331,  0.0002428986,
+       0.00020211363, 0.00013668182, 0.0005855956,  0.00025901722}));
   auto* out = predictor.GetOutput(0);
-  std::vector<float> results({1.91308980e-04, 5.92055148e-04, 1.12303176e-04,
-                              6.27335685e-05, 1.27507330e-04, 1.32147351e-03,
-                              3.13812525e-05, 6.52209565e-05, 4.78087313e-05,
-                              2.58822285e-04});
-  for (int i = 0; i < results.size(); ++i) {
-    EXPECT_NEAR(out->data<float>()[i], results[i], 1e-6);
-  }
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 1);
   ASSERT_EQ(out->dims()[1], 1000);
+
+  int step = 50;
+  for (int i = 0; i < results.size(); ++i) {
+    for (int j = 0; j < results[i].size(); ++j) {
+      EXPECT_NEAR(out->data<float>()[j * step + (out->dims()[1] * i)],
+                  results[i][j], 1e-6);
+    }
+  }
 }
 
 TEST(MobileNetV1, test_arm) {
