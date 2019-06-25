@@ -709,6 +709,7 @@ class BasicLSTMUnit(Layer):
         self._activation = activation or layers.tanh
         self._forget_bias = layers.fill_constant(
             [1], dtype=dtype, value=forget_bias)
+        self._forget_bias.stop_gradient = False
         self._dtype = dtype
 
     def _build_once(self, input, pre_hidden, pre_cell):
