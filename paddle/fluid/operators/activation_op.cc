@@ -442,7 +442,7 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SoftRelu Activation Operator.
 
-$out = \ln(1 + \exp(\max(\min(x, threshold), threshold))$
+$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
 
 )DOC");
   }
