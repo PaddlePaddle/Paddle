@@ -33,18 +33,19 @@ class CLImageConverterBase {
 
 class CLImageConverterDefault : public CLImageConverterBase {
  public:
-  DDim InitImageDimInfoWith(const DDim &tensor_dim);
-  void NCHWToImage(float *nchw, float *image, const DDim &tensor_dim);
+  DDim InitImageDimInfoWith(const DDim &tensor_dim) override;
+  void NCHWToImage(float *nchw, float *image, const DDim &tensor_dim) override;
   void ImageToNCHW(float *image, float *tensor, const DDim &image_dim,
-                   const DDim &tensor_dim);
+                   const DDim &tensor_dim) override;
 };
 
 class CLImageConverterFolder : public CLImageConverterBase {
  public:
-  DDim InitImageDimInfoWith(const DDim &tensor_dim);
-  void NCHWToImage(float *tensor, float *image, const DDim &tensor_dim);
+  DDim InitImageDimInfoWith(const DDim &tensor_dim) override;
+  void NCHWToImage(float *tensor, float *image,
+                   const DDim &tensor_dim) override;
   void ImageToNCHW(float *image, float *tensor, const DDim &image_dim,
-                   const DDim &tensor_dim);
+                   const DDim &tensor_dim) override;
 
   /*
    *  width of original tensor
@@ -66,10 +67,11 @@ class CLImageConverterFolder : public CLImageConverterBase {
 
 class CLImageConverterNormal : public CLImageConverterBase {
  public:
-  DDim InitImageDimInfoWith(const DDim &tensor_dim);
-  void NCHWToImage(float *tensor, float *image, const DDim &tensor_dim);
+  DDim InitImageDimInfoWith(const DDim &tensor_dim) override;
+  void NCHWToImage(float *tensor, float *image,
+                   const DDim &tensor_dim) override;
   void ImageToNCHW(float *image, float *tensor, const DDim &image_dim,
-                   const DDim &tensor_dim);
+                   const DDim &tensor_dim) override;
 
   /*
    *  width of original tensor
@@ -90,24 +92,27 @@ class CLImageConverterNormal : public CLImageConverterBase {
 };
 
 class CLImageConverterNWBlock : public CLImageConverterBase {
-  DDim InitImageDimInfoWith(const DDim &tensor_dim);
-  void NCHWToImage(float *tensor, float *image, const DDim &tensor_dim);
+  DDim InitImageDimInfoWith(const DDim &tensor_dim) override;
+  void NCHWToImage(float *tensor, float *image,
+                   const DDim &tensor_dim) override;
   void ImageToNCHW(float *image, float *tensor, const DDim &image_dim,
-                   const DDim &tensor_dim);
+                   const DDim &tensor_dim) override;
 };
 class CLImageConverterDWBlock : public CLImageConverterBase {
-  DDim InitImageDimInfoWith(const DDim &tensor_dim);
-  void NCHWToImage(float *tensor, float *image, const DDim &tensor_dim);
+  DDim InitImageDimInfoWith(const DDim &tensor_dim) override;
+  void NCHWToImage(float *tensor, float *image,
+                   const DDim &tensor_dim) override;
   void ImageToNCHW(float *image, float *tensor, const DDim &image_dim,
-                   const DDim &tensor_dim);
+                   const DDim &tensor_dim) override;
 };
 
 class CLImageConverterWinoTransWeight : public CLImageConverterBase {
  public:
-  DDim InitImageDimInfoWith(const DDim &tensor_dim);
-  void NCHWToImage(float *tensor, float *image, const DDim &tensor_dim);
+  DDim InitImageDimInfoWith(const DDim &tensor_dim) override;
+  void NCHWToImage(float *tensor, float *image,
+                   const DDim &tensor_dim) override;
   void ImageToNCHW(float *image, float *tensor, const DDim &image_dim,
-                   const DDim &tensor_dim);
+                   const DDim &tensor_dim) override;
 };
 
 }  // namespace lite

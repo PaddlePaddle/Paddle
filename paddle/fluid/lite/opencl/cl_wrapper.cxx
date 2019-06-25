@@ -1,16 +1,18 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright 2018 The MACE Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// This file is borrowed from MACE, and we will refactor it
+// in the near future.
 
 #include <dlfcn.h>
 #include <glog/logging.h>
@@ -157,58 +159,58 @@ class OpenCLLibrary final {
   using clGetImageInfoFunc = cl_int (*)(cl_mem, cl_image_info, size_t, void *,
                                         size_t *);
 
-#define PADDLE_CL_DEFINE_FUNC_PTR(func) func##Func func = nullptr
+#define CL_DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetPlatformIDs);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetPlatformInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clBuildProgram);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueNDRangeKernel);
-  PADDLE_CL_DEFINE_FUNC_PTR(clSetKernelArg);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseKernel);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateProgramWithSource);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateBuffer);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateImage);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateImage2D);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateUserEvent);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainKernel);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateKernel);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetProgramInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clFlush);
-  PADDLE_CL_DEFINE_FUNC_PTR(clFinish);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseProgram);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainContext);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetContextInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateProgramWithBinary);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateCommandQueue);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateCommandQueueWithProperties);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseCommandQueue);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueMapBuffer);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueMapImage);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainProgram);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetProgramBuildInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueReadBuffer);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueReadImage);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueWriteBuffer);
-  PADDLE_CL_DEFINE_FUNC_PTR(clWaitForEvents);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseEvent);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateContext);
-  PADDLE_CL_DEFINE_FUNC_PTR(clCreateContextFromType);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseContext);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainCommandQueue);
-  PADDLE_CL_DEFINE_FUNC_PTR(clEnqueueUnmapMemObject);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainMemObject);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseMemObject);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetDeviceInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetDeviceIDs);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainDevice);
-  PADDLE_CL_DEFINE_FUNC_PTR(clReleaseDevice);
-  PADDLE_CL_DEFINE_FUNC_PTR(clRetainEvent);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetKernelWorkGroupInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetEventInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetEventProfilingInfo);
-  PADDLE_CL_DEFINE_FUNC_PTR(clGetImageInfo);
+  CL_DEFINE_FUNC_PTR(clGetPlatformIDs);
+  CL_DEFINE_FUNC_PTR(clGetPlatformInfo);
+  CL_DEFINE_FUNC_PTR(clBuildProgram);
+  CL_DEFINE_FUNC_PTR(clEnqueueNDRangeKernel);
+  CL_DEFINE_FUNC_PTR(clSetKernelArg);
+  CL_DEFINE_FUNC_PTR(clReleaseKernel);
+  CL_DEFINE_FUNC_PTR(clCreateProgramWithSource);
+  CL_DEFINE_FUNC_PTR(clCreateBuffer);
+  CL_DEFINE_FUNC_PTR(clCreateImage);
+  CL_DEFINE_FUNC_PTR(clCreateImage2D);
+  CL_DEFINE_FUNC_PTR(clCreateUserEvent);
+  CL_DEFINE_FUNC_PTR(clRetainKernel);
+  CL_DEFINE_FUNC_PTR(clCreateKernel);
+  CL_DEFINE_FUNC_PTR(clGetProgramInfo);
+  CL_DEFINE_FUNC_PTR(clFlush);
+  CL_DEFINE_FUNC_PTR(clFinish);
+  CL_DEFINE_FUNC_PTR(clReleaseProgram);
+  CL_DEFINE_FUNC_PTR(clRetainContext);
+  CL_DEFINE_FUNC_PTR(clGetContextInfo);
+  CL_DEFINE_FUNC_PTR(clCreateProgramWithBinary);
+  CL_DEFINE_FUNC_PTR(clCreateCommandQueue);
+  CL_DEFINE_FUNC_PTR(clCreateCommandQueueWithProperties);
+  CL_DEFINE_FUNC_PTR(clReleaseCommandQueue);
+  CL_DEFINE_FUNC_PTR(clEnqueueMapBuffer);
+  CL_DEFINE_FUNC_PTR(clEnqueueMapImage);
+  CL_DEFINE_FUNC_PTR(clRetainProgram);
+  CL_DEFINE_FUNC_PTR(clGetProgramBuildInfo);
+  CL_DEFINE_FUNC_PTR(clEnqueueReadBuffer);
+  CL_DEFINE_FUNC_PTR(clEnqueueReadImage);
+  CL_DEFINE_FUNC_PTR(clEnqueueWriteBuffer);
+  CL_DEFINE_FUNC_PTR(clWaitForEvents);
+  CL_DEFINE_FUNC_PTR(clReleaseEvent);
+  CL_DEFINE_FUNC_PTR(clCreateContext);
+  CL_DEFINE_FUNC_PTR(clCreateContextFromType);
+  CL_DEFINE_FUNC_PTR(clReleaseContext);
+  CL_DEFINE_FUNC_PTR(clRetainCommandQueue);
+  CL_DEFINE_FUNC_PTR(clEnqueueUnmapMemObject);
+  CL_DEFINE_FUNC_PTR(clRetainMemObject);
+  CL_DEFINE_FUNC_PTR(clReleaseMemObject);
+  CL_DEFINE_FUNC_PTR(clGetDeviceInfo);
+  CL_DEFINE_FUNC_PTR(clGetDeviceIDs);
+  CL_DEFINE_FUNC_PTR(clRetainDevice);
+  CL_DEFINE_FUNC_PTR(clReleaseDevice);
+  CL_DEFINE_FUNC_PTR(clRetainEvent);
+  CL_DEFINE_FUNC_PTR(clGetKernelWorkGroupInfo);
+  CL_DEFINE_FUNC_PTR(clGetEventInfo);
+  CL_DEFINE_FUNC_PTR(clGetEventProfilingInfo);
+  CL_DEFINE_FUNC_PTR(clGetImageInfo);
 
-#undef PADDLE_CL_DEFINE_FUNC_PTR
+#undef CL_DEFINE_FUNC_PTR
 
  private:
   void *handle_ = nullptr;
@@ -285,7 +287,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
     return nullptr;
   }
 
-#define PADDLE_CL_ASSIGN_FROM_DLSYM(func)                        \
+#define CL_ASSIGN_FROM_DLSYM(func)                               \
   do {                                                           \
     void *ptr = dlsym(handle, #func);                            \
     if (ptr == nullptr) {                                        \
@@ -296,56 +298,56 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
     VLOG(3) << "Loaded " << #func << " from " << path;           \
   } while (false)
 
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetPlatformIDs);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetPlatformInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clBuildProgram);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueNDRangeKernel);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clSetKernelArg);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseKernel);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithSource);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateBuffer);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateImage);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateImage2D);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateUserEvent);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainKernel);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateKernel);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetProgramInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clFlush);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clFinish);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseProgram);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainContext);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetContextInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBinary);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueue);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueMapBuffer);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueMapImage);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainProgram);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetProgramBuildInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueReadBuffer);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueReadImage);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueWriteBuffer);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clWaitForEvents);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseEvent);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateContext);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clCreateContextFromType);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseContext);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainCommandQueue);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clEnqueueUnmapMemObject);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainMemObject);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseMemObject);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetDeviceInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetDeviceIDs);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainDevice);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clReleaseDevice);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clRetainEvent);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetKernelWorkGroupInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetEventInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
-  PADDLE_CL_ASSIGN_FROM_DLSYM(clGetImageInfo);
+  CL_ASSIGN_FROM_DLSYM(clGetPlatformIDs);
+  CL_ASSIGN_FROM_DLSYM(clGetPlatformInfo);
+  CL_ASSIGN_FROM_DLSYM(clBuildProgram);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueNDRangeKernel);
+  CL_ASSIGN_FROM_DLSYM(clSetKernelArg);
+  CL_ASSIGN_FROM_DLSYM(clReleaseKernel);
+  CL_ASSIGN_FROM_DLSYM(clCreateProgramWithSource);
+  CL_ASSIGN_FROM_DLSYM(clCreateBuffer);
+  CL_ASSIGN_FROM_DLSYM(clCreateImage);
+  CL_ASSIGN_FROM_DLSYM(clCreateImage2D);
+  CL_ASSIGN_FROM_DLSYM(clCreateUserEvent);
+  CL_ASSIGN_FROM_DLSYM(clRetainKernel);
+  CL_ASSIGN_FROM_DLSYM(clCreateKernel);
+  CL_ASSIGN_FROM_DLSYM(clGetProgramInfo);
+  CL_ASSIGN_FROM_DLSYM(clFlush);
+  CL_ASSIGN_FROM_DLSYM(clFinish);
+  CL_ASSIGN_FROM_DLSYM(clReleaseProgram);
+  CL_ASSIGN_FROM_DLSYM(clRetainContext);
+  CL_ASSIGN_FROM_DLSYM(clGetContextInfo);
+  CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBinary);
+  CL_ASSIGN_FROM_DLSYM(clCreateCommandQueue);
+  CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
+  CL_ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueMapBuffer);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueMapImage);
+  CL_ASSIGN_FROM_DLSYM(clRetainProgram);
+  CL_ASSIGN_FROM_DLSYM(clGetProgramBuildInfo);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueReadBuffer);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueReadImage);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueWriteBuffer);
+  CL_ASSIGN_FROM_DLSYM(clWaitForEvents);
+  CL_ASSIGN_FROM_DLSYM(clReleaseEvent);
+  CL_ASSIGN_FROM_DLSYM(clCreateContext);
+  CL_ASSIGN_FROM_DLSYM(clCreateContextFromType);
+  CL_ASSIGN_FROM_DLSYM(clReleaseContext);
+  CL_ASSIGN_FROM_DLSYM(clRetainCommandQueue);
+  CL_ASSIGN_FROM_DLSYM(clEnqueueUnmapMemObject);
+  CL_ASSIGN_FROM_DLSYM(clRetainMemObject);
+  CL_ASSIGN_FROM_DLSYM(clReleaseMemObject);
+  CL_ASSIGN_FROM_DLSYM(clGetDeviceInfo);
+  CL_ASSIGN_FROM_DLSYM(clGetDeviceIDs);
+  CL_ASSIGN_FROM_DLSYM(clRetainDevice);
+  CL_ASSIGN_FROM_DLSYM(clReleaseDevice);
+  CL_ASSIGN_FROM_DLSYM(clRetainEvent);
+  CL_ASSIGN_FROM_DLSYM(clGetKernelWorkGroupInfo);
+  CL_ASSIGN_FROM_DLSYM(clGetEventInfo);
+  CL_ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
+  CL_ASSIGN_FROM_DLSYM(clGetImageInfo);
 
-#undef PADDLE_CL_ASSIGN_FROM_DLSYM
+#undef CL_ASSIGN_FROM_DLSYM
 
   return handle;
 }
