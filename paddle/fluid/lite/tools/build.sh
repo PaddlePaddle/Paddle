@@ -134,14 +134,26 @@ function test_arm_android {
 
     local testpath=$(find ./paddle/fluid -name ${test_name})
 
-    # if [[ "$test_name" == "test_light_api" ]]; then
-    #     local model_path=$(find . -name "lite_naive_model")
-    #     arm_push_necessary_file $port $model_path $adb_work_dir
-    # fi
+    adb -s emulator-${port} push ${testpath} ${adb_work_dir}
+    adb -s emulator-${port} shell "${adb_work_dir}/${test_name}"
+}
 
+# test the inference high level api
+function test_arm_api {
+    local port=$1
+    local test_name="test_paddle_api_lite"
+
+    make $test_name -j$NUM_CORES_FOR_COMPILE
+
+    local model_path=$(find . -name "lite_naive_model")
+    local remote_model=${adb_work_dir}/paddle_api
+    local testpath=$(find ./paddle/fluid -name ${test_name})
+
+    arm_push_necessary_file $port $model_path $remote_model
+    adb -s emulator-${port} shell mkdir -p $remote_model
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
-    adb -s emulator-${port} shell "./${adb_work_dir}/${test_name}"
+    adb -s emulator-${port} shell "${adb_work_dir}/${test_name} --model_dir $remote_model"
 }
 
 function test_arm_model {
@@ -253,11 +265,14 @@ function test_arm {
         echo "android do not need armv7hf"
         return 0
     fi
-   
+
     echo "test file: ${TESTS_FILE}"
     for _test in $(cat $TESTS_FILE); do
         test_arm_android $_test $port
     done
+
+    # test finally
+    test_arm_api $port
 }
 
 function prepare_emulator {
