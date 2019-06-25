@@ -41,6 +41,7 @@ class ConvCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
       nullptr};
 };
 
+template <PrecisionType Ptype_out>
 class ConvComputeInt8 : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
  public:
   using param_t = operators::ConvParam;

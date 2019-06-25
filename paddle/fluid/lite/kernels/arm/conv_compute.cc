@@ -92,8 +92,24 @@ void ConvCompute::Run() {
   // }
 }
 
-void ConvComputeInt8::PrepareForRun() {}
-void ConvComputeInt8::Run() {}
+template <PrecisionType Ptype_out>
+void ConvComputeInt8<Ptype_out>::PrepareForRun() {
+  auto& param = this->Param<param_t>();
+  auto& ctx = this->ctx_->template As<ARMContext>();
+  impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
+  CHECK(this->impl_->create(param, &ctx));
+}
+
+template <PrecisionType Ptype_out>
+void ConvComputeInt8<Ptype_out>::Run() {
+  auto& param = this->Param<param_t>();
+  CHECK(impl_);
+  impl_->run(param);
+}
+
+template class ConvComputeInt8<PRECISION(kInt8)>;
+template class ConvComputeInt8<PRECISION(kFloat)>;
+template class ConvComputeInt8<PRECISION(kInt32)>;
 
 }  // namespace arm
 }  // namespace kernels
@@ -116,8 +132,9 @@ REGISTER_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW,
     .BindOutput("Output", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
 
-REGISTER_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW,
-                     paddle::lite::kernels::arm::ConvComputeInt8, def)
+REGISTER_LITE_KERNEL(
+    conv2d, kARM, kInt8, kNCHW,
+    paddle::lite::kernels::arm::ConvComputeInt8<PRECISION(kInt8)>, int8_out)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})
     .BindInput("Filter",
@@ -126,12 +143,13 @@ REGISTER_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW,
                 {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
     .Finalize();
 
-REGISTER_LITE_KERNEL(depthwise_conv2d, kARM, kInt8, kNCHW,
-                     paddle::lite::kernels::arm::ConvComputeInt8, def)
+REGISTER_LITE_KERNEL(
+    conv2d, kARM, kInt8, kNCHW,
+    paddle::lite::kernels::arm::ConvComputeInt8<PRECISION(kFloat)>, fp32_out)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})
     .BindInput("Filter",
                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
     .BindOutput("Output",
-                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kFloat))})
     .Finalize();
