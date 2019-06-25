@@ -168,7 +168,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         self.assertFalse(self.isinteger(np.sum(conv_w_mkldnn)))
         self.assertFalse(self.isinteger(np.sum(mul_w_mkldnn)))
 
-        # Check if the conv2d output and mul output are rightly linked to fake_dequantize's 
+        # Check if the conv2d output and mul output are correctly linked to fake_dequantize's 
         # output
         self.check_program(mkldnn_program)
 
