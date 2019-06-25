@@ -55,9 +55,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
             'depthwise_conv2d': ['Input', 'Filter'],
-            # Mul int8 op is under internal test
-            # TODO Update this when mul op is merged
-            #'mul': ['X', 'Y']
+            'mul': ['X', 'Y']
         }
 
     def check_program(self, program):
@@ -162,11 +160,15 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                             activation_quant_type + '_' + weight_quant_type,
                             marked_nodes)
         mkldnn_program = test_graph.to_program()
-        w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        # Check if weights are still integer
-        self.assertFalse(self.isinteger(np.sum(w_mkldnn)))
 
-        # Check if the conv2d output is rightly linked to fake_dequantize's 
+        # Check the transformation weights of conv2d and mul
+        conv_w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
+        mul_w_mkldnn = np.array(scope.find_var('fc_0.w_0').get_tensor())
+        # Check if weights are still integer
+        self.assertFalse(self.isinteger(np.sum(conv_w_mkldnn)))
+        self.assertFalse(self.isinteger(np.sum(mul_w_mkldnn)))
+
+        # Check if the conv2d output and mul output are correctly linked to fake_dequantize's 
         # output
         self.check_program(mkldnn_program)
         if not for_ci:
