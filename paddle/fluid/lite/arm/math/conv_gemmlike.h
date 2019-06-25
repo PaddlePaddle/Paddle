@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
 #include "paddle/fluid/lite/arm/math/conv_impl.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -35,14 +36,42 @@ class GemmLikeConv
                                         const operators::ConvParam& param,
                                         ARMContext* ctx, const int* idx_ptr);
 
+  GemmLikeConv() = default;
+  ~GemmLikeConv() {}
+
+  virtual bool init(const operators::ConvParam& param, ARMContext* ctx) {
+    LOG(FATAL) << "GemmLikeConv::init() not implemented.";
+  }
+
+  virtual bool create(const operators::ConvParam& param, ARMContext* ctx) {
+    LOG(FATAL) << "GemmLikeConv::create() not implemented.";
+  }
+
+  virtual bool run(const operators::ConvParam& param) {
+    LOG(FATAL) << "GemmLikeConv::run() not implemented.";
+  }
+
+ protected:
+  bool is_weights_transed_{false};
+  std::vector<float> _w_scale;
+  Tensor idx_data_;
+  Tensor weights_trans_;
+
+ private:
+  conv_im2col_gemm_impl impl_{nullptr};
+};
+
+template <PrecisionType Ptype_out>
+class GemmLikeConvInt8 : public GemmLikeConv<PRECISION(kInt8)> {
+ public:
   typedef void (*conv_im2col_gemm_int8_impl)(
       const int8_t* din, int32_t* dout, int num, int chout, int hout, int wout,
       int chin, int hin, int win, const int8_t* weights, const int32_t* bias,
       const operators::ConvParam& param, ARMContext* ctx,
       PrecisionType out_type, const float* scale, const int* idx_ptr);
 
-  GemmLikeConv() = default;
-  ~GemmLikeConv() {}
+  GemmLikeConvInt8() = default;
+  ~GemmLikeConvInt8() {}
 
   virtual bool init(const operators::ConvParam& param, ARMContext* ctx);
 
@@ -51,12 +80,7 @@ class GemmLikeConv
   virtual bool run(const operators::ConvParam& param);
 
  private:
-  conv_im2col_gemm_impl impl_{nullptr};
   conv_im2col_gemm_int8_impl impl_int8_{nullptr};
-  bool is_weights_transed_{false};
-  std::vector<float> _w_scale;
-  Tensor idx_data_;
-  Tensor weights_trans_;
 };
 
 }  // namespace math

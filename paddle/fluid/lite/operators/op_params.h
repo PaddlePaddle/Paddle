@@ -19,6 +19,11 @@
 #include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
+#define WITH_INT8_CONFIG             \
+  bool enable_int8;                  \
+  float input_scale;                 \
+  std::vector<float> weight_scale{}; \
+  float output_scale;
 /*
  * This file contains all the argument parameter data structure for operators.
  */
@@ -147,6 +152,7 @@ struct ConvParam {
   float scale_weights{1.0f};      // only used with mkl-dnn int8
   bool force_fp32_output{false};  // only used in mkl-dnn int8
   std::string data_format{"Anylayout"};
+  WITH_INT8_CONFIG
 };
 
 // For BatchNorm op
