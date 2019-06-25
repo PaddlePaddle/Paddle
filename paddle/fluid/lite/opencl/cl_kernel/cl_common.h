@@ -14,21 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#pragma OPENCL EXTENSION cl_khr_fp16 : enable
-
-inline half4 activation(half4 in
+inline float4 activation(float4 in
 #ifdef PRELU
-                        ,
-                        half4 prelu_alpha
+                         ,
+                         float4 prelu_alpha
 #endif
-                        ) {
-  half4 output;
+                         ) {
+  float4 output;
 #ifdef PRELU
-  output = select(prelu_alpha * in, in, in >= (half4)0.0);
+  output = select(prelu_alpha * in, in, in >= (float4)0.0);
 #endif
 
 #ifdef RELU
-  output = fmax(in, (half4)(0.0f));
+  output = fmax(in, (float4)(0.0f));
 #endif
   return output;
 }
