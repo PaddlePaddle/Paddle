@@ -407,8 +407,7 @@ thread_local int cur_thread_id = 0;
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
-#define MKLDNN_CAP 100
-#define MKLDNN_CLEAR_PERCENTAGE 10
+#define MKLDNN_CAP 10000
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
@@ -438,16 +437,17 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
       });
 
   if (key_it == pBlob->end()) {
-    if ((tid == 1) && (pBlob->size() >= MKLDNN_CAP)) {
-      VLOG(3) << "remove head " << pBlob->begin()->first << " in SetBlob\n";
+    // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
+    if ((tid == -1) && (pBlob->size() > MKLDNN_CAP)) {
+      VLOG(3) << "SetBlob: tid=" << tid << ", remove head blob "
+              << pBlob->begin()->first << "\n";
       pBlob->erase(pBlob->begin());
-      //         pBlob->clear();
     }
     pBlob->push_back(std::make_pair(name, data));
   } else {
     key_it->second = data;  // set data to existing blob
   }
-  VLOG(3) << "SetBlob " << name << "\n";
+  VLOG(3) << "SetBlob: tid=" << tid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -463,7 +463,10 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);
-  if (map_it == pMap->end()) return nullptr;
+  if (map_it == pMap->end()) {
+    VLOG(3) << "GetBlob: tid=" << tid << ", miss tid\n";
+    return nullptr;
+  }
   pBlob = map_it->second;
 
   // Find Blob via name
@@ -473,8 +476,12 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
         return obj.first == name;
       });
 
-  if (key_it == pBlob->end()) return nullptr;
+  if (key_it == pBlob->end()) {
+    VLOG(3) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
+    return nullptr;
+  }
 
+  VLOG(3) << "GetBlob tid=" << tid << ", get blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return key_it->second;
 }

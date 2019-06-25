@@ -182,6 +182,9 @@ struct AnalysisConfig {
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
+  /** Set MKLDNN thread id.
+   */
+  void SetMKLDNNThreadId(int id);
 
   /** Set and get the number of cpu math library threads.
    */
@@ -287,6 +290,7 @@ struct AnalysisConfig {
   bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
+  int mkldnn_thread_id_{0};
 
   bool model_from_memory_{false};
 
