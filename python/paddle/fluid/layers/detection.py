@@ -1394,7 +1394,7 @@ def ssd_loss(location,
     actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     conf_loss = nn.reshape(
-        x=conf_loss, shape=(0, num_prior), actual_shape=actual_shape)
+        x=conf_loss, shape=(-1, 0), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
@@ -1464,7 +1464,7 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(x=loss, shape=(0, num_prior), actual_shape=actual_shape)
+    loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -2187,8 +2187,7 @@ def generate_proposal_labels(rpn_rois,
                            append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_info', shape=[10, 3],
                            append_batch_size=False, dtype='float32')
-            rois, labels_int32, bbox_targets, bbox_inside_weights,
-            bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            rois, labels, bbox, inside_weights, outside_weights = fluid.layers.generate_proposal_labels(
                            rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                            class_nums=10)
 
