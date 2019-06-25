@@ -35,11 +35,11 @@ function(copy TARGET)
             if(IS_DIRECTORY ${src})
                 get_filename_component(last_path ${src} NAME)
                 string(APPEND dst "/" ${last_path})
-                add_custom_command(TARGET ${TARGET} PRE_BUILD
+                add_custom_command(TARGET ${TARGET} POST_BUILD
                         COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
                         )
                 if(EXISTS ${src})
-                    add_custom_command(TARGET ${TARGET} PRE_BUILD
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
                             COMMAND cmake -E copy_directory "${src}" "${dst}"
                             COMMENT "copying ${src} -> ${dst}")
                 else()
@@ -52,11 +52,11 @@ function(copy TARGET)
                 if (NOT "${src_files}" STREQUAL "")
                     list(REMOVE_DUPLICATES src_files)
                 endif ()
-                add_custom_command(TARGET ${TARGET} PRE_BUILD
+                add_custom_command(TARGET ${TARGET} POST_BUILD
                         COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
                         )
                 foreach (src_file ${src_files})
-                    add_custom_command(TARGET ${TARGET} PRE_BUILD
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
                             COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
                             COMMENT "copying ${src_file} -> ${dst}")
                 endforeach ()
