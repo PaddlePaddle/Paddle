@@ -128,22 +128,6 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo{};
 
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    // Tensor core is supported since the volta GPU and
-    // is only enabled when input and filter data are float16
-    if (dev_ctx.GetComputeCapability() >= 70 &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-      VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args.cdesc.desc(), CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
-    }
-#endif
-
     using search = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
     algo = search::Find<T>(args, exhaustive_search, false, 0, ctx);
     workspace_size = search::GetWorkspaceSize(args, algo);
@@ -232,26 +216,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     iwo_groups = 1;
     c_groups = groups;
     groups = 1;
-#endif
-
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    // Tensor core is supported since the volta GPU and
-    // is only enabled when input and filter data are float16
-    if (dev_ctx.GetComputeCapability() >= 70 &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args1.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args2.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-      VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args1.cdesc.desc(), CUDNN_DEFAULT_MATH));
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          args2.cdesc.desc(), CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
-    }
 #endif
 
     if (input_grad) {

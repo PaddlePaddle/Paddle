@@ -57,11 +57,24 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     bool has_got_workspace_size = true;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     algo_t algo;
+
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math";
+    } else {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
+    }
+#endif
 
     if (!exhaustive) {
 #if CUDNN_VERSION >= 7001
@@ -155,11 +168,24 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     bool has_got_workspace_size = true;
     algo_t algo;
+
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math";
+    } else {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
+    }
+#endif
 
     if (!exhaustive && !deterministic) {
 #if CUDNN_VERSION >= 7001
@@ -274,10 +300,23 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     bool has_got_workspace_size = true;
+
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math";
+    } else {
+      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+      VLOG(5) << "NOT use cudnn_tensor_op_math";
+    }
+#endif
 
     algo_t algo;
     if (!exhaustive && !deterministic) {
