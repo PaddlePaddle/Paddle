@@ -81,7 +81,7 @@ class DirectConvInt8
   Tensor weights_trans_;
   Tensor _tmp_out;
   conv_direct_int8_impl _impl_int8{nullptr};
-  std::vector<float> _w_scale;
+  std::vector<float> w_scale_;
 };
 
 }  // namespace math
