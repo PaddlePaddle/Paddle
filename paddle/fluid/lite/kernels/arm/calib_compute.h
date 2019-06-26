@@ -21,13 +21,26 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-class CalibCompute : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
+class CalibComputeFp32ToInt8
+    : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
  public:
   using param_t = operators::CalibParam;
 
   void Run() override;
 
-  ~CalibCompute() override{};
+  ~CalibComputeFp32ToInt8() override{};
+
+ private:
+};
+
+class CalibComputeInt8ToFp32
+    : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
+ public:
+  using param_t = operators::CalibParam;
+
+  void Run() override;
+
+  ~CalibComputeInt8ToFp32() override{};
 
  private:
 };

@@ -49,34 +49,37 @@ class Optimizer {
     InitTargetTypeTransformPass();
 
     if (passes.empty()) {
-      RunPasses(std::vector<std::string>{{
-          "lite_quant_dequant_fuse_pass",  //
-          "lite_conv_bn_fuse_pass",        //
+      RunPasses(std::vector<std::string>{
+          {"lite_quant_dequant_fuse_pass",  //
+           "lite_conv_bn_fuse_pass",        //
 // This pass is disabled to force some opencl kernels selected for final
 // running, otherwise, they will be fused to ARM fusion kernels, and the OpenCL
 // devices will be discarded.
 // TODO(Superjomn) Refine the fusion related design to select fusion kernels for
 // devices automatically.
 #ifndef LITE_WITH_OPENCL
-          "lite_conv_elementwise_add_activation_fuse_pass",  //
+           "lite_conv_elementwise_add_activation_fuse_pass",  //
 #endif
-          "lite_fc_fuse_pass",              //
-          "identity_scale_eliminate_pass",  //
+           "lite_fc_fuse_pass",              //
+           "identity_scale_eliminate_pass",  //
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #ifndef LITE_WITH_OPENCL
-          "lite_elementwise_add_activation_fuse_pass",  //
+           "lite_elementwise_add_activation_fuse_pass",  //
 #endif
 #endif
-          "static_kernel_pick_pass",        //
-          "variable_place_inference_pass",  //
-          "argument_type_display_pass",     //
-          "type_target_transform_pass",     //
-          "variable_place_inference_pass",  //
-          "argument_type_display_pass",     //
-          "io_copy_kernel_pick_pass",       //
-          "variable_place_inference_pass",  //
-          "runtime_context_assign_pass",    //
-      }});
+           "static_kernel_pick_pass",        //
+           "variable_place_inference_pass",  //
+           "argument_type_display_pass",     //
+           "type_target_transform_pass",     //
+           "variable_place_inference_pass",  //
+           "argument_type_display_pass",     //
+           "io_copy_kernel_pick_pass",       //
+           "variable_place_inference_pass",  //
+           "precision_cast_transform_pass",  //
+           "argument_type_display_pass",     //
+           "trans_weight_pass",              //
+           "runtime_context_assign_pass",    //
+           "graph_visualze"}});
     } else {
       RunPasses(passes);
     }
@@ -134,7 +137,7 @@ class Optimizer {
     for (auto& x : passes) {
       LOG(INFO) << "== Running pass " << x;
       auto* pass = mir::PassManager::Global().LookUp(x);
-      CHECK(pass);
+      CHECK(pass) << "Can not find pass: " << x;
       pass->Apply(graph_);
     }
   }

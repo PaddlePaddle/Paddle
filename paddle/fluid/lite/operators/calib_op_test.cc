@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/lite/operators/calib_op.h"
 #include <gtest/gtest.h>
 #include "paddle/fluid/lite/core/op_registry.h"
@@ -42,9 +41,7 @@ TEST(calib_op_lite, TestARM) {
   desc.SetType("calib");
   desc.SetInput("Input", {"Input"});
   desc.SetOutput("Out", {"output"});
-  desc.SetAttr("in_dtype", static_cast<int>(PRECISION(kInt8)));
-  desc.SetAttr("out_dtype", static_cast<int>(PRECISION(kFloat)));
-  desc.SetAttr("in_scale", 10.0f);
+  desc.SetAttr("scale", 10.0f);
 
   CalibOpLite calib("calib");
 
@@ -60,5 +57,6 @@ TEST(calib_op_lite, TestARM) {
 }  // namespace paddle
 
 #ifdef LITE_WITH_ARM
-USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, def);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, fp32_to_int8);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, int8_to_fp32);
 #endif

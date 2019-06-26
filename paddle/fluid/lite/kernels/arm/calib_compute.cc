@@ -23,26 +23,24 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-void CalibCompute::Run() {
+void CalibComputeFp32ToInt8::Run() {
   auto& param = this->Param<operators::CalibParam>();
-  std::vector<float> scale = {param.in_scale};
-  if (param.in_dtype == PRECISION(kFloat) &&
-      param.out_dtype == PRECISION(kInt8)) {
-    const auto* din = param.input->data<float>();
-    auto* dout = param.output->mutable_data<signed char>();
-    lite::arm::math::fp32_to_int8(din, dout, scale.data(), 1, 1,
-                                  param.input->numel());
-    return;
-  }
-  if (param.in_dtype == PRECISION(kInt8) &&
-      param.out_dtype == PRECISION(kFloat)) {
-    const auto* din = param.input->data<signed char>();
-    auto* dout = param.output->mutable_data<float>();
-    lite::arm::math::int8_to_fp32(din, dout, scale.data(), 1, 1,
-                                  param.input->numel());
-    return;
-  }
-  LOG(FATAL) << "Unsupport Dtype.";
+  std::vector<float> scale = {param.scale};
+  const auto* din = param.input->data<float>();
+  auto* dout = param.output->mutable_data<signed char>();
+  lite::arm::math::fp32_to_int8(din, dout, scale.data(), 1, 1,
+                                param.input->numel());
+  return;
+}
+
+void CalibComputeInt8ToFp32::Run() {
+  auto& param = this->Param<operators::CalibParam>();
+  const auto* din = param.input->data<signed char>();
+  std::vector<float> scale = {param.scale};
+  auto* dout = param.output->mutable_data<float>();
+  lite::arm::math::int8_to_fp32(din, dout, scale.data(), 1, 1,
+                                param.input->numel());
+  return;
 }
 
 }  // namespace arm
@@ -51,7 +49,16 @@ void CalibCompute::Run() {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(calib, kARM, kInt8, kNCHW,
-                     paddle::lite::kernels::arm::CalibCompute, def)
-    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
+                     paddle::lite::kernels::arm::CalibComputeFp32ToInt8,
+                     fp32_to_int8)
+    .BindInput("Input",
+               {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kFloat))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(calib, kARM, kInt8, kNCHW,
+                     paddle::lite::kernels::arm::CalibComputeInt8ToFp32,
+                     int8_to_fp32)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kFloat))})
     .Finalize();
