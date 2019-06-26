@@ -59,7 +59,10 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                        'reduce_type': reduce_type},
                 outputs={'Out': toutdata})
             main_prog.global_block().append_op(
-                type="c_sync_comm_stream", attrs={'ring_id': ring_id})
+                type="c_sync_comm_stream",
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id})
             return toutdata
 
 
