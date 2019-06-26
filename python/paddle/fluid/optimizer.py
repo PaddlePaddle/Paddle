@@ -2118,8 +2118,10 @@ class LambOptimizer(AdamOptimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): A small float value for numerical stability.
-        regularization: A Regularizer, such as
+        regularization (Regularizer): A Regularizer, such as
                         fluid.regularizer.L1DecayRegularizer.
+        exclude_from_weight_decay_fn (function): Exclude a parameter from weight 
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
         name (str|None): An optional name prefix.
 
     Examples:
@@ -2131,7 +2133,11 @@ class LambOptimizer(AdamOptimizer):
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
 
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002)
+            def exclude_fn(param):
+                return param.name.endswith('.b_0')
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
+                                             exclude_from_weight_decay_fn=exclude_fn)
             optimizer.minimize(cost)
     """
     _moment1_acc_str = "moment1"
