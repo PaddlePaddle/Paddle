@@ -174,7 +174,7 @@ paddle.fluid.layers.swish (ArgSpec(args=['x', 'beta', 'name'], varargs=None, key
 paddle.fluid.layers.prelu (ArgSpec(args=['x', 'mode', 'param_attr', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '2da40e447716338affebfe058d05d9a9'))
 paddle.fluid.layers.brelu (ArgSpec(args=['x', 't_min', 't_max', 'name'], varargs=None, keywords=None, defaults=(0.0, 24.0, None)), ('document', '3db337c195e156e6ef2b8b4a57113600'))
 paddle.fluid.layers.leaky_relu (ArgSpec(args=['x', 'alpha', 'name'], varargs=None, keywords=None, defaults=(0.02, None)), ('document', 'f878486c82b576938151daad0de995a0'))
-paddle.fluid.layers.soft_relu (ArgSpec(args=['x', 'threshold', 'name'], varargs=None, keywords=None, defaults=(40.0, None)), ('document', '3490ed5c9835ae039a82979daf3918a4'))
+paddle.fluid.layers.soft_relu (ArgSpec(args=['x', 'threshold', 'name'], varargs=None, keywords=None, defaults=(40.0, None)), ('document', '6455afd2498b00198f53f83d63d6c6a4'))
 paddle.fluid.layers.flatten (ArgSpec(args=['x', 'axis', 'name'], varargs=None, keywords=None, defaults=(1, None)), ('document', 'cb295c13cb957db85cd9609269d7784d'))
 paddle.fluid.layers.sequence_mask (ArgSpec(args=['x', 'maxlen', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, 'int64', None)), ('document', '767cea598dee8e2b94f04110fa6b7e67'))
 paddle.fluid.layers.stack (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=(0,)), ('document', 'e8d86c47e92bcb878ff8022b6f66cec2'))
