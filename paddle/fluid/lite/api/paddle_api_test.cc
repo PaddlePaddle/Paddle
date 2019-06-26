@@ -56,6 +56,7 @@ TEST(CxxApi, run) {
   predictor->SaveOptimizedModel(FLAGS_model_dir + ".opt2");
 }
 
+#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(LightApi, run) {
   lite_api::MobileConfig config;
   config.set_model_dir(FLAGS_model_dir + ".opt2");
@@ -79,6 +80,7 @@ TEST(LightApi, run) {
   EXPECT_NEAR(out[0], 50.2132, 1e-3);
   EXPECT_NEAR(out[1], -28.8729, 1e-3);
 }
+#endif
 
 }  // namespace lite_api
 }  // namespace paddle

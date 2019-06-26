@@ -26,3 +26,5 @@ if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     add_dependencies(__generated_code__ test_gen_code_lite)
     add_dependencies(__generated_code__ extern_lite_download_lite_naive_model_tar_gz)
 endif()
+
+lite_cc_binary(paddle_code_generator SRCS paddle_code_generator.cc DEPS model_parser_lite gen_code_lite)

@@ -100,14 +100,12 @@ lite_cc_test(test_apis_lite SRCS apis_test.cc
   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
       --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
-lite_cc_library(cxx_api_impl_lite SRCS cxx_api_impl.cc DEPS cxx_api_lite)
-lite_cc_library(light_api_impl_lite SRCS light_api_impl.cc DEPS light_api_lite)
+lite_cc_library(paddle_api_lite SRCS paddle_api.cc DEPS op_params_lite)
 
-lite_cc_library(paddle_api_full SRCS paddle_api.cc DEPS cxx_api_impl_lite light_api_impl_lite)
-lite_cc_library(paddle_api_light SRCS paddle_api.cc DEPS light_api_impl_lite)
+lite_cc_library(paddle_api_full SRCS cxx_api_impl.cc DEPS cxx_api_lite paddle_api_lite light_api_lite)
+lite_cc_library(paddle_api_light SRCS light_api_impl.cc DEPS light_api_lite paddle_api_lite)
 
-
-lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS cxx_api_lite light_api_lite paddle_api_full
+lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS paddle_api_full paddle_api_light
   ${ops_lite}
   ARM_DEPS ${arm_kernels}
   X86_DEPS ${x86_kernels}
@@ -116,7 +114,9 @@ if (WITH_TESTING)
     add_dependencies(test_paddle_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif()
 
-#lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
-    #X86_DEPS operator
-    #DEPS light_api_lite model_parser_lite target_wrapper_host mir_passes
-    #ARM_DEPS ${arm_kernels})
+lite_cc_binary(model_optimize_tool SRCS model_optimize_tool.cc DEPS paddle_api_full)
+
+# lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
+#     X86_DEPS operator
+#     DEPS light_api_lite model_parser_lite target_wrapper_host mir_passes
+#     ARM_DEPS ${arm_kernels})
