@@ -205,6 +205,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'instag',
 ]
 
 kIgnoreIndex = -100
@@ -9332,6 +9333,42 @@ def stack(x, axis=0):
         attrs={'axis': axis})
 
     return out
+
+@templatedoc(op_type="instag")
+def instag(x1, x2, x3):
+	"""
+	**Instag Layer**
+
+	This layer split the inputs by tag.
+
+	Args:
+		x1 (Variable): Input Variable (Tensor), usually it is global FC 2D output
+		x2 (Variable): Input Variable (LoDTensor), usually it is ins tag list
+		x3 (Variable): Input Variable (LoDTensor), usually it is fc tag list
+
+	Returns:
+		Variable: the split output (Tensor) usually it is 3D Tensor output.
+
+	Examples:
+		.. code-block:: python
+		
+			
+	"""
+	helper = LayerHelper('instag', **locals())
+	
+	out = helper.create_variable_for_type_inference(dtype = helper.input_dtype())
+
+	helper.append_op(
+		type = 'instag',
+		inputs={
+				'X1':  x1,
+				'X2': x2,
+				'X3': x3
+				},
+		outputs={
+			'Out': out
+		}) 
+	return out
 
 
 def unstack(x, axis=0, num=None):
