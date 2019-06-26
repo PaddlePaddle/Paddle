@@ -314,18 +314,18 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
+  if (!member_->use_all_reduce_ && member_->nranks_ == 1) {
+    LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
+                 "the number of places should be greater than 1.";
+    member_->build_strategy_.reduce_ =
+        BuildStrategy::ReduceStrategy::kAllReduce;
+    member_->use_all_reduce_ = true;
+  }
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
   if (member_->use_cuda_) {
     PADDLE_ENFORCE(places.size() == 1, "Windows can support Single GPU only.");
   }
 #endif
-  if (!member_->use_all_reduce_) {
-    if (places.size() == 1) {
-      LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
-                   "the number of places should be greater than 1.";
-      member_->use_all_reduce_ = true;
-    }
-  }
 
   LOG(INFO) << string::Sprintf(
       "The number of %s, which is used in ParallelExecutor, is %lu. And "
