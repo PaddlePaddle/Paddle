@@ -17,7 +17,6 @@ from __future__ import print_function
 from ... import core
 from ... import layers
 from ... import framework
-from .fp16_lists import black_list, white_list, gray_list
 
 
 def append_cast_op(i, o, prog):
@@ -218,7 +217,7 @@ def find_true_prev_op(ops, var_name):
                     return op
 
 
-def rewrite_program(main_prog):
+def rewrite_program(main_prog, amp_lists):
     """
     Traverse all ops in current block and insert cast op according to 
     which set current op belongs to.
@@ -244,11 +243,11 @@ def rewrite_program(main_prog):
     black_op_set = set()
     for i in range(len(ops)):
         op = ops[i]
-        if op.type in black_list:
+        if op.type in amp_lists.black_list:
             black_op_set.add(op)
-        elif op.type in white_list:
+        elif op.type in amp_lists.white_list:
             white_op_set.add(op)
-        elif op.type in op.type in gray_list:
+        elif op.type in amp_lists.gray_list:
             is_black_op = False
             is_white_op = False
             for in_name in op.input_names:
@@ -265,10 +264,10 @@ def rewrite_program(main_prog):
                             prev_op = in_var.op
                         # if it's one of inputs
                         if prev_op in black_op_set or \
-                                prev_op.type in black_list:
+                                prev_op.type in amp_lists.black_list:
                             is_black_op = True
                         if prev_op in white_op_set or \
-                                prev_op.type in white_list:
+                                prev_op.type in amp_lists.white_list:
                             is_white_op = True
             if is_black_op:
                 black_op_set.add(op)
