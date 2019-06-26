@@ -41,6 +41,29 @@ bool trans_tensor_dtype<PRECISION(kInt32), PRECISION(kFloat)>(
     Tensor* tin, Tensor* tout, float input_scale, float output_scale,
     std::vector<float> weights_scale);
 
+template <PrecisionType IN>
+bool get_tensor_scale(const Tensor& tin, std::vector<float>* scale_out,
+                      int axis, float scale_factor) {
+  return false;
+}
+
+std::vector<float> get_tensor_scale_n(const float* in_data, int axis_size,
+                                      int64_t inner_size, float scale_factor);
+
+bool trans_tensor_int32_to_int8(Tensor* tin, Tensor* tout, float input_scale,
+                                float output_scale,
+                                std::vector<float> weights_scale, int axis = 1);
+
+bool trans_tensor_int32_to_fp32(Tensor* tin, Tensor* tout, float input_scale,
+                                std::vector<float> weights_scale, int axis = 1);
+
+bool trans_tensor_fp32_to_int8(Tensor* tin, Tensor* tout, float input_scale);
+
+template <>
+bool get_tensor_scale<PRECISION(kFloat)>(const Tensor& tin,
+                                         std::vector<float>* scale_out,
+                                         int axis, float scale_factor);
+
 template <typename dtype>
 void int32_to_dtype(const int* din, dtype* dout, const float* scale,
                     int axis_size, int64_t outer_size, int64_t inner_size);
