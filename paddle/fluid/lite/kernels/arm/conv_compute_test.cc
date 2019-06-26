@@ -402,6 +402,7 @@ TEST(conv_arm_int8, int8_fp32) {
                           param.output = &output_int8;
                           param.input_scale = in_scale[0];
                           param.output_scale = 1;
+                          /*
                           std::vector<float> w_scale_for_int8;
                           for (auto ws : w_scale) {
                             ws *= param.input_scale;
@@ -409,7 +410,8 @@ TEST(conv_arm_int8, int8_fp32) {
                             w_scale_for_int8.push_back(ws);
                           }
                           param.weight_scale = w_scale_for_int8;
-
+                          */
+                          param.weight_scale = w_scale;
                           std::unique_ptr<KernelContext> ctx_int8(
                               new KernelContext);
                           lite::arm::math::GemmLikeConvInt8<PRECISION(kInt8)>
@@ -436,13 +438,15 @@ TEST(conv_arm_int8, int8_fp32) {
                           param.output = &output_fp32;
                           param.input_scale = in_scale[0];
                           param.output_scale = 1;
+                          /*
                           std::vector<float> w_scale_for_fp32;
                           for (auto ws : w_scale) {
                             ws *= param.input_scale;
                             w_scale_for_fp32.push_back(ws);
                           }
                           param.weight_scale = w_scale_for_fp32;
-
+                          */
+                          param.weight_scale = w_scale;
                           std::unique_ptr<KernelContext> ctx_fp32(
                               new KernelContext);
                           lite::arm::math::GemmLikeConvInt8<PRECISION(kFloat)>
