@@ -865,7 +865,7 @@ class FC(layers.Layer):
 
     Examples:
         .. code-block:: python
-        
+
           from paddle.fluid.dygraph.base import to_variable
           import paddle.fluid as fluid
           from paddle.fluid.dygraph import FC
@@ -1054,6 +1054,7 @@ class BatchNorm(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle.fluid as fluid
 
           with fluid.dygraph.guard():
@@ -1239,7 +1240,6 @@ class Embedding(layers.Layer):
                  padding_idx=None,
                  param_attr=None,
                  dtype='float32'):
-
         super(Embedding, self).__init__(name_scope, dtype)
         self._size = size
         self._is_sparse = is_sparse
