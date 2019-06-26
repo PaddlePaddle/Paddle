@@ -209,11 +209,11 @@ TEST(conv_arm_int8, int8_int32) {
                               filter_int8.mutable_data<int8_t>();
                           for (int i = 0; i < input_int8.dims().production();
                                i++) {
-                            input_int8_data[i] = get_rand(-128, 127);
+                            input_int8_data[i] = i % 10 * (i % 3 - 1);
                           }
                           for (int i = 0; i < filter_int8.dims().production();
                                i++) {
-                            filter_int8_data[i] = get_rand(-128, 127);
+                            filter_int8_data[i] = i % 10 * (i % 3 - 1);
                           }
 
                           operators::ConvParam param;
@@ -237,10 +237,10 @@ TEST(conv_arm_int8, int8_int32) {
                           int8gemm_int32.create(param, &ctx->As<ARMContext>());
                           int8gemm_int32.run(param);
 
-                          int32_t* output_int32_data =
-                              output_int32.mutable_data<int32_t>();
-                          int32_t* output_int32_ref_data =
-                              output_int32_ref.mutable_data<int32_t>();
+                          int* output_int32_data =
+                              output_int32.mutable_data<int>();
+                          int* output_int32_ref_data =
+                              output_int32_ref.mutable_data<int>();
 
                           for (int i = 0; i < output_int32.dims().production();
                                i++) {
@@ -326,15 +326,15 @@ TEST(conv_arm_int8, int8_fp32) {
 
                           for (int i = 0; i < input_fp32.dims().production();
                                i++) {
-                            input_fp32_data[i] = get_rand(-100, 100) / 100.f;
+                            input_fp32_data[i] = i % 10 * (i % 3 - 1);
                           }
                           for (int i = 0; i < filter_fp32.dims().production();
                                i++) {
-                            filter_fp32_data[i] = get_rand(-100, 100) / 100.f;
+                            filter_fp32_data[i] = i % 10 * (i % 3 - 1);
                           }
                           for (int i = 0; i < bias_fp32.dims().production();
                                i++) {
-                            bias_fp32_data[i] = get_rand(-100, 100) / 100.f;
+                            bias_fp32_data[i] = i % 10 * (i % 3 - 1);
                           }
 
                           std::vector<float> in_scale;
@@ -367,8 +367,8 @@ TEST(conv_arm_int8, int8_fp32) {
                           param.output = &output_int32_ref;
                           conv_compute_ref<int8_t, int>(param);
 
-                          int32_t* output_int32_ref_data =
-                              output_int32_ref.mutable_data<int32_t>();
+                          int* output_int32_ref_data =
+                              output_int32_ref.mutable_data<int>();
 
                           // ============ int8gemm_int32 ============
                           param.output = &output_int32;
@@ -381,8 +381,8 @@ TEST(conv_arm_int8, int8_fp32) {
                           int8gemm_int32.create(param,
                                                 &ctx_int32->As<ARMContext>());
                           int8gemm_int32.run(param);
-                          int32_t* output_int32_data =
-                              output_int32.mutable_data<int32_t>();
+                          int* output_int32_data =
+                              output_int32.mutable_data<int>();
                           for (int i = 0; i < output_int32.dims().production();
                                i++) {
                             EXPECT_NEAR(output_int32_data[i],
