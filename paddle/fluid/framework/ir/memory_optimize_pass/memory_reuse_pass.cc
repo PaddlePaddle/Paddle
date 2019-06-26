@@ -22,6 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+// Each ShareTensorBufferOpHandle should only have one pending
+// ComputationOpHandle
 static details::ComputationOpHandle *GetUniquePendingComputationOpHandle(
     details::ShareTensorBufferOpHandle *share_tensor_op) {
   details::ComputationOpHandle *result_op = nullptr;

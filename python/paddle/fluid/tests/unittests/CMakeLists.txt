@@ -118,6 +118,10 @@ list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
+list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
+list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
+list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
+list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -174,6 +178,8 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_attention_model ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
