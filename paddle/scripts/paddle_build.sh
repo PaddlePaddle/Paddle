@@ -292,7 +292,7 @@ function check_style() {
 #=================================================
 
 function build_base() {
-    parallel_number=`nproc`
+    parallel_number=10
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
