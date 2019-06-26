@@ -19,11 +19,6 @@
 #include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
-#define WITH_INT8_CONFIG             \
-  bool enable_int8;                  \
-  float input_scale;                 \
-  std::vector<float> weight_scale{}; \
-  float output_scale;
 /*
  * This file contains all the argument parameter data structure for operators.
  */
@@ -33,6 +28,11 @@ namespace lite {
 namespace operators {
 
 using param_t = Any;
+#define WITH_INT8_CONFIG             \
+  bool enable_int8{false};           \
+  float input_scale{1.0};            \
+  std::vector<float> weight_scale{}; \
+  float output_scale{1.0};
 
 /// ----------------------- Functional operators ------------------------------
 struct FeedParam {
@@ -56,9 +56,7 @@ struct IoCopyParam {
 struct CalibParam {
   const lite::Tensor* input{};
   lite::Tensor* output{};
-  float in_scale;
-  PrecisionType in_dtype;
-  PrecisionType out_dtype;
+  float scale;
 };
 
 /// -------------------------- NN operators ------------------------------------
@@ -71,6 +69,8 @@ struct FcParam {
   lite::DDim in_mat_dims;
   int in_num_col_dims{1};
   bool weight_transposed{false};
+  // for int8
+  WITH_INT8_CONFIG
 };
 
 // For Mul Op
@@ -81,6 +81,8 @@ struct MulParam {
 
   int x_num_col_dims{1};
   int y_num_col_dims{1};
+  // for int8
+  WITH_INT8_CONFIG
 };
 
 struct MulGradParam {
@@ -152,6 +154,7 @@ struct ConvParam {
   float scale_weights{1.0f};      // only used with mkl-dnn int8
   bool force_fp32_output{false};  // only used in mkl-dnn int8
   std::string data_format{"Anylayout"};
+  // for int8
   WITH_INT8_CONFIG
 };
 

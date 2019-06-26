@@ -31,3 +31,5 @@ USE_MIR_PASS(identity_scale_eliminate_pass);
 USE_MIR_PASS(lite_conv_elementwise_add_activation_fuse_pass);
 USE_MIR_PASS(lite_elementwise_add_activation_fuse_pass);
 USE_MIR_PASS(lite_quant_dequant_fuse_pass);
+USE_MIR_PASS(precision_cast_transform_pass);
+USE_MIR_PASS(trans_weight_pass);

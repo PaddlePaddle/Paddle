@@ -18,10 +18,12 @@ cc_library(mir_passes
       static_kernel_pick_pass.cc
       variable_place_inference_pass.cc
       type_target_transform_pass.cc
+      precision_cast_transform_pass.cc
       io_copy_kernel_pick_pass.cc
       graph_visualize_pass.cc
       generate_program_pass.cc
       argument_type_display_pass.cc
+      trans_weigths_pass.cc
       demo_pass.cc
       runtime_context_assign_pass.cc
   DEPS mir_pass types_lite context_lite ${mir_fusers})

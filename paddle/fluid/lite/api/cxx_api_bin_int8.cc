@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include <chrono>  // NOLINT
+#include "paddle/fluid/lite/api/paddle_use_kernels.h"
+#include "paddle/fluid/lite/api/paddle_use_ops.h"
 #include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -73,54 +75,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-
-USE_LITE_OP(mul);
-USE_LITE_OP(fc);
-USE_LITE_OP(scale);
-USE_LITE_OP(feed);
-USE_LITE_OP(fetch);
-USE_LITE_OP(io_copy);
-
-USE_LITE_OP(conv2d);
-USE_LITE_OP(batch_norm);
-USE_LITE_OP(relu);
-USE_LITE_OP(depthwise_conv2d);
-USE_LITE_OP(pool2d);
-USE_LITE_OP(elementwise_add);
-USE_LITE_OP(softmax);
-USE_LITE_OP(fake_quantize_moving_average_abs_max);
-USE_LITE_OP(fake_dequantize_max_abs);
-
-USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
-USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
-USE_LITE_OP(calib);
-
-#ifdef LITE_WITH_ARM
-USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(fc, kARM, kInt8, kNCHW, int8out);
-USE_LITE_KERNEL(fc, kARM, kInt8, kNCHW, fp32out);
-USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
-
-USE_LITE_KERNEL(conv2d, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW, int8_out);
-USE_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW, fp32_out);
-USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(depthwise_conv2d, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(pool2d, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(elementwise_add, kARM, kFloat, kNCHW, def);
-USE_LITE_KERNEL(softmax, kARM, kFloat, kNCHW, def);
-
-USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, fp32_to_int8);
-USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, int8_to_fp32);
-
-// USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
-// USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
-#endif  // LITE_WITH_ARM
-
-#ifdef LITE_WITH_CUDA
-USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
-USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
-USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, device_to_host);
-#endif
