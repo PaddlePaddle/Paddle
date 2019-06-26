@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import warnings
 
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
@@ -56,6 +57,8 @@ class DistributedTranspiler(Fleet):
 
             if not self._communicator.is_running():
                 self._communicator.start()
+            else:
+                warnings.warn("communicator has been initialized, skip")
 
     def init_server(self, model_dir=None):
         """
