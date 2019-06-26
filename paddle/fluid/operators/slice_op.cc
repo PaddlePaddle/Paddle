@@ -92,7 +92,7 @@ class SliceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.GetPlace());
+                                   ctx.Input<Tensor>("Input")->place());
   }
 };
 
