@@ -33,7 +33,7 @@ DEFINE_uint64(conv_workspace_size_limit,
               "cuDNN convolution workspace limit in MB unit.");
 DEFINE_bool(cudnn_exhaustive_search, false,
             "Whether enable exhaustive search for cuDNN convolution or "
-            "not, defalut is False.");
+            "not, default is False.");
 
 namespace paddle {
 namespace operators {
@@ -102,7 +102,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
 #if CUDNN_VERSION_MIN(7, 0, 1)
-    // cudnn 7 can support groups, no need to do it mannually
+    // cudnn 7 can support groups, no need to do it manually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
     CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
@@ -136,7 +136,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     }
 
     // ------------------- cudnn conv algorithm ---------------------
-    cudnnConvolutionFwdAlgo_t algo;
+    cudnnConvolutionFwdAlgo_t algo{};
     bool half_float = false;
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
@@ -165,11 +165,43 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     // TODO(dangqingqing) simplify the following code by SearchAlgorithm in
     // conv_cudnn_helper.h
+    bool has_got_workspace_size = false;
     if ((!exhaustive_search) && (!half_float)) {
-      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+#if CUDNN_VERSION >= 7001
+      using perf_t = cudnnConvolutionFwdAlgoPerf_t;
+      int perf_count;
+      int best_algo_idx = 0;
+      std::unique_ptr<perf_t[]> perf_results(new perf_t[kNUM_CUDNN_FWD_ALGS]);
+      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
           handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-          cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-          workspace_size_limit, &algo));
+          cudnn_output_desc, kNUM_CUDNN_FWD_ALGS, &perf_count,
+          perf_results.get()));
+      algo = (perf_results.get())[best_algo_idx].algo;
+
+      // get workspace size able to allocate
+      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+          handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+          cudnn_output_desc, algo, &workspace_size_in_bytes));
+
+      // NOTE(zjl): cudnnGetConvolutionForwardAlgorithm_v7 cannot limit
+      // workspace size. If the workspace size found by v7 exceeds the limit,
+      // we should fallback to non-v7 method to find another algorithm.
+      if (workspace_size_in_bytes > workspace_size_limit) {
+        VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                   "the workspace size request("
+                << workspace_size_in_bytes << ") exceeds the limit("
+                << workspace_size_limit << ")";
+#endif
+        CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+            handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+            cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+            workspace_size_limit, &algo));
+#if CUDNN_VERSION >= 7001
+      } else {
+        has_got_workspace_size = true;
+      }
+#endif
+
       VLOG(3) << "cuDNN forward algo " << algo;
     } else if (exhaustive_search && (!half_float)) {
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
@@ -206,10 +238,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                      "cuDNN exhaustive search doesn't support half float.");
     }
 
-    // get workspace size able to allocate
-    CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, algo, &workspace_size_in_bytes));
+    if (!has_got_workspace_size) {
+      // get workspace size able to allocate
+      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+          handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+          cudnn_output_desc, algo, &workspace_size_in_bytes));
+    }
+
     // It is possible for float16 on Volta GPU to allocate more memory than
     // the limit because the algo is overrided to use tensor core.
     PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
@@ -265,7 +300,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     if (exhaustive_search && FLAGS_cudnn_deterministic) {
       PADDLE_THROW(
-          "Cann't set exhaustive_search True and "
+          "Can't set exhaustive_search True and "
           "FLAGS_cudnn_deterministic True at same time.");
     }
 
@@ -285,7 +320,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
 #if CUDNN_VERSION_MIN(7, 0, 1)
-    // cudnn 7 can support groups, no need to do it mannually
+    // cudnn 7 can support groups, no need to do it manually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
     CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
@@ -326,8 +361,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
-    cudnnConvolutionBwdDataAlgo_t data_algo;
-    cudnnConvolutionBwdFilterAlgo_t filter_algo;
+    cudnnConvolutionBwdDataAlgo_t data_algo{};
+    cudnnConvolutionBwdFilterAlgo_t filter_algo{};
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
     size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
@@ -353,6 +388,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
     auto handle = dev_ctx.cudnn_handle();
+
+    bool has_got_bwd_data_ws_size = false;
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       if (exhaustive_search) {
@@ -388,8 +425,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       } else if (FLAGS_cudnn_deterministic) {
         data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
       } else {
+#if CUDNN_VERSION >= 7001
+        using perf_t = cudnnConvolutionBwdDataAlgoPerf_t;
+        int perf_count;
+        int best_algo_idx = 0;
+        std::unique_ptr<perf_t[]> perf_results(
+            new perf_t[kNUM_CUDNN_BWD_DATA_ALGS]);
         CUDNN_ENFORCE(
-            platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
+            platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm_v7(
                 handle, cudnn_filter_desc,
                 // dyDesc: Handle to the previously initialized input
                 // differential
@@ -397,17 +440,64 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                 cudnn_output_grad_desc, cudnn_conv_desc,
                 // dxDesc: Handle to the previously initialized output tensor
                 // descriptor.
-                cudnn_input_desc,
-                CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &data_algo));
+                cudnn_input_desc, kNUM_CUDNN_BWD_DATA_ALGS, &perf_count,
+                perf_results.get()));
+        data_algo = (perf_results.get())[best_algo_idx].algo;
+        int stride_dim = input->dims().size() - 2;
+        bool blacklist =
+            std::any_of(strides.begin(), strides.begin() + stride_dim,
+                        [=](int n) { return n != 1; });
+        if (blacklist && (static_cast<cudnnConvolutionBwdDataAlgo_t>(
+                              perf_results[best_algo_idx].algo) ==
+                              CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
+                          static_cast<cudnnConvolutionBwdDataAlgo_t>(
+                              perf_results[best_algo_idx].algo) ==
+                              CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)) {
+          data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+        }
+
+        CUDNN_ENFORCE(
+            platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
+                handle, cudnn_filter_desc, cudnn_output_grad_desc,
+                cudnn_conv_desc, cudnn_input_desc, data_algo, &tmp_size));
+        auto new_workspace_size = std::max(workspace_size_in_bytes, tmp_size);
+
+        if (new_workspace_size > workspace_size_limit) {
+          VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                     "the workspace size request("
+                  << new_workspace_size << ") exceeds the limit("
+                  << workspace_size_limit << ")";
+#endif
+          CUDNN_ENFORCE(
+              platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
+                  handle, cudnn_filter_desc,
+                  // dyDesc: Handle to the previously initialized input
+                  // differential
+                  // tensor descriptor.
+                  cudnn_output_grad_desc, cudnn_conv_desc,
+                  // dxDesc: Handle to the previously initialized output tensor
+                  // descriptor.
+                  cudnn_input_desc,
+                  CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+                  workspace_size_limit, &data_algo));
+#if CUDNN_VERSION >= 7001
+        } else {
+          workspace_size_in_bytes = new_workspace_size;
+          has_got_bwd_data_ws_size = true;
+        }
+#endif
       }
-      CUDNN_ENFORCE(
-          platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
-              handle, cudnn_filter_desc, cudnn_output_grad_desc,
-              cudnn_conv_desc, cudnn_input_desc, data_algo, &tmp_size));
-      workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
+
+      if (!has_got_bwd_data_ws_size) {
+        CUDNN_ENFORCE(
+            platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
+                handle, cudnn_filter_desc, cudnn_output_grad_desc,
+                cudnn_conv_desc, cudnn_input_desc, data_algo, &tmp_size));
+        workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
+      }
     }
 
+    bool has_got_bwd_filter_ws_size = false;
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       if (exhaustive_search) {
@@ -437,19 +527,57 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       } else if (FLAGS_cudnn_deterministic) {
         filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
       } else {
+#if CUDNN_VERSION >= 7001
+        using perf_t = cudnnConvolutionBwdFilterAlgoPerf_t;
+        int perf_count;
+        int best_algo_idx = 0;
+        std::unique_ptr<perf_t[]> perf_results(
+            new perf_t[kNUM_CUDNN_BWD_FILTER_ALGS]);
+
         CUDNN_ENFORCE(
-            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm_v7(
                 handle, cudnn_input_desc, cudnn_output_grad_desc,
-                cudnn_conv_desc, cudnn_filter_desc,
-                CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &filter_algo));
+                cudnn_conv_desc, cudnn_filter_desc, kNUM_CUDNN_BWD_FILTER_ALGS,
+                &perf_count, perf_results.get()));
+        filter_algo = (perf_results.get())[best_algo_idx].algo;
+
+        CUDNN_ENFORCE(
+            platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
+                handle, cudnn_input_desc, cudnn_output_grad_desc,
+                cudnn_conv_desc, cudnn_filter_desc, filter_algo, &tmp_size));
+        auto new_workspace_size = std::max(workspace_size_in_bytes, tmp_size);
+
+        if (new_workspace_size > workspace_size_limit) {
+          VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                     "the workspace size request("
+                  << new_workspace_size << ") exceeds the limit("
+                  << workspace_size_limit << ")";
+#endif
+          CUDNN_ENFORCE(
+              platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+                  handle, cudnn_input_desc, cudnn_output_grad_desc,
+                  cudnn_conv_desc, cudnn_filter_desc,
+                  CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+                  workspace_size_limit, &filter_algo));
+#if CUDNN_VERSION >= 7001
+        } else {
+          workspace_size_in_bytes = new_workspace_size;
+          has_got_bwd_filter_ws_size = true;
+        }
+#endif
       }
-      CUDNN_ENFORCE(
-          platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
-              handle, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
-              cudnn_filter_desc, filter_algo, &tmp_size));
-      workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
+
+      if (!has_got_bwd_filter_ws_size) {
+        CUDNN_ENFORCE(
+            platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
+                handle, cudnn_input_desc, cudnn_output_grad_desc,
+                cudnn_conv_desc, cudnn_filter_desc, filter_algo, &tmp_size));
+        workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
+      }
     }
+
+    PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
+                      "workspace_size to be allocated exceeds the limit");
 
     // ------------------- cudnn conv workspace ---------------------
     if (!cudnn_workspace_ptr) {
@@ -537,7 +665,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
     if (exhaustive_search && deterministic) {
       PADDLE_THROW(
-          "Cann't set exhaustive_search True and "
+          "Can't set exhaustive_search True and "
           "FLAGS_cudnn_deterministic True at same time.");
     }
 

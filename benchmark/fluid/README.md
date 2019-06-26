@@ -59,7 +59,7 @@ python -c 'from recordio_converter import *; prepare_mnist("data", 1)'
 ## Run Distributed Benchmark on Kubernetes Cluster
 
 You may need to build a Docker image before submitting a cluster job onto Kubernetes, or you will
-have to start all those processes mannually on each node, which is not recommended.
+have to start all those processes manually on each node, which is not recommended.
 
 To build the Docker image, you need to choose a paddle "whl" package to run with, you may either
 download it from

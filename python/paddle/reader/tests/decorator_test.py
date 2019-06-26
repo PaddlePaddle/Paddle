@@ -198,7 +198,7 @@ class TestMultiProcessReader(unittest.TestCase):
             results.append(data)
         self.assertEqual(sorted(self.samples), sorted(results))
 
-    def test_multi_process_reader(self):
+    def test_distributed_batch_reader(self):
         self.reader_test(use_pipe=False)
         self.reader_test(use_pipe=True)
 
