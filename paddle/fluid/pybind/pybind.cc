@@ -792,7 +792,9 @@ All parameter, weight, gradient are variables in Paddle.
                  platform::GetCUDADeviceCount());
              new (&self) platform::CUDAPlace(dev_id);
 #else
-             PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
+             PADDLE_THROW(
+                 "Cannot use GPUPlace because you have installed CPU version "
+                 "PaddlePaddle");
 #endif
            })
       .def("_type", &PlaceIndex<platform::CUDAPlace>)
@@ -835,7 +837,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #ifndef PADDLE_WITH_CUDA
-             PADDLE_THROW("Cannot use CUDAPinnedPlace in CPU only version");
+             PADDLE_THROW(
+                 "Cannot use CUDAPinnedPlace because you have installed CPU "
+                 "version PaddlePaddle");
 #endif
              new (&self) platform::CUDAPinnedPlace();
            })

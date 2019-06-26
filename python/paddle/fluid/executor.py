@@ -353,11 +353,20 @@ class Executor(object):
                                fetch_list=[loss.name])
 
     Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace(n)): indicate the executor run on which device.
+        place(None|fluid.CPUPlace|fluid.CUDAPlace(n)): indicate the 
+            executor run on which device. If place is None, place would 
+            be CUDAPlace(0) if Paddle is compiled with CUDA. Otherwise,
+            CPUPlace is chosen.   
 
     """
 
-    def __init__(self, place):
+    def __init__(self, place=None):
+        if place is None:
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+
         self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
