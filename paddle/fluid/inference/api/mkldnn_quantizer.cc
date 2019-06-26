@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <unordered_map>
@@ -37,6 +38,7 @@ using framework::ir::Graph;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using string::PrettyLogH1;
+static LoDTensor CreateScaleTensor(int64_t channels_num = 1);
 
 bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   PrettyLogH1("--- Calculating scales for quantization");
@@ -71,18 +73,8 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
                                boost::get<bool>(op->GetAttr("fuse_brelu")));
               } else if (op->Type() == "relu") {
                 is_unsigned = true;
-              } else if ((op->Type() == "transpose2" ||
-                          op->Type() == "reshape2" || op->Type() == "concat")) {
-                // output of ops with unsigned input must be unsigned
-                is_unsigned = true;
-                for (auto input_var_name : op->Input("X")) {
-                  PADDLE_ENFORCE(
-                      scales_.find(input_var_name) != scales_.end(),
-                      "Input scales must be calculated before the "
-                      "output scales to infer if output is unsigned.");
-                  is_unsigned = is_unsigned && scales_[input_var_name].first;
-                }
-              } else if (op->Type() == "pool2d") {
+              } else if (op->Type() == "transpose2" ||
+                         op->Type() == "reshape2" || op->Type() == "pool2d") {
                 auto input_var_name = op->Input("X")[0];
                 PADDLE_ENFORCE(scales_.find(input_var_name) != scales_.end(),
                                "Input scales must be calculated before the "
@@ -91,6 +83,22 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
                   scales_[var_name] = scales_[input_var_name];
                   continue;
                 }
+              } else if ((op->Type() == "concat")) {
+                // output of ops with unsigned input must be unsigned
+                is_unsigned = true;
+                double min = std::numeric_limits<double>::max();
+                for (auto input_var_name : op->Input("X")) {
+                  PADDLE_ENFORCE(
+                      scales_.find(input_var_name) != scales_.end(),
+                      "Input scales must be calculated before the "
+                      "output scales to infer if output is unsigned.");
+                  is_unsigned = is_unsigned && scales_[input_var_name].first;
+                  min = std::min(
+                      min, scales_[input_var_name].second.data<double>()[0]);
+                }
+                auto scale_tensor = CreateScaleTensor();
+                scale_tensor.data<double>()[0] = min;
+                scales_[var_name] = {is_unsigned, scale_tensor};
               }
             }
 
@@ -136,6 +144,13 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
       throw std::runtime_error(
           "MkldnnQuantizer: Unexpected ScaleAlgo specified.");
   }
+}
+
+static LoDTensor CreateScaleTensor(int64_t channels_num) {
+  LoDTensor scale_tensor;
+  scale_tensor.Resize({channels_num});
+  scale_tensor.mutable_data<double>(CPUPlace());
+  return scale_tensor;
 }
 
 std::vector<int> AnalysisPredictor::MkldnnQuantizer::ExpandQuantizedBins(
@@ -274,11 +289,8 @@ AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     min_kl_index = starting_iter;
   }
 
-  LoDTensor scale_tensor;
-  scale_tensor.Resize({1});
-  auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
-
-  scale_ptr[0] = 1.0 / ((min_kl_index + 0.5) * bin_width);
+  LoDTensor scale_tensor = CreateScaleTensor();
+  scale_tensor.data<double>()[0] = 1.0 / ((min_kl_index + 0.5) * bin_width);
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
@@ -296,10 +308,8 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
         "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
         min_val);
 
-  LoDTensor scale_tensor;
-  scale_tensor.Resize({1});
-  auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
-  scale_ptr[0] = 1.0 / max_abs;
+  LoDTensor scale_tensor = CreateScaleTensor();
+  scale_tensor.data<double>()[0] = 1.0 / max_abs;
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
@@ -319,8 +329,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
         min_val);
 
   int channels = var_tensor.dims()[0];
-  LoDTensor scale_tensor;
-  scale_tensor.Resize({channels});
+  LoDTensor scale_tensor = CreateScaleTensor(channels);
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
 
   for (int i = 0; i < channels; ++i) {
