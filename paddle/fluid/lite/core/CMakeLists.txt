@@ -31,7 +31,7 @@ cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
 lite_cc_library(program_lite SRCS program.cc
-    DEPS op_lite kernel_lite compatible_pb_lite model_parser_lite
+    DEPS op_lite kernel_lite compatible_pb_lite model_parser_lite ${ops_lite}
     HVY_DEPS framework_proto
     PROFILE_DEPS basic_profiler_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
