@@ -52,8 +52,8 @@ static std::string to_string_with_precision(const T& v, const int n = 6) {
   return ss.str();
 }
 
-static std::string Join(const std::vector<std::string>& vec,
-                        const std::string& delim) {
+template <typename T>
+std::string Join(const std::vector<T>& vec, const std::string& delim) {
   if (vec.empty()) return "";
 
   std::stringstream ss;

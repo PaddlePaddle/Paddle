@@ -4,6 +4,7 @@ set -ex
 TESTS_FILE="./lite_tests.txt"
 LIBS_FILE="./lite_libs.txt"
 
+readonly ADB_WORK_DIR="/data/local/tmp"
 readonly common_flags="-DWITH_LITE=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_PYTHON=OFF -DWITH_TESTING=ON -DLITE_WITH_ARM=OFF"
 
 NUM_CORES_FOR_COMPILE=8
@@ -183,7 +184,36 @@ function test_arm_model {
     adb -s emulator-${port} shell chmod +x "${adb_work_dir}/${test_name}"
     local adb_model_path="${adb_work_dir}/`basename ${model_dir}`"
     adb -s emulator-${port} shell "${adb_work_dir}/${test_name} --model_dir=$adb_model_path"
+}
 
+function _test_model_optimize_tool {
+    local port=$1
+    local remote_model_path=$ADB_WORK_DIR/lite_naive_model
+    local remote_test=$ADB_WORK_DIR/model_optimize_tool
+    local adb="adb -s emulator-${port}"
+
+    make model_optimize_tool -j$NUM_CORES_FOR_COMPILE
+    local test_path=$(find . -name model_optimize_tool)
+    local model_path=$(find . -name lite_naive_model)
+    $adb push ${test_path} ${ADB_WORK_DIR}
+    $adb shell mkdir -p $remote_model_path
+    $adb push $model_path/* $remote_model_path
+    $adb shell $remote_test --model_dir $remote_model_path --optimize_out ${remote_model_path}.opt \
+         --valid_targets "arm"
+}
+
+function _test_paddle_code_generator {
+    local port=$1
+    local test_name=paddle_code_generator
+    local remote_test=$ADB_WORK_DIR/$test_name
+    local remote_model=$ADB_WORK_DIR/lite_naive_model.opt
+    local adb="adb -s emulator-${port}"
+
+    make paddle_code_generator -j$NUM_CORES_FOR_COMPILE
+    local test_path=$(find . -name $test_name)
+
+    $adb push $test_path $remote_test
+    $adb shell $remote_test --optimized_model $remote_model --generated_code_file $ADB_WORK_DIR/gen_code.cc
 }
 
 function cmake_arm {
@@ -273,6 +303,9 @@ function test_arm {
 
     # test finally
     test_arm_api $port
+
+    _test_model_optimize_tool $port
+    _test_paddle_code_generator $port
 }
 
 function prepare_emulator {
