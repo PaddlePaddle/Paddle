@@ -53,7 +53,9 @@ class DistributedTranspiler(Fleet):
         """
         if not self._transpile_config.sync_mode:
             self._communicator = Communicator(self.main_program)
-            self._communicator.start()
+
+            if not self._communicator.is_running():
+                self._communicator.start()
 
     def init_server(self, model_dir=None):
         """
@@ -104,7 +106,8 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._transpile_config.sync_mode:
+        if not self._transpile_config.sync_mode and self._communicator.is_running(
+        ):
             self._communicator.stop()
         self._executor.close()
 
