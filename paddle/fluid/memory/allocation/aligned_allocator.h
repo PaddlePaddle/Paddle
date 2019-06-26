@@ -89,11 +89,12 @@ class AlignedAllocator : public ThinAlignedAllocator {
   using ThinAlignedAllocator::ThinAlignedAllocator;
 
  protected:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
-    auto raw_allocation =
-        underlying_allocator_->Allocate(size + kAlignment, attr);
+  Allocation* AllocateImpl(size_t size) override {
+    auto raw_allocation = underlying_allocator_->Allocate(size + kAlignment);
     return new AlignedAllocation<kAlignment>(std::move(raw_allocation), size);
   }
+
+  void FreeImpl(Allocation* allocation) override { delete allocation; }
 };
 
 }  // namespace allocation

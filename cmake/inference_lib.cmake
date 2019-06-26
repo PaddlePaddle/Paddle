@@ -117,11 +117,21 @@ endif ()
 
 if (WITH_MKLML)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mklml")
-    copy(mklml_lib
-            SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
-            DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
-            DEPS mklml
-            )
+    if(WIN32)
+        copy(mklml_lib
+                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
+                    ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
+                    ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+                DEPS mklml
+                )
+    else()
+        copy(mklml_lib
+                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
+                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+                DEPS mklml
+                )
+    endif()
 elseif (NOT CBLAS_FOUND OR WIN32)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
     copy(openblas_lib
@@ -133,11 +143,19 @@ endif ()
 
 if (WITH_MKLDNN)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mkldnn")
-    copy(mkldnn_lib
-            SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-            DSTS ${dst_dir} ${dst_dir}/lib
-            DEPS mkldnn_shared_lib
-            )
+    if(WIN32)
+        copy(mkldnn_lib
+                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+                DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib
+                DEPS mkldnn_shared_lib
+                )
+    else()
+        copy(mkldnn_lib
+                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                DSTS ${dst_dir} ${dst_dir}/lib
+                DEPS mkldnn_shared_lib
+                )
+    endif()
 endif ()
 
 if (WITH_NGRAPH)

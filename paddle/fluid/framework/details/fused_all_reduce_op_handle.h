@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -28,14 +29,15 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct FusedAllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+struct FusedAllReduceOpHandle : public NCCLOpHandleBase {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,
                          const size_t num_of_all_reduce,
-                         const platform::NCCLContextMap *ctxs);
+                         const platform::NCCLCommunicator *ctxs);
 #else
+struct FusedAllReduceOpHandle : public OpHandleBase {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,
@@ -52,11 +54,12 @@ struct FusedAllReduceOpHandle : public OpHandleBase {
 
  private:
   std::vector<Scope *> local_scopes_;
+#if !(defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
+  // NCCLOpHandleBase already have these attributes.
+  // Will polish it by class inheritance framework.
   std::vector<platform::Place> places_;
-  size_t num_of_all_reduce_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  const platform::NCCLContextMap *nccl_ctxs_;
 #endif
+  size_t num_of_all_reduce_;
 
   // Check the dtype of the input
   void GetDTypeAndNumel(

@@ -366,9 +366,6 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
@@ -380,12 +377,12 @@ class ExecutionContext {
   }
 
   template <typename T>
-  T& GetKernelConfig(int idx) const {
+  T& GetKernelConfig(size_t idx) const {
     PADDLE_ENFORCE(
         kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
-        "%s selected kernel doesn't have kernel config %lu <= %d",
+        "%s selected kernel doesn't have kernel config %lu <= %lu",
         op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
  private:

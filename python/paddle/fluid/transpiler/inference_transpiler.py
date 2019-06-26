@@ -76,6 +76,7 @@ class InferenceTranspiler(object):
             self._fuse_conv_relu_mkldnn(
                 program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
+            self._fuse_mul_add_mkldnn(program)
 
         self._is_test_pass(program)
 
@@ -387,6 +388,62 @@ class InferenceTranspiler(object):
         # And a better solution will be considered later.
         program = program.clone()
 
+    def _fuse_mul_add_mkldnn(self, program):
+        '''
+        Transpile the program by fusing Mul+Add layers to FC layer with the MKL-DNN inner product.
+        The MUL following a Elementwise_add layer can be replaced by the MKL-DNN FC.
+        The Elementwise add's bias input 'Y' has to be added into the
+        MKL-DNN-based FC input 'Bias'.
+         The operator transformation is:
+         - before:
+           - MUL->elementwise_add -> any_other_op
+         - after:
+           - FC -> any_other_op
+         The transpile stages are:
+         1. insert a new MKL-DNN-based FC operator with `Bias` input
+            taken from the Elementwise add's input 'Y' (bias),
+        2. fuse the parameters of MUL and Elemenwise add,
+        3. remove the MUL, elementwise_add operators,
+        4. make the input of the deleted Elementwise add operator to be the input of the
+           new FC operator,
+        5. remove unused variables,
+         Args:
+            program (Program): program to transpile
+         '''
+
+        self.block = program.block(0)
+        self.input_map = {}  # store the input names should be adjusted
+        i = 0
+        while i < len(self.block.ops):
+            # find a elementwise add op
+            if self.block.ops[i].type == 'elementwise_add':
+                add_op = self.block.ops[i]
+                add_idx = i
+                mul_idx = -1
+                # find the preceding mul op
+                for j in reversed(range(add_idx)):
+                    if self.block.ops[j].type == 'mul':
+                        mul_out_name = self.block.ops[j].output_arg_names[0]
+                        if self.block.ops[j].output_arg_names[
+                                0] in add_op.input_arg_names:
+                            mul_op = self.block.ops[j]
+                            mul_idx = j
+                            break
+                if mul_idx < 0:
+                    i += 1
+                    continue
+                # create and insert a new fc op
+                fc_op_new = self._insert_fc_op(add_idx + 1, mul_op, add_op)
+                # remove the old operators
+                self.block._remove_op(add_idx)
+                self.block._remove_op(mul_idx)
+                # restart scanning for elementwise add from the deleted mul's index
+                i = mul_idx
+            i += 1
+        self._adjust_input()
+        self._remove_unused_var()
+        program = program.clone()
+
     # ====================== private transpiler functions =====================
     def _insert_bias_op(self, index, current_op, bn_op):
         '''
@@ -508,6 +565,42 @@ class InferenceTranspiler(object):
                     "Bias": bias_var},
             outputs={"Output": out_var},
             attrs=attrs)
+
+    def _insert_fc_op(self, index, mul_op, add_op):
+        '''
+        Construct a new FC operator by copying the old Mul and adding the
+        'Y' input taken from the Elementwise add's input 'Y'.
+        :param index: insert location of FC
+        :type  index: Int
+        :param mul_op: MUL operator to be copied
+        :type  mul_op: Operator
+        :param add_op: Elementwise add operator taken bias from
+        :type  add_op: Operator
+        :return: fc_op_new
+        :type:   Operator
+        '''
+
+        def get_op_outputs(op, names):
+            result = {}
+            for name in names:
+                result[name] = self.block.var(op.output(name)[0])
+            return result
+
+        fc_inputs = {}
+        fc_inputs['Input'] = self.block.var(mul_op.input('X')[0])
+        fc_inputs['W'] = self.block.var(mul_op.input('Y')[0])
+        fc_inputs['Bias'] = self.block.var(add_op.input('Y')[0])
+        fc_outputs = get_op_outputs(add_op, ['Out'])
+        fc_attrs = {}
+        fc_attrs['use_mkldnn'] = True
+
+        fc_op_new = self.block._insert_op(
+            index,
+            type='fc',
+            inputs=fc_inputs,
+            outputs=fc_outputs,
+            attrs=fc_attrs)
+        return fc_op_new
 
     def _fuse_conv_eltwise(self, index, conv_op, eltwise_op):
         '''
