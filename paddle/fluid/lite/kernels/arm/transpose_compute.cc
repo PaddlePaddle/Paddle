@@ -170,4 +170,5 @@ REGISTER_LITE_KERNEL(transpose2, kARM, kFloat, kNCHW,
                      paddle::lite::kernels::arm::Transpose2Compute, def)
     .BindInput("X", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("XShape", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();
