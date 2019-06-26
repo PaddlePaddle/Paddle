@@ -454,6 +454,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_variance = ctx.Input<Tensor>("Variance");
       mean_data = running_mean->data<T>();
+      inv_var_tensor.Resize({C});
       T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
       EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
       ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);

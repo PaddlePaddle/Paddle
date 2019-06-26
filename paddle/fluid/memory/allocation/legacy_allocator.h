@@ -72,8 +72,8 @@ class LegacyAllocator : public Allocator {
   explicit LegacyAllocator(const platform::Place &p) : place_(p) {}
 
  protected:
-  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
-  void Free(Allocation *allocation) override;
+  Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(Allocation *allocation) override;
 
  private:
   platform::Place place_;

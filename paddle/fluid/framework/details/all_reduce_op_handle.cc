@@ -35,16 +35,9 @@ namespace details {
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
-                                     const platform::NCCLContextMap *ctxs)
-    : OpHandleBase(node),
-      local_scopes_(local_scopes),
-      places_(places),
-      nccl_ctxs_(ctxs) {
-  if (nccl_ctxs_) {
-    for (auto &p : places_) {
-      this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
-    }
-  }
+                                     const platform::NCCLCommunicator *ctxs)
+    : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -71,7 +64,9 @@ void AllReduceOpHandle::RunAllReduceFuncs(
   if (FLAGS_sync_nccl_allreduce) {
     for (auto &p : places_) {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
-      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+      auto *nccl_ctxs =
+          nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
+      auto &nccl_ctx = nccl_ctxs->at(dev_id);
       auto stream = nccl_ctx.stream();
       cudaError_t e_sync = cudaStreamSynchronize(stream);
       if (e_sync != 0) {
@@ -134,21 +129,12 @@ void AllReduceOpHandle::RunImpl() {
         numel = static_cast<size_t>(lod_tensor.numel());
       }
 
-      int dev_id = boost::get<platform::CUDAPlace>(p).device;
-      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-      auto stream = nccl_ctx.stream();
-      auto comm = nccl_ctx.comm_;
-
-      VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
-               << ", dev_id:" << dev_id << ", dtype:" << dtype
-               << ", place:" << p;
-
       all_reduce_calls.emplace_back([=] {
-        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-            comm, stream));
+        NCCLAllReduce(p, buffer, buffer, numel,
+                      static_cast<ncclDataType_t>(dtype), ncclSum);
       });
     }
+    VLOG(10) << "allreduce size:" << numel * SizeOfType(lod_tensors[0]->type());
     RunAllReduceFuncs(all_reduce_calls);
 #else
     PADDLE_THROW("Not compiled with CUDA");

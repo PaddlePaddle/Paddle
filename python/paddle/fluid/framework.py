@@ -27,35 +27,11 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-
+import sys
 from .. import compat as cpt
 from .proto import framework_pb2
-try:
-    if os.name == 'nt':
-        import sys
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
 
-    from . import core
-except ImportError as e:
-    if os.name == 'nt':
-        executable_path = os.path.abspath(os.path.dirname(sys.executable))
-        raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
-        if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s""" %
-            (executable_path, executable_path, cpt.get_exception_message(e)))
-    else:
-        raise ImportError(
-            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-        if you encounters \"libmkldnn.so not found\" errors. If you have python
-        installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
-except Exception as e:
-    raise e
+from . import core
 from . import unique_name
 
 __all__ = [
@@ -106,7 +82,24 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+    if "CPU_NUM" not in os.environ.keys():
+        sys.stderr.write(
+            'The CPU_NUM is not specified, you should set CPU_NUM in '
+            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
+            'indicates that how many CPUPlace are used in the current task.\n'
+            '!!! The default number of CPUPlaces is 1.\n\n')
+        os.environ['CPU_NUM'] = str(1)
+    cpu_num = os.environ.get('CPU_NUM')
+    return int(cpu_num)
+
+
+def _cuda_ids():
+    gpus_env = os.getenv("FLAGS_selected_gpus")
+    if gpus_env:
+        device_ids = [int(s) for s in gpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
 
 
 def cuda_places(device_ids=None):
@@ -140,11 +133,7 @@ def cuda_places(device_ids=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            device_ids = [int(s) for s in gpus_env.split(",")]
-        else:
-            device_ids = six.moves.range(core.get_cuda_device_count())
+        device_ids = _cuda_ids()
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
@@ -531,15 +520,12 @@ class Variable(object):
 
     def backward(self, backward_strategy=None):
         from .dygraph import BackwardStrategy
-        if isinstance(backward_strategy, BackwardStrategy):
-            self._ivar._run_backward(backward_strategy)
-        elif backward_strategy is not None:
-            raise TypeError(
-                "only BackwardStrategy type should be passed in backward")
-        else:
+        if backward_strategy is None:
             backward_strategy = BackwardStrategy()
             backward_strategy.sort_sum_gradient = False
-            self._ivar._run_backward(backward_strategy)
+
+        self._ivar._run_backward(backward_strategy)
+        _dygraph_tracer()._clear_ops()
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
@@ -567,8 +553,9 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (
+                self.name, self.dtype, self.shape,
+                str(self._ivar.value().get_tensor()))
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -656,6 +643,8 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
@@ -767,10 +756,8 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate(".".join(self.name)),
-                dtype=self.dtype,
-                persistable=self.persistable,
-                stop_gradient=self.stop_gradient, )
+                name=unique_name.generate_with_ignorable_key(self.name),
+                dtype=self.dtype)
         else:
             return self
 
@@ -835,35 +822,84 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        new_var = None
-        if isinstance(item, tuple):
-            if len(item) > len(self.shape):
-                raise IndexError("Too many indexes")
-            fixedSize = True
-            for i in range(len(self.shape)):
-                if self.shape[i] == -1:
-                    fixedSize = False
-                    break
 
-            newitem = self._reconstructSliceinfo(item) or item
-            if fixedSize:
-                check, info = self._detectContinuesSlice(newitem)
-                if check:
-                    starts = info[0]
-                    ends = info[1]
-                    axes = [i for i in range(len(starts))]
-                    return self._sliceVar(axes, starts, ends)
-                else:
-                    new_var = self
-                    for index, o in enumerate(newitem):
-                        new_var = new_var._sliceAndConcatVar(o, index)
+        if not isinstance(item, tuple):
+            item = [item]
+
+        decrease_axis = []
+        slice_axis = []
+        slice_start = []
+        slice_end = []
+        reverse_axis = []
+
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step if slice_item.step else 1
+
+                assert (step == 1 or step == -1)
+
+                if step == -1:
+                    reverse_axis.append(dim)
+                    assert (start is None and end is None)
+
+                if start is None and end is None:
+                    continue
+
+                if start is None:
+                    start = 0
+
+                if end is None:
+                    end = 10000000
+
+                slice_axis.append(dim)
+                slice_start.append(start)
+                slice_end.append(end)
             else:
-                new_var = self
-                for index, o in enumerate(newitem):
-                    new_var = new_var._sliceAndConcatVar(o, index)
-        else:
-            new_var = self._sliceAndConcatVar(item, 0)
-        return new_var
+                # int
+                decrease_axis.append(dim)
+                slice_axis.append(dim)
+                slice_start.append(slice_item)
+                slice_end.append(slice_item + 1
+                                 if slice_item != -1 else 10000000)
+
+        out = self
+        if len(slice_axis) > 0:
+            # append slice_op here
+
+            slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice"),
+                dtype=self.dtype)
+
+            self.block.append_op(
+                type="slice",
+                inputs={'Input': [out]},
+                outputs={'Out': [slice_out_var]},
+                attrs={
+                    'axes': slice_axis,
+                    'starts': slice_start,
+                    'ends': slice_end,
+                    'decrease_axis': decrease_axis
+                })
+
+            out = slice_out_var
+
+        if len(reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis})
+
+            out = reverse_out_var
+
+        return out
 
 
 def get_all_op_protos():
@@ -1015,7 +1051,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1038,7 +1074,6 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1048,13 +1083,17 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
+                                )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1673,13 +1712,22 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+            attrs = kwargs.get("attrs", {})
+            if _dygraph_tracer_._train_mode == False:
+                # eval mode
+                if ('trainable_statistics' not in attrs
+                    ) or not attrs['trainable_statistics']:
+                    attrs['is_test'] = True
+                else:
+                    attrs['is_test'] = False
+
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                attrs=attrs)
 
             # record ops in tracer rather than blocks
             #
@@ -2759,6 +2807,10 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._nccl_comm_num = 1
+        self._use_hierarchical_allreduce = False
+        self._hierarchical_allreduce_inter_nranks = 0
+        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
@@ -2768,6 +2820,12 @@ class Program(object):
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
+
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
+
+        # appending gradients times
+        self._appending_grad_times = 0
 
     @property
     def _is_mem_optimized(self):
@@ -2962,12 +3020,15 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will not do any prune on program here, So if you just want an
+          forward program for testing, please use :code:`clone` before using
+          :code:`Opimizer.minimize`
 
-        Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please. E.g.
 
         .. code-block:: python
 
@@ -2984,7 +3045,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3094,6 +3160,7 @@ class Program(object):
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
+            p._appending_grad_times = self._appending_grad_times
 
             p._sync_with_cpp()
 
@@ -3611,6 +3678,36 @@ def default_main_program():
 
     Returns:
         Program: main program
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            
+            # Sample Network:
+            data = fluid.layers.data(name='image', shape=[3, 224, 224], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            
+            conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
+            bn1 = fluid.layers.batch_norm(conv1, act='relu')
+            pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
+            conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
+            bn2 = fluid.layers.batch_norm(conv2, act='relu')
+            pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
+            
+            fc1 = fluid.layers.fc(pool2, size=50, act='relu')
+            fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
+            
+            loss = fluid.layers.cross_entropy(input=fc2, label=label)
+            loss = fluid.layers.mean(loss)
+            opt = fluid.optimizer.Momentum(
+                learning_rate=0.1,
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            opt.minimize(loss)
+            
+            print(fluid.default_main_program().num_blocks)
+            print(fluid.default_main_program().blocks[0].var('image'))
     """
     return _main_program_
 
@@ -3649,8 +3746,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3678,9 +3775,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
-            None means do not change startup program.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

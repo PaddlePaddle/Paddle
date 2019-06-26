@@ -23,7 +23,6 @@ from itertools import product
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
-from paddle.fluid.backward import calc_gradient
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 
 
@@ -183,7 +182,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     dy = program.global_block().create_var(
         name=dy_name, shape=y.shape, dtype=np_type, persistable=True)
     # append backward
-    dx = calc_gradient(y, x, dy)
+    dx = fluid.gradients(y, x, dy)
 
     # init dy tensor in scope
     value = np.zeros(y.shape, dtype=np_type)
@@ -196,17 +195,23 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     x = _as_list(x)
     jacobian = make_jacobian(x, y_size, np_type)
 
+    # filter None in dx for DX/DY may be None in kernel
+    # only fetch not None dx in exe.run
+    filted = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
+    filted_idx, filted_dx = zip(*filted)
+
     for i in six.moves.xrange(y_size):
         _set_item(dy_t, i, 1, np_type)
 
-        dx_res = exe.run(program, scope=scope, fetch_list=dx)
+        dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
 
-        for j in six.moves.xrange(len(x)):
+        for j in six.moves.xrange(len(filted_dx)):
+            dx_idx = filted_idx[j]
             if dx_res[j] is not None:
-                jacobian[j][:, i] = dx_res[j].flatten()
+                jacobian[dx_idx][:, i] = dx_res[j].flatten()
             else:
-                jacobian[j][:, i] = np.zeros(
-                    dx[j].shape, dtype=np_type).flatten()
+                jacobian[dx_idx][:, i] = np.zeros(
+                    dx[dx_idx].shape, dtype=np_type).flatten()
 
         _set_item(dy_t, i, 0, np_type)
 
@@ -376,7 +381,7 @@ def double_grad_check(x,
         ]
 
     # append first order grads
-    target_grads = calc_gradient(y, x, y_grads)
+    target_grads = fluid.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.

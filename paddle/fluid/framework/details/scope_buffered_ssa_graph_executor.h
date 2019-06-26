@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
+#include <ThreadPool.h>
+#include <list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -50,6 +51,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   void DropLocalExeScopes();
 
   bool NeedCreateLocalExeScope();
+
+  void PrepareLocalExeScopes();
 
  private:
   size_t drop_scope_counter_{0};
