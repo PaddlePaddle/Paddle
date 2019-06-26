@@ -311,8 +311,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->build_strategy_ = build_strategy;
-  member_->use_all_reduce_ =
-      build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
+  member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
+                             BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
   if (!member_->use_all_reduce_ && member_->nranks_ == 1) {
     LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
