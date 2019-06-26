@@ -95,6 +95,8 @@ void profile(bool use_mkldnn = false) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   outputs.resize(iterations);
 
+  std::vector<std::thread> threads;
+
   for (int j = 0; j < num_times; j++) {
     std::ifstream file(FLAGS_infer_data);
     std::ifstream infer_file(FLAGS_infer_shape);
@@ -102,14 +104,20 @@ void profile(bool use_mkldnn = false) {
     std::string shape_line;
 
     for (int i = 0; i < iterations; i++) {
-      std::getline(file, line);
-      std::getline(infer_file, shape_line);
-      SetInput(&input_slots_all, line, shape_line);
+      threads.emplace_back([&, i]() {
+        std::getline(file, line);
+        std::getline(infer_file, shape_line);
+        SetInput(&input_slots_all, line, shape_line);
 
-      run_timer.tic();
-      predictor->Run(input_slots_all[i], &outputs[i], FLAGS_batch_size);
-      elapsed_time += run_timer.toc();
+        run_timer.tic();
+        predictor->Run(input_slots_all[i], &outputs[i], FLAGS_batch_size);
+        elapsed_time += run_timer.toc();
+      });
+      LOG(INFO) << "threads size: " << threads.size();
+      threads[0].join();
+      threads.clear();
     }
+
     file.close();
     infer_file.close();
   }
