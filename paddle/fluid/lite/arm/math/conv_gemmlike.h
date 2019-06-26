@@ -53,7 +53,6 @@ class GemmLikeConv
 
  protected:
   bool is_weights_transed_{false};
-  std::vector<float> _w_scale;
   Tensor idx_data_;
   Tensor weights_trans_;
 
@@ -81,6 +80,7 @@ class GemmLikeConvInt8 : public GemmLikeConv<PRECISION(kInt8)> {
 
  private:
   conv_im2col_gemm_int8_impl impl_int8_{nullptr};
+  std::vector<float> w_scale_;
 };
 
 }  // namespace math

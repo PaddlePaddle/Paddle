@@ -463,7 +463,8 @@ void conv_im2col_gemm_int8(const int8_t* i_data, int32_t* o_data, int num,
   bool flag_im2col2 = (kernel_h == 3 && kernel_w == 3 && stride_h == 1 &&
                        stride_w == 1 && n > 1);
 
-  int8_t* tmp_work_space = ctx->workspace_data<int8_t>() + ctx->l2_cache_size();
+  int8_t* tmp_work_space =
+      ctx->workspace_data<int8_t>() + ctx->l2_cache_size() / sizeof(int8_t);
 
   //! use gemv when the output channel size = 1
   for (int b = 0; b < num; ++b) {

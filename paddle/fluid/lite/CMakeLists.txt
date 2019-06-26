@@ -104,7 +104,7 @@ file(WRITE ${offline_lib_registry_file} "") # clean
 #  LIGHT_DEPS:    LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #  HVY_DEPS:      NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 function(lite_cc_library TARGET)
-    set(options "")
+    set(options STATIC static SHARED shared)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
       HVY_DEPS ARGS)
@@ -120,8 +120,11 @@ function(lite_cc_library TARGET)
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
             )
-
-    cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+    if (${args_SHARED} OR ${args_shared})
+        cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS} SHARED)
+    else()
+        cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+    endif()
 
     # collect targets need to compile for lite
     add_dependencies(lite_compile_deps ${TARGET})

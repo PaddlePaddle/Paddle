@@ -38,6 +38,13 @@ USE_LITE_KERNEL(relu, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(transpose, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(transpose2, kARM, kFloat, kNCHW, def);
 USE_LITE_KERNEL(batch_norm, kARM, kFloat, kNCHW, def);
+
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, fp32_to_int8);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, int8_to_fp32);
+USE_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW, int8_out);
+USE_LITE_KERNEL(conv2d, kARM, kInt8, kNCHW, fp32_out);
+USE_LITE_KERNEL(fc, kARM, kInt8, kNCHW, int8out);
+USE_LITE_KERNEL(fc, kARM, kInt8, kNCHW, fp32out);
 #endif
 
 #ifdef LITE_WITH_X86
