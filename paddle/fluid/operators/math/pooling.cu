@@ -59,13 +59,48 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
     T ele = pool_process.initial();
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        pool_process.compute(input_data[h * input_width + w], &ele);
+        pool_process.compute(__ldg(input_data + h * input_width + w), &ele);
       }
     }
     int pool_size = (exclusive || adaptive) ? (hend - hstart) * (wend - wstart)
                                             : ksize_height * ksize_width;
     pool_process.finalize(static_cast<T>(pool_size), &ele);
     output_data[index] = ele;
+  }
+}
+
+template <typename T, typename PoolProcess>
+__global__ void Pool2DForwardCUDAKernel(const int X_H, const int X_W,
+                                        const int Y_H, const int Y_W,
+                                        const int kernel_h, const int kernel_w,
+                                        const int stride_h, const int stride_w,
+                                        const int pad_t, const int pad_l,
+                                        const bool exclude, const T* X, T* Y,
+                                        PoolProcess pool_process) {
+  const int X_HxW = X_H * X_W;
+  const int Y_HxW = Y_H * Y_W;
+  const int nc = blockIdx.x / Y_H;
+  const int yh = blockIdx.x % Y_H;
+  const T* X_ptr = X + nc * X_HxW;
+  T* Y_ptr = Y + nc * Y_HxW;
+  const int xh = yh * stride_h - pad_t;
+  const int t = max(xh, 0);
+  const int b = min(xh + kernel_h, X_H);
+  for (int yw = threadIdx.x; yw < Y_W; yw += blockDim.x) {
+    const int xw = yw * stride_w - pad_l;
+    const int l = max(xw, 0);
+    const int r = min(xw + kernel_w, X_W);
+    const T scale =
+        static_cast<T>(exclude ? (b - t) * (r - l) : kernel_h * kernel_w);
+
+    T ele = pool_process.initial();
+    for (int i = t; i < b; ++i) {
+      for (int j = l; j < r; ++j) {
+        pool_process.compute(__ldg(X_ptr + i * X_W + j), &ele);
+      }
+    }
+    pool_process.finalize(scale, &ele);
+    Y_ptr[yh * Y_W + yw] = ele;
   }
 }
 
@@ -104,7 +139,7 @@ __global__ void KernelPool2DGrad(
       pwend = min(w_offset / stride_width + 1, output_width);
     }
     T gradient = 0;
-    T input = input_data[index];
+    T input = __ldg(input_data + index);
     int output_idx =
         (batch_idx * channels + offsetC) * output_height * output_width;
     output_data += output_idx;
@@ -128,8 +163,8 @@ __global__ void KernelPool2DGrad(
                                 : ksize_height * ksize_width;
         }
         int output_sub_idx = ph * output_width + pw;
-        pool_process.compute(input, output_data[output_sub_idx],
-                             output_grad[output_sub_idx],
+        pool_process.compute(input, __ldg(output_data + output_sub_idx),
+                             __ldg(output_grad + output_sub_idx),
                              static_cast<T>(1.0 / pool_size), &gradient);
       }
     }
@@ -163,12 +198,12 @@ __global__ void KernelMaxPool2DGrad(
     input_data += (batch_idx * channels + c) * input_height * input_width;
     input_grad += (batch_idx * channels + c) * input_height * input_width;
 
-    T ele = output_data[index];
+    T ele = __ldg(output_data + index);
     int maxIndex = -1;
     bool stop = false;
     for (int h = hstart; h < hend && !stop; ++h) {
       for (int w = wstart; w < wend && !stop; ++w) {
-        if (ele == input_data[h * input_width + w]) {
+        if (ele == __ldg(input_data + h * input_width + w)) {
           maxIndex = h * input_width + w;
           stop = true;
         }
@@ -177,9 +212,30 @@ __global__ void KernelMaxPool2DGrad(
 
     if (maxIndex != -1) {
       // atomic add
-      platform::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+      platform::CudaAtomicAdd(input_grad + maxIndex,
+                              __ldg(output_grad + index));
     }
   }
+}
+
+static size_t ComputeKernelParameter(
+    int length, const platform::CUDADeviceContext& context) {
+  constexpr size_t theory_sm_threads = 1024;
+  auto max_threads = context.GetMaxPhysicalThreadCount();
+  auto sm_count = max_threads / theory_sm_threads;
+  auto threads = 256;
+  constexpr size_t block_sm = 8;
+  length /= block_sm;
+  if (length >= max_threads * 8) {
+    threads = theory_sm_threads;
+  } else if (length < max_threads * 8 && length >= sm_count * 512) {
+    threads = 512;
+  } else if (length < sm_count * 512 && length >= sm_count * 64) {
+    threads = 256;
+  } else if (length < sm_count * 64) {
+    threads = 128;
+  }
+  return threads;
 }
 
 template <typename PoolProcess, typename T>
@@ -244,15 +300,30 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int sthread = ComputeKernelParameter(nthreads, context);
+    int blocks = (nthreads + sthread - 1) / sthread;
+    dim3 threads(sthread, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, input_data, input_channels, input_height, input_width,
-        output_height, output_width, ksize_height, ksize_width, stride_height,
-        stride_width, padding_height, padding_width, pool_process, exclusive,
-        adaptive, output_data);
+    if (!adaptive) {
+      blocks = output_channels * batch_size * output_height;
+      // set to 128 if output_width is small
+      if (output_width < 256) sthread = 128;
+      threads = (sthread, 1);
+      grid = (blocks, 1);
+
+      Pool2DForwardCUDAKernel<
+          T, PoolProcess><<<grid, threads, 0, context.stream()>>>(
+          input_height, input_width, output_height, output_width, ksize_height,
+          ksize_width, stride_height, stride_width, padding_height,
+          padding_width, exclusive, input_data, output_data, pool_process);
+    } else {
+      KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
+          nthreads, input_data, input_channels, input_height, input_width,
+          output_height, output_width, ksize_height, ksize_width, stride_height,
+          stride_width, padding_height, padding_width, pool_process, exclusive,
+          adaptive, output_data);
+    }
   }
 };
 
@@ -292,8 +363,9 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int sthread = ComputeKernelParameter(nthreads, context);
+    int blocks = (nthreads + sthread - 1) / sthread;
+    dim3 threads(sthread, 1);
     dim3 grid(blocks, 1);
 
     KernelPool2DGrad<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
@@ -340,8 +412,9 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int sthread = ComputeKernelParameter(nthreads, context);
+    int blocks = (nthreads + sthread - 1) / sthread;
+    dim3 threads(sthread, 1);
     dim3 grid(blocks, 1);
 
     KernelMaxPool2DGrad<T><<<grid, threads, 0, context.stream()>>>(
