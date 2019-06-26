@@ -83,7 +83,7 @@ struct Place {
   int16_t device{0};  // device ID
 
   Place() = default;
-  Place(TargetType target, PrecisionType precision,
+  Place(TargetType target, PrecisionType precision = PRECISION(kFloat),
         DataLayoutType layout = DATALAYOUT(kNCHW), int16_t device = 0)
       : target(target), precision(precision), layout(layout), device(device) {}
 

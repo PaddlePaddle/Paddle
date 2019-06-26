@@ -123,13 +123,16 @@ void ConvComputeInt8<Ptype_out>::PrepareForRun() {
 
   // weigth is int8 and bias is int32 so do not need trans
   if (param.groups == ic && ic == oc && kps_equal && no_dilation && flag_dw) {
-    impl_ = new lite::arm::math::DepthwiseConvInt8<Ptype_out>;
-    VLOG(3) << "DepthwiseConv Int8";
+    // impl_ = new lite::arm::math::DepthwiseConvInt8<Ptype_out>;
+    impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
+    VLOG(3) << "Run DepthwiseConv Int8";
   } else if (param.groups == 1 && kw == 3 && (sw == 1 || sw == 2) &&
              kps_equal && no_dilation) {
-    impl_ = new lite::arm::math::DirectConvInt8<Ptype_out>;
+    VLOG(3) << "Run DirectConv Int8";
+    impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
+    // impl_ = new lite::arm::math::DirectConvInt8<Ptype_out>;
   } else {
-    VLOG(3) << "GemmLikeConvInt8";
+    VLOG(3) << "Run GemmLikeConvInt8";
     impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
   }
 
@@ -181,6 +184,28 @@ REGISTER_LITE_KERNEL(
 
 REGISTER_LITE_KERNEL(
     conv2d, kARM, kInt8, kNCHW,
+    paddle::lite::kernels::arm::ConvComputeInt8<PRECISION(kFloat)>, fp32_out)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})
+    .BindInput("Filter",
+               {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindOutput("Output",
+                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kFloat))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(
+    depthwise_conv2d, kARM, kInt8, kNCHW,
+    paddle::lite::kernels::arm::ConvComputeInt8<PRECISION(kInt8)>, int8_out)
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})
+    .BindInput("Filter",
+               {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .BindOutput("Output",
+                {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(
+    depthwise_conv2d, kARM, kInt8, kNCHW,
     paddle::lite::kernels::arm::ConvComputeInt8<PRECISION(kFloat)>, fp32_out)
     .BindInput("Input", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt8))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM), PRECISION(kInt32))})

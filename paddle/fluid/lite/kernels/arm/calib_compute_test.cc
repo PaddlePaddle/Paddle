@@ -146,4 +146,5 @@ TEST(calib_arm, int8_to_fp32) {
 }  // namespace lite
 }  // namespace paddle
 
-USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, def);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, int8_to_fp32);
+USE_LITE_KERNEL(calib, kARM, kInt8, kNCHW, fp32_to_int8);
