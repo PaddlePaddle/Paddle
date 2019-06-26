@@ -65,7 +65,7 @@ from . import incubate
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope, is_compiled_with_cuda
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
@@ -86,6 +86,7 @@ from .dygraph.nn import *
 from .dygraph.layers import *
 
 Tensor = LoDTensor
+GPUPlace = CUDAPlace
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
@@ -106,7 +107,9 @@ __all__ = framework.__all__ + executor.__all__ + \
         'LoDTensorArray',
         'CPUPlace',
         'CUDAPlace',
+        'GPUPlace',
         'CUDAPinnedPlace',
+        'is_compiled_with_cuda',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',

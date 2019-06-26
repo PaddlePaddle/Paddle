@@ -116,7 +116,7 @@ class ParallelExecutor(object):
     """
 
     def __init__(self,
-                 use_cuda,
+                 use_cuda=None,
                  loss_name=None,
                  main_program=None,
                  share_vars_from=None,
@@ -125,6 +125,9 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
+        if use_cuda is None:
+            use_cuda = core.is_compiled_with_cuda()
+
         if build_strategy is None:
             build_strategy = BuildStrategy()
 

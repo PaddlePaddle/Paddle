@@ -41,6 +41,7 @@ __all__ = [
     'program_guard',
     'name_scope',
     'cuda_places',
+    'gpu_places',
     'cpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
@@ -137,6 +138,9 @@ def cuda_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+
+gpu_places = cuda_places
 
 
 def cpu_places(device_count=None):
