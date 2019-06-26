@@ -157,13 +157,18 @@ bool GemmLikeConvInt8<Ptype_out>::create(const operators::ConvParam& param,
   int m = oc / param.groups;
   int k = ic * kh * kw / param.groups;
   int n = oh * ow;
-
-  this->_w_scale = param.weight_scale;
+  w_scale_ = param.weight_scale;
   //! update weights scale
   if (Ptype_out == PRECISION(kInt8) || Ptype_out == PRECISION(kFloat)) {
-    CHECK_EQ(this->_w_scale.size(), oc) << "weights scale size must be chout";
+    CHECK_EQ(this->w_scale_.size(), oc) << "weights scale size must be chout";
+    float input_scale = param.input_scale;
+    for (auto& w_s : w_scale_) {
+      w_s *= input_scale;
+      if (Ptype_out == PRECISION(kInt8)) {
+        w_s /= param.output_scale;
+      }
+    }
   }
-  float input_scale = param.input_scale;
 
   bool kps_equal = (pw == ph) && (sw == sh) && (kw == kh);
   bool ks_equal = (sw == sh) && (kw == kh);
@@ -212,6 +217,8 @@ bool GemmLikeConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   auto* o_data = param.output->mutable_data<int32_t>();
   const int32_t* idx_data = idx_data_.mutable_data<int32_t>();
 
+  LOG(INFO) << "input size: " << param.x->memory_size() << " "
+            << param.input_scale << " " << w_scale_.size();
   if (this->is_weights_transed_ == true) {
     w_data = this->weights_trans_.template data<int8_t>();
   }
@@ -228,7 +235,7 @@ bool GemmLikeConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   int oc = o_dims[1];
 
   impl_int8_(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, b_data, param,
-             this->ctx_, Ptype_out, this->_w_scale.data(), idx_data);
+             this->ctx_, Ptype_out, this->w_scale_.data(), idx_data);
 
   return true;
 }

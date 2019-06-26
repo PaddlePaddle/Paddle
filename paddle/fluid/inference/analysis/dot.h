@@ -25,7 +25,7 @@
 #include <vector>
 // #include "paddle/fluid/lite/utils/logging.h"
 // #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include <glog/logging.h>
+#include <glog/logging.h>  // NOLINT
 // #endif
 
 namespace paddle {

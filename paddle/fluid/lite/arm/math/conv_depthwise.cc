@@ -162,6 +162,9 @@ bool DepthwiseConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   const int8_t* w_data = param.filter->data<int8_t>();
   const int32_t* b_data = param.bias ? param.bias->data<int32_t>() : nullptr;
 
+  LOG(INFO) << "input size: " << param.x->memory_size() << " "
+            << param.input_scale << " " << w_scale_.size();
+
   auto x_dims = param.x->dims();
   auto w_dims = param.filter->dims();
   auto o_dims = param.output->dims();
@@ -191,9 +194,11 @@ bool DepthwiseConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   auto o_scale = param.output_scale;
   if (kw == 3) {
     if (Ptype_out == PRECISION(kInt8)) {
+      param.output->mutable_data<int8_t>();
       trans_tensor_dtype<PRECISION(kInt32), PRECISION(kInt8)>(
           tmp_int32_out_, param.output, i_scale, o_scale, w_scale_);
     } else if (Ptype_out == PRECISION(kFloat)) {
+      param.output->mutable_data<float>();
       trans_tensor_dtype<PRECISION(kInt32), PRECISION(kFloat)>(
           tmp_int32_out_, param.output, i_scale, 1.f, w_scale_);
     } else if (Ptype_out != PRECISION(kInt32)) {

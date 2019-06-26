@@ -117,7 +117,19 @@ bool DirectConvInt8<Ptype_out>::create(const operators::ConvParam& param,
   int kw = w_dims[3];
   int sw = param.strides[1];
   // select dw conv kernel
+  w_scale_ = param.weight_scale;
+  //! update weights scale
   const auto* w_data = param.filter->data<int8_t>();
+  if (Ptype_out == PRECISION(kInt8) || Ptype_out == PRECISION(kFloat)) {
+    CHECK_EQ(this->w_scale_.size(), oc) << "weights scale size must be chout";
+    float input_scale = param.input_scale;
+    for (auto& w_s : w_scale_) {
+      w_s *= input_scale;
+      if (Ptype_out == PRECISION(kInt8)) {
+        w_s /= param.output_scale;
+      }
+    }
+  }
   if (kw == 3 && sw == 1) {
     VLOG(5) << "invoke 3x3s1 direct conv";
     _impl_int8 = conv_3x3s1_direct_int8;
@@ -160,7 +172,6 @@ bool DirectConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   const auto* w_data = param.filter->data<int8_t>();
   const auto* b_data = param.bias ? param.bias->data<int32_t>() : nullptr;
   auto* o_data = param.output->mutable_data<int32_t>();
-
   if (is_weights_transed_ == true) {
     w_data = weights_trans_.data<int8_t>();
   }
@@ -177,7 +188,7 @@ bool DirectConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   int oc = o_dims[1];
 
   _impl_int8(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, b_data, param,
-             this->ctx_, Ptype_out, _w_scale.data());
+             this->ctx_, Ptype_out, w_scale_.data());
 
   // timer end
   return true;
