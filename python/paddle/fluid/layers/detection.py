@@ -1393,6 +1393,8 @@ def ssd_loss(location,
     # 3. Mining hard examples
     actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
+    # shape=(-1, 0) is set for compile-time, the correct shape is set by
+    # actual_shape in runtime.
     conf_loss = nn.reshape(
         x=conf_loss, shape=(-1, 0), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
@@ -1464,6 +1466,8 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
+    # shape=(-1, 0) is set for compile-time, the correct shape is set by
+    # actual_shape in runtime.
     loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
