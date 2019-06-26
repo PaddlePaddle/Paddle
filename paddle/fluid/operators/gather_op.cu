@@ -76,9 +76,11 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
     if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterAssign<T, int>(ctx.device_context(), *dO, *index, dX);
+      GPUScatterAssign<T, int>(ctx, *dO, *index, dX,
+                               ctx.Attr<bool>("overwrite"));
     } else if (index_type == framework::proto::VarType::INT64) {
-      GPUScatterAssign<T, int64_t>(ctx.device_context(), *dO, *index, dX);
+      GPUScatterAssign<T, int64_t>(ctx, *dO, *index, dX,
+                                   ctx.Attr<bool>("overwrite"));
     }
   }
 };

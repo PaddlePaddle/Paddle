@@ -72,6 +72,10 @@ class PyReader(object):
 
         .. code-block:: python
 
+           import paddle
+           import paddle.fluid as fluid
+           import numpy as np
+
            EPOCH_NUM = 3
            ITER_NUM = 5
            BATCH_SIZE = 3
@@ -116,6 +120,10 @@ class PyReader(object):
            object into :code:`Executor.run(feed=...)`.  
 
         .. code-block:: python
+
+           import paddle
+           import paddle.fluid as fluid
+           import numpy as np
 
            EPOCH_NUM = 3
            ITER_NUM = 5
@@ -343,7 +351,11 @@ class PyReader(object):
         
 	Example:
 	    .. code-block:: python
-	
+
+                import paddle
+                import paddle.fluid as fluid
+                import numpy as np
+
                 BATCH_SIZE = 10
 
                 def generator():
@@ -378,6 +390,10 @@ class PyReader(object):
         
         Example:
             .. code-block:: python
+
+                import paddle
+                import paddle.fluid as fluid
+                import numpy as np
 
                 BATCH_SIZE = 10
 
@@ -459,6 +475,9 @@ class PyReader(object):
         Example:
             .. code-block:: python
 
+                import paddle.fluid as fluid
+                import numpy as np
+
                 EPOCH_NUM = 3
                 ITER_NUM = 15
                 BATCH_SIZE = 3
@@ -539,6 +558,10 @@ class PyReader(object):
         Example:
             .. code-block:: python
 
+                import paddle
+                import paddle.fluid as fluid
+                import numpy as np
+
                 EPOCH_NUM = 3
                 ITER_NUM = 15
                 BATCH_SIZE = 3
@@ -608,6 +631,9 @@ class PyReader(object):
 
         Example:
             .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
 
                 EPOCH_NUM = 3
                 ITER_NUM = 15

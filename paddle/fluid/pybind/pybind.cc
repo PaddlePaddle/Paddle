@@ -44,6 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -145,7 +146,12 @@ static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
-PYBIND11_MODULE(core, m) {
+#ifdef PADDLE_WITH_AVX
+PYBIND11_MODULE(core_avx, m) {
+#else
+PYBIND11_MODULE(core_noavx, m) {
+#endif
+
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
@@ -158,6 +164,8 @@ PYBIND11_MODULE(core, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def(
       "_append_python_callable_object_and_return_id",
@@ -278,8 +286,8 @@ PYBIND11_MODULE(core, m) {
     LoD is short for Level of Details and is usually used for varied sequence
     length. You can skip the following comment if you don't need optional LoD.
 
-    For example, a LoDTensor X can look like the example below. It contains 
-    2 sequences. The first has length 2 and the second has length 3, as 
+    For example, a LoDTensor X can look like the example below. It contains
+    2 sequences. The first has length 2 and the second has length 3, as
     described by x.lod.
 
     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
@@ -287,7 +295,7 @@ PYBIND11_MODULE(core, m) {
     columns, hence [5, 2].
 
     x.lod  = [[2, 3]]
-     
+
     x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
 
     x.shape = [5, 2]
@@ -997,7 +1005,7 @@ All parameter, weight, gradient are variables in Paddle.
 
     Examples:
         .. code-block:: python
-        
+
           import paddle.fluid as fluid
 
           arr = fluid.LoDTensorArray()
@@ -1171,7 +1179,8 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is BOOL, allow_op_delay represents whether to delay the
                 communication operators to run, it may make the execution faster.
-                Note that in some models, allow_op_delay may cause program hang. Default False.)DOC")
+                Note that this option is invalid now, and it will be removed in
+                next version. Default False.)DOC")
       .def_property(
           "num_iteration_per_drop_scope",
           [](const ExecutionStrategy &self) {
@@ -1183,7 +1192,8 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is INT, num_iteration_per_drop_scope indicates how
                 many iterations to clean up the temp variables which
                 is generated during execution. It may make the execution faster,
-                because the temp variable's shape maybe the same between two iterations. Default 100.
+                because the temp variable's shape maybe the same between two iterations.
+                Default 1.
 
                 NOTES:
                     1. If you fetch data when calling the 'run', the ParallelExecutor
@@ -1477,14 +1487,14 @@ All parameter, weight, gradient are variables in Paddle.
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
-          R"DOC(The type is BOOL, memory opitimize aims to save total memory 
+          R"DOC(The type is BOOL, memory opitimize aims to save total memory
                 consumption, set to True to enable it.
-                
-                Memory Optimize is our experimental feature, some variables 
+
+                Memory Optimize is our experimental feature, some variables
                 may be reused/removed by optimize strategy. If you need to
                 fetch some variable values when using this feature, please
                 set the persistable property of the variables to True.
-                
+
                 Default False)DOC")
       .def_property(
           "is_distribution",

@@ -59,46 +59,62 @@ struct BuildStrategy {
   enum class GradientScaleStrategy {
     kCoeffNumDevice = 0,
     kOne = 1,
+    // user can customize gradient scale to use, and just feed
+    // it into exe.run().
     kCustomized = 2,
-  };
-
-  enum class OptimizeStrategy {
-    // To be Implemented,bruteforce, recursive compute unused var names.
-    kBruteForce = 0,
-    kControlFlowGraph = 1,  // use cfg_graph algorithm, faster speed.
   };
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-  OptimizeStrategy strategy_{OptimizeStrategy::kControlFlowGraph};
 
   std::string debug_graphviz_path_{""};
 
-  bool fuse_elewise_add_act_ops_{false};
-
-  bool fuse_all_optimizer_ops_{false};
-
-  bool fuse_all_reduce_ops_{false};
-
+  // Add dependency between backward ops and optimization ops, make sure that
+  // all the backward ops are finished before running the optimization ops.
+  // It might make the training speed of data parallelism faster.
   bool enable_backward_optimizer_op_deps_{false};
-
-  bool fuse_relu_depthwise_conv_{false};
-
-  bool sync_batch_norm_{false};
-
-  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
-  // to open them by default, we need to solve the fetch variable issue
-  bool memory_optimize_{false};
-
-  bool enable_inplace_{false};
-
+  // TODO(dev-paddle): enable_sequential_execution depends on
+  // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
+  // will be removed in the near future.
   bool enable_sequential_execution_{false};
+  bool remove_unnecessary_lock_{true};
+  // TODO(dev-paddle): cache_runtime_context may cause some models to hang up
+  // while running.
+  bool cache_runtime_context_{false};
 
+  // Operator fusion
+  // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
+  // cycle.
+  bool fuse_elewise_add_act_ops_{false};
+  // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
+  // should not be sparse types
+  bool fuse_all_optimizer_ops_{false};
+  bool fuse_all_reduce_ops_{false};
+  // fuse_relu_depthwise_conv can fuse the `relu ->
+  // depthwise_conv`
+  bool fuse_relu_depthwise_conv_{false};
   // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
   bool fuse_broadcast_ops_{false};
+  // replace batch_norm with sync_batch_norm.
+  bool sync_batch_norm_{false};
+
+  // mkldnn_enabled_op_types specify the operator type list to
+  // use MKLDNN acceleration. It is null in default, means
+  // that all the operators supported by MKLDNN will be
+  // accelerated. And it should not be set when
+  // FLAGS_use_mkldnn=false
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+
+  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
+  // to open them by default, we need to solve the fetch variable issue
+  // TODO(liuwei1031): memory_optimize depends on kStaleProgramOpDescs,
+  // it is not appropriate, because kStaleProgramOpDescs will be removed in the
+  // near future.
+  bool memory_optimize_{false};
+  bool enable_inplace_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
@@ -108,11 +124,8 @@ struct BuildStrategy {
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
-  bool remove_unnecessary_lock_{true};
 
-  bool cache_runtime_context_{false};
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
-
+  // NCCL config
   size_t nccl_comm_num_{1};
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
@@ -149,7 +162,7 @@ struct BuildStrategy {
                    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                    const bool use_cuda,
-                   platform::MultiNCCLContextMap *nccl_ctxs) const;
+                   platform::NCCLCommunicator *nccl_ctxs) const;
 #else
                    const bool use_cuda) const;
 #endif

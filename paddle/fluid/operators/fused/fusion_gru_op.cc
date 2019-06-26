@@ -147,11 +147,11 @@ void FusionGRUOpMaker::Make() {
       "The activation type used in update gate and reset gate.")
       .SetDefault("sigmoid");
   AddAttr<bool>("is_reverse",
-                "(bool, defalut: False) "
+                "(bool, default: False) "
                 "whether to compute reversed GRU.")
       .SetDefault(false);
   AddAttr<bool>("use_seq",
-                "(bool, defalut: True) "
+                "(bool, default: True) "
                 "whether to use seq mode to compute GRU.")
       .SetDefault(true);
   AddComment(R"DOC(
