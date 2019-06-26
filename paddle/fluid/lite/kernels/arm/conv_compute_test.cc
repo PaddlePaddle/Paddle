@@ -186,6 +186,10 @@ TEST(conv_arm_int8, int8_int32) {
                             group = oc = ic;
                           }
 
+                          LOG(INFO) << "flag_bias: " << flag_bias;
+                          LOG(INFO) << "flag_relu: " << flag_relu;
+                          LOG(INFO) << "depthwise: " << depthwise;
+
                           const int dks = dilation * (ks - 1) + 1;
                           int oh = (ih + 2 * padding - dks) / stride + 1;
                           int ow = (iw + 2 * padding - dks) / stride + 1;
