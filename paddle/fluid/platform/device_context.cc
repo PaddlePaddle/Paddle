@@ -403,11 +403,16 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 namespace {
 // Current thread's id.
 thread_local int cur_thread_id = 0;
+thread_local std::string cur_input_shape_str = "";
 }
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
-#define MKLDNN_CAP 10000
+void set_cur_input_shape_str(std::string input_shape_str) {
+  cur_input_shape_str = input_shape_str;
+}
+std::string get_cur_input_shape_str(void) { return cur_input_shape_str; }
+#define MKLDNN_CAP 10
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 
@@ -415,6 +420,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();
   std::shared_ptr<KeyBlob> pBlob = nullptr;
+  std::shared_ptr<Blob> blob = nullptr;
 
   int tid = platform::get_cur_thread_id();
 
@@ -432,19 +438,29 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
     pBlob = map_it->second;
   }
 
+  std::string cur_input_shape_str = platform::get_cur_input_shape_str();
   // Find Key in found (or newly created) KeyBlob
-  auto key_it = pBlob->find(name);
+  auto key_it = pBlob->find(cur_input_shape_str);
 
   if (key_it == pBlob->end()) {
     // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
     if ((tid == -1) && (pBlob->size() > MKLDNN_CAP)) {
-      VLOG(2) << "SetBlob: tid=" << tid << ", remove head blob "
-              << pBlob->begin()->first << "\n";
-      pBlob->erase(pBlob->begin());
+      VLOG(2) << "tid=" << tid
+              << ", remove all head blob of shape: " << pBlob->begin()->first
+              << "\n";
+      pBlob->erase(pBlob->begin()->first);
     }
-    (*pBlob)[name] = data;
+    blob = std::shared_ptr<Blob>(new Blob());
+    (*pBlob)[cur_input_shape_str] = blob;
   } else {
-    key_it->second = data;  // set data to existing blob
+    blob = key_it->second;
+  }
+  // Find Blob via name
+  auto blob_it = blob->find(name);
+  if (blob_it == blob->end()) {
+    (*blob)[name] = data;
+  } else {
+    blob_it->second = data;  // set data to existing blob
   }
   VLOG(2) << "SetBlob: tid=" << tid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
@@ -455,6 +471,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
   std::shared_ptr<KeyBlob> pBlob = nullptr;
+  std::shared_ptr<Blob> blob = nullptr;
 
   int tid = platform::get_cur_thread_id();
 
@@ -466,12 +483,21 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
     VLOG(2) << "GetBlob: tid=" << tid << ", miss tid\n";
     return nullptr;
   }
+  std::string cur_input_shape_str = platform::get_cur_input_shape_str();
   pBlob = map_it->second;
 
-  // Find Blob via name
-  auto key_it = pBlob->find(name);
+  auto pBlob_it = pBlob->find(cur_input_shape_str);
+  if (pBlob_it == pBlob->end()) {
+    VLOG(2) << "GetBlob: tid=" << cur_input_shape_str
+            << ", miss input_shape_str\n";
+    return nullptr;
+  }
+  blob = pBlob_it->second;
 
-  if (key_it == pBlob->end()) {
+  // Find Blob via name
+  auto key_it = blob->find(name);
+
+  if (key_it == blob->end()) {
     VLOG(2) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
     return nullptr;
   }

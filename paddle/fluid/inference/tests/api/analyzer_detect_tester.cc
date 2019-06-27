@@ -80,6 +80,7 @@ void profile(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.SetMKLDNNThreadId(-1);
   }
   // cfg.pass_builder()->TurnOnDebug();
   std::vector<std::vector<PaddleTensor>> outputs;

@@ -205,6 +205,14 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
           << ", mkldnn_thread_id_=" << config_.mkldnn_thread_id_ << "\n";
   if (paddle::platform::get_cur_thread_id() == 0)
     paddle::platform::set_cur_thread_id(config_.mkldnn_thread_id_);
+  if (paddle::platform::get_cur_thread_id() == -1) {
+    std::stringstream ss;
+    for (size_t i = 0; i < inputs[0].shape.size(); ++i) {
+      ss << inputs[0].shape[i] << "-";
+    }
+    VLOG(2) << "Set input shape=" << ss.str();
+    paddle::platform::set_cur_input_shape_str(ss.str());
+  }
 #endif
 
   VLOG(3) << "Predictor::predict";
