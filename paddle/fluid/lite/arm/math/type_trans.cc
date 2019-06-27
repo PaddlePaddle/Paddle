@@ -755,6 +755,19 @@ bool trans_tensor_fp32_to_int8(Tensor* tin, Tensor* tout, float input_scale) {
   return true;
 }
 
+bool trans_fp32_bias_to_int32_basic(Tensor* tin, Tensor* tout, float in_scale,
+                                    std::vector<float> vector_weight_scale) {
+  tout->Resize(tin->dims());
+
+  const float* i_data = tin->data<float>();
+  int* o_data = tout->mutable_data<int>();
+  for (int i = 0; i < tin->dims().product(); ++i) {
+    o_data[i] =
+        static_cast<int>(roundf(i_data[i] / in_scale / vector_weight_scale[i]));
+  }
+  return true;
+}
+
 template <>
 bool trans_tensor_dtype<PRECISION(kInt32), PRECISION(kInt8)>(
     Tensor* tin, Tensor* tout, float input_scale, float output_scale,
