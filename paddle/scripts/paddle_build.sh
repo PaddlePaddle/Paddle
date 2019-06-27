@@ -297,8 +297,8 @@ function build_base() {
       parallel_number=$1
     fi
     make clean
-    make -j 10 
-    make install -j 10 
+    make -j ${parallel_number}
+    make install -j `nproc`
 }
 
 
