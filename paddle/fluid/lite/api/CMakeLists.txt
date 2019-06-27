@@ -102,8 +102,19 @@ lite_cc_test(test_apis_lite SRCS apis_test.cc
 
 lite_cc_library(paddle_api_lite SRCS paddle_api.cc DEPS op_params_lite)
 
-lite_cc_library(paddle_api_full SRCS cxx_api_impl.cc DEPS cxx_api_lite paddle_api_lite light_api_lite)
+#-----------------------------------------------------------------------------------------------------
+# The final inference library for both CxxConfig and MobileConfig.
+lite_cc_library(paddle_api_full SRCS cxx_api_impl.cc DEPS cxx_api_lite paddle_api_lite light_api_lite
+  ${ops_lite}
+  ARM_DEPS ${arm_kernels}
+  )
+# The final inference library for just MobileConfig.
 lite_cc_library(paddle_api_light SRCS light_api_impl.cc DEPS light_api_lite paddle_api_lite)
+
+bundle_static_library(paddle_api_full paddle_api_full_bundled bundle_full_api)
+bundle_static_library(paddle_api_light paddle_api_light_bundled bundle_light_api)
+#-----------------------------------------------------------------------------------------------------
+
 
 lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS paddle_api_full paddle_api_light
   ${ops_lite}
