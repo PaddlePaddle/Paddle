@@ -87,6 +87,25 @@ build:mobile_android:
     dependencies:
         - build:server
 
+build:mobile_android_cl:
+    tags:
+        - lite
+    stage: build_mobile
+    image: $MOBILE_LITE_DOCKER_IMAGE
+    cache:
+        key: mobile_thirdparty
+        paths:
+            - build.lite.android.armv8.gcc.cl_enable/third_party
+            - build.lite.android.armv7.gcc.cl_enable/third_party
+            - ~/.ccache
+            - $CI_PROJECT_DIR/build_mobile_ccache_cl
+    script:
+        - export CCACHE_DIR=$CI_PROJECT_DIR/build_mobile_ccache_cl
+        - ./paddle/fluid/lite/tools/build.sh build_test_arm_opencl
+
+    dependencies:
+        - build:server
+
 build:mobile_armlinux:
     tags:
         - lite
