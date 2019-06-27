@@ -74,13 +74,24 @@ function(py_test_modules TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if (py_test_modules_SERIAL)         
+
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run -a --branch ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+          ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)            
     endif()
+
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
 endfunction()
