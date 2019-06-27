@@ -110,7 +110,7 @@ file(WRITE ${__lite_cc_files} "") # clean
 #  LIGHT_DEPS:    LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #  HVY_DEPS:      NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 function(lite_cc_library TARGET)
-    set(options STATIC static SHARED shared)
+    set(options SHARED shared STATIC static MODULE module)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
       HVY_DEPS ARGS)
@@ -126,8 +126,12 @@ function(lite_cc_library TARGET)
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
             )
-    if (${args_SHARED} OR ${args_shared})
+
+    if (args_SHARED OR ARGS_shared)
         cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS} SHARED)
+    elseif (args_MODULE OR ARGS_module)
+        add_library(${TARGET} MODULE ${args_SRCS})
+        add_dependencies(${TARGET} ${deps} ${args_DEPS})
     else()
         cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
     endif()
