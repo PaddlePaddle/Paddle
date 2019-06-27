@@ -131,8 +131,8 @@ if (WITH_TESTING)
     add_dependencies(test_paddle_api_lite extern_lite_download_lite_naive_model_tar_gz)
 endif()
 
-if (WITH_JAVA AND LITE_WITH_ARM)
-    add_subdirectory(android/jni)
+if (LITE_WITH_JAVA AND LITE_WITH_ARM)
+    add_subdirectory(android)
 endif()
 
 #lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
