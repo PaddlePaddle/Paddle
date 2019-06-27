@@ -2102,13 +2102,13 @@ def roi_perspective_transform(input,
             tuple: A tuple with three Variables. (out, mask, transform_matrix)
 
             out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
-                  (num_rois, channels, transformed_h, transformed_w).
+            (num_rois, channels, transformed_h, transformed_w).
 
             mask: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
-                  (num_rois, 1, transformed_h, transformed_w).
+            (num_rois, 1, transformed_h, transformed_w).
 
-            transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is a 1-D tensor with shape
-                  (9,).
+            transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
+            a 1-D tensor with shape (9,).
 
     Examples:
         .. code-block:: python
