@@ -295,7 +295,7 @@ function build_base() {
     if [ "$SYSTEM" == "Linux" ];then
       parallel_number=`nproc`
     else
-      parallel_number=10
+      parallel_number=8
     fi
     if [ "$1" != "" ]; then
       parallel_number=$1
