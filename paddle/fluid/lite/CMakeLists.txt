@@ -112,7 +112,7 @@ file(WRITE ${__lite_cc_files} "") # clean
 function(lite_cc_library TARGET)
     set(options SHARED shared STATIC static MODULE module)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
       HVY_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -121,6 +121,7 @@ function(lite_cc_library TARGET)
             DEPS ${args_DEPS}
             X86_DEPS ${args_X86_DEPS}
             CUDA_DEPS ${args_CUDA_DEPS}
+            CL_DEPS ${args_CL_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
             PROFILE_DEPS ${args_PROFILE_DEPS}
             LIGHT_DEPS ${args_LIGHT_DEPS}
@@ -135,6 +136,7 @@ function(lite_cc_library TARGET)
     else()
         cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
     endif()
+    target_compile_options(${TARGET} BEFORE PRIVATE -Wno-ignored-qualifiers)
 
     foreach(cc_file ${args_SRCS})
         file(APPEND ${__lite_cc_files} "${cc_file}\n")
@@ -152,7 +154,7 @@ endfunction()
 function(lite_cc_binary TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS PROFILE_DEPS
       LIGHT_DEPS HVY_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -161,12 +163,14 @@ function(lite_cc_binary TARGET)
             DEPS ${args_DEPS}
             X86_DEPS ${args_X86_DEPS}
             CUDA_DEPS ${args_CUDA_DEPS}
+            CL_DEPS ${args_CL_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
             PROFILE_DEPS ${args_PROFILE_DEPS}
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
             )
     cc_binary(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
+    target_compile_options(${TARGET} BEFORE PRIVATE -Wno-ignored-qualifiers)
     # collect targets need to compile for lite
     add_dependencies(lite_compile_deps ${TARGET})
 endfunction()
@@ -178,7 +182,7 @@ file(WRITE ${offline_test_registry_file} "") # clean
 function(lite_cc_test TARGET)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS PROFILE_DEPS
       LIGHT_DEPS HVY_DEPS
       ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -188,12 +192,14 @@ function(lite_cc_test TARGET)
             DEPS ${args_DEPS}
             X86_DEPS ${args_X86_DEPS}
             CUDA_DEPS ${args_CUDA_DEPS}
+            CL_DEPS ${args_CL_DEPS}
             ARM_DEPS ${args_ARM_DEPS}
             PROFILE_DEPS ${args_PROFILE_DEPS}
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
             )
     _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
+    target_compile_options(${TARGET} BEFORE PRIVATE -Wno-ignored-qualifiers)
     file(APPEND ${offline_test_registry_file} "${TARGET}\n")
 
     # collect targets need to compile for lite

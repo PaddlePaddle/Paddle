@@ -17,7 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include "paddle/fluid/lite/opencl/cl2_header.h"
+#include "paddle/fluid/lite/opencl/cl_include.h"
 
 namespace paddle {
 namespace lite {

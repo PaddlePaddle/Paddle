@@ -18,9 +18,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/lite/opencl/cl2_header.h"
 #include "paddle/fluid/lite/opencl/cl_context.h"
 #include "paddle/fluid/lite/opencl/cl_image.h"
+#include "paddle/fluid/lite/opencl/cl_include.h"
 
 namespace paddle {
 namespace lite {
