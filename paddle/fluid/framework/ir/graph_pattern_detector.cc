@@ -1265,6 +1265,31 @@ PDNode *patterns::ConvConcatReLU::operator()() {
   return relu_out;
 }
 
+PDNode *patterns::PriorBox::operator()() {
+  auto prior_box_op =
+      pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
+
+  auto input_var = pattern->NewNode(prior_box_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("prior_box", "Input");
+
+  auto image_var = pattern->NewNode(prior_box_image_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("prior_box", "Image");
+
+  auto boxes_var = pattern->NewNode(prior_box_boxes_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("prior_box", "Boxes");
+
+  auto variances_var = pattern->NewNode(prior_box_variances_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("prior_box", "Variances");
+
+  prior_box_op->LinksFrom({input_var, image_var})
+      .LinksTo({boxes_var, variances_var});
+  return boxes_var;
+}
+
 std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {

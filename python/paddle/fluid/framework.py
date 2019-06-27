@@ -1005,7 +1005,9 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id',
+        'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
+        'c_sync_comm_stream'
     }
 
     def __init__(self,
@@ -3727,7 +3729,8 @@ def default_main_program():
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
-            print(fluid.default_main_program())
+            print(fluid.default_main_program().num_blocks)
+            print(fluid.default_main_program().blocks[0].var('image'))
     """
     return _main_program_
 

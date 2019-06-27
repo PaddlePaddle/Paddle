@@ -2091,30 +2091,20 @@ class LambOptimizer(AdamOptimizer):
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
     accuracy, which supports adaptive element-wise updating and accurate layer-wise 
-    correction. For more information, please refer to `Reducing BERT Pre-Training 
-    Time from 3 Days to 76 Minutes <https://arxiv.org/abs/1904.00962>`_ .
+    correction. For more information, please refer to `Large Batch Optimization for 
+    Deep Learning: Training BERT in 76 minutes <https://arxiv.org/abs/1904.00962>`_ .
 
     The updating of parameters follows:
 
     ..  math::
 
-	m_t^l & = \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \\
 
-	v_t^l & = \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
+        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \\
 
-	\\widehat{m}_t^l & = m_t^l/(1 - \\beta_1^t)
+        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \\
 
-	\\widehat{v}_t^l & = v_t^l/(1 - \\beta_2^t)
-	
-        r_1 & = \\left \| w_{t-1}^l \\right \|_2
-	
-        r_2 & = \\left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \\right \|_2
-
-	r & = r_1 / r_2
-
-	\\eta^l & = r \\times \\eta
-
-	w_t^l & = w_{t-1}^l -\\eta ^l \\times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
+        w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
 
     where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the 
@@ -2128,8 +2118,10 @@ class LambOptimizer(AdamOptimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): A small float value for numerical stability.
-        regularization: A Regularizer, such as
+        regularization (Regularizer): A Regularizer, such as
                         fluid.regularizer.L1DecayRegularizer.
+        exclude_from_weight_decay_fn (function): Exclude a parameter from weight 
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
         name (str|None): An optional name prefix.
 
     Examples:
@@ -2141,11 +2133,16 @@ class LambOptimizer(AdamOptimizer):
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
 
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002)
+            def exclude_fn(param):
+                return param.name.endswith('.b_0')
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
+                                             exclude_from_weight_decay_fn=exclude_fn)
             optimizer.minimize(cost)
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
+    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -2156,6 +2153,7 @@ class LambOptimizer(AdamOptimizer):
                  beta2=0.999,
                  epsilon=1e-6,
                  regularization=None,
+                 exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
         assert lamb_weight_decay is not None
@@ -2171,6 +2169,7 @@ class LambOptimizer(AdamOptimizer):
             name=name)
         self.type = "lamb"
         self._weight_decay = lamb_weight_decay
+        self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2183,6 +2182,12 @@ class LambOptimizer(AdamOptimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
+
+        if self._exclude_from_weight_decay_fn is not None \
+            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+            weight_decay = 0.0
+        else:
+            weight_decay = self._weight_decay
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -2205,7 +2210,7 @@ class LambOptimizer(AdamOptimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "weight_decay": self._weight_decay
+                "weight_decay": weight_decay
             },
             stop_gradient=True)
 
@@ -2472,36 +2477,50 @@ class ExponentialMovingAverage(object):
     Examples:
 
 	.. code-block:: python
-	     
-	     import paddle.fluid as fluid 
 
-	     data = fluid.layers.data(name='x', shape=[5], dtype='float32')
-	     hidden = fluid.layers.fc(input=data, size=10)
-	     cost = fluid.layers.mean(hidden)
+	    import numpy
+	    import paddle
+	    import paddle.fluid as fluid
 
-	     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	     optimizer.minimize(cost)
+	    data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+	    hidden = fluid.layers.fc(input=data, size=10)
+	    cost = fluid.layers.mean(hidden)
 
-             global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
-             ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-             ema.update()
+	    test_program = fluid.default_main_program().clone(for_test=True)
 
-	     # pseudo code
-	     for pass_id in range(args.pass_num):
-		 for data in train_reader():
-		     exe.run(fluid.default_main_program()...)
-                 
-                 # usage 1
-		 with ema.apply(exe):
-		     for data in test_reader():
-			 exe.run(inference_program...)
+	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	    optimizer.minimize(cost)
 
-                 # usage 2
-		 with ema.apply(exe, need_restore=False):
-		     for data in test_reader():
-			 exe.run(inference_program...)
-                 ...
-                 ema.restore(exe)
+	    global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
+	    ema.update()
+
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+
+	    for pass_id in range(3):
+		for batch_id in range(6):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=fluid.default_main_program(),
+			feed={'x': data}, 
+			fetch_list=[cost.name])
+
+		# usage 1
+		with ema.apply(exe):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=test_program,
+			    feed={'x': data}, 
+			    fetch_list=[hidden.name])
+			    
+
+		 # usage 2
+		with ema.apply(exe, need_restore=False):
+		    data = numpy.random.random(size=(10, 5)).astype('float32')
+		    exe.run(program=test_program,
+			    feed={'x': data}, 
+			    fetch_list=[hidden.name])
+		ema.restore(exe)
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
@@ -2590,13 +2609,29 @@ class ExponentialMovingAverage(object):
         Update Exponential Moving Average. Should only call this method in 
         train program.
         """
+        param_master_emas = []
         for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
                 param_ema = self._ema_vars[param.name]
-                ema_t = param_ema * self._decay_var + param * (1 -
-                                                               self._decay_var)
-                layers.assign(input=ema_t, output=param_ema)
+                if self._ema_vars.has_key(param.name + '.master'):
+                    master_ema = self._ema_vars[param.name + '.master']
+                    param_master_emas.append([param_ema, master_ema])
+                else:
+                    ema_t = param_ema * self._decay_var + param * (
+                        1 - self._decay_var)
+                    layers.assign(input=ema_t, output=param_ema)
+
+        # for fp16 params
+        for param_ema, master_ema in param_master_emas:
+            default_main_program().global_block().append_op(
+                type="cast",
+                inputs={"X": master_ema},
+                outputs={"Out": param_ema},
+                attrs={
+                    "in_dtype": master_ema.dtype,
+                    "out_dtype": param_ema.dtype
+                })
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
@@ -2624,6 +2659,61 @@ class ExponentialMovingAverage(object):
 
 
 class PipelineOptimizer(object):
+    """
+    Pipeline Optimizer
+    Train with pipeline mode. The program will be splited by cut_list.
+    If the len of cut_list is k, then the whole program (including 
+    backward part) will be splited to 2*k-1 sections. So the length of place_list
+    and concurrency_list must be also 2*k-1.
+    Note: Though the asynchronous mode is applied in pipeline training to speed up,
+    the final performance depends on the training progress of each pipeline heavily.
+    And we will try the synchronous mode in the future
+    Args:
+        optimizer (Optimizer): The based optimizer, such as SGD
+        cut_list (list of Variable list): The cut variable of the main_program
+        place_list (list of Place): The place where the section will run on
+        concurrency_list (list of int): The concurrency degree
+        queue_size (int): Each section will consume scopes from its in-scope queue 
+                        and produce scopes to out-scope queue. And this parameter 
+                        specify the scope queue size. [Optional. Default: 30]
+        sync_steps (int): The synchronization steps between different cards. [Optional. Default: 1]
+        start_cpu_core_id (int): specify the first cpu core id. [Optional. Default:0]
+    Examples:
+        .. code-block:: python
+        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+        emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+        emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+        concat = layers.concat([emb_x, emb_y], axis=1)
+        fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+        loss = layers.reduce_mean(fc)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+        optimizer = fluid.optimizer.PipelineOptimizer(optimizer,
+                cut_list=[[emb_x, emb_y], [loss]],
+                place_list=[fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()],
+                concurrency_list=[1, 1, 4],
+                queue_size=2,
+                sync_steps=1,
+                )
+        optimizer.minimize(loss)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+        dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
+        dataset.set_use_var([x,y])
+        dataset.set_batch_size(batch_size)
+        dataset.set_filelist(filelist)
+        exe.train_from_dataset(
+                    fluid.default_main_program(),
+                    dataset,
+                    thread=2,
+                    debug=False,
+                    fetch_list=[],
+                    fetch_info=[],
+                    print_period=1)
+    """
+
     def __init__(self,
                  optimizer,
                  cut_list=None,

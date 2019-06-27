@@ -307,6 +307,7 @@ class StaticRNN(object):
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
                 rnn.update_memory(prev, hidden)  # set prev to hidden
                 rnn.step_output(hidden)
+                rnn.output(word)
 
             result = rnn()
 
@@ -448,7 +449,7 @@ class StaticRNN(object):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
-        elif self.seq_len != x.shape[0]:
+        elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
