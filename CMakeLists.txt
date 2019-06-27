@@ -147,6 +147,7 @@ endif()
 
 # for lite, both server and mobile framework.
 option(WITH_LITE "Enable lite framework" OFF)
+option(LITE_WITH_JAVA "Enable Java JNI lib in lite mode" OFF)
 option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
 option(LITE_WITH_X86  "Enable X86 in lite mode"  ON)
 option(LITE_WITH_ARM  "Enable ARM in lite mode"  OFF)

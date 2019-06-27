@@ -102,16 +102,37 @@ lite_cc_test(test_apis_lite SRCS apis_test.cc
 
 lite_cc_library(paddle_api_lite SRCS paddle_api.cc DEPS op_params_lite)
 
-lite_cc_library(paddle_api_full SRCS cxx_api_impl.cc DEPS cxx_api_lite paddle_api_lite light_api_lite)
+#-----------------------------------------------------------------------------------------------------
+# The final inference library for both CxxConfig and MobileConfig.
+lite_cc_library(paddle_api_full SRCS cxx_api_impl.cc DEPS cxx_api_lite paddle_api_lite light_api_lite
+  ${ops_lite}
+  ARM_DEPS ${arm_kernels}
+  )
+# The final inference library for just MobileConfig.
 lite_cc_library(paddle_api_light SRCS light_api_impl.cc DEPS light_api_lite paddle_api_lite)
+
+bundle_static_library(paddle_api_full paddle_api_full_bundled bundle_full_api)
+bundle_static_library(paddle_api_light paddle_api_light_bundled bundle_light_api)
+#-----------------------------------------------------------------------------------------------------
+
 
 lite_cc_test(test_paddle_api_lite SRCS paddle_api_test.cc DEPS paddle_api_full paddle_api_light
   ${ops_lite}
   ARM_DEPS ${arm_kernels}
   X86_DEPS ${x86_kernels}
   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model SERIAL)
+
+lite_cc_test(test_model_bin SRCS model_test.cc DEPS paddle_api_full paddle_api_light
+  ${ops_lite}
+  ARM_DEPS ${arm_kernels}
+  X86_DEPS ${x86_kernels})
+
 if (WITH_TESTING)
     add_dependencies(test_paddle_api_lite extern_lite_download_lite_naive_model_tar_gz)
+endif()
+
+if (LITE_WITH_JAVA AND LITE_WITH_ARM)
+    add_subdirectory(android)
 endif()
 
 #lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
