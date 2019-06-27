@@ -18,7 +18,7 @@
 #include <glog/logging.h>
 #include <string>
 #include <vector>
-#include "paddle/fluid/lite/opencl/cl2_header.h"
+#include "paddle/fluid/lite/opencl/cl_include.h"
 
 /**
  * Wrapper of OpenCL 2.0, based on file opencl20/CL/cl.h

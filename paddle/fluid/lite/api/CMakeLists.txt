@@ -2,7 +2,7 @@ set(cxx_api_lite_deps
   scope_lite optimizer_lite target_wrapper_host model_parser_lite program_lite)
 if(LITE_WITH_CUDA)
     set(cxx_api_lite_deps ${cxx_api_lite_deps} kernels_cuda)
-    cc_library(cxx_api_lite_cuda SRCS cxx_api.cc DEPS ${cxx_api_lite_deps} target_wrapper_cuda)
+    lite_cc_library(cxx_api_lite_cuda SRCS cxx_api.cc DEPS ${cxx_api_lite_deps} target_wrapper_cuda)
     nv_test(test_cxx_api_lite_cuda SRCS cxx_api_test.cc DEPS cxx_api_lite_cuda)
 endif()
 
@@ -12,8 +12,7 @@ lite_cc_library(lite_api_test_helper SRCS lite_api_test_helper.cc
   DEPS scope_lite optimizer_lite target_wrapper_host model_parser_lite program_lite
        ${ops_lite} ${host_kernels}
   CUDA_DEPS kernels_cuda
-  X86_DEPS ${x86_kernels}
-  )
+  X86_DEPS ${x86_kernels})
 
 set(light_api_deps
     scope_lite target_wrapper_host model_parser_lite program_lite)
@@ -68,22 +67,29 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     lite_cc_test(test_mobilenetv1_lite SRCS mobilenetv1_test.cc
        DEPS ${lite_model_test_DEPS}
        CL_DEPS ${opencl_kernels}
-       ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v1 SERIAL)
+       ARGS --cl_path=${CMAKE_SOURCE_DIR}/paddle/fluid/lite/opencl
+            --model_dir=${LITE_MODEL_DIR}/mobilenet_v1 SERIAL)
     add_dependencies(test_mobilenetv1_lite extern_lite_download_mobilenet_v1_tar_gz)
 
     lite_cc_test(test_mobilenetv2_lite SRCS mobilenetv2_test.cc
        DEPS ${lite_model_test_DEPS}
-       ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v2 SERIAL)
+       CL_DEPS ${opencl_kernels}
+       ARGS --cl_path=${CMAKE_SOURCE_DIR}/paddle/fluid/lite/opencl
+            --model_dir=${LITE_MODEL_DIR}/mobilenet_v2 SERIAL)
     add_dependencies(test_mobilenetv2_lite extern_lite_download_mobilenet_v2_relu_tar_gz)
 
     lite_cc_test(test_resnet50_lite SRCS resnet50_test.cc
        DEPS ${lite_model_test_DEPS}
-       ARGS --model_dir=${LITE_MODEL_DIR}/resnet50 SERIAL)
+       CL_DEPS ${opencl_kernels}
+       ARGS --cl_path=${CMAKE_SOURCE_DIR}/paddle/fluid/lite/opencl
+            --model_dir=${LITE_MODEL_DIR}/resnet50 SERIAL)
     add_dependencies(test_resnet50_lite extern_lite_download_resnet50_tar_gz)
 
     lite_cc_test(test_inceptionv4_lite SRCS inceptionv4_test.cc
        DEPS ${lite_model_test_DEPS}
-       ARGS --model_dir=${LITE_MODEL_DIR}/inception_v4 SERIAL)
+       CL_DEPS ${opencl_kernels}
+       ARGS --cl_path=${CMAKE_SOURCE_DIR}/paddle/fluid/lite/opencl
+            --model_dir=${LITE_MODEL_DIR}/inception_v4 SERIAL)
     add_dependencies(test_inceptionv4_lite extern_lite_download_inception_v4_simple_tar_gz)
 endif()
 
@@ -91,14 +97,13 @@ endif()
 # TODO(Superjomn) support latter.
 lite_cc_test(test_light_api_lite SRCS light_api_test.cc
     DEPS light_api_lite program_lite mir_passes
-    ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt
-    SERIAL)
+    ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
 lite_cc_test(test_apis_lite SRCS apis_test.cc
   DEPS cxx_api_lite light_api_lite ${ops_lite}
   X86_DEPS ${x86_kernels} operator
   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
-      --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
+       --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
 lite_cc_library(paddle_api_lite SRCS paddle_api.cc DEPS op_params_lite)
 

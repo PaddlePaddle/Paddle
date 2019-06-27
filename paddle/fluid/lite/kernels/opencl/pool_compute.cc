@@ -30,14 +30,14 @@ class PoolCompute
   using param_t = operators::PoolParam;
 
   void Run() override {
-    auto& param = *param_.get_mutable<param_t>();
-    auto& in_dims = param.x->dims();
-    auto& out_dims = param.output->dims();
+    const auto& param = *param_.get_mutable<param_t>();
+    const auto& in_dims = param.x->dims();
+    const auto& out_dims = param.output->dims();
     const std::string pooling_type = param.pooling_type;
-    bool global_pooling = param.global_pooling;
-    std::vector<int>& paddings = param.paddings;
-    std::vector<int>& strides = param.strides;
-    std::vector<int>& ksize = param.ksize;
+    const bool global_pooling = param.global_pooling;
+    std::vector<int> paddings = param.paddings;
+    std::vector<int> strides = param.strides;
+    std::vector<int> ksize = param.ksize;
     if (global_pooling) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
