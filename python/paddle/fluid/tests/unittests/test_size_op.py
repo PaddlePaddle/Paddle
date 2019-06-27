@@ -22,9 +22,9 @@ class TestSizeOp(OpTest):
         self.op_type = "size"
         self.shape = []
         self.config()
-        input = np.zeros(self.shape)
+        input = np.zeros(self.shape, dtype='bool')
         self.inputs = {'Input': input}
-        self.outputs = {'Out': np.array([np.size(input)], dtype='int32')}
+        self.outputs = {'Out': np.array([np.size(input)], dtype='int64')}
 
     def config(self):
         pass
@@ -33,15 +33,18 @@ class TestSizeOp(OpTest):
         self.check_output()
 
 
-class case1(TestSizeOp):
+class TestRank1(TestSizeOp):
     def config(self):
         self.shape = [2]
 
 
-class case2(TestSizeOp):
+class TestRank2(TestSizeOp):
     def config(self):
         self.shape = [2, 3]
 
+class TestLarge(TestSizeOp):
+    def config(self):
+        self.shape = [2**10]
 
 if __name__ == '__main__':
     unittest.main()

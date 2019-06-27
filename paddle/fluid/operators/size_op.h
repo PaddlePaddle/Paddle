@@ -26,7 +26,7 @@ class SizeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_t = ctx.Input<Tensor>("Input");
     auto* out_t = ctx.Output<Tensor>("Out");
-    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
+    auto out_data = out_t->mutable_data<int64_t>(platform::CPUPlace());
     out_data[0] = in_t->numel();
   }
 };

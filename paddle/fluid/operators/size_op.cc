@@ -37,7 +37,7 @@ class SizeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "The input tensor.");
     AddOutput("Out",
               "The returned tensor, the data type "
-              "is int32_t, will be on the same device with the input Tensor.");
+              "is int64_t, will be on the same device with the input Tensor.");
     AddComment(R"DOC(
 Size Operator.
 
