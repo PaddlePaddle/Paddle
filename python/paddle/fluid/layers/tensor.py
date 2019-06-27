@@ -978,7 +978,7 @@ def diag(diagonal):
     return out
 
 
-def ones_like(x):
+def ones_like(x, out=None):
     """
     **ones_like**
 
@@ -987,9 +987,10 @@ def ones_like(x):
 
     Args:
         x(Variable): The input tensor which specifies shape and dtype.
+        out(Variable): The output tensor.
 
     Returns:
-        Variable: The tensor variable storing the output.
+        x(Variable): The tensor variable storing the output.
 
     Examples:
         .. code-block:: python
@@ -1000,7 +1001,8 @@ def ones_like(x):
     """
 
     helper = LayerHelper("ones_like", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [x]},

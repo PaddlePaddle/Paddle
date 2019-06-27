@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import paddle.fluid.core as core
+import paddle.compat as cpt
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -22,7 +24,7 @@ from op_test import OpTest
 class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
-        self.dtype = np.float32
+        self.dtype = np.int32
         self.value = 0.0
         self.init()
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
@@ -36,14 +38,38 @@ class TestFillAnyLikeOp(OpTest):
         self.check_output()
 
 
-class TestFillAnyLikeOpValue0(TestFillAnyLikeOp):
+class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
     def init(self):
+        self.dtype = np.float32
         self.value = 0.0
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
     def init(self):
         self.value = 1.0
+
+
+class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
+    def init(self):
+        self.value = 1e-10
+
+
+class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
+    def init(self):
+        self.value = 1e-100
+
+
+class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
+    def init(self):
+        self.value = 1e100
+
+    def test_check_output(self):
+        exception = None
+        try:
+            self.check_output()
+        except core.EnforceNotMet as ex:
+            exception = ex
+        self.assertIsNotNone(exception)
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
