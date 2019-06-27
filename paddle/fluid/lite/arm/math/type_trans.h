@@ -50,6 +50,9 @@ bool get_tensor_scale(const Tensor& tin, std::vector<float>* scale_out,
 std::vector<float> get_tensor_scale_n(const float* in_data, int axis_size,
                                       int64_t inner_size, float scale_factor);
 
+bool trans_fp32_bias_to_int32_basic(Tensor* tin, Tensor* tout, float in_scale,
+                                    std::vector<float> vector_weight_scale);
+
 bool trans_tensor_int32_to_int8(Tensor* tin, Tensor* tout, float input_scale,
                                 float output_scale,
                                 std::vector<float> weights_scale, int axis = 1);
