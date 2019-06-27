@@ -191,10 +191,11 @@ function cmake_base() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -207,7 +208,6 @@ function cmake_base() {
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
         -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
@@ -231,6 +231,7 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
@@ -242,7 +243,6 @@ EOF
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
         -DWITH_GRPC=${grpc_flag}
 
 }
@@ -996,9 +996,11 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         parallel_test_base
         ;;
       test)

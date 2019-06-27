@@ -13,8 +13,19 @@
 # limitations under the License.
 
 from __future__ import print_function
+import unittest
+import numpy as np
 
-from . import utility
-from .utility import *
+from test_collective_base import TestDistBase
 
-__all__ = utility.__all__
+
+class TestCBroadcastOp(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_broadcast(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast")
+
+
+if __name__ == '__main__':
+    unittest.main()

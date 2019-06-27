@@ -40,7 +40,8 @@ void BindCommunicator(py::module* m) {
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
-      .def("start", &Communicator::Start);
+      .def("start", &Communicator::Start)
+      .def("is_running", &Communicator::IsRunning);
 }
 
 }  // namespace pybind

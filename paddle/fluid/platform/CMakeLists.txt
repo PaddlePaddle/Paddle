@@ -74,6 +74,10 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     temp_allocator ${dgc_deps})
 
+if (WITH_DISTRIBUTE)
+  cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
+endif()
+
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)
         get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
@@ -97,7 +101,7 @@ cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_pri
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
-    nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
+  nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
 else()
     cc_library(profiler SRCS profiler.cc DEPS device_tracer enforce)
 endif()
