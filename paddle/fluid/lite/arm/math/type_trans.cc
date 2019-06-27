@@ -550,6 +550,103 @@ void int32_to_int8(const int* din, signed char* dout, const float* scale,
   }
 }
 
+/******************************************/
+/********    kernel implement     *********/
+/******************************************/
+float compute_max_kernel(const float* din, int64_t size) {
+  float max_value = 0.f;
+  int cnt = size / 16;
+  int remain = size & 15;
+  float32x4_t vmax_val = vdupq_n_f32(0.f);
+  const float* ptr_in = din;
+  if (cnt > 0) {
+    int loop_cnt = cnt;
+#ifdef __aarch64__
+    asm volatile(
+        "ld1 {v0.4s, v1.4s}, [%[in]], #32               \n"
+        "ld1 {v2.4s, v3.4s}, [%[in]], #32               \n"
+        "0:                                             \n"
+        "fabs v4.4s, v0.4s                              \n"
+        "fabs v5.4s, v1.4s                              \n"
+        "fabs v6.4s, v2.4s                              \n"
+        "fabs v7.4s, v3.4s                              \n"
+        "ld1 {v0.4s, v1.4s}, [%[in]], #32               \n"
+        "fmax v2.4s, v4.4s, v5.4s                       \n"
+        "fmax v3.4s, v6.4s, v7.4s                       \n"
+        "fmax v4.4s, v2.4s, v3.4s                       \n"
+        "ld1 {v2.4s, v3.4s}, [%[in]], #32               \n"
+        "fmax %[max_val].4s, v4.4s, %[max_val].4s       \n"
+        "subs %[cnt], %[cnt], #1                        \n"
+        "bne    0b                                 \n"
+        : [in] "+r"(ptr_in), [cnt] "+r"(loop_cnt), [max_val] "+w"(vmax_val)
+        :
+        : "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7");
+#else
+    asm volatile(
+        "vld1.32   {d0-d3}, [%[in]]!                        @ load 8 float\n"
+        "vld1.32   {d4-d7}, [%[in]]!                @ load 8 float\n"
+        "0:                                         @ main loop\n"
+        "vabs.f32 q4, q0                            @ abs \n"
+        "vabs.f32 q5, q1                            @ abs \n"
+        "vabs.f32 q6, q2                            @ abs \n"
+        "vabs.f32 q7, q3                            @ abs \n"
+        "vld1.32   {d0-d3}, [%[in]]!                @ load 8 float\n"
+        "vmax.f32 q2, q4, q5                        @ max \n"
+        "vmax.f32 q3, q6, q7                        @ max \n"
+        "vmax.f32 q4, q2, q3                        @ max \n"
+        "vld1.32   {d4-d7}, [%[in]]!                @ load 8 float\n"
+        "vmax.f32 %q[max_val], q4, %q[max_val]      @ max \n"
+        "subs %[cnt], #1                            @ loop count -1\n"
+        "bne    0b                                  @ jump to main loop\n"
+
+        : [in] "+r"(ptr_in), [cnt] "+r"(loop_cnt), [max_val] "+w"(vmax_val)
+        :
+        : "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7");
+#endif
+    float32x2_t vmax_p =
+        vpmax_f32(vget_high_f32(vmax_val), vget_low_f32(vmax_val));
+    float max0 = vget_lane_f32(vmax_p, 0);
+    float max1 = vget_lane_f32(vmax_p, 1);
+    float max2 = max0 > max1 ? max0 : max1;
+    max_value = max_value > max2 ? max_value : max2;
+  }
+  ptr_in = din + 16 * cnt;
+  for (int i = 0; i < remain; ++i) {
+    float data = fabsf(*(ptr_in++));
+    max_value = fmaxf(max_value, data);
+  }
+  return max_value;
+}
+
+std::vector<float> get_tensor_scale_n(const float* in_data, int axis_size,
+                                      int64_t inner_size, float scale_factor) {
+  std::vector<float> scale_out(axis_size);
+#pragma omp parallel for
+  for (int c = 0; c < axis_size; ++c) {              // num
+    const float* ptr_in = in_data + c * inner_size;  // channel*width*height
+    scale_out[c] = compute_max_kernel(ptr_in, inner_size) / scale_factor;
+  }
+  return scale_out;
+}
+
+std::vector<float> get_tensor_scale_chw(const float* in_data, int axis_size,
+                                        int64_t outer_size, int64_t inner_size,
+                                        float scale_factor) {
+  std::vector<float> scale_out(axis_size);
+  int64_t inner_size_with_axis = axis_size * inner_size;
+#pragma omp parallel for
+  for (int c = 0; c < axis_size; ++c) {
+    const float* din = in_data + c * inner_size;
+    float max_val = 0.f;
+    for (int j = 0; j < outer_size; ++j) {
+      const float* ptr_in = din + j * inner_size_with_axis;
+      max_val = fmaxf(compute_max_kernel(ptr_in, inner_size), max_val);
+    }
+    scale_out[c] = max_val / scale_factor;
+  }
+  return scale_out;
+}
+
 void int32_to_int32(const int* din, int* dout, const float* scale,
                     int axis_size, int64_t outer_size, int64_t inner_size) {
   int size_all = outer_size * axis_size * inner_size;
@@ -597,6 +694,31 @@ bool trans_tensor_int32_to_int8(Tensor* tin, Tensor* tout, float input_scale,
   return true;
 }
 
+template <>
+bool get_tensor_scale<PRECISION(kFloat)>(const Tensor& tin,
+                                         std::vector<float>* scale_out,
+                                         int axis, float scale_factor) {
+  int axis_size = 1;
+  if (axis >= 0 && axis < tin.dims().size()) {
+    axis_size = tin.dims()[axis];
+  }
+  int outer_size = 1;
+  if (axis >= 0) {
+    outer_size = tin.dims().count(0, axis);
+  }
+  int64_t inner_size = tin.dims().count(axis + 1, tin.dims().size());
+
+  const float* in_data = static_cast<const float*>(tin.data<float>());
+  if (axis <= 0) {
+    *scale_out =
+        get_tensor_scale_n(in_data, axis_size, inner_size, scale_factor);
+  } else {
+    *scale_out = get_tensor_scale_chw(in_data, axis_size, outer_size,
+                                      inner_size, scale_factor);
+  }
+  return true;
+}
+
 bool trans_tensor_int32_to_fp32(Tensor* tin, Tensor* tout, float input_scale,
                                 std::vector<float> weights_scale, int axis) {
   tout->Resize(tin->dims());
@@ -617,6 +739,19 @@ bool trans_tensor_int32_to_fp32(Tensor* tin, Tensor* tout, float input_scale,
   //! convert to fp32
   int32_to_fp32(i_data, o_data, scale.data(), axis_size, outer_size,
                 inner_size);
+  return true;
+}
+
+bool trans_tensor_fp32_to_int8(Tensor* tin, Tensor* tout, float input_scale) {
+  tout->Resize(tin->dims());
+
+  // compute scale
+  std::vector<float> scale({input_scale});
+  int inner_size = tin->dims().product();
+
+  const auto* i_data = tin->data<float>();
+  int8_t* o_data = tout->mutable_data<int8_t>();
+  fp32_to_int8(i_data, o_data, scale.data(), 1, 1, inner_size);
   return true;
 }
 
