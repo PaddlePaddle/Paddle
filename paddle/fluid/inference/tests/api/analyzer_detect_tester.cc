@@ -46,8 +46,7 @@ Record ProcessALine(const std::string &line, const std::string &shape_line) {
   }
   // VLOG(3) << "data size " << record.data.size();
   // VLOG(3) << "data shape size " << record.shape.size();
-  // VLOG(2) << "data shape size " << record.shape[3];
-  LOG(INFO) << "data shape size " << record.shape[3];
+  // LOG(INFO) << "data shape size " << record.shape[3];
   return record;
 }
 
@@ -81,7 +80,6 @@ void profile(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
   // cfg.pass_builder()->TurnOnDebug();
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -110,12 +108,13 @@ void profile(bool use_mkldnn = false) {
         SetInput(&input_slots_all, line, shape_line);
 
         run_timer.tic();
-        predictor->Run(input_slots_all[i], &outputs[i], FLAGS_batch_size);
+        predictor->Run(input_slots_all[0], &outputs[0], FLAGS_batch_size);
         elapsed_time += run_timer.toc();
       });
-      LOG(INFO) << "threads size: " << threads.size();
       threads[0].join();
       threads.clear();
+      if (i % 100 == 0) LOG(INFO) << i << " samples";
+      std::vector<std::vector<PaddleTensor>>().swap(input_slots_all);
     }
 
     file.close();
