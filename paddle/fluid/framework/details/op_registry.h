@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -161,8 +162,8 @@ struct OpInfoFiller<T, kOperator> {
 template <typename T>
 struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->proto_ = new proto::OpProto;
-    info->checker_ = new OpAttrChecker();
+    info->proto_ = std::make_shared<proto::OpProto>();
+    info->checker_ = std::make_shared<OpAttrChecker>();
     T maker;
     maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
