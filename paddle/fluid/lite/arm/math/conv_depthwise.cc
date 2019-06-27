@@ -103,12 +103,9 @@ bool DepthwiseConvInt8<Ptype_out>::create(const operators::ConvParam& param,
   int sw = param.strides[1];
   w_scale_ = param.weight_scale;
 
-  if (!tmp_int32_out_) {
-    tmp_int32_out_ = new Tensor;
-  }
   //! select dw conv kernel
   if (kw == 3) {
-    tmp_int32_out_->Resize(o_dims);
+    tmp_int32_out_.Resize(o_dims);
     VLOG(5) << "invoke 3x3 depthwise int8 conv";
     impl_ = conv_depthwise_3x3_int8;
   } else if (kw == 5) {
@@ -162,8 +159,8 @@ bool DepthwiseConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   const int8_t* w_data = param.filter->data<int8_t>();
   const int32_t* b_data = param.bias ? param.bias->data<int32_t>() : nullptr;
 
-  LOG(INFO) << "input size: " << param.x->memory_size() << " "
-            << param.input_scale << " " << w_scale_.size();
+  //  LOG(INFO) << "input size: " << param.x->memory_size() << " "
+  //            << param.input_scale << " " << w_scale_.size();
 
   auto x_dims = param.x->dims();
   auto w_dims = param.filter->dims();
@@ -179,7 +176,7 @@ bool DepthwiseConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   int sw = param.strides[1];
 
   if (kw == 3 && Ptype_out != PRECISION(kInt32)) {
-    o_data = tmp_int32_out_->mutable_data<int32_t>();
+    o_data = tmp_int32_out_.mutable_data<int32_t>();
   } else if (kw == 5 || (kw == 3 && Ptype_out == PRECISION(kInt32))) {
     o_data = param.output->mutable_data<int32_t>();
   } else {
@@ -187,20 +184,18 @@ bool DepthwiseConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
     return false;
   }
 
-  impl_(i_data, o_data, bs, oc, oh, ow, ic, ih, kw, w_data, b_data, param,
+  impl_(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, b_data, param,
         this->ctx_, Ptype_out, w_scale_.data());
 
   auto i_scale = param.input_scale;
   auto o_scale = param.output_scale;
   if (kw == 3) {
     if (Ptype_out == PRECISION(kInt8)) {
-      param.output->mutable_data<int8_t>();
       trans_tensor_dtype<PRECISION(kInt32), PRECISION(kInt8)>(
-          tmp_int32_out_, param.output, i_scale, o_scale, w_scale_);
+          &tmp_int32_out_, param.output, i_scale, o_scale, w_scale_);
     } else if (Ptype_out == PRECISION(kFloat)) {
-      param.output->mutable_data<float>();
       trans_tensor_dtype<PRECISION(kInt32), PRECISION(kFloat)>(
-          tmp_int32_out_, param.output, i_scale, 1.f, w_scale_);
+          &tmp_int32_out_, param.output, i_scale, 1.f, w_scale_);
     } else if (Ptype_out != PRECISION(kInt32)) {
       LOG(ERROR) << "unsupported precision type!!";
       return false;

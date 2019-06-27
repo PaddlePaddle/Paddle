@@ -80,7 +80,7 @@ class DirectConvInt8
   bool is_weights_transed_{false};
   Tensor weights_trans_;
   Tensor _tmp_out;
-  conv_direct_int8_impl _impl_int8{nullptr};
+  conv_direct_int8_impl impl_int8_{nullptr};
   std::vector<float> w_scale_;
 };
 
