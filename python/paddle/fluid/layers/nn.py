@@ -355,7 +355,8 @@ def embedding(input,
               is_distributed=False,
               padding_idx=None,
               param_attr=None,
-              dtype='float32'):
+              dtype='float32',
+              remote_prefetch=False):
     """
     **Embedding Layer**
 
@@ -380,6 +381,7 @@ def embedding(input,
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        remote_prefetch(bool): Whether to run lookup table with remote_prefetch mode.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -394,9 +396,28 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    remote_prefetch = is_sparse and (not is_distributed)
-    if remote_prefetch:
-        assert is_sparse is True and is_distributed is False
+
+    if is_sparse is False:
+        if is_distributed is True or remote_prefetch is True:
+            warnings.warn(
+                "is_distributed and remote_prefetch mode can not be enabled when is_sparse is False"
+            )
+        is_distributed = False
+        remote_prefetch = False
+    else:
+        if remote_prefetch is True and is_distributed is True:
+            raise ValueError(
+                "remote_prefetch and is_distributed can not be enabled at the same time"
+            )
+
+        dense_size = 4 * 1024 * 1024 / 4.0
+        parameter_size = reduce(lambda x, y: x * y, size)
+
+        if parameter_size <= dense_size and remote_prefetch is True or is_distributed is True:
+            warnings.warn(
+                "embedding parameter is too small to use remote_prefetch or is_distributed"
+            )
+
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
