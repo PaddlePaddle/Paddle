@@ -433,11 +433,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   }
 
   // Find Key in found (or newly created) KeyBlob
-  auto key_it = std::find_if(
-      pBlob->begin(), pBlob->end(),
-      [=](std::pair<std::string, std::shared_ptr<void>> const& obj) {
-        return obj.first == name;
-      });
+  auto key_it = pBlob->find(name);
 
   if (key_it == pBlob->end()) {
     // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
@@ -446,7 +442,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
               << pBlob->begin()->first << "\n";
       pBlob->erase(pBlob->begin());
     }
-    pBlob->push_back(std::make_pair(name, data));
+    (*pBlob)[name] = data;
   } else {
     key_it->second = data;  // set data to existing blob
   }
@@ -473,11 +469,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
   pBlob = map_it->second;
 
   // Find Blob via name
-  auto key_it = std::find_if(
-      pBlob->begin(), pBlob->end(),
-      [=](std::pair<std::string, std::shared_ptr<void>> const& obj) {
-        return obj.first == name;
-      });
+  auto key_it = pBlob->find(name);
 
   if (key_it == pBlob->end()) {
     VLOG(2) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
