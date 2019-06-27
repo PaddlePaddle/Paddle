@@ -360,7 +360,7 @@ class Variable(object):
     two variables in different blocks could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please reference the framework.proto for details.
+    and usages. Please refer to the framework.proto for details.
 
     Most of a Variable's member variables can be setted to be None. It mean
     it is not available or will be specified later.
@@ -2755,7 +2755,7 @@ class Program(object):
     create c++ Program. A program is a self-contained programing
     language like container. It has at least one Block, when the
     control flow op like conditional_block, while_op is included,
-    it will contains nested block.
+    it will contain nested block.
     Please reference the framework.proto for details.
 
     A set of Program usually contains startup program and main program.
