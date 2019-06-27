@@ -60,7 +60,6 @@ if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     add_dependencies(test_googlenet_lite extern_lite_download_GoogleNet_inference_tar_gz)
 endif()
 
-
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
     set(lite_model_test_DEPS cxx_api_lite mir_passes ${ops_lite} ${host_kernels} ${arm_kernels})
 
@@ -157,6 +156,6 @@ lite_cc_binary(cxx_api_lite_bin SRCS cxx_api_bin_int8.cc
     ${ops_lite} ${host_kernels}
     CL_DEPS ${opencl_kernels}
     ARM_DEPS ${arm_kernels})
-lite_cc_binary(model_optimize_tool SRCS model_optimize_tool.cc 
+lite_cc_binary(model_optimize_tool SRCS model_optimize_tool.cc
     DEPS paddle_api_full
     CL_DEPS ${opencl_kernels})
