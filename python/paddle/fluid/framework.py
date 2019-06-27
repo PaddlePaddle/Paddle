@@ -112,7 +112,8 @@ def is_compiled_with_cuda():
     Examples:
         .. code-block:: python
 
-           support_gpu = fluid.is_compiled_with_cuda()
+            import paddle.fluid as fluid
+            support_gpu = fluid.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
