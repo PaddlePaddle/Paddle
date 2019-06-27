@@ -22,10 +22,10 @@ namespace paddle {
             auto* x1 = context.Input<Tensor>("X1");
             // X2 is ins tag list
             // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
-            auto* x2 = context.Input<LoDTensor>("X2");
+            auto* x2 = context.Input<Tensor>("X2");
             // X3 is local fc tag list
             // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
-            auto* x3 = context.Input<LoDTensor>("X3");
+            auto* x3 = context.Input<Tensor>("X3");
             
             // key: tag  value: fc list
             // e.g. [ tag0: [fc0, fc1], tag 1: [fc1]]
@@ -33,39 +33,50 @@ namespace paddle {
             
             // expected auto = const int64
             auto* x3_data = x3->data<int64_t>(); 
-            size_t fc_cnt = 0; //count of local fc
-
-            for (size_t i = 0; i < x3->lod()[0].size() -1; i++) {
-                for (size_t j = x3->lod()[0][i]; j < x3->lod()[0][i+1]; j++) {
-                    int64_t tag_val = x3_data[j];
-                    tag_fc_map[tag_val].push_back(fc_cnt);
-                }
-                ++fc_cnt;
-            }
-        
+			auto x3_dims = x3->dims();
+			size_t fc_cnt = x3_dims[0];
+			{
+				size_t fc_size = x3_dims[0];
+				size_t tag_size = x3_dims[1];
+				for (size_t i = 0; i < fc_size; i++) {
+					for (size_t j = 0; j < tag_size; j++) {
+						int64_t tag_val = x3_data[i * tag_size + j];
+						if (tag_val != -1) {
+							tag_fc_map[tag_val].push_back(i);
+						}
+					}
+				}
+			}
+ 
             // key: ins no   value: tag list
             // e.g. [ ins0: [tag0, tag1], ins1: [tag1]]
             std::unordered_map<int64_t, std::vector<int64_t>> ins_tag_map;
             
             // expected auto = const int64_t
             auto* x2_data = x2->data<int64_t>();
-            size_t ins_cnt = 0;
+            auto x2_dims = x2->dims();
+			size_t ins_cnt = x2_dims[0];
+			{
+				size_t ins_size = x2_dims[0];
+				size_t tag_size = x2_dims[1];
+				for (size_t i = 0; i < ins_size; i++) {
+					for (size_t j = 0; j < tag_size; j++) {
+						int64_t tag_val = x2_data[i * tag_size + j];
+						if (tag_val != -1) {
+							ins_tag_map[i].push_back(tag_val);
+						}
+					}
+				}
+			}
 
-            for (size_t i = 0; i < x2->lod()[0].size()-1; i++) {
-                for (size_t j = x2->lod()[0][i]; j < x2->lod()[0][i+1]; j++) {
-                    int64_t tag_val = x2_data[j];
-                    ins_tag_map[ins_cnt].push_back(tag_val);
-                }
-                ++ins_cnt;
-            }
 
             // Compute ins for every fc
             // key: ins   value : fc list
             std::unordered_map<int64_t, std::vector<int64_t>> ins_fc_map;
-            for (size_t i = 0; i < ins_cnt; i++) {
-                for (size_t j = 0; j < ins_tag_map[j].size(); j++) {
-                    for (size_t k = 0; k < tag_fc_map[ins_tag_map[j][i]].size(); k++) {
-                       ins_fc_map[i].push_back(tag_fc_map[ins_tag_map[j][i]][k]); 
+            for (size_t i = 0; i < ins_tag_map.size(); i++) {
+                for (size_t j = 0; j < ins_tag_map[i].size(); j++) {
+                    for (size_t k = 0; k < tag_fc_map[ins_tag_map[i][j]].size(); k++) {
+                       ins_fc_map[i].push_back(tag_fc_map[ins_tag_map[i][j]][k]); 
                     }
                 }
             }
@@ -109,8 +120,12 @@ namespace paddle {
     class InstagGradKernel : public framework::OpKernel<T> {
     public:
         void Compute(const framework::ExecutionContext& context) const override {
+			auto *output = context.Input<Tensor>("Out");
             auto *output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
             auto *x1_grad = context.Output<Tensor>(framework::GradVarName("X1"));
+
+		// expected auto = double
+			auto *out_data = output->data<double>();
 
 	    // expected auto = double	
             auto *output_grad_data = output_grad->data<double>();
@@ -121,9 +136,12 @@ namespace paddle {
             auto output_dims = output_grad->dims();
             for (size_t i = 0; i < output_dims[1]; i++) {
                 for (size_t j = 0; j < output_dims[2]; j++) {
+					x1_grad_data[i * output_dims[2] + j] = 0;
                     for (size_t k = 0; k < output_dims[0]; k++) {
-                        x1_grad_data[i * output_dims[2] + j] +=
-                            output_grad_data[k * output_dims[1] * output_dims[2] + i * output_dims[2] + j];
+						if (out_data[k * output_dims[1] * output_dims[2] + i * output_dims[2] + j] != 0) {
+                        	x1_grad_data[i * output_dims[2] + j] +=
+                            	output_grad_data[k * output_dims[1] * output_dims[2] + i * output_dims[2] + j];
+						}
                     }
                 }
             }

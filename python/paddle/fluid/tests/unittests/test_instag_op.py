@@ -5,8 +5,10 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 from op_test import OpTest
- 
+import gradient_checker 
+from decorator_helper import prog_scope
 
 class TestInstagOp(OpTest):
 	def setUp(self):
@@ -16,12 +18,11 @@ class TestInstagOp(OpTest):
 		fc_cnt = 2
 		x1 = np.array([[1,1,1,1], [1,1,1,1], [1,1,1,1], [1,1,1,1]]).astype('double')
 
-		x2 = fluid.create_lod_tensor(np.array([[1],[1],[2],[2]]).astype('int64'), [[1,1,1,1]], fluid.CPUPlace())
+		x2 = np.array([[1, 2], [1, -1], [2, -1], [2, -1]]).astype('int64')
+		
+		x3 = np.array([[1, -1], [1, 2]]).astype('int64')
 
-		x3 = fluid.create_lod_tensor(np.array([[1],[2]]).astype('int64'), [[1,1]], fluid.CPUPlace())
-
-
-		out = np.array([[[1,1,1,1],[1,1,1,1],[0,0,0,0],[0,0,0,0]], [[0,0,0,0], [0,0,0,0],[1,1,1,1],[1,1,1,1]]]).astype('double')
+		out = np.array([[[1,1,1,1],[1,1,1,1],[0,0,0,0],[0,0,0,0]], [[1,1,1,1], [1,1,1,1],[1,1,1,1],[1,1,1,1]]]).astype('double')
 
 		self.inputs = {
 			'X1': x1,
@@ -36,6 +37,8 @@ class TestInstagOp(OpTest):
 	def test_check_output(self):
 		self.check_output()
 
+	def test_check_grad(self):
+        	self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
 
 if __name__ == '__main__':
-	unittest.main()
+		unittest.main()

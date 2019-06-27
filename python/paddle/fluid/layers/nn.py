@@ -9356,7 +9356,7 @@ def instag(x1, x2, x3):
 	"""
 	helper = LayerHelper('instag', **locals())
 	
-	out = helper.create_variable_for_type_inference(dtype = helper.input_dtype())
+	out = helper.create_variable_for_type_inference(dtype = x1.dtype)
 
 	helper.append_op(
 		type = 'instag',

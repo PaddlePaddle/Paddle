@@ -50,6 +50,7 @@ or not. And the output only shares the LoD information with input Ids.
 	public:
 		using framework::OperatorWithKernel::OperatorWithKernel;
 		void InferShape(framework::InferShapeContext* ctx) const override {
+			PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should be not null");
 			PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),  "Grad Input(Out) should be not null");
 			PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X1")), "Grad Output(X1) should be not null");
 		
@@ -72,7 +73,7 @@ or not. And the output only shares the LoD information with input Ids.
         std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
   
         op->SetType("instag_grad");
-  
+	op->SetInput("Out", Output("Out"));  
         op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
   
         op->SetOutput(framework::GradVarName("X1"), InputGrad("X1"));
