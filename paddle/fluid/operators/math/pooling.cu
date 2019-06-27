@@ -139,7 +139,7 @@ __global__ void KernelPool2DGrad(
       pwend = min(w_offset / stride_width + 1, output_width);
     }
     T gradient = 0;
-    T input = __ldg(input_data + index);
+    // T input = __ldg(input_data + index);
     int output_idx =
         (batch_idx * channels + offsetC) * output_height * output_width;
     output_data += output_idx;
@@ -163,8 +163,7 @@ __global__ void KernelPool2DGrad(
                                 : ksize_height * ksize_width;
         }
         int output_sub_idx = ph * output_width + pw;
-        pool_process.compute(input, __ldg(output_data + output_sub_idx),
-                             __ldg(output_grad + output_sub_idx),
+        pool_process.compute(0, 0, __ldg(output_grad + output_sub_idx),
                              static_cast<T>(1.0 / pool_size), &gradient);
       }
     }
@@ -216,26 +215,6 @@ __global__ void KernelMaxPool2DGrad(
                               __ldg(output_grad + index));
     }
   }
-}
-
-static size_t ComputeKernelParameter(
-    int length, const platform::CUDADeviceContext& context) {
-  constexpr size_t theory_sm_threads = 1024;
-  auto max_threads = context.GetMaxPhysicalThreadCount();
-  auto sm_count = max_threads / theory_sm_threads;
-  auto threads = 256;
-  constexpr size_t block_sm = 8;
-  length /= block_sm;
-  if (length >= max_threads * 8) {
-    threads = theory_sm_threads;
-  } else if (length < max_threads * 8 && length >= sm_count * 512) {
-    threads = 512;
-  } else if (length < sm_count * 512 && length >= sm_count * 64) {
-    threads = 256;
-  } else if (length < sm_count * 64) {
-    threads = 128;
-  }
-  return threads;
 }
 
 template <typename PoolProcess, typename T>
@@ -300,7 +279,7 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int sthread = ComputeKernelParameter(nthreads, context);
+    int sthread = 256;
     int blocks = (nthreads + sthread - 1) / sthread;
     dim3 threads(sthread, 1);
     dim3 grid(blocks, 1);
@@ -308,9 +287,9 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     if (!adaptive) {
       blocks = output_channels * batch_size * output_height;
       // set to 128 if output_width is small
-      if (output_width < 256) sthread = 128;
-      threads = (sthread, 1);
-      grid = (blocks, 1);
+      if (output_width < 128) sthread = 128;
+      dim3 threads(sthread, 1);
+      dim3 grid(blocks, 1);
 
       Pool2DForwardCUDAKernel<
           T, PoolProcess><<<grid, threads, 0, context.stream()>>>(
@@ -363,7 +342,7 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int sthread = ComputeKernelParameter(nthreads, context);
+    int sthread = 256;
     int blocks = (nthreads + sthread - 1) / sthread;
     dim3 threads(sthread, 1);
     dim3 grid(blocks, 1);
@@ -412,7 +391,7 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int sthread = ComputeKernelParameter(nthreads, context);
+    int sthread = 256;
     int blocks = (nthreads + sthread - 1) / sthread;
     dim3 threads(sthread, 1);
     dim3 grid(blocks, 1);
