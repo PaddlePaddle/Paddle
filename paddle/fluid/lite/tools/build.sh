@@ -33,23 +33,6 @@ function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
-function cmake_opencl {
-    # $1: ARM_TARGET_OS in "android" , "armlinux"
-    # $2: ARM_TARGET_ARCH_ABI in "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
-    cmake .. \
-        -DLITE_WITH_OPENCL=ON \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_LITE=ON \
-        -DLITE_WITH_CUDA=OFF \
-        -DLITE_WITH_X86=OFF \
-        -DLITE_WITH_ARM=ON \
-        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-        -DWITH_TESTING=ON \
-        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
-}
-
-
 # This method is only called in CI.
 function cmake_x86_for_CI {
     prepare_workspace # fake an empty __generated_code__.cc to pass cmake.
@@ -221,25 +204,48 @@ function cmake_arm {
     # $1: ARM_TARGET_OS in "android" , "armlinux"
     # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
     # $3: ARM_TARGET_LANG in "gcc" "clang"
-    cmake .. \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_LITE=ON \
-        -DLITE_WITH_CUDA=OFF \
-        -DLITE_WITH_X86=OFF \
-        -DLITE_WITH_ARM=ON \
-        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-        -DWITH_TESTING=ON \
-        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
+    # $4: LITE_WITH_OPENCL in ON OFF
+    os=$1
+    abi=$2
+    lang=$3
+    opencl=$4
+
+    if [[ ${opencl} == "cl_enable" ]]; then
+        echo "-- Enable OpenCL --"
+        cmake .. \
+            -DLITE_WITH_OPENCL=ON \
+            -DWITH_GPU=OFF \
+            -DWITH_MKL=OFF \
+            -DWITH_LITE=ON \
+            -DLITE_WITH_CUDA=OFF \
+            -DLITE_WITH_X86=OFF \
+            -DLITE_WITH_ARM=ON \
+            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+            -DWITH_TESTING=ON \
+            -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_LANG=${lang}
+    else
+        cmake .. \
+            -DWITH_GPU=OFF \
+            -DWITH_MKL=OFF \
+            -DWITH_LITE=ON \
+            -DLITE_WITH_CUDA=OFF \
+            -DLITE_WITH_X86=OFF \
+            -DLITE_WITH_ARM=ON \
+            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+            -DWITH_TESTING=ON \
+            -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_LANG=${lang}
+    fi
 }
 
 # $1: ARM_TARGET_OS in "android" , "armlinux"
 # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
 # $3: ARM_TARGET_LANG in "gcc" "clang"
+# $4: LITE_WITH_OPENCL in ON OFF
 function build_arm {
     os=$1
     abi=$2
     lang=$3
+    opencl=$4
 
     cur_dir=$(pwd)
     if [[ ${os} == "armlinux" ]]; then
@@ -263,11 +269,11 @@ function build_arm {
         return 0
     fi
 
-    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
+    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}.${opencl}
     mkdir -p $build_dir
     cd $build_dir
 
-    cmake_arm ${os} ${abi} ${lang}
+    cmake_arm ${os} ${abi} ${lang} ${opencl}
     build $TESTS_FILE
 
     # test publish inference lib
@@ -331,6 +337,21 @@ function arm_push_necessary_file {
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
 }
 
+function build_test_arm_opencl {
+    ########################################################################
+    # job 1-4 must be in one runner
+    cur=$PWD
+
+    # job 5
+    build_arm "android" "armv8" "gcc" "cl_enable"
+    cd $cur
+
+    # job 6
+    build_arm "android" "armv7" "gcc" "cl_enable"
+    cd $cur
+
+    echo "Done"
+}
 
 # We split the arm unittest into several sub-tasks to parallel and reduce the overall CI timetime.
 # sub-task1
@@ -378,17 +399,17 @@ function build_test_arm_subtask_armlinux {
     cur=$PWD
 
     # job 5
-    build_arm "armlinux" "armv8" "gcc" $port_armv8
+    build_arm "armlinux" "armv8" "gcc"
     test_arm "armlinux" "armv8" "gcc" $port_armv8
     cd $cur
 
     # job 6
-    build_arm "armlinux" "armv7" "gcc" $port_armv8
+    build_arm "armlinux" "armv7" "gcc"
     test_arm "armlinux" "armv7" "gcc" $port_armv8
     cd $cur
 
     # job 7
-    build_arm "armlinux" "armv7hf" "gcc" $port_armv8
+    build_arm "armlinux" "armv7hf" "gcc"
     test_arm "armlinux" "armv7hf" "gcc" $port_armv8
     cd $cur
 
@@ -498,6 +519,11 @@ function main {
                 ARM_PORT="${i#*=}"
                 shift
                 ;;
+            --opencl=*)
+                OPENCL="${i#*=}"
+                shift
+                ;;
+
             build)
                 build $TESTS_FILE
                 build $LIBS_FILE
@@ -520,11 +546,11 @@ function main {
                 shift
                 ;;
             cmake_arm)
-                cmake_arm $ARM_OS $ARM_ABI $ARM_LANG
+                cmake_arm $ARM_OS $ARM_ABI $ARM_LANG $OPENCL
                 shift
                 ;;
             build_arm)
-                build_arm $ARM_OS $ARM_ABI $ARM_LANG
+                build_arm $ARM_OS $ARM_ABI $ARM_LANG $OPENCL
                 shift
                 ;;
             test_server)
@@ -532,7 +558,7 @@ function main {
                 shift
                 ;;
             test_arm)
-                build_arm $ARM_OS $ARM_ABI $ARM_LANG $ARM_PORT
+                test_arm $ARM_OS $ARM_ABI $ARM_LANG $ARM_PORT
                 shift
                 ;;
             test_arm_android)
@@ -545,6 +571,10 @@ function main {
                 ;;
             build_test_arm)
                 build_test_arm
+                shift
+                ;;
+            build_test_arm_opencl)
+                build_test_arm_opencl
                 shift
                 ;;
             build_test_arm_subtask_android)
