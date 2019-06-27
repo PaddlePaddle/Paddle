@@ -25,12 +25,35 @@ public class PaddlePredictor {
     }
 
     /**
+     * Loads mobile cxx model, which is the model before optimizing passes. The cxx
+     * model allow users to manage hardware place resources. Caller uses a place at
+     * Java to control Target, DataLayout, Precision, and Device ID. More details
+     * about the four fields see our Paddle-Mobile document.
+     * 
+     * 
+     * @param modelPath      modelPath model file path
+     * @param preferredPlace preferred place to run Cxx Model
+     * @param validPlaces    n * 4 int array, valid places to run Cxx Model
+     * @return true if load successfully
+     */
+    public static native boolean loadCxxModel(String modelPath, Place preferredPlace, Place[] validPlaces);
+
+    /**
      * Loads mobile lite model, which is the model after optimizing passes.
      *
      * @param modelPath model file path
      * @return true if load successfully
      */
     public static native boolean loadMobileModel(String modelPath);
+
+    /**
+     * Saves optimized model, which is the model can be used by
+     * {@link loadMobileModel}
+     * 
+     * @param modelPath model file path
+     * @return true if save successfully
+     */
+    public static native boolean saveOptimizedModel(String modelPath);
 
     /**
      * Clears the current loaded model.
