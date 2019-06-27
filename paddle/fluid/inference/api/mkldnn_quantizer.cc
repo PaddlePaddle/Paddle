@@ -355,6 +355,13 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
   return std::make_pair(std::move(hist), std::move(bin_width));
 }
 
+void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MKLDNNDeviceContext* dev_ctx =
+      (platform::MKLDNNDeviceContext*)pool.Get(predictor_.place_);
+  dev_ctx->ResetBlobMap();
+}
+
 void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto& arg = predictor_.argument_;
   if (!arg.scope_valid()) arg.SetScope(new framework::Scope);
@@ -380,6 +387,7 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
 bool AnalysisPredictor::MkldnnQuantizer::Quantize() {
   if (!RunWarmup()) return false;
   if (!CalculateScales()) return false;
+  ClearDeviceContext();
   predictor_.PrepareScope(predictor_.scope_);
   predictor_.CreateExecutor();
   if (!RunQuantizePasses()) return false;

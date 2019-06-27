@@ -391,6 +391,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   /* \brief  Get the active engine */
   const mkldnn::engine& GetEngine() const { return engine_; }
 
+  // Remove all entries from the blob map
+  void ResetBlobMap() const;
+
   // Set data to blob (i.e. name/data pair). Create blob if not existing
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
