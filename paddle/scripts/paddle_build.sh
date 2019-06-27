@@ -292,13 +292,15 @@ function check_style() {
 #=================================================
 
 function build_base() {
-    parallel_number=`nproc`
-    if [[ "$1" != "" ]]; then
+    if [ "$SYSTEM" == "Linux" ];then
+      parallel_number=`nproc`
+    fi
+    if [ "$1" != "" ]; then
       parallel_number=$1
     fi
     make clean
     make -j ${parallel_number}
-    make install -j `nproc`
+    make install -j ${parallel_number}
 }
 
 
