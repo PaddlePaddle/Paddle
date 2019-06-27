@@ -26,27 +26,10 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
-static float compute_max_kernel(const float* din, int64_t size) {
-  float max_value = -std::numeric_limits<float>::max();
-  for (int64_t i = 0; i < size; i++) {
-    max_value = max_value > din[0] ? max_value : din[0];
-  }
-  LOG(INFO) << "[max_value]: " << max_value;
-  return max_value;
-}
-
-static std::vector<float> get_tensor_scale_n(const float* in_data,
-                                             int axis_size, int64_t inner_size,
-                                             float scale_factor) {
-  std::vector<float> scale_out(axis_size);
-  for (int c = 0; c < axis_size; ++c) {              // num
-    const float* ptr_in = in_data + c * inner_size;  // channel*width*height
-    scale_out[c] = compute_max_kernel(ptr_in, inner_size) / scale_factor;
-  }
-  for (auto s : scale_out) {
-    LOG(INFO) << "[Scale out]: " << s;
-  }
-  return scale_out;
+static int get_rand(int start, int end) {
+  int i = rand();  // NOLINT
+  i = (i % (end - start)) + start;
+  return i;
 }
 
 template <typename Dtype1, typename Dtype2>
@@ -184,15 +167,15 @@ TEST(conv_arm_int8, init) {
   ASSERT_EQ(float_out.target(), TARGET(kARM));
 }
 
-TEST(conv_arm_int8, compute) {
+TEST(conv_arm_int8, int8_int32) {
   DeviceInfo::Init();
   for (auto n : {2}) {
     for (auto ic : {6}) {
       for (auto oc : {6}) {
         for (auto ih : {9}) {
           for (auto iw : {9}) {
-            for (auto flag_bias : {false, /*true*/}) {
-              for (auto flag_relu : {false, /*true*/}) {
+            for (auto flag_bias : {false, true}) {
+              for (auto flag_relu : {false, true}) {
                 for (auto depthwise : {false, /*true*/}) {
                   for (auto dilation : {1}) {
                     for (auto stride : {1}) {
@@ -226,11 +209,11 @@ TEST(conv_arm_int8, compute) {
                               filter_int8.mutable_data<int8_t>();
                           for (int i = 0; i < input_int8.dims().production();
                                i++) {
-                            input_int8_data[i] = 1.f;
+                            input_int8_data[i] = i % 10 * (i % 3 - 1);
                           }
                           for (int i = 0; i < filter_int8.dims().production();
                                i++) {
-                            filter_int8_data[i] = 1.f;
+                            filter_int8_data[i] = i % 10 * (i % 3 - 1);
                           }
 
                           operators::ConvParam param;
@@ -254,15 +237,210 @@ TEST(conv_arm_int8, compute) {
                           int8gemm_int32.create(param, &ctx->As<ARMContext>());
                           int8gemm_int32.run(param);
 
-                          int32_t* output_int32_data =
-                              output_int32.mutable_data<int32_t>();
-                          int32_t* output_int32_ref_data =
-                              output_int32_ref.mutable_data<int32_t>();
+                          int* output_int32_data =
+                              output_int32.mutable_data<int>();
+                          int* output_int32_ref_data =
+                              output_int32_ref.mutable_data<int>();
 
                           for (int i = 0; i < output_int32.dims().production();
                                i++) {
                             EXPECT_NEAR(output_int32_data[i],
                                         output_int32_ref_data[i], 1e-3);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST(conv_arm_int8, int8_fp32) {
+  DeviceInfo::Init();
+  for (auto n : {2}) {
+    for (auto ic : {6}) {
+      for (auto oc : {6}) {
+        for (auto ih : {9}) {
+          for (auto iw : {9}) {
+            for (auto flag_bias : {false, true}) {
+              for (auto flag_relu : {false, true}) {
+                for (auto depthwise : {false, /*true*/}) {
+                  for (auto dilation : {1}) {
+                    for (auto stride : {1}) {
+                      for (auto padding : {0}) {
+                        for (auto ks : {1}) {
+                          int group = 1;
+                          if (depthwise) {  // depthwise convolution ?
+                            group = oc = ic;
+                          }
+
+                          const int dks = dilation * (ks - 1) + 1;
+                          int oh = (ih + 2 * padding - dks) / stride + 1;
+                          int ow = (iw + 2 * padding - dks) / stride + 1;
+                          std::vector<int64_t> input_shape = {n, ic, ih, iw};
+                          std::vector<int64_t> filter_shape = {oc, ic / group,
+                                                               ks, ks};
+                          std::vector<int64_t> bias_shape({1, oc, 1, 1});
+                          std::vector<int64_t> output_shape({n, oc, oh, ow});
+
+                          Tensor input_fp32, input_int8;
+                          Tensor filter_fp32, filter_int8;
+                          Tensor bias_fp32, bias_int8;
+                          Tensor output_int32_ref, output_int32;
+                          Tensor output_fp32_ref, output_fp32;
+                          Tensor output_int8_ref, output_int8;
+
+                          input_fp32.Resize(input_shape);
+                          input_int8.Resize(input_shape);
+                          filter_fp32.Resize(filter_shape);
+                          filter_int8.Resize(filter_shape);
+                          bias_fp32.Resize(bias_shape);
+                          bias_int8.Resize(bias_shape);
+                          output_int32.Resize(output_shape);
+                          output_int32_ref.Resize(output_shape);
+                          output_fp32_ref.Resize(output_shape);
+                          output_fp32.Resize(output_shape);
+                          output_int8_ref.Resize(output_shape);
+                          output_int8.Resize(output_shape);
+
+                          float* input_fp32_data =
+                              input_fp32.mutable_data<float>();
+                          int8_t* input_int8_data =
+                              input_int8.mutable_data<int8_t>();
+
+                          float* filter_fp32_data =
+                              filter_fp32.mutable_data<float>();
+                          int8_t* filter_int8_data =
+                              filter_int8.mutable_data<int8_t>();
+
+                          float* bias_fp32_data =
+                              bias_fp32.mutable_data<float>();
+                          int8_t* bias_int8_data =
+                              bias_int8.mutable_data<int8_t>();
+
+                          for (int i = 0; i < input_fp32.dims().production();
+                               i++) {
+                            input_fp32_data[i] = i % 10 * (i % 3 - 1);
+                          }
+                          for (int i = 0; i < filter_fp32.dims().production();
+                               i++) {
+                            filter_fp32_data[i] = i % 10 * (i % 3 - 1);
+                          }
+                          for (int i = 0; i < bias_fp32.dims().production();
+                               i++) {
+                            bias_fp32_data[i] = i % 10 * (i % 3 - 1);
+                          }
+
+                          std::vector<float> in_scale;
+                          lite::arm::math::get_tensor_scale<PRECISION(kFloat)>(
+                              input_fp32, &in_scale, -1, 127.f);
+                          lite::arm::math::trans_tensor_fp32_to_int8(
+                              &input_fp32, &input_int8, in_scale[0]);
+
+                          std::vector<float> w_scale;
+                          lite::arm::math::get_tensor_scale<PRECISION(kFloat)>(
+                              filter_fp32, &w_scale, -1, 127.f);
+                          int axis_size = oc;
+                          int inner_size = ic / group * ks * ks;
+                          w_scale = lite::arm::math::get_tensor_scale_n(
+                              filter_fp32_data, axis_size, inner_size, 127.f);
+                          lite::arm::math::fp32_to_int8(
+                              filter_fp32_data, filter_int8_data,
+                              w_scale.data(), axis_size, 1, inner_size);
+
+                          operators::ConvParam param;
+                          param.x = &input_int8;
+                          param.filter = &filter_int8;
+                          param.bias = &bias_int8;
+                          param.fuse_relu = false;
+                          param.paddings = std::vector<int>({padding, padding});
+                          param.strides = std::vector<int>({stride, stride});
+                          param.dilations =
+                              std::vector<int>({dilation, dilation});
+                          param.groups = group;
+                          param.output = &output_int32_ref;
+                          conv_compute_ref<int8_t, int>(param);
+
+                          int* output_int32_ref_data =
+                              output_int32_ref.mutable_data<int>();
+
+                          // ============ int8gemm_int32 ============
+                          param.output = &output_int32;
+                          std::unique_ptr<KernelContext> ctx_int32(
+                              new KernelContext);
+                          lite::arm::math::GemmLikeConvInt8<PRECISION(kInt32)>
+                              int8gemm_int32;
+                          int8gemm_int32.init(param,
+                                              &ctx_int32->As<ARMContext>());
+                          int8gemm_int32.create(param,
+                                                &ctx_int32->As<ARMContext>());
+                          int8gemm_int32.run(param);
+                          int* output_int32_data =
+                              output_int32.mutable_data<int>();
+                          for (int i = 0; i < output_int32.dims().production();
+                               i++) {
+                            EXPECT_NEAR(output_int32_data[i],
+                                        output_int32_ref_data[i], 1e-3);
+                          }
+
+                          // ============ int8gemm_int8 ============
+                          int8_t* output_int8_ref_data =
+                              output_int8_ref.mutable_data<int8_t>();
+                          lite::arm::math::trans_tensor_int32_to_int8(
+                              &output_int32_ref, &output_int8_ref, in_scale[0],
+                              1, w_scale);
+                          param.output = &output_int8;
+                          param.input_scale = in_scale[0];
+                          param.output_scale = 1;
+                          param.weight_scale = w_scale;
+                          std::unique_ptr<KernelContext> ctx_int8(
+                              new KernelContext);
+                          lite::arm::math::GemmLikeConvInt8<PRECISION(kInt8)>
+                              int8gemm_int8;
+                          int8gemm_int8.init(param,
+                                             &ctx_int8->As<ARMContext>());
+                          int8gemm_int8.create(param,
+                                               &ctx_int8->As<ARMContext>());
+                          int8gemm_int8.run(param);
+                          int8_t* output_int8_data =
+                              output_int8.mutable_data<int8_t>();
+                          for (int i = 0; i < output_int8.dims().production();
+                               i++) {
+                            EXPECT_NEAR(output_int8_data[i],
+                                        output_int8_ref_data[i], 1e-3);
+                          }
+
+                          // ============ int8gemm_float32 ============
+                          float* output_fp32_ref_data =
+                              output_fp32_ref.mutable_data<float>();
+                          lite::arm::math::trans_tensor_int32_to_fp32(
+                              &output_int32_ref, &output_fp32_ref, in_scale[0],
+                              w_scale);
+                          param.output = &output_fp32;
+                          param.input_scale = in_scale[0];
+                          param.output_scale = 1;
+                          param.weight_scale = w_scale;
+                          std::unique_ptr<KernelContext> ctx_fp32(
+                              new KernelContext);
+                          lite::arm::math::GemmLikeConvInt8<PRECISION(kFloat)>
+                              int8gemm_fp32;
+                          int8gemm_fp32.init(param,
+                                             &ctx_fp32->As<ARMContext>());
+                          int8gemm_fp32.create(param,
+                                               &ctx_fp32->As<ARMContext>());
+                          int8gemm_fp32.run(param);
+                          float* output_fp32_data =
+                              output_fp32.mutable_data<float>();
+                          for (int i = 0; i < output_fp32.dims().production();
+                               i++) {
+                            EXPECT_NEAR(output_fp32_data[i],
+                                        output_fp32_ref_data[i], 1e-3);
                           }
                         }
                       }
