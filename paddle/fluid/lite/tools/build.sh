@@ -537,10 +537,6 @@ function main {
                 cmake_x86
                 shift
                 ;;
-            cmake_opencl)
-                cmake_opencl $ARM_OS $ARM_ABI
-                shift
-                ;;
             cmake_cuda)
                 cmake_cuda
                 shift
