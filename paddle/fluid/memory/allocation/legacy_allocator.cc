@@ -17,10 +17,6 @@
 #include <utility>
 #include <vector>
 
-#ifdef PADDLE_WITH_JEMALLOC
-#include <jemalloc/jemalloc.h>
-#endif
-
 #include "glog/logging.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
@@ -103,11 +99,7 @@ struct NaiveAllocator {
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-#ifdef PADDLE_WITH_JEMALLOC
-  void *p = malloc(size);
-#else
   void *p = GetCPUBuddyAllocator()->Alloc(size);
-#endif
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -119,21 +111,12 @@ template <>
 void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-#ifdef PADDLE_WITH_JEMALLOC
-  free(p);
-#else
   GetCPUBuddyAllocator()->Free(p);
-#endif
 }
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
-#ifdef PADDLE_WITH_JEMALLOC
-  // fake the result of used memory when PADDLE_WITH_JEMALLOC is ON
-  return 0U;
-#else
   return GetCPUBuddyAllocator()->Used();
-#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -200,12 +183,12 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     platform::GpuMemoryUsage(&avail, &total);
     LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
                << " in GPU " << place.device << ", available "
-               << string::HumanReadableSize(avail) << "total " << total
-               << "GpuMinChunkSize "
+               << string::HumanReadableSize(avail) << ", total "
+               << string::HumanReadableSize(total) << ", GpuMinChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
-               << "GpuMaxChunkSize "
+               << ", GpuMaxChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
-               << "GPU memory used: "
+               << ", GPU memory used: "
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
   } else {
     if (FLAGS_benchmark) {
@@ -339,7 +322,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
 
-Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation *LegacyAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer']
+import sys
+from os import path
+__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 
 # can be initialized from train_desc,
@@ -23,6 +25,11 @@ class TrainerDesc(object):
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         '''
+        # Workaround for relative import in protobuf under python3
+        # TODO: should be fixed
+        cur_path = path.dirname(__file__)
+        sys.path.append(cur_path)
+        sys.path.append(cur_path + "/proto")
         from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
@@ -66,7 +73,10 @@ class TrainerDesc(object):
 
     def _desc(self):
         from google.protobuf import text_format
-        return text_format.MessageToString(self.proto_desc)
+        return self.proto_desc.SerializeToString()
+
+    def __str__(self):
+        return str(self.proto_desc)
 
 
 class MultiTrainer(TrainerDesc):
@@ -97,6 +107,25 @@ class DistMultiTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class PipelineTrainer(TrainerDesc):
+    def __init__(self):
+        super(PipelineTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(PipelineTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(PipelineTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "PipelineTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

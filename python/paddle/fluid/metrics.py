@@ -27,6 +27,7 @@ from .initializer import Constant
 from . import unique_name
 from .framework import Program, Variable, program_guard
 from . import layers
+from .layers import detection
 
 __all__ = [
     'MetricBase',
@@ -713,11 +714,11 @@ class DetectionMAP(object):
         class_num (int): The class number.
         background_label (int): The index of background label, the background
             label will be ignored. If set to -1, then all categories will be
-            considered, 0 by defalut.
+            considered, 0 by default.
         overlap_threshold (float): The threshold for deciding true/false
-            positive, 0.5 by defalut.
+            positive, 0.5 by default.
         evaluate_difficult (bool): Whether to consider difficult ground truth
-            for evaluation, True by defalut. This argument does not work when
+            for evaluation, True by default. This argument does not work when
             gt_difficult is None.
         ap_version (string): The average precision calculation ways, it must be
             'integral' or '11point'. Please check
@@ -758,9 +759,6 @@ class DetectionMAP(object):
 
             cur_map, accum_map = map_evaluator.get_map_var()
 
-            # see detailed examples at 
-            https://github.com/PaddlePaddle/models/blob/43cdafbb97e52e6d93cc5bbdc6e7486f27665fc8/PaddleCV/object_detection
-
  
     """
 
@@ -784,7 +782,7 @@ class DetectionMAP(object):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = layers.detection_map(
+        map = detection.detection_map(
             input,
             label,
             class_num,
@@ -809,7 +807,7 @@ class DetectionMAP(object):
         self.has_state = var
 
         # calculate accumulative mAP
-        accum_map = layers.detection_map(
+        accum_map = detection.detection_map(
             input,
             label,
             class_num,

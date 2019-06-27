@@ -44,7 +44,7 @@ typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
-    const platform::MultiNCCLContextMap *ctxs)
+    const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs),
       local_scopes_(local_scopes),
       num_of_all_reduce_(num_of_all_reduce) {
@@ -165,6 +165,8 @@ void FusedAllReduceOpHandle::RunImpl() {
                       static_cast<ncclDataType_t>(nccl_dtype), ncclSum);
       });
     }
+
+    VLOG(10) << "fusedallreduce size:" << numel * SizeOfType(dtype);
 
     this->RunAndRecordEvent([&] {
       if (all_reduce_calls.size() == 1UL) {
