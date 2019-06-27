@@ -2099,12 +2099,17 @@ def roi_perspective_transform(input,
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
-        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape 
+            tuple: A tuple with three Variables. (out, mask, transform_matrix)
+
+            out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
                   (num_rois, channels, transformed_h, transformed_w).
-        Variable: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
+
+            mask: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
                   (num_rois, 1, transformed_h, transformed_w).
-        Variable: The transform matrix of ROIPerspectiveTransformOp which is a 1-D tensor with shape
+
+            transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is a 1-D tensor with shape
                   (9,).
+
     Examples:
         .. code-block:: python
 
