@@ -1,4 +1,4 @@
-if ((NOT WITH_LITE) OR (NOT WITH_JAVA))
+if ((NOT LITE_WITH_ARM) OR (NOT LITE_WITH_JAVA))
   return()
 endif()
 
@@ -15,7 +15,9 @@ find_package(JNI REQUIRED)
 
 # Generate PaddlePredictor.jar
 include_directories(${JNI_INCLUDE_DIRS})
-add_jar(PaddlePredictor src/com/baidu/paddle/lite/PaddlePredictor.java)
+add_jar(PaddlePredictor 
+    src/com/baidu/paddle/lite/PaddlePredictor.java
+    src/com/baidu/paddle/lite/Place.java)
 get_target_property(_jarFile PaddlePredictor JAR_FILE)
 get_target_property(_classDir PaddlePredictor CLASSDIR)
 set(_stubDir "${CMAKE_CURRENT_BINARY_DIR}")

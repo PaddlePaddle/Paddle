@@ -12,13 +12,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/lite/api/android/jni/paddle_lite_jni.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/lite/api/light_api.h"
+#include "paddle/fluid/lite/api/paddle_api.h"
+#include "paddle/fluid/lite/api/paddle_lite_factory_helper.h"
+#include "paddle/fluid/lite/api/paddle_place.h"
+#include "paddle/fluid/lite/api/paddle_use_kernels.h"
+#include "paddle/fluid/lite/api/paddle_use_ops.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/kernels/arm/activation_compute.h"
 #include "paddle/fluid/lite/kernels/arm/batch_norm_compute.h"
+#include "paddle/fluid/lite/kernels/arm/calib_compute.h"
 #include "paddle/fluid/lite/kernels/arm/concat_compute.h"
 #include "paddle/fluid/lite/kernels/arm/conv_compute.h"
 #include "paddle/fluid/lite/kernels/arm/dropout_compute.h"
@@ -31,13 +40,6 @@ limitations under the License. */
 #include "paddle/fluid/lite/kernels/arm/split_compute.h"
 #include "paddle/fluid/lite/kernels/arm/transpose_compute.h"
 
-#include "paddle/fluid/lite/api/light_api.h"
-#include "paddle/fluid/lite/api/paddle_api.h"
-#include "paddle/fluid/lite/api/paddle_lite_factory_helper.h"
-#include "paddle/fluid/lite/api/paddle_use_kernels.h"
-#include "paddle/fluid/lite/api/paddle_use_ops.h"
-#include "paddle/fluid/lite/api/paddle_use_passes.h"
-
 #define ARM_KERNEL_POINTER(kernel_class_name__)                    \
   std::unique_ptr<paddle::lite::kernels::arm::kernel_class_name__> \
       p##kernel_class_name__(                                      \
@@ -47,8 +49,10 @@ limitations under the License. */
 extern "C" {
 #endif
 
+using paddle::lite_api::CxxConfig;
 using paddle::lite_api::MobileConfig;
 using paddle::lite_api::PaddlePredictor;
+using paddle::lite_api::Place;
 using paddle::lite_api::Tensor;
 
 static std::shared_ptr<PaddlePredictor> predictor;
@@ -59,6 +63,8 @@ static std::shared_ptr<PaddlePredictor> predictor;
  */
 static void use_arm_kernels() {
   ARM_KERNEL_POINTER(BatchNormCompute);
+  ARM_KERNEL_POINTER(CalibComputeFp32ToInt8);
+  ARM_KERNEL_POINTER(CalibComputeInt8ToFp32);
   ARM_KERNEL_POINTER(ConvCompute);
   ARM_KERNEL_POINTER(ConcatCompute);
   ARM_KERNEL_POINTER(ElementwiseAddCompute);
@@ -129,6 +135,31 @@ inline std::vector<int64_t> jintarray_to_int64_vector(JNIEnv *env,
   return dim_vec;
 }
 
+/**
+ * Converts Java com.baidu.paddle.lite.Place to c++ paddle::lite_api::Place.
+ */
+inline static Place jplace_to_cpp_place(JNIEnv *env, jobject java_place) {
+  jclass place_jclazz = env->GetObjectClass(java_place);
+
+  jmethodID target_method =
+      env->GetMethodID(place_jclazz, "getTargetInt", "()I");
+  jmethodID precision_method =
+      env->GetMethodID(place_jclazz, "getPrecisionInt", "()I");
+  jmethodID data_layout_method =
+      env->GetMethodID(place_jclazz, "getDataLayoutInt", "()I");
+  jmethodID device_method = env->GetMethodID(place_jclazz, "getDevice", "()I");
+
+  int target = env->CallIntMethod(java_place, target_method);
+  int precision = env->CallIntMethod(java_place, precision_method);
+  int data_layout = env->CallIntMethod(java_place, data_layout_method);
+  int device = env->CallIntMethod(java_place, device_method);
+
+  return Place(static_cast<paddle::lite_api::TargetType>(target),
+               static_cast<paddle::lite_api::PrecisionType>(precision),
+               static_cast<paddle::lite_api::DataLayoutType>(data_layout),
+               device);
+}
+
 inline static int64_t product(const std::vector<int64_t> &vec) {
   if (vec.empty()) {
     return 0;
@@ -141,6 +172,31 @@ inline static int64_t product(const std::vector<int64_t> &vec) {
 }
 
 JNIEXPORT jboolean JNICALL
+Java_com_baidu_paddle_lite_PaddlePredictor_loadCxxModel(
+    JNIEnv *env, jclass thiz, jstring model_path, jobject preferred_place,
+    jobjectArray valid_places) {
+  if (predictor != nullptr) {
+    return JNI_FALSE;
+  }
+  use_arm_kernels();
+
+  int valid_place_count = env->GetArrayLength(valid_places);
+  std::vector<Place> cpp_valid_places;
+  for (int i = 0; i < valid_place_count; ++i) {
+    jobject jplace = env->GetObjectArrayElement(valid_places, i);
+    cpp_valid_places.push_back(jplace_to_cpp_place(env, jplace));
+  }
+
+  CxxConfig config;
+  config.set_model_dir(jstring_to_cpp_string(env, model_path));
+  config.set_preferred_place(jplace_to_cpp_place(env, preferred_place));
+  config.set_valid_places(cpp_valid_places);
+
+  predictor = paddle::lite_api::CreatePaddlePredictor(config);
+  return predictor == nullptr ? JNI_FALSE : JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
 Java_com_baidu_paddle_lite_PaddlePredictor_loadMobileModel(JNIEnv *env,
                                                            jclass thiz,
                                                            jstring model_path) {
@@ -149,9 +205,19 @@ Java_com_baidu_paddle_lite_PaddlePredictor_loadMobileModel(JNIEnv *env,
   }
   use_arm_kernels();
   MobileConfig config;
-  std::string model_dir = jstring_to_cpp_string(env, model_path);
-  config.set_model_dir(model_dir);
+
+  config.set_model_dir(jstring_to_cpp_string(env, model_path));
   predictor = paddle::lite_api::CreatePaddlePredictor(config);
+  return predictor == nullptr ? JNI_FALSE : JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_baidu_paddle_lite_PaddlePredictor_saveOptimizedModel(
+    JNIEnv *env, jclass thiz, jstring model_path) {
+  if (predictor == nullptr) {
+    return JNI_FALSE;
+  }
+  predictor->SaveOptimizedModel(jstring_to_cpp_string(env, model_path));
   return JNI_TRUE;
 }
 
@@ -167,6 +233,9 @@ Java_com_baidu_paddle_lite_PaddlePredictor_clear(JNIEnv *env, jclass thiz) {
 JNIEXPORT jboolean JNICALL
 Java_com_baidu_paddle_lite_PaddlePredictor_setInput__I_3I_3F(
     JNIEnv *env, jclass thiz, jint offset, jintArray dims, jfloatArray buf) {
+  if (predictor == nullptr) {
+    return JNI_FALSE;
+  }
   std::vector<int64_t> ddim = jintarray_to_int64_vector(env, dims);
 
   int len = env->GetArrayLength(buf);
@@ -188,6 +257,9 @@ Java_com_baidu_paddle_lite_PaddlePredictor_setInput__I_3I_3F(
 JNIEXPORT jboolean JNICALL
 Java_com_baidu_paddle_lite_PaddlePredictor_setInput__I_3I_3B(
     JNIEnv *env, jclass thiz, jint offset, jintArray dims, jbyteArray buf) {
+  if (predictor == nullptr) {
+    return JNI_FALSE;
+  }
   std::vector<int64_t> ddim = jintarray_to_int64_vector(env, dims);
 
   int len = env->GetArrayLength(buf);
@@ -209,6 +281,9 @@ Java_com_baidu_paddle_lite_PaddlePredictor_setInput__I_3I_3B(
 
 JNIEXPORT jboolean JNICALL
 Java_com_baidu_paddle_lite_PaddlePredictor_run(JNIEnv *, jclass) {
+  if (predictor == nullptr) {
+    return JNI_FALSE;
+  }
   predictor->Run();
   return JNI_TRUE;
 }

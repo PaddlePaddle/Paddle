@@ -33,6 +33,7 @@ class PaddlePredictorTest {
         PaddlePredictor.run();
         float[] output = PaddlePredictor.getFloatOutput(0);
 
+        assertEquals(output.length, 50000);
         assertEquals(output[0], 50.2132f, 1e-3f);
         assertEquals(output[1], -28.8729f, 1e-3f);
 

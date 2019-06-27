@@ -23,12 +23,32 @@ extern "C" {
 #endif
 /*
  * Class:     com_baidu_paddle_lite_PaddlePredictor
+ * Method:    loadCxxModel
+ * Signature:
+ * (Ljava/lang/String;Lcom/baidu/paddle/lite/Place;[Lcom/baidu/paddle/lite/Place;)Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_com_baidu_paddle_lite_PaddlePredictor_loadCxxModel(JNIEnv *, jclass,
+                                                        jstring, jobject,
+                                                        jobjectArray);
+
+/*
+ * Class:     com_baidu_paddle_lite_PaddlePredictor
  * Method:    loadMobileModel
  * Signature: (Ljava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL
 Java_com_baidu_paddle_lite_PaddlePredictor_loadMobileModel(JNIEnv *, jclass,
                                                            jstring);
+
+/*
+ * Class:     com_baidu_paddle_lite_PaddlePredictor
+ * Method:    saveOptimizedModel
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_com_baidu_paddle_lite_PaddlePredictor_saveOptimizedModel(JNIEnv *, jclass,
+                                                              jstring);
 
 /*
  * Class:     com_baidu_paddle_lite_PaddlePredictor
