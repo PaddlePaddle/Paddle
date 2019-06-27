@@ -9334,41 +9334,54 @@ def stack(x, axis=0):
 
     return out
 
+
 @templatedoc(op_type="instag")
 def instag(x1, x2, x3):
-	"""
+    """
 	**Instag Layer**
 
 	This layer split the inputs by tag.
+    
+    Every Ins has its tags, and every local FC has its tag, and then this op 
+    will select the ins who has same tags with local FC.
+
+    For example, one batch has 8 ins. ins 0 has tag 0 1 2, and local FC 0 has 
+    tag 0, local FC 1 has tag 1. Then ins 0 would be selected to local FC 0 
+    and local FC 1.
+
+    Beacuse ins tag list and fc tag list are varying length. So the dim is the 
+    longest list, for shorter list, we should fill -1. And OpKernel and 
+    OpKernel Grad will ignore these -1.
 
 	Args:
 		x1 (Variable): Input Variable (Tensor), usually it is global FC 2D output
-		x2 (Variable): Input Variable (LoDTensor), usually it is ins tag list
-		x3 (Variable): Input Variable (LoDTensor), usually it is fc tag list
+		x2 (Variable): Input Variable (Tensor), usually it is ins tag list
+		x3 (Variable): Input Variable (Tensor), usually it is fc tag list
 
 	Returns:
 		Variable: the split output (Tensor) usually it is 3D Tensor output.
 
 	Examples:
 		.. code-block:: python
+            
+            import paddle.fluid.layers as layers
+            x1 = layers.data(name='x1', shape=[32,32], dtype='float64')
+            x2 = layers.data(name='x2', shape=[32,16], dtype='int64')
+            x3 = layers.data(name='x3', shape=[32,16], dtype='int64')
+            out = layers.instag(x1, x2, x3)
 		
-			
 	"""
-	helper = LayerHelper('instag', **locals())
-	
-	out = helper.create_variable_for_type_inference(dtype = helper.input_dtype())
+    helper = LayerHelper('instag', **locals())
 
-	helper.append_op(
-		type = 'instag',
-		inputs={
-				'X1':  x1,
-				'X2': x2,
-				'X3': x3
-				},
-		outputs={
-			'Out': out
-		}) 
-	return out
+    out = helper.create_variable_for_type_inference(dtype=x1.dtype)
+
+    helper.append_op(
+        type='instag',
+        inputs={'X1': x1,
+                'X2': x2,
+                'X3': x3},
+        outputs={'Out': out})
+    return out
 
 
 def unstack(x, axis=0, num=None):
