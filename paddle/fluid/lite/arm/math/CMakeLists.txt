@@ -7,10 +7,10 @@ if(NOT (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM))
 endif()
 
 # TODO(xxx): seperate them
-lite_cc_library(math_arm SRCS  
-    funcs.cc 
-    packed_sgemm.cc 
-    softmax.cc 
+lite_cc_library(math_arm SRCS
+    funcs.cc
+    packed_sgemm.cc
+    softmax.cc
     scale.cc
     pooling.cc
     elementwise.cc

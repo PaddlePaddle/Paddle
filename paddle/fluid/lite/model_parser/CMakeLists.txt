@@ -10,7 +10,6 @@ if(NOT LITE_ON_MOBILE)
     endif(WITH_TESTING)
 endif()
 
-
 lite_cc_library(compatible_pb_lite SRCS compatible_pb.cc
   DEPS op_desc_lite framework_proto_lite var_desc_lite cpp_op_desc_lite)
 
