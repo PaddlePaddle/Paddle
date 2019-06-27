@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace paddle {
@@ -73,6 +74,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                static_cast<int>(OpRole::kBackward),
            static_cast<int>(OpRole::kOptimize) |
                static_cast<int>(OpRole::kLRSched),
+           static_cast<int>(OpRole::kCollective),
            static_cast<int>(OpRole::kNotSpecified)})
       .SetDefault(static_cast<int>(OpRole::kNotSpecified));
   AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
