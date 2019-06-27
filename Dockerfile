@@ -1,6 +1,3 @@
-# A image for building paddle binaries
-# Use cuda devel base image for both cpu and gpu environment
-# When you modify it, please be aware of cudnn-runtime version
 FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
@@ -24,6 +21,17 @@ RUN apt-get update && \
     apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
+
+# Downgrade gcc&&g++
+RUN apt-get update
+WORKDIR /usr/bin
+RUN apt install -y gcc-4.8 g++-4.8
+RUN cp gcc gcc.bak
+RUN cp g++ g++.bak
+RUN rm gcc
+RUN rm g++
+RUN ln -s gcc-4.8 gcc
+RUN ln -s g++-4.8 g++
 
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
@@ -55,6 +63,22 @@ RUN apt-get update && \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools libtool ccache && \
     apt-get clean -y
+
+# Install Python2.7.15
+RUN cd /home/ && wget -q https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz && \
+    tar -xvf Python-2.7.15.tgz && cd Python-2.7.15 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+RUN echo "include /usr/local/lib" >> /etc/ld.so.conf && /sbin/ldconfig && /sbin/ldconfig -v
+RUN cd /home/ && wget -q https://files.pythonhosted.org/packages/1d/64/a18a487b4391a05b9c7f938b94a16d80305bf0369c6b0b9509e86165e1d3/setuptools-41.0.1.zip && \
+    apt-get -y install unzip && \
+    unzip setuptools-41.0.1.zip && cd setuptools-41.0.1 && \
+    mv /usr/bin/python /usr/bin/python2.7.12 && \
+    ln -s /home/Python-2.7.15/python /usr/bin/python && \
+    python setup.py build && python setup.py install
+RUN cd /home/ && wget https://files.pythonhosted.org/packages/ae/e8/2340d46ecadb1692a1e455f13f75e596d4eab3d11a57446f08259dee8f02/pip-10.0.1.tar.gz && \
+    tar -zxvf pip-10.0.1.tar.gz && cd pip-10.0.1 && \
+    python setup.py install
 
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
@@ -100,9 +124,10 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    easy_install -U pip && \
-    pip --no-cache-dir install -U pip setuptools wheel py-cpuinfo==5.0.0 && \
+    pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
+#RUN easy_install -U pip
+#RUN pip install setuptools
+RUN pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
