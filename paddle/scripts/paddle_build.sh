@@ -976,6 +976,10 @@ function build_document_preview() {
 function example() {
     cd ${PADDLE_ROOT}
     python tools/sampcd_processor.py
+    if [ "$?" != "0" ];then
+      echo "Code instance execution failed"
+      exit 1
+    fi
 }
 
 
@@ -991,6 +995,7 @@ function main() {
       build_and_check)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+        example
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
