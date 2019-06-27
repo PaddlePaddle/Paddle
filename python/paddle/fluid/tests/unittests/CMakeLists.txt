@@ -20,6 +20,14 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
 endif(NOT WITH_DISTRIBUTE)
 
+if(NOT WITH_GPU OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_allgather)
+    LIST(REMOVE_ITEM TEST_OPS test_allreduce)
+    LIST(REMOVE_ITEM TEST_OPS test_broadcast)
+    LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
+endif()
+
+
 LIST(REMOVE_ITEM TEST_OPS test_launch)
 
 if (NOT ${WITH_GPU})
@@ -29,6 +37,9 @@ elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
+if(NOT WITH_GPU OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_pipeline)
+endif() 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -63,13 +74,24 @@ function(py_test_modules TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if (py_test_modules_SERIAL)         
+
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run -a --branch ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+          ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)            
     endif()
+
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
 endfunction()
@@ -165,10 +187,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_
 py_test_modules(test_warpctc_op MODULES test_warpctc_op)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
-py_test_modules(test_basic_gru_api MODULES test_basic_gru_api ENVS MKL_CBWR=COMPATIBLE)
-py_test_modules(test_basic_gru_unit_op MODULES test_basic_gru_unit_op ENVS MKL_CBWR=COMPATIBLE)
-py_test_modules(test_basic_lstm_api MODULES test_basic_lstm_api ENVS MKL_CBWR=COMPATIBLE)
-py_test_modules(test_basic_lstm_unit_op MODULES test_basic_lstm_unit_op ENVS MKL_CBWR=COMPATIBLE)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -182,6 +200,8 @@ py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mn
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_attention_model ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
