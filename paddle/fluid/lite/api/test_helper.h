@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gflags/gflags.h>
+#include <sys/time.h>
 #include <time.h>
 
 // for eval

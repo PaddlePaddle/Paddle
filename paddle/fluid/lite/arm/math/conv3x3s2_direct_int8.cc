@@ -89,7 +89,7 @@ void conv_3x3s2_direct_int8(const int8_t* din, int32_t* dout, int num,
   int w_loop = wout_round / 4;
 
   int out_row_stride = hout_c_block * wout_round;
-  LOG(INFO) << "asdfasdfa";
+
   for (int n = 0; n < num; ++n) {
     const int8_t* din_batch = din + n * chin * size_in_channel;
     int8_t* dout_batch =

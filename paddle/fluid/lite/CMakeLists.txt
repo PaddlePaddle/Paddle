@@ -2,6 +2,8 @@ if (NOT WITH_LITE)
     return()
 endif()
 
+include(lite)
+
 message(WARNING "Lite enabled!")
 message(STATUS "LIGHT_FRAMEWORK:\t${LITE_WITH_LIGHT_WEIGHT_FRAMEWORK}")
 message(STATUS "LITE_WITH_CUDA:\t${LITE_WITH_CUDA}")
@@ -85,8 +87,8 @@ function (lite_deps TARGET)
   endif()
 
   set(${TARGET} ${deps} PARENT_SCOPE)
-
 endfunction()
+
 
 # A fake target to include all the libraries and tests the lite module depends.
 add_custom_target(lite_compile_deps COMMAND echo 1)
@@ -95,6 +97,10 @@ add_custom_target(lite_compile_deps COMMAND echo 1)
 # the whole fluid project to accelerate the compile speed.
 set(offline_lib_registry_file "${CMAKE_BINARY_DIR}/lite_libs.txt")
 file(WRITE ${offline_lib_registry_file} "") # clean
+
+set(__lite_cc_files "";"")
+set(__lite_cc_files "${CMAKE_BINARY_DIR}/lite_cc_files.txt")
+file(WRITE ${__lite_cc_files} "") # clean
 # cc_library with branch support.
 # The branches:
 #  X86_DEPS: works only when LITE_WITH_X86 is ON.
@@ -104,7 +110,7 @@ file(WRITE ${offline_lib_registry_file} "") # clean
 #  LIGHT_DEPS:    LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #  HVY_DEPS:      NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 function(lite_cc_library TARGET)
-    set(options STATIC static SHARED shared)
+    set(options SHARED shared STATIC static MODULE module)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
       HVY_DEPS ARGS)
@@ -120,14 +126,24 @@ function(lite_cc_library TARGET)
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
             )
-    if (${args_SHARED} OR ${args_shared})
+
+    if (args_SHARED OR ARGS_shared)
         cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS} SHARED)
+    elseif (args_MODULE OR ARGS_module)
+        add_library(${TARGET} MODULE ${args_SRCS})
+        add_dependencies(${TARGET} ${deps} ${args_DEPS})
     else()
         cc_library(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
     endif()
 
+    foreach(cc_file ${args_SRCS})
+        file(APPEND ${__lite_cc_files} "${cc_file}\n")
+    endforeach()
+
     # collect targets need to compile for lite
-    add_dependencies(lite_compile_deps ${TARGET})
+    if (args_SRCS)
+        add_dependencies(lite_compile_deps ${TARGET})
+    endif()
 
     # register a library name.
     file(APPEND ${offline_lib_registry_file} "${TARGET}\n")
@@ -224,9 +240,9 @@ add_custom_target(publish_inference_cxx_lib ${TARGET}
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
         COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
-        COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/libpaddle_api_full.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+        COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_full_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
         )
-add_dependencies(publish_inference_cxx_lib paddle_api_full)
+add_dependencies(publish_inference_cxx_lib bundle_full_api)
 add_dependencies(publish_inference_lite publish_inference_cxx_lib)
 
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
@@ -235,9 +251,9 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     add_custom_target(publish_inference_mobile_lib ${TARGET}
             COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/lib"
             COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/include"
-            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
-            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/libpaddle_api_light.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/mobile/include"
+            COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_light_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/mobile/lib"
             )
-    add_dependencies(publish_inference_mobile_lib paddle_api_light)
+    add_dependencies(publish_inference_mobile_lib paddle_api_light bundle_light_api)
     add_dependencies(publish_inference_lite publish_inference_mobile_lib)
 endif()
