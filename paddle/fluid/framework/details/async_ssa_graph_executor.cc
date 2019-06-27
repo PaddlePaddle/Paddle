@@ -87,9 +87,14 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
     VLOG(3) << "this is distribute mode, will use communicator";
-    operators::distributed::Communicator::Init(send_varname_to_ctx,
-                                               recv_varname_to_ctx, scope);
-    operators::distributed::Communicator::GetInstance()->Start();
+
+    if (operators::distributed::Communicator::GetInstance() == nullptr) {
+      operators::distributed::Communicator::Init(send_varname_to_ctx,
+                                                 recv_varname_to_ctx, scope);
+      operators::distributed::Communicator::GetInstance()->Start();
+    } else {
+      VLOG(3) << "communicator has been initialized, skip";
+    }
   }
 #endif
 }

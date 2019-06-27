@@ -136,7 +136,7 @@ def multi_head_attention(queries,
         # The current implementation of softmax_op only supports 2D tensor,
         # consequently it cannot be directly used here.
         # If to use the reshape_op, Besides, the shape of product inferred in
-        # compile-time is not the actual shape in run-time. It cann't be used
+        # compile-time is not the actual shape in run-time. It can't be used
         # to set the attribute of reshape_op.
         # So, here define the softmax for temporary solution.
 

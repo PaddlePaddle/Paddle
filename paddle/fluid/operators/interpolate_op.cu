@@ -108,8 +108,10 @@ __global__ void KeBilinearInterpFw(
                          : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T h1lambda = align_flag ? ratio_h * (out_img_idy + 0.5) - 0.5 - in_img_idy
-                            : ratio_h * out_img_idy - in_img_idy;
+    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
+    src_h = (src_h > 0) ? src_h : 0;
+    T h1lambda =
+        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
     T h2lambda = 1.f - h1lambda;
 
     int out_img_idx = tid % out_img_w;
@@ -118,8 +120,10 @@ __global__ void KeBilinearInterpFw(
                          : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T w1lambda = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5 - in_img_idx
-                            : ratio_w * out_img_idx - in_img_idx;
+    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    T w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
     T w2lambda = 1.f - w1lambda;
 
     const T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
@@ -156,8 +160,10 @@ __global__ void KeBilinearInterpBw(
                                 : ratio_h * out_img_idy;
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T h1lambda = align_flag ? ratio_h * (out_img_idy + 0.5) - 0.5 - in_img_idy
-                            : ratio_h * out_img_idy - in_img_idy;
+    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
+    src_h = (src_h > 0) ? src_h : 0;
+    T h1lambda =
+        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
 
     T h2lambda = 1.f - h1lambda;
 
@@ -166,8 +172,10 @@ __global__ void KeBilinearInterpBw(
                                 : ratio_w * out_img_idx;
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T w1lambda = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5 - in_img_idx
-                            : ratio_w * out_img_idx - in_img_idx;
+    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    T w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
     T w2lambda = 1.f - w1lambda;
 
     T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
