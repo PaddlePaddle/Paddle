@@ -62,11 +62,7 @@ class DepthwiseConvInt8
                                     PrecisionType out_type, const float* scale);
 
   DepthwiseConvInt8() = default;
-  ~DepthwiseConvInt8() {
-    if (tmp_int32_out_) {
-      delete tmp_int32_out_;
-    }
-  }
+  ~DepthwiseConvInt8() {}
 
   virtual bool init(const operators::ConvParam& param,
                     Context<TARGET(kARM)>* ctx);
@@ -79,7 +75,7 @@ class DepthwiseConvInt8
  private:
   conv_dw_int8_impl impl_{nullptr};
   std::vector<float> w_scale_;
-  Tensor* tmp_int32_out_;
+  Tensor tmp_int32_out_;
 };
 
 }  // namespace math

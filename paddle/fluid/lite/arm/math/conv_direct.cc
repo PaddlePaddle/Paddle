@@ -132,25 +132,39 @@ bool DirectConvInt8<Ptype_out>::create(const operators::ConvParam& param,
   }
   if (kw == 3 && sw == 1) {
     VLOG(5) << "invoke 3x3s1 direct conv";
-    _impl_int8 = conv_3x3s1_direct_int8;
+    impl_int8_ = conv_3x3s1_direct_int8;
 
     constexpr int cblock = 4;
+    int inpad = 4;
     int cround = (oc + cblock - 1) / cblock * cblock;
     weights_trans_.Resize({cround, ic, kw, kw});
     int8_t* transed_w_data = weights_trans_.mutable_data<int8_t>();
-
     conv_trans_weights_numc(w_data, transed_w_data, oc, ic, cblock, kw * kw);
+
+    int wout_round = ((ow + 3) / 4) * 4;
+    int win_round = wout_round * sw + inpad;
+    int row_out = 2;
+    int row_in = 4;
+    int tmp_size_out = wout_round * row_out * cblock;
+    int in_len = win_round * ic;
+    int tmp_size_in = row_in * in_len;
+    ctx_->ExtendWorkspace(DDimLite({1, 1, 1, ctx_->threads() * tmp_size_out +
+                                                 (tmp_size_in + 3) / 4 * 4 +
+                                                 wout_round + win_round}));
     is_weights_transed_ = true;
+
   } else if (kw == 3 && sw == 2) {
     VLOG(5) << "invoke 3x3s2 direct conv";
-    _impl_int8 = conv_3x3s2_direct_int8;
+    impl_int8_ = conv_3x3s2_direct_int8;
 
-    constexpr int cblock = 4;
+    // constexpr int cblock = 4;
+    int cblock = conv_3x3s2_direct_int8_c_num();
     int cround = (oc + cblock - 1) / cblock * cblock;
     weights_trans_.Resize({cround, ic, kw, kw});
     int8_t* transed_w_data = weights_trans_.mutable_data<int8_t>();
     conv_trans_weights_numc(w_data, transed_w_data, oc, ic, cblock, kw * kw);
     is_weights_transed_ = true;
+
   } else {
     LOG(ERROR) << "this type direct conv not impl";
     return false;
@@ -187,7 +201,7 @@ bool DirectConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   int ow = o_dims[3];
   int oc = o_dims[1];
 
-  _impl_int8(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, b_data, param,
+  impl_int8_(i_data, o_data, bs, oc, oh, ow, ic, ih, iw, w_data, b_data, param,
              this->ctx_, Ptype_out, w_scale_.data());
 
   // timer end
