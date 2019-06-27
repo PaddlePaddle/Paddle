@@ -295,7 +295,7 @@ function test_arm {
         echo "android do not need armv7hf"
         return 0
     fi
-
+   
     echo "test file: ${TESTS_FILE}"
     for _test in $(cat $TESTS_FILE); do
         test_arm_android $_test $port
