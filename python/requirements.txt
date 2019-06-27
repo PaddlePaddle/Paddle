@@ -16,4 +16,4 @@ funcsigs
 pyyaml
 decorator
 prettytable
-py-cpuinfo==5.0.0
+py-cpuinfo==4.0.0
