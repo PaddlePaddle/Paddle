@@ -407,6 +407,7 @@ thread_local int cur_thread_id = 0;
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
+#define MKLDNN_CAP 10000
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 
@@ -426,19 +427,30 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
     // 1st time to set blob in current thread
     pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
     (*pMap)[tid] = pBlob;
+    VLOG(2) << "SetBlob: tid=" << tid << ", add new tid\n";
   } else {
     pBlob = map_it->second;
   }
 
   // Find Key in found (or newly created) KeyBlob
-  auto key_it = pBlob->find(name);
+  auto key_it = std::find_if(
+      pBlob->begin(), pBlob->end(),
+      [=](std::pair<std::string, std::shared_ptr<void>> const& obj) {
+        return obj.first == name;
+      });
 
   if (key_it == pBlob->end()) {
-    (*pBlob)[name] = data;  // create new blob
+    // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
+    if ((tid == -1) && (pBlob->size() > MKLDNN_CAP)) {
+      VLOG(2) << "SetBlob: tid=" << tid << ", remove head blob "
+              << pBlob->begin()->first << "\n";
+      pBlob->erase(pBlob->begin());
+    }
+    pBlob->push_back(std::make_pair(name, data));
   } else {
     key_it->second = data;  // set data to existing blob
   }
-
+  VLOG(2) << "SetBlob: tid=" << tid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -454,14 +466,25 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);
-  if (map_it == pMap->end()) return nullptr;
+  if (map_it == pMap->end()) {
+    VLOG(2) << "GetBlob: tid=" << tid << ", miss tid\n";
+    return nullptr;
+  }
   pBlob = map_it->second;
 
   // Find Blob via name
-  auto key_it = pBlob->find(name);
+  auto key_it = std::find_if(
+      pBlob->begin(), pBlob->end(),
+      [=](std::pair<std::string, std::shared_ptr<void>> const& obj) {
+        return obj.first == name;
+      });
 
-  if (key_it == pBlob->end()) return nullptr;
+  if (key_it == pBlob->end()) {
+    VLOG(2) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
+    return nullptr;
+  }
 
+  VLOG(2) << "GetBlob tid=" << tid << ", get blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return key_it->second;
 }
