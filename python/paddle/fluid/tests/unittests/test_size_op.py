@@ -33,16 +33,16 @@ class TestSizeOp(OpTest):
         self.check_output()
 
 
-class TestRank1(TestSizeOp):
+class TestRank1Tensor(TestSizeOp):
     def config(self):
         self.shape = [2]
 
 
-class TestRank2(TestSizeOp):
+class TestRank2Tensor(TestSizeOp):
     def config(self):
         self.shape = [2, 3]
 
-class TestLarge(TestSizeOp):
+class TestLargeTensor(TestSizeOp):
     def config(self):
         self.shape = [2**10]
 
