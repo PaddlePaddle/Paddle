@@ -241,7 +241,7 @@ download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_dat
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
 
 # anakin
-if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
+if (ANAKIN_FOUND AND WITH_MKL) # only needed in CI
     # anakin rnn1
     set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
     set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
