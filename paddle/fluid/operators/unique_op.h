@@ -39,6 +39,8 @@ struct UniqueOpFunctor {
     auto* index_data = index_->mutable_data<IndexT>(platform::CPUPlace());
 
     int64_t j = 0;
+
+    // TODO(fangzeyang): Should optimize performance here.
     std::unordered_map<InT, int64_t> dict;
     std::vector<InT> uniq;
 
