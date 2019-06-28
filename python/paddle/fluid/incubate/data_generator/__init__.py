@@ -265,7 +265,8 @@ class MultiSlotStringDataGenerator(DataGenerator):
         '''
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
-                "the output of process() must be in list or tuple type")
+                "the output of process() must be in list or tuple type"
+                "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]")
         output = ""
         for index, item in enumerate(line):
             name, elements = item
@@ -309,7 +310,8 @@ class MultiSlotDataGenerator(DataGenerator):
         '''
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
-                "the output of process() must be in list or tuple type")
+                "the output of process() must be in list or tuple type"
+                "Example: [('words', [1926, 08, 17]), ('label', [1])]")
         output = ""
 
         if self._proto_info is None:
