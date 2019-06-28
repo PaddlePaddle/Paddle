@@ -13,4 +13,4 @@ lite_cc_library(cl_caller SRCS cl_caller.cc  DEPS cl_helper cl_image)
 lite_cc_test(test_cl_runtime SRCS cl_test.cc DEPS cl_helper cl_image cl_caller cl_wrapper
              ARGS --cl_path=${CMAKE_SOURCE_DIR}/paddle/fluid/lite/opencl)
 
-add_dependencies(cl_tool opencl_clhpp)
+add_dependencies(cl_wrapper opencl_clhpp)
