@@ -221,10 +221,12 @@ add_subdirectory(gen_code)
 add_subdirectory(tools)
 
 
+# Deployment required
+lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v1.tar.gz")
+
 if (WITH_TESTING)
     lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
     if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-        lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v1.tar.gz")
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v2_relu.tar.gz")
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "resnet50.tar.gz")
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "inception_v4_simple.tar.gz")
@@ -246,27 +248,44 @@ add_custom_target(publish_inference_cxx_lib ${TARGET}
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/bin"
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/third_party"
+        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/models"
         COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
         COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_full_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
         COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/model_optimize_tool" "${INFER_LITE_PUBLISH_ROOT}/bin"
         COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/gen_code/paddle_code_generator" "${INFER_LITE_PUBLISH_ROOT}/bin"
+        COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/glog" "${INFER_LITE_PUBLISH_ROOT}/third_party"
+        COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/gflags" "${INFER_LITE_PUBLISH_ROOT}/third_party"
+        COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_full" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+        COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/Makefile.def" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+        COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/mobilenet_v1" "${INFER_LITE_PUBLISH_ROOT}/demo/models"
         )
 add_dependencies(publish_inference_cxx_lib model_optimize_tool)
 add_dependencies(publish_inference_cxx_lib paddle_code_generator)
 add_dependencies(publish_inference_cxx_lib bundle_full_api)
+add_dependencies(publish_inference_cxx_lib extern_lite_download_mobilenet_v1_tar_gz)
 add_dependencies(publish_inference_lite publish_inference_cxx_lib)
 
 
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     #cc_library(inference_mobile_lib DEPS light_api_lite)
-
+    # copy cpp mobile_light demo/lib
     add_custom_target(publish_inference_mobile_lib ${TARGET}
-            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/lib"
-            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/bin"
-            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/mobile/include"
-            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/mobile/include"
-            COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_light_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/mobile/lib"
+            COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_light_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
+            COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_light" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
             )
     add_dependencies(publish_inference_mobile_lib paddle_api_light bundle_light_api)
     add_dependencies(publish_inference_lite publish_inference_mobile_lib)
+
+    if (LITE_WITH_JAVA AND LITE_WITH_ARM)
+        # copy java mobile_light demo/lib
+        add_custom_target(publish_java_inference_mobile_lib ${TARGET}
+                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/java/so"
+                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so" "${INFER_LITE_PUBLISH_ROOT}/java/so"
+                COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/android/jni/src" "${INFER_LITE_PUBLISH_ROOT}/java"
+                )
+        add_dependencies(publish_java_inference_mobile_lib paddle_lite_jni)
+        add_dependencies(publish_inference_lite publish_java_inference_mobile_lib)
+    endif()
 endif()
