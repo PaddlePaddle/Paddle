@@ -255,8 +255,8 @@ function _test_model_optimize_tool {
     local adb="adb -s emulator-${port}"
 
     make model_optimize_tool -j$NUM_CORES_FOR_COMPILE
-    local test_path=$(find . -name model_optimize_tool)
-    local model_path=$(find . -name lite_naive_model)
+    local test_path=$(find . -name model_optimize_tool | head -n1)
+    local model_path=$(find . -name lite_naive_model | head -n1)
     $adb push ${test_path} ${ADB_WORK_DIR}
     $adb shell mkdir -p $remote_model_path
     $adb push $model_path/* $remote_model_path
@@ -272,7 +272,7 @@ function _test_paddle_code_generator {
     local adb="adb -s emulator-${port}"
 
     make paddle_code_generator -j$NUM_CORES_FOR_COMPILE
-    local test_path=$(find . -name $test_name)
+    local test_path=$(find . -name $test_name | head -n1)
 
     $adb push $test_path $remote_test
     $adb shell $remote_test --optimized_model $remote_model --generated_code_file $ADB_WORK_DIR/gen_code.cc
