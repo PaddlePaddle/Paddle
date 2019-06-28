@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
-#include <future>  // NOLINT
+
 #include <memory>
-#include <ostream>
 
 namespace paddle {
 namespace operators {
@@ -54,9 +53,9 @@ class CReduceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool default false) eject CUDA operations to calculation stream.")
         .SetDefault(false);
     AddComment(R"DOC(
-***CReduceScatter Operator***
+CReduceScatter Operator
 
-Call NCCL collective ReduceScatter internally.
+Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#reducescatter
 )DOC");
   }
 };
@@ -85,9 +84,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_reducescatter, ops::CReduceScatterOp,
                   ops::CReduceScatterOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    c_reducescatter, ops::CReduceScatterOpKernel<plat::CPUDeviceContext, float>,
-    ops::CReduceScatterOpKernel<plat::CPUDeviceContext, double>,
-    ops::CReduceScatterOpKernel<plat::CPUDeviceContext, int>,
-    ops::CReduceScatterOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::CReduceScatterOpKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(c_reducescatter, ops::CReduceScatterOpCPUKernel<float>,
+                       ops::CReduceScatterOpCPUKernel<double>,
+                       ops::CReduceScatterOpCPUKernel<int>,
+                       ops::CReduceScatterOpCPUKernel<int64_t>,
+                       ops::CReduceScatterOpCPUKernel<plat::float16>);

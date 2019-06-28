@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 
 namespace paddle {
@@ -50,9 +47,9 @@ class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool default false) eject CUDA operations to calculation stream.")
         .SetDefault(false);
     AddComment(R"DOC(
-***CBroadcast Operator***
+CBroadcast Operator
 
-Call ncclBcast internally.
+Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#broadcast
 )DOC");
   }
 };
@@ -66,9 +63,8 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(c_broadcast, ops::CBroadcastOp,
                              ops::CBroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    c_broadcast, ops::CBroadcastOpKernel<plat::CPUDeviceContext, float>,
-    ops::CBroadcastOpKernel<plat::CPUDeviceContext, double>,
-    ops::CBroadcastOpKernel<plat::CPUDeviceContext, int>,
-    ops::CBroadcastOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::CBroadcastOpKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(c_broadcast, ops::CBroadcastOpCPUKernel<float>,
+                       ops::CBroadcastOpCPUKernel<double>,
+                       ops::CBroadcastOpCPUKernel<int>,
+                       ops::CBroadcastOpCPUKernel<int64_t>,
+                       ops::CBroadcastOpCPUKernel<plat::float16>);

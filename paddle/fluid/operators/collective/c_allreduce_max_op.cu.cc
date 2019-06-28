@@ -18,8 +18,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    c_allreduce, ops::CAllReduceOpKernel<plat::CUDADeviceContext, float>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, double>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, int>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, int64_t>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, plat::float16>);
+    c_allreduce_max, ops::CAllReduceOpCUDAKernel<ops::kRedMax, float>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedMax, double>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedMax, int>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedMax, int64_t>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedMax, plat::float16>)

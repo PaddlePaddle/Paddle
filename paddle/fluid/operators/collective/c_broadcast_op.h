@@ -22,69 +22,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class CBroadcastOpKernel : public framework::OpKernel<T> {
+template <typename T>
+class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "CBroadcastOp can run on gpu place only for now.");
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = x->numel();
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
-
-    int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
-
-    cudaStream_t stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    int root = ctx.Attr<int>("root");
-    int nranks = comm->nranks();
-    PADDLE_ENFORCE(root >= 0 && root < nranks,
-                   "Expected root in range of [0,%d),but get %d", nranks, root);
-    if (root == comm->rank()) {
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(
-          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
-          root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
-              << x->numel();
-
-      if (out != x) {
-        // TODO(liuyi05): check inplace
-        framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
-      }
-    } else {
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(out->mutable_data<T>(place),
-                                                  numel, dtype, root,
-                                                  comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-              << framework::product(out->dims());
-    }
-
-    out->Resize(x->dims());
-    out->set_lod(x->lod());
-#else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
-#endif
+    PADDLE_THROW("Unimplemented cpu kernel for CBroadcastOp.");
   }
 };
 
