@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
+
 namespace paddle {
 namespace operators {
 

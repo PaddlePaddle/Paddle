@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #ifndef _WIN32
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -53,10 +52,9 @@ class NCCLComm {
   virtual int ring_id() const = 0;
   virtual int nranks() const = 0;
   virtual int rank() const = 0;
-  virtual int local_rank() const = 0;
+  virtual int device_id() const = 0;
   virtual ncclComm_t comm() const = 0;
   virtual cudaStream_t stream() const = 0;
-  virtual CUDADeviceContext* DevCtx() const = 0;
   virtual ~NCCLComm() = default;
 };
 
@@ -72,16 +70,6 @@ class NCCLCommContext {
 
   NCCLComm* CreateNCCLComm(ncclUniqueId* nccl_id, int nranks, int rank,
                            int dev_id, int ring_id = 0);
-
-  CUDADeviceContext* DevCtx(int dev_id) const {
-    PADDLE_ENFORCE(dev_ctx_map_.count(dev_id),
-                   "CUDADeviceContext at device %d has not been initialized");
-    return dev_ctx_map_.at(dev_id).get();
-  }
-
-  CUDADeviceContext* DevCtx(platform::Place p) const {
-    return DevCtx(boost::get<CUDAPlace>(p).device);
-  }
 
   // retrieve a communicator by the ring id
   NCCLComm* Get(int ring_id) const {

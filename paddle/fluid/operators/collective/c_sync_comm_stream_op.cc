@@ -11,11 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include <nccl.h>
 #endif
-#include <stdint.h>
-#include <ostream>
+
 #include <string>
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -57,13 +57,13 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of last param need to sync");
-    AddOutput("Out", "(Tensor) Dependency of last param need to sync");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync");
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
-***Sync Operator***
+CSyncCommStream Operator
 
-Call nccl stream synchronize.
+Call communication stream synchronization.
 )DOC");
   }
 };

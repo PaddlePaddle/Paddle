@@ -65,7 +65,8 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  gradient_clip=None,
-                 do_model_average=False):
+                 do_model_average=False,
+                 distributed=False):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
@@ -73,6 +74,7 @@ class ParamAttr(object):
         self.trainable = trainable
         self.gradient_clip = gradient_clip
         self.model_average = do_model_average
+        self.distributed = distributed
 
     def _set_default_initializer(self, initializer):
         """
@@ -170,7 +172,8 @@ class ParamAttr(object):
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'gradient_clip_attr': self.gradient_clip,
-            'model_average': self.model_average
+            'model_average': self.model_average,
+            'distributed': self.distributed
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
