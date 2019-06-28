@@ -220,7 +220,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline, is_test);
 
-    std::shared_ptr<mkldnn::memory> dst_memory_p;
+    std::shared_ptr<mkldnn::memory> dst_memory_p, user_residual_memory_p;
 
     if (fuse_residual_conn) {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
@@ -243,7 +243,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         auto user_residual_md = platform::MKLDNNMemDesc(
             residual_data_tz, residual_data_type, residual_param->format());
-        auto user_residual_memory_p = handler.AcquireResidualDataMemory(
+        user_residual_memory_p = handler.AcquireResidualDataMemory(
             user_residual_md, to_void_cast<T>(residual_param_data));
 
         dst_memory_p = handler.AcquireDstMemoryFromResidualDataMemory(
@@ -263,14 +263,15 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // create convolution op primitive
     std::shared_ptr<mkldnn::convolution_forward> conv_p;
+    std::shared_ptr<mkldnn::memory> user_bias_memory_p, bias_memory_p;
     if (bias) {
       const T* bias_data = bias->data<T>();
       auto user_bias_md = platform::MKLDNNMemDesc(
           {bias_tz}, platform::MKLDNNGetDataType<T>(), memory::format::x);
-      auto user_bias_memory_p =
+      user_bias_memory_p =
           handler.AcquireBiasMemory(user_bias_md, to_void_cast<T>(bias_data));
 
-      auto bias_memory_p =
+      bias_memory_p =
           handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
       conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
                                           bias_memory_p, dst_memory_p);

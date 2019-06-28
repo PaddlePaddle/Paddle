@@ -191,10 +191,11 @@ function cmake_base() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -207,7 +208,6 @@ function cmake_base() {
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
         -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
@@ -231,6 +231,7 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
@@ -242,7 +243,6 @@ EOF
         -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
         -DWITH_GRPC=${grpc_flag}
 
 }
@@ -292,13 +292,17 @@ function check_style() {
 #=================================================
 
 function build_base() {
-    parallel_number=`nproc`
-    if [[ "$1" != "" ]]; then
+    if [ "$SYSTEM" == "Linux" ];then
+      parallel_number=`nproc`
+    else
+      parallel_number=8
+    fi
+    if [ "$1" != "" ]; then
       parallel_number=$1
     fi
     make clean
     make -j ${parallel_number}
-    make install -j `nproc`
+    make install -j ${parallel_number}
 }
 
 
@@ -848,7 +852,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp36-cp36m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -874,7 +877,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp37-cp37m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -897,7 +899,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     else
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -913,7 +914,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     fi
 
@@ -996,9 +996,11 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         parallel_test_base
         ;;
       test)
