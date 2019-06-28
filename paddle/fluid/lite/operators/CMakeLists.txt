@@ -17,7 +17,9 @@ cc_library(elementwise_ops_lite SRCS elementwise_ops.cc DEPS ${op_DEPS})
 cc_library(fusion_elementwise_activation_ops_lite SRCS fusion_elementwise_activation_ops.cc DEPS elementwise_ops_lite ${op_DEPS})
 cc_library(mean_op_lite SRCS mean_op.cc DEPS ${op_DEPS})
 cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
-#cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
+cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
+cc_library(uniform_random_op_lite SRCS uniform_random_op.cc DEPS ${op_DEPS})
+
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
 cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
 cc_library(concat_op_lite SRCS concat_op.cc DEPS ${op_DEPS})
@@ -52,7 +54,9 @@ set(ops_lite
         transpose_op_lite
         fake_quant
         fake_dequant
-        PARENT_SCOPE)
+        sgd_op_lite
+        uniform_random_op_lite
+        CACHE INTERNAL "ops lite")
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 
              DEPS fc_op_lite memory_lite 

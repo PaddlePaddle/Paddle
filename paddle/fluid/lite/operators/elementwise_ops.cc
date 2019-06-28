@@ -48,31 +48,35 @@ bool ElementwiseOp::AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) {
 bool ElementwiseGradExplicitOp::CheckShape() const {
   CHECK_OR_FALSE(param_.Y);
   CHECK_OR_FALSE(param_.X_grad);
-  CHECK_OR_FALSE(param_.Y_grad);
   CHECK_OR_FALSE(param_.Out_grad);
   return true;
 }
 
 bool ElementwiseGradExplicitOp::InferShape() const {
   param_.X_grad->Resize(param_.Out_grad->dims());
-  param_.Y_grad->Resize(param_.Y->dims());
+  if (param_.Y_grad) param_.Y_grad->Resize(param_.Y->dims());
   return true;
 }
 
 bool ElementwiseGradExplicitOp::AttachImpl(const cpp::OpDesc& opdesc,
                                            lite::Scope* scope) {
-  CHECK_EQ(opdesc.InputArgumentNames().size(), 1UL);
+  CHECK_EQ(opdesc.InputArgumentNames().size(), 2UL);
+  auto Y_name = opdesc.Input("Y").front();
   auto Out_name = opdesc.Input(framework::GradVarName("Out")).front();
-  auto X_name = opdesc.Output(framework::GradVarName("X")).front();
-  auto Y_name = opdesc.Output(framework::GradVarName("Y")).front();
+  auto X_grad = opdesc.Output(framework::GradVarName("X")).front();
 
+  if (opdesc.Output(framework::GradVarName("Y")).size() > 0) {
+    auto Y_grad = opdesc.Output(framework::GradVarName("Y")).front();
+    param_.Y_grad = GetMutableVar<Tensor>(scope, Y_grad);
+  }
+  param_.Y = GetVar<lite::Tensor>(scope, Y_name);
   param_.Out_grad = GetVar<lite::Tensor>(scope, Out_name);
-  param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_name);
-  param_.Y_grad = GetMutableVar<Tensor>(scope, Y_name);
+  param_.X_grad = GetMutableVar<lite::Tensor>(scope, X_grad);
   param_.axis = opdesc.GetAttr<int>("axis");
 
   return true;
 }
+
 #endif
 
 }  // namespace operators

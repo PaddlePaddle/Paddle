@@ -3,7 +3,8 @@ set(PADDLE_VERSION $ENV{PADDLE_VERSION})
 set(tmp_version "HEAD")
 set(TAG_VERSION_REGEX "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
 set(COMMIT_VERSION_REGEX "[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+")
-set(LATEST_PADDLE_VERSION "latest")
+# set(LATEST_PADDLE_VERSION "latest")
+set(LATEST_PADDLE_VERSION "0.0.0")
 
 while ("${PADDLE_VERSION}" STREQUAL "")
   # Check current branch name

@@ -65,6 +65,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .cxx_trainer import *
 
 Tensor = LoDTensor
 

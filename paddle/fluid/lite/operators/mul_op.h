@@ -66,6 +66,7 @@ class MulOpLite : public OpLite {
   mutable MulParam param_;
 };
 
+#ifdef LITE_WITH_X86
 class MulGradOpLite : public OpLite {
  public:
   MulGradOpLite() {}
@@ -85,6 +86,7 @@ class MulGradOpLite : public OpLite {
  private:
   mutable MulGradParam param_;
 };
+#endif
 
 }  // namespace operators
 }  // namespace lite
