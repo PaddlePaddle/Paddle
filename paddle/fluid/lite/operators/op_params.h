@@ -36,7 +36,7 @@ using param_t = Any;
 
 /// ----------------------- Functional operators ------------------------------
 struct FeedParam {
-  const std::vector<lite::Tensor>* feed_list{};
+  std::vector<lite::Tensor>* feed_list{};
   lite::Tensor* out{};
   int col;
 };
@@ -315,6 +315,16 @@ struct SGDParam {
   const lite::Tensor* LearningRate{};
   const lite::Tensor* Grad{};
   lite::Tensor* ParamOut{};
+};
+
+/// ----------------------- uniform_random operators ----------------------
+struct UniformRandomParam {
+  std::vector<int64_t> shape{};
+  float min{-1.0f};
+  float max{1.0f};
+  int seed{0};
+  int dtype{framework::proto::VarType::FP32};
+  lite::Tensor* Out{};
 };
 
 }  // namespace operators

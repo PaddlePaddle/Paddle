@@ -52,4 +52,6 @@ TEST(SSAGraph, test) {
 }  // namespace paddle
 
 USE_LITE_OP(fc);
-USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
+#ifdef LITE_WITH_X86
+// USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
+#endif
