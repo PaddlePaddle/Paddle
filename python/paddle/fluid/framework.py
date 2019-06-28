@@ -44,6 +44,7 @@ __all__ = [
     'cpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cuda',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -102,6 +103,21 @@ def _cuda_ids():
     return device_ids
 
 
+def is_compiled_with_cuda():
+    """
+    Whether this whl package can be used to run the model on GPU.
+
+    Returns (bool): support gpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_gpu = fluid.is_compiled_with_cuda()
+    """
+    return core.is_compiled_with_cuda()
+
+
 def cuda_places(device_ids=None):
     """
     Create a list of :code:`fluid.CUDAPlace` objects.
@@ -145,8 +161,8 @@ def cpu_places(device_count=None):
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
 
     Args:
         device_count (None|int): device number.
