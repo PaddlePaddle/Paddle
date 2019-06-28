@@ -217,8 +217,6 @@ bool GemmLikeConvInt8<Ptype_out>::run(const operators::ConvParam& param) {
   auto* o_data = param.output->mutable_data<int32_t>();
   const int32_t* idx_data = idx_data_.mutable_data<int32_t>();
 
-  LOG(INFO) << "input size: " << param.x->memory_size() << " "
-            << param.input_scale << " " << w_scale_.size();
   if (this->is_weights_transed_ == true) {
     w_data = this->weights_trans_.template data<int8_t>();
   }
