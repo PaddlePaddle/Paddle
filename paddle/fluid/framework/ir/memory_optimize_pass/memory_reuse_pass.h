@@ -45,6 +45,8 @@ class MemoryReusePass : public Pass {
   std::unordered_set<ir::Node *> FindNodesByName(
       const std::string &name, const std::vector<ir::Node *> &nodes) const;
 
+  size_t ScopeNum() const { return all_vars_->size(); }
+
  private:
   VarDesc *GetVarDesc(details::VarHandle *var) const;
 

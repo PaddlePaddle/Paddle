@@ -96,6 +96,11 @@ void ShareTensorBufferOpHandle::RunImpl() {
         // Clear out_tensor because this tensor may be shared in the previous
         // batch
         auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
+        VLOG(1) << "Clear " << out_var_names_[i]
+                << " because you may want to fetch an inplaced variable "
+                << in_var_info->Name()
+                << " in previous batch: " << in_var_info->Name() << " -> "
+                << out_var_names_[i];
         out_tensor->clear();
         is_shared_[i] = false;
       }

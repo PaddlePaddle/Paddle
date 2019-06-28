@@ -234,4 +234,4 @@ endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
-        PROPERTIES LABELS "RUN_TYPE=DIST")
+        test_buffer_shared_inplace_pass PROPERTIES LABELS "RUN_TYPE=DIST")
