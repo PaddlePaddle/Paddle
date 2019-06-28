@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -29,7 +30,7 @@ static inline Tensor *GetTensorFromVar(Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else {
-    return nullptr;
+    PADDLE_THROW("Variable must be type of LoDTensor");
   }
 }
 
@@ -86,7 +87,7 @@ void ShareTensorBufferOpHandle::RunImpl() {
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     auto in_var_info = in_var_infos_[i];
-    if (in_var_info->IsSkipped()) {
+    if (UNLIKELY(in_var_info->IsSkipped())) {
       // If in_var is inplaced in the previous batch and we want to fetch
       // in_var in the current batch, we have to reset memory of out_var
       // to avoid wrong calcualtion result.
@@ -95,32 +96,19 @@ void ShareTensorBufferOpHandle::RunImpl() {
         // Clear out_tensor because this tensor may be shared in the previous
         // batch
         auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
-        if (out_tensor) {
-          out_tensor->clear();
-        }
-
+        out_tensor->clear();
         is_shared_[i] = false;
       }
-      continue;
+    } else {
+      auto *in_tensor = GetTensorFromVar(in_out_vars_[i].first);
+      auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
+      out_tensor->ShareBufferWith(*in_tensor);
+
+      VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
+              << in_var_info->Name() << " -> " << out_var_names_[i];
+
+      is_shared_[i] = true;
     }
-
-    is_shared_[i] = false;
-
-    auto *in_tensor = GetTensorFromVar(in_out_vars_[i].first);
-    if (!in_tensor) {
-      continue;
-    }
-
-    auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
-    if (!out_tensor) {
-      continue;
-    }
-
-    out_tensor->ShareBufferWith(*in_tensor);
-    VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
-            << in_var_info->Name() << " -> " << out_var_names_[i];
-
-    is_shared_[i] = true;
   }
 }
 

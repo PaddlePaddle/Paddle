@@ -37,7 +37,7 @@ class MemoryReusePass : public Pass {
 
   virtual void Run(Graph *graph) const = 0;
 
-  virtual std::string Type() const = 0;
+  virtual std::string ReuseType() const = 0;
 
   bool TryReuseVar(details::VarHandle *in_var,
                    details::VarHandle *out_var) const;

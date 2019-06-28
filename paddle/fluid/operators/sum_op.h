@@ -129,9 +129,14 @@ class SumKernel : public framework::OpKernel<T> {
 
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = context.Output<LoDTensor>("Out");
-      if (!in_place) {
-        out->mutable_data<T>(context.GetPlace());
+      auto *out_ptr = out->mutable_data<T>(context.GetPlace());
+      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+        auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+        if (in_0_tensor.numel() > 0) {
+          in_place = (in_0_tensor.data<T>() == out_ptr);
+        }
       }
+
       auto result = EigenVector<T>::Flatten(*out);
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();
