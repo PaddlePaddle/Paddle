@@ -5,7 +5,7 @@ cd ${PADDLE_ROOT}
 pip install /paddle/build/opt/paddle/share/wheels/*.whl
 git clone https://github.com/PaddlePaddle/FluidDoc
 git clone https://github.com/tianshuo78520a/PaddlePaddle.org.git
-cd  ${PADDLE_ROOT}/PaddlePaddle.org.git/
+cd  ${PADDLE_ROOT}/PaddlePaddle.org
 git reset 3feaa68376d8423e41d076814e901e6bf108c705
 cd ${PADDLE_ROOT}/FluidDoc/doc/fluid/api
 sh gen_doc.sh
