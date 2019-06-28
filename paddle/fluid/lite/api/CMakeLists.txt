@@ -113,7 +113,7 @@ lite_cc_library(paddle_api_full SRCS cxx_api_impl.cc DEPS cxx_api_lite paddle_ap
   ARM_DEPS ${arm_kernels}
   CL_DEPS ${opencl_kernels})
 # The final inference library for just MobileConfig.
-lite_cc_library(paddle_api_light SRCS light_api_impl.cc DEPS light_api_lite paddle_api_lite)
+lite_cc_library(paddle_api_light SRCS light_api_impl.cc DEPS light_api_lite paddle_api_lite mir_passes)
 
 bundle_static_library(paddle_api_full paddle_api_full_bundled bundle_full_api)
 bundle_static_library(paddle_api_light paddle_api_light_bundled bundle_light_api)
