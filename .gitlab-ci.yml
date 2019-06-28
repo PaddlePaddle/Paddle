@@ -95,8 +95,8 @@ build:mobile_android_cl:
     cache:
         key: mobile_thirdparty
         paths:
-            - build.lite.android.armv8.gcc.cl_enable/third_party
-            - build.lite.android.armv7.gcc.cl_enable/third_party
+            - build.lite.android.armv8.gcc.opencl/third_party
+            - build.lite.android.armv7.gcc.opencl/third_party
             - ~/.ccache
             - $CI_PROJECT_DIR/build_mobile_ccache_cl
     script:

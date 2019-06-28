@@ -33,6 +33,65 @@ function cmake_x86 {
     cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
 }
 
+function cmake_opencl {
+    prepare_workspace
+    # $1: ARM_TARGET_OS in "android" , "armlinux"
+    # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+    # $3: ARM_TARGET_LANG in "gcc" "clang"
+    cmake .. \
+        -DLITE_WITH_OPENCL=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_LITE=ON \
+        -DLITE_WITH_CUDA=OFF \
+        -DLITE_WITH_X86=OFF \
+        -DLITE_WITH_ARM=ON \
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+        -DWITH_TESTING=ON \
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
+}
+
+# $1: ARM_TARGET_OS in "android" , "armlinux"
+# $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+# $3: ARM_TARGET_LANG in "gcc" "clang"
+function build_opencl {
+    os=$1
+    abi=$2
+    lang=$3
+
+    cur_dir=$(pwd)
+    if [[ ${os} == "armlinux" ]]; then
+        # TODO(hongming): enable compile armv7 and armv7hf on armlinux, and clang compile
+        if [[ ${lang} == "clang" ]]; then
+            echo "clang is not enabled on armlinux yet"
+            return 0
+        fi
+        if [[ ${abi} == "armv7hf" ]]; then
+            echo "armv7hf is not supported on armlinux yet"
+            return 0
+        fi
+        if [[ ${abi} == "armv7" ]]; then
+            echo "armv7 is not supported on armlinux yet"
+            return 0
+        fi
+    fi
+
+    if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
+        echo "android do not need armv7hf"
+        return 0
+    fi
+
+    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}.opencl
+    mkdir -p $build_dir
+    cd $build_dir
+
+    cmake_opencl ${os} ${abi} ${lang}
+    build $TESTS_FILE
+
+    # test publish inference lib
+    make publish_inference_lite
+}
+
 # This method is only called in CI.
 function cmake_x86_for_CI {
     prepare_workspace # fake an empty __generated_code__.cc to pass cmake.
@@ -204,48 +263,25 @@ function cmake_arm {
     # $1: ARM_TARGET_OS in "android" , "armlinux"
     # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
     # $3: ARM_TARGET_LANG in "gcc" "clang"
-    # $4: LITE_WITH_OPENCL in ON OFF
-    os=$1
-    abi=$2
-    lang=$3
-    opencl=$4
-
-    if [[ ${opencl} == "cl_enable" ]]; then
-        echo "-- Enable OpenCL --"
-        cmake .. \
-            -DLITE_WITH_OPENCL=ON \
-            -DWITH_GPU=OFF \
-            -DWITH_MKL=OFF \
-            -DWITH_LITE=ON \
-            -DLITE_WITH_CUDA=OFF \
-            -DLITE_WITH_X86=OFF \
-            -DLITE_WITH_ARM=ON \
-            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-            -DWITH_TESTING=ON \
-            -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_LANG=${lang}
-    else
-        cmake .. \
-            -DWITH_GPU=OFF \
-            -DWITH_MKL=OFF \
-            -DWITH_LITE=ON \
-            -DLITE_WITH_CUDA=OFF \
-            -DLITE_WITH_X86=OFF \
-            -DLITE_WITH_ARM=ON \
-            -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
-            -DWITH_TESTING=ON \
-            -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_LANG=${lang}
-    fi
+    cmake .. \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_LITE=ON \
+        -DLITE_WITH_CUDA=OFF \
+        -DLITE_WITH_X86=OFF \
+        -DLITE_WITH_ARM=ON \
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
+        -DWITH_TESTING=ON \
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
 }
 
 # $1: ARM_TARGET_OS in "android" , "armlinux"
 # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
 # $3: ARM_TARGET_LANG in "gcc" "clang"
-# $4: LITE_WITH_OPENCL in ON OFF
 function build_arm {
     os=$1
     abi=$2
     lang=$3
-    opencl=$4
 
     cur_dir=$(pwd)
     if [[ ${os} == "armlinux" ]]; then
@@ -269,11 +305,11 @@ function build_arm {
         return 0
     fi
 
-    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}.${opencl}
+    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}
     mkdir -p $build_dir
     cd $build_dir
 
-    cmake_arm ${os} ${abi} ${lang} ${opencl}
+    cmake_arm ${os} ${abi} ${lang}
     build $TESTS_FILE
 
     # test publish inference lib
@@ -339,15 +375,14 @@ function arm_push_necessary_file {
 
 function build_test_arm_opencl {
     ########################################################################
-    # job 1-4 must be in one runner
     cur=$PWD
 
-    # job 5
-    build_arm "android" "armv8" "gcc" "cl_enable"
+    # job 1
+    build_opencl "android" "armv8" "gcc"
     cd $cur
 
-    # job 6
-    build_arm "android" "armv7" "gcc" "cl_enable"
+    # job 2
+    build_opencl "android" "armv7" "gcc"
     cd $cur
 
     echo "Done"
@@ -519,11 +554,6 @@ function main {
                 ARM_PORT="${i#*=}"
                 shift
                 ;;
-            --opencl=*)
-                OPENCL="${i#*=}"
-                shift
-                ;;
-
             build)
                 build $TESTS_FILE
                 build $LIBS_FILE
@@ -537,16 +567,24 @@ function main {
                 cmake_x86
                 shift
                 ;;
+            cmake_opencl)
+                cmake_opencl $ARM_OS $ARM_ABI $ARM_LANG
+                shift
+                ;;
             cmake_cuda)
                 cmake_cuda
                 shift
                 ;;
             cmake_arm)
-                cmake_arm $ARM_OS $ARM_ABI $ARM_LANG $OPENCL
+                cmake_arm $ARM_OS $ARM_ABI $ARM_LANG
+                shift
+                ;;
+            build_opencl)
+                build_opencl $ARM_OS $ARM_ABI $ARM_LANG
                 shift
                 ;;
             build_arm)
-                build_arm $ARM_OS $ARM_ABI $ARM_LANG $OPENCL
+                build_arm $ARM_OS $ARM_ABI $ARM_LANG
                 shift
                 ;;
             test_server)
