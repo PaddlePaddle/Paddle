@@ -74,7 +74,7 @@ void ConvCompute::PrepareForRun() {
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
-    impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
+    impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
     VLOG(3) << "invoking direct conv";
   } else {
     impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
@@ -123,8 +123,7 @@ void ConvComputeInt8<Ptype_out>::PrepareForRun() {
 
   // weigth is int8 and bias is int32 so do not need trans
   if (param.groups == ic && ic == oc && kps_equal && no_dilation && flag_dw) {
-    // impl_ = new lite::arm::math::DepthwiseConvInt8<Ptype_out>;
-    impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
+    impl_ = new lite::arm::math::DepthwiseConvInt8<Ptype_out>;
     VLOG(3) << "Run DepthwiseConv Int8";
   } else if (param.groups == 1 && kw == 3 && (sw == 1 || sw == 2) &&
              kps_equal && no_dilation) {

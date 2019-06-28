@@ -121,6 +121,7 @@ GET_ATTRS_IMPL(std::vector<int>, ints);
 GET_ATTRS_IMPL(std::vector<float>, floats);
 GET_ATTRS_IMPL(std::vector<std::string>, strings);
 GET_ATTR_IMPL(std::string, s);
+GET_ATTRS_IMPL(std::vector<int64_t>, longs);
 
 }  // namespace pb
 }  // namespace lite

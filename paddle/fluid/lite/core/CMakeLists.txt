@@ -19,15 +19,20 @@ endif()
 
 proto_library(framework_proto_lite SRCS framework.proto)
 
+if (LITE_WITH_X86)
+lite_cc_library(variable_lite SRCS variable.cc DEPS framework_proto)
+lite_cc_library(types_lite SRCS types.cc DEPS framework_proto)
+else()
 lite_cc_library(variable_lite SRCS variable.cc)
+lite_cc_library(types_lite SRCS types.cc)
+endif()
 lite_cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
 lite_cc_library(scope_lite SRCS scope.cc DEPS ${tensor_lite})
 lite_cc_library(cpu_info_lite SRCS cpu_info.cc)
-lite_cc_library(context_lite SRCS context.cc DEPS ${tensor_lite} any_lite cpu_info_lite X86_DEPS eigen3 CL_DEPS cl_helper)
+lite_cc_library(context_lite SRCS context.cc DEPS ${tensor_lite} any_lite cpu_info_lite eigen3 CL_DEPS cl_helper)
 lite_cc_library(kernel_lite SRCS kernel.cc DEPS context_lite type_system target_wrapper_lite any_lite op_params_lite framework_proto_lite ${tensor_lite})
 lite_cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite target_wrapper_lite kernel_lite
   cpp_op_desc_lite ${tensor_lite})
-lite_cc_library(types_lite SRCS types.cc)
 lite_cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
 lite_cc_library(program_lite SRCS program.cc

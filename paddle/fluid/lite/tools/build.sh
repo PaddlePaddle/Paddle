@@ -154,6 +154,26 @@ function build_test_server {
     test_lite $TESTS_FILE
 }
 
+function build_test_train {
+    mkdir -p ./build
+    cd ./build
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/paddle/build/third_party/install/mklml/lib"
+    prepare_workspace # fake an empty __generated_code__.cc to pass cmake.
+    cmake .. -DWITH_LITE=ON -DWITH_GPU=OFF -DWITH_PYTHON=ON -DLITE_WITH_X86=ON -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF -DWITH_TESTING=ON -DWITH_MKL=OFF 
+    
+    make test_gen_code_lite -j$NUM_CORES_FOR_COMPILE
+    make test_cxx_api_lite -j$NUM_CORES_FOR_COMPILE
+    ctest -R test_cxx_api_lite
+    ctest -R test_gen_code_lite
+    make test_generated_code -j$NUM_CORES_FOR_COMPILE
+
+    make -j$NUM_CORES_FOR_COMPILE
+
+    find -name "*.whl" | xargs pip2 install 
+    python ../paddle/fluid/lite/python/lite_test.py
+
+}
+
 # test_arm_android <some_test_name> <adb_port_number>
 function test_arm_android {
     local test_name=$1
@@ -601,6 +621,10 @@ function main {
                 ;;
             build_test_server)
                 build_test_server
+                shift
+                ;;
+            build_test_train)
+                build_test_train
                 shift
                 ;;
             build_test_arm)
