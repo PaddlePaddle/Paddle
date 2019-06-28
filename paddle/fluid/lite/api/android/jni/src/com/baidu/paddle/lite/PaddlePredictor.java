@@ -33,7 +33,7 @@ public class PaddlePredictor {
      * 
      * @param modelPath      modelPath model file path
      * @param preferredPlace preferred place to run Cxx Model
-     * @param validPlaces    n * 4 int array, valid places to run Cxx Model
+     * @param validPlaces    valid places to run Cxx Model
      * @return true if load successfully
      */
     public static native boolean loadCxxModel(String modelPath, Place preferredPlace, Place[] validPlaces);
