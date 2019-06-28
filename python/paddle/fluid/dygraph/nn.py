@@ -302,9 +302,8 @@ class Conv3D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, D, H, W] format.
-            num_filters(int): The number of filter. It is as same as the output
-            image channel.
+        name_scope(str) : The name for this class.
+        num_filters(int): The number of filter. It is as same as the output image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
@@ -336,8 +335,6 @@ class Conv3D(layers.Layer):
             library is installed. Default: True
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -506,7 +503,7 @@ class Conv3DTranspose(layers.Layer):
            W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
 
     Args:
-        input(Variable): The input image with [N, C, D, H, W] format.
+        name_scope(str) : The name for this class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
@@ -687,21 +684,20 @@ class Pool2D(layers.Layer):
         name_scope(str) : The name of this class.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
-            Otherwise, the pool kernel size will be a square of an int.
-        pool_type: (string), pooling type, can be "max" for max-pooling and "avg" for average-pooling
+            Otherwise, the pool kernel size will be a square of an int. Default: -1
+        pool_type(str) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling. Default: max
         pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int.
+            it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
+            the pool stride size will be a square of an int. Default: 1
         pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
-            Otherwise, the pool padding size will be a square of an int.
-        global_pooling (bool): (bool, default false) Whether to use the global pooling. If global_pooling = true,
-            kernel size and paddings will be ignored
-        use_cudnn (bool): (bool, default True) Onlyceil_mode (bool) - (bool, default false) Whether to use the ceil
-            function to calculate output height and width. False is the default.
-            If it is set to False, the floor function will be used.
-        exclusive (bool): Whether to exclude padding points in average pooling
-                          mode, default is true
+            Otherwise, the pool padding size will be a square of an int. Default: 0
+        global_pooling (bool): Whether to use the global pooling. If global_pooling = true,
+            kernel size and paddings will be ignored. Default: False
+        use_cudnn (bool): Only used in cudnn kernel, need install cudnn. Default: True
+        ceil_mode (bool): Whether to use the ceil function to calculate output height and width.
+            False is the default. If it is set to False, the floor function will be used. Default: False
+        exclusive (bool): Whether to exclude padding points in average pooling mode. Default: True
 
     Returns:
         Variable: The pooling result.
@@ -844,7 +840,7 @@ class FC(layers.Layer):
     Args:
         name_scope(str): The name of this class.
         size(int): The number of output units in this layer.
-        num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
+        num_flatten_dims (int): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
             into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
             tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
@@ -852,14 +848,14 @@ class FC(layers.Layer):
             the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
             form the second dimension of the final matrix (width of the matrix). For example, suppose
             `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
-            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1
+        param_attr (ParamAttr|list of ParamAttr|None): The parameter attribute for learnable
             parameters/weights of this layer.
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
-        act (str, default None): Activation to be applied to the output of this layer.
-        is_test(bool): A flag indicating whether execution is in test phase.
+        act (str|None): Activation to be applied to the output of this layer.
+        is_test(bool): A flag indicating whether execution is in test phase. Default: False
         dtype(str): Dtype used for weight
 
     Raises:
@@ -1019,15 +1015,15 @@ class BatchNorm(layers.Layer):
 
     Args:
         name_scope(str): The name of this class.
-        act(string, Default None): Activation type, linear|relu|prelu|...
-        is_test (bool, Default False): A flag indicating whether it is in
-            test phrase or not.
-        momentum(float, Default 0.9): The value used for the moving_mean and
+        act(str|None): Activation type, linear|relu|prelu|...
+        is_test (bool): A flag indicating whether it is in
+            test phrase or not. Default: False
+        momentum(float): The value used for the moving_mean and
             moving_var computation. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
-        epsilon(float, Default 1e-05): A value added to the denominator for
+        epsilon(float): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
@@ -1037,19 +1033,19 @@ class BatchNorm(layers.Layer):
              If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
-        data_layout(string, default NCHW): NCHW|NHWC
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        data_layout(string): NCHW|NHWC. Default: NCHW
+        in_place(bool): Make the input and output of batch norm reuse memory. Default: False
+        moving_mean_name(string|None): The name of moving_mean which store the global Mean. Default: None
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
-        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
-        use_global_stats(bool, Default False): Whether to use global mean and
+        fuse_with_relu (bool): if True, this OP performs relu after batch norm. Default: False
+        use_global_stats(bool): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
-            and variance are also used during train period.
-        trainable_statistics(bool, Default False): Whether to calculate mean and var in eval mode. In eval mode, when
-            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
+            and variance are also used during train period. Default: False
+        trainable_statistics(bool): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.Default: False
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -1057,10 +1053,13 @@ class BatchNorm(layers.Layer):
     Examples:
         .. code-block:: python
 
-          fc = fluid.FC('fc', size=200, param_attr='fc1.w')
-          hidden1 = fc(x)
-          batch_norm = fluid.BatchNorm("batch_norm", 10)
-          hidden2 = batch_norm(hidden1)
+          import paddle.fluid as fluid
+
+          with fluid.dygraph.guard():
+              fc = fluid.FC('fc', size=200, param_attr='fc1.w')
+              hidden1 = fc(x)
+              batch_norm = fluid.BatchNorm("batch_norm", 10)
+              hidden2 = batch_norm(hidden1)
     """
 
     def __init__(self,
@@ -1197,16 +1196,16 @@ class Embedding(layers.Layer):
     All the input variables are passed in as local variables to the LayerHelper constructor
 
     Args:
-        name_scope: See base class.
+        name_scope(str): The name of this class.
         size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
             of the dictionary of embeddings and the size of each embedding vector respectively.
-        is_sparse(bool): The flag indicating whether to use sparse update.
-        is_distributed(bool): Whether to run lookup table from remote parameter server.
+        is_sparse(bool): The flag indicating whether to use sparse update. Default: False
+        is_distributed(bool): Whether to run lookup table from remote parameter server. Default: False.
         padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
             Otherwise the given :attr:`padding_idx` indicates padding the output with zeros whenever lookup encounters
-            it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`.
-        param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+            it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`. Default: None.
+        param_attr(ParamAttr): Parameters for this layer. Default: None.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc. Default: 'float32'.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -1305,28 +1304,28 @@ class LayerNorm(layers.Layer):
     * :math:`b`: the trainable bias parameter.
 
     Args:
-        name_scope (str): See base class.
+        name_scope(str): The name of this class.
         scale(bool): Whether to learn the adaptive gain :math:`g` after
-            normalization. Default True.
+            normalization. Default: True.
         shift(bool): Whether to learn the adaptive bias :math:`b` after
-            normalization. Default True.
+            normalization. Default: True.
         begin_norm_axis(int): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-            Default 1.
+            Default: 1.
         epsilon(float): The small value added to the variance to prevent
-            division by zero. Default 1e-05.
+            division by zero. Default: 1e-05.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default None.
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default None.
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
         act(str): Activation to be applied to the output of layer normalizaiton.
-                  Default None.
+                  Default: None.
     Returns:
         Result after normalization
 
@@ -1420,7 +1419,7 @@ class GRUUnit(layers.Layer):
 
     if origin_mode is True, then the equation of a gru step is from paper
     `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1458,10 +1457,8 @@ class GRUUnit(layers.Layer):
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
     Args:
-        input (Variable): The fc transformed input value of current step.
-        name_scope (str): See base class.
-        hidden (Variable): The hidden value of gru unit from previous step.
-        size (integer): The input dimension value.
+        name_scope(str): The name of this class.
+        size (int): The input dimension value.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             hidden-hidden weight matrix. Note:
 
@@ -1483,11 +1480,11 @@ class GRUUnit(layers.Layer):
             attribute of ParamAttr, gru_unit will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
             is initialized zero. Default: None.
-        activation (string): The activation type for cell (actNode).
+        activation (str): The activation type for cell (actNode).
                              Default: 'tanh'
-        gate_activation (string): The activation type for gates (actGate).
+        gate_activation (str): The activation type for gates (actGate).
                                   Default: 'sigmoid'
-        dtype(string): The dtype of the layers
+        dtype(str): The dtype of the layers. Default: 'float32'
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values.
@@ -1578,7 +1575,7 @@ class NCE(layers.Layer):
     By default this operator uses a uniform distribution for sampling.
 
     Args:
-        name_scope (str): See base class.
+        name_scope(str): The name of this class.
         num_total_classes (int): Total number of classes in all samples
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
              of nce. If it is set to None or one attribute of ParamAttr, nce
@@ -1593,12 +1590,12 @@ class NCE(layers.Layer):
         sampler (str): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (float[]): A float[] with size=num_total_classes.
+        custom_dist (float[]|None): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
-                       default: None.
-        seed (int): The seed used in sampler. default: 0.
-        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
+                       Default: None.
+        seed (int): The seed used in sampler. Default: 0.
+        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
 
     Returns:
         Variable: The output nce loss.
@@ -1807,8 +1804,8 @@ class PRelu(layers.Layer):
         y = \max(0, x) + \\alpha * \min(0, x)
 
     Args:
-        name_scope (str): See base class.
-        mode (string): The mode for weight sharing. It supports all, channel
+        name_scope(str): The name of this class.
+        mode (str): The mode for weight sharing. It supports all, channel
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
@@ -1888,13 +1885,13 @@ class BilinearTensorProduct(layers.Layer):
      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-       name_scope (str): See base class.
+       name_scope(str): The name of this class.
        size (int): The dimension of this layer.
-       act (str, default None): Activation to be applied to the output of this layer.
-       name (str, default None): The name of this layer.
-       param_attr (ParamAttr, default None): The parameter attribute for the learnable w.
-           parameters/weights of this layer.
-       bias_attr (ParamAttr, default None): The parameter attribute for the bias
+       act (str): Activation to be applied to the output of this layer. Default: None.
+       name (str): The name of this layer. Default: None.
+       param_attr (ParamAttr): The parameter attribute for the learnable w.
+           parameters/weights of this layer. Default: None.
+       bias_attr (ParamAttr): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
            If it is set to None, the bias is initialized zero. Default: None.
 
@@ -2023,18 +2020,18 @@ class Conv2DTranspose(layers.Layer):
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
-        name_scope (str): See base class.
+        name_scope(str): The name of this class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
-            should follow the formula above.
+            should follow the formula above. Default: None.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
-            calculate filter_size.
+            calculate filter_size. Default: None.
         padding(int|tuple): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
@@ -2063,8 +2060,6 @@ class Conv2DTranspose(layers.Layer):
             library is installed. Default: True.
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
-        name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: True.
 
     Returns:
         Variable: The tensor variable storing the convolution transpose result.
@@ -2196,11 +2191,11 @@ class SequenceConv(layers.Layer):
     in the input parameters to the function.
 
     Args:
-        name_scope (str): See base class.
+        name_scope(str): The name of this class.
         num_filters (int): number of filters.
-        filter_size (int): the filter size (H and W).
-        filter_stride (int): stride of the filter.
-        padding (bool): if True, add paddings.
+        filter_size (int): the filter size (H and W). Default: 3.
+        filter_stride (int): stride of the filter. Default: 1.
+        padding (bool|None): if True, add paddings. Default: None
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -2212,8 +2207,6 @@ class SequenceConv(layers.Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
 
     Returns:
         Variable: output of sequence_conv
@@ -2282,15 +2275,16 @@ class RowConv(layers.Layer):
     More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
     Args:
-        name_scope (str): See base class.
+        name_scope(str): The name of this class.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
-            name, initializer etc.
-        act (str): Non-linear activation to be applied to output variable.
+            name, initializer etc. Default: None.
+        act (str): Non-linear activation to be applied to output variable. Default: None.
 
     Returns:
-        the output(Out) is a LodTensor, which supports variable time-length input sequences. The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
+        the output(Out) is a LodTensor, which supports variable time-length input sequences.
+        The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
 
     Examples:
         .. code-block:: python
@@ -2344,10 +2338,10 @@ class GroupNorm(layers.Layer):
         Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
         Args:
-            name_scope (str): See base class.
+            name_scope(str): The name of this class.
             groups(int): The number of groups that divided from channels.
             epsilon(float): The small value added to the variance to prevent
-                division by zero.
+                division by zero. Default: 1e-05.
             param_attr(ParamAttr|None): The parameter attribute for the learnable
                 scale :math:`g`. If it is set to False, no scale will be added to the output units.
                 If it is set to None, the bias is initialized one. Default: None.
@@ -2472,10 +2466,10 @@ class SpectralNorm(layers.Layer):
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Args:
-        name_scope (str): See base class.
-        dim(int): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer, default 0
-        power_iters(int): number of power iterations to calculate spectral norm, default 1
-        eps(float): epsilon for numerical stability in calculating norms
+        name_scope(str): The name of this class.
+        dim(int): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        power_iters(int): The number of power iterations to calculate spectral norm. Default: 1.
+        eps(float): The epsilon for numerical stability in calculating norms. Default: 1e-12.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -2549,14 +2543,14 @@ class TreeConv(layers.Layer):
 
 
         Args:
-            name_scope (str): See base class.
+            name_scope(str): The name of this class.
             output_size(int): output feature width
-            num_filters(int): number of filters, Default 1
-            max_depth(int): max depth of filters, Default 2
-            act(str): activation function, Default tanh
-            param_attr(ParamAttr): the parameter attribute for the filters, Default None
-            bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
-            name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
+            num_filters(int): number of filters, Default: 1.
+            max_depth(int): max depth of filters, Default: 2.
+            act(str): activation function, Default: tanh.
+            param_attr(ParamAttr): the parameter attribute for the filters, Default: None.
+            bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default: None.
+            name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default: None.
 
         Returns:
             out(Variable): (Tensor) The feature vector of subtrees. The shape of the output tensor is [max_tree_node_size, output_size, num_filters]. The output tensor could be a new feature vector for next tree convolution layers
