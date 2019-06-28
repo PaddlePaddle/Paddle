@@ -2156,6 +2156,9 @@ class LambOptimizer(AdamOptimizer):
         self.type = "lamb"
         self._weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
+        print(
+            "WARNING: The LAMB optimizer doesn't have official implementation "
+            "yet and is still in experimental.")
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
