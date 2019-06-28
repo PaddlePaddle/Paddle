@@ -248,9 +248,7 @@ Java_com_baidu_paddle_lite_PaddlePredictor_setInput__I_3I_3F(
       predictor->GetInput(static_cast<int>(offset));
   tensor->Resize(ddim);
   float *input = tensor->mutable_data<float>();
-  for (int i = 0; i < len; ++i) {
-    input[i] = buffer[i];
-  }
+  memcpy(input, buffer, sizeof(float) * len);
   return JNI_TRUE;
 }
 
@@ -272,9 +270,7 @@ Java_com_baidu_paddle_lite_PaddlePredictor_setInput__I_3I_3B(
       predictor->GetInput(static_cast<int>(offset));
   tensor->Resize(ddim);
   int8_t *input = tensor->mutable_data<int8_t>();
-  for (int i = 0; i < len; ++i) {
-    input[i] = (int8_t)buffer[i];
-  }
+  memcpy(input, buffer, sizeof(int8_t) * len);
 
   return JNI_TRUE;
 }
