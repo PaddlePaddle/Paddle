@@ -34,8 +34,10 @@ function cmake_x86 {
 }
 
 function cmake_opencl {
+    prepare_workspace
     # $1: ARM_TARGET_OS in "android" , "armlinux"
-    # $2: ARM_TARGET_ARCH_ABI in "arm64-v8a", "armeabi-v7a" ,"armeabi-v7a-hf"
+    # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+    # $3: ARM_TARGET_LANG in "gcc" "clang"
     cmake .. \
         -DLITE_WITH_OPENCL=ON \
         -DWITH_GPU=OFF \
@@ -46,9 +48,49 @@ function cmake_opencl {
         -DLITE_WITH_ARM=ON \
         -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON \
         -DWITH_TESTING=ON \
-        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2
+        -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
 }
 
+# $1: ARM_TARGET_OS in "android" , "armlinux"
+# $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
+# $3: ARM_TARGET_LANG in "gcc" "clang"
+function build_opencl {
+    os=$1
+    abi=$2
+    lang=$3
+
+    cur_dir=$(pwd)
+    if [[ ${os} == "armlinux" ]]; then
+        # TODO(hongming): enable compile armv7 and armv7hf on armlinux, and clang compile
+        if [[ ${lang} == "clang" ]]; then
+            echo "clang is not enabled on armlinux yet"
+            return 0
+        fi
+        if [[ ${abi} == "armv7hf" ]]; then
+            echo "armv7hf is not supported on armlinux yet"
+            return 0
+        fi
+        if [[ ${abi} == "armv7" ]]; then
+            echo "armv7 is not supported on armlinux yet"
+            return 0
+        fi
+    fi
+
+    if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
+        echo "android do not need armv7hf"
+        return 0
+    fi
+
+    build_dir=$cur_dir/build.lite.${os}.${abi}.${lang}.opencl
+    mkdir -p $build_dir
+    cd $build_dir
+
+    cmake_opencl ${os} ${abi} ${lang}
+    build $TESTS_FILE
+
+    # test publish inference lib
+    make publish_inference_lite
+}
 
 # This method is only called in CI.
 function cmake_x86_for_CI {
@@ -351,6 +393,20 @@ function arm_push_necessary_file {
     adb -s emulator-${port} push ${testpath} ${adb_work_dir}
 }
 
+function build_test_arm_opencl {
+    ########################################################################
+    cur=$PWD
+
+    # job 1
+    build_opencl "android" "armv8" "gcc"
+    cd $cur
+
+    # job 2
+    build_opencl "android" "armv7" "gcc"
+    cd $cur
+
+    echo "Done"
+}
 
 # We split the arm unittest into several sub-tasks to parallel and reduce the overall CI timetime.
 # sub-task1
@@ -398,17 +454,17 @@ function build_test_arm_subtask_armlinux {
     cur=$PWD
 
     # job 5
-    build_arm "armlinux" "armv8" "gcc" $port_armv8
+    build_arm "armlinux" "armv8" "gcc"
     test_arm "armlinux" "armv8" "gcc" $port_armv8
     cd $cur
 
     # job 6
-    build_arm "armlinux" "armv7" "gcc" $port_armv8
+    build_arm "armlinux" "armv7" "gcc"
     test_arm "armlinux" "armv7" "gcc" $port_armv8
     cd $cur
 
     # job 7
-    build_arm "armlinux" "armv7hf" "gcc" $port_armv8
+    build_arm "armlinux" "armv7hf" "gcc"
     test_arm "armlinux" "armv7hf" "gcc" $port_armv8
     cd $cur
 
@@ -532,7 +588,7 @@ function main {
                 shift
                 ;;
             cmake_opencl)
-                cmake_opencl $ARM_OS $ARM_ABI
+                cmake_opencl $ARM_OS $ARM_ABI $ARM_LANG
                 shift
                 ;;
             cmake_cuda)
@@ -541,6 +597,10 @@ function main {
                 ;;
             cmake_arm)
                 cmake_arm $ARM_OS $ARM_ABI $ARM_LANG
+                shift
+                ;;
+            build_opencl)
+                build_opencl $ARM_OS $ARM_ABI $ARM_LANG
                 shift
                 ;;
             build_arm)
@@ -552,7 +612,7 @@ function main {
                 shift
                 ;;
             test_arm)
-                build_arm $ARM_OS $ARM_ABI $ARM_LANG $ARM_PORT
+                test_arm $ARM_OS $ARM_ABI $ARM_LANG $ARM_PORT
                 shift
                 ;;
             test_arm_android)
@@ -569,6 +629,10 @@ function main {
                 ;;
             build_test_arm)
                 build_test_arm
+                shift
+                ;;
+            build_test_arm_opencl)
+                build_test_arm_opencl
                 shift
                 ;;
             build_test_arm_subtask_android)
