@@ -138,6 +138,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::memory> src_memory, dst_memory;
     std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd;
     std::shared_ptr<mkldnn::memory> pool_src_memory_p, pool_dst_memory_p;
+
     auto pool_p =
         std::static_pointer_cast<pooling_forward>(dev_ctx.GetBlob(key_pool_p));
     if (pool_p == nullptr) {
@@ -200,7 +201,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_src_mem_p));
       PADDLE_ENFORCE(pool_src_memory_p != nullptr,
                      "Fail to find pooling src mem_p in device context");
-      auto pool_dst_memory_p =
+      pool_dst_memory_p =
           std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_dst_mem_p));
       PADDLE_ENFORCE(pool_dst_memory_p != nullptr,
                      "Fail to find pooling dst mem_p in device context");

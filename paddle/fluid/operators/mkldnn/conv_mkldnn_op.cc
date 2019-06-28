@@ -220,8 +220,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline, is_test);
 
-    std::shared_ptr<mkldnn::memory> dst_memory_p;
-    std::shared_ptr<mkldnn::memory> user_residual_memory_p;
+    std::shared_ptr<mkldnn::memory> dst_memory_p, user_residual_memory_p;
 
     if (fuse_residual_conn) {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
