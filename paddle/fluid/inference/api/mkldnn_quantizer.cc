@@ -54,7 +54,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
         for (auto const& conn : connections) {
           for (const auto& var_name : conn.second) {
             // skip if scale already computed
-            if (scales_.find(var_name) != scales_.end()) return;
+            if (scales_.find(var_name) != scales_.end()) continue;
 
             auto* var = predictor_.sub_scope_->FindVar(var_name);
             PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
@@ -64,6 +64,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
 
             // force unsigned type if already know it
             bool is_unsigned = false;
+            bool compute_scale = true;
             if (is_output) {
               if (op->Type() == "conv2d") {
                 // output of conv2d with relu must be unsigned
@@ -81,29 +82,31 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
                                "output scales to infer if output is unsigned.");
                 if (scales_.find(input_var_name) != scales_.end()) {
                   scales_[var_name] = scales_[input_var_name];
-                  continue;
                 }
-              } else if ((op->Type() == "concat")) {
+                compute_scale = false;
+              } else if (op->Type() == "concat") {
                 // output of ops with unsigned input must be unsigned
                 is_unsigned = true;
-                double min = std::numeric_limits<double>::max();
+                double min_scale = std::numeric_limits<double>::max();
                 for (auto input_var_name : op->Input("X")) {
                   PADDLE_ENFORCE(
                       scales_.find(input_var_name) != scales_.end(),
                       "Input scales must be calculated before the "
                       "output scales to infer if output is unsigned.");
                   is_unsigned = is_unsigned && scales_[input_var_name].first;
-                  min = std::min(
-                      min, scales_[input_var_name].second.data<double>()[0]);
+                  min_scale = std::min(
+                      min_scale,
+                      scales_[input_var_name].second.data<double>()[0]);
                 }
                 auto scale_tensor = CreateScaleTensor();
-                scale_tensor.data<double>()[0] = min;
+                scale_tensor.data<double>()[0] = min_scale;
                 scales_[var_name] = {is_unsigned, scale_tensor};
+                compute_scale = false;
               }
             }
-
-            CalculateSingleScale(op->Type(), conn.first, var_name, *var_tensor,
-                                 is_unsigned);
+            if (compute_scale)
+              CalculateSingleScale(op->Type(), conn.first, var_name,
+                                   *var_tensor, is_unsigned);
           }
         }
       };
