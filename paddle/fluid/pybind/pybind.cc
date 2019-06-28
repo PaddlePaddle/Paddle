@@ -54,6 +54,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/executor_lite.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
@@ -366,6 +367,7 @@ PYBIND11_MODULE(core, m) {
       .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("memory_size", [](Tensor &self) { return self.memory_size(); })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
@@ -1528,6 +1530,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindNode(&m);
   BindInferenceApi(&m);
   BindDataset(&m);
+
+  py::module lite = m.def_submodule("lite", "submodule lite");
+  BindLite(&lite);
 }
 }  // namespace pybind
 }  // namespace paddle

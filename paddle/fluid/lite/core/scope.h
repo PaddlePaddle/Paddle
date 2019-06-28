@@ -27,6 +27,12 @@ namespace lite {
 class Scope final {
  public:
   Scope() {}
+  // delete below two functions to allow pybind to recognise it cannot make a
+  // copy
+  // link:
+  // https://stackoverflow.com/questions/53807248/pybind11-returning-a-pointer-to-a-container-of-unique-ptr
+  Scope(const Scope&) = delete;
+  Scope& operator=(const Scope&) = delete;
   ~Scope();
 
   Scope& NewScope() const;

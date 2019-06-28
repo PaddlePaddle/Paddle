@@ -15,11 +15,14 @@
 #pragma once
 #include <set>
 #include <string>
+#include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
+
+using FeedFetchList = std::vector<lite::Tensor>;
 
 class Variable {
  public:
@@ -40,7 +43,9 @@ class Variable {
   }
 
  private:
-  variant<int, float, std::string, lite::Tensor> blob_;
+  // variant<int, float, std::string, lite::Tensor> blob_;
+  variant<int, float, std::string, lite::Tensor, std::vector<lite::Tensor>>
+      blob_;
 };
 
 }  // namespace lite

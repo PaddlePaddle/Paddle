@@ -18,6 +18,7 @@ cc_library(concat_compute_x86 SRCS concat_compute.cc DEPS ${lite_kernel_deps} )
 cc_library(conv_compute_x86 SRCS conv_compute.cc DEPS ${lite_kernel_deps} blas im2col vol2col)
 cc_library(pool_compute_x86 SRCS pool_compute.cc DEPS ${lite_kernel_deps} pooling)
 cc_library(batch_norm_compute_x86 SRCS batch_norm_compute.cc DEPS ${lite_kernel_deps})
+cc_library(uniform_random_compute_x86 SRCS uniform_random_compute.cc DEPS ${lite_kernel_deps} )
 
 lite_cc_test(test_fc_compute_x86 SRCS fc_compute_test.cc DEPS fc_compute_x86)
 lite_cc_test(test_conv2d_compute_x86 SRCS conv_compute_test.cc DEPS conv_compute_x86)
@@ -47,6 +48,7 @@ set(x86_kernels
     conv_compute_x86
     pool_compute_x86
     batch_norm_compute_x86
-    )
-
-set(x86_kernels "${x86_kernels}" CACHE INTERNAL "x86 kernels")
+    uniform_random_compute_x86
+    sgd_compute_x86
+    CACHE INTERNAL "x86 kernels")
+    
