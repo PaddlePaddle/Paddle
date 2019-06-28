@@ -18,8 +18,8 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
-#include "paddle/fluid/lite/opencl/cl2_header.h"
 #include "paddle/fluid/lite/opencl/cl_image_converter.h"
+#include "paddle/fluid/lite/opencl/cl_include.h"
 
 namespace paddle {
 namespace lite {

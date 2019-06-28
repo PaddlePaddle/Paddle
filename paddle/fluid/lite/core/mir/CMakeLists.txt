@@ -1,13 +1,13 @@
-cc_library(mir_node SRCS node.cc DEPS framework_proto_lite)
-cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node program_lite)
-cc_library(mir_pass SRCS pass.cc DEPS mir_ssa_graph)
-cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph mir_passes)
-cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
+lite_cc_library(mir_node SRCS node.cc DEPS framework_proto_lite)
+lite_cc_library(mir_ssa_graph SRCS ssa_graph.cc DEPS mir_node program_lite)
+lite_cc_library(mir_pass SRCS pass.cc DEPS mir_ssa_graph)
+lite_cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph mir_passes)
+lite_cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
 
 add_subdirectory(fusion)
 add_subdirectory(elimination)
 
-cc_library(mir_passes
+lite_cc_library(mir_passes
   SRCS
       fusion/fc_fuse_pass.cc
       fusion/conv_elementwise_add_activation_fuse_pass.cc
@@ -28,7 +28,7 @@ cc_library(mir_passes
       runtime_context_assign_pass.cc
   DEPS mir_pass types_lite context_lite ${mir_fusers})
 
-#cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
+# lite_cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         #mir_ssa_graph scope_lite op_lite
         #fc_op_lite
         #${host_kernels}
@@ -68,7 +68,7 @@ lite_cc_library(pattern_matcher_high_api SRCS pattern_matcher_high_api.cc DEPS p
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     return()
 endif()
-cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
+lite_cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
 
 
 # TODO(wz) replace framework/proto to lite proto.
