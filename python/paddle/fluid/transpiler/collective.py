@@ -319,7 +319,7 @@ class LocalSGD(Collective):
                     idx + 2,
                     type='c_sync_calc_stream',
                     inputs={'X': param},
-                    outputs={'Out': patam},
+                    outputs={'Out': param},
                     attrs={self.op_role_key: optimize_collective_role})
                 ring_id = (ring_id + 1) % self.nrings
                 block._insert_op(
@@ -338,7 +338,7 @@ class LocalSGD(Collective):
             block.append_op(
                 type='c_sync_comm_stream',
                 inputs={'X': param},
-                outputs={'Out': patam},
+                outputs={'Out': param},
                 attrs={
                     'ring_id': ring_id,
                     self.op_role_key: optimize_collective_role
