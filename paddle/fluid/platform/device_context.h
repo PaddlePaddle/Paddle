@@ -378,9 +378,15 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-using Blob = std::unordered_map<std::string, std::shared_ptr<void>>;
-using KeyBlob = std::unordered_map<std::string, std::shared_ptr<Blob>>;
-using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+// Following three maps are used to cache MKLDNN primitives.
+// There relations are:
+// - BlobMap = Map<cur_thread_id, KeyBlob>
+// - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
+// - KeyBlob  = Map<blob_name, blob>
+// Where:
+using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
+using ShapeBlob = std::unordered_map<std::string, std::shared_ptr<KeyBlob>>;
+using BlobMap = std::unordered_map<int, std::shared_ptr<ShapeBlob>>;
 
 void set_cur_thread_id(int);
 int get_cur_thread_id(void);

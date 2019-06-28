@@ -401,8 +401,12 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 namespace {
-// Current thread's id.
+// Current thread's id. -1 means cache clearing mode.
 thread_local int cur_thread_id = 0;
+// Current data input shape string.
+// - If cur_thread_id != -1, it's a null string in default.
+// - Else, for a 4-dimention input [1, 3, 18, 128],
+//   cur_input_shape_str = 1-3-18-128- .
 thread_local std::string cur_input_shape_str = "";
 }
 
@@ -419,46 +423,46 @@ void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();
+  std::shared_ptr<ShapeBlob> sBlob = nullptr;
   std::shared_ptr<KeyBlob> pBlob = nullptr;
-  std::shared_ptr<Blob> blob = nullptr;
 
   int tid = platform::get_cur_thread_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
-  // Find KeyBlob for current thread
+  // Find ShapeBlob for current thread
   auto map_it = pMap->find(tid);
 
   if (map_it == pMap->end()) {
     // 1st time to set blob in current thread
-    pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
-    (*pMap)[tid] = pBlob;
+    sBlob = std::shared_ptr<ShapeBlob>(new ShapeBlob());
+    (*pMap)[tid] = sBlob;
     VLOG(2) << "SetBlob: tid=" << tid << ", add new tid\n";
   } else {
-    pBlob = map_it->second;
+    sBlob = map_it->second;
   }
 
+  // Find KeyBlob for current input shape
   std::string cur_input_shape_str = platform::get_cur_input_shape_str();
-  // Find Key in found (or newly created) KeyBlob
-  auto key_it = pBlob->find(cur_input_shape_str);
+  auto key_it = sBlob->find(cur_input_shape_str);
 
-  if (key_it == pBlob->end()) {
-    // tid = -1 means cache clearing mode, MKLDNN_CAP defines max blob capacity
-    if ((tid == -1) && (pBlob->size() > MKLDNN_CAP)) {
+  if (key_it == sBlob->end()) {
+    // tid = -1 means cache clearing mode, MKLDNN_CAP defines max pblob capacity
+    if ((tid == -1) && (sBlob->size() > MKLDNN_CAP)) {
       VLOG(2) << "tid=" << tid
-              << ", remove all head blob of shape: " << pBlob->begin()->first
-              << "\n";
-      pBlob->erase(pBlob->begin()->first);
+              << ", remove all head blob of shape: " << sBlob->begin()->first;
+      sBlob->erase(sBlob->begin()->first);
     }
-    blob = std::shared_ptr<Blob>(new Blob());
-    (*pBlob)[cur_input_shape_str] = blob;
+    pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
+    (*sBlob)[cur_input_shape_str] = pBlob;
   } else {
-    blob = key_it->second;
+    pBlob = key_it->second;
   }
+
   // Find Blob via name
-  auto blob_it = blob->find(name);
-  if (blob_it == blob->end()) {
-    (*blob)[name] = data;
+  auto blob_it = pBlob->find(name);
+  if (blob_it == pBlob->end()) {
+    (*pBlob)[name] = data;
   } else {
     blob_it->second = data;  // set data to existing blob
   }
@@ -470,34 +474,35 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
+  std::shared_ptr<ShapeBlob> sBlob = nullptr;
   std::shared_ptr<KeyBlob> pBlob = nullptr;
-  std::shared_ptr<Blob> blob = nullptr;
 
   int tid = platform::get_cur_thread_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
-  // Find KeyBlob for current thread firstly
+  // Find ShapeBlob for current thread firstly
   auto map_it = pMap->find(tid);
   if (map_it == pMap->end()) {
     VLOG(2) << "GetBlob: tid=" << tid << ", miss tid\n";
     return nullptr;
   }
   std::string cur_input_shape_str = platform::get_cur_input_shape_str();
-  pBlob = map_it->second;
+  sBlob = map_it->second;
 
-  auto pBlob_it = pBlob->find(cur_input_shape_str);
-  if (pBlob_it == pBlob->end()) {
+  // Find KeyBlob for current input shape secondly
+  auto sBlob_it = sBlob->find(cur_input_shape_str);
+  if (sBlob_it == sBlob->end()) {
     VLOG(2) << "GetBlob: tid=" << cur_input_shape_str
             << ", miss input_shape_str\n";
     return nullptr;
   }
-  blob = pBlob_it->second;
+  pBlob = sBlob_it->second;
 
   // Find Blob via name
-  auto key_it = blob->find(name);
+  auto key_it = pBlob->find(name);
 
-  if (key_it == blob->end()) {
+  if (key_it == pBlob->end()) {
     VLOG(2) << "GetBlob tid=" << tid << ", miss blob=" << name << "\n";
     return nullptr;
   }
