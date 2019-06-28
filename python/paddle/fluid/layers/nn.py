@@ -11963,7 +11963,7 @@ def sign(x):
     return out
 
 
-def unique(x):
+def unique(x, dtype='int32'):
     """
     **unique** 
 
@@ -11971,15 +11971,18 @@ def unique(x):
 
     Args:
         x(Variable): A 1-D input tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
 
     Returns:
         tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
-            `index` is an int32 index tensor pointing to `out`, by which user can recover the original `x` tensor.
+            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor.
 
     Examples:
         .. code-block:: python
 
-             # x is a tensor [2, 3, 3, 1, 5, 3]
+             import numpy as np
+             import paddle.fluid as fluid
+             x = fluid.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
              out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
     """
 
@@ -11987,12 +11990,12 @@ def unique(x):
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    index = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT32)
+    index = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type='unique',
         inputs={'X': x},
+        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
         outputs={'Out': [out],
                  'Index': [index]})
 

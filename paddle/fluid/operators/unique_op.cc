@@ -41,10 +41,11 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input tensor. It should be a 1-D tensor.");
+    AddAttr<int>("dtype", "data type for output index");
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",
               "An index tensor pointing to unique subsequence, which has "
-              "identical shape with input tensor and int32 dtype.");
+              "identical shape with input tensor and int64 dtype.");
     AddComment(R"DOC(
     Return a unique subsequence for 1-D input tensor, and an index tensor pointing to this unique subsequence
 )DOC");

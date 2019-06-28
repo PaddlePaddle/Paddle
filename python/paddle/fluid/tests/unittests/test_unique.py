@@ -31,6 +31,7 @@ class TestUniqueOp(OpTest):
 
     def init_config(self):
         self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64'), }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
             'Out': np.array(
                 [2, 3, 1, 5], dtype='int64'),
@@ -42,12 +43,29 @@ class TestUniqueOp(OpTest):
 class TestOne(TestUniqueOp):
     def init_config(self):
         self.inputs = {'X': np.array([2], dtype='int64'), }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
             'Out': np.array(
                 [2], dtype='int64'),
             'Index': np.array(
                 [0], dtype='int32')
         }
+
+
+class TestRandom(TestUniqueOp):
+    def init_config(self):
+        self.inputs = {'X': np.random.randint(0, 100, (150, ), dtype='int64')}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
+        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
+                                                       True)
+        np_tuple = zip(np_unique, np_index)
+        np_tuple.sort(key=lambda x: x[1])
+        target_out = np.array([i[0] for i in np_tuple], dtype='int64')
+        target_index = np.array(
+            [list(target_out).index(i) for i in self.inputs['X']],
+            dtype='int64')
+
+        self.outputs = {'Out': target_out, 'Index': target_index}
 
 
 if __name__ == "__main__":
