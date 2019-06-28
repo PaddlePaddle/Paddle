@@ -42,9 +42,16 @@ class TestRank2Tensor(TestSizeOp):
     def config(self):
         self.shape = [2, 3]
 
+
+class TestRank3Tensor(TestSizeOp):
+    def config(self):
+        self.shape = [2, 3, 100]
+
+
 class TestLargeTensor(TestSizeOp):
     def config(self):
         self.shape = [2**10]
+
 
 if __name__ == '__main__':
     unittest.main()
