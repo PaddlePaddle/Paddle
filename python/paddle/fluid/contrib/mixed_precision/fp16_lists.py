@@ -12,6 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
+__all__ = ["AutoMixedPrecisionLists"]
+
+
+class AutoMixedPrecisionLists(object):
+    """
+    AutoMixedPrecisionLists is a class for black/white list. It can update
+    pre-defined black list and white list according to users' custom black
+    white lists. The lists are used for an algorithm which determines op's
+    exectuion mode (fp32 or fp16).
+
+    Args:
+        custom_white_list (set): Users' custom white list.
+        custom_black_list (set): Users' custom black list.
+    """
+
+    def __init__(self, custom_white_list=None, custom_black_list=None):
+        self._custom_white_list = custom_white_list
+        self._custom_black_list = custom_black_list
+        self.white_list = copy.copy(white_list)
+        self.black_list = copy.copy(black_list)
+        self.gray_list = copy.copy(gray_list)
+        self._update_list()
+
+    def _update_list(self):
+        """
+        Update black and white list according to users' custom list.
+        """
+        if self._custom_white_list:
+            for op_name in self._custom_white_list:
+                if op_name in self.black_list:
+                    self.black_list.remove(op_name)
+                self.white_list.add(op_name)
+        if self._custom_black_list:
+            for op_name in self._custom_black_list:
+                if op_name in self.white_list:
+                    self.white_list.remove(op_name)
+                self.black_list.add(op_name)
+
+
 # The three sets listed below are changed dynamiclly. They don't contain all  
 # paddle ops currently.
 
