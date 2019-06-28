@@ -40,6 +40,12 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(False)
 
         try:
+            dataset = fluid.DatasetFactory().create_dataset(
+                "FileInstantDataset")
+        except:
+            self.assertTrue(False)
+
+        try:
             dataset = fluid.DatasetFactory().create_dataset("MyOwnDataset")
             self.assertTrue(False)
         except:
