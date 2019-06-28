@@ -15,7 +15,6 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <vector>
-#include "../../framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
