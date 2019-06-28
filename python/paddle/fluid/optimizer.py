@@ -2077,30 +2077,20 @@ class LambOptimizer(AdamOptimizer):
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
     accuracy, which supports adaptive element-wise updating and accurate layer-wise 
-    correction. For more information, please refer to `Reducing BERT Pre-Training 
-    Time from 3 Days to 76 Minutes <https://arxiv.org/abs/1904.00962>`_ .
+    correction. For more information, please refer to `Large Batch Optimization for 
+    Deep Learning: Training BERT in 76 minutes <https://arxiv.org/abs/1904.00962>`_ .
 
     The updating of parameters follows:
 
     ..  math::
 
-	m_t^l & = \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \\
 
-	v_t^l & = \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
+        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \\
 
-	\\widehat{m}_t^l & = m_t^l/(1 - \\beta_1^t)
+        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \\
 
-	\\widehat{v}_t^l & = v_t^l/(1 - \\beta_2^t)
-	
-        r_1 & = \\left \| w_{t-1}^l \\right \|_2
-	
-        r_2 & = \\left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \\right \|_2
-
-	r & = r_1 / r_2
-
-	\\eta^l & = r \\times \\eta
-
-	w_t^l & = w_{t-1}^l -\\eta ^l \\times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
+        w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
 
     where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the 
@@ -2114,8 +2104,10 @@ class LambOptimizer(AdamOptimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): A small float value for numerical stability.
-        regularization: A Regularizer, such as
+        regularization (Regularizer): A Regularizer, such as
                         fluid.regularizer.L1DecayRegularizer.
+        exclude_from_weight_decay_fn (function): Exclude a parameter from weight 
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
         name (str|None): An optional name prefix.
 
     Examples:
@@ -2127,11 +2119,16 @@ class LambOptimizer(AdamOptimizer):
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
 
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002)
+            def exclude_fn(param):
+                return param.name.endswith('.b_0')
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
+                                             exclude_from_weight_decay_fn=exclude_fn)
             optimizer.minimize(cost)
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
+    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -2142,6 +2139,7 @@ class LambOptimizer(AdamOptimizer):
                  beta2=0.999,
                  epsilon=1e-6,
                  regularization=None,
+                 exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
         assert lamb_weight_decay is not None
@@ -2157,6 +2155,10 @@ class LambOptimizer(AdamOptimizer):
             name=name)
         self.type = "lamb"
         self._weight_decay = lamb_weight_decay
+        self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
+        print(
+            "WARNING: The LAMB optimizer doesn't have official implementation "
+            "yet and is still in experimental.")
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2169,6 +2171,12 @@ class LambOptimizer(AdamOptimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
+
+        if self._exclude_from_weight_decay_fn is not None \
+            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+            weight_decay = 0.0
+        else:
+            weight_decay = self._weight_decay
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -2191,7 +2199,7 @@ class LambOptimizer(AdamOptimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "weight_decay": self._weight_decay
+                "weight_decay": weight_decay
             },
             stop_gradient=True)
 
