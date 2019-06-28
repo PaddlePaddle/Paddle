@@ -114,7 +114,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
-  CP_MEMBER(mkldnn_thread_id_);
+  CP_MEMBER(mkldnn_input_shape_cache_size_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -151,24 +151,16 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   Update();
 }
 
-void AnalysisConfig::EnableMKLDNN() {
+void AnalysisConfig::EnableMKLDNN(int mkldnn_input_shape_cache_size) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_ = true;
+  mkldnn_input_shape_cache_size_ = mkldnn_input_shape_cache_size;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
   use_mkldnn_ = false;
 #endif
 
   Update();
-}
-
-void AnalysisConfig::SetMKLDNNThreadId(int id) {
-#ifdef PADDLE_WITH_MKLDNN
-  mkldnn_thread_id_ = id;
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
-  mkldnn_thread_id_ = 0;
-#endif
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {

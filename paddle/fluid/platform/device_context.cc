@@ -408,7 +408,10 @@ thread_local int cur_thread_id = 0;
 // - Else, for a 4-dimention input [1, 3, 18, 128],
 //   cur_input_shape_str = 1-3-18-128- .
 thread_local std::string cur_input_shape_str = "";
-}
+// the cache size of different input shapes for MKLDNN.
+// Default 1 means fixed input shape, not dynamic shape.
+thread_local int cur_input_shape_cache_size = 1;
+}  // namespace
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
@@ -416,7 +419,10 @@ void set_cur_input_shape_str(std::string input_shape_str) {
   cur_input_shape_str = input_shape_str;
 }
 std::string get_cur_input_shape_str(void) { return cur_input_shape_str; }
-#define MKLDNN_CAP 10
+void set_cur_input_shape_cache_size(int input_shape_cache_size) {
+  cur_input_shape_cache_size = input_shape_cache_size;
+}
+int get_cur_input_shape_cache_size(void) { return cur_input_shape_cache_size; }
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 
@@ -447,8 +453,9 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   auto key_it = sBlob->find(cur_input_shape_str);
 
   if (key_it == sBlob->end()) {
-    // tid = -1 means cache clearing mode, MKLDNN_CAP defines max pblob capacity
-    if ((tid == -1) && (sBlob->size() > MKLDNN_CAP)) {
+    // tid = -1 means cache clearing mode, cur_input_shape_cache_size defines
+    // max pblob capacity
+    if ((tid == -1) && (sBlob->size() > cur_input_shape_cache_size)) {
       VLOG(2) << "tid=" << tid
               << ", remove all head blob of shape: " << sBlob->begin()->first;
       sBlob->erase(sBlob->begin()->first);

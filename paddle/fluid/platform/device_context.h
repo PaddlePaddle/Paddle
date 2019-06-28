@@ -392,6 +392,8 @@ void set_cur_thread_id(int);
 int get_cur_thread_id(void);
 void set_cur_input_shape_str(std::string input_shape_str);
 std::string get_cur_input_shape_str(void);
+void set_cur_input_shape_cache_size(int input_shape_cache_size);
+int get_cur_input_shape_cache_size(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:

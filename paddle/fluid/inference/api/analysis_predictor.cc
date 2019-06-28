@@ -195,13 +195,16 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 
 void AnalysisPredictor::MkldnnPreRun(const std::vector<PaddleTensor> &inputs) {
   // TODO(intel, luotao): will refactor this code later
-  // Make sure it not conflict with AnalysisPredictor::SetMkldnnthreadid case
+  // Make sure it not conflict with AnalysisPredictor::SetMkldnnThreadID case
   VLOG(2) << "AnalysisPredictor::Run get_cur_thread_id="
-          << paddle::platform::get_cur_thread_id()
-          << ", mkldnn_thread_id_=" << config_.mkldnn_thread_id_ << "\n";
-  if (paddle::platform::get_cur_thread_id() == 0)
-    paddle::platform::set_cur_thread_id(config_.mkldnn_thread_id_);
+          << paddle::platform::get_cur_thread_id();
   // -1 means cache cleaning mode.
+  if (paddle::platform::get_cur_thread_id() == 0 &&
+      config_.mkldnn_input_shape_cache_size_ > 1) {
+    paddle::platform::set_cur_thread_id(-1);
+    paddle::platform::set_cur_input_shape_cache_size(
+        config_.mkldnn_input_shape_cache_size_);
+  }
   // Set current_input_shape for caching dynamic shape.
   // Only used when batch_size=1.
   if (paddle::platform::get_cur_thread_id() == -1) {
