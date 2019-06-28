@@ -848,7 +848,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp36-cp36m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -874,7 +873,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp37-cp37m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -897,7 +895,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     else
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -913,7 +910,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     fi
 
