@@ -170,11 +170,12 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto multi_input = ctx.MultiInput<Tensor>("X");
     EnforceLayouts(multi_input);
     Tensor* output = ctx.Output<Tensor>("Out");
-    int64_t concat_axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-    auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    // int64_t concat_axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    //    auto& dev_ctx =
+    //        ctx.template
+    //        device_context<paddle::platform::MKLDNNDeviceContext>();
     auto place = GetCpuPlace(ctx);
-
+#if 0
     memory::data_type dt =
         paddle::framework::ToMKLDNNDataType(multi_input[0]->type());
 
@@ -218,9 +219,10 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     stream(stream::kind::eager).submit({*concat_p}).wait();
-
+#endif
+    output->mutable_data<T>(place);
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetDstMemFormat(*concat_pd));
+    output->set_format((memory::format)7);
   }
 };
 }  // namespace operators
