@@ -1,0 +1,37 @@
+CXX_DEFINES = -DARM_WITH_OMP -DHPPL_STUB_FUNC -DLITE_WITH_ARM -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK \
+	      -DLITE_WITH_LINUX -DPADDLE_DISABLE_PROFILER -DPADDLE_NO_PYTHON -DPADDLE_WITH_TESTING
+LDFLAGS = -latomic -pthread -ldl
+
+SYSROOT_COMPLILE = --sysroot=/opt/android-ndk-r17c/sysroot
+
+THIRD_PARTY_LIBS = ../../../third_party/glog/lib/libglog.a \
+                   ../../../third_party/gflags/lib/libgflags.a
+
+SYSTEM_INCLUDES = -I/opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/include \
+	          -I/opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++abi/include \
+	          -I/opt/android-ndk-r17c/sources/android/support/include \
+	          -I/opt/android-ndk-r17c/sysroot/usr/include \
+
+THIRD_PARTY_INCLUDES = -I../../../third_party/gflags/include \
+	               -I../../../third_party/glog/include
+
+ifeq ($(ARM_ABI), arm8)
+    CC = /opt/android-ndk-r17c/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-g++ 
+    CXX_FLAGS = -funwind-tables -no-canonical-prefixes -D__ANDROID_API__=22 -fexceptions -frtti  -std=c++11 -fopenmp -O3 -DNDEBUG -fPIE
+    CXXFLAGS_LINK = $(CXX_FLAGS) -pie -Wl,--gc-sections 
+    SYSROOT_LINK = --sysroot=/opt/android-ndk-r17c/platforms/android-24/arch-arm64
+    SYSTEM_LIBS = /opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/libs/arm64-v8a/libc++_static.a \
+                  /opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/libs/arm64-v8a/libc++abi.a
+    INCLUDES = $(SYSTEM_INCLUDES) -I/opt/android-ndk-r17c/sysroot/usr/include/aarch64-linux-android $(THIRD_PARTY_INCLUDES)
+else
+    CC = /opt/android-ndk-r17c/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-g++
+    CXX_FLAGS = -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=softfp -funwind-tables -no-canonical-prefixes \
+		-D__ANDROID_API__=22 -fexceptions -frtti  -std=c++11 -fopenmp -O3 -DNDEBUG -fPIE  
+    CXXFLAGS_LINK = $(CXX_FLAGS) -pie -Wl,--fix-cortex-a8 -Wl,--gc-sections -Wl,-z,nocopyreloc
+    SYSROOT_LINK = --sysroot=/opt/android-ndk-r17c/platforms/android-22/arch-arm
+    SYSTEM_LIBS = /opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_static.a \
+                  /opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++abi.a \
+                  /opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libandroid_support.a \
+                  /opt/android-ndk-r17c/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libunwind.a
+    INCLUDES = $(SYSTEM_INCLUDES) -I/opt/android-ndk-r17c/sysroot/usr/include/arm-linux-androideabi $(THIRD_PARTY_INCLUDES)
+endif
