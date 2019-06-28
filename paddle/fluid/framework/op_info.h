@@ -15,10 +15,8 @@ limitations under the License. */
 #pragma once
 #include <functional>
 #include <map>
-#include <memory>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
@@ -38,13 +36,13 @@ class InferShapeBase {
 struct OpInfo {
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
-  std::shared_ptr<proto::OpProto> proto_;
-  std::shared_ptr<OpAttrChecker> checker_;
+  proto::OpProto* proto_{nullptr};
+  OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
-  OpInfo() : proto_{nullptr}, checker_{nullptr} {}
+
   // NOTE(zjl): this flag is added to check whether
   // the grad maker is the default one.
   bool use_default_grad_op_desc_maker_{false};
@@ -72,7 +70,7 @@ struct OpInfo {
     return grad_op_maker_;
   }
 
-  const std::shared_ptr<OpAttrChecker> Checker() const { return checker_; }
+  const OpAttrChecker* Checker() const { return checker_; }
 
   const InferNoNeedBufferVarsFN& NoNeedBufferVarsInferer() const {
     return infer_no_need_buffer_vars_;

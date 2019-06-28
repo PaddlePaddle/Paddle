@@ -57,9 +57,8 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
-void OpProtoAndCheckerMaker::operator()(
-    std::shared_ptr<proto::OpProto> proto,
-    std::shared_ptr<OpAttrChecker> attr_checker) {
+void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
+                                        OpAttrChecker* attr_checker) {
   proto_ = proto;
   op_checker_ = attr_checker;
   Make();

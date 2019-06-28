@@ -13,9 +13,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <string>
-#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -54,8 +52,7 @@ class OpProtoAndCheckerMaker {
   static const char *OpNamescopeAttrName() { return "op_namescope"; }
   static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
 
-  void operator()(std::shared_ptr<proto::OpProto> proto,
-                  std::shared_ptr<OpAttrChecker> attr_checker);
+  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
   virtual void Make() = 0;
 
@@ -105,8 +102,9 @@ class OpProtoAndCheckerMaker {
  private:
   void CheckNoDuplicatedInOutAttrs();
   void Validate();
-  std::shared_ptr<proto::OpProto> proto_;
-  std::shared_ptr<OpAttrChecker> op_checker_;
+
+  proto::OpProto *proto_;
+  OpAttrChecker *op_checker_;
   bool validated_{false};
 };
 }  // namespace framework

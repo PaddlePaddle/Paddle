@@ -25,10 +25,10 @@ class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
 };
 
 TEST(ProtoMaker, DuplicatedAttr) {
-  auto op_proto = std::make_shared<paddle::framework::proto::OpProto>();
-  auto op_checker = std::make_shared<paddle::framework::OpAttrChecker>();
+  paddle::framework::proto::OpProto op_proto;
+  paddle::framework::OpAttrChecker op_checker;
   TestAttrProtoMaker proto_maker;
-  ASSERT_THROW(proto_maker(op_proto, op_checker),
+  ASSERT_THROW(proto_maker(&op_proto, &op_checker),
                paddle::platform::EnforceNotMet);
 }
 
@@ -41,9 +41,9 @@ class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
 };
 
 TEST(ProtoMaker, DuplicatedInOut) {
-  auto op_proto = std::make_shared<paddle::framework::proto::OpProto>();
-  auto op_checker = std::make_shared<paddle::framework::OpAttrChecker>();
+  paddle::framework::proto::OpProto op_proto;
+  paddle::framework::OpAttrChecker op_checker;
   TestAttrProtoMaker proto_maker;
-  ASSERT_THROW(proto_maker(op_proto, op_checker),
+  ASSERT_THROW(proto_maker(&op_proto, &op_checker),
                paddle::platform::EnforceNotMet);
 }
