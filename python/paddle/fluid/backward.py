@@ -71,6 +71,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
             op_desc.set_block_attr(name, val.desc)
         else:
             op_desc._set_attr(name, val)
+    op_desc.check_attrs()
     return op_desc
 
 

@@ -34,6 +34,7 @@ double time_diff(Time t1, Time t2) {
 void Run(const char* model_dir, int repeat) {
 #ifdef LITE_WITH_ARM
   DeviceInfo::Init();
+  DeviceInfo::Global().SetRunMode(LITE_POWER_HIGH, 1);
 #endif
   lite::Predictor predictor;
   std::vector<Place> valid_places({
@@ -52,6 +53,7 @@ void Run(const char* model_dir, int repeat) {
     data[i] = 1;
   }
 
+  for (int i = 0; i < 10; i++) predictor.Run();
   auto time1 = time();
   for (int i = 0; i < repeat; i++) predictor.Run();
   auto time2 = time();
@@ -60,10 +62,16 @@ void Run(const char* model_dir, int repeat) {
 
   auto* out = predictor.GetOutput(0);
   LOG(INFO) << out << " memory size " << out->data_size();
-  LOG(INFO) << "out " << out->data<float>()[0];
-  LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
   LOG(INFO) << "out data size: " << out->data_size();
+  /*
+  float sum = 0.;
+  for (int i = 0; i < out->data_size(); i++) {
+     LOG(INFO) << "out " << out->data<float>()[i];
+     sum += out->data<float>()[i];
+  }
+  LOG(INFO) << sum;
+  */
 }
 
 }  // namespace lite

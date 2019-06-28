@@ -25,11 +25,11 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class SGDOpLite : public OpLite {
+class UniformRandomOpLite : public OpLite {
  public:
-  SGDOpLite() {}
+  UniformRandomOpLite() {}
 
-  explicit SGDOpLite(const std::string &type) : OpLite(type) {}
+  explicit UniformRandomOpLite(const std::string &type) : OpLite(type) {}
 
   bool CheckShape() const override;
 
@@ -39,10 +39,10 @@ class SGDOpLite : public OpLite {
 
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override;
 
-  std::string DebugString() const override { return "sgd"; }
+  std::string DebugString() const override { return "uniform_random"; }
 
  private:
-  mutable SGDParam param_;
+  mutable UniformRandomParam param_;
 };
 
 }  // namespace operators

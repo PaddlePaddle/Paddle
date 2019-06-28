@@ -68,6 +68,7 @@ struct SubGradDY {
   T operator()(T x, T y, T out, T dout) const { return -dout; }
 };
 
+#ifdef LITE_WITH_X86
 template <typename T>
 class ElementwiseSubGradCompute
     : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
@@ -79,20 +80,25 @@ class ElementwiseSubGradCompute
     CHECK(context.x86_device_context());
 
     param.X_grad->template mutable_data<T>();
-    param.Y_grad->template mutable_data<T>();
     // skip out, x, y
     auto dout = param.Out_grad->raw_tensor();
     auto dx = param.X_grad->raw_tensor();
-    auto dy = param.Y_grad->raw_tensor();
+
+    framework::Tensor* dy = nullptr;
+    if (param.Y_grad) {
+      param.Y_grad->template mutable_data<T>();
+      dy = &param.Y_grad->raw_tensor();
+    }
     auto& skip = dout;
     paddle::operators::ElemwiseExplicitGradCompute<
         platform::CPUDeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
         *context.x86_execution_context(), skip, skip, skip, dout, param.axis,
-        &dx, &dy, SubGradDX<T>(), SubGradDY<T>());
+        &dx, dy, SubGradDX<T>(), SubGradDY<T>());
   }
 
   virtual ~ElementwiseSubGradCompute() = default;
 };
+#endif
 
 template <typename T>
 class ElementwiseAddCompute
