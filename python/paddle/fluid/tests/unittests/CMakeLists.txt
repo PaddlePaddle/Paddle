@@ -165,10 +165,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_
 py_test_modules(test_warpctc_op MODULES test_warpctc_op)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
-py_test_modules(test_basic_gru_api MODULES test_basic_gru_api ENVS MKL_CBWR=COMPATIBLE)
-py_test_modules(test_basic_gru_unit_op MODULES test_basic_gru_unit_op ENVS MKL_CBWR=COMPATIBLE)
-py_test_modules(test_basic_lstm_api MODULES test_basic_lstm_api ENVS MKL_CBWR=COMPATIBLE)
-py_test_modules(test_basic_lstm_unit_op MODULES test_basic_lstm_unit_op ENVS MKL_CBWR=COMPATIBLE)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
