@@ -207,6 +207,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'shard_index',
 ]
 
 kIgnoreIndex = -100
@@ -6643,13 +6644,17 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     return loss
 
 
-def one_hot(input, depth):
+def one_hot(input, depth, allow_out_of_range=False):
     """
     This layer creates the one-hot representations for input indices.
 
     Args:
         input(Variable): Input indices, last dimension must be 1.
         depth(scalar): An interger defining the depth of the one-hot dimension.
+        allow_out_of_range(bool): A bool value indicating whether the input
+            indices could be out of range [0, depth). When input indices are
+            out of range, exceptions is raised if allow_out_of_range is False,
+            or zero-filling representations is created if it is set True
 
     Returns:
         Variable: The one-hot representations of input.
@@ -12516,3 +12521,87 @@ def deformable_roi_pooling(input,
             "trans_std": trans_std
         })
     return output
+
+
+def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
+    """
+    This layer creates the sharded index for input. This layers is used in
+    model- and data- parallel mixed training generally, in which the index
+    data (usually the label) should be recaculated in each trainer according
+    to 
+
+    .. math::
+        
+        assert index_range % nshards == 0
+
+        shard_range = index_range / nshards
+
+        y = x % shard_range if x / shard_range == shard_id else ignore_value
+
+    We take the distributed one-hot representation to show what this layer is
+    used for. The distributed one-hot representation is seperated into multiple
+    shards, and each shard is filling zeros except the one with the index
+    inside. In order to create these sharded representation in each trainer,
+    the original index should be recalculated (i.e. sharded) before.
+
+    Examples:
+    
+        X is a Tensor of integer values:
+          X.shape = [4, 1]
+          X.data = [[1], [6], [12], [19]]
+        
+        suppose index_range = 20 and nshards = 2, then we get shard_range = 10
+        
+        if shard_id == 0, we get the Out:
+          Out.shape = [4, 1]
+          Out.data = [[1], [6], [-1], [-1]]
+        
+        if shard_id == 1, we get the Out:
+          Out.shape = [4, 1]
+          Out.data = [[-1], [-1], [2], [9]]
+    
+        the default `ignore_value` -1 is used in this example.
+    
+    Args:
+        input(Variable): Input indices, last dimension must be 1.
+        index_range(scalar): An interger defining the range of the index.
+        nshards(scalar): The number of shards
+        shard_id(scalar): The index of the current shard
+        ignore_value(scalar): An ingeter value out of sharded index range
+
+    Returns:
+        Variable: The shard index of input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            shard_label = fluid.layers.shard_index(input=label,
+                                                   index_range=20,
+                                                   nshards=2,
+                                                   shard_id=0)
+    """
+    op_type = 'shard_index'
+    helper = LayerHelper(op_type, **locals())
+    if index_range % nshards != 0:
+        raise ValueError(
+            'The index_range(%d) cannot be evenly divided by nshards(%d)' %
+            (index_range, nshards))
+    if shard_id < 0 or shard_id >= nshards:
+        raise ValueError('The shard_id(%d) should be in [0, %d)' %
+                         (shard_id, nshards))
+
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [input]},
+        outputs={'Out': out},
+        attrs={
+            'index_range': index_range,
+            'nshards': nshards,
+            'shard_id': shard_id,
+            'ignore_value': ignore_value
+        },
+        stop_gradient=True)
+    return out
