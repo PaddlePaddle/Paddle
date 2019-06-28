@@ -34,6 +34,7 @@ SET_ATTR_IMPL(bool, BOOLEAN);
 SET_ATTR_IMPL(std::vector<int>, INTS);
 SET_ATTR_IMPL(std::vector<float>, FLOATS);
 SET_ATTR_IMPL(std::vector<std::string>, STRINGS);
+SET_ATTR_IMPL(std::vector<int64_t>, LONGS);
 
 std::pair<OpDesc::attrs_t::const_iterator, OpDesc::attr_types_t::const_iterator>
 FindAttr(const cpp::OpDesc& desc, const std::string& name) {

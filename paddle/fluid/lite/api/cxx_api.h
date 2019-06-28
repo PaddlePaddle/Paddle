@@ -24,6 +24,10 @@
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 
+#ifdef LITE_WITH_X86
+#include "paddle/fluid/framework/program_desc.h"
+#endif
+
 namespace paddle {
 namespace lite {
 
@@ -62,6 +66,15 @@ class Predictor {
 
   // This method is disabled in mobile, for unnecessary dependencies required.
   void SaveModel(const std::string& dir);
+
+#ifdef LITE_WITH_X86
+  void Run(const std::vector<framework::Tensor>& tensors) {
+    FeedVars(tensors);
+    program_->Run();
+  }
+
+  void FeedVars(const std::vector<framework::Tensor>& tensors);
+#endif
 
  private:
   Optimizer optimizer_;
@@ -104,6 +117,16 @@ class CXXTrainer {
     main_program_executor_.Build(desc, preferred_place_, valid_places_);
     return main_program_executor_;
   }
+
+#ifdef LITE_WITH_X86
+  Predictor& BuildMainProgramExecutor(framework::ProgramDesc& desc) {  // NOLINT
+    return BuildMainProgramExecutor(*desc.Proto());
+  }
+
+  void RunStartupProgram(framework::ProgramDesc& desc) {  // NOLINT
+    RunStartupProgram(*desc.Proto());
+  }
+#endif
 
   // Run the startup program. It just executes once, no cache needed.
   void RunStartupProgram(const framework::proto::ProgramDesc& desc,

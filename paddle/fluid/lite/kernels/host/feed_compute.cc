@@ -29,7 +29,7 @@ class FeedCompute
     auto &param = Param<operators::FeedParam>();
     VLOG(4) << "feed_list.size: " << param.feed_list->size();
     VLOG(4) << "col " << param.col;
-    const lite::Tensor &feed_item = (*param.feed_list)[0];
+    const lite::Tensor &feed_item = (*param.feed_list)[param.col];
     param.out->ShareDataWith(feed_item);
   }
 };

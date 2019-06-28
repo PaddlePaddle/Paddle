@@ -72,6 +72,21 @@ class ActivationGradOp : public OpLite {
 
     param_.Out_grad = GetVar<lite::Tensor>(scope, Out_grad_name);
     param_.X_grad = GetMutableVar<Tensor>(scope, X_grad_name);
+
+    if (opdesc.HasInput("X")) {
+      auto X_name = opdesc.Input("X").front();
+      param_.X = GetVar<lite::Tensor>(scope, X_name);
+    } else {
+      param_.X = param_.X_grad;
+    }
+
+    if (opdesc.HasInput("Out")) {
+      auto Out_name = opdesc.Input("Out").front();
+      param_.Out = GetVar<lite::Tensor>(scope, Out_name);
+    } else {
+      param_.Out = param_.Out_grad;
+    }
+
     return true;
   }
 
