@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <Eigen/Core>
+#include <arm_neon.h>
 #include <cmath>
 
 #include "paddle/fluid/lite/arm/math/activation.h"
@@ -319,36 +319,6 @@ inline float32x4_t pow_ps(float32x4_t a, float32x4_t b) {
 
 template <typename T>
 void fill_bias_fc(T* tensor, const T* bias, const int num, const int channel);
-
-template <typename T>
-void mul_compute_eigen(const T* x, int x_h, int x_w, const T* y, int y_h,
-                       int y_w, T* out) {
-  using matrix_t =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
-  Eigen::Map<const matrix_t> X(x, x_h, x_w);
-  Eigen::Map<const matrix_t> Y(y, y_h, y_w);
-  Eigen::Map<matrix_t> Out(out, x_h, y_w);
-
-  Out = X * Y;
-}
-
-template <typename T>
-void fc_compute_eigen(const T* x, int x_h, int x_w,  //
-                      const T* w, int w_h, int w_w,  //
-                      const T* b,                    //
-                      T* out) {
-  using matrix_t =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-  mul_compute_eigen(x, x_h, x_w, w, w_h, w_w, out);
-
-  if (b) {
-    Eigen::Map<const Eigen::Matrix<T, 1, Eigen::Dynamic>> B(b, w_w);
-    Eigen::Map<matrix_t> Out(out, x_h, w_w);
-
-    Out = Out.array().rowwise() + B.array();
-  }
-}
 
 }  // namespace math
 }  // namespace arm
