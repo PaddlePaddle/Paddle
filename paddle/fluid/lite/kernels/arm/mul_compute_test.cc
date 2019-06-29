@@ -28,6 +28,28 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
+#define A(i, j) a[i * lda + j]
+#define B(i, j) b[i * ldb + j]
+#define C(i, j) c[i * ldc + j]
+
+template <typename T>
+void mul_gemm(const T* a, const int M, const int K, const T* b, const int K_,
+              const int N, T* c) {
+  EXPECT_TRUE(K_ == K && M > 0 && N > 0 && K > 0);
+  EXPECT_TRUE(a && b && c);
+  const int lda = K;
+  const int ldb = N;
+  const int ldc = N;
+  for (int m = 0; m < M; ++m) {
+    for (int n = 0; n < N; ++n) {
+      C(m, n) = 0.0f;
+      for (int k = 0; k < K; ++k) {
+        C(m, n) += A(m, k) * B(k, n);
+      }
+    }
+  }
+}
+
 template <typename T>
 void FillData(T* a, const int n, const T lower = static_cast<T>(-2.f),
               const T upper = static_cast<T>(2.f)) {
@@ -91,8 +113,8 @@ TEST(mul_arm, compare_test) {
 
         mul.Run();
 
-        lite::arm::math::mul_compute_eigen(x_data, m, k, y_data, k, n,
-                                           ref_data);
+        mul_gemm<T>(x_data, m, k, y_data, k, n, ref_data);
+
         for (int i = 0; i < out.dims().production(); i++) {
           EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
         }
@@ -138,7 +160,8 @@ TEST(mul_arm, num_col_dims) {
 
   mul.Run();
 
-  lite::arm::math::mul_compute_eigen(x_data, 2, 12, y_data, 12, 5, ref_data);
+  mul_gemm<T>(x_data, 2, 12, y_data, 12, 5, ref_data);
+
   for (int i = 0; i < out.dims().production(); i++) {
     EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
   }
