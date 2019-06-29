@@ -28,6 +28,35 @@ namespace lite {
 namespace kernels {
 namespace arm {
 
+#define A(i, j) a[i * lda + j]
+#define B(i, j) b[i * ldb + j]
+#define C(i, j) c[i * ldc + j]
+
+template <typename T>
+void gemm_bias(const T* a, const int M, const int K, const T* b, const int K_,
+               const int N, T* biases, T* c) {
+  EXPECT_TRUE(K_ == K && M > 0 && N > 0 && K > 0);
+  EXPECT_TRUE(a && b && c);
+  const int lda = K;
+  const int ldb = N;
+  const int ldc = N;
+  for (int m = 0; m < M; ++m) {
+    for (int n = 0; n < N; ++n) {
+      C(m, n) = 0.0f;
+      for (int k = 0; k < K; ++k) {
+        C(m, n) += A(m, k) * B(k, n);
+      }
+    }
+  }
+  if (biases) {
+    for (int m = 0; m < M; ++m) {
+      for (int n = 0; n < N; ++n) {
+        C(m, n) += biases[n];
+      }
+    }
+  }
+}
+
 template <typename T>
 void FillData(T* a, const int n, const T lower = static_cast<T>(-2.f),
               const T upper = static_cast<T>(2.f)) {
@@ -103,8 +132,8 @@ TEST(fc_arm, compare_test) {
           fc.PrepareForRun();
           fc.Run();
 
-          lite::arm::math::fc_compute_eigen(x_data, m, k, w_data, k, n, b_data,
-                                            ref_data);
+          gemm_bias<T>(x_data, m, k, w_data, k, n, b_data, ref_data);
+
           for (int i = 0; i < out.dims().production(); i++) {
             EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
           }
@@ -158,8 +187,8 @@ TEST(fc_arm, num_col_dims) {
     fc.PrepareForRun();
     fc.Run();
 
-    lite::arm::math::fc_compute_eigen(x_data, 2, 3, w_data, 3, 4, b_data,
-                                      ref_data);
+    gemm_bias<T>(x_data, 2, 3, w_data, 3, 4, b_data, ref_data);
+
     for (int i = 0; i < out.dims().production(); i++) {
       EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
     }
