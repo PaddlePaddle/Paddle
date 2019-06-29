@@ -78,5 +78,5 @@ if (NOT HAS_ARM_MATH_LIB_DIR)
       gemv_arm_int8.cc
       conv3x3s1_direct_int8.cc
       conv3x3s2_direct_int8.cc
-      DEPS ${lite_kernel_deps} eigen3 framework_proto_lite)
+      DEPS ${lite_kernel_deps} framework_proto_lite)
 endif()
