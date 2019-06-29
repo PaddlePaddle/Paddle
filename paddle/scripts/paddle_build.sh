@@ -991,9 +991,11 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         parallel_test_base
         ;;
       test)
