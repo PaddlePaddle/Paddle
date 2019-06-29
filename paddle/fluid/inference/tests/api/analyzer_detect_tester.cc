@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gperftools/heap-checker.h>
 #include <gtest/gtest.h>
 #include <fstream>
 #include <iostream>
@@ -135,3 +136,17 @@ TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
+
+// following lines are used for pprof
+int main(int argc, char **argv) {
+  HeapLeakChecker heap_checker("test_foo");
+  FLAGS_infer_model = "third_party/inference_demo/face_model/densebox";
+  FLAGS_infer_data = "third_party/inference_demo/face_model/detect_input.txt";
+  FLAGS_infer_shape = "third_party/inference_demo/face_model/shape.txt";
+  FLAGS_paddle_num_threads = 4;
+  FLAGS_repeat = 1;
+  FLAGS_batch_size = 1;
+  FLAGS_sample = 10;
+  paddle::inference::analysis::profile(true);
+  std::cout << heap_checker.NoLeaks() << std::endl;
+}

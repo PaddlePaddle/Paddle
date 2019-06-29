@@ -157,6 +157,7 @@ inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose 
 
 # detect
 inference_analysis_api_test_with_refer_result(test_analyzer_detect ${OCR_INSTALL_DIR} analyzer_detect_tester.cc)
+target_link_libraries(test_analyzer_detect tcmalloc)
 
 ### Image classification tests with fake data
 set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
