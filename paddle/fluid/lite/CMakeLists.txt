@@ -101,6 +101,8 @@ file(WRITE ${offline_lib_registry_file} "") # clean
 set(__lite_cc_files "" ; "")
 set(__lite_cc_files "${CMAKE_BINARY_DIR}/lite_cc_files.txt")
 file(WRITE ${__lite_cc_files} "") # clean
+
+
 # cc_library with branch support.
 # The branches:
 #  X86_DEPS: works only when LITE_WITH_X86 is ON.
