@@ -261,6 +261,47 @@ class PSLib(Fleet):
                                                    decay)
         self._role_maker._barrier_worker()
 
+    def load_from_paddle_model(self, scope=fluid.global_scope(), table_id,
+                               model_path, model_proto_file,
+                               load_combine=False):
+        """
+        load params from paddle model, and push params to pserver
+
+        Args:
+            scope(Scope): Scope object, default is fluid.global_scope()
+            table_id(int): the id of table to load
+            model_path(str): path of paddle model
+            model_proto_file(str): path of program desc proto file
+            load_combine(bool): load from a file or splited param files
+
+        Examples:
+            .. code-block:: python
+
+              fleet.load_from_paddle_model(my_scope, my_table_id, "./model",
+                                           "./model.prototxt", True)
+
+        """
+
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
+                if table_id is not None and table_id != i.table_id:
+                    continue
+                var_list = [var for var in i.dense_variable_name]
+                skip = False
+                for var in var_list:
+                    if scope.find_var(var) is None:
+                        skip = True
+                        break
+                if skip:
+                    continue
+                self._fleet_ptr.load_from_paddle_model(scope, table_id,
+                                                       var_list,
+                                                       model_path,
+                                                       model_proto_file,
+                                                       load_combine)
+        self._role_maker._barrier_worker()
+
     def _set_opt_info(self, opt_info):
         """
         this function saves the result from DistributedOptimizer.minimize()

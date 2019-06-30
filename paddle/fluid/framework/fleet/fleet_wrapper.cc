@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -353,6 +354,78 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   push_sparse_status->push_back(std::move(status));
 
 #endif
+}
+
+
+void  FleetWrapper::LoadFromPaddleModel(
+    Scope& scope, const uint64_t table_id, std::vector<std::string> var_list,
+    std::string model_path, std::string model_proto_file, bool load_combine) {
+  // load ProgramDesc from model file
+  auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
+    std::string contents;
+    std::ifstream fin(filename, std::ios::in | std::ios::binary);
+    fin.seekg(0, std::ios::end);
+    contents.resize(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    fin.read(&contents[0], contents.size());
+    fin.close();
+    ProgramDesc program_desc(contents);
+    return program_desc;
+  };
+  const ProgramDesc old_program = read_proto_func(model_proto_file);
+  Scope* old_scope = new Scope();
+  auto& old_block = old_program.Block(0);
+  auto place = platform::CPUPlace();
+  std::vector<std::string> old_param_list;
+
+  for (auto& t : var_list) {
+    VarDesc* old_var_desc = old_block.FindVar(t);
+    if (old_var_desc == nullptr) {
+      continue;
+    }
+    // init variable in scope
+    Variable* old_var = old_scope->Var(old_var_desc->Name());
+    InitializeVariable(old_var, old_var_desc->GetType());
+    old_param_list.push_back(t);
+    if (load_combine) {
+      continue;
+    }
+    // load variable from model
+    paddle::framework::AttributeMap attrs;
+    attrs.insert({"file_path", model_path + "/" + old_var_desc->Name()});
+    auto load_op = paddle::framework::OpRegistry::CreateOp(
+      "load", {}, {{"Out", {old_var_desc->Name()}}}, attrs);
+    load_op->Run(*old_scope, place);
+  }
+
+  if (load_combine) {
+    std::sort(old_param_list.begin(), old_param_list.end());
+    paddle::framework::AttributeMap attrs;
+    attrs.insert({"file_path", model_path});
+    auto load_op = paddle::framework::OpRegistry::CreateOp(
+        "load_combine", {}, {{"Out", old_param_list}}, attrs);
+    load_op->Run(*old_scope, place);
+  }
+
+  for (auto& t : old_param_list) {
+    Variable* old_var = old_scope->Var(t);
+    // old model data, here we assume data type is float
+    LoDTensor* old_tensor = old_var->GetMutable<LoDTensor>();
+    float* old_data = old_tensor->data<float>();
+    // new model data, here we assume data type is float
+    Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    float* data = tensor->data<float>();
+    // copy from old data to new data
+    if (old_tensor->numel() > tensor->numel()) {
+      memcpy(data, old_data, tensor->numel() * sizeof(float));
+    } else if (old_tensor->numel() < tensor->numel()) {
+      memcpy(data, old_data, old_tensor->numel() * sizeof(float));
+    }
+  }
+  delete old_scope;
+  PushDenseParamSync(scope, table_id, old_param_list);
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {

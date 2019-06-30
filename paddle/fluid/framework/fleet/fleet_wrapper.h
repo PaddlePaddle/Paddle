@@ -131,6 +131,11 @@ class FleetWrapper {
 
   // flush all push requests
   void ClientFlush();
+  // load from paddle model
+  void LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
+                           std::vector<std::string> var_list,
+                           std::string model_path,
+                           std::string model_proto_file, bool load_combine);
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);

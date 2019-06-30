@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
+#include <boost/functional/hash.hpp>
 #include <random>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
@@ -40,6 +41,9 @@ DatasetImpl<T>::DatasetImpl() {
   cur_channel_ = 0;
   fleet_send_batch_size_ = 80000;
   fleet_send_sleep_seconds_ = 2;
+  merge_by_insid_ = false;
+  erase_duplicate_feas_ = false;
+  min_merge_size_ = 2;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -93,6 +97,16 @@ void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
 template <typename T>
 void DatasetImpl<T>::SetChannelNum(int channel_num) {
   channel_num_ = channel_num;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetMergeByInsId(
+        const std::vector<std::string>& merge_slot_list,
+        bool erase_duplicate_feas, int min_merge_size) {
+    merge_by_insid_ = true;
+    merge_slots_list_ = merge_slot_list;
+    erase_duplicate_feas_ = erase_duplicate_feas;
+    min_merge_size_ = min_merge_size;
 }
 
 template <typename T>
@@ -265,13 +279,21 @@ void DatasetImpl<T>::GlobalShuffle() {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() input_channel_ size "
           << input_channel_->Size();
 
-  auto global_shuffle_func = [this]() {
+  auto get_client_id = [this, fleet_ptr](const T& data) -> size_t {
+    if (!this->merge_by_insid_) {
+      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
+    } else {
+      return boost::hash<std::string>()(data.ins_id_) % this->trainer_num_;
+    }
+  };
+
+  auto global_shuffle_func = [this, get_client_id]() {
     auto fleet_ptr = FleetWrapper::GetInstance();
     std::vector<T> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
       for (auto& t : data) {
-        auto client_id = fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
+        auto client_id = get_client_id(t);
         ars[client_id] << t;
       }
       std::vector<std::future<int32_t>> total_status;
@@ -344,6 +366,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     readers_[i]->SetFileListIndex(&file_idx_);
     readers_[i]->SetFileList(filelist_);
+    readers_[i]->SetParseInsId(merge_by_insid_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }
@@ -417,8 +440,133 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 }
 
 // explicit instantiation
-template class DatasetImpl<std::vector<MultiSlotType>>;
 template class DatasetImpl<Record>;
+
+void MultiSlotDataset::MergeByInsId() {
+  VLOG(3) << "MultiSlotDataset::MergeByInsId begin";
+  if (!merge_by_insid_) {
+    VLOG(3) << "merge_by_insid=false, will not MergeByInsId";
+    return;
+  }
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  std::unordered_map<int, bool> merge_slots;
+  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+   const auto& slot = multi_slot_desc.slots(i);
+   if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
+                 slot.name()) != merge_slots_list_.end()) {
+     merge_slots[i] = true;
+   }
+  }
+  CHECK(multi_output_channel_.size() != 0);
+  auto channel_data = paddle::framework::MakeChannel<Record>();
+  VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+    std::vector<Record> vec_data;
+    multi_output_channel_[i]->Close();
+    multi_output_channel_[i]->ReadAll(vec_data);
+    channel_data->Write(std::move(vec_data));
+    vec_data.clear();
+    vec_data.shrink_to_fit();
+    multi_output_channel_[i]->Clear();
+  }
+  channel_data->Close();
+  std::vector<Record> recs;
+  recs.reserve(channel_data->Size());
+  channel_data->ReadAll(recs);
+  channel_data->Clear();
+  std::sort(recs.begin(), recs.end(), [](const Record& a, const Record& b) {
+    return a.ins_id_ < b.ins_id_; });
+
+  std::vector<Record> results;
+  VLOG(3) << "recs.size() " << recs.size();
+  for (size_t i = 0; i < recs.size();) {
+    size_t j = i + 1;
+    while (j < recs.size() && recs[j].ins_id_ == recs[i].ins_id_) {
+      j++;
+    }
+    if (j - i < min_merge_size_) {
+        i = j;
+        continue;
+    }
+    Record rec = std::move(recs[i]);
+    for (size_t k = i + 1; k < j; k++) {
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
+                                  recs[k].uint64_feasigns_.begin(),
+                                  recs[k].uint64_feasigns_.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 recs[k].float_feasigns_.begin(),
+                                 recs[k].float_feasigns_.end());
+      recs[k] = Record();
+    }
+    i = j;
+    auto sort_cmp_uint64 = [](const FeatureItem& a, const FeatureItem& b) {
+      auto& a_sign = a.sign().uint64_feasign_;
+      auto& b_sign = b.sign().uint64_feasign_;
+      return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
+    };
+    auto sort_cmp_float = [](const FeatureItem& a, const FeatureItem& b) {
+      auto& a_sign = a.sign().float_feasign_;
+      auto& b_sign = b.sign().float_feasign_;
+      return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
+    };
+    auto unique_eq_uint64 = [&](const FeatureItem& a, const FeatureItem& b) {
+      if (a.slot() == b.slot() &&
+          merge_slots.find(a.slot()) == merge_slots.end()) {
+        return true;
+      }
+      auto& a_sign = a.sign().uint64_feasign_;
+      auto& b_sign = b.sign().uint64_feasign_;
+      return a_sign == b_sign && a.slot() == b.slot();
+    };
+    auto unique_eq_float = [&](const FeatureItem& a, const FeatureItem& b) {
+      if (a.slot() == b.slot() &&
+          merge_slots.find(a.slot()) == merge_slots.end()) {
+        return true;
+      }
+      auto& a_sign = a.sign().float_feasign_;
+      auto& b_sign = b.sign().float_feasign_;
+      return a_sign == b_sign && a.slot() == b.slot();
+    };
+    if (erase_duplicate_feas_) {
+        std::sort(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
+                  sort_cmp_uint64);
+        rec.uint64_feasigns_.erase(
+            std::unique(rec.uint64_feasigns_.begin(),
+            rec.uint64_feasigns_.end(), unique_eq_uint64),
+            rec.uint64_feasigns_.end());
+        std::sort(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
+                  sort_cmp_float);
+        rec.float_feasigns_.erase(
+            std::unique(rec.float_feasigns_.begin(),
+            rec.float_feasigns_.end(), unique_eq_float),
+            rec.float_feasigns_.end());
+    }
+    results.push_back(rec);
+  }
+  VLOG(3) << "results size " <<  results.size();
+  results.shrink_to_fit();
+
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  std::shuffle(results.begin(), results.end(), fleet_ptr->LocalRandomEngine());
+  channel_data->Open();
+  channel_data->Write(std::move(results));
+  channel_data->Close();
+  results.clear();
+  results.shrink_to_fit();
+  VLOG(3) << "channel data size " << channel_data->Size();
+  channel_data->SetBlockSize(channel_data->Size() / channel_num_ + 1);
+  VLOG(3) << "channel data block size " << channel_data->BlockSize();
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+    std::vector<Record> vec_data;
+    channel_data->Read(vec_data);
+    multi_output_channel_[i]->Open();
+    multi_output_channel_[i]->Write(std::move(vec_data));
+    vec_data.clear();
+    vec_data.shrink_to_fit();
+  }
+  CHECK(channel_data->Size() == 0);
+  channel_data->Clear();
+}
 
 }  // end namespace framework
 }  // end namespace paddle

@@ -237,6 +237,7 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = 80000
         self.queue_num = None
+        self.merge_by_lineid = False
 
     def _prepare_to_run(self):
         """
@@ -286,6 +287,30 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.fleet_send_batch_size = fleet_send_batch_size
+
+    def set_merge_by_lineid(self, var_list, erase_duplicate_feas=True,
+                            min_merge_size=2):
+        """
+        Set merge by line id, instances of same line id will be merged after
+        shuffle, you should parse line id in data generator.
+
+        Args:
+            erase_duplicate_feas(bool): whether erase duplicate feasigns when
+                                        merge. default is True.
+            min_merge_size(int): minimal size to merge. default is 2.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_merge_by_lineid()
+
+        """
+        var_name_list = [i.name for i in var_list]
+        self.dataset.set_merge_by_lineid(var_name_list, erase_duplicate_feas,
+                                         min_merge_size)
+        self.merge_by_lineid = True
 
     def load_into_memory(self):
         """
@@ -384,6 +409,10 @@ class InMemoryDataset(DatasetBase):
         if fleet is not None:
             fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle()
+        if fleet is not None:
+            fleet._role_maker._barrier_worker()
+        if self.merge_by_lineid:
+            self.dataset.merge_by_lineid()
         if fleet is not None:
             fleet._role_maker._barrier_worker()
 
