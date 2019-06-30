@@ -551,7 +551,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
     op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(op_path, [loss], block_no_grad_set)
+    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
+                                      block_no_grad_set)
     block_no_grad_set.update(no_grad_vars)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
 
@@ -630,13 +631,14 @@ def _as_list(x):
     return list(x) if isinstance(x, collections.Sequence) else [x]
 
 
-def _find_no_grad_vars(op_path, targets, no_grad_set):
+def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     output_names = set([out.name for out in targets])
     no_grad_var = []
     for i, op in reversed(list(enumerate(op_path))):
         if not op.has_attr("sub_block"):
             for out_var in op.desc.output_arg_names():
-                if out_var not in output_names:
+                if out_var not in output_names and not block.vars[
+                        out_var].stop_gradient:
                     no_grad_var.append(out_var)
         for name in op.desc.input_arg_names():
             if name not in no_grad_set:

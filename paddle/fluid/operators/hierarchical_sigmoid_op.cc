@@ -86,6 +86,10 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
   }
 };
 
+/*
+ * Inputs: X, W, Label, PathTable, PathCode, Bias
+ * Outputs: Out, PreOut, W_out
+ */
 template <typename AttrType>
 class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -162,6 +166,37 @@ Hierarchical Probabilistic Neural Network Language Model."
   }
 };
 
+/*
+ * Inputs: X, W, Label, PathTable, PathCode, PreOut, Out@GRAD
+ * Outputs: X@GRAD, W@GRAD, Bias@GRAD
+ */
+class HierarchicalSigmoidGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    // Inputs: X, W, Label, PathTable, PathCode, PreOut, Out@GRAD
+    op->SetInput("X", Input("X"));
+    op->SetInput("W", Input("W"));
+    op->SetInput("Bias", Input("Bias"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput("PathTable", Input("PathTable"));
+    op->SetInput("PathCode", Input("PathCode"));
+    op->SetInput("PreOut", Output("PreOut"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+
+    // Outputs: X@GRAD, W@GRAD, Bias@GRAD
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -232,7 +267,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(hierarchical_sigmoid, ops::HierarchicalSigmoidOp,
                   ops::HierarchicalSigmoidOpMaker<int>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::HierarchicalSigmoidGradMaker);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
                   ops::HierarchicalSigmoidGradOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
