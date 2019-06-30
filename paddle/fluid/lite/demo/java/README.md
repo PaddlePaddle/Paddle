@@ -12,7 +12,7 @@
 
 ## 手动编译（给测试人员需要更新 demo 模型或 .so 库可阅读）
 
-###编译：
+### 编译：
 首先在PaddleLite的开发Docker镜像中，拉取最新PaddleLite代码，编译对应你手机架构的预测库，
 下面我们以arm8 架构举例。进入paddlelite 目录，运行以下cmake 和make 命令：
 

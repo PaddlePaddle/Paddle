@@ -12,8 +12,12 @@ before_script:
   # merge the latest code
   - git config --global user.email "you@example.com"
   - git config --global user.name "Your Name"
+  - git reset --hard HEAD # ignore any local changes in CI node.
   - git fetch origin incubate/lite
+  - git status -s
+  - git branch
   - git merge --no-ff origin/incubate/lite
+  #- git checkout origin/incubate/lite && git log -1 && 
 
 
 image: $SERVER_LITE_DOCKER_IMAGE
