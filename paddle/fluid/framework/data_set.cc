@@ -42,7 +42,7 @@ DatasetImpl<T>::DatasetImpl() {
   fleet_send_batch_size_ = 80000;
   fleet_send_sleep_seconds_ = 2;
   merge_by_insid_ = false;
-  erase_duplicate_feas_ = false;
+  erase_duplicate_feas_ = true;
   min_merge_size_ = 2;
 }
 
