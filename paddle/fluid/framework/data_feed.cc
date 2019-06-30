@@ -696,7 +696,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       CHECK(num == 1);
       pos = endptr - str + 1;
       size_t len = 0;
-      while(str[pos + len] != ' ') {
+      while (str[pos + len] != ' ') {
         ++len;
       }
       instance->ins_id_ = std::string(str + pos, len);

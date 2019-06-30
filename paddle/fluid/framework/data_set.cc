@@ -13,7 +13,6 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
-#include <boost/functional/hash.hpp>
 #include <random>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
@@ -21,6 +20,7 @@
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
+#include "xxhash.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -101,12 +101,12 @@ void DatasetImpl<T>::SetChannelNum(int channel_num) {
 
 template <typename T>
 void DatasetImpl<T>::SetMergeByInsId(
-        const std::vector<std::string>& merge_slot_list,
-        bool erase_duplicate_feas, int min_merge_size) {
-    merge_by_insid_ = true;
-    merge_slots_list_ = merge_slot_list;
-    erase_duplicate_feas_ = erase_duplicate_feas;
-    min_merge_size_ = min_merge_size;
+    const std::vector<std::string>& merge_slot_list, bool erase_duplicate_feas,
+    int min_merge_size) {
+  merge_by_insid_ = true;
+  merge_slots_list_ = merge_slot_list;
+  erase_duplicate_feas_ = erase_duplicate_feas;
+  min_merge_size_ = min_merge_size;
 }
 
 template <typename T>
@@ -283,7 +283,8 @@ void DatasetImpl<T>::GlobalShuffle() {
     if (!this->merge_by_insid_) {
       return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
     } else {
-      return boost::hash<std::string>()(data.ins_id_) % this->trainer_num_;
+      return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0) %
+             this->trainer_num_;
     }
   };
 
