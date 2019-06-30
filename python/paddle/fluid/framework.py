@@ -67,6 +67,7 @@ def in_dygraph_mode():
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
                 pass
 
@@ -143,6 +144,7 @@ def cuda_places(device_ids=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cuda_places = fluid.cuda_places()
 
     """
@@ -173,6 +175,7 @@ def cpu_places(device_count=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cpu_places = fluid.cpu_places()
     """
 
@@ -199,6 +202,7 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
             # or
             cuda_pinned_places = fluid.cuda_pinned_places(1)
@@ -251,6 +255,7 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           with fluid.name_scope("s1"):
               a = fluid.layers.data(name='data', shape=[1], dtype='int32')
               b = a + 1
@@ -412,6 +417,7 @@ class Variable(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cur_program = Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
@@ -1011,6 +1017,7 @@ class Operator(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cur_program = Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
@@ -2918,6 +2925,7 @@ class Program(object):
 
         Examples:
 
+            >>> import paddle.fluid as fluid
             >>> p, g = backward(...)
             >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
@@ -2951,6 +2959,7 @@ class Program(object):
 
         Examples:
 
+            >>> import paddle.fluid as fluid
             >>> p, g = backward(...)
             >>> with program.lr_schedule_guard():
             >>>     lr = lr * decay
