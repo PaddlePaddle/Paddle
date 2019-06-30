@@ -442,32 +442,10 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
 template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
                                            const FeatureItem& fi) {
-//  VLOG(0) << "operator<< FeatureItem";
-//  VLOG(0) << "fi.sign()";
   ar << fi.sign();
-//  VLOG(0) << "fi.slot()";
   ar << fi.slot();
   return ar;
 }
-
-/*
-template <class AR>
-paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
-                                           const std::vector<FeatureItem>& p) {
-
-    VLOG(0) << "fkfkfkkffkf ";
-
-#ifdef _LINUX
-  ar << (size_t)p.size();
-#else
-  ar << (uint64_t)p.size();
-#endif
-  VLOG(0) << "(size_t)p.size() " << (size_t)p.size();
-  for (const auto& x : p) {
-    ar << x;
-  }
-  return ar;
-}*/
 
 template <class AR>
 paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
@@ -480,12 +458,8 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
 template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
                                            const Record& r) {
- // VLOG(0) << "operator<< Record ";
- // VLOG(0) << "r.uint64_feasigns_ " << r.uint64_feasigns_.size();
   ar << r.uint64_feasigns_;
- // VLOG(0) << "r.float_feasigns_";
   ar << r.float_feasigns_;
-//  VLOG(0) << "r.ins_id_";
   ar << r.ins_id_;
   return ar;
 }
