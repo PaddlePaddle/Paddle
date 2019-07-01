@@ -48,6 +48,7 @@ RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null
 
+
 RUN rm -r /root/python_build
 
 RUN apt-get update && \
@@ -65,20 +66,25 @@ RUN apt-get update && \
     apt-get clean -y
 
 # Install Python2.7.15
-RUN cd /home/ && wget -q https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz && \
-    tar -xvf Python-2.7.15.tgz && cd Python-2.7.15 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-    make -j8 > /dev/null && make altinstall > /dev/null
-RUN echo "include /usr/local/lib" >> /etc/ld.so.conf && /sbin/ldconfig && /sbin/ldconfig -v
-RUN cd /home/ && wget -q https://files.pythonhosted.org/packages/1d/64/a18a487b4391a05b9c7f938b94a16d80305bf0369c6b0b9509e86165e1d3/setuptools-41.0.1.zip && \
-    apt-get -y install unzip && \
-    unzip setuptools-41.0.1.zip && cd setuptools-41.0.1 && \
-    mv /usr/bin/python /usr/bin/python2.7.12 && \
-    ln -s /home/Python-2.7.15/python /usr/bin/python && \
-    python setup.py build && python setup.py install
-RUN cd /home/ && wget https://files.pythonhosted.org/packages/ae/e8/2340d46ecadb1692a1e455f13f75e596d4eab3d11a57446f08259dee8f02/pip-10.0.1.tar.gz && \
-    tar -zxvf pip-10.0.1.tar.gz && cd pip-10.0.1 && \
-    python setup.py install
+WORKDIR /home
+ENV version=2.7.15
+RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz
+RUN tar -xvf Python-$version.tgz
+WORKDIR /home/Python-$version
+RUN ./configure
+RUN make && make install
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/d3/3e/1d74cdcb393b68ab9ee18d78c11ae6df8447099f55fe86ee842f9c5b166c/setuptools-40.0.0.zip
+RUN apt-get -y install unzip
+RUN unzip setuptools-40.0.0.zip
+WORKDIR /home/setuptools-40.0.0
+RUN python setup.py build
+RUN python setup.py install
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/ae/e8/2340d46ecadb1692a1e455f13f75e596d4eab3d11a57446f08259dee8f02/pip-10.0.1.tar.gz
+RUN tar -zxvf pip-10.0.1.tar.gz
+WORKDIR pip-10.0.1
+RUN python setup.py install
 
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
@@ -124,10 +130,8 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
-#RUN easy_install -U pip
-#RUN pip install setuptools
-RUN pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
+    pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
