@@ -244,17 +244,17 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
     auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      VLOG(30) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
-               << " is set to SelectedRows";
+      VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
       ctx->SetType(w_grad_var_name, framework::proto::VarType::SELECTED_ROWS);
     } else {
-      VLOG(30) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
-               << " is set to LoDTensor";
+      VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
+              << " is set to LoDTensor";
       ctx->SetType(w_grad_var_name, framework::proto::VarType::LOD_TENSOR);
     }
     if (hasBias) {
-      VLOG(30) << "hierarchical_sigmoid_grad op "
-               << framework::GradVarName("Bias") << " is set to LoDTensor";
+      VLOG(3) << "hierarchical_sigmoid_grad op "
+              << framework::GradVarName("Bias") << " is set to LoDTensor";
       ctx->SetType(bias_grad_var_name, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetDataType(w_grad_var_name, ctx->GetDataType(ctx->Input("W")[0]));

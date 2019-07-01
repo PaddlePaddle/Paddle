@@ -637,8 +637,8 @@ def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     for i, op in reversed(list(enumerate(op_path))):
         if not op.has_attr("sub_block"):
             for out_var in op.desc.output_arg_names():
-                if out_var not in output_names and not block.vars[
-                        out_var].stop_gradient:
+                if out_var not in output_names and out_var not in op.desc.input_arg_names(
+                ) and not block.vars[out_var].stop_gradient:
                     no_grad_var.append(out_var)
         for name in op.desc.input_arg_names():
             if name not in no_grad_set:
