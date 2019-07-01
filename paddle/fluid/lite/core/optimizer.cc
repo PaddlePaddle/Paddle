@@ -15,7 +15,7 @@
 #include "paddle/fluid/lite/core/optimizer.h"
 #include <fstream>
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
-#include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
+#include "paddle/fluid/lite/core/mir/type_target_cast_pass.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 #include "paddle/fluid/lite/utils/all.h"
 

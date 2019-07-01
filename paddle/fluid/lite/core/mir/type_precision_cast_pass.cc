@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/precision_cast_transform_pass.h"
+#include "paddle/fluid/lite/core/mir/type_precision_cast_pass.h"
 #include <list>
 #include <memory>
 #include <string>
@@ -162,5 +162,5 @@ void PrecisionCastPass::SetValidPlaces(const std::vector<Place>& valid_places) {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(precision_cast_transform_pass,
+REGISTER_MIR_PASS(type_precision_cast_pass,
                   paddle::lite::mir::PrecisionCastPass);
