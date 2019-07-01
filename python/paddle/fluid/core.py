@@ -58,7 +58,26 @@ except Exception as e:
     raise e
 
 load_noavx = False
-if 'avx' in get_cpu_info()['flags']:
+
+has_avx = False
+if sys.platform == 'darwin':
+    try:
+        has_avx = os.popen('sysctl machdep.cpu.features | grep -i avx').read(
+        ) != ''
+    except Exception as e:
+        sys.stderr.write(
+            'Can not get the AVX flag from machdep.cpu.features.\n')
+    if not has_avx:
+        try:
+            has_avx = os.popen(
+                'sysctl machdep.cpu.leaf7_features | grep -i avx').read() != ''
+        except Exception as e:
+            sys.stderr.write(
+                'Can not get the AVX flag from machdep.cpu.leaf7_features.\n')
+else:
+    has_avx = 'avx' in get_cpu_info()['flags']
+
+if has_avx:
     try:
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
