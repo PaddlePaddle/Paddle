@@ -44,6 +44,7 @@ __all__ = [
     'cpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cuda',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -102,6 +103,21 @@ def _cuda_ids():
     return device_ids
 
 
+def is_compiled_with_cuda():
+    """
+    Whether this whl package can be used to run the model on GPU.
+
+    Returns (bool): support gpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_gpu = fluid.is_compiled_with_cuda()
+    """
+    return core.is_compiled_with_cuda()
+
+
 def cuda_places(device_ids=None):
     """
     Create a list of :code:`fluid.CUDAPlace` objects.
@@ -145,8 +161,8 @@ def cpu_places(device_count=None):
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
 
     Args:
         device_count (None|int): device number.
@@ -360,7 +376,7 @@ class Variable(object):
     two variables in different blocks could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please reference the framework.proto for details.
+    and usages. Please refer to the framework.proto for details.
 
     Most of a Variable's member variables can be setted to be None. It mean
     it is not available or will be specified later.
@@ -2755,8 +2771,17 @@ class Program(object):
     create c++ Program. A program is a self-contained programing
     language like container. It has at least one Block, when the
     control flow op like conditional_block, while_op is included,
-    it will contains nested block.
+    it will contain nested block.
     Please reference the framework.proto for details.
+
+    A set of Program usually contains startup program and main program.
+    A startup program is set to contain some initial work , and the main
+    program will contain the network structure and vars for train.
+
+    A set of Program can be used for test or train, in train program ,
+    Paddle will contain all content to build a train network,  in test
+    program Paddle will prune some content which is irrelevant to test, eg.
+    backward ops and vars.
 
     Notes: we have default_startup_program and default_main_program
     by default, a pair of them will shared the parameters.
@@ -3090,6 +3115,9 @@ class Program(object):
 
                     train_program = fluid.Program()
                     startup_program = fluid.Program()
+
+                    # startup_program is used to do some parameter init work,
+                    # and main program is used to hold the network
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             img = fluid.layers.data(name='image', shape=[784])
@@ -3101,6 +3129,15 @@ class Program(object):
                             avg_loss = fluid.layers.mean(loss)
                             test_program = train_program.clone(for_test=False)
                     print_prog(test_program)
+
+                    # Due to parameter sharing usage for train and test, so we need to use startup program of train
+                    # instead of using test startup program, while nothing is in test's startup program
+
+                    # In Paddle Fluid we will share weights by using the same Variable name. In train and test program
+                    # all parameters will have the same name and this can make train and test program sharing parameters,
+                    # that's why we need to use startup program of train. And for startup program of test, it has nothing,
+                    # since it is a new program.
+
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
