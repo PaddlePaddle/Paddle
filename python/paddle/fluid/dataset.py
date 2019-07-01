@@ -288,7 +288,9 @@ class InMemoryDataset(DatasetBase):
         """
         self.fleet_send_batch_size = fleet_send_batch_size
 
-    def set_merge_by_lineid(self, var_list, erase_duplicate_feas=True,
+    def set_merge_by_lineid(self,
+                            var_list,
+                            erase_duplicate_feas=True,
                             min_merge_size=2):
         """
         Set merge by line id, instances of same line id will be merged after
@@ -563,6 +565,9 @@ class QueueDataset(DatasetBase):
         Global shuffle is not supported in QueueDataset
         NotImplementedError will be raised
 
+        Args:
+            fleet(Fleet): fleet singleton. Default None.
+
         Examples:
             .. code-block:: python
 
@@ -580,9 +585,12 @@ class QueueDataset(DatasetBase):
 class FileInstantDataset(DatasetBase):
     """
     FileInstantDataset, it will process data streamly.
-    Example:
-        import paddle.fluid as fluid
-        dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
     """
 
     def __init__(self):
@@ -594,8 +602,7 @@ class FileInstantDataset(DatasetBase):
 
     def local_shuffle(self):
         """
-        Local shuffle
-        FileInstantDataset does not support local shuffle
+        Local shuffle, FileInstantDataset does not support local shuffle
         """
         raise NotImplementedError(
             "FileInstantDataset does not support local shuffle, "

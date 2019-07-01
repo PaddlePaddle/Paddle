@@ -358,11 +358,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 }
 
 
-void  FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
-                                        std::vector<std::string> var_list,
-                                        std::string model_path,
-                                        std::string model_proto_file,
-                                        bool load_combine) {
+void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
+                                       std::vector<std::string> var_list,
+                                       std::string model_path,
+                                       std::string model_proto_file,
+                                       bool load_combine) {
   // load ProgramDesc from model file
   auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
     std::string contents;

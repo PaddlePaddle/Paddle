@@ -261,8 +261,11 @@ class PSLib(Fleet):
                                                    decay)
         self._role_maker._barrier_worker()
 
-    def load_from_paddle_model(self, scope=fluid.global_scope(), table_id,
-                               model_path, model_proto_file,
+    def load_from_paddle_model(self,
+                               scope=fluid.global_scope(),
+                               table_id,
+                               model_path,
+                               model_proto_file,
                                load_combine=False):
         """
         load params from paddle model, and push params to pserver
@@ -295,11 +298,9 @@ class PSLib(Fleet):
                         break
                 if skip:
                     continue
-                self._fleet_ptr.load_from_paddle_model(scope, table_id,
-                                                       var_list,
-                                                       model_path,
-                                                       model_proto_file,
-                                                       load_combine)
+                self._fleet_ptr.load_from_paddle_model(
+                    scope, table_id, var_list, model_path, model_proto_file,
+                    load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):

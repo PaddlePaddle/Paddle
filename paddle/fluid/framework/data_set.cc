@@ -570,6 +570,7 @@ void MultiSlotDataset::MergeByInsId() {
   }
   CHECK(channel_data->Size() == 0);  // NOLINT
   channel_data->Clear();
+  VLOG(3) << "MultiSlotDataset::MergeByInsId end";
 }
 
 }  // end namespace framework
