@@ -20,7 +20,7 @@
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
-#include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
+#include "paddle/fluid/lite/core/mir/type_target_cast_pass.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
@@ -70,12 +70,12 @@ class Optimizer {
            "static_kernel_pick_pass",        //
            "variable_place_inference_pass",  //
            "argument_type_display_pass",     //
-           "type_target_transform_pass",     //
+           "type_target_cast_pass",          //
            "variable_place_inference_pass",  //
            "argument_type_display_pass",     //
            "io_copy_kernel_pick_pass",       //
            "variable_place_inference_pass",  //
-           "precision_cast_transform_pass",  //
+           "type_precision_cast_pass",       //
            "argument_type_display_pass",     //
            "trans_weight_pass",              //
            "runtime_context_assign_pass",    //
@@ -109,7 +109,7 @@ class Optimizer {
   void InitTargetTypeTransformPass() {
     auto* pass =
         mir::PassManager::Global().LookUp<mir::TypeTargetTransformPass>(
-            "type_target_transform_pass");
+            "type_target_cast_pass");
     CHECK(pass);
     CHECK(!valid_places_.empty());
     LOG(INFO) << "valid_places.size " << valid_places_.size();
