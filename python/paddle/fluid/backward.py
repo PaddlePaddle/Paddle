@@ -639,7 +639,7 @@ def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     output_names = set([out.name for out in targets])
     no_grad_var = []
     for i, op in reversed(list(enumerate(op_path))):
-        # If the op has sub_block, it is too complicated to find the current no_grad_var.
+        # If the op has sub_block, it is too complicated to find the correct no_grad_var.
         if not op.has_attr("sub_block"):
             for out_var in op.desc.output_arg_names():
                 if out_var not in output_names and out_var not in op.desc.input_arg_names(
