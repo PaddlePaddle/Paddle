@@ -489,6 +489,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
             # network configuration code
             # loss from ...
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
