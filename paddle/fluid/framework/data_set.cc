@@ -456,7 +456,7 @@ void MultiSlotDataset::MergeByInsId() {
   for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
-                 slot.name()) != merge_slots_list_.end()) {
+                  slot.name()) != merge_slots_list_.end()) {
       merge_slots[i] = true;
     }
   }
@@ -532,18 +532,18 @@ void MultiSlotDataset::MergeByInsId() {
       return a_sign == b_sign && a.slot() == b.slot();
     };
     if (erase_duplicate_feas_) {
-        std::sort(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
-                  sort_cmp_uint64);
-        rec.uint64_feasigns_.erase(
-            std::unique(rec.uint64_feasigns_.begin(),
-            rec.uint64_feasigns_.end(), unique_eq_uint64),
-            rec.uint64_feasigns_.end());
-        std::sort(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
-                  sort_cmp_float);
-        rec.float_feasigns_.erase(
-            std::unique(rec.float_feasigns_.begin(),
-            rec.float_feasigns_.end(), unique_eq_float),
-            rec.float_feasigns_.end());
+      std::sort(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
+                sort_cmp_uint64);
+      rec.uint64_feasigns_.erase(
+          std::unique(rec.uint64_feasigns_.begin(),
+                      rec.uint64_feasigns_.end(), unique_eq_uint64),
+          rec.uint64_feasigns_.end());
+      std::sort(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
+                sort_cmp_float);
+      rec.float_feasigns_.erase(
+          std::unique(rec.float_feasigns_.begin(),
+          rec.float_feasigns_.end(), unique_eq_float),
+          rec.float_feasigns_.end());
     }
     results.push_back(rec);
   }
