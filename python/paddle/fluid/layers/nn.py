@@ -10677,6 +10677,8 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
+            import paddle.fluid as fluid
+
             # titles has shape [batch, 1]
             titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=0)
             # hash_r has shape [batch, 2]
@@ -10685,7 +10687,7 @@ def hash(input, hash_size, num_hash=1, name=None):
 
             # titles has shape [batch, 1] and lod information
             titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
-            # hash_r has shape [batch, 2] and inherit lod information from titles
+            # hash_r has shape [batch, 2] and inherits lod information from titles
             hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())

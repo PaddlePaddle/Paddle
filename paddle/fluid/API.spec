@@ -215,7 +215,7 @@ paddle.fluid.layers.affine_grid (ArgSpec(args=['theta', 'out_shape', 'name'], va
 paddle.fluid.layers.sequence_reverse (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '65c8362e48810b8226e311c5d046db51'))
 paddle.fluid.layers.affine_channel (ArgSpec(args=['x', 'scale', 'bias', 'data_layout', 'name', 'act'], varargs=None, keywords=None, defaults=(None, None, 'NCHW', None, None)), ('document', '9f303c67538e468a36c5904a0a3aa110'))
 paddle.fluid.layers.similarity_focus (ArgSpec(args=['input', 'axis', 'indexes', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '6f90d6ff76bf4f5e592332c1ef28494e'))
-paddle.fluid.layers.hash (ArgSpec(args=['input', 'hash_size', 'num_hash', 'name'], varargs=None, keywords=None, defaults=(1, None)), ('document', '115795c365b8003bc9883fadbe94b633'))
+paddle.fluid.layers.hash (ArgSpec(args=['input', 'hash_size', 'num_hash', 'name'], varargs=None, keywords=None, defaults=(1, None)), ('document', 'a0b73c21be618cec0281e7903039e5e3'))
 paddle.fluid.layers.grid_sampler (ArgSpec(args=['x', 'grid', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '5d16663e096d7f04954c70ce1cc5e195'))
 paddle.fluid.layers.log_loss (ArgSpec(args=['input', 'label', 'epsilon', 'name'], varargs=None, keywords=None, defaults=(0.0001, None)), ('document', 'af541e9263be61ce0e40df58d1b69294'))
 paddle.fluid.layers.add_position_encoding (ArgSpec(args=['input', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e399f9436fed5f7ff480d8532e42c937'))
