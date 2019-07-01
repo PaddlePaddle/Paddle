@@ -262,7 +262,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
 
     def load_from_paddle_model(self,
-                               scope=fluid.global_scope(),
+                               scope,
                                table_id,
                                model_path,
                                model_proto_file,
@@ -271,7 +271,7 @@ class PSLib(Fleet):
         load params from paddle model, and push params to pserver
 
         Args:
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object
             table_id(int): the id of table to load
             model_path(str): path of paddle model
             model_proto_file(str): path of program desc proto file

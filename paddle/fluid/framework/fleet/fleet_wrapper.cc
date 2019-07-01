@@ -357,7 +357,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
-
 void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
                                        std::vector<std::string> var_list,
                                        std::string model_path,
