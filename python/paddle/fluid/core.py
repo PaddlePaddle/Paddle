@@ -60,11 +60,10 @@ except Exception as e:
 load_noavx = False
 
 has_avx = False
-if os.name == 'posix':
+if sys.platform == 'darwin':
     try:
         has_avx = os.popen('sysctl machdep.cpu.features | grep -i avx').read(
         ) != ''
-        print(has_avx)
     except Exception as e:
         sys.stderr.write(
             'Can not get the AVX flag from machdep.cpu.features.\n')
@@ -72,7 +71,6 @@ if os.name == 'posix':
         try:
             has_avx = os.popen(
                 'sysctl machdep.cpu.leaf7_features | grep -i avx').read() != ''
-            print(has_avx)
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.leaf7_features.\n')
