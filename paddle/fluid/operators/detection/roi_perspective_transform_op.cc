@@ -243,7 +243,9 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
-
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out_transform_matrix =
+        ctx.Output<framework::Tensor>("TransformMatrix");
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -255,6 +257,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
 
     const T* input_data = in->data<T>();
+    int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
 
     framework::Tensor roi2image;
     roi2image.Resize({rois_num});
@@ -279,7 +282,8 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
       }
       int image_id = roi2image_data[n];
       // Get transform matrix
-      T transform_matrix[9];
+      T* transform_matrix =
+          out_transform_matrix->mutable_data<T>({9}, ctx.GetPlace());
       get_transform_matrix<T>(transformed_width, transformed_height, roi_x,
                               roi_y, transform_matrix);
 
@@ -298,13 +302,19 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
                   GT<T>(-0.5, in_h) ||
                   GT<T>(in_h, static_cast<T>(in_height - 0.5))) {
                 output_data[out_index] = 0.0;
+                mask_data[(n * transformed_height + out_h) * transformed_width +
+                          out_w] = 0;
               } else {
                 bilinear_interpolate(input_data, channels, in_width, in_height,
                                      image_id, c, in_w, in_h,
                                      output_data + out_index);
+                mask_data[(n * transformed_height + out_h) * transformed_width +
+                          out_w] = 1;
               }
             } else {
               output_data[out_index] = 0.0;
+              mask_data[(n * transformed_height + out_h) * transformed_width +
+                        out_w] = 0;
             }
           }
         }
@@ -467,7 +477,6 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         "Output(Out) of ROIPerspectiveTransformOp should not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
-
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
@@ -476,7 +485,6 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(rois_dims[1] == 8,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
                    "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...].");
-
     int transformed_height = ctx->Attrs().Get<int>("transformed_height");
     int transformed_width = ctx->Attrs().Get<int>("transformed_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
@@ -493,7 +501,18 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
                                      static_cast<int64_t>(transformed_width)});
     auto out_dims = framework::make_ddim(out_dims_v);
 
+    std::vector<int64_t> mask_dims_v({rois_dims[0],  // num_rois
+                                      1,             // channels
+                                      static_cast<int64_t>(transformed_height),
+                                      static_cast<int64_t>(transformed_width)});
+    auto mask_dims = framework::make_ddim(mask_dims_v);
+
+    std::vector<int64_t> matrix_dims_v(9);
+    auto matrix_dims = framework::make_ddim(matrix_dims_v);
+
     ctx->SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Mask", mask_dims);
+    ctx->SetOutputDim("TransformMatrix", matrix_dims);
     ctx->SetOutputDim("Out2InIdx", out_dims);
     ctx->SetOutputDim("Out2InWeights", out_dims);
     ctx->ShareLoD("ROIs", /*->*/ "Out");
@@ -552,6 +571,16 @@ class ROIPerspectiveTransformOpMaker
         "(Tensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
+    AddOutput("Mask",
+              "(Tensor), "
+              "The output mask of ROIPerspectiveTransformOp is a 4-D tensor "
+              "with shape "
+              "(num_rois, 1, transformed_h, transformed_w).");
+    AddOutput("TransformMatrix",
+              "(Tensor), "
+              "The output transform matrix of ROIPerspectiveTransformOp is a "
+              "1-D tensor with shape "
+              "(9,).");
     AddOutput("Out2InIdx",
               "(Tensor), "
               "An intermediate tensor used to map indexes of input feature map "
