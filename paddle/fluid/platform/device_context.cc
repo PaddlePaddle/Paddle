@@ -316,7 +316,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
 #if !defined(_WIN32)
-  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  if (nccl_comm_) {
+    PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  }
 #endif
 }
 
@@ -405,6 +407,8 @@ thread_local int cur_thread_id = 0;
 
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
+
+void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {

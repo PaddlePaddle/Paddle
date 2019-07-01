@@ -14,12 +14,12 @@
 
 import logging
 import socket
+from ....log_helper import get_logger
 
 __all__ = ['SearchAgent']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class SearchAgent(object):

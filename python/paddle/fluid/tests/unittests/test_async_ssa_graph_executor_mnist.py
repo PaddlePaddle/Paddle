@@ -105,18 +105,23 @@ def train(use_cuda, thread_num, cpu_num):
 
     img, label, prediction, avg_loss, acc, py_reader = convolutional_neural_network(
         use_py_reader=True)
+    print("build convolutional neural network done.")
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
+    print("Adam optimizer minimize done.")
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.mnist.train(), buf_size=500),
         batch_size=BATCH_SIZE)
+    print("declared train reader done.")
 
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
+    print("going to run startup program")
     exe.run(fluid.default_startup_program())
+    print("run startup program done.")
 
     os.environ['CPU_NUM'] = str(cpu_num)
 
@@ -137,6 +142,7 @@ def train(use_cuda, thread_num, cpu_num):
         main_program=main_program,
         build_strategy=build_strategy,
         exec_strategy=exec_strategy)
+    print("declare parallel executor done.")
 
     py_reader.decorate_paddle_reader(train_reader)
 

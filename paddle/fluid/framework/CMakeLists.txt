@@ -29,7 +29,8 @@ add_subdirectory(io)
 proto_library(framework_proto SRCS framework.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(async_executor_proto SRCS data_feed.proto)
-proto_library(trainer_desc_proto SRCS trainer_desc.proto data_feed.proto)
+proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
+  data_feed_proto)
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
@@ -178,7 +179,7 @@ if(WITH_DISTRIBUTE)
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
-  lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS}
+  lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
   graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
