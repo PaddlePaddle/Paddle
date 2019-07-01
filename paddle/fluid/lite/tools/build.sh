@@ -130,7 +130,7 @@ function build {
     make lite_compile_deps -j$NUM_CORES_FOR_COMPILE
 
     # test publish inference lib
-    make publish_inference_lite
+    # make publish_inference_lite
 }
 
 # It will eagerly test all lite related unittests.

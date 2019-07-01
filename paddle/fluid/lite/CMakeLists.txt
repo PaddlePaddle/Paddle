@@ -222,13 +222,10 @@ add_subdirectory(api)
 add_subdirectory(gen_code)
 add_subdirectory(tools)
 
-
-# Deployment required
-lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v1.tar.gz")
-
 if (WITH_TESTING)
     lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "lite_naive_model.tar.gz")
     if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+	lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v1.tar.gz")
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "mobilenet_v2_relu.tar.gz")
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "resnet50.tar.gz")
         lite_download_and_uncompress(${LITE_MODEL_DIR} ${LITE_URL} "inception_v4_simple.tar.gz")
@@ -238,62 +235,82 @@ if (WITH_TESTING)
     endif()
 endif()
 
-# for publish
-set(INFER_LITE_PUBLISH_ROOT "${CMAKE_BINARY_DIR}/inference_lite_lib.${ARM_TARGET_OS}.${ARM_TARGET_ARCH_ABI}")
-message(STATUS "publish inference lib to ${INFER_LITE_PUBLISH_ROOT}")
+if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
+    # for publish
+    set(INFER_LITE_PUBLISH_ROOT "${CMAKE_BINARY_DIR}/inference_lite_lib.${ARM_TARGET_OS}.${ARM_TARGET_ARCH_ABI}")
+    if (LITE_WITH_OPENCL) 
+        set(INFER_LITE_PUBLISH_ROOT "${INFER_LITE_PUBLISH_ROOT}.opencl")
+    endif(LITE_WITH_OPENCL)
+    message(STATUS "publish inference lib to ${INFER_LITE_PUBLISH_ROOT}")
 
-# The final target for publish lite lib
-add_custom_target(publish_inference_lite)
-
-#cc_library(inference_cxx_lib DEPS cxx_api_lite)
-add_custom_target(publish_inference_cxx_lib ${TARGET}
-        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
-        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/bin"
-        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
-        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/third_party"
-        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
-        COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
-        COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_full_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
-        COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/model_optimize_tool" "${INFER_LITE_PUBLISH_ROOT}/bin"
-        COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/gen_code/paddle_code_generator" "${INFER_LITE_PUBLISH_ROOT}/bin"
-        COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/glog" "${INFER_LITE_PUBLISH_ROOT}/third_party"
-        COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/gflags" "${INFER_LITE_PUBLISH_ROOT}/third_party"
-        COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_full" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
-        COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/Makefile.def" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
-        )
-add_dependencies(publish_inference_cxx_lib model_optimize_tool)
-add_dependencies(publish_inference_cxx_lib paddle_code_generator)
-add_dependencies(publish_inference_cxx_lib bundle_full_api)
-add_dependencies(publish_inference_lite publish_inference_cxx_lib)
-
-
-if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    #cc_library(inference_mobile_lib DEPS light_api_lite)
-    # copy cpp mobile_light demo/lib
-    add_custom_target(publish_inference_mobile_lib ${TARGET}
+    # The final target for publish lite lib
+    add_custom_target(publish_inference_lite)
+    
+    # add cxx lib
+    add_custom_target(publish_inference_cxx_lib ${TARGET}
             COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
-            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/bin"
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
+            COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_full_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
             COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_light_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
-            COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_light" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/model_optimize_tool" "${INFER_LITE_PUBLISH_ROOT}/bin"
+            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/gen_code/paddle_code_generator" "${INFER_LITE_PUBLISH_ROOT}/bin"
             )
-    add_dependencies(publish_inference_mobile_lib paddle_api_light bundle_light_api)
-    add_dependencies(publish_inference_lite publish_inference_mobile_lib)
+    add_dependencies(publish_inference_cxx_lib model_optimize_tool)
+    add_dependencies(publish_inference_cxx_lib paddle_code_generator)
+    add_dependencies(publish_inference_cxx_lib bundle_full_api)
+    add_dependencies(publish_inference_cxx_lib bundle_light_api)
+    add_dependencies(publish_inference_lite publish_inference_cxx_lib)
 
-    if (LITE_WITH_JAVA AND LITE_WITH_ARM)
-        # copy java mobile_light demo/lib
-        add_custom_target(publish_java_inference_mobile_lib ${TARGET}
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/java/so"
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java"
-                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so" "${INFER_LITE_PUBLISH_ROOT}/java/so"
-                COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/android/jni/src" "${INFER_LITE_PUBLISH_ROOT}/java"
-                COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/android" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm7"
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm8"
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm64-v8a"
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/armeabi-v7a"
-                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/x86"
-                )
-        add_dependencies(publish_java_inference_mobile_lib paddle_lite_jni)
-        add_dependencies(publish_inference_lite publish_java_inference_mobile_lib)
+    if (LITE_WITH_JAVA)
+    # add java lib
+        add_custom_target(publish_inference_java_lib ${TARGET}
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/java/so"
+            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so" "${INFER_LITE_PUBLISH_ROOT}/java/so"
+            COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/android/jni/src" "${INFER_LITE_PUBLISH_ROOT}/java"
+        )
+        add_dependencies(publish_inference_java_lib paddle_lite_jni)
+        add_dependencies(publish_inference_lite publish_inference_java_lib)
+    endif()
+    
+    if ((ARM_TARGET_OS STREQUAL "android") AND (NOT LITE_WITH_OPENCL) AND
+            ((ARM_TARGET_ARCH_ABI STREQUAL armv7) OR (ARM_TARGET_ARCH_ABI STREQUAL armv8)))
+        # copy
+        add_custom_target(publish_inference_android_cxx_demos ${TARGET}
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/third_party"
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/glog" "${INFER_LITE_PUBLISH_ROOT}/third_party"
+            COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/gflags" "${INFER_LITE_PUBLISH_ROOT}/third_party"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/Makefile.def" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_full" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/makefiles/mobile_full/Makefile.${ARM_TARGET_OS}.${ARM_TARGET_ARCH_ABI}" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx/mobile_full/Makefile"
+            COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_light" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/makefiles/mobile_light/Makefile.${ARM_TARGET_OS}.${ARM_TARGET_ARCH_ABI}" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx/mobile_light/Makefile"
+        )
+        add_dependencies(publish_inference_android_cxx_demos glog gflags)
+        add_dependencies(publish_inference_cxx_lib publish_inference_android_cxx_demos)
+    
+        if (LITE_WITH_JAVA)
+            # copy java mobile_light demo/lib
+            add_custom_target(publish_inference_android_java_demo ${TARGET}
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java"
+                    COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/android" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm7"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm8"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm64-v8a"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/armeabi-v7a"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/x86"
+            )
+            add_dependencies(publish_inference_java_lib publish_inference_android_java_demo)
+        endif()
+    endif()
+    
+    if (LITE_WITH_OPENCL) 
+        add_custom_target(publish_inference_opencl ${TARGET}
+            COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/opencl"
+            COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/opencl/cl_kernel" "${INFER_LITE_PUBLISH_ROOT}/opencl"
+        )
+        add_dependencies(publish_inference_cxx_lib publish_inference_opencl)
     endif()
 endif()
