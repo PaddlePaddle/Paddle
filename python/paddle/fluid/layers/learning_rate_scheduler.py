@@ -54,6 +54,7 @@ def noam_decay(d_model, warmup_steps):
 
     .. code-block:: python
       
+      import padde.fluid as fluid
       import numpy as np
       # set hyper parameters
       d_model = 2
@@ -415,7 +416,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     Examples:
 	.. code-block:: python
 
-  	    base_lr = 0.1
+  	    import paddle.fluid as fluid
+        base_lr = 0.1
 	    lr = fluid.layers.cosine_decay(
 	    learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
@@ -457,6 +459,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             boundaries = [100, 200]
             lr_steps = [0.1, 0.01, 0.001]
             warmup_steps = 50 
