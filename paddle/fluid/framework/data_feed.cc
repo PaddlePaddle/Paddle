@@ -693,7 +693,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     int pos = 0;
     if (parse_ins_id_) {
       int num = strtol(&str[pos], &endptr, 10);
-      CHECK(num == 1);
+      CHECK(num == 1);  // NOLINT
       pos = endptr - str + 1;
       size_t len = 0;
       while (str[pos + len] != ' ') {

@@ -27,6 +27,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include <algorithm>
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/op_registry.h"

@@ -154,7 +154,7 @@ class DatasetImpl : public Dataset {
   virtual void DestroyReaders();
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
-  virtual void MergeByInsId() {};
+  virtual void MergeByInsId() {}
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,

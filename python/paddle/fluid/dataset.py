@@ -259,7 +259,7 @@ class InMemoryDataset(DatasetBase):
         Set Dataset output queue num, training threads get data from queues
 
         Args:
-            set_queue_num(int): dataset output queue num
+            queue_num(int): dataset output queue num
 
         Examples:
             .. code-block:: python
@@ -295,6 +295,10 @@ class InMemoryDataset(DatasetBase):
         shuffle, you should parse line id in data generator.
 
         Args:
+            var_list(list): slots that can be merge. each element in var_list
+                            is Variable. some slots such as show and click, we
+                            usually don't merge them for same line id, so user
+                            should specify which slot can be merged.
             erase_duplicate_feas(bool): whether erase duplicate feasigns when
                                         merge. default is True.
             min_merge_size(int): minimal size to merge. default is 2.

@@ -13,14 +13,16 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
+#include <algorithm>
 #include <random>
+#include <unordered_map>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
-#include "xxhash.h"
+#include "xxhash.h"  // NOLINT
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -452,13 +454,13 @@ void MultiSlotDataset::MergeByInsId() {
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::unordered_map<int, bool> merge_slots;
   for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
-   const auto& slot = multi_slot_desc.slots(i);
-   if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
+    const auto& slot = multi_slot_desc.slots(i);
+    if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
                  slot.name()) != merge_slots_list_.end()) {
-     merge_slots[i] = true;
-   }
+      merge_slots[i] = true;
+    }
   }
-  CHECK(multi_output_channel_.size() != 0);
+  CHECK(multi_output_channel_.size() != 0);  // NOLINT
   auto channel_data = paddle::framework::MakeChannel<Record>();
   VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
@@ -476,7 +478,8 @@ void MultiSlotDataset::MergeByInsId() {
   channel_data->ReadAll(recs);
   channel_data->Clear();
   std::sort(recs.begin(), recs.end(), [](const Record& a, const Record& b) {
-    return a.ins_id_ < b.ins_id_; });
+    return a.ins_id_ < b.ins_id_;
+  });
 
   std::vector<Record> results;
   VLOG(3) << "recs.size() " << recs.size();
@@ -486,8 +489,8 @@ void MultiSlotDataset::MergeByInsId() {
       j++;
     }
     if (j - i < min_merge_size_) {
-        i = j;
-        continue;
+      i = j;
+      continue;
     }
     Record rec = std::move(recs[i]);
     for (size_t k = i + 1; k < j; k++) {
@@ -565,7 +568,7 @@ void MultiSlotDataset::MergeByInsId() {
     vec_data.clear();
     vec_data.shrink_to_fit();
   }
-  CHECK(channel_data->Size() == 0);
+  CHECK(channel_data->Size() == 0);  // NOLINT
   channel_data->Clear();
 }
 
