@@ -17,14 +17,31 @@
 namespace paddle {
 namespace framework {
 
+static std::unordered_map<size_t, Scope*>* static_transfer_data_cache = nullptr;
+static std::unordered_set<Scope*>* static_transfer_scope_cache = nullptr;
+
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
-  thread_local auto* x = new std::unordered_map<size_t, Scope*>;
-  return *x;
+  // if get_cur_thread_id() == -1, means not use thread local method to do cache
+  if (platform::get_cur_thread_id() == -1) {
+    if (!static_transfer_data_cache)
+      static_transfer_data_cache = new std::unordered_map<size_t, Scope*>;
+    return *static_transfer_data_cache;
+  } else {
+    thread_local auto* x = new std::unordered_map<size_t, Scope*>;
+    return *x;
+  }
 }
 
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
-  thread_local auto* x = new std::unordered_set<Scope*>;
-  return *x;
+  // if get_cur_thread_id() == -1, means not use thread local method to do cache
+  if (platform::get_cur_thread_id() == -1) {
+    if (!static_transfer_scope_cache)
+      static_transfer_scope_cache = new std::unordered_set<Scope*>;
+    return *static_transfer_scope_cache;
+  } else {
+    thread_local auto* x = new std::unordered_set<Scope*>;
+    return *x;
+  }
 }
 
 Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
