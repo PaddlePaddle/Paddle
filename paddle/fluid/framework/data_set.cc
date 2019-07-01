@@ -535,19 +535,19 @@ void MultiSlotDataset::MergeByInsId() {
       std::sort(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
                 sort_cmp_uint64);
       rec.uint64_feasigns_.erase(
-          std::unique(rec.uint64_feasigns_.begin(),
-                      rec.uint64_feasigns_.end(), unique_eq_uint64),
+          std::unique(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
+                      unique_eq_uint64),
           rec.uint64_feasigns_.end());
       std::sort(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
                 sort_cmp_float);
       rec.float_feasigns_.erase(
-          std::unique(rec.float_feasigns_.begin(),
-          rec.float_feasigns_.end(), unique_eq_float),
+          std::unique(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
+                      unique_eq_float),
           rec.float_feasigns_.end());
     }
     results.push_back(rec);
   }
-  VLOG(3) << "results size " <<  results.size();
+  VLOG(3) << "results size " << results.size();
   results.shrink_to_fit();
 
   auto fleet_ptr = FleetWrapper::GetInstance();

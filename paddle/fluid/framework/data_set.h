@@ -127,8 +127,7 @@ class DatasetImpl : public Dataset {
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
   virtual void SetChannelNum(int channel_num);
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas,
-                               int min_merge_size);
+                               bool erase_duplicate_feas, int min_merge_size);
 
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
