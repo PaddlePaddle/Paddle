@@ -17,31 +17,43 @@
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_MKLDNN
 static std::unordered_map<size_t, Scope*>* static_transfer_data_cache = nullptr;
 static std::unordered_set<Scope*>* static_transfer_scope_cache = nullptr;
+#endif
 
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
-  // if get_cur_thread_id() == -1, means not use thread local method to do cache
+#ifdef PADDLE_WITH_MKLDNN
+  // if get_cur_thread_id() == -1, means not using thread local method to do
+  // cache
   if (platform::get_cur_thread_id() == -1) {
     if (!static_transfer_data_cache)
       static_transfer_data_cache = new std::unordered_map<size_t, Scope*>;
     return *static_transfer_data_cache;
   } else {
+#endif
     thread_local auto* x = new std::unordered_map<size_t, Scope*>;
     return *x;
+#ifdef PADDLE_WITH_MKLDNN
   }
+#endif
 }
 
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
-  // if get_cur_thread_id() == -1, means not use thread local method to do cache
+#ifdef PADDLE_WITH_MKLDNN
+  // if get_cur_thread_id() == -1, means not using thread local method to do
+  // cache
   if (platform::get_cur_thread_id() == -1) {
     if (!static_transfer_scope_cache)
       static_transfer_scope_cache = new std::unordered_set<Scope*>;
     return *static_transfer_scope_cache;
   } else {
+#endif
     thread_local auto* x = new std::unordered_set<Scope*>;
     return *x;
+#ifdef PADDLE_WITH_MKLDNN
   }
+#endif
 }
 
 Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
