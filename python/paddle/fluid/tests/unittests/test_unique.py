@@ -58,7 +58,7 @@ class TestRandom(TestUniqueOp):
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
         np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
                                                        True)
-        np_tuple = zip(np_unique, np_index)
+        np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
         target_index = np.array(
