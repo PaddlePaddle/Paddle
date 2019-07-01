@@ -36,9 +36,8 @@ void RunModel() {
   // 1. Set CxxConfig
   CxxConfig config;
   config.set_model_dir(FLAGS_model_dir);
-  config.set_preferred_place(Place{TARGET(kX86), PRECISION(kFloat)});
-  config.set_valid_places({Place{TARGET(kX86), PRECISION(kFloat)},
-                           Place{TARGET(kARM), PRECISION(kFloat)}});
+  config.set_preferred_place(Place{TARGET(kARM), PRECISION(kFloat)});
+  config.set_valid_places({Place{TARGET(kARM), PRECISION(kFloat)}});
 
   // 2. Create PaddlePredictor by CxxConfig
   std::shared_ptr<PaddlePredictor> predictor =
