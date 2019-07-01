@@ -679,7 +679,6 @@ paddle.fluid.dygraph.PRelu.sublayers (ArgSpec(args=['self', 'include_sublayers']
 paddle.fluid.dygraph.PRelu.train (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.BilinearTensorProduct ('paddle.fluid.dygraph.nn.BilinearTensorProduct', ('document', '310140d784933928a27db9a7af4761e8'))
 paddle.fluid.dygraph.BilinearTensorProduct.__init__ (ArgSpec(args=['self', 'name_scope', 'size', 'name', 'act', 'param_attr', 'bias_attr'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-+ python /paddle/tools/diff_api.py /paddle/paddle/fluid/API.spec new.spec
 paddle.fluid.dygraph.BilinearTensorProduct.add_parameter (ArgSpec(args=['self', 'name', 'parameter'], varargs=None, keywords=None, defaults=None), ('document', 'f35ab374c7d5165c3daf3bd64a5a2ec1'))
 paddle.fluid.dygraph.BilinearTensorProduct.add_sublayer (ArgSpec(args=['self', 'name', 'sublayer'], varargs=None, keywords=None, defaults=None), ('document', '839ff3c0534677ba6ad8735c3fd4e995'))
 paddle.fluid.dygraph.BilinearTensorProduct.backward (ArgSpec(args=['self'], varargs='inputs', keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
