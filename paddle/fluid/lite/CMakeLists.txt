@@ -252,7 +252,6 @@ add_custom_target(publish_inference_cxx_lib ${TARGET}
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/third_party"
         COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
-        COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/models"
         COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/paddle_*.h" "${INFER_LITE_PUBLISH_ROOT}/cxx/include"
         COMMAND cp "${CMAKE_BINARY_DIR}/libpaddle_api_full_bundled.a" "${INFER_LITE_PUBLISH_ROOT}/cxx/lib"
         COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/model_optimize_tool" "${INFER_LITE_PUBLISH_ROOT}/bin"
@@ -261,12 +260,10 @@ add_custom_target(publish_inference_cxx_lib ${TARGET}
         COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/gflags" "${INFER_LITE_PUBLISH_ROOT}/third_party"
         COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_full" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
         COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/Makefile.def" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
-        COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/mobilenet_v1" "${INFER_LITE_PUBLISH_ROOT}/demo/models"
         )
 add_dependencies(publish_inference_cxx_lib model_optimize_tool)
 add_dependencies(publish_inference_cxx_lib paddle_code_generator)
 add_dependencies(publish_inference_cxx_lib bundle_full_api)
-add_dependencies(publish_inference_cxx_lib extern_lite_download_mobilenet_v1_tar_gz)
 add_dependencies(publish_inference_lite publish_inference_cxx_lib)
 
 
@@ -290,26 +287,11 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
                 COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so" "${INFER_LITE_PUBLISH_ROOT}/java/so"
                 COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/android/jni/src" "${INFER_LITE_PUBLISH_ROOT}/java"
                 COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/android" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
-                COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/inception_v4_simple"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/assets"
-                COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/lite_naive_model"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/assets"
-                COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/mobilenet_v1"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/assets"
-                COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/mobilenet_v2_relu"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/assets"
-                COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/resnet50"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/assets"
-                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm7"
-                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm8"
-                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm64-v8a"
-                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/armeabi-v7a"
-                COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so"
-                    "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/x86"
+                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm7"
+                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm8"
+                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm64-v8a"
+                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/armeabi-v7a"
+                COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/x86"
                 )
         add_dependencies(publish_java_inference_mobile_lib paddle_lite_jni)
         add_dependencies(publish_inference_lite publish_java_inference_mobile_lib)
