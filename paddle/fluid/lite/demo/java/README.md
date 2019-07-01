@@ -5,12 +5,7 @@
 1. 一台能运行安卓程序的安卓手机
 2. 一台带有AndroidStudio的开发机
 
-## 如果你使用我们的 cmake 生成 demo 程序，
-
-可以直接把 `${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor`  载入你的AndroidStudio，
-运行，查看本文末尾的程序运行显示结果。
-
-## 手动编译（给测试人员需要更新 demo 模型或 .so 库可阅读）
+## 手动编译
 
 ### 编译：
 首先在PaddleLite的开发Docker镜像中，拉取最新PaddleLite代码，编译对应你手机架构的预测库，
@@ -32,7 +27,7 @@ cmake .. \
 -DWITH_TESTING=ON \
 -DARM_TARGET_OS=android -DARM_TARGET_ARCH_ABI=armv8 -DARM_TARGET_LANG=gcc
 
-make -j 4
+make publish_inference_lite -j 4
 ```
 
 Make完成后查看要存在`build.lite.android.arm8.gcc/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so`
@@ -43,15 +38,16 @@ Make完成后查看要存在`build.lite.android.arm8.gcc/paddle/fluid/lite/api/a
 拷贝进 `PaddlePredictor/app/src/main/jinLibs/所有架构文件夹下` 比如文件夹arm8里要包含该 .so文件：
 
 ### 把demo使用到的模型文件拷贝进安卓程序：
-在 `build.lite.android.arm8.gcc/third_party/install` 文件夹下，把以下我们的模型文件夹拷贝进
-`PaddlePredictor/app/src/main/assets` 这个文件夹
-需要拷贝的模型文件：
+下载我们的5个模型文件，并复制到 `PaddlePredictor/app/src/main/assets` 这个文件夹中
+需要拷贝的模型文件和下载地址：
 
-    inception_v4_simple
-    lite_naive_model
-    mobilenet_v1
-    mobilenet_v2_relu
-    resnet50
+    inception_v4_simple http://paddle-inference-dist.bj.bcebos.com/inception_v4_simple.tar.gz
+    lite_naive_model    http://paddle-inference-dist.bj.bcebos.com/lite_naive_model.tar.gz
+    mobilenet_v1        http://paddle-inference-dist.bj.bcebos.com/mobilenet_v1.tar.gz
+    mobilenet_v2_relu   http://paddle-inference-dist.bj.bcebos.com/mobilenet_v2_relu.tar.gz
+    resnet50            http://paddle-inference-dist.bj.bcebos.com/resnet50.tar.gz
+
+下载完后，assets文件夹里要包含上面五个模型文件夹。
 
 ## 运行 Android 程序结果
 以上准备工作完成，就可以开始Build ，安装，和跑安卓demo程序。当你运行PaddlePredictor 程序时，大概会等10秒，
