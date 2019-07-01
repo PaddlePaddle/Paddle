@@ -59,7 +59,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext,
                            paddle::platform::float16>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, bool>);

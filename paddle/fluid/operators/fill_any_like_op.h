@@ -33,6 +33,9 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
+
+    // TODO(fangzeyang): Once context.Attribute supports double dtype, this
+    // kernel should be updated to support double dtype, too.
     float value = context.Attr<float>("value");
 
     auto common_type_value = static_cast<CommonType>(value);
