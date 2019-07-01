@@ -17,14 +17,17 @@
 namespace paddle {
 namespace framework {
 
+static std::unordered_map<size_t, Scope*>* x = nullptr;
+static std::unordered_set<Scope*>* y = nullptr;
+
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
-  thread_local auto* x = new std::unordered_map<size_t, Scope*>;
+  if (x == nullptr) x = new std::unordered_map<size_t, Scope*>;
   return *x;
 }
 
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
-  thread_local auto* x = new std::unordered_set<Scope*>;
-  return *x;
+  if (y == nullptr) y = new std::unordered_set<Scope*>;
+  return *y;
 }
 
 Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
