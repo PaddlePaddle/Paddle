@@ -29,7 +29,7 @@ bool KernelScoreCmp(const std::pair<size_t, std::unique_ptr<KernelBase>>& a,
 }
 
 void StaticKernelPickPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
-  CHECK(kernel_pick_factors_.AnyFactorConsidered())
+  CHECK(kernel_pick_factors_.any_factor_considered())
       << "kernel_pick_factors should be specified first";
   CHECK(graph) << "graph not valid";
   // sort kernels by the factors.
