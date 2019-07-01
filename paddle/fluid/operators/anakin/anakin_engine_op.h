@@ -119,11 +119,15 @@ class AnakinEngineOp : public framework::OperatorBase {
       engine->Execute(inputs, outputs, stream);
 #endif
     } else {
+#ifdef ANAKIN_X86_PLACE
       auto *engine =
           inference::Singleton<inference::anakin::AnakinEngineManager<
               ::anakin::saber::X86, PrecisionT>>::Global()
               .Get(engine_key_);
       engine->Execute(inputs, outputs);
+#else
+      LOG(FATAL) << "Unknown Platform for AnakinEngine!";
+#endif
     }
   }
 };

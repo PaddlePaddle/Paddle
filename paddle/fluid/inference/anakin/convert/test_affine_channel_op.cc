@@ -57,19 +57,16 @@ TEST(affine_channel_op, gpu) {
   test_affine_channel_op<::anakin::saber::NV>(ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(affine_channel_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_affine_channel_op<::anakin::saber::X86>(ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(affine_channel);
-USE_CPU_ANAKIN_CONVERTER(affine_channel);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(affine_channel);
-#endif

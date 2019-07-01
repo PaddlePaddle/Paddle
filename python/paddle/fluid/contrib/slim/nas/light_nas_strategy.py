@@ -16,6 +16,7 @@ from ..graph import GraphWrapper
 from .controller_server import ControllerServer
 from .search_agent import SearchAgent
 from ....executor import Executor
+from ....log_helper import get_logger
 import re
 import logging
 import functools
@@ -24,10 +25,10 @@ from .lock import lock, unlock
 
 __all__ = ['LightNASStrategy']
 
-logging.basicConfig(
-    format='LightNASStrategy-%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__,
+    logging.INFO,
+    fmt='LightNASStrategy-%(asctime)s-%(levelname)s: %(message)s')
 
 
 class LightNASStrategy(Strategy):
@@ -125,6 +126,14 @@ class LightNASStrategy(Strategy):
         # create client
         self._search_agent = SearchAgent(
             self._server_ip, self._server_port, key=self._key)
+
+    def __getstate__(self):
+        """Socket can't be pickled."""
+        d = {}
+        for key in self.__dict__:
+            if key not in ["_search_agent", "_server"]:
+                d[key] = self.__dict__[key]
+        return d
 
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
