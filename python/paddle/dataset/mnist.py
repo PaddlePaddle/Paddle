@@ -27,7 +27,7 @@ import struct
 from six.moves import range
 __all__ = ['train', 'test', 'convert']
 
-URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
+URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
 TEST_IMAGE_MD5 = '9fb629c4189551a2d022fa330f9573f3'
 TEST_LABEL_URL = URL_PREFIX + 't10k-labels-idx1-ubyte.gz'
