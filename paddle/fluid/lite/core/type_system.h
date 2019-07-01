@@ -34,11 +34,12 @@ namespace lite {
 
 // Type is the definition of all the types that supported by the Variable that
 // represents as the input and output of an operator or kernel.
-// The DNN system is simple, and the architecture can not process that many data
-// types as a compiler, or that will turn out to a chaos.
+// The DNN system is simple, just a list of operators, and the architecture
+// can not process that many data types as a compiler, or that will turn out to
+// a chaos.
 //
 // We should make sure that the supported data types be registered here, and
-// keep the quantity small and avoid using some special data types as op's
+// keep the set small and avoid using some special data types as op's
 // inputs or outputs, such as some runtime cache, those types can't be processed
 // by the MIR.
 //
@@ -51,7 +52,7 @@ namespace lite {
 // transforming operators, for example, a DataLayoutTransformOp can convert a
 // `TensorFp32NCHWTy` to a `TensorFp32NHWCTy`; a IoCopyOp can convert a
 // `TensorFp32NCHWTy(kHost)` to `TensorFp32NCHWTy(kCUDA)`. There are many other
-// convertions between different Types, but there are some unsupportted type
+// convertions between different Types, but there are some unsupported type
 // convertions, for example, there is noway to convert a `UnsupportedTy` to a
 // `TensorAnyTy`.
 //

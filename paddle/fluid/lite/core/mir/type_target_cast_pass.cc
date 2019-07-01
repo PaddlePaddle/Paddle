@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
+#include "paddle/fluid/lite/core/mir/type_target_cast_pass.h"
 #include <list>
 #include <memory>
 #include <string>
@@ -142,5 +142,5 @@ void TypeTargetTransformPass::SetValidPlaces(
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(type_target_transform_pass,
+REGISTER_MIR_PASS(type_target_cast_pass,
                   paddle::lite::mir::TypeTargetTransformPass);

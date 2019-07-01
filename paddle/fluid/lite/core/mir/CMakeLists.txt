@@ -17,8 +17,8 @@ lite_cc_library(mir_passes
       elimination/identity_scale_eliminate_pass.cc
       static_kernel_pick_pass.cc
       variable_place_inference_pass.cc
-      type_target_transform_pass.cc
-      precision_cast_transform_pass.cc
+      type_target_cast_pass.cc
+      type_precision_cast_pass.cc
       io_copy_kernel_pick_pass.cc
       graph_visualize_pass.cc
       generate_program_pass.cc

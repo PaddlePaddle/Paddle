@@ -46,7 +46,7 @@ void Run(DebugConfig* conf) {
 
   std::vector<std::string> passes{{
       "static_kernel_pick_pass", "variable_place_inference_pass",
-      "type_target_transform_pass", "variable_place_inference_pass",
+      "type_target_cast_pass", "variable_place_inference_pass",
       "io_copy_kernel_pick_pass", "variable_place_inference_pass",
       "runtime_context_assign_pass",
   }};

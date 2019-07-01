@@ -36,10 +36,10 @@ class KernelPickFactor {
   };
 
   // Has any factors considered.
-  bool AnyFactorConsidered() const { return data_; }
+  bool any_factor_considered() const { return data_; }
 
   KernelPickFactor& ConsiderTarget();
-  // Perfer a specific target, e.g. prefer CUDA kernels.
+  // Prefer a specific target, e.g. prefer CUDA kernels.
   KernelPickFactor& ConsiderPrecision();
   KernelPickFactor& ConsiderDataLayout();
   KernelPickFactor& ConsiderDevice();
