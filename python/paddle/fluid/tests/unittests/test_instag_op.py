@@ -56,6 +56,9 @@ class TestInstagOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
 
+        def test_check_grad(self):
+            self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
+
 
 if __name__ == '__main__':
     unittest.main()
