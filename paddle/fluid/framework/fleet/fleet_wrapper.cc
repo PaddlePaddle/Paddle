@@ -293,6 +293,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     grad_dim = emb_dim - 2;
   }
   CHECK_GE(grad_dim, 0);
+
+  push_values->resize(fea_keys.size() + 1);
+  for (auto& t : *push_values) {
+    t.resize(emb_dim + offset);
+  }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
@@ -312,10 +317,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
-    push_values->resize(fea_keys.size() + 1);
-    for (auto& t : *push_values) {
-      t.resize(emb_dim + offset);
-    }
+
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
       Eigen::Map<

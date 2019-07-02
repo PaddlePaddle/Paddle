@@ -198,6 +198,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
+  double op_sum_time = 0;
+  std::unordered_map<std::string , double> op_to_time
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -346,7 +348,27 @@ void DownpourWorker::TrainFilesWithProfiler() {
         for (size_t i = 0; i < op_total_time.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          if (op_to_time.find(op_name[i]) == op_to_time.end()) {
+            op_to_time[op_name[i]] = 0.0;
+          }
+          op_to_time[op_name[i]] += op_total_time[i];
+          op_sum_time += op_total_time[i];
         }
+        for (auto& i : op_to_time) {
+          fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+                  i.second / batch_cnt);
+        }
+        fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
+        fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
+        fprintf(stderr, "pull sparse time: %fs\n",
+                pull_sparse_time / batch_cnt);
+        fprintf(stderr, "fill sparse time: %fs\n",
+                fill_sparse_time / batch_cnt);
+        fprintf(stderr, "push sparse time: %fs\n",
+                push_sparse_time / batch_cnt);
+        fprintf(stderr, "push dense time: %fs\n", push_dense_time / batch_cnt);
+        fprintf(stderr, "collect label time: %fs\n",
+                collect_label_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",

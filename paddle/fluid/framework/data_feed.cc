@@ -718,7 +718,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
             // if float feasign is equal to zero, ignore it
-            if (fabs(feasign) < 1e-6) {
+            // except when slot is dense
+            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
               continue;
             }
             FeatureKey f;
@@ -729,7 +730,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
             // if uint64 feasign is equal to zero, ignore it
-            if (feasign == 0) {
+            // except when slot is dense
+            if (feasign == 0 && !use_slots_is_dense_[i]) {
               continue;
             }
             FeatureKey f;
