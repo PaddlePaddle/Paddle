@@ -43,6 +43,7 @@ if(WITH_GPU)
 else()
     set(CMAKE_ARGS_PREFIX -DUSE_GPU_PLACE=NO)
 endif()
+
 ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
