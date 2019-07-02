@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
-#include <future>  // NOLINT
+
 #include <memory>
-#include <ostream>
 
 namespace paddle {
 namespace operators {
@@ -25,8 +24,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SyncFCGather op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
     PADDLE_ENFORCE_GE(nranks, 2, "nranks should be >=2");
     framework::DDim dim = ctx->GetInputDim("X");
@@ -49,10 +47,10 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("nranks",
                  "Total trainer count of the distributed training job");
     AddComment(R"DOC(
-***CAllGather Operator***
+CAllGather Operator
 each rank receives the aggregation of data from all ranks in the order of the ranks
 
-Call NCCL collective AllGather internally.https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/colls.html#c.ncclAllGather
+reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#allgather
 )DOC");
   }
 };
@@ -81,9 +79,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp, ops::CAllGatherOpGradMaker,
                   ops::CAllGatherOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    c_allgather, ops::CAllGatherOpKernel<plat::CPUDeviceContext, float>,
-    ops::CAllGatherOpKernel<plat::CPUDeviceContext, double>,
-    ops::CAllGatherOpKernel<plat::CPUDeviceContext, int>,
-    ops::CAllGatherOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::CAllGatherOpKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(c_allgather, ops::CAllGatherOpCPUKernel<float>,
+                       ops::CAllGatherOpCPUKernel<double>,
+                       ops::CAllGatherOpCPUKernel<int>,
+                       ops::CAllGatherOpCPUKernel<int64_t>,
+                       ops::CAllGatherOpCPUKernel<plat::float16>);

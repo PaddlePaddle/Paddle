@@ -28,6 +28,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+import logging
 
 __all__ = [
     'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
@@ -593,6 +594,7 @@ def _py_reader(capacity,
                 feed_queue.close()
             except Exception as ex:
                 feed_queue.close()
+                logging.warn('Your decorated reader has raised an exception!')
                 raise ex
 
         reader.thread = threading.Thread(target=__provider_thread__)
@@ -1286,4 +1288,4 @@ def load(out, file_path, load_as_fp16=None):
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)
+    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)
