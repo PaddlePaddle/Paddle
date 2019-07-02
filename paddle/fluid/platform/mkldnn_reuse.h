@@ -39,7 +39,8 @@ class MKLDNNHandler {
     std::stringstream ss;
     ss << tid;
     key_ = key_common_ + "-t:" + ss.str();
-    if (platform::get_cur_thread_id() == -1) {
+    if (platform::get_cur_mkldnn_session_id() ==
+        platform::kMKLDNNSessionID_User) {
       key_ = key_common_;
     }
   }

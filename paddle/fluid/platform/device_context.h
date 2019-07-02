@@ -381,8 +381,11 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
 using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
 
-void set_cur_thread_id(int);
-int get_cur_thread_id(void);
+constexpr size_t kMKLDNNSessionID_Default = 0;
+constexpr size_t kMKLDNNSessionID_User = -1;
+
+void set_cur_mkldnn_session_id(size_t);
+size_t get_cur_mkldnn_session_id(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
