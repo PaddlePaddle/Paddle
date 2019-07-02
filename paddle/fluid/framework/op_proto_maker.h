@@ -34,6 +34,9 @@ enum class OpRole {
   kDist = 0x0008,
   // Tag all learning rate scheduler operators.
   kLRSched = 0x0010,
+  // Collective role is for all collective operators and other operators used
+  // for collective training
+  kCollective = 0x0020,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and

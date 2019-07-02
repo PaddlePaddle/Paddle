@@ -408,6 +408,8 @@ thread_local int cur_thread_id = 0;
 void set_cur_thread_id(int tid) { cur_thread_id = tid; }
 int get_cur_thread_id(void) { return cur_thread_id; }
 
+void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
+
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();

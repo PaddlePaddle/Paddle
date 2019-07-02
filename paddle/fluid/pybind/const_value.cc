@@ -46,6 +46,7 @@ void BindConstValue(pybind11::module* m) {
       .value("Loss", framework::OpRole::kLoss)
       .value("RPC", framework::OpRole::kRPC)
       .value("Dist", framework::OpRole::kDist)
+      .value("Collective", framework::OpRole::kCollective)
       .value("LRSched", framework::OpRole::kLRSched);
 
   op_proto_and_checker_maker.def(

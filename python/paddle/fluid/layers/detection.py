@@ -317,9 +317,8 @@ def rpn_target_assign(bbox_pred,
                             append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
                             append_batch_size=False, dtype='float32')
-            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight=
-                fluid.layers.rpn_target_assign(bbox_pred, cls_logits,
-                anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
+            loc, score, loc_target, score_target, inside_weight = fluid.layers.rpn_target_assign(
+                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
 
     """
 
@@ -681,6 +680,7 @@ def box_coder(prior_box,
  
         .. code-block:: python
  
+            import paddle.fluid as fluid
             prior_box = fluid.layers.data(name='prior_box', 
                                           shape=[512, 4], 
                                           dtype='float32',
@@ -812,6 +812,7 @@ def yolov3_loss(x,
     Examples:
       .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
           gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
           gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
@@ -921,8 +922,9 @@ def yolo_box(x,
 
         import paddle.fluid as fluid
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+        img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, img_size=608, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -1001,6 +1003,7 @@ def detection_map(detect_res,
     Examples:
           .. code-block:: python
 
+            import paddle.fluid as fluid
             from fluid.layers import detection
             detect_res = fluid.layers.data(
                 name='detect_res',
@@ -1119,6 +1122,7 @@ def bipartite_match(dist_matrix,
 
     Examples:
 
+        >>> import paddle.fluid as fluid
         >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
         >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
         >>> iou = fluid.layers.iou_similarity(x=x, y=y)
@@ -1340,6 +1344,7 @@ def ssd_loss(location,
         type of `max_negative`.
 
     Examples:
+        >>> import paddle.fluid as fluid
         >>> pb = fluid.layers.data(
         >>>                   name='prior_box',
         >>>                   shape=[10, 4],
@@ -1393,8 +1398,10 @@ def ssd_loss(location,
     # 3. Mining hard examples
     actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
+    # shape=(-1, 0) is set for compile-time, the correct shape is set by
+    # actual_shape in runtime.
     conf_loss = nn.reshape(
-        x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
+        x=conf_loss, shape=(-1, 0), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
@@ -1464,7 +1471,9 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(x=loss, shape=(num, num_prior), actual_shape=actual_shape)
+    # shape=(-1, 0) is set for compile-time, the correct shape is set by
+    # actual_shape in runtime.
+    loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -1538,6 +1547,7 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9])
             images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.prior_box(
@@ -1664,6 +1674,7 @@ def density_prior_box(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9])
             images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.density_prior_box(
@@ -1927,13 +1938,7 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        compile_shape = [
-            mbox_loc.shape[0], cpt.floor_division(
-                mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
-        ]
-        run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
-        mbox_loc_flatten = nn.reshape(
-            mbox_loc, shape=compile_shape, actual_shape=run_shape)
+        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -1945,16 +1950,7 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        new_shape = [0, -1, num_classes]
-        compile_shape = [
-            conf_loc.shape[0],
-            cpt.floor_division(conf_loc.shape[1] * conf_loc.shape[2] *
-                               conf_loc.shape[3], num_classes), num_classes
-        ]
-        run_shape = tensor.assign(
-            numpy.array([0, -1, num_classes]).astype("int32"))
-        conf_loc_flatten = nn.reshape(
-            conf_loc, shape=compile_shape, actual_shape=run_shape)
+        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
@@ -1972,7 +1968,10 @@ def multi_box_head(inputs,
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
+        mbox_locs_concat = nn.reshape(mbox_locs_concat, shape=[0, -1, 4])
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
+        mbox_confs_concat = nn.reshape(
+            mbox_confs_concat, shape=[0, -1, num_classes])
 
     box.stop_gradient = True
     var.stop_gradient = True
@@ -2027,6 +2026,7 @@ def anchor_generator(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
             anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
@@ -2199,8 +2199,7 @@ def generate_proposal_labels(rpn_rois,
                            append_batch_size=False, dtype='float32')
             im_info = fluid.layers.data(name='im_info', shape=[10, 3],
                            append_batch_size=False, dtype='float32')
-            rois, labels_int32, bbox_targets, bbox_inside_weights,
-            bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            rois, labels, bbox, inside_weights, outside_weights = fluid.layers.generate_proposal_labels(
                            rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                            class_nums=10)
 
@@ -2534,6 +2533,7 @@ def box_clip(input, im_info, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid as fluid
             boxes = fluid.layers.data(
                 name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
@@ -2738,6 +2738,7 @@ def multiclass_nms(bboxes,
         .. code-block:: python
 
 
+            import paddle.fluid as fluid
             boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
                                       dtype='float32', lod_level=1)
             scores = fluid.layers.data(name='scores', shape=[81],
@@ -2816,6 +2817,7 @@ def distribute_fpn_proposals(fpn_rois,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             fpn_rois = fluid.layers.data(
                 name='data', shape=[4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
@@ -2874,6 +2876,7 @@ def box_decoder_and_assign(prior_box,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             pb = fluid.layers.data(
                 name='prior_box', shape=[4], dtype='float32')
             pbv = fluid.layers.data(
@@ -2940,6 +2943,7 @@ def collect_fpn_proposals(multi_rois,
     Examples:
         .. code-block:: python
            
+            import paddle.fluid as fluid
             multi_rois = []
             multi_scores = []
             for i in range(4):

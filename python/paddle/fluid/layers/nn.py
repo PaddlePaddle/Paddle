@@ -302,6 +302,7 @@ def fc(input,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           # when input is single tensor
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
@@ -487,6 +488,7 @@ def dynamic_lstm(input,
     Examples:
         .. code-block:: python
             
+            import paddle.fluid as fluid
             emb_dim = 256
             vocab_size = 10000
             hidden_dim = 512
@@ -637,6 +639,9 @@ def lstm(input,
     Examples:
         .. code-block:: python
             
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
             emb_dim = 256
             vocab_size = 10000
             data = fluid.layers.data(name='x', shape=[-1, 100, 1],
@@ -874,6 +879,7 @@ def dynamic_lstmp(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             dict_dim, emb_dim = 128, 64
             data = fluid.layers.data(name='sequence', shape=[1],
                                      dtype='int32', lod_level=1)
@@ -1329,6 +1335,7 @@ def crf_decoding(input, param_attr, label=None):
     Examples:
         .. code-block:: python
 
+           import paddle.fluid as fluid
            images = fluid.layers.data(name='pixel', shape=[784], dtype='float32')
            label = fluid.layers.data(name='label', shape=[1], dtype='int32')
            hidden = fluid.layers.fc(input=images, size=2)
@@ -1366,6 +1373,7 @@ def cos_sim(X, Y):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
             y = fluid.layers.data(name='y', shape=[1, 7], dtype='float32', append_batch_size=False)
             out = fluid.layers.cos_sim(x, y)
@@ -1436,6 +1444,7 @@ def dropout(x,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
@@ -1529,6 +1538,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           classdim = 7
           x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
           label = fluid.layers.data(name='label', shape=[3, 1], dtype='float32', append_batch_size=False)
@@ -1641,6 +1651,7 @@ def square_error_cost(input, label):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           y = fluid.layers.data(name='y', shape=[1], dtype='float32')
           y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
           cost = fluid.layers.square_error_cost(input=y_predict, label=y)
@@ -1903,6 +1914,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
@@ -2096,6 +2108,7 @@ def conv2d(input,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
@@ -2284,6 +2297,7 @@ def conv3d(input,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
           conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
@@ -2490,6 +2504,7 @@ def sequence_first_step(input):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
@@ -2523,6 +2538,7 @@ def sequence_last_step(input):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
@@ -2576,6 +2592,7 @@ def sequence_slice(input, offset, length, name=None):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              import numpy as np
              seqs = fluid.layers.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
@@ -2652,6 +2669,7 @@ def pool2d(input,
 
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
           pool2d = fluid.layers.pool2d(
@@ -2745,6 +2763,7 @@ def pool3d(input,
 
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32, 32], dtype='float32')
           pool3d = fluid.layers.pool3d(
@@ -2862,6 +2881,7 @@ def adaptive_pool2d(input,
           #             wend = ceil((i + 1) * W / n)
           #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
           #
+          import paddle.fluid as fluid
           data = fluid.layers.data(
               name='data', shape=[3, 32, 32], dtype='float32')
           pool_out = fluid.layers.adaptive_pool2d(
@@ -3131,6 +3151,7 @@ def batch_norm(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
@@ -3414,6 +3435,7 @@ def layer_norm(input,
 
     Examples:
 
+        >>> import paddle.fluid as fluid
         >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
         >>>                          dtype='float32')
         >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
@@ -3495,6 +3517,7 @@ def group_norm(input,
 
     Examples:
 
+        >>> import paddle.fluid as fluid
         >>> data = fluid.layers.data(name='data', shape=[8, 32, 32],
         >>>                          dtype='float32')
         >>> x = fluid.layers.group_norm(input=data, groups=4)
@@ -3752,6 +3775,7 @@ def conv2d_transpose(input,
     Examples:
        .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
@@ -3940,6 +3964,7 @@ def conv3d_transpose(input,
     Examples:
        .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
@@ -4055,6 +4080,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     Examples:
         .. code-block:: python
 	
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
@@ -4123,6 +4149,8 @@ def sequence_expand_as(x, y, name=None):
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
@@ -4169,6 +4197,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy
 
             x = fluid.layers.data(name='y', shape=[10, 5],
@@ -4241,6 +4270,7 @@ def sequence_unpad(x, length, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
             len = fluid.layers.data(name='length', shape=[1], dtype='int64')
             out = fluid.layers.sequence_unpad(x=x, length=len)
@@ -4911,6 +4941,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
 
@@ -4965,6 +4996,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
 
@@ -5026,7 +5058,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             input = fluid.layers.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=2)
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
             # x0.shape [-1, 3, 3, 5]
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 3, 5]
@@ -5094,6 +5126,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(name="data",
                                      shape=(3, 17, 13),
                                      dtype="float32")
@@ -5184,6 +5217,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             # x: [M], y: [N]
             # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
@@ -5286,6 +5320,7 @@ def topk(input, k, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             top5_values, top5_indices = layers.topk(input, k=5)
@@ -5671,7 +5706,8 @@ def nce(input,
         .. code-block:: python
 
 
-	    import numpy as np
+	    import paddle.fluid as fluid
+        import numpy as np
 
 	    window_size = 5
 	    words = []
@@ -6382,6 +6418,8 @@ def softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
@@ -6480,7 +6518,7 @@ def sampled_softmax_with_cross_entropy(logits,
             import paddle.fluid as fluid
 
             input = fluid.layers.data(name='data', shape=[256], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[5], dtype='int64')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc = fluid.layers.fc(input=input, size=100)
             out = fluid.layers.sampled_softmax_with_cross_entropy(
                       logits=fc, label=label, num_samples=25)
@@ -6572,6 +6610,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(
                 name='label', shape=[100], dtype='float32')
@@ -6610,6 +6649,7 @@ def one_hot(input, depth):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
@@ -6655,6 +6695,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     Examples:
         .. code-block:: python
 
+           import paddle.fluid as fluid
            global_step = fluid.layers.autoincreased_step_counter(
                counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
     """
@@ -6746,6 +6787,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
@@ -6857,6 +6899,7 @@ def squeeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.squeeze(input=x, axes=[1])
@@ -6991,6 +7034,7 @@ def lod_reset(x, y=None, target_lod=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[10])
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)
@@ -7051,6 +7095,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(
               name="data", shape=[3, 112, 112], dtype="float32")
           lrn = fluid.layers.lrn(input=data)
@@ -7272,6 +7317,7 @@ def label_smooth(label,
     Examples:
         .. code-block:: python
             
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             label = layers.data(name="label", shape=[1], dtype="float32")
@@ -7367,6 +7413,7 @@ def roi_align(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(
                 name='data', shape=[256, 32, 32], dtype='float32')
             rois = fluid.layers.data(
@@ -7589,6 +7636,7 @@ def image_resize(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
     """
@@ -7756,6 +7804,7 @@ def resize_bilinear(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
@@ -7850,6 +7899,7 @@ def resize_nearest(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
@@ -7879,6 +7929,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.image_resize_short(input, out_short_len=3)
     """
@@ -7942,6 +7993,7 @@ def gather(input, index, overwrite=True):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[-1, 5], dtype='float32')
             index = fluid.layers.data(name='index', shape=[-1, 1], dtype='int32')
             output = fluid.layers.gather(x, index)
@@ -8059,6 +8111,7 @@ def sequence_scatter(input, index, updates, name=None):
 
         .. code-block:: python
 	
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
@@ -8096,6 +8149,7 @@ def random_crop(x, shape, seed=None):
         ${out_comment}
 
     Examples:
+        >>> import paddle.fluid as fluid
         >>> img = fluid.layers.data("img", [3, 256, 256])
         >>> cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
     """
@@ -8143,6 +8197,7 @@ def log(x, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.log(x)
     """
@@ -8175,6 +8230,7 @@ def relu(x, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.relu(x)
     """
@@ -8554,6 +8610,7 @@ def rank_loss(label, left, right, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
             left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
             right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
@@ -8610,6 +8667,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 
         .. code-block:: python
 
+           import paddle.fluid as fluid
            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
            left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
            right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
@@ -8745,6 +8803,7 @@ def elu(x, alpha=1.0, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.elu(x, alpha=0.2)
     """
@@ -8775,6 +8834,7 @@ def relu6(x, threshold=6.0, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.relu6(x, threshold=6.0)
     """
@@ -8837,6 +8897,7 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
     """
@@ -8901,6 +8962,7 @@ def swish(x, beta=1.0, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.swish(x, beta=2.0)
     """
@@ -8994,6 +9056,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
 
     .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
             y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
     """
@@ -9024,6 +9087,7 @@ def leaky_relu(x, alpha=0.02, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
             y = fluid.layers.leaky_relu(x, alpha=0.01)
     """
@@ -9124,6 +9188,7 @@ def flatten(x, axis=1, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[4, 4, 3], dtype="float32")
             out = fluid.layers.flatten(x=x, axis=2)
     """
@@ -9182,7 +9247,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -9228,6 +9295,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     Examples:
         .. code-block:: python
 	
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[10], dtype='float32', lod_level=1)
@@ -9243,14 +9311,18 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     else:
         out = helper.create_variable_for_type_inference(dtype=dtype, name=name)
 
+    inputs = {'X': [x]}
+    attrs = {'out_dtype': out.dtype}
+    if maxlen is not None:
+        if isinstance(maxlen, Variable):
+            inputs['MaxLenTensor'] = maxlen
+        else:
+            attrs['maxlen'] = maxlen
+
     helper.append_op(
-        type='sequence_mask',
-        inputs={'X': [x]},
-        outputs={'Y': out},
-        attrs={
-            'maxlen': maxlen if maxlen is not None else -1,
-            'out_dtype': out.dtype
-        })
+        type='sequence_mask', inputs=inputs, outputs={'Y': out}, attrs=attrs)
+
+    out.stop_gradient = True
     return out
 
 
@@ -9319,6 +9391,7 @@ def stack(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
             x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
@@ -9496,6 +9569,7 @@ def uniform_random_batch_size_like(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers 
 
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
@@ -9540,6 +9614,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             out = layers.gaussian_random(shape=[20, 30])
     """
@@ -9580,6 +9655,7 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(
                 name="X",
                 shape=[13, 11],
@@ -9630,6 +9706,7 @@ def gaussian_random_batch_size_like(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[13, 11], dtype='float32')
 
             out = fluid.layers.gaussian_random_batch_size_like(
@@ -9670,6 +9747,7 @@ def sum(x):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             input0 = layers.data(name="input0", shape=[13, 11], dtype='float32')
             input1 = layers.data(name="input1", shape=[13, 11], dtype='float32')
@@ -10025,6 +10103,7 @@ def logical_and(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             left = fluid.layers.data(
                 name='left', shape=[1], dtype='int32')
             right = fluid.layers.data(
@@ -10053,6 +10132,7 @@ def logical_or(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             left = fluid.layers.data(
                 name='left', shape=[1], dtype='int32')
             right = fluid.layers.data(
@@ -10081,6 +10161,7 @@ def logical_xor(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             left = fluid.layers.data(
                 name='left', shape=[1], dtype='int32')
             right = fluid.layers.data(
@@ -10108,6 +10189,7 @@ def logical_not(x, out=None, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             left = fluid.layers.data(
                 name='left', shape=[1], dtype='int32')
             result = fluid.layers.logical_not(x=left)
@@ -10175,6 +10257,7 @@ def clip_by_norm(x, max_norm, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(
                 name='data', shape=[1], dtype='float32')
             reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
@@ -10213,6 +10296,7 @@ def mean(x, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
@@ -10247,6 +10331,7 @@ def merge_selected_rows(x, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             b = fluid.default_main_program().global_block()
             var = b.create_var(
                 name="X", dtype="float32", persistable=True,
@@ -10335,6 +10420,7 @@ def sigmoid_cross_entropy_with_logits(x,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(
                 name='data', shape=[10], dtype='float32')
             label = fluid.layers.data(
@@ -10381,6 +10467,7 @@ def maxout(x, groups, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(
                 name='data', 
                 shape=[256, 32, 32], 
@@ -10445,7 +10532,7 @@ def space_to_depth(x, blocksize, name=None):
             space_to_depthed = fluid.layers.space_to_depth(
                 x=data, blocksize=2)
 
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            exe = fluid.Executor(fluid.CPUPlace())
             data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
@@ -10655,6 +10742,7 @@ def similarity_focus(input, axis, indexes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(
                 name='data', shape=[-1, 3, 2, 2], dtype='float32')
             fluid.layers.similarity_focus(input=data, axis=1, indexes=[0])
@@ -10882,6 +10970,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           label = fluid.layers.data(name='label', shape=[1], dtype='int64')
           prob = fluid.layers.data(name='prob', shape=[10], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
@@ -11052,6 +11141,7 @@ def bilinear_tensor_product(x,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           layer1 = fluid.layers.data("t1", shape=[-1, 5], dtype="float32")
           layer2 = fluid.layers.data("t2", shape=[-1, 4], dtype="float32")
           tensor = fluid.layers.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
@@ -11168,6 +11258,7 @@ def shuffle_channel(x, group, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
@@ -11209,6 +11300,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
             out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
@@ -11579,6 +11671,7 @@ def kldiv_loss(x, target, reduction='mean', name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[4,2,2], dtype='float32')
             target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
@@ -11624,6 +11717,7 @@ def tree_conv(nodes_vector,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           # 10 for max_node_size of dataset, 5 for vector width
           nodes_vector = fluid.layers.data(name='vectors', shape=[10, 5], dtype='float32')
           # 10 for max_node_size of dataset, 2 for every edge has two nodes
@@ -11688,6 +11782,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   Examples:
     .. code-block:: python
 
+       import paddle.fluid as fluid
        anchor = fluid.layers.data(
                      name = 'anchor', shape = [18, 6], dtype = 'float32', append_batch_size=False)
        positive = fluid.layers.data(
@@ -11759,6 +11854,7 @@ def pixel_shuffle(x, upscale_factor):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[9,4,4])
             output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
 
@@ -11854,6 +11950,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
 
         .. code-block:: python
 
+          import paddle.fluid as fluid
           input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")#, stop_gradient=False)
           label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
           embed = fluid.layers.embedding(
@@ -11893,6 +11990,7 @@ def where(condition):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              import paddle.fluid.layers as layers
              import numpy as np
 
@@ -12059,6 +12157,7 @@ def deformable_conv(input,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
@@ -12290,6 +12389,7 @@ def deformable_roi_pooling(input,
     Examples:
       .. code-block:: python
 
+        import paddle.fluid as fluid
         input = fluid.layers.data(name="input",
                                   shape=[2, 192, 64, 64], 
                                   dtype='float32', 
