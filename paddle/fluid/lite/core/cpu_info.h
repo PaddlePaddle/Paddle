@@ -73,7 +73,7 @@ class DeviceInfo {
 
   template <typename T>
   T* workspace_data() {
-    return workspace_.mutable_data<T>();
+    return reinterpret_cast<T*>(workspace_.mutable_data<float>());
   }
   bool ExtendWorkspace(DDimLite dims);
 

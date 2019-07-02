@@ -128,8 +128,7 @@ void ConvComputeInt8<Ptype_out>::PrepareForRun() {
   } else if (param.groups == 1 && kw == 3 && (sw == 1 || sw == 2) &&
              kps_equal && no_dilation) {
     VLOG(3) << "Run DirectConv Int8";
-    impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
-    // impl_ = new lite::arm::math::DirectConvInt8<Ptype_out>;
+    impl_ = new lite::arm::math::DirectConvInt8<Ptype_out>;
   } else {
     VLOG(3) << "Run GemmLikeConvInt8";
     impl_ = new lite::arm::math::GemmLikeConvInt8<Ptype_out>;
