@@ -66,7 +66,7 @@ class ParallelExecutorPrivate {
 
   ~ParallelExecutorPrivate() {
     if (own_local_scope_) {
-      for (size_t i = 1; i < local_scopes_.size(); ++i) {
+      for (size_t i = 0; i < local_scopes_.size(); ++i) {
         // Skip the first scope, since it is the global scope.
         Scope *local_scope = local_scopes_[i];
         if (global_scope_->HasKid(local_scope)) {
@@ -337,9 +337,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
-    member_->local_scopes_.emplace_back(member_->global_scope_);
-    for (size_t i = 1; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(&scope->NewScope());
+    for (size_t i = 0; i < member_->places_.size(); ++i) {
+      member_->local_scopes_.emplace_back(&member_->global_scope_->NewScope());
     }
   } else {
     member_->own_local_scope_ = false;
@@ -375,7 +374,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   if (member_->use_cuda_ && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    member_->InitOrGetNCCLCommunicator(scope, member_->build_strategy_);
+    member_->InitOrGetNCCLCommunicator(member_->global_scope_,
+                                       member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.
@@ -384,8 +384,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
-    auto *nccl_ctxs =
-        member_->nccl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
+    auto *nccl_ctxs = member_->nccl_ctxs_->GetSyncBatchNormCtx(
+        member_->global_scope_, member_->places_);
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();

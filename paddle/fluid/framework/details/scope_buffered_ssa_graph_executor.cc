@@ -82,6 +82,8 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
   for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
     auto &scope = *it;
     Scope &local_scope = scope->NewScope();
+    PADDLE_ENFORCE(scope->FindLocalVar(kLocalExecScopeName) == nullptr,
+                   "kLocalExecScopeName should not be placed in local scope.");
     *scope->Var(kLocalExecScopeName)->GetMutable<Scope *>() = &local_scope;
 
     for (auto &info : var_infos_) {
