@@ -682,6 +682,7 @@ def box_coder(prior_box,
  
         .. code-block:: python
  
+            import paddle.fluid as fluid
             prior_box = fluid.layers.data(name='prior_box', 
                                           shape=[512, 4], 
                                           dtype='float32',
@@ -813,6 +814,7 @@ def yolov3_loss(x,
     Examples:
       .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
           gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
           gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
@@ -1002,6 +1004,8 @@ def detection_map(detect_res,
     Examples:
           .. code-block:: python
 
+            import paddle.fluid as fluid
+            from fluid.layers import detection
             detect_res = fluid.layers.data(
                 name='detect_res',
                 shape=[10, 6],
@@ -1119,6 +1123,7 @@ def bipartite_match(dist_matrix,
 
     Examples:
 
+        >>> import paddle.fluid as fluid
         >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
         >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
         >>> iou = fluid.layers.iou_similarity(x=x, y=y)
@@ -1340,6 +1345,7 @@ def ssd_loss(location,
         type of `max_negative`.
 
     Examples:
+        >>> import paddle.fluid as fluid
         >>> pb = fluid.layers.data(
         >>>                   name='prior_box',
         >>>                   shape=[10, 4],
@@ -1542,6 +1548,7 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9])
             images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.prior_box(
@@ -1668,6 +1675,7 @@ def density_prior_box(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9])
             images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.density_prior_box(
@@ -2019,6 +2027,7 @@ def anchor_generator(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
             anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
@@ -2526,6 +2535,7 @@ def box_clip(input, im_info, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid as fluid
             boxes = fluid.layers.data(
                 name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
@@ -2730,6 +2740,7 @@ def multiclass_nms(bboxes,
         .. code-block:: python
 
 
+            import paddle.fluid as fluid
             boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
                                       dtype='float32', lod_level=1)
             scores = fluid.layers.data(name='scores', shape=[81],
@@ -2808,6 +2819,7 @@ def distribute_fpn_proposals(fpn_rois,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             fpn_rois = fluid.layers.data(
                 name='data', shape=[4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
@@ -2866,6 +2878,7 @@ def box_decoder_and_assign(prior_box,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             pb = fluid.layers.data(
                 name='prior_box', shape=[4], dtype='float32')
             pbv = fluid.layers.data(
@@ -2932,6 +2945,7 @@ def collect_fpn_proposals(multi_rois,
     Examples:
         .. code-block:: python
            
+            import paddle.fluid as fluid
             multi_rois = []
             multi_scores = []
             for i in range(4):
