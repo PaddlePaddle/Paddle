@@ -2,6 +2,7 @@ if (NOT WITH_ANAKIN)
   return()
 endif()
 
+
 option(ANAKIN_ENABLE_OP_TIMER      "Get more detailed information with Anakin op time"        OFF)
 if(ANAKIN_ENABLE_OP_TIMER)
   add_definitions(-DPADDLE_ANAKIN_ENABLE_OP_TIMER)
