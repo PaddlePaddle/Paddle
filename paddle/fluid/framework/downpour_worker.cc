@@ -199,7 +199,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int batch_cnt = 0;
   uint64_t total_inst = 0;
   double op_sum_time = 0;
-  std::unordered_map<std::string , double> op_to_time
+  std::unordered_map<std::string, double> op_to_time;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();

@@ -453,10 +453,20 @@ void MultiSlotDataset::MergeByInsId() {
   }
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::unordered_map<int, bool> merge_slots;
+  std::vector<std::string> use_slots;
+  std::vector<bool> use_slots_is_dense;
   for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
+    if (slot.is_used()) {
+        use_slots.push_back(slot.name());
+        use_slots_is_dense.push_back(slot.is_dense());
+    }
+  }
+  for (size_t i = 0; i < use_slots.size(); ++i) {
+    // currently, we don't merge dense slots
     if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
-                  slot.name()) != merge_slots_list_.end()) {
+                  use_slots[i]) != merge_slots_list_.end() &&
+        !use_slots_is_dense[i]) {
       merge_slots[i] = true;
     }
   }
