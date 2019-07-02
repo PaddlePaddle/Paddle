@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@ class Collective(object):
     '''
     '''
 
-    def __init__(self):
-        self.global_ring_id = 0
+    def __init__(self, nrings):
+        self.nrings = nrings
         self.endpoints = None
         self.current_endpoint = None
         self.nranks = None
@@ -90,9 +90,10 @@ class Collective(object):
         raise NotImplementedError('call the inherited method of subclasses')
 
     def _transpile_startup_program(self):
-        self._init_communicator(self.startup_program, self.current_endpoint,
-                                self.endpoints, self.rank, self.global_ring_id,
-                                self.wait_port)
+        for ring_id in range(self.nrings):
+            self._init_communicator(self.startup_program, self.current_endpoint,
+                                    self.endpoints, self.rank, ring_id,
+                                    self.wait_port)
         self._broadcast_params()
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
@@ -116,7 +117,7 @@ class Collective(object):
                 'rank': rank,
                 'endpoint': current_endpoint,
                 'other_endpoints': other_endpoints,
-                self.op_role_key: OpRole.Collective
+                self.op_role_key: OpRole.Forward
             })
         block.append_op(
             type='c_comm_init',
@@ -126,29 +127,31 @@ class Collective(object):
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': ring_id,
-                self.op_role_key: OpRole.Collective
+                self.op_role_key: OpRole.Forward
             })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
-        for var in block.iter_parameters():
+        ring_id = -1
+        for param in block.iter_parameters():
+            ring_id = (ring_id + 1) % self.nrings
             block.append_op(
                 type='c_broadcast',
-                inputs={'X': var},
-                outputs={'Out': var},
+                inputs={'X': param},
+                outputs={'Out': param},
                 attrs={
-                    'ring_id': self.global_ring_id,
+                    'ring_id': ring_id,
                     'root': 0,
-                    self.op_role_key: OpRole.Collective
+                    self.op_role_key: OpRole.Forward
                 })
-        block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': var},
-            outputs={'Out': var},
-            attrs={
-                'ring_id': self.global_ring_id,
-                self.op_role_key: OpRole.Collective
-            })
+
+        for ring_id in range(self.nrings):
+            block.append_op(
+                type='c_sync_comm_stream',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={'ring_id': ring_id,
+                       self.op_role_key: OpRole.Forward})
 
     def _is_loss_grad_op(self, op):
         if self.op_role_key not in op.attr_names:
@@ -173,8 +176,8 @@ class GradAllReduce(Collective):
     '''
     '''
 
-    def __init__(self):
-        Collective.__init__(self)
+    def __init__(self, nrings=2):
+        Collective.__init__(self, nrings)
 
     def _transpile_main_program(self):
         self._insert_scale_loss_grad_ops()
@@ -196,11 +199,13 @@ class GradAllReduce(Collective):
                     outputs={'Out': loss_grad_var},
                     attrs={
                         'scale': 1.0 / self.nranks,
-                        self.op_role_key: OpRole.Collective
+                        self.op_role_key: OpRole.Backward
                     })
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
+        ring_id = -1
+        grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_backward_op(op) and \
                     self.op_role_var_key in op.attr_names:
@@ -208,41 +213,50 @@ class GradAllReduce(Collective):
 
                 if len(op_role_var) == 0:
                     continue
-
                 assert len(op_role_var) % 2 == 0
 
-                block._insert_op(
-                    idx + 1,
-                    type='c_sync_calc_stream',
-                    inputs={'X': block.vars[grad]},
-                    outputs={'Out': block.vars[grad]},
-                    attrs={self.op_role_key: OpRole.Collective})
-
-                offset = 2
+                offset = idx
                 for i in range(0, len(op_role_var), 2):
-                    grad = op_role_var[i + 1]
+                    param = block.vars[op_role_var[i]]
+                    grad = block.vars[op_role_var[i + 1]]
+                    if offset == idx:
+                        offset += 1
+                        block._insert_op(
+                            offset,
+                            type='c_sync_calc_stream',
+                            inputs={'X': grad},
+                            outputs={'Out': grad},
+                            attrs={self.op_role_key: OpRole.Backward})
+                        offset += 1
+
+                    # As we search ops reversedly, we should insert c_allreduce_sum
+                    # op in the same way to keep the ring_id alternate
+                    ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
-                        idx + offset,
-                        type='c_allreduce',
-                        inputs={'X': [block.vars[grad]]},
-                        outputs={'Out': [block.vars[grad]]},
+                        offset,
+                        type='c_allreduce_sum',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
                         attrs={
-                            'reduce_type': 0,
-                            self.op_role_key: OpRole.Collective
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
                         })
-                    offset += 1
+
+        if grad is None:
+            return
 
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
-                block._insert_op(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': block.vars[grad]},
-                    outputs={'Out': block.vars[grad]},
-                    attrs={
-                        'ring_id': self.global_ring_id,
-                        self.op_role_key: OpRole.Collective
-                    })
+                for ring_id in range(self.nrings):
+                    block._insert_op(
+                        idx + ring_id,
+                        type='c_sync_comm_stream',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
+                        })
                 break
 
 
@@ -250,8 +264,8 @@ class LocalSGD(Collective):
     '''
     '''
 
-    def __init__(self):
-        Collective.__init__(self)
+    def __init__(self, nrings=2):
+        Collective.__init__(self, nrings)
         self.snapshot_key = '@SNAPSHOT'
 
     def _transpile_startup_program(self):
@@ -268,7 +282,7 @@ class LocalSGD(Collective):
                 type='assign',
                 inputs={'X': [param]},
                 outputs={'Out': [snapshot]},
-                attrs={self.op_role_key: OpRole.Collective})
+                attrs={self.op_role_key: OpRole.Forward})
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
@@ -276,6 +290,7 @@ class LocalSGD(Collective):
     def _transpile_main_program(self):
         block = self.main_program.global_block()
         ordered_param_snapshot = []
+        ring_id = -1
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_update_op(op):
                 param = block.vars[op.input('Param')[0]]
@@ -291,33 +306,33 @@ class LocalSGD(Collective):
                     inputs={'X': [snapshot],
                             'Y': [param]},
                     outputs={'Out': [param]},
-                    attrs={self.op_role_key: OpRole.Collective})
+                    attrs={self.op_role_key: OpRole.Optimize})
                 block._insert_op(
                     idx + 2,
                     type='c_sync_calc_stream',
                     inputs={'X': param},
                     outputs={'Out': param},
-                    attrs={self.op_role_key: OpRole.Collective})
+                    attrs={self.op_role_key: OpRole.Optimize})
+                ring_id = (ring_id + 1) % self.nrings
                 block._insert_op(
                     idx + 3,
-                    type='c_allreduce',
+                    type='c_allreduce_sum',
                     inputs={'X': [param]},
                     outputs={'Out': [param]},
                     attrs={
-                        'reduce_type': 0,
-                        self.op_role_key: OpRole.Collective
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Optimize
                     })
 
                 ordered_param_snapshot.append((param, snapshot))
 
-        block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': param},
-            outputs={'Out': param},
-            attrs={
-                'ring_id': self.global_ring_id,
-                self.op_role_key: OpRole.Collective
-            })
+        for ring_id in range(self.nrings):
+            block.append_op(
+                type='c_sync_comm_stream',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={'ring_id': ring_id,
+                       self.op_role_key: OpRole.Optimize})
 
         for param_snapshot in reversed(ordered_param_snapshot):
             param = param_snapshot[0]
@@ -328,16 +343,16 @@ class LocalSGD(Collective):
                 outputs={'Out': [param]},
                 attrs={
                     'scale': 1.0 / self.nranks,
-                    self.op_role_key: OpRole.Collective
+                    self.op_role_key: OpRole.Optimize
                 })
             block.append_op(
                 type='elementwise_sub',
                 inputs={'X': [snapshot],
                         'Y': [param]},
                 outputs={'Out': [param]},
-                attrs={self.op_role_key: OpRole.Collective})
+                attrs={self.op_role_key: OpRole.Optimize})
             block.append_op(
                 type='assign',
                 inputs={'X': [param]},
                 outputs={'Out': [snapshot]},
-                attrs={self.op_role_key: OpRole.Collective})
+                attrs={self.op_role_key: OpRole.Optimize})

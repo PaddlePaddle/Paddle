@@ -42,7 +42,6 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
 
     def get_model(self, main_prog, startup_program):
         ring_id = 0
-        reduce_type = 0
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
@@ -53,10 +52,9 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                 persistable=False,
                 stop_gradient=False)
             main_prog.global_block().append_op(
-                type="c_allreduce",
+                type="c_allreduce_sum",
                 inputs={'X': tindata},
-                attrs={'ring_id': ring_id,
-                       'reduce_type': reduce_type},
+                attrs={'ring_id': ring_id},
                 outputs={'Out': toutdata})
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",

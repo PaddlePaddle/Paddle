@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #ifndef _WIN32
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/collective_helper.h"
 
-#include <functional>
+#include <memory>
+#include <utility>
 
 #include "paddle/fluid/platform/dynload/nccl.h"
 
@@ -34,24 +34,23 @@ class NCCLCommImpl : public NCCLComm {
   void set_rank(int rank) { rank_ = rank; }
   int rank() const override { return rank_; }
 
-  void set_local_rank(int local_rank) { local_rank_ = local_rank; }
-  int local_rank() const override { return local_rank_; }
+  int device_id() const override {
+    return boost::get<CUDAPlace>(dev_ctx_->GetPlace()).device;
+  }
 
-  void set_comm(ncclComm_t comm) { comm_ = comm; }
-  ncclComm_t comm() const override { return comm_; }
-
-  void set_dev_ctx(CUDADeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
-  CUDADeviceContext* DevCtx() const override { return dev_ctx_; }
+  ncclComm_t comm() const override { return dev_ctx_->nccl_comm(); }
 
   cudaStream_t stream() const override { return dev_ctx_->stream(); }
+
+  void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
+    dev_ctx_ = std::move(dev_ctx);
+  }
 
  private:
   int ring_id_;
   int nranks_;
   int rank_;
-  int local_rank_;
-  ncclComm_t comm_;
-  CUDADeviceContext* dev_ctx_;
+  std::unique_ptr<CUDADeviceContext> dev_ctx_;
 };
 
 // NOTE: not thread-safe
@@ -73,13 +72,15 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
   PADDLE_ENFORCE(
       platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 
+  std::unique_ptr<CUDADeviceContext> dev_ctx(
+      new CUDADeviceContext(CUDAPlace(dev_id)));
+  dev_ctx->set_nccl_comm(comm);
+
   NCCLCommImpl* communicator = new NCCLCommImpl;
   communicator->set_ring_id(ring_id);
   communicator->set_nranks(nranks);
   communicator->set_rank(rank);
-  communicator->set_local_rank(dev_id);
-  communicator->set_comm(comm);
-  communicator->set_dev_ctx(dev_ctx_map_.at(dev_id).get());
+  communicator->set_dev_ctx(std::move(dev_ctx));
 
   comm_map_.emplace(ring_id, std::unique_ptr<NCCLComm>(communicator));
 
