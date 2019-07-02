@@ -185,14 +185,6 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::SetMkldnnThreadID(int tid) {
-#ifdef PADDLE_WITH_MKLDNN
-  platform::set_cur_thread_id(tid);
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-#endif
-}
-
 void AnalysisPredictor::MkldnnPreRun(const std::vector<PaddleTensor> &inputs) {
   // TODO(intel, luotao): will refactor this code later
   // Make sure it not conflict with AnalysisPredictor::SetMkldnnThreadID case

@@ -510,6 +510,7 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
+                import paddle.fluid as fluid
                 loss = network()
                 optimizer = fluid.optimizer.SGD(learning_rate=0.1)
                 params_grads = optimizer.backward(loss)
@@ -827,6 +828,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             optimizer = fluid.optimizer.DGCMomentumOptimizer(
                         learning_rate=0.0001,
                         momentum=0.9,
@@ -1699,6 +1701,7 @@ class AdadeltaOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
             _, params_grads = optimizer.minimize(cost)
@@ -2688,6 +2691,7 @@ class PipelineOptimizer(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)

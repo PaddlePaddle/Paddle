@@ -77,7 +77,9 @@ void CPUQuantizePass::QuantizeInputs(Graph* g, Node* op, std::string input_name,
                                      VarQuantScale* scales, bool are_unsigned,
                                      std::string scale_attr_name) const {
   auto inputs = op->inputs;
+  auto output = op->outputs[0];
   PADDLE_ENFORCE_GE(inputs.size(), 1);
+  PADDLE_ENFORCE_EQ(op->outputs.size(), 1);
 
   // create a quantize op desc prototype
   OpDesc q_desc;
@@ -86,13 +88,9 @@ void CPUQuantizePass::QuantizeInputs(Graph* g, Node* op, std::string input_name,
   std::vector<Node*> quantize_out_nodes(inputs.size());
   std::vector<std::string> quantize_out_node_names(inputs.size());
 
-  double scale_min = std::numeric_limits<double>::max();
-  for (const auto& input : inputs) {
-    double scale = (*scales)[input->Name()].second.data<double>()[0];
-    if (scale < scale_min) scale_min = scale;
-  }
+  double scale_out = (*scales)[output->Name()].second.data<double>()[0];
   unsigned max = are_unsigned ? U8_MAX : S8_MAX;
-  float scale = scale_min * max;
+  float scale = scale_out * max;
 
   for (size_t i = 0; i < inputs.size(); i++) {
     // Create quantize output variable
