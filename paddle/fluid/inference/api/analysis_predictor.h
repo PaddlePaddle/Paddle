@@ -80,8 +80,6 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
-  void SetMkldnnThreadID(int tid);
-
   std::string GetSerializedProgram() const override;
 
   bool MkldnnQuantize();
