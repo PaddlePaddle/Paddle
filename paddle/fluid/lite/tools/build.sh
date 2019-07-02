@@ -304,20 +304,10 @@ function build_arm {
     lang=$3
 
     cur_dir=$(pwd)
-    if [[ ${os} == "armlinux" ]]; then
-        # TODO(hongming): enable compile armv7 and armv7hf on armlinux, and clang compile
-        if [[ ${lang} == "clang" ]]; then
-            echo "clang is not enabled on armlinux yet"
-            return 0
-        fi
-        if [[ ${abi} == "armv7hf" ]]; then
-            echo "armv7hf is not supported on armlinux yet"
-            return 0
-        fi
-        if [[ ${abi} == "armv7" ]]; then
-            echo "armv7 is not supported on armlinux yet"
-            return 0
-        fi
+    # TODO(xxx): enable armlinux clang compile
+    if [[ ${os} == "armlinux" && ${lang} == "clang" ]]; then
+        echo "clang is not enabled on armlinux yet"
+        return 0
     fi
 
     if [[ ${os} == "android" && ${abi} == "armv7hf" ]]; then
@@ -444,15 +434,7 @@ function build_test_arm_subtask_android {
 
 # sub-task2
 function build_test_arm_subtask_armlinux {
-    ########################################################################
-    # job 1-4 must be in one runner
-    port_armv8=5554
-    port_armv7=5556
-
-    prepare_emulator $port_armv8 $port_armv7
-
     cur=$PWD
-
     # job 5
     build_arm "armlinux" "armv8" "gcc"
     test_arm "armlinux" "armv8" "gcc" $port_armv8
@@ -468,7 +450,6 @@ function build_test_arm_subtask_armlinux {
     test_arm "armlinux" "armv7hf" "gcc" $port_armv8
     cd $cur
 
-    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
 }
 

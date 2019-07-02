@@ -18,55 +18,7 @@ set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
-
-if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    cmake_minimum_required(VERSION 3.10)
-    # TODO(TJ): make as function check_default
-    # check os
-    if(NOT DEFINED ARM_TARGET_OS)
-        set(ARM_TARGET_OS "android" CACHE STRING "Choose ARM Target OS")
-    endif()
-    set(ARM_TARGET_OS_LIST "android" "armlinux") # TODO: "ios"
-    set_property(CACHE ARM_TARGET_OS PROPERTY STRINGS ${ARM_TARGET_OS_LIST})
-    if (NOT ARM_TARGET_OS IN_LIST ARM_TARGET_OS_LIST)
-        message(FATAL_ERROR "ARM_TARGET_OS must be in one of ${ARM_TARGET_OS_LIST}")
-    endif()
-
-    # check arch abi
-    if(NOT DEFINED ARM_TARGET_ARCH_ABI)
-        set(ARM_TARGET_ARCH_ABI "armv8" CACHE STRING "Choose ARM Target ARCH ABI")
-    endif()
-    set(ARM_TARGET_ARCH_ABI_LIST "armv8" "armv7" "armv7hf" "arm64-v8a" "armeabi-v7a")
-    set_property(CACHE ARM_TARGET_ARCH_ABI PROPERTY STRINGS ${ARM_TARGET_ARCH_ABI_LIST})
-    if (NOT ARM_TARGET_ARCH_ABI IN_LIST ARM_TARGET_ARCH_ABI_LIST)
-        message(FATAL_ERROR "ARM_TARGET_ARCH_ABI must be in one of ${ARM_TARGET_ARCH_ABI_LIST}")
-    endif()
-
-    # check arch abi
-    if(NOT DEFINED ARM_TARGET_LANG)
-        set(ARM_TARGET_LANG "gcc" CACHE STRING "Choose ARM Target Language")
-    endif()
-    set(ARM_TARGET_LANG_LIST "gcc" "clang" "")
-    set_property(CACHE ARM_TARGET_LANG PROPERTY STRINGS ${ARM_TARGET_LANG_LIST})
-    if (NOT ARM_TARGET_LANG IN_LIST ARM_TARGET_LANG_LIST)
-        message(FATAL_ERROR "ARM_TARGET_LANG must be in one of ${ARM_TARGET_LANG_LIST}")
-    endif()
-
-    message(STATUS "Lite ARM Compile ${ARM_TARGET_OS} with ${ARM_TARGET_ARCH_ABI} ${ARM_TARGET_LANG}")
-    include(cross_compiling/host)
-    include(cross_compiling/armlinux)
-    include(cross_compiling/android)
-
-    if(NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-            "Default use Release in android" FORCE)
-    endif()
-    if(NOT THIRD_PARTY_BUILD_TYPE)
-        set(THIRD_PARTY_BUILD_TYPE "MinSizeRel" CACHE STRING
-            "Default use MinSizeRel in android" FORCE)
-    endif()
-
-endif()
+include(cross_compiling/preproject)
 
 project(paddle CXX C)
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
@@ -151,6 +103,7 @@ option(LITE_WITH_JAVA "Enable Java JNI lib in lite mode" OFF)
 option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
 option(LITE_WITH_X86  "Enable X86 in lite mode"  ON)
 option(LITE_WITH_ARM  "Enable ARM in lite mode"  OFF)
+option(LITE_WITH_OPENMP "Enable OpenMP in lite framework" ON)
 option(LITE_WITH_OPENCL   "Enable OpenCL support in lite" OFF)
 option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" OFF)
 option(LITE_WITH_PROFILE  "Enable profile mode in lite framework"  OFF)
@@ -171,9 +124,8 @@ include_directories("${PADDLE_SOURCE_DIR}")
 # for mobile
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "Building the mobile framework")
-    if (ANDROID)
-        include(cross_compiling/findar)
-    endif()
+    include(cross_compiling/postproject)
+
     # include the necessary thirdparty dependencies
     include(external/gflags)    # download, build, install gflags
     include(external/glog)      # download, build, install glog
@@ -192,22 +144,7 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    find_package(OpenMP REQUIRED)
-    if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
-        add_definitions(-DARM_WITH_OMP)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-        message(STATUS "Found OpenMP ${OpenMP_VERSION} ${OpenMP_CXX_VERSION}")
-        message(STATUS " |-- OpenMP C flags:  ${OpenMP_C_FLAGS}")
-        message(STATUS " |-- OpenMP CXX flags:  ${OpenMP_CXX_FLAGS}")
-        message(STATUS " |-- OpenMP OpenMP_CXX_LIB_NAMES:  ${OpenMP_CXX_LIB_NAMES}")
-        message(STATUS " `-- OpenMP OpenMP_CXX_LIBRARIES:  ${OpenMP_CXX_LIBRARIES}")
-    else()
-        message(FATAL_ERROR "Could not found openmp !")
-    endif()
     add_subdirectory(paddle)
-
     return()
 endif()
 
