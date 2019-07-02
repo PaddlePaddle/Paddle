@@ -18,42 +18,62 @@ namespace paddle {
 namespace framework {
 
 #ifdef PADDLE_WITH_MKLDNN
-static std::unordered_map<size_t, Scope*>* static_transfer_data_cache = nullptr;
-static std::unordered_set<Scope*>* static_transfer_scope_cache = nullptr;
+using transfer_data_cache_map = std::unordered_map<size_t, Scope*>;
+using transfer_scope_cache_map = std::unordered_set<Scope*>;
+static std::unordered_map<size_t, transfer_data_cache_map*>
+    static_transfer_data_caches;
+static std::unordered_map<size_t, transfer_scope_cache_map*>
+    static_transfer_scope_caches;
 #endif
 
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
 #ifdef PADDLE_WITH_MKLDNN
-  // if get_cur_thread_id() == -1, means not using thread local method to do
-  // cache
-  if (platform::get_cur_thread_id() == -1) {
-    if (!static_transfer_data_cache)
-      static_transfer_data_cache = new std::unordered_map<size_t, Scope*>;
-    return *static_transfer_data_cache;
-  } else {
-#endif
-    thread_local auto* x = new std::unordered_map<size_t, Scope*>;
-    return *x;
-#ifdef PADDLE_WITH_MKLDNN
+  size_t tid = static_cast<size_t>(platform::get_cur_thread_id());
+
+  // if tid != 0, means there is specific mkldnn tid setting from user.
+  if (tid != 0) {
+    tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+
+    static std::mutex acquire_barrier;
+    std::lock_guard<std::mutex> block_until_finish_this_job(acquire_barrier);
+
+    auto map_it = static_transfer_data_caches.find(tid);
+    if (map_it == static_transfer_data_caches.end()) {
+      auto* x = new transfer_data_cache_map;
+      static_transfer_data_caches[tid] = x;
+      return *x;
+    } else {
+      return *static_transfer_data_caches[tid];
+    }
   }
 #endif
+  thread_local auto* x = new std::unordered_map<size_t, Scope*>;
+  return *x;
 }
 
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
 #ifdef PADDLE_WITH_MKLDNN
-  // if get_cur_thread_id() == -1, means not using thread local method to do
-  // cache
-  if (platform::get_cur_thread_id() == -1) {
-    if (!static_transfer_scope_cache)
-      static_transfer_scope_cache = new std::unordered_set<Scope*>;
-    return *static_transfer_scope_cache;
-  } else {
-#endif
-    thread_local auto* x = new std::unordered_set<Scope*>;
-    return *x;
-#ifdef PADDLE_WITH_MKLDNN
+  size_t tid = static_cast<size_t>(platform::get_cur_thread_id());
+
+  // if tid != 0, means there is specific mkldnn tid setting from user.
+  if (tid != 0) {
+    tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+
+    static std::mutex acquire_barrier;
+    std::lock_guard<std::mutex> block_until_finish_this_job(acquire_barrier);
+
+    auto map_it = static_transfer_scope_caches.find(tid);
+    if (map_it == static_transfer_scope_caches.end()) {
+      auto* x = new transfer_scope_cache_map;
+      static_transfer_scope_caches[tid] = x;
+      return *x;
+    } else {
+      return *static_transfer_scope_caches[tid];
+    }
   }
 #endif
+  thread_local auto* x = new std::unordered_set<Scope*>;
+  return *x;
 }
 
 Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
