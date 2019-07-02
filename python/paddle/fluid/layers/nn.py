@@ -5692,7 +5692,7 @@ def nce(input,
 
 
 	    import paddle.fluid as fluid
-        import numpy as np
+            import numpy as np
 
 	    window_size = 5
 	    words = []
