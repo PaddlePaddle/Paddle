@@ -30,9 +30,8 @@ class InstagOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE(ctx->HasOutput("Out"), "Input(Out) should be not null.");
 
         auto x1_dims = ctx->GetInputDim("X1");  // batch_size * vec
-        auto x3_dims = ctx->GetInputDim("X3");  // local_fc_size * tag_size
         // TODO(bjjwwang): fix x3_dims[0]
-        ctx->SetOutputDim("Out", framework::make_ddim({x3_dims[0], x1_dims[0],
+        ctx->SetOutputDim("Out", framework::make_ddim({x1_dims[0],
                     x1_dims[1]}));
     }
  protected:
@@ -74,7 +73,7 @@ class InstagOpGrad : public framework::OperatorWithKernel {
 
         auto grad_out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
         ctx->SetOutputDim(framework::GradVarName("X1"), framework::make_ddim
-                ({grad_out_dims[1], grad_out_dims[2]}));
+                ({grad_out_dims[0], grad_out_dims[1]}));
         }
  protected:
     framework::OpKernelType GetExpectedKernelType

@@ -9340,7 +9340,7 @@ def instag(x1, x2, x3):
     """
 	**Instag Layer**
 
-	This layer split the inputs by tag.
+    This layer split the inputs by tag.
     
     Every Ins has its tags, and every local FC has its tag, and then this op 
     will select the ins who has same tags with local FC.
@@ -9353,22 +9353,22 @@ def instag(x1, x2, x3):
     longest list, for shorter list, we should fill -1. And OpKernel and 
     OpKernel Grad will ignore these -1.
 
-	Args:
-		x1 (Variable): Input Variable (Tensor), usually it is global FC 2D output
-		x2 (Variable): Input Variable (Tensor), usually it is ins tag list
-		x3 (Variable): Input Variable (Tensor), usually it is fc tag list
+    Args:
+        x1 (Variable): Input Variable (Tensor), usually it is global FC 2D output
+        x2 (Variable): Input Variable (Tensor), usually it is ins tag list
+        x3 (Variable): Input Variable (Tensor), usually it is fc tag list
 
-	Returns:
-		Variable: the split output (Tensor) usually it is 3D Tensor output.
+    Returns:
+        Variable: the split output (Tensor) usually it is 3D Tensor output.
 
-	Examples:
-		.. code-block:: python
-            
-            import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape=[32,32], dtype='float64')
-            x2 = layers.data(name='x2', shape=[32,16], dtype='int64')
-            x3 = layers.data(name='x3', shape=[32,16], dtype='int64')
-            out = layers.instag(x1, x2, x3)
+    Examples:
+        .. code-block:: python
+
+        import paddle.fluid.layers as layers
+        x1 = layers.data(name='x1', shape=[32,32], dtype='float64')
+        x2 = layers.data(name='x2', shape=[32,16], dtype='int64')
+        x3 = layers.data(name='x3', shape=[32,16], dtype='int64')
+        out = layers.instag(x1, x2, x3)
 		
 	"""
     helper = LayerHelper('instag', **locals())

@@ -30,25 +30,28 @@ class TestInstagOp(OpTest):
         batch_size = 4
         x1_embed_size = 4
         fc_cnt = 2
+
         x1 = np.array([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1],
                        [1, 1, 1, 1]]).astype('double')
+        x1_lod = [[1,1,1,1]]
 
-        x2 = np.array([[1, 2], [1, -1], [2, -1], [2, -1]]).astype('int64')
+        x2 = np.array([[1],[1],[2],[2]]).astype('int64')
+        x2_lod = [[1,1,1,1]]
 
-        x3 = np.array([[1, -1], [1, 2]]).astype('int64')
+        x3 = np.array([1]).astype('int64')
 
-        out = np.array([
-            [[1, 1, 1, 1], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
-            [[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]]
-        ]).astype('double')
+        out = np.array(
+            [[1, 1, 1, 1], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]]
+        ).astype('double')
+        out_lod = x1_lod
 
         self.inputs = {
-            'X1': x1,
-            'X2': x2,
+            'X1': (x1, x1_lod),
+            'X2': (x2, x2_lod),
             'X3': x3,
         }
 
-        self.outputs = {'Out': out, }
+        self.outputs = {'Out': (out, out_lod)}
 
     def test_check_output(self):
         self.check_output()
@@ -56,8 +59,6 @@ class TestInstagOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
 
-        def test_check_grad(self):
-            self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
 
 
 if __name__ == '__main__':
