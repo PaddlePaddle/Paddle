@@ -72,6 +72,7 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy
 
             new_scope = fluid.Scope()
@@ -808,25 +809,6 @@ class Executor(object):
         else:
             trainer._set_thread(thread)
 
-        # Adjust the reader size for small file num
-        if program._pipeline_opt:
-            dataset.set_thread(thread *
-                               program._pipeline_opt["concurrency_list"][0])
-            file_size = len(dataset.dataset.get_filelist())
-            if file_size < thread:
-                thread = file_size
-                print(
-                    "Pipeline: setting the pipeline num to %d is enough because there are only %d files"
-                    % (file_size, file_size))
-            if file_size < thread * program._pipeline_opt["concurrency_list"][
-                    0]:
-                print(
-                    "Pipeline: setting the 1st element in concurrency_list to %d is enough because there are only %d files"
-                    % (file_size / thread, file_size))
-                program._pipeline_opt["concurrency_list"][
-                    0] = file_size / thread
-                dataset.set_thread(
-                    program._pipeline_opt["concurrency_list"][0] * thread)
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
         return scope, trainer
@@ -970,6 +952,25 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
 
+        # Adjust the reader size for small file num
+        if program._pipeline_opt:
+            dataset.set_thread(thread *
+                               program._pipeline_opt["concurrency_list"][0])
+            file_size = len(dataset.dataset.get_filelist())
+            if file_size < thread:
+                thread = file_size
+                print(
+                    "Pipeline: setting the pipeline num to %d is enough because there are only %d files"
+                    % (file_size, file_size))
+            if file_size < thread * program._pipeline_opt["concurrency_list"][
+                    0]:
+                print(
+                    "Pipeline: setting the 1st element in concurrency_list to %d is enough because there are only %d files"
+                    % (file_size / thread, file_size))
+                program._pipeline_opt["concurrency_list"][
+                    0] = file_size / thread
+                dataset.set_thread(
+                    program._pipeline_opt["concurrency_list"][0] * thread)
         dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
