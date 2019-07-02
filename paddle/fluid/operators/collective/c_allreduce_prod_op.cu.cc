@@ -12,27 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-#include <algorithm>
-#include <utility>
-#include <vector>
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
-
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("unimplemented cpu kernel for CAllGatherOp.");
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
+REGISTER_OP_CUDA_KERNEL(
+    c_allreduce_prod, ops::CAllReduceOpCUDAKernel<ops::kRedProd, float>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedProd, double>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedProd, int>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedProd, int64_t>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedProd, plat::float16>)
