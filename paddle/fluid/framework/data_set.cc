@@ -458,8 +458,8 @@ void MultiSlotDataset::MergeByInsId() {
   for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     if (slot.is_used()) {
-        use_slots.push_back(slot.name());
-        use_slots_is_dense.push_back(slot.is_dense());
+      use_slots.push_back(slot.name());
+      use_slots_is_dense.push_back(slot.is_dense());
     }
   }
   for (size_t i = 0; i < use_slots.size(); ++i) {
