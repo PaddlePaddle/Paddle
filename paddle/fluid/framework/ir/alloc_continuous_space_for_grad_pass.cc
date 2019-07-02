@@ -320,7 +320,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
             group_memory_size) {
           break;
         }
-        
+
         auto next_var_type =
             GetDtypeOfVar(var_nodes, group_params_grads->at(j).front().second);
         if (next_var_type != var_type) {
