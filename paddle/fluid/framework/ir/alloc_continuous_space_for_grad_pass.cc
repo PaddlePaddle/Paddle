@@ -206,7 +206,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       details::GroupParamsAndGrads *group_params_grads) const {
     SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
     SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
-    SetGroupAccordingToGroupSize(var_nodes, group_params_grads);
   }
 
   void SetGroupAccordingToLayers(
@@ -311,10 +310,17 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
                          group_params_grads->at(j).end());
 
         ++j;
-        if (local_group_memory_size >= group_memory_size ||
-            j >= group_params_grads->size()) {
+        if (GetFuseParameterGroupsSize() > 1 &&
+            group_p_g.size() >
+                static_cast<size_t>(GetFuseParameterGroupsSize())) {
           break;
         }
+
+        if (static_cast<double>(local_group_memory_size) / kMB >=
+            group_memory_size) {
+          break;
+        }
+        
         auto next_var_type =
             GetDtypeOfVar(var_nodes, group_params_grads->at(j).front().second);
         if (next_var_type != var_type) {
@@ -329,57 +335,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       VLOG(10) << string::Sprintf(
           "SetGroupAccordingToMemorySize(memory_size: %f):", group_memory_size);
       PrintGroupInfo(var_nodes, group_params_grads);
-    }
-  }
-
-  void SetGroupAccordingToGroupSize(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      details::GroupParamsAndGrads *group_params_grads) const {
-    if (GetFuseParameterGroupsSize() == 1) {
-      return;
-    }
-    const int group_size = GetFuseParameterGroupsSize() == -1
-                               ? static_cast<int>(group_params_grads->size())
-                               : GetFuseParameterGroupsSize();
-    PADDLE_ENFORCE_GT(group_size, 1);
-    size_t groups = (group_params_grads->size() + group_size - 1) / group_size;
-    details::GroupParamsAndGrads local_group_params_grads;
-    local_group_params_grads.reserve(groups);
-
-    size_t j = 0;
-    while (j < group_params_grads->size()) {
-      local_group_params_grads.emplace_back();
-      auto &group_p_g = local_group_params_grads.back();
-      group_p_g.reserve(static_cast<size_t>(group_size));
-
-      auto &grad_name = group_params_grads->at(j).front().second;
-      auto var_type = GetDtypeOfVar(var_nodes, grad_name);
-
-      while (j < group_params_grads->size()) {
-        group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
-                         group_params_grads->at(j).end());
-        ++j;
-        if (j >= group_params_grads->size() || j % group_size == 0) {
-          break;
-        }
-        auto next_var_type =
-            GetDtypeOfVar(var_nodes, group_params_grads->at(j).front().second);
-        if (next_var_type != var_type) break;
-      }
-    }
-    std::swap(*group_params_grads, local_group_params_grads);
-
-    if (VLOG_IS_ON(10)) {
-      VLOG(10) << string::Sprintf(
-          "SetGroupAccordingToGroupSize(group_size: %d):", group_size);
-      for (size_t i = 0; i < group_params_grads->size(); ++i) {
-        VLOG(10) << "group " << i;
-        std::stringstream out;
-        for (auto &p_g : group_params_grads->at(i)) {
-          out << "(" << p_g.first << ", " << p_g.second << "), ";
-        }
-        VLOG(10) << out.str();
-      }
     }
   }
 
