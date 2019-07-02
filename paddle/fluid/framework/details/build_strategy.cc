@@ -92,7 +92,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
-    // TODO(zjl): refactor MemoryOptimizePass to fix
+    // TODO(zjl): refactor MemoryOptimizePass to fit
     // new strategy, which does not need to set
     // var.persistable = True
     if (strategy_.use_legacy_memory_optimize_strategy_) {

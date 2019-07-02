@@ -67,7 +67,7 @@ class ParallelExecutorPrivate {
 
   ~ParallelExecutorPrivate() {
     if (own_local_scope_) {
-      for (size_t i = 1; i < local_scopes_.size(); ++i) {
+      for (size_t i = 0; i < local_scopes_.size(); ++i) {
         // Skip the first scope, since it is the global scope.
         Scope *local_scope = local_scopes_[i];
         if (global_scope_->HasKid(local_scope)) {
@@ -344,7 +344,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
-    member_->local_scopes_.emplace_back(member_->global_scope_);
+    member_->local_scopes_.emplace_back(&member_->global_scope_->NewScope());
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&scope->NewScope());
     }

@@ -53,10 +53,12 @@ class EagerDeletionOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  void InitCUDA() override;
+
  private:
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
-  void InitOnce();
+  void CallOnce();
 
   const Scope *scope_;
   std::vector<ir::MemOptVarInfo *> var_infos_;  // not own

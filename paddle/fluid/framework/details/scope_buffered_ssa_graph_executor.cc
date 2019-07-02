@@ -94,6 +94,14 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
   for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
     auto &scope = *it;
     Scope &local_scope = scope->NewScope();
+    PADDLE_ENFORCE(scope->FindLocalVar(kLocalExecScopeName) == nullptr,
+                   "%s has been existed. Maybe you should have share global "
+                   "scope in different CompiledProgram/ParallelExecutor. "
+                   "If you are using CompiledProgram/ParallelExecutor for "
+                   "inference, please set share_vars_from to be the "
+                   "CompiledProgram/ParallelExecutor for train when "
+                   "constructing CompiledProgram/ParallelExecutor for infer.",
+                   kLocalExecScopeName);
     Variable *local_scope_var = scope->Var(kLocalExecScopeName);
     *local_scope_var->GetMutable<Scope *>() = &local_scope;
 
@@ -103,6 +111,9 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
 
     for (auto &info : var_infos_) {
       if (scope->FindVar(info.name_) != nullptr) {
+        if (!info.persistable_) {
+          VLOG(2) << info.name_ << " is found in parent scope, skipped";
+        }
         continue;
       }
 

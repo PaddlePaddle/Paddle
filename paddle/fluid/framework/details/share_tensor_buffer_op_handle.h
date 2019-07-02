@@ -53,8 +53,10 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   void RunImpl() final;
 
+  void InitCUDA() override;
+
  private:
-  void InitOnce();
+  void CallOnce();
 
   const Scope *scope_;
   size_t scope_idx_;

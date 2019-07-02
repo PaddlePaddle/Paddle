@@ -27,10 +27,8 @@ namespace ir {
 
 class MemOptVarInfo {
  public:
-  MemOptVarInfo(const std::string &name, size_t ref_cnt)
-      : name_(name), ref_cnt_(ref_cnt), runtime_ref_cnt_(ref_cnt) {
-    PADDLE_ENFORCE_GE(ref_cnt, 1,
-                      "Reference count must be larger than or equal to 1");
+  MemOptVarInfo(const std::string &name, size_t ref_cnt) : name_(name) {
+    SetRefCnt(ref_cnt);
   }
 
   bool DecreaseRefCnt() {
@@ -40,6 +38,8 @@ class MemOptVarInfo {
   void ResetRuntimeRefCnt() { runtime_ref_cnt_ = ref_cnt_; }
 
   void SetRefCnt(size_t ref_cnt) {
+    PADDLE_ENFORCE_GE(ref_cnt, 1,
+                      "Reference count must be larger than or equal to 1");
     ref_cnt_ = ref_cnt;
     runtime_ref_cnt_ = ref_cnt;
   }
@@ -66,34 +66,29 @@ class SkipMemOptVarsGuard {
                       const std::vector<std::string> &vars,
                       bool need_reset_ref_cnt)
       : list_(list), need_reset_ref_cnt_(need_reset_ref_cnt) {
-    if (list_) {
-      skip_vars_.reserve(vars.size() * list->size());
-      for (auto &var : vars) {
-        for (auto &map : *list_) {
-          auto iter = map.find(var);
-          if (iter != map.end()) {
-            skip_vars_.emplace_back(iter->second.get());
-          }
-        }
-      }
+    if (!list_) return;
 
-      for (auto *var : skip_vars_) {
-        var->SetSkip(true);
+    skip_vars_.reserve(vars.size() * list->size());
+    for (auto &var : vars) {
+      for (auto &map : *list_) {
+        auto iter = map.find(var);
+        if (iter != map.end() && !iter->second->IsSkipped()) {
+          iter->second->SetSkip(true);
+          skip_vars_.emplace_back(iter->second.get());
+        }
       }
     }
   }
 
   ~SkipMemOptVarsGuard() {
-    if (list_) {
-      for (auto *var : skip_vars_) {
-        var->SetSkip(false);
-      }
+    for (auto *var : skip_vars_) {
+      var->SetSkip(false);
+    }
 
-      if (need_reset_ref_cnt_) {
-        for (auto &map : *list_) {
-          for (auto &pair : map) {
-            pair.second->ResetRuntimeRefCnt();
-          }
+    if (list_ && need_reset_ref_cnt_) {
+      for (auto &map : *list_) {
+        for (auto &pair : map) {
+          pair.second->ResetRuntimeRefCnt();
         }
       }
     }

@@ -65,7 +65,15 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #endif
 }
 
-void EagerDeletionOpHandle::InitOnce() {
+void EagerDeletionOpHandle::InitCUDA() {
+#ifdef PADDLE_WITH_CUDA
+  int dev_id =
+      boost::get<platform::CUDAPlace>(dev_ctxes_.begin()->first).device;
+  events_[dev_id] = nullptr;
+#endif
+}
+
+void EagerDeletionOpHandle::CallOnce() {
   PADDLE_ENFORCE(vars_.empty(), "vars_ must be initialized here");
   Scope *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
   for (auto *var_info : var_infos_) {
@@ -80,7 +88,7 @@ std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
   if (vars_.size() != var_infos_.size()) {
-    InitOnce();
+    CallOnce();
   }
 
   platform::RecordEvent record_event(Name());

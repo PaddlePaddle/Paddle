@@ -67,7 +67,15 @@ void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
   out_var_names_.emplace_back(out_var_name);
 }
 
-void ShareTensorBufferOpHandle::InitOnce() {
+void ShareTensorBufferOpHandle::InitCUDA() {
+#ifdef PADDLE_WITH_CUDA
+  int dev_id =
+      boost::get<platform::CUDAPlace>(dev_ctxes_.begin()->first).device;
+  events_[dev_id] = nullptr;
+#endif
+}
+
+void ShareTensorBufferOpHandle::CallOnce() {
   PADDLE_ENFORCE(in_out_vars_.empty(), "in_out_vars_ must be initialized here");
   Scope *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
@@ -82,7 +90,7 @@ void ShareTensorBufferOpHandle::InitOnce() {
 
 void ShareTensorBufferOpHandle::RunImpl() {
   if (in_var_infos_.size() != in_out_vars_.size()) {
-    InitOnce();
+    CallOnce();
   }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
@@ -92,9 +100,6 @@ void ShareTensorBufferOpHandle::RunImpl() {
       // in_var in the current batch, we have to reset memory of out_var
       // to avoid wrong calcualtion result.
       if (is_shared_[i]) {
-        // You have to reset memory here to avoid caculation wrong!
-        // Clear out_tensor because this tensor may be shared in the previous
-        // batch
         auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
         VLOG(1) << "Clear " << out_var_names_[i]
                 << " because you may want to fetch an inplaced variable "

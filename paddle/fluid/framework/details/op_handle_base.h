@@ -115,6 +115,8 @@ class OpHandleBase {
 
   virtual void RunImpl() = 0;
 
+  virtual void InitCUDA();
+
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
