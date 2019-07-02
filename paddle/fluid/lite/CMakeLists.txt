@@ -283,6 +283,7 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
             COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/glog" "${INFER_LITE_PUBLISH_ROOT}/third_party"
             COMMAND cp -r "${CMAKE_BINARY_DIR}/third_party/install/gflags" "${INFER_LITE_PUBLISH_ROOT}/third_party"
             COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/Makefile.def" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
+            COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/README.md" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
             COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_full" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
             COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/makefiles/mobile_full/Makefile.${ARM_TARGET_OS}.${ARM_TARGET_ARCH_ABI}" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx/mobile_full/Makefile"
             COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/cxx/mobile_light" "${INFER_LITE_PUBLISH_ROOT}/demo/cxx"
@@ -296,6 +297,7 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
             add_custom_target(publish_inference_android_java_demo ${TARGET}
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java"
                     COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/android" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
+                    COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/README.md" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm7"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm8"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm64-v8a"
