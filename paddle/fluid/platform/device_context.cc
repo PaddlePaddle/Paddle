@@ -401,12 +401,12 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 namespace {
-// Current thread's id.
-thread_local int cur_thread_id = 0;
+// Current mkldnn session id.
+thread_local size_t cur_mkldnn_session_id = kMKLDNNSessionID_Default;
 }
 
-void set_cur_thread_id(int tid) { cur_thread_id = tid; }
-int get_cur_thread_id(void) { return cur_thread_id; }
+void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
+size_t get_cur_mkldnn_session_id(void) { return cur_mkldnn_session_id; }
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 
@@ -415,7 +415,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   BlobMap* pMap = p_blobmap_.get();
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  int tid = platform::get_cur_mkldnn_session_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
@@ -448,7 +448,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
   BlobMap* pMap = p_blobmap_.get();
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  int tid = platform::get_cur_mkldnn_session_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
