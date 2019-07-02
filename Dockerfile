@@ -86,6 +86,10 @@ RUN tar -zxvf pip-10.0.1.tar.gz
 WORKDIR pip-10.0.1
 RUN python setup.py install
 
+WORKDIR /home
+RUN rm Python-$version.tgz setuptools-40.0.0.zip pip-10.0.1.tar.gz && \
+    rm -r Python-$version setuptools-40.0.0 pip-10.0.1
+
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
