@@ -33,6 +33,10 @@ RUN apt-get install -y --no-install-recommends \
         vim \
         wget
 
+# timezone
+RUN apt install tzdata
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/timezone && echo 'Asia/Shanghai' >/etc/timezone
+
 # for android simulator
 RUN apt-get install -y --no-install-recommends \
         libc6-i386 \

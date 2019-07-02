@@ -26,20 +26,21 @@ if(NOT DEFINED ANDROID_NDK)
     endif()
 endif()
 
+if(ARM_TARGET_LANG STREQUAL "gcc")
+    # gcc do not need set lang on android
+    set(ARM_TARGET_LANG "")
+endif()
+
 if(NOT DEFINED ANDROID_API_LEVEL)
     set(ANDROID_API_LEVEL "22")
 endif()
 
-if(NOT DEFINED ANDROID_STL_TYPE)
-    set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type") # can also use shared
-endif()
-
+# then check input arm abi
 if(ARM_TARGET_ARCH_ABI STREQUAL "armv7hf")
     message(FATAL_ERROR "ANDROID does not support hardfp on v7 use armv7 instead.")
 endif()
 
 set(ANDROID_ARCH_ABI ${ARM_TARGET_ARCH_ABI} CACHE STRING "Choose Android Arch ABI")
-
 if(ARM_TARGET_ARCH_ABI STREQUAL "armv8")
     set(ANDROID_ARCH_ABI "arm64-v8a")
 endif()
@@ -48,32 +49,14 @@ if(ARM_TARGET_ARCH_ABI STREQUAL "armv7")
     set(ANDROID_ARCH_ABI "armeabi-v7a")
 endif()
 
-if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a-softfp")
-    set(ANDROID_ARCH_ABI "armeabi-v7a")
-endif()
-
-set(ANDROID_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v6" "armeabi"
-    "mips" "mips64" "x86" "x86_64")
-set_property(CACHE ANDROID_ARCH_ABI PROPERTY STRINGS ${ANDROID_ARCH_ABI_LIST})
-if(NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
-    message(FATAL_ERROR "ANDROID_ARCH_ABI must be in one of ${ANDROID_ARCH_ABI_LIST}")
-endif()
+check_input_var(ANDROID_ARCH_ABI DEFAULT ${ANDROID_ARCH_ABI} LIST "arm64-v8a" "armeabi-v7a"
+    "armeabi-v6" "armeabi" "mips" "mips64" "x86" "x86_64")
+check_input_var(ANDROID_STL_TYPE DEFAULT "c++_static" LIST "c++_static" "gnustl_static")
 
 if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
-    message(STATUS "armeabi-v7a default use softfp")
+    message(STATUS "armeabi-v7a use softfp by default.")
     set(CMAKE_ANDROID_ARM_NEON ON)
-    message(STATUS "NEON is enabled on arm-v7a with softfp")
-endif()
-
-set(ANDROID_STL_TYPE_LITS "gnustl_static" "c++_static")
-set_property(CACHE ANDROID_STL_TYPE PROPERTY STRINGS ${ANDROID_STL_TYPE_LITS}) 
-if (NOT ANDROID_STL_TYPE IN_LIST ANDROID_STL_TYPE_LITS)
-    message(FATAL_ERROR "ANDROID_STL_TYPE must be in one of ${ANDROID_STL_TYPE_LITS}")
-endif()
-
-if(ARM_TARGET_LANG STREQUAL "gcc")
-    # gcc do not need set lang
-    set(ARM_TARGET_LANG "")
+    message(STATUS "NEON is enabled on arm-v7a with softfp.")
 endif()
 
 set(CMAKE_SYSTEM_NAME Android)
