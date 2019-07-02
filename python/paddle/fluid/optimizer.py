@@ -2077,30 +2077,20 @@ class LambOptimizer(AdamOptimizer):
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
     accuracy, which supports adaptive element-wise updating and accurate layer-wise 
-    correction. For more information, please refer to `Reducing BERT Pre-Training 
-    Time from 3 Days to 76 Minutes <https://arxiv.org/abs/1904.00962>`_ .
+    correction. For more information, please refer to `Large Batch Optimization for 
+    Deep Learning: Training BERT in 76 minutes <https://arxiv.org/abs/1904.00962>`_ .
 
     The updating of parameters follows:
 
     ..  math::
 
-	m_t^l & = \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \\
 
-	v_t^l & = \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
+        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \\
 
-	\\widehat{m}_t^l & = m_t^l/(1 - \\beta_1^t)
+        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \\
 
-	\\widehat{v}_t^l & = v_t^l/(1 - \\beta_2^t)
-	
-        r_1 & = \\left \| w_{t-1}^l \\right \|_2
-	
-        r_2 & = \\left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \\right \|_2
-
-	r & = r_1 / r_2
-
-	\\eta^l & = r \\times \\eta
-
-	w_t^l & = w_{t-1}^l -\\eta ^l \\times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
+        w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
 
     where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the 
@@ -2114,8 +2104,10 @@ class LambOptimizer(AdamOptimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): A small float value for numerical stability.
-        regularization: A Regularizer, such as
+        regularization (Regularizer): A Regularizer, such as
                         fluid.regularizer.L1DecayRegularizer.
+        exclude_from_weight_decay_fn (function): Exclude a parameter from weight 
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
         name (str|None): An optional name prefix.
 
     Examples:
@@ -2127,11 +2119,16 @@ class LambOptimizer(AdamOptimizer):
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
 
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002)
+            def exclude_fn(param):
+                return param.name.endswith('.b_0')
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
+                                             exclude_from_weight_decay_fn=exclude_fn)
             optimizer.minimize(cost)
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
+    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -2142,6 +2139,7 @@ class LambOptimizer(AdamOptimizer):
                  beta2=0.999,
                  epsilon=1e-6,
                  regularization=None,
+                 exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
         assert lamb_weight_decay is not None
@@ -2157,6 +2155,10 @@ class LambOptimizer(AdamOptimizer):
             name=name)
         self.type = "lamb"
         self._weight_decay = lamb_weight_decay
+        self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
+        print(
+            "WARNING: The LAMB optimizer doesn't have official implementation "
+            "yet and is still in experimental.")
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2169,6 +2171,12 @@ class LambOptimizer(AdamOptimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
+
+        if self._exclude_from_weight_decay_fn is not None \
+            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+            weight_decay = 0.0
+        else:
+            weight_decay = self._weight_decay
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -2191,7 +2199,7 @@ class LambOptimizer(AdamOptimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
-                "weight_decay": self._weight_decay
+                "weight_decay": weight_decay
             },
             stop_gradient=True)
 
@@ -2642,57 +2650,67 @@ class ExponentialMovingAverage(object):
 class PipelineOptimizer(object):
     """
     Pipeline Optimizer
-    Train with pipeline mode. The program will be splited by cut_list.
-    If the len of cut_list is k, then the whole program (including 
-    backward part) will be splited to 2*k-1 sections. So the length of place_list
-    and concurrency_list must be also 2*k-1.
-    Note: Though the asynchronous mode is applied in pipeline training to speed up,
+
+    Train with pipeline mode. The program will be splited by cut_list. 
+
+    If the len of cut_list is k, then the whole program (including \
+    backward part) will be splited to 2*k-1 sections. 
+    
+    So the length of place_list and concurrency_list must be also 2*k-1.
+
+    Note: Though the asynchronous mode is applied in pipeline training to speed up, \
     the final performance depends on the training progress of each pipeline heavily.
-    And we will try the synchronous mode in the future
+
+    And we will try the synchronous mode in the future.
+
     Args:
-        optimizer (Optimizer): The based optimizer, such as SGD
-        cut_list (list of Variable list): The cut variable of the main_program
-        place_list (list of Place): The place where the section will run on
-        concurrency_list (list of int): The concurrency degree
+        optimizer (Optimizer): The based optimizer, such as SGD.
+        cut_list (list of Variable list): The cut variable of the main_program.
+        place_list (list of Place): The place where the section will run on.
+        concurrency_list (list of int): The concurrency degree.
         queue_size (int): Each section will consume scopes from its in-scope queue 
                         and produce scopes to out-scope queue. And this parameter 
-                        specify the scope queue size. [Optional. Default: 30]
-        sync_steps (int): The synchronization steps between different cards. [Optional. Default: 1]
-        start_cpu_core_id (int): specify the first cpu core id. [Optional. Default:0]
+                        specify the scope queue size. [Optional. Default: 30].
+        sync_steps (int): The synchronization steps between different cards. [Optional. Default: 1].
+        start_cpu_core_id (int): specify the first cpu core id. [Optional. Default:0].
+
     Examples:
         .. code-block:: python
-        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
-        emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
-        concat = layers.concat([emb_x, emb_y], axis=1)
-        fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
-        loss = layers.reduce_mean(fc)
-        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-        optimizer = fluid.optimizer.PipelineOptimizer(optimizer,
-                cut_list=[[emb_x, emb_y], [loss]],
-                place_list=[fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()],
-                concurrency_list=[1, 1, 4],
-                queue_size=2,
-                sync_steps=1,
-                )
-        optimizer.minimize(loss)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-        dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
-        dataset.set_use_var([x,y])
-        dataset.set_batch_size(batch_size)
-        dataset.set_filelist(filelist)
-        exe.train_from_dataset(
-                    fluid.default_main_program(),
-                    dataset,
-                    thread=2,
-                    debug=False,
-                    fetch_list=[],
-                    fetch_info=[],
-                    print_period=1)
+
+            import paddle.fluid.layers as layers
+
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+            y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+            emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+            emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+            concat = layers.concat([emb_x, emb_y], axis=1)
+            fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+            loss = layers.reduce_mean(fc)
+            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+            optimizer = fluid.optimizer.PipelineOptimizer(optimizer,
+                    cut_list=[[emb_x, emb_y], [loss]],
+                    place_list=[fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()],
+                    concurrency_list=[1, 1, 4],
+                    queue_size=2,
+                    sync_steps=1,
+                    )
+            optimizer.minimize(loss)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
+            dataset.set_use_var([x,y])
+            dataset.set_batch_size(batch_size)
+            dataset.set_filelist(filelist)
+            exe.train_from_dataset(
+                        fluid.default_main_program(),
+                        dataset,
+                        thread=2,
+                        debug=False,
+                        fetch_list=[],
+                        fetch_info=[],
+                        print_period=1)
     """
 
     def __init__(self,
@@ -2712,7 +2730,7 @@ class PipelineOptimizer(object):
         self._sync_steps = sync_steps
         self._start_cpu_core_id = start_cpu_core_id
 
-    def create_vars(self, block, main_program):
+    def _create_vars(self, block, main_program):
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
             op_desc = block.desc.op(op_idx)
@@ -2724,7 +2742,7 @@ class PipelineOptimizer(object):
                 source_var = main_program.block(0).var(str(var))
                 block._clone_variable(source_var, False)
 
-    def extract_section_opt_ops(self, ops, cut_point_name):
+    def _extract_section_opt_ops(self, ops, cut_point_name):
         """
         Extract opt ops in the given section
         """
@@ -2740,7 +2758,7 @@ class PipelineOptimizer(object):
         op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
         return op_path
 
-    def find_input_output(self, ops, name, is_forward=True):
+    def _find_input_output(self, ops, name, is_forward=True):
         """
         Find the inputs or outputs of a section
         """
@@ -2755,7 +2773,7 @@ class PipelineOptimizer(object):
             all_set.update(op.desc.input_arg_names())
         return all_set - part_set
 
-    def find_persistable_vars(self, ops, whole_parameters):
+    def _find_persistable_vars(self, ops, whole_parameters):
         """
         find the persistable input vars in current section
         """
@@ -2783,7 +2801,7 @@ class PipelineOptimizer(object):
             return True
         return False
 
-    def extract_section_ops(self, ops, cut_point_name):
+    def _extract_section_ops(self, ops, cut_point_name):
         """
         Extract ops in the given section 
         """
@@ -2803,11 +2821,11 @@ class PipelineOptimizer(object):
         op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
         return op_path
 
-    def find_section_opt(self, ops, params):
-        res = self.extract_section_opt_ops(ops, params)
+    def _find_section_opt(self, ops, params):
+        res = self._extract_section_opt_ops(ops, params)
         return res
 
-    def split_program(self, main_program, cut_list):
+    def _split_program(self, main_program, cut_list):
         programs = []
         block = main_program.block(0)
         whole_parameters = [e.name for e in block.all_parameters()]
@@ -2828,24 +2846,24 @@ class PipelineOptimizer(object):
                 "input_set": set(),
                 "output_set": set()
             }
-            cur_ops = self.extract_section_ops(ops, cut_vars)
+            cur_ops = self._extract_section_ops(ops, cut_vars)
             if i == 0:
                 for op in ops:
                     if self._is_lr_role_op(op):
                         cur_ops.append(op)
             #prevent inplace in/out
             program["input_set"].update(
-                self.find_input_output(
+                self._find_input_output(
                     cur_ops, [], is_forward=True))
             for e in cur_ops:
                 ops.remove(e)
 
             if i < cut_len:
                 sec_params.append(
-                    self.find_persistable_vars(cur_ops, whole_parameters))
+                    self._find_persistable_vars(cur_ops, whole_parameters))
             if i >= cut_len - 1:
-                opt_ops = self.find_section_opt(ops,
-                                                sec_params[2 * cut_len - 2 - i])
+                opt_ops = self._find_section_opt(
+                    ops, sec_params[2 * cut_len - 2 - i])
 
                 for e in opt_ops:
                     ops.remove(e)
@@ -2856,11 +2874,11 @@ class PipelineOptimizer(object):
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
             program["input_set"].update(
-                self.find_input_output(
+                self._find_input_output(
                     cur_ops, cut_vars, is_forward=True))
             program["input_set"].update(sec_params[min(i, 2 * cut_len - 2 - i)])
             program["output_set"].update(
-                self.find_input_output(
+                self._find_input_output(
                     cur_ops, cut_vars, is_forward=False))
             programs.append(program)
         program = {
@@ -2875,7 +2893,7 @@ class PipelineOptimizer(object):
         program["input_set"].update(
             [cut_var.name + "@GRAD" for cut_var in cut_list[0]])
         program["input_set"].update(
-            self.find_input_output(
+            self._find_input_output(
                 ops, [], is_forward=True))
         program["input_set"].update(sec_params[0])
         programs.append(program)
@@ -2896,9 +2914,9 @@ class PipelineOptimizer(object):
         self._optimizer.minimize(loss, startup_program, parameter_list,
                                  no_grad_set)
         program = loss.block.program
-        program_list = self.split_program(program, self._cut_list)
+        program_list = self._split_program(program, self._cut_list)
         for p in program_list:
-            self.create_vars(p["program"].block(0), program)
+            self._create_vars(p["program"].block(0), program)
         whole_parameters = [e.name for e in program.block(0).all_parameters()]
         param_need_sync = []
         for i, section_p in enumerate(program_list):
