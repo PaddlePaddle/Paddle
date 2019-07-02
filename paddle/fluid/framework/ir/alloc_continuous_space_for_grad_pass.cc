@@ -310,6 +310,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
                          group_params_grads->at(j).end());
 
         ++j;
+
+        if (j >= group_params_grads->size()) {
+          break;
+        }
+
         if (GetFuseParameterGroupsSize() > 1 &&
             group_p_g.size() >
                 static_cast<size_t>(GetFuseParameterGroupsSize())) {
