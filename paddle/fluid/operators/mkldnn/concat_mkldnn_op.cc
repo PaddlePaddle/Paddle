@@ -81,8 +81,8 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
   platform::MKLDNNHandler::AppendKey(&key,
                                      std::to_string(multi_input[0]->format()));
-  if (platform::get_cur_mkldnn_session_id() !=
-      platform::kMKLDNNSessionID_User) {
+  if (platform::get_cur_mkldnn_session_id() ==
+      platform::kMKLDNNSessionID_Default) {
     auto tid = std::this_thread::get_id();
     std::stringstream ss;
     ss << tid;

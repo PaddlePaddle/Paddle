@@ -34,14 +34,14 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    // TODO(jczaja): Make it faster
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    key_ = key_common_ + "-t:" + ss.str();
+    key_ = key_common_;
     if (platform::get_cur_mkldnn_session_id() ==
-        platform::kMKLDNNSessionID_User) {
-      key_ = key_common_;
+        platform::kMKLDNNSessionID_Default) {
+      // TODO(jczaja): Make it faster
+      auto tid = std::this_thread::get_id();
+      std::stringstream ss;
+      ss << tid;
+      key_ = key_common_ + "-t:" + ss.str();
     }
   }
 

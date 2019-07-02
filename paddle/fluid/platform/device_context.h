@@ -381,8 +381,10 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
 using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
 
+// default mkldnn session id
 constexpr size_t kMKLDNNSessionID_Default = 0;
-constexpr size_t kMKLDNNSessionID_User = -1;
+// mkldnn session id for cache clearing mode
+constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
 
 void set_cur_mkldnn_session_id(size_t);
 size_t get_cur_mkldnn_session_id(void);
