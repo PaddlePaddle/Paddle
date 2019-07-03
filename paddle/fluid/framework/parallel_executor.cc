@@ -523,8 +523,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
   if (!member_->build_strategy_.async_mode_) {
     member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, std::move(var_infos),
-        member_->places_, std::move(member_->executor_)));
+        exec_strategy, member_->global_scope_, member_->local_scopes_,
+        std::move(var_infos), member_->places_, std::move(member_->executor_)));
   }
 }
 
@@ -663,8 +663,9 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     }
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
-      auto t =
-          member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
+      auto *local_scope =
+          j == 0 ? member_->global_scope_ : member_->local_scopes_[j];
+      auto t = local_scope->Var(pair.first)->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
     }

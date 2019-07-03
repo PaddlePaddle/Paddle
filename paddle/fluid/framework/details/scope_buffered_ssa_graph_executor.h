@@ -38,8 +38,9 @@ struct VariableInfo {
 class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ScopeBufferedSSAGraphExecutor(
-      ExecutionStrategy strategy, std::vector<Scope*> local_scopes,
-      std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
+      ExecutionStrategy strategy, Scope* global_scope,
+      std::vector<Scope*> local_scopes, std::vector<VariableInfo> var_infos,
+      std::vector<platform::Place> places,
       std::unique_ptr<SSAGraphExecutor>&& underlying_executor);
 
   const ir::Graph& Graph() const override {
@@ -58,6 +59,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   size_t drop_scope_counter_{0};
   ExecutionStrategy strategy_;
   std::unique_ptr<SSAGraphExecutor> underlying_executor_;
+  Scope* global_scope_;
   std::vector<Scope*> local_scopes_;
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;

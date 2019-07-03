@@ -24,11 +24,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
-    ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
-    std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
+    ExecutionStrategy strategy, Scope *global_scope,
+    std::vector<Scope *> local_scopes, std::vector<VariableInfo> var_infos,
+    std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
       underlying_executor_(std::move(underlying_executor)),
+      global_scope_(global_scope),
       local_scopes_(std::move(local_scopes)),
       var_infos_(std::move(var_infos)),
       places_(std::move(places)) {}
@@ -79,13 +81,17 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
 
 void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
   // Create local scopes.
-  for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
+  size_t scope_idx = local_scopes_.size() - 1;
+  for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend();
+       ++it, --scope_idx) {
     auto &scope = *it;
     Scope &local_scope = scope->NewScope();
     PADDLE_ENFORCE(scope->FindLocalVar(kLocalExecScopeName) == nullptr,
                    "kLocalExecScopeName should not be placed in local scope.");
     *scope->Var(kLocalExecScopeName)->GetMutable<Scope *>() = &local_scope;
-
+    if (scope_idx == 0) {
+      scope = global_scope_;
+    }
     for (auto &info : var_infos_) {
       if (scope->FindVar(info.name_) != nullptr) {
         continue;
