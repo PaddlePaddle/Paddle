@@ -28,22 +28,22 @@ static std::unordered_map<size_t, transfer_scope_cache_map*>
 
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
 #ifdef PADDLE_WITH_MKLDNN
-  size_t tid = static_cast<size_t>(platform::get_cur_thread_id());
+  size_t sid = platform::get_cur_mkldnn_session_id();
 
-  // if tid != 0, means there is specific mkldnn tid setting from user.
-  if (tid != 0) {
-    tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+  // if there is specific mkldnn tid setting from user.
+  if (sid != platform::kMKLDNNSessionID_Default) {
+    sid = std::hash<std::thread::id>()(std::this_thread::get_id());
 
     static std::mutex acquire_barrier;
     std::lock_guard<std::mutex> block_until_finish_this_job(acquire_barrier);
 
-    auto map_it = static_transfer_data_caches.find(tid);
+    auto map_it = static_transfer_data_caches.find(sid);
     if (map_it == static_transfer_data_caches.end()) {
       auto* x = new transfer_data_cache_map;
-      static_transfer_data_caches[tid] = x;
+      static_transfer_data_caches[sid] = x;
       return *x;
     } else {
-      return *static_transfer_data_caches[tid];
+      return *static_transfer_data_caches[sid];
     }
   }
 #endif
@@ -53,22 +53,22 @@ std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
 
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
 #ifdef PADDLE_WITH_MKLDNN
-  size_t tid = static_cast<size_t>(platform::get_cur_thread_id());
+  size_t sid = platform::get_cur_mkldnn_session_id();
 
-  // if tid != 0, means there is specific mkldnn tid setting from user.
-  if (tid != 0) {
-    tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+  // if there is specific mkldnn session id setting from user.
+  if (sid != platform::kMKLDNNSessionID_Default) {
+    sid = std::hash<std::thread::id>()(std::this_thread::get_id());
 
     static std::mutex acquire_barrier;
     std::lock_guard<std::mutex> block_until_finish_this_job(acquire_barrier);
 
-    auto map_it = static_transfer_scope_caches.find(tid);
+    auto map_it = static_transfer_scope_caches.find(sid);
     if (map_it == static_transfer_scope_caches.end()) {
       auto* x = new transfer_scope_cache_map;
-      static_transfer_scope_caches[tid] = x;
+      static_transfer_scope_caches[sid] = x;
       return *x;
     } else {
-      return *static_transfer_scope_caches[tid];
+      return *static_transfer_scope_caches[sid];
     }
   }
 #endif
