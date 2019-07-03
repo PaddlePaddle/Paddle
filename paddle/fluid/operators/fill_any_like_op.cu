@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_allreduce_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/fill_any_like_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
 REGISTER_OP_CUDA_KERNEL(
-    c_allreduce, ops::CAllReduceOpKernel<plat::CUDADeviceContext, float>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, double>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, int>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, int64_t>,
-    ops::CAllReduceOpKernel<plat::CUDADeviceContext, plat::float16>);
+    fill_any_like,
+    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, int32_t>,
+    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext,
+                           paddle::platform::float16>,
+    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, bool>);

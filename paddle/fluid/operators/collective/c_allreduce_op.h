@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <algorithm>
-#include <utility>
-#include <vector>
+
+#include <string>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -29,17 +28,41 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class CAllReduceOpKernel : public framework::OpKernel<T> {
+enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
+
+class CAllReduceOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.GetPlace());
+  }
+};
+
+template <ReduceType red_type, typename T>
+class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "CAllReduce op can run on gpu place only for now.");
+    PADDLE_THROW("CAllReduce op do not support CPUKernel for now.");
+  }
+};
+
+template <ReduceType red_type, typename T>
+class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
+    auto place = ctx.GetPlace();
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<void>();
@@ -49,23 +72,6 @@ class CAllReduceOpKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     auto comm = platform::NCCLCommContext::Instance().Get(rid);
 
-    int reduce_type = ctx.Attr<int>("reduce_type");
-    ncclRedOp_t red_type = ncclSum;
-    switch (reduce_type) {
-      case 0:
-        red_type = ncclSum;
-        break;
-      case 1:
-        red_type = ncclProd;
-        break;
-      case 2:
-        red_type = ncclMax;
-        break;
-      case 3:
-        red_type = ncclMin;
-        break;
-    }
-
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -74,12 +80,59 @@ class CAllReduceOpKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
+    ncclRedOp_t nccl_red_type = ncclSum;
+    switch (red_type) {
+      case kRedSum:
+        nccl_red_type = ncclSum;
+        break;
+
+      case kRedMax:
+        nccl_red_type = ncclMax;
+        break;
+
+      case kRedMin:
+        nccl_red_type = ncclMin;
+        break;
+
+      case kRedProd:
+        nccl_red_type = ncclProd;
+        break;
+
+      default:
+        PADDLE_THROW("Invalid reduce type: %d", red_type);
+    }
+
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, red_type, comm->comm(), stream));
+        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
   }
+};
+
+class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "(Tensor), tensor to be allreduced.");
+    AddOutput("Out", "(Tensor) the allreduced result.");
+    AddAttr<int>("ring_id", "(int default 0) communication ring id.")
+        .SetDefault(0);
+    AddAttr<bool>(
+        "use_calc_stream",
+        "(bool default false) eject CUDA operations to calculation stream.")
+        .SetDefault(false);
+    AddComment(string::Sprintf(R"DOC(
+CAllReduce %s Operator
+
+Call collective AllReduce with reduce type %s. If input and output are
+the same variable, in-place allreduce will be used.
+Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#allreduce
+)DOC",
+                               GetName(), GetName()));
+  }
+
+ protected:
+  virtual std::string GetName() const = 0;
 };
 
 }  // namespace operators
