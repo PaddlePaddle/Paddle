@@ -9544,38 +9544,29 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     helper = LayerHelper('gaussian_random', **locals())
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
+    attr = {
+        'mean': mean,
+        'std': std,
+        'seed': seed,
+        'dtype': c_dtype,
+        'use_mkldnn': False
+    }
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, "Variable shape must be 1-D tensor."
         assert shape.dtype in [
             core.VarDesc.VarType.INT32, core.VarDesc.VarType.INT64
         ], "Variable shape's type must be int32 or int64"
-        cast(shape, dtype=core.VarDesc.VarType.INT64)
-        helper.append_op(
-            type='gaussian_random',
-            inputs={'Shape': shape},
-            outputs={'Out': out},
-            attrs={
-                'shape': [],
-                'mean': mean,
-                'std': std,
-                'seed': seed,
-                'dtype': c_dtype,
-                'use_mkldnn': False
-            })
+        if shape.dtype is not core.VarDesc.VarType.INT64:
+            shape = cast(shape, dtype=core.VarDesc.VarType.INT64)
+        shape_dim = [-1] * shape.shape[0]
+        inputs = {'Shape': shape}
+        attr.update({'shape': [], 'shape_dim': shape_dim})
     else:
-        helper.append_op(
-            type='gaussian_random',
-            inputs={},
-            outputs={'Out': out},
-            attrs={
-                'shape': shape,
-                'mean': mean,
-                'std': std,
-                'seed': seed,
-                'dtype': c_dtype,
-                'use_mkldnn': False
-            })
+        inputs = {}
+        attr.update({'shape': shape})
 
+    helper.append_op(
+        type='gaussian_random', inputs=inputs, outputs={'Out': out}, attrs=attr)
     return out
 
 

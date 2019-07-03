@@ -29,20 +29,22 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       if (ctx.HasInput("Shape")) {
-        const framework::Tensor *shapeTensor =
+        const framework::Tensor *shape_tensor =
             ctx.Input<framework::Tensor>("Shape");
-        const int64_t *shapeData = shapeTensor->data<int64_t>();
-        std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
+        const int64_t *shape_data = shape_tensor->data<int64_t>();
+        std::vector<int64_t> shape(shape_data,
+                                   shape_data + shape_tensor->numel());
         tensor->Resize(framework::make_ddim(shape));
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
       tensor = selected_rows->mutable_value();
       if (ctx.HasInput("Shape")) {
-        const framework::Tensor *shapeTensor =
+        const framework::Tensor *shape_tensor =
             ctx.Input<framework::Tensor>("Shape");
-        const int64_t *shapeData = shapeTensor->data<int64_t>();
-        std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
+        const int64_t *shape_data = shape_tensor->data<int64_t>();
+        std::vector<int64_t> shape(shape_data,
+                                   shape_data + shape_tensor->numel());
         tensor->Resize(framework::make_ddim(shape));
         selected_rows->mutable_rows()->reserve(shape[0]);
       } else {
@@ -84,14 +86,20 @@ class UniformRandomOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
         "uniform_random's min must less then max");
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    if ((shape.size() == 0UL) && (!ctx->HasInputs("Shape"))) {
+      PADDLE_ENFORCE(shape.size() > 0UL,
+                     "shape can be one int or array. shape must be set.");
+    }
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
     }
-    if ((shape.size() == 0UL) && (!ctx->HasInputs("Shape"))) {
-      PADDLE_ENFORCE(shape.size() > 0UL,
-                     "shape can be one int or array. shape must be set.");
+    if (shape.size() == 0UL) {
+      auto &shape_dim = ctx->Attrs().Get<std::vector<int64_t>>("shape_dim");
+      for (auto dim : shape_dim) {
+        temp.push_back(static_cast<int64_t>(dim));
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
@@ -119,6 +127,8 @@ uniform distribution. The random result is in set [min, max].
 
 )DOC");
     AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor");
+    AddAttr<std::vector<int64_t>>("shape_dim", "The dim of the output tensor")
+        .SetDefault({});
     AddAttr<float>("min", "Minimum value of uniform random. [default -1.0].")
         .SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random. [default 1.0].")

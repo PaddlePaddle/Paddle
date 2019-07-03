@@ -99,34 +99,22 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     helper = LayerHelper('uniform_random', **locals())
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
+    attr = {'min': min, 'max': max, 'seed': seed, 'dtype': c_dtype}
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, "Variable shape must be 1-D tensor."
         assert shape.dtype in [VarDesc.VarType.INT32, VarDesc.VarType.INT64
                                ], "Variable shape's type must be int32 or int64"
-        shape = cast(shape, dtype=VarDesc.VarType.INT64)
-        helper.append_op(
-            type='uniform_random',
-            inputs={'Shape': shape},
-            outputs={'Out': out},
-            attrs={
-                'shape': [],
-                'min': min,
-                'max': max,
-                'seed': seed,
-                'dtype': c_dtype
-            })
+        if shape.dtype is not VarDesc.VarType.INT64:
+            shape = cast(shape, dtype=VarDesc.VarType.INT64)
+        shape_dim = [-1] * shape.shape[0]
+        inputs = {'Shape': shape}
+        attr.update({'shape': [], 'shape_dim': shape_dim})
     else:
-        helper.append_op(
-            type='uniform_random',
-            inputs={},
-            outputs={'Out': out},
-            attrs={
-                'shape': shape,
-                'min': min,
-                'max': max,
-                'seed': seed,
-                'dtype': c_dtype
-            })
+        inputs = {}
+        attr.update({'shape': shape})
+
+    helper.append_op(
+        type='uniform_random', inputs=inputs, outputs={'Out': out}, attrs=attr)
 
     return out
 

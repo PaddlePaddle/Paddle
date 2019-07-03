@@ -30,10 +30,11 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
     if (context.HasInput("Shape")) {
-      const framework::Tensor* shapeTensor =
+      const framework::Tensor* shape_tensor =
           context.Input<framework::Tensor>("Shape");
-      const int64_t* shapeData = shapeTensor->data<int64_t>();
-      std::vector<int64_t> shape(shapeData, shapeData + shapeTensor->numel());
+      const int64_t* shape_data = shape_tensor->data<int64_t>();
+      std::vector<int64_t> shape(shape_data,
+                                 shape_data + shape_tensor->numel());
       tensor->Resize(framework::make_ddim(shape));
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
@@ -60,14 +61,20 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
                    "Output(Out) of GaussianRandomOp should not be null.");
 
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    if ((shape.size() == 0UL) && (!ctx->HasInputs("Shape"))) {
+      PADDLE_ENFORCE(shape.size() > 0UL,
+                     "shape can be one int or array. shape must be set.");
+    }
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
     }
-    if ((shape.size() == 0UL) && (!ctx->HasInputs("Shape"))) {
-      PADDLE_ENFORCE(shape.size() > 0UL,
-                     "shape can be one int or array. shape must be set.");
+    if (shape.size() == 0UL) {
+      auto& shape_dim = ctx->Attrs().Get<std::vector<int64_t>>("shape_dim");
+      for (auto dim : shape_dim) {
+        temp.push_back(static_cast<int64_t>(dim));
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
@@ -103,7 +110,11 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) "
-                                  "The dimension of random tensor.");
+                                  "The shape of random tensor.");
+    AddAttr<std::vector<int64_t>>("shape_dim",
+                                  "(vector<int64_t>) "
+                                  "The dimension of random tensor.")
+        .SetDefault({});
     AddAttr<float>("mean",
                    "(float, default 0.0) "
                    "mean of random tensor.")
