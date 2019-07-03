@@ -165,6 +165,7 @@ __all__ = [
     'slice',
     'shape',
     'rank',
+    'size',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -9887,6 +9888,35 @@ def rank(input):
 
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
+
+    return out
+
+
+def size(input):
+    """
+    **Size Layer**
+
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
+
+    Args:
+        input (Variable): The input variable.
+
+    Returns:
+        Variable: The number of elements for the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid.layers as layers
+
+            input = layers.data(
+                name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
+            rank = layers.size(input) # 300
+    """
+
+    helper = LayerHelper('size', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int64')
+    helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
 
     return out
 
