@@ -974,8 +974,11 @@ function build_document_preview() {
 
 
 function example() {
+    python -c "import paddle.fluid;paddle.fluid.install_check.run_check()"
+    paddle version
     cd ${PADDLE_ROOT}
     python tools/sampcd_processor.py
+    echo 11111
     if [ "$?" != "0" ];then
       echo "Code instance execution failed"
       exit 1
