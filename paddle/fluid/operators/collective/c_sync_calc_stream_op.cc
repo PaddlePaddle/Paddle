@@ -15,12 +15,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include <nccl.h>
 #endif
-#include <stdint.h>
-#include <ostream>
+
 #include <string>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
@@ -40,7 +40,6 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     PADDLE_ENFORCE(is_gpu_place(place),
                    "Sync stream op can run on gpu place only for now.");
-
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
@@ -57,12 +56,12 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
 class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of last param need to sync");
-    AddOutput("Out", "(Tensor) Dependency of last param need to sync");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync");
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
     AddComment(R"DOC(
-***Sync Operator***
+CSyncCalcStream Operator
 
-Call cuda stream synchronize.
+Call calculation stream synchronization.
 )DOC");
   }
 };

@@ -680,6 +680,7 @@ def box_coder(prior_box,
  
         .. code-block:: python
  
+            import paddle.fluid as fluid
             prior_box = fluid.layers.data(name='prior_box', 
                                           shape=[512, 4], 
                                           dtype='float32',
@@ -811,6 +812,7 @@ def yolov3_loss(x,
     Examples:
       .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
           gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
           gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
@@ -1001,6 +1003,7 @@ def detection_map(detect_res,
     Examples:
           .. code-block:: python
 
+            import paddle.fluid as fluid
             from fluid.layers import detection
             detect_res = fluid.layers.data(
                 name='detect_res',
@@ -1119,6 +1122,7 @@ def bipartite_match(dist_matrix,
 
     Examples:
 
+        >>> import paddle.fluid as fluid
         >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
         >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
         >>> iou = fluid.layers.iou_similarity(x=x, y=y)
@@ -1340,6 +1344,7 @@ def ssd_loss(location,
         type of `max_negative`.
 
     Examples:
+        >>> import paddle.fluid as fluid
         >>> pb = fluid.layers.data(
         >>>                   name='prior_box',
         >>>                   shape=[10, 4],
@@ -1542,6 +1547,7 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9])
             images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.prior_box(
@@ -1668,6 +1674,7 @@ def density_prior_box(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9])
             images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.density_prior_box(
@@ -2019,6 +2026,7 @@ def anchor_generator(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
             anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
@@ -2091,8 +2099,16 @@ def roi_perspective_transform(input,
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
-        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape 
-                  (num_rois, channels, transformed_h, transformed_w).
+            tuple: A tuple with three Variables. (out, mask, transform_matrix)
+
+            out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
+            (num_rois, channels, transformed_h, transformed_w).
+
+            mask: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
+            (num_rois, 1, transformed_h, transformed_w).
+
+            transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
+            a 1-D tensor with shape (9,).
 
     Examples:
         .. code-block:: python
@@ -2101,11 +2117,13 @@ def roi_perspective_transform(input,
 
             x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
             rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
-            out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
+            out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    mask = helper.create_variable_for_type_inference(dtype="int32")
+    transform_matrix = helper.create_variable_for_type_inference(dtype)
     out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
     out2in_w = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -2115,14 +2133,16 @@ def roi_perspective_transform(input,
         outputs={
             "Out": out,
             "Out2InIdx": out2in_idx,
-            "Out2InWeights": out2in_w
+            "Out2InWeights": out2in_w,
+            "Mask": mask,
+            "TransformMatrix": transform_matrix
         },
         attrs={
             "transformed_height": transformed_height,
             "transformed_width": transformed_width,
             "spatial_scale": spatial_scale
         })
-    return out
+    return out, mask, transform_matrix
 
 
 def generate_proposal_labels(rpn_rois,
@@ -2525,6 +2545,7 @@ def box_clip(input, im_info, name=None):
     Examples:
         .. code-block:: python
         
+            import paddle.fluid as fluid
             boxes = fluid.layers.data(
                 name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
@@ -2729,6 +2750,7 @@ def multiclass_nms(bboxes,
         .. code-block:: python
 
 
+            import paddle.fluid as fluid
             boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
                                       dtype='float32', lod_level=1)
             scores = fluid.layers.data(name='scores', shape=[81],
@@ -2807,6 +2829,7 @@ def distribute_fpn_proposals(fpn_rois,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             fpn_rois = fluid.layers.data(
                 name='data', shape=[4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
@@ -2865,6 +2888,7 @@ def box_decoder_and_assign(prior_box,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             pb = fluid.layers.data(
                 name='prior_box', shape=[4], dtype='float32')
             pbv = fluid.layers.data(
@@ -2931,6 +2955,7 @@ def collect_fpn_proposals(multi_rois,
     Examples:
         .. code-block:: python
            
+            import paddle.fluid as fluid
             multi_rois = []
             multi_scores = []
             for i in range(4):

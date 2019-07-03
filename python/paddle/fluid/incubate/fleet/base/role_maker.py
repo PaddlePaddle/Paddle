@@ -198,7 +198,7 @@ class MPIRoleMaker(RoleMakerBase):
         """
         finalize the current MPI instance.
         """
-        pass
+        self.MPI.Finalize()
 
     def _get_ips(self):
         """
@@ -356,6 +356,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             print("PaddleCloudRoleMaker() endpoints: %s" % self.endpoints)
             self.endpoints = self.endpoints.split(",")
             self._server_endpoints = self.endpoints
+            self._worker_endpoints = self.endpoints
             if self.role.upper() == "PSERVER":
                 self._current_id = self.endpoints.index(self.current_endpoint)
                 self._role = Role.SERVER

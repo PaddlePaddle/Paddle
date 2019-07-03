@@ -207,14 +207,6 @@ copy(memory_lib
 set(inference_deps paddle_fluid_shared paddle_fluid)
 
 set(module "inference/api")
-if (WITH_ANAKIN AND WITH_MKL)
-    copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
-            SRCS
-            ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
-            ${ANAKIN_INSTALL_DIR} # anakin release
-            DSTS ${FLUID_INSTALL_DIR}/third_party/install/anakin ${FLUID_INSTALL_DIR}/third_party/install/anakin)
-    list(APPEND inference_deps anakin_inference_lib)
-endif ()
 
 if (TENSORRT_FOUND)
     copy(tensorrt_lib DEPS ${inference_deps} 
@@ -222,6 +214,11 @@ if (TENSORRT_FOUND)
         DSTS ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/include ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/lib)
 endif ()
 
+if (ANAKIN_FOUND)
+    copy(anakin_lib DEPS ${inference_deps} 
+        SRCS ${ANAKIN_ROOT}/*
+        DSTS ${FLUID_INSTALL_DIR}/third_party/install/anakin)
+endif ()
 
 set(module "inference")
 if(WIN32)
