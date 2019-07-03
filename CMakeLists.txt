@@ -59,7 +59,6 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization."               OFF)
 ################################ Internal Configurations #######################################
-option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
@@ -68,9 +67,6 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
-# TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
-option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
-option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
@@ -184,17 +180,17 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+if(WITH_GPU)                # set gpu libraries, must before configure
+    include(cudnn)
+    include(cuda)
+    include(tensorrt)
+endif()
+
+include(anakin_subgraph)    # set anakin libraries, must before configure
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-    include(anakin_subgraph)
-endif()
 
 if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
     set(WITH_DGC OFF)
@@ -204,12 +200,6 @@ if(WITH_DGC)
     message(STATUS "add dgc lib.")
     include(external/dgc)
     add_definitions(-DPADDLE_WITH_DGC)
-endif()
-
-if(WITH_MKL OR WITH_MKLML)
-    include(external/anakin)
-elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
 if (WITH_PROFILER)
