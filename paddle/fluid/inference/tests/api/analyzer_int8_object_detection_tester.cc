@@ -79,7 +79,7 @@ class TensorReader {
 };
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
-              int32_t batch_size = FLAGS_batch_size, int process_images = 0) {
+              int32_t batch_size = FLAGS_batch_size) {
   std::ifstream file(FLAGS_infer_data, std::ios::binary);
   if (!file) {
     FAIL() << "Couldn't open file: " << FLAGS_infer_data;
@@ -110,9 +110,12 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   TensorReader<float> bbox_reader(file, bbox_beginning_offset, "gt_bbox");
   TensorReader<int64_t> difficult_reader(file, difficult_beginning_offset,
                                          "gt_difficult");
-  if (process_images == 0) process_images = total_images;
-  auto iterations_max = process_images / batch_size;
-  for (auto i = 0; i < iterations_max; i++) {
+  auto iterations_max = total_images / batch_size;
+  auto iterations = iterations_max;
+  if (FLAGS_iterations > 0 && FLAGS_iterations < iterations_max) {
+    iterations = FLAGS_iterations;
+  }
+  for (auto i = 0; i < iterations; i++) {
     auto images_tensor = image_reader.NextBatch({batch_size, 3, 300, 300}, {});
     std::vector<size_t> batch_lod(lod_full.begin() + i * batch_size,
                                   lod_full.begin() + batch_size * (i + 1));
@@ -139,9 +142,9 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
     const std::vector<std::vector<PaddleTensor>> &test_data,
     int32_t num_images = FLAGS_warmup_batch_size) {
   int test_data_batch_size = test_data[0][0].shape[0];
-  auto iterations_max = test_data.size();
+  auto iterations = test_data.size();
   PADDLE_ENFORCE(
-      static_cast<int32_t>(num_images) <= iterations_max * test_data_batch_size,
+      static_cast<size_t>(num_images) <= iterations * test_data_batch_size,
       "The requested quantization warmup data size " +
           std::to_string(num_images) + " is bigger than all test data size.");
 
@@ -214,23 +217,23 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                 static_cast<int64_t *>(difficult.data.data()) + objects_accum);
     objects_accum = objects_accum + objects_in_batch;
   }
-
-  size_t objects_remain = test_data[batches][1].lod[0][batch_remain];
-  std::copy_n(
-      static_cast<float *>(test_data[batches][0].data.data()),
-      batch_remain * 3 * 300 * 300,
-      static_cast<float *>(images.data.data()) + objects_accum * 3 * 300 * 300);
-  std::copy_n(static_cast<int64_t *>(test_data[batches][1].data.data()),
-              objects_remain,
-              static_cast<int64_t *>(labels.data.data()) + objects_accum);
-  std::copy_n(static_cast<float *>(test_data[batches][2].data.data()),
-              objects_remain * 4,
-              static_cast<float *>(bbox.data.data()) + objects_accum * 4);
-  std::copy_n(static_cast<int64_t *>(test_data[batches][3].data.data()),
-              objects_remain,
-              static_cast<int64_t *>(difficult.data.data()) + objects_accum);
-
-  objects_accum = objects_accum + objects_remain;
+  if (batch_remain > 0) {
+    size_t objects_remain = test_data[batches][1].lod[0][batch_remain];
+    std::copy_n(static_cast<float *>(test_data[batches][0].data.data()),
+                batch_remain * 3 * 300 * 300,
+                static_cast<float *>(images.data.data()) +
+                    objects_accum * 3 * 300 * 300);
+    std::copy_n(static_cast<int64_t *>(test_data[batches][1].data.data()),
+                objects_remain,
+                static_cast<int64_t *>(labels.data.data()) + objects_accum);
+    std::copy_n(static_cast<float *>(test_data[batches][2].data.data()),
+                objects_remain * 4,
+                static_cast<float *>(bbox.data.data()) + objects_accum * 4);
+    std::copy_n(static_cast<int64_t *>(test_data[batches][3].data.data()),
+                objects_remain,
+                static_cast<int64_t *>(difficult.data.data()) + objects_accum);
+    objects_accum = objects_accum + objects_remain;
+  }
   PADDLE_ENFORCE(
       static_cast<size_t>(num_objects) == static_cast<size_t>(objects_accum),
       "The requested num of objects " + std::to_string(num_objects) +
