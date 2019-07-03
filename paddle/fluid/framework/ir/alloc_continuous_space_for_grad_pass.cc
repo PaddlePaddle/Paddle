@@ -248,25 +248,30 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
   void PrintGroupInfo(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
-      details::GroupParamsAndGrads *group_grads_params) const {
-    for (size_t i = 0; i < group_grads_params->size(); ++i) {
+      details::GroupParamsAndGrads *group_params_grads) const {
+    for (size_t i = 0; i < group_params_grads->size(); ++i) {
       VLOG(10) << "group " << i;
       std::stringstream out;
       size_t gps_size = 0;
-      for (auto &g_p : group_grads_params->at(i)) {
-        auto iter = var_nodes.find(g_p.second);
-        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", g_p.second);
+      for (auto &p_g : group_params_grads->at(i)) {
+        auto iter = var_nodes.find(p_g.first);
+        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", p_g.first);
         auto shape = iter->second->Var()->GetShape();
         size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
         std::for_each(shape.begin(), shape.end(),
                       [&size](const int64_t &n) { size *= n; });
         gps_size += size;
-        out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
+        out << string::Sprintf("(%s(%d), %s)", p_g.first, size, p_g.second);
       }
+
+      auto dtype = this->GetDtypeOfVar(var_nodes,
+                                       group_params_grads->at(i).front().first);
+
       VLOG(10) << out.str()
-               << ", group size:" << group_grads_params->at(i).size()
+               << ", group size:" << group_params_grads->at(i).size()
                << ", group memory size:" << static_cast<double>(gps_size) / kMB
-               << "(MB)";
+               << "(MB)"
+               << ", dtype:" << dtype;
     }
   }
 
