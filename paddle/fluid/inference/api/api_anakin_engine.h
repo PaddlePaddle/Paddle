@@ -58,18 +58,18 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
   ~PaddleInferenceAnakinPredictor() override;
 
-  static std::mutex mutex_;
-  AnakinConfig config_;
-  std::shared_ptr<anakin::Context<T>> ctx_p_;
-  std::shared_ptr<anakin::graph::Graph<T, P>> graph_p_;
-  anakin::Net<T, P, R>* executor_p_{nullptr};
-
+ protected:
   void InitEnv();
   void InitGraph();
   virtual void OptimizeGraph();
   virtual void InitNet();
   virtual void SetContext();
   virtual void Predict();
+  static std::mutex mutex_;
+  AnakinConfig config_;
+  std::shared_ptr<anakin::Context<T>> ctx_p_;
+  std::shared_ptr<anakin::graph::Graph<T, P>> graph_p_;
+  anakin::Net<T, P, R>* executor_p_{nullptr};
 
  private:
   bool RunImpl(const std::vector<PaddleTensor>& inputs,

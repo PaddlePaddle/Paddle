@@ -793,6 +793,23 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// PriorBox operator
+// operator: prior_box_op
+// inputs: prior_box_input, prior_box_image
+// outputs: prior_box_boxes, prior_box_variances
+struct PriorBox : public PatternBase {
+  PriorBox(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "PriorBox") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prior_box_op);
+  PATTERN_DECL_NODE(prior_box_input);
+  PATTERN_DECL_NODE(prior_box_image);
+  PATTERN_DECL_NODE(prior_box_boxes);
+  PATTERN_DECL_NODE(prior_box_variances);
+};
+
 // Conv + ElementwiseAdd + an activation
 // This pattern can futher fuse the conv related ops after the conv+bn fusion.
 struct ConvElementwiseaddAct : public PatternBase {

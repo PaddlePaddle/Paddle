@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import warnings
 
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
+from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
+from paddle.fluid.framework import Program
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
-from ...base.fleet_base import DistributedOptimizer
-from ...base.fleet_base import Fleet
-from ...base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class DistributedTranspiler(Fleet):
@@ -34,6 +38,7 @@ class DistributedTranspiler(Fleet):
         super(DistributedTranspiler, self).__init__(Mode.TRANSPILER)
         self._transpile_config = None
         self._transpiler = None
+        self._origin_program = None
         self.startup_program = None
         self.main_program = None
         self._communicator = None
@@ -48,9 +53,20 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
+        # if MPISymetricRoleMaker is defined
+        # we suppose a user wants to submit job on mpi cluster
+        if isinstance(self._role_maker, MPISymetricRoleMaker):
+            # check whether server has been initialized
+            from paddle.fluid.transpiler.details.checkport import wait_server_ready
+            wait_server_ready(fleet.server_endpoints(to_string=False))
+
         if not self._transpile_config.sync_mode:
             self._communicator = Communicator(self.main_program)
-            self._communicator.start()
+
+            if not self._communicator.is_running():
+                self._communicator.start()
+            else:
+                warnings.warn("communicator has been initialized, skip")
 
     def init_server(self, model_dir=None):
         """
@@ -75,8 +91,7 @@ class DistributedTranspiler(Fleet):
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            io.load_persistables(self._executor, model_dir,
-                                 self.startup_program)
+            io.load_persistables(self._executor, model_dir, self.main_program)
 
     def run_server(self):
         """
@@ -102,9 +117,13 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._transpile_config.sync_mode:
+        if not self._transpile_config.sync_mode and self._communicator.is_running(
+        ):
             self._communicator.stop()
         self._executor.close()
+
+        if isinstance(self._role_maker, MPISymetricRoleMaker):
+            self._role_maker._finalize()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -137,9 +156,24 @@ class DistributedTranspiler(Fleet):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
-        io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                executor, main_program, None, None,
-                                export_for_deployment)
+        if main_program is not None:
+            io.save_inference_model(dirname, feeded_var_names, target_vars,
+                                    executor, main_program, None, None,
+                                    export_for_deployment)
+        else:
+            io.save_inference_model(dirname, feeded_var_names, target_vars,
+                                    executor, self._origin_program, None, None,
+                                    export_for_deployment, True)
+
+            model_basename = "__model__"
+            model_filename = os.path.join(dirname, model_basename)
+
+            with open(model_filename, "rb") as f:
+                program_desc_str = f.read()
+
+            program = Program.parse_from_string(program_desc_str)
+            program._copy_dist_param_info_from(self.main_program)
+            self.save_persistables(executor, dirname, program)
 
     def save_persistables(self, executor, dirname, main_program=None):
         """
@@ -152,6 +186,14 @@ class DistributedTranspiler(Fleet):
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
         """
+
+        if main_program is None:
+            main_program = self.main_program
+
+        if not main_program._is_distributed:
+            raise ValueError(
+                "main_program is for local, may not use fleet.save_persistables")
+
         io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
@@ -162,18 +204,38 @@ class DistributedTranspiler(Fleet):
         if not config.sync_mode:
             config.runtime_split_send_recv = True
 
+        # _origin_program is a deep copy for default_main_program, for inference
+        self._origin_program = default_main_program().clone(for_test=False)
+
         self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
-        self._transpiler.transpile(
-            trainer_id=fleet.worker_index(),
-            pservers=fleet.server_endpoints(to_string=True),
-            trainers=fleet.worker_num(),
-            sync_mode=config.sync_mode)
+
+        print("server endpoints")
+        print(fleet.server_endpoints(to_string=True))
+        print("worker index: %d" % fleet.worker_index())
+        print("worker num: %d" % fleet.worker_num())
 
         if self.is_worker():
-            self.main_program = self._transpiler.get_trainer_program()
+            self._transpiler.transpile(
+                trainer_id=fleet.worker_index(),
+                pservers=fleet.server_endpoints(to_string=True),
+                trainers=fleet.worker_num(),
+                sync_mode=config.sync_mode)
+
+            wait_port = True
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                wait_port = False
+
+            self.main_program = self._transpiler.get_trainer_program(
+                wait_port=wait_port)
             self.startup_program = default_startup_program()
         else:
+            self._transpiler.transpile(
+                trainer_id=fleet.worker_index(),
+                pservers=fleet.server_endpoints(to_string=True),
+                trainers=fleet.worker_num(),
+                sync_mode=config.sync_mode,
+                current_endpoint=self.server_endpoints()[self.server_index()])
             self.main_program, self.startup_program = \
                 self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
 

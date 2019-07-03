@@ -60,7 +60,7 @@ class LearningRateDecay(object):
             shape=[1],
             value=float(lr),
             dtype=self.dtype,
-            persistable=True)
+            persistable=False)
         return lr
 
     def step(self):
