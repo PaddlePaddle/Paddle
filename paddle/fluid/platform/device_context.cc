@@ -401,8 +401,8 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 namespace {
-// Current thread's id. -1 means cache clearing mode.
-thread_local int cur_thread_id = 0;
+// Current mkldnn session id.
+thread_local size_t cur_mkldnn_session_id = kMKLDNNSessionID_Default;
 // Current data input shape string.
 // - If cur_thread_id != -1, it's a null string in default.
 // - Else, for a 4-dimention input [1, 3, 18, 128],
@@ -413,8 +413,8 @@ thread_local std::string cur_input_shape_str = "";
 thread_local int cur_input_shape_cache_size = 1;
 }  // namespace
 
-void set_cur_thread_id(int tid) { cur_thread_id = tid; }
-int get_cur_thread_id(void) { return cur_thread_id; }
+void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
+size_t get_cur_mkldnn_session_id(void) { return cur_mkldnn_session_id; }
 void set_cur_input_shape_str(std::string input_shape_str) {
   cur_input_shape_str = input_shape_str;
 }
@@ -432,7 +432,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   std::shared_ptr<ShapeBlob> sBlob = nullptr;
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  int tid = platform::get_cur_mkldnn_session_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
@@ -484,7 +484,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
   std::shared_ptr<ShapeBlob> sBlob = nullptr;
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  int tid = platform::get_cur_mkldnn_session_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 

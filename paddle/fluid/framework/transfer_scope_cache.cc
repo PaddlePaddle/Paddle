@@ -26,7 +26,7 @@ std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
 #ifdef PADDLE_WITH_MKLDNN
   // if get_cur_thread_id() == -1, means not using thread local method to do
   // cache
-  if (platform::get_cur_thread_id() == -1) {
+  if (platform::get_cur_mkldnn_session_id() == -1) {
     if (!static_transfer_data_cache)
       static_transfer_data_cache = new std::unordered_map<size_t, Scope*>;
     return *static_transfer_data_cache;
@@ -43,7 +43,7 @@ std::unordered_set<Scope*>& global_transfer_scope_cache() {
 #ifdef PADDLE_WITH_MKLDNN
   // if get_cur_thread_id() == -1, means not using thread local method to do
   // cache
-  if (platform::get_cur_thread_id() == -1) {
+  if (platform::get_cur_mkldnn_session_id() == -1) {
     if (!static_transfer_scope_cache)
       static_transfer_scope_cache = new std::unordered_set<Scope*>;
     return *static_transfer_scope_cache;
@@ -73,28 +73,6 @@ Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
   }
   global_transfer_scope_cache().insert(new_scope);
   return new_scope;
-}
-
-void RemoveKidsFromTransferScopeCache(Scope* scope) {
-  auto it = global_transfer_scope_cache().find(scope);
-  if (it != global_transfer_scope_cache().end()) {
-    global_transfer_scope_cache().erase(it);
-  }
-  for (auto* s : scope->kids()) {
-    auto it = global_transfer_scope_cache().find(s);
-    if (it != global_transfer_scope_cache().end()) {
-      global_transfer_scope_cache().erase(it);
-    }
-  }
-
-  // remove global transfer data cache
-  auto& cache = global_transfer_data_cache();
-  for (auto it = cache.begin(); it != cache.end();) {
-    if (it->second == scope)
-      it = cache.erase(it);
-    else
-      it++;
-  }
 }
 
 }  // namespace framework

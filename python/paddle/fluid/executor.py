@@ -764,6 +764,22 @@ class Executor(object):
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))
 
+    def _adjust_pipeline_resource(self, pipeline_opt, dataset, pipeline_num):
+        filelist_length = len(dataset.dataset.get_filelist())
+        if filelist_length < pipeline_num:
+            pipeline_num = filelist_length
+            print(
+                "Pipeline training: setting the pipeline num to %d is enough because there are only %d files"
+                % (filelist_length, filelist_length))
+        if filelist_length < pipeline_num * pipeline_opt["concurrency_list"][0]:
+            print(
+                "Pipeline training: setting the 1st element in concurrency_list to %d is enough because there are only %d files"
+                % (filelist_length // pipeline_num, filelist_length))
+            pipeline_opt["concurrency_list"][
+                0] = filelist_length // pipeline_num
+        dataset.set_thread(pipeline_opt["concurrency_list"][0] * pipeline_num)
+        return pipeline_num
+
     def _prepare_trainer(self,
                          program=None,
                          dataset=None,
@@ -952,25 +968,10 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
 
-        # Adjust the reader size for small file num
         if program._pipeline_opt:
-            dataset.set_thread(thread *
-                               program._pipeline_opt["concurrency_list"][0])
-            file_size = len(dataset.dataset.get_filelist())
-            if file_size < thread:
-                thread = file_size
-                print(
-                    "Pipeline: setting the pipeline num to %d is enough because there are only %d files"
-                    % (file_size, file_size))
-            if file_size < thread * program._pipeline_opt["concurrency_list"][
-                    0]:
-                print(
-                    "Pipeline: setting the 1st element in concurrency_list to %d is enough because there are only %d files"
-                    % (file_size / thread, file_size))
-                program._pipeline_opt["concurrency_list"][
-                    0] = file_size / thread
-                dataset.set_thread(
-                    program._pipeline_opt["concurrency_list"][0] * thread)
+            thread = self._adjust_pipeline_resource(program._pipeline_opt,
+                                                    dataset, thread)
+
         dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,

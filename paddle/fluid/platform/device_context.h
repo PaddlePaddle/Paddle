@@ -388,8 +388,13 @@ using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
 using ShapeBlob = std::unordered_map<std::string, std::shared_ptr<KeyBlob>>;
 using BlobMap = std::unordered_map<int, std::shared_ptr<ShapeBlob>>;
 
-void set_cur_thread_id(int);
-int get_cur_thread_id(void);
+// default mkldnn session id
+constexpr size_t kMKLDNNSessionID_Default = 0;
+// mkldnn session id for cache clearing mode
+constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
+
+void set_cur_mkldnn_session_id(size_t);
+size_t get_cur_mkldnn_session_id(void);
 void set_cur_input_shape_str(std::string input_shape_str);
 std::string get_cur_input_shape_str(void);
 void set_cur_input_shape_cache_size(int input_shape_cache_size);

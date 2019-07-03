@@ -189,17 +189,17 @@ void AnalysisPredictor::MkldnnPreRun(const std::vector<PaddleTensor> &inputs) {
   // TODO(intel, luotao): will refactor this code later
   // Make sure it not conflict with AnalysisPredictor::SetMkldnnThreadID case
   VLOG(2) << "AnalysisPredictor::Run get_cur_thread_id="
-          << paddle::platform::get_cur_thread_id();
+          << paddle::platform::get_cur_mkldnn_session_id();
   // -1 means cache cleaning mode.
-  if (paddle::platform::get_cur_thread_id() == 0 &&
+  if (paddle::platform::get_cur_mkldnn_session_id() == 0 &&
       config_.mkldnn_input_shape_cache_size_ > 1) {
-    paddle::platform::set_cur_thread_id(-1);
+    paddle::platform::set_cur_mkldnn_session_id(-1);
     paddle::platform::set_cur_input_shape_cache_size(
         config_.mkldnn_input_shape_cache_size_);
   }
   // Set current_input_shape for caching dynamic shape.
   // Only used when batch_size=1.
-  if (paddle::platform::get_cur_thread_id() == -1) {
+  if (paddle::platform::get_cur_mkldnn_session_id() == -1) {
     PADDLE_ENFORCE(
         inputs.size() == 1,
         "Can not process batch_size > 1 in MKLDNN cache cleaning mode now.");
@@ -216,9 +216,9 @@ void AnalysisPredictor::MkldnnPostRun() {
   // TODO(intel): will refactor this code later
   // reset thread id to avoid confusion when thread is reused from pool again
   // mkldnn_thread_id_ = -1 is reserved for cache clearing mode only
-  if (paddle::platform::get_cur_thread_id() == -1) {
+  if (paddle::platform::get_cur_mkldnn_session_id() == -1) {
     VLOG(2) << "Clear previous mkldnn thread id -1\n";
-    paddle::platform::set_cur_thread_id(0);
+    paddle::platform::set_cur_mkldnn_session_id(0);
   }
 }
 
