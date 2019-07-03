@@ -1755,6 +1755,7 @@ class DynamicRNN(object):
         self.cond = self.helper.create_variable_for_type_inference(dtype='bool')
         self.cond.stop_gradient = False
         self.while_op = While(self.cond)
+        self.step_inputs = []
         self.input_array = []
         self.mem_link = []
 
@@ -1773,6 +1774,7 @@ class DynamicRNN(object):
         if not isinstance(x, Variable):
             raise TypeError(
                 "step_input() can only take a Variable as its input.")
+        self.step_inputs.append(x)
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -1903,6 +1905,17 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.AFTER_RNN:
             raise ValueError(("Output of the dynamic RNN can only be visited "
                               "outside the rnn block."))
+        if len(self.step_inputs) <= 0:
+            raise RuntimeError("step_input() must be set at least once.")
+
+        parent_block = self._parent_block_()
+        for i in xrange(len(self.outputs)):
+            parent_block.append_op(
+                type='lod_reset',
+                inputs={'X': self.outputs[i],
+                        'Y': self.step_inputs[0]},
+                outputs={'Out': self.outputs[i]})
+
         if len(self.outputs) == 1:
             return self.outputs[0]
         else:
