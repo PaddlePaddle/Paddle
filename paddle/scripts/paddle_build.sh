@@ -975,7 +975,6 @@ function build_document_preview() {
 
 function example() {
     pip install /paddle/build/python/dist/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl
-    python -c "import paddle.fluid;paddle.fluid.install_check.run_check()"
     paddle version
     cd ${PADDLE_ROOT}
     python tools/sampcd_processor.py
