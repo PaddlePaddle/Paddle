@@ -380,7 +380,7 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #ifdef PADDLE_WITH_MKLDNN
 // Following three maps are used to cache MKLDNN primitives.
 // There relations are:
-// - BlobMap = Map<cur_thread_id, KeyBlob>
+// - BlobMap = Map<cur_thread_id, ShapeBlob>
 // - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
 // - KeyBlob  = Map<blob_name, blob>
 // Where:

@@ -404,9 +404,8 @@ namespace {
 // Current mkldnn session id.
 thread_local size_t cur_mkldnn_session_id = kMKLDNNSessionID_Default;
 // Current data input shape string.
-// - If cur_thread_id != -1, it's a null string in default.
-// - Else, for a 4-dimention input [1, 3, 18, 128],
-//   cur_input_shape_str = 1-3-18-128- .
+// - For fixed-shape, it's a null string in default.
+// - For dynamic-shape, it's user specific.
 thread_local std::string cur_input_shape_str = "";
 // the cache size of different input shapes for MKLDNN.
 // Default 1 means fixed input shape, not dynamic shape.
