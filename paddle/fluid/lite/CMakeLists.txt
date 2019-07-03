@@ -111,11 +111,12 @@ file(WRITE ${__lite_cc_files} "") # clean
 #  PROFILE_DEPS:  LITE_WITH_PROFILE
 #  LIGHT_DEPS:    LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #  HVY_DEPS:      NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+#  EXCLUDE_COMPILE_DEPS: TARGET will not be included in lite_compile_deps if this is not None
 function(lite_cc_library TARGET)
     set(options SHARED shared STATIC static MODULE module)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS
-      HVY_DEPS ARGS)
+      HVY_DEPS EXCLUDE_COMPILE_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -145,7 +146,7 @@ function(lite_cc_library TARGET)
     endforeach()
 
     # collect targets need to compile for lite
-    if (args_SRCS)
+    if (args_SRCS AND NOT args_EXCLUDE_COMPILE_DEPS)
         add_dependencies(lite_compile_deps ${TARGET})
     endif()
 
@@ -157,7 +158,7 @@ function(lite_cc_binary TARGET)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS PROFILE_DEPS
-      LIGHT_DEPS HVY_DEPS ARGS)
+      LIGHT_DEPS HVY_DEPS EXCLUDE_COMPILE_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(deps "")
@@ -174,7 +175,9 @@ function(lite_cc_binary TARGET)
     cc_binary(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ${args_DEPS})
     target_compile_options(${TARGET} BEFORE PRIVATE -Wno-ignored-qualifiers)
     # collect targets need to compile for lite
-    add_dependencies(lite_compile_deps ${TARGET})
+    if (NOT args_EXCLUDE_COMPILE_DEPS)
+        add_dependencies(lite_compile_deps ${TARGET})
+    endif()
 endfunction()
 
 # Add a unit-test name to file for latter offline manual test.
@@ -185,7 +188,7 @@ function(lite_cc_test TARGET)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS PROFILE_DEPS
-      LIGHT_DEPS HVY_DEPS
+      LIGHT_DEPS HVY_DEPS EXCLUDE_COMPILE_DEPS
       ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -205,7 +208,9 @@ function(lite_cc_test TARGET)
     file(APPEND ${offline_test_registry_file} "${TARGET}\n")
 
     # collect targets need to compile for lite
-    add_dependencies(lite_compile_deps ${TARGET})
+    if (NOT args_EXCLUDE_COMPILE_DEPS)
+        add_dependencies(lite_compile_deps ${TARGET})
+    endif()
 endfunction()
 
 add_subdirectory(operators)
