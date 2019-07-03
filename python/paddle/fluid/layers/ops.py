@@ -83,12 +83,13 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Examples:
         .. code-block:: python
      
+            import paddle.fluid as fluid
             result = fluid.layers.uniform_random(shape=[32, 784])
     """
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
@@ -102,7 +103,7 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
@@ -113,6 +114,7 @@ def hard_shrink(x, threshold=None):
 hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
 Examples:
 
+    >>> import paddle.fluid as fluid
     >>> data = fluid.layers.data(name="input", shape=[784])
     >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
 """
@@ -123,7 +125,7 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
@@ -134,6 +136,7 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
 cumsum.__doc__ = _cum_sum_.__doc__ + """
 Examples:
 
+    >>> import paddle.fluid as fluid
     >>> data = fluid.layers.data(name="input", shape=[32, 784])
     >>> result = fluid.layers.cumsum(data, axis=0)
 """
@@ -144,7 +147,7 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
-    locals_var = locals()
+    locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
         if val is not None:
@@ -156,6 +159,7 @@ def thresholded_relu(x, threshold=None):
 thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
 Examples:
 
+    >>> import paddle.fluid as fluid
     >>> data = fluid.layers.data(name="input", shape=[1])
     >>> result = fluid.layers.thresholded_relu(data, threshold=0.4)
 """

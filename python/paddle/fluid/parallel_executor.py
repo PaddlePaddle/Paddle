@@ -125,12 +125,6 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
-        sys.stderr.write(
-            'ParallelExecutor is deprecated. '
-            'Please use CompiledProgram and Executor. CompiledProgram '
-            'is a central place for optimization and Executor is the '
-            'unified executor. Example can be found in compiler.py.\n')
-
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
@@ -330,6 +324,7 @@ class ParallelExecutor(object):
                   loss = fluid.layers.mean(hidden)
 
               place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              exe = fluid.Executor(place)
               exe.run(startup_program)
 
               parallel_exe = fluid.ParallelExecutor(use_cuda=use_cuda,

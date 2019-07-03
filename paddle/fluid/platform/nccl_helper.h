@@ -171,14 +171,15 @@ inline std::string GetHierarchicalExterNCCLVarName(size_t pos) {
   return string::Sprintf("Hierarchical_exter_%s_%d", NCCL_ID_VARNAME,
                          static_cast<int>(pos));
 }
-inline std::string GetHierarchicalInterNCCLVarName() {
-  return string::Sprintf("Hierarchical_inter_%s", NCCL_ID_VARNAME);
+inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
+  return string::Sprintf("Hierarchical_inter_%s_%d", NCCL_ID_VARNAME,
+                         static_cast<int>(pos));
 }
 
-class MultiNCCLContextMap {
+class NCCLCommunicator {
  public:
-  MultiNCCLContextMap() {}
-  virtual ~MultiNCCLContextMap() {}
+  NCCLCommunicator() {}
+  virtual ~NCCLCommunicator() {}
 
   NCCLContextMap *DefaultFlatCtx() const {
     if (flat_ctxs_.size() == 0) {
@@ -205,6 +206,25 @@ class MultiNCCLContextMap {
     return GetHierarchicalInterCtx(run_order);
   }
 
+  /*
+   *When nccl inits nccl comm using ncclCommInitAll, it meets error when
+   *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
+   *create a new nccl comm for sync_batch_norm_op. And these codes should be
+   *polished with a unified nccl management.
+  */
+  NCCLContextMap *GetSyncBatchNormCtx(
+      framework::Scope *scope, const std::vector<platform::Place> &places) {
+    auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
+    if (nccl_id_var != nullptr) {
+      return DefaultFlatCtx();
+    }
+
+    if (sync_batch_norm_ctx_.get() == nullptr) {
+      sync_batch_norm_ctx_.reset(new NCCLContextMap(places));
+    }
+    return sync_batch_norm_ctx_.get();
+  }
+
   void InitFlatCtxs(const std::vector<platform::Place> &places,
                     const std::vector<ncclUniqueId *> &nccl_ids,
                     size_t trainers_num, size_t trainer_id) {
@@ -224,8 +244,8 @@ class MultiNCCLContextMap {
   }
 
   void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
-                            ncclUniqueId *inter_nccl_id,
-                            const std::vector<ncclUniqueId *> &exter_nccl_id,
+                            const std::vector<ncclUniqueId *> &inter_nccl_ids,
+                            const std::vector<ncclUniqueId *> &exter_nccl_ids,
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
@@ -238,11 +258,14 @@ class MultiNCCLContextMap {
                    inter_trainers_num);
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
-    VLOG(1) << "init inter_trainer_id:" << inter_trainer_id;
-    auto local = new NCCLContextMap(places, inter_nccl_id, inter_trainers_num,
-                                    inter_trainer_id);
+    for (size_t i = 0; i < inter_nccl_ids.size(); i++) {
+      VLOG(1) << "init inter_trainer_id:" << inter_trainer_id
+              << ", comm no:" << i;
+      auto local = new NCCLContextMap(places, inter_nccl_ids[i],
+                                      inter_trainers_num, inter_trainer_id);
 
-    h_inter_ctxs_.emplace_back(local);
+      h_inter_ctxs_.emplace_back(local);
+    }
 
     int exter_trainer_id = -1;
     if (trainer_id % inter_trainers_num == 0) {
@@ -250,8 +273,8 @@ class MultiNCCLContextMap {
     }
 
     if (exter_trainer_id >= 0) {
-      for (size_t i = 0; i < exter_nccl_id.size(); i++) {
-        auto ex = new NCCLContextMap(places, exter_nccl_id[i],
+      for (size_t i = 0; i < exter_nccl_ids.size(); i++) {
+        auto ex = new NCCLContextMap(places, exter_nccl_ids[i],
                                      exter_trainers_num, exter_trainer_id);
         VLOG(1) << "init exter_trainer_id:" << exter_trainer_id
                 << ", comm no:" << i;
@@ -286,6 +309,9 @@ class MultiNCCLContextMap {
   // And h_exter_ctxs_ can support multi comm too.
   std::vector<std::unique_ptr<NCCLContextMap>> h_inter_ctxs_;
   std::vector<std::unique_ptr<NCCLContextMap>> h_exter_ctxs_;
+
+  // just used for sync_batch_norm op.
+  std::unique_ptr<NCCLContextMap> sync_batch_norm_ctx_;
 };
 
 }  // namespace platform

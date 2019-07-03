@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer
-from .device_worker import Hogwild, DownpourSGD
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
+from .device_worker import Hogwild, DownpourSGD, Section
 
 __all__ = ["TrainerFactory"]
 
@@ -35,8 +35,9 @@ class TrainerFactory(object):
             device_worker_class = opt_info["device_worker"]
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
-            device_worker._set_fleet_desc(opt_info["fleet_desc"])
+            if "fleet_desc" in opt_info:
+                device_worker._set_fleet_desc(opt_info["fleet_desc"])
+                trainer._set_fleet_desc(opt_info["fleet_desc"])
+                trainer._set_use_cvm(opt_info["use_cvm"])
             trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(opt_info["fleet_desc"])
-            trainer._set_use_cvm(opt_info["use_cvm"])
         return trainer

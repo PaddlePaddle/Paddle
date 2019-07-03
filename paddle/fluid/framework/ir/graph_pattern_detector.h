@@ -669,7 +669,7 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
 struct ConvBias : public PatternBase {
   ConvBias(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bias") {}
-  PDNode* operator()(PDNode* conv_input, bool is_conv3d = false);
+  PDNode* operator()(PDNode* conv_input, std::string conv_type = "conv2d");
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(eltwise);
@@ -747,6 +747,19 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_out);
 };
 
+// Concat op
+// Forward pass for concat.
+// concat_out is a result of the operator.
+struct Concat : public PatternBase {
+  Concat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "concat") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+};
+
 // Concat + ReLU
 // named nodes:
 // concat_op, concat_out, relu_op, relu_out
@@ -778,6 +791,23 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(concat_out);
   PATTERN_DECL_NODE(relu_op);
   PATTERN_DECL_NODE(relu_out);
+};
+
+// PriorBox operator
+// operator: prior_box_op
+// inputs: prior_box_input, prior_box_image
+// outputs: prior_box_boxes, prior_box_variances
+struct PriorBox : public PatternBase {
+  PriorBox(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "PriorBox") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prior_box_op);
+  PATTERN_DECL_NODE(prior_box_input);
+  PATTERN_DECL_NODE(prior_box_image);
+  PATTERN_DECL_NODE(prior_box_boxes);
+  PATTERN_DECL_NODE(prior_box_variances);
 };
 
 // Conv + ElementwiseAdd + an activation

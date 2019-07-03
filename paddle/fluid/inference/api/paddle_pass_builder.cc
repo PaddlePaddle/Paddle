@@ -109,6 +109,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
+        "conv_eltwiseadd_bn_fuse_pass",              //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
         "conv_elementwise_add_act_fuse_pass",   //
@@ -130,6 +131,10 @@ void GpuPassStrategy::EnableMKLDNN() {
 
 void GpuPassStrategy::EnableMkldnnQuantizer() {
   LOG(ERROR) << "GPU not support MKL-DNN quantization";
+}
+
+void GpuPassStrategy::EnableNgraph() {
+  LOG(ERROR) << "GPU not support Ngraph yet";
 }
 
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
@@ -169,6 +174,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
              "conv_bias_mkldnn_fuse_pass",    //
+             "conv_transpose_bias_mkldnn_fuse_pass",
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
@@ -197,4 +203,14 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 #endif
 }
 
+void CpuPassStrategy::EnableNgraph() {
+#ifdef PADDLE_WITH_NGRAPH
+  if (!use_ngraph_) {
+    passes_.insert(passes_.begin(), "ngraph_subgraph_pass");
+  }
+  use_ngraph_ = true;
+#else
+  use_ngraph_ = false;
+#endif
+}
 }  // namespace paddle

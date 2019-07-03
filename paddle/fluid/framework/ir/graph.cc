@@ -134,6 +134,7 @@ void Graph::ResolveHazard(
         ir::Node *dep_var = CreateControlDepVar();
         write_op->inputs.push_back(dep_var);
         upstream_op->outputs.push_back(dep_var);
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         dep_var->outputs.push_back(write_op);
         dep_var->inputs.push_back(upstream_op);
       }
@@ -157,6 +158,7 @@ void Graph::ResolveHazard(
         if (has_dep) continue;
 
         ir::Node *dep_var = CreateControlDepVar();
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         read_op->outputs.push_back(dep_var);
         dep_var->inputs.push_back(read_op);
         write_op->inputs.push_back(dep_var);

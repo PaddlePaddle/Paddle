@@ -20,7 +20,7 @@ namespace framework {
 namespace details {
 std::string OpHandleBase::DebugString() const {
   std::stringstream ss;
-  ss << "(";
+  ss << Name() << "(";
   for (auto *var : inputs_) {
     ss << var->DebugString() << ", ";
   }

@@ -149,6 +149,12 @@ class TensorRTEngine {
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
 
+  void ClearWeights() {
+    for (auto& weight_pair : weight_map) {
+      weight_pair.second.reset(nullptr);
+    }
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -212,6 +218,39 @@ class TensorRTEngine {
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
+
+class TRTEngineManager {
+ public:
+  bool Empty() const { return engines_.size() == 0; }
+  bool Has(const std::string& name) const {
+    if (engines_.count(name) == 0) return false;
+    return engines_.at(name).get() != nullptr;
+  }
+
+  TensorRTEngine* Get(const std::string& name) const {
+    return engines_.at(name).get();
+  }
+
+  TensorRTEngine* Create(std::string name, int max_batch, int max_workspace,
+                         bool enable_int8 = false,
+                         TRTInt8Calibrator* calibrator = nullptr,
+                         int device_id = 0,
+                         nvinfer1::ILogger& logger = NaiveLogger::Global()) {
+    auto* p = new TensorRTEngine(max_batch, max_workspace, enable_int8,
+                                 calibrator, device_id, logger);
+    engines_[name].reset(p);
+    return p;
+  }
+
+  void DeleteAll() {
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+};
 
 }  // namespace tensorrt
 }  // namespace inference

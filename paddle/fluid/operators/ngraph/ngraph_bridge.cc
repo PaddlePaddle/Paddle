@@ -36,14 +36,14 @@ bool NgraphBridge::isRegister(const std::string& str) {
 
 bool NgraphBridge::isSupported(
     const std::unique_ptr<framework::OperatorBase>& op) {
-  static std::unordered_set<std::string> skip_op_list{"reshape", "reshape2",
-                                                      "lookup_table"};
+  static std::unordered_set<std::string> skip_op_list{
+      "reshape", "reshape2", "lookup_table", "lookup_table_grad"};
   bool result = true;
   auto& op_type = op->Type();
   auto op_attrs = paddle::framework::AttrReader(op->Attrs());
   if (!isRegister(op_type)) {
     if (skip_op_list.count(op_type)) {
-      if (op_type == "lookup_table") {
+      if (op_type == "lookup_table" || op_type == "lookup_table_grad") {
         if (op_attrs.Get<bool>("is_sparse") ||
             (op_attrs.Get<int64_t>("padding_idx") != kNoPadding)) {
           result = false;

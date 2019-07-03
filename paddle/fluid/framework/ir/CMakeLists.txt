@@ -77,7 +77,7 @@ pass_library(fillconstant_elementwisemul_fuse inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 
-if(ANAKIN_FOUND)
+if(ANAKIN_SUBGRAPH)
 pass_library(simplify_anakin_priorbox_detection_out_pass inference)
 endif()
 
@@ -93,6 +93,14 @@ if(WITH_MKLDNN)
     pass_library(cpu_quantize_placement_pass base mkldnn)
     pass_library(cpu_quantize_pass inference mkldnn)
     pass_library(cpu_quantize_squash_pass inference mkldnn)
+endif()
+
+if(WITH_NGRAPH)
+    cc_library(ngraph_subgraph_pass SRCS ngraph_subgraph_pass.cc DEPS ngraph_bridge
+      analysis_helper subgraph_detector graph_pattern_detector pass fuse_pass_base ${op_library_DEPS})
+    set(pass_file ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h)
+    file(APPEND ${pass_file} "USE_PASS(ngraph_subgraph_pass);\n")
+    set(INFER_IR_PASSES ${INFER_IR_PASSES} ngraph_subgraph_pass CACHE INTERNAL "")
 endif()
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
