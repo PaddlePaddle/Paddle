@@ -203,16 +203,18 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 }
 
+#ifndef _WIN32
 static void SignalHandle(const char *data, int size) {
   auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
-  std::ofstream dump_info;
   try {
+    std::ofstream dump_info;
     dump_info.open(file_path, std::ios::app);
     dump_info << std::string(data, size);
     dump_info.close();
   } catch (...) {
   }
 }
+#endif
 
 void InitGLOG(const std::string &prog_name) {
   // glog will not hold the ARGV[0] inside.

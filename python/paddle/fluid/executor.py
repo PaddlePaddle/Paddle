@@ -638,10 +638,9 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
         except Exception as e:
-            if isinstance(e, core.EOFException):
-                raise e
-            print("An exception was thrown!\n {}".format(str(e)))
-            sys.exit(-1)
+            if not isinstance(e, core.EOFException):
+                print("An exception was thrown!\n {}".format(str(e)))
+            raise e
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache):
