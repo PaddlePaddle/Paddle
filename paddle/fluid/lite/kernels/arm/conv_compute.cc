@@ -74,7 +74,7 @@ void ConvCompute::PrepareForRun() {
   } else if (param.groups == 1 && kw == 3 && stride == 2 && kps_equal &&
              no_dilation) {
     // direct conv impl
-    impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
+    impl_ = new lite::arm::math::DirectConv<PRECISION(kFloat)>;
     VLOG(3) << "invoking direct conv";
   } else {
     impl_ = new lite::arm::math::GemmLikeConv<PRECISION(kFloat)>;
