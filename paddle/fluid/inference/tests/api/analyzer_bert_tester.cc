@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace inference {
@@ -266,7 +267,7 @@ void verify_transfer_scope_cache(bool is_static = false) {
   }
   if (is_static) {
     // Use static method to do transfer_scope_cache() instead of thread_local
-    // so paddle::framework::global_transfer_data_cache() should be same
+    // so paddle::framework::global_transfer_data_cache() should be 1
     PADDLE_ENFORCE(global_transfer_scope_cache.size(), 1);
     PADDLE_ENFORCE(global_transfer_data_cache.size(), 1);
   } else {
