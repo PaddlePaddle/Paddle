@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import logging
 import os
+import sys
 import multiprocessing
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
@@ -524,9 +525,14 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        exe.run(fetch_var_names, fetch_var_name)
+        try:
+            exe.run(fetch_var_names, fetch_var_name)
+        except Exception as e:
+            if not isinstance(e, core.EOFException):
+                print("An exception was thrown!\n {}".format(str(e)))
+                sys.exit(-1)
+            raise e
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
-
         if return_numpy:
             return as_numpy(arr)
         return [arr[i] for i in range(len(arr))]
