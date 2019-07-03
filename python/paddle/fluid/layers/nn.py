@@ -1679,7 +1679,8 @@ def chunk_eval(input,
                label,
                chunk_scheme,
                num_chunk_types,
-               excluded_chunk_types=None):
+               excluded_chunk_types=None,
+               seq_length=None):
     """
     **Chunk Evaluator**
 
@@ -1751,6 +1752,7 @@ def chunk_eval(input,
         chunk_scheme (str): ${chunk_scheme_comment}
         num_chunk_types (int): ${num_chunk_types_comment}
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
+        seq_length(Variable): 1-D Tensor specifying sequence length when input and label are Tensor type.
 
     Returns:
         tuple: tuple containing: precision, recall, f1_score,
@@ -1792,10 +1794,14 @@ def chunk_eval(input,
     num_correct_chunks = helper.create_variable_for_type_inference(
         dtype="int64")
 
+    this_input = {"Inference": [input], "Label": [label]}
+
+    if seq_length:
+        this_input["SeqLength"] = [seq_length]
+
     helper.append_op(
         type="chunk_eval",
-        inputs={"Inference": [input],
-                "Label": [label]},
+        inputs=this_input,
         outputs={
             "Precision": [precision],
             "Recall": [recall],
