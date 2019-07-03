@@ -21,6 +21,46 @@ import shutil
 import unittest
 
 
+class TestPipelineConfig(unittest.TestCase):
+    """  TestCases for Config in Pipeline Training. """
+
+    def config(self, filelist_length, pipeline_num, reader_concurrency):
+        filelist = []
+        for i in range(filelist_length):
+            filelist.append("file" + str(i))
+        self.dataset.set_filelist(filelist)
+        self.pipeline_opt["concurrency_list"][0] = reader_concurrency
+        self.pipeline_num = pipeline_num
+
+    def helper(self, in_filelist_length, in_pipeline_num, in_reader_concurrency,
+               out_pipeline_num, out_reader_concurrency, out_dataset_thread):
+        self.config(in_filelist_length, in_pipeline_num, in_reader_concurrency)
+        res = self.exe._adjust_pipeline_resource(
+            self.pipeline_opt, self.dataset, self.pipeline_num)
+        self.assertEqual(self.pipeline_opt["concurrency_list"][0],
+                         out_reader_concurrency)
+        self.assertEqual(res, out_pipeline_num)
+        self.assertEqual(self.dataset.thread_num, out_dataset_thread)
+
+    def test_adjust_pipeline_resource(self):
+        self.exe = fluid.Executor(fluid.CPUPlace())
+        self.dataset = fluid.DatasetFactory().create_dataset(
+            "FileInstantDataset")
+        self.pipeline_opt = {"concurrency_list": [0, 1, 2]}
+        self.pipeline_num = 0
+
+        self.helper(7, 2, 2, 2, 2, 4)
+        self.helper(7, 2, 3, 2, 3, 6)
+        self.helper(7, 2, 4, 2, 3, 6)
+
+        self.helper(8, 2, 3, 2, 3, 6)
+        self.helper(8, 2, 4, 2, 4, 8)
+        self.helper(8, 2, 5, 2, 4, 8)
+
+        self.helper(3, 4, 1, 3, 1, 3)
+        self.helper(3, 4, 2, 3, 1, 3)
+
+
 class TestPipeline(unittest.TestCase):
     """  TestCases for Pipeline Training. """
 
