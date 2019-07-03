@@ -92,12 +92,6 @@ class Executor {
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
 
-  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
-      const ProgramDesc& program, int block_id,
-      const std::vector<std::string>& skip_ref_cnt_vars =
-          std::vector<std::string>(),
-      bool force_disable_gc = false);
-
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
