@@ -155,6 +155,9 @@ if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
 endif()
 inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
+# detect
+inference_analysis_api_test_with_refer_result(test_analyzer_detect ${OCR_INSTALL_DIR} analyzer_detect_tester.cc)
+
 ### Image classification tests with fake data
 set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
 set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
