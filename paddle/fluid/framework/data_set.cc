@@ -45,6 +45,7 @@ DatasetImpl<T>::DatasetImpl() {
   fleet_send_sleep_seconds_ = 2;
   merge_by_insid_ = false;
   erase_duplicate_feas_ = true;
+  keep_unmerged_ins_ = true;
   min_merge_size_ = 2;
 }
 
@@ -104,11 +105,12 @@ void DatasetImpl<T>::SetChannelNum(int channel_num) {
 template <typename T>
 void DatasetImpl<T>::SetMergeByInsId(
     const std::vector<std::string>& merge_slot_list, bool erase_duplicate_feas,
-    int min_merge_size) {
+    int min_merge_size, bool keep_unmerged_ins) {
   merge_by_insid_ = true;
   merge_slots_list_ = merge_slot_list;
   erase_duplicate_feas_ = erase_duplicate_feas;
   min_merge_size_ = min_merge_size;
+  keep_unmerged_ins_ = keep_unmerged_ins;
 }
 
 template <typename T>
@@ -391,6 +393,7 @@ void DatasetImpl<T>::CreateReaders() {
 template <typename T>
 void DatasetImpl<T>::DestroyReaders() {
   VLOG(3) << "Calling DestroyReaders()";
+  VLOG(3) << "readers size1: " << readers_.size();
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   VLOG(3) << "readers size: " << readers_.size();
   file_idx_ = 0;
@@ -499,6 +502,11 @@ void MultiSlotDataset::MergeByInsId() {
       j++;
     }
     if (j - i < min_merge_size_) {
+      if (keep_unmerged_ins_) {
+        for (size_t k = i; k < j; ++k) {
+          results.push_back(std::move(recs[k]));
+        }
+      }
       i = j;
       continue;
     }

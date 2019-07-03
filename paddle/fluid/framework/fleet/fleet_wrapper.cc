@@ -424,7 +424,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
     // copy from old data to new data
     if (old_tensor->numel() > tensor->numel()) {
       memcpy(data, old_data, tensor->numel() * sizeof(float));
-    } else if (old_tensor->numel() < tensor->numel()) {
+    } else {
       memcpy(data, old_data, old_tensor->numel() * sizeof(float));
     }
   }

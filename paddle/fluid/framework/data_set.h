@@ -59,8 +59,8 @@ class Dataset {
   virtual void SetChannelNum(int channel_num) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas,
-                               int min_merge_size) = 0;
+                               bool erase_duplicate_feas, int min_merge_size,
+                               bool keep_unmerged_ins) = 0;
   // get file list
   virtual const std::vector<std::string>& GetFileList() = 0;
   // get thread num
@@ -127,7 +127,8 @@ class DatasetImpl : public Dataset {
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
   virtual void SetChannelNum(int channel_num);
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas, int min_merge_size);
+                               bool erase_duplicate_feas, int min_merge_size,
+                               bool keep_unmerged_ins);
 
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
@@ -180,6 +181,7 @@ class DatasetImpl : public Dataset {
   std::vector<std::thread> preload_threads_;
   bool merge_by_insid_;
   bool erase_duplicate_feas_;
+  bool keep_unmerged_ins_;
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
 };

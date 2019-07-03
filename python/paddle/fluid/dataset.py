@@ -291,7 +291,8 @@ class InMemoryDataset(DatasetBase):
     def set_merge_by_lineid(self,
                             var_list,
                             erase_duplicate_feas=True,
-                            min_merge_size=2):
+                            min_merge_size=2,
+                            keep_unmerged_ins=True):
         """
         Set merge by line id, instances of same line id will be merged after
         shuffle, you should parse line id in data generator.
@@ -304,6 +305,9 @@ class InMemoryDataset(DatasetBase):
             erase_duplicate_feas(bool): whether erase duplicate feasigns when
                                         merge. default is True.
             min_merge_size(int): minimal size to merge. default is 2.
+            keep_unmerged_ins(bool): whether to keep unmerged ins, such as
+                                     ins with unique id or the num of ins with
+                                     same id is less than min_merge_size.
 
         Examples:
             .. code-block:: python
@@ -315,7 +319,7 @@ class InMemoryDataset(DatasetBase):
         """
         var_name_list = [i.name for i in var_list]
         self.dataset.set_merge_by_lineid(var_name_list, erase_duplicate_feas,
-                                         min_merge_size)
+                                         min_merge_size, keep_unmerged_ins)
         self.merge_by_lineid = True
 
     def load_into_memory(self):
