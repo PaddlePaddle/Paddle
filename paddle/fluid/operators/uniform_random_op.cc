@@ -117,8 +117,9 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Shape",
-             "(Tensor Tensor<int>) "
-             "the shape of the output tensor.")
+             "(Tensor Tensor<int64_t>) "
+             "The shape of the output tensor."
+             "Shape has higher priority than shape.")
         .AsDispensable();
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(
