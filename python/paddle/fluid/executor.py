@@ -16,8 +16,8 @@ from __future__ import print_function
 
 import logging
 import os
-import sys
 import multiprocessing
+import sys
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
@@ -525,14 +525,9 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        try:
-            exe.run(fetch_var_names, fetch_var_name)
-        except Exception as e:
-            if not isinstance(e, core.EOFException):
-                print("An exception was thrown!\n {}".format(str(e)))
-                sys.exit(-1)
-            raise e
+        exe.run(fetch_var_names, fetch_var_name)
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+
         if return_numpy:
             return as_numpy(arr)
         return [arr[i] for i in range(len(arr))]
@@ -632,6 +627,24 @@ class Executor(object):
 
             list(numpy.array): fetch result according to fetch_list.
         """
+        try:
+            return self._run_impl(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+                use_program_cache=use_program_cache)
+        except Exception as e:
+            if isinstance(e, core.EOFException):
+                raise e
+            print("An exception was thrown!\n {}".format(str(e)))
+            sys.exit(-1)
+
+    def _run_impl(self, program, feed, fetch_list, feed_var_name,
+                  fetch_var_name, scope, return_numpy, use_program_cache):
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
@@ -644,7 +657,7 @@ class Executor(object):
         compiled = isinstance(program, compiler.CompiledProgram)
         # For backward compatibility, run directly.
         if not compiled:
-            return self._run(
+            return self._run_program(
                 program,
                 self._default_executor,
                 feed=feed,
@@ -677,7 +690,7 @@ class Executor(object):
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
             # use_program_cache is not valid with CompiledProgram
-            return self._run(
+            return self._run_program(
                 program._program,
                 self._default_executor,
                 feed=feed,
@@ -688,8 +701,8 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=False)
 
-    def _run(self, program, exe, feed, fetch_list, feed_var_name,
-             fetch_var_name, scope, return_numpy, use_program_cache):
+    def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
+                     fetch_var_name, scope, return_numpy, use_program_cache):
 
         if feed is None:
             feed = {}
