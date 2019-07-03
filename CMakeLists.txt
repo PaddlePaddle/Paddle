@@ -180,17 +180,17 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-if(WITH_GPU)                # set gpu libraries, must before configure
-    include(cudnn)
-    include(cuda)
-    include(tensorrt)
-endif()
-
-include(anakin_subgraph)    # set anakin libraries, must before configure
+include(anakin_subgraph)
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags
+include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
+
+if(WITH_GPU)
+    include(cuda)
+    include(tensorrt)
+endif()
 
 if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
     set(WITH_DGC OFF)
