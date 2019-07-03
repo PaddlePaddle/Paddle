@@ -275,11 +275,11 @@ void verify_transfer_scope_cache(bool is_static = false) {
 }
 
 TEST(Analyzer_bert, threadlocal_transfer_scope_cache) {
-  verify_transfer_scope_cache(true);
+  verify_transfer_scope_cache();
 }
 
 TEST(Analyzer_bert, static_transfer_scope_cache) {
-  verify_transfer_scope_cache();
+  verify_transfer_scope_cache(true);
 }
 }  // namespace inference
 }  // namespace paddle
