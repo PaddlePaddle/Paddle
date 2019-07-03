@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -228,5 +229,53 @@ TEST(Analyzer_bert, compare_determine) {
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        inputs);
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+void test_mkldnn_cache_clear_mode(bool enable_mkldnn_cache_clear_mode) {
+  AnalysisConfig config;
+  SetConfig(&config);
+  config.EnableMKLDNN();
+
+  std::vector<PaddleTensor> input, output;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+  int threads_num = 10;
+  std::vector<std::thread> threads;
+  std::unordered_set<std::unordered_set<paddle::framework::Scope *> *>
+      global_transfer_scope_cache;
+
+  std::ifstream fin(FLAGS_infer_data);
+  std::string line;
+
+  for (int i = 0; i < threads_num; i++) {
+    threads.emplace_back([&, i]() {
+      // TODO(luotao, intel): Will remove platform::set_cur_thread_id after
+      // enhance
+      // the interface of config.EnableMKLDNN();
+      if (enable_mkldnn_cache_clear_mode) platform::set_cur_thread_id(-1);
+      std::getline(fin, line);
+      ParseLine(line, &input);
+      predictor->Run(input, &output, FLAGS_batch_size);
+      global_transfer_scope_cache.insert(
+          &paddle::framework::global_transfer_scope_cache());
+      LOG(INFO) << &paddle::framework::global_transfer_scope_cache();
+    });
+    threads[0].join();
+    threads.clear();
+    std::vector<PaddleTensor>().swap(input);
+  }
+  if (enable_mkldnn_cache_clear_mode) {
+    PADDLE_ENFORCE(global_transfer_scope_cache.size(), 1);
+  } else {
+    PADDLE_ENFORCE(global_transfer_scope_cache.size(), threads_num);
+  }
+}
+
+TEST(Analyzer_bert, multi_instance_mkldnn_memory_leak) {
+  test_mkldnn_cache_clear_mode(true);
+  test_mkldnn_cache_clear_mode(false);
+}
+#endif
+
 }  // namespace inference
 }  // namespace paddle
