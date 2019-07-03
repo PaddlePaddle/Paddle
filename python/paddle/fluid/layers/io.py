@@ -28,6 +28,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+import logging
 
 __all__ = [
     'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
@@ -84,6 +85,7 @@ def data(name,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='x', shape=[784], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
@@ -147,6 +149,7 @@ class ListenAndServ(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             with fluid.program_guard(main):
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
@@ -449,6 +452,7 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             reader = fluid.layers.random_data_generator(
                                              low=0.0,
                                              high=1.0,
@@ -590,6 +594,7 @@ def _py_reader(capacity,
                 feed_queue.close()
             except Exception as ex:
                 feed_queue.close()
+                logging.warn('Your decorated reader has raised an exception!')
                 raise ex
 
         reader.thread = threading.Thread(target=__provider_thread__)
@@ -1017,6 +1022,7 @@ def shuffle(reader, buffer_size):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
                                                     shapes=[(3,224,224), (1,)],
@@ -1048,6 +1054,7 @@ def batch(reader, batch_size):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
                                                     shapes=[(3,224,224), (1,)],
@@ -1092,6 +1099,7 @@ def double_buffer(reader, place=None, name=None):
         >>> import paddle.fluid as fluid
         >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
         >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  lod_levels=[0, 0],
         >>>                                  dtypes=['float32', 'int64'])
         >>> reader = fluid.layers.double_buffer(reader)
         >>> img, label = fluid.layers.read_file(reader)
@@ -1280,4 +1288,4 @@ def load(out, file_path, load_as_fp16=None):
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)
+    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)
