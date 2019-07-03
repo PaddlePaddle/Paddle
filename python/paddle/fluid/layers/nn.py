@@ -5353,7 +5353,12 @@ def topk(input, k, name=None):
     return values, indices
 
 
-def edit_distance(input, label, normalized=True, ignored_tokens=None):
+def edit_distance(input,
+                  label,
+                  normalized=True,
+                  ignored_tokens=None,
+                  input_length=None,
+                  label_length=None):
     """
     Edit distance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
@@ -5367,52 +5372,49 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
 
     "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    The input is a LoDTensor consisting of all the hypothesis strings with
+    The input is a LoDTensor/Tensor consisting of all the hypothesis strings with
     the total number denoted by `batch_size`, and the separation is specified
-    by the LoD information. And the `batch_size` reference strings are arranged
-    in order in the same way in the input LoDTensor.
+    by the LoD information or input_length. And the `batch_size` reference strings are arranged
+    in order in the same way as `input`.
 
     The output contains the `batch_size` results and each stands for the edit
     distance for a pair of strings respectively. If Attr(normalized) is true,
     the edit distance will be divided by the length of reference string.
 
     Args:
-        input(Variable): The indices for hypothesis strings.
-        label(Variable): The indices for reference strings.
+        input(Variable): The indices for hypothesis strings, it should have rank 2 and dtype int64.
+        label(Variable): The indices for reference strings, it should have rank 2 and dtype int64.
         normalized(bool, default True): Indicated whether to normalize the edit distance by
                           the length of reference string.
         ignored_tokens(list<int>, default None): Tokens that should be removed before
                                      calculating edit distance.
-        name (str): The name of this layer. It is optional.
+        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
+        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
-        Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
+        edit_distance_out(Variable): edit distance result in shape [batch_size, 1]. \n
+        sequence_num(Variable): sequence number in shape [].
+        
 
     Examples:
         .. code-block:: python
-
+            
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost, _ = fluid.layers.edit_distance(input=x, label=y)
 
-            cpu = fluid.core.CPUPlace()
-            exe = fluid.Executor(cpu)
-            exe.run(fluid.default_startup_program())
+            # using LoDTensor
+            x_lod = fluid.layers.data(name='x_lod', shape=[1], dtype='int64', lod_level=1)
+            y_lod = fluid.layers.data(name='y_lod', shape=[1], dtype='int64', lod_level=1)
+            distance_lod, seq_num_lod = fluid.layers.edit_distance(input=x_lod, label=y_lod)
 
-            import numpy
-            x_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
-            y_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
+            # using Tensor
+            x_seq_len = 5
+            y_seq_len = 6
+            x_pad = fluid.layers.data(name='x_pad', shape=[x_seq_len], dtype='int64')
+            y_pad = fluid.layers.data(name='y_pad', shape=[y_seq_len], dtype='int64')
+            x_len = fluid.layers.data(name='x_len', shape=[], dtype='int64')
+            y_len = fluid.layers.data(name='y_len', shape=[], dtype='int64')
+            distance_pad, seq_num_pad = fluid.layers.edit_distance(input=x_pad, label=y_pad, input_length=x_len, label_length=y_len)
 
-            print(x_)
-            print(y_)
-
-            x = fluid.create_lod_tensor(x_, [[2]], cpu)
-            y = fluid.create_lod_tensor(y_, [[2]], cpu)
-
-            outs = exe.run(feed={'x':x, 'y':y}, fetch_list=[cost.name])
-
-            print(outs)
     """
     helper = LayerHelper("edit_distance", **locals())
 
@@ -5435,13 +5437,17 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
             attrs={"tokens": ignored_tokens})
         label = erased_label
 
+    this_inputs = {"Hyps": [input], "Refs": [label]}
+    if input_length and label_length:
+        this_inputs['HypsLength'] = [input_length]
+        this_inputs['RefsLength'] = [label_length]
+
     # edit distance op
     edit_distance_out = helper.create_variable_for_type_inference(dtype="int64")
     sequence_num = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="edit_distance",
-        inputs={"Hyps": [input],
-                "Refs": [label]},
+        inputs=this_inputs,
         outputs={"Out": [edit_distance_out],
                  "SequenceNum": [sequence_num]},
         attrs={"normalized": normalized})
