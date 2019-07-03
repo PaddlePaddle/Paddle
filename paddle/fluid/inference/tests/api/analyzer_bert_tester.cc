@@ -251,6 +251,8 @@ void verify_transfer_scope_cache(bool is_static = false) {
     threads.emplace_back([&, i]() {
       std::getline(fin, line);
       ParseLine(line, &input);
+      // Use static method to handle transfer_scope_cache()
+      // TODO(intel) explicit session id setting will be deprecated.
       if (is_static) platform::set_cur_mkldnn_session_id(1);
       predictor->Run(input, &output, FLAGS_batch_size);
       global_transfer_scope_cache.insert(
@@ -262,13 +264,15 @@ void verify_transfer_scope_cache(bool is_static = false) {
     threads.clear();
     std::vector<PaddleTensor>().swap(input);
   }
-  // Since paddle::framework::global_transfer_scope_cache() and
-  // paddle::framework::global_transfer_data_cache() are thread_local,
-  // their pointer should be different among different thread id.
   if (is_static) {
+    // Use static method to do transfer_scope_cache() instead of thread_local
+    // so paddle::framework::global_transfer_data_cache() should be same
     PADDLE_ENFORCE(global_transfer_scope_cache.size(), 1);
     PADDLE_ENFORCE(global_transfer_data_cache.size(), 1);
   } else {
+    // Since paddle::framework::global_transfer_scope_cache() and
+    // paddle::framework::global_transfer_data_cache() are thread_local,
+    // their pointer should be different among different thread id.
     PADDLE_ENFORCE(global_transfer_scope_cache.size(), threads_num);
     PADDLE_ENFORCE(global_transfer_data_cache.size(), threads_num);
   }
