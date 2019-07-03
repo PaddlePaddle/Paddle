@@ -25,6 +25,12 @@ void Tensor::Resize(const Tensor::ddim_t &shape) {
   tensor->Resize(shape);
 }
 
+std::vector<int64_t> Tensor::shape() const {
+  CHECK(raw_tensor_);
+  auto *tensor = static_cast<const lite::Tensor *>(raw_tensor_);
+  return tensor->dims().Vectorize();
+}
+
 #define FOR_EACH_TYPE(HANDLE) \
   HANDLE(int);                \
   HANDLE(float);              \

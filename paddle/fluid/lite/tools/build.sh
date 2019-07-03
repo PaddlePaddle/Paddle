@@ -51,6 +51,37 @@ function cmake_opencl {
         -DARM_TARGET_OS=$1 -DARM_TARGET_ARCH_ABI=$2 -DARM_TARGET_LANG=$3
 }
 
+function run_gen_code_test {
+    local port=$1
+    local gen_code_file_name="__generated_code__.cc"
+    local gen_code_file_path="./paddle/fluid/lite/gen_code/${gen_code_file_path}"
+    local adb_work_dir="/data/local/tmp"
+
+    # 1. build test_cxx_api_lite
+    make test_cxx_api_lite -j$NUM_CORES_FOR_COMPILE
+
+    # 2. run test_cxx_api_lite in emulator to get __generated_code__.cc
+    local test_cxx_api_lite_path=$(find ./paddle/fluid -name test_cxx_api_lite)
+    adb -s emulator-${port} push "./third_party/install/lite_naive_model" ${adb_work_dir}
+    adb -s emulator-${port} push ${test_cxx_api_lite_path} ${adb_work_dir}
+    adb -s emulator-${port} shell "${adb_work_dir}/test_cxx_api_lite --model_dir=${adb_work_dir}/lite_naive_model --optimized_model=${adb_work_dir}/lite_naive_model_opt"
+ 
+    # 3. build test_gen_code_lite
+    make test_gen_code_lite -j$NUM_CORES_FOR_COMPILE
+ 
+    # 4. run test_gen_code_lite
+    local test_gen_code_lite_path=$(find ./paddle/fluid -name test_gen_code_lite)
+    adb -s emulator-${port} push ${test_gen_code_lite_path} ${adb_work_dir}
+    adb -s emulator-${port} shell "${adb_work_dir}/test_gen_code_lite --optimized_model=${adb_work_dir}/lite_naive_model_opt --generated_code_file=${adb_work_dir}/${gen_code_file_name}"
+  
+    # 5. pull __generated_code__.cc down and mv to buil real path
+    adb -s emulator-${port} pull "${adb_work_dir}/${gen_code_file_name}" .
+    mv ${gen_code_file_name} ${gen_code_file_path}
+
+    # 6. build and test test_generated_code
+    make test_generated_code -j$NUM_CORES_FOR_COMPILE
+}
+
 # $1: ARM_TARGET_OS in "android" , "armlinux"
 # $2: ARM_TARGET_ARCH_ABI in "armv8", "armv7" ,"armv7hf"
 # $3: ARM_TARGET_LANG in "gcc" "clang"
@@ -190,7 +221,7 @@ function test_arm_android {
     echo "test name: ${test_name}"
     adb_work_dir="/data/local/tmp"
 
-    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite" "test_light_api_lite" "test_apis_lite" "test_paddle_api_lite")
+    skip_list=("test_model_parser_lite" "test_mobilenetv1_lite" "test_mobilenetv2_lite" "test_resnet50_lite" "test_inceptionv4_lite" "test_light_api_lite" "test_apis_lite" "test_paddle_api_lite" "test_cxx_api_lite" "test_gen_code_lite")
     for skip_name in ${skip_list[@]} ; do
         [[ $skip_name =~ (^|[[:space:]])$test_name($|[[:space:]]) ]] && echo "skip $test_name" && return
     done
@@ -410,21 +441,25 @@ function build_test_arm_subtask_android {
 
     # job 1
     build_arm "android" "armv8" "gcc"
+    run_gen_code_test ${port_armv8}
     test_arm "android" "armv8" "gcc" ${port_armv8}
     cd -
 
     # job 2
     #build_arm "android" "armv8" "clang"
+    #run_gen_code_test ${port_armv8}
     #test_arm "android" "armv8" "clang" ${port_armv8}
     #cd -
 
     # job 3
     build_arm "android" "armv7" "gcc"
+    run_gen_code_test ${port_armv7}
     test_arm "android" "armv7" "gcc" ${port_armv7}
     cd -
 
     # job 4
     #build_arm "android" "armv7" "clang"
+    #run_gen_code_test ${port_armv7}
     #test_arm "android" "armv7" "clang" ${port_armv7}
     #cd -
 

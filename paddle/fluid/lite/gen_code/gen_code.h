@@ -181,9 +181,7 @@ class ProgramCodeGenerator {
  public:
   ProgramCodeGenerator(const framework::proto::ProgramDesc &program,
                        const lite::Scope &exec_scope)
-      : program_(program), exec_scope_(exec_scope) {
-    LOG(INFO) << program.DebugString();
-  }
+      : program_(program), exec_scope_(exec_scope) {}
 
   std::string GenCode() {
     Module m;

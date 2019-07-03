@@ -85,5 +85,18 @@ TEST(CXXApi, save_model) {
 }*/
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
+#ifdef LITE_WITH_ARM
+TEST(CXXApi, save_model) {
+  lite::Predictor predictor;
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)},
+                                   Place{TARGET(kARM), PRECISION(kFloat)}});
+  predictor.Build(FLAGS_model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
+                  valid_places);
+
+  LOG(INFO) << "Save optimized model to " << FLAGS_optimized_model;
+  predictor.SaveModel(FLAGS_optimized_model);
+}
+#endif
+
 }  // namespace lite
 }  // namespace paddle
