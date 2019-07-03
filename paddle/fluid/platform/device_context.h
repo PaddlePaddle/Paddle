@@ -378,8 +378,15 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
+// Following three maps are used to cache MKLDNN primitives.
+// There relations are:
+// - BlobMap = Map<cur_thread_id, ShapeBlob>
+// - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
+// - KeyBlob  = Map<blob_name, blob>
+// Where:
 using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
-using BlobMap = std::unordered_map<int, std::shared_ptr<KeyBlob>>;
+using ShapeBlob = std::unordered_map<std::string, std::shared_ptr<KeyBlob>>;
+using BlobMap = std::unordered_map<int, std::shared_ptr<ShapeBlob>>;
 
 // default mkldnn session id
 constexpr size_t kMKLDNNSessionID_Default = 0;
@@ -388,6 +395,8 @@ constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
 
 void set_cur_mkldnn_session_id(size_t);
 size_t get_cur_mkldnn_session_id(void);
+void set_cur_input_shape_str(std::string input_shape_str);
+std::string get_cur_input_shape_str(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
