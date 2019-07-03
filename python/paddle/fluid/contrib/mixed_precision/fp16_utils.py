@@ -121,6 +121,183 @@ def master_param_to_train_param(master_params_grads, params_grads, main_prog):
             append_cast_op(m_p_g[0], train_p, main_prog)
 
 
+def _rename_arg(op, old_name, new_name):
+    """
+    If an op has old_name input and output, rename these input 
+    args new_name.
+
+    Args:
+        op (Operator): Current operator.
+        old_name (str): The old name of input args.
+        new_name (str): The new name of input args.
+    """
+    op_desc = op.desc
+    if isinstance(op_desc, tuple):
+        op_desc = op_desc[0]
+    op_desc._rename_input(old_name, new_name)
+    op_desc._rename_output(old_name, new_name)
+
+
+def _dtype_to_str(dtype):
+    """
+    Convert specific variable type to its corresponding string.
+
+    Args:
+        dtype (VarType): Variable type.
+    """
+    if dtype == core.VarDesc.VarType.FP16:
+        return 'fp16'
+    else:
+        return 'fp32'
+
+
+def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
+    """
+    Insert cast op and rename args of input and output.
+
+    Args:
+        block (Program): The block in which the operator is.
+        op (Operator): The operator to insert cast op.
+        idx (int): The index of current operator.
+        src_dtype (VarType): The input variable dtype of cast op.
+        desr_dtype (VarType): The output variable dtype of cast op.
+
+    Returns:
+        num_cast_op (int): The number of cast ops that have been inserted.
+    """
+    num_cast_ops = 0
+    valid_types = [
+        core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
+        core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    ]
+    for in_name in op.input_names:
+        for in_var_name in op.input(in_name):
+            in_var = block.var(in_var_name)
+            if in_var.type not in valid_types:
+                continue
+            if in_var.dtype == src_dtype:
+                out_var = block.create_var(
+                    name=in_var.name + \
+                            '.cast_' + _dtype_to_str(dest_dtype),
+                    dtype=dest_dtype,
+                    persistable=False,
+                    stop_gradient=False)
+                block._insert_op(
+                    idx,
+                    type="cast",
+                    inputs={"X": in_var},
+                    outputs={"Out": out_var},
+                    attrs={
+                        "in_dtype": in_var.dtype,
+                        "out_dtype": out_var.dtype
+                    })
+                num_cast_ops += 1
+                _rename_arg(op, in_var.name, out_var.name)
+            else:
+                if op.has_attr('in_dtype'):
+                    op._set_attr('in_dtype', dest_dtype)
+    if src_dtype == core.VarDesc.VarType.FP16:
+        for out_name in op.output_names:
+            for out_var_name in op.output(out_name):
+                out_var = block.var(out_var_name)
+                if out_var.type not in valid_types:
+                    continue
+                if out_var.dtype == core.VarDesc.VarType.FP16:
+                    out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
+                    if op.has_attr('out_dtype'):
+                        op._set_attr('out_dtype', core.VarDesc.VarType.FP32)
+    return num_cast_ops
+
+
+def find_true_prev_op(ops, var_name):
+    for op in ops:
+        for out_name in op.output_names:
+            for out_var_name in op.output(out_name):
+                if out_var_name == var_name:
+                    return op
+
+
+def rewrite_program(main_prog, amp_lists):
+    """
+    Traverse all ops in current block and insert cast op according to 
+    which set current op belongs to.
+
+    1. When an op belongs to the black list, add it to black set
+    2. When an op belongs to the white list, add it to white set
+    3. When an op belongs to the gray list. If one 
+       of its inputs is the output of black set op or black list op, 
+       add it to black set. If all of its previous ops are not black 
+       op and one of its inputs is the output of white set op or 
+       white list op, add it to white set.
+    4. When an op isn't in the lists, add it to black op set.
+    5. Add necessary cast ops to make sure that black set op will be 
+       computed in fp32 mode, while white set op will be computed in 
+       fp16 mode.
+
+    Args:
+        main_prog (Program): The main program for training.
+    """
+    block = main_prog.global_block()
+    ops = block.ops
+    white_op_set = set()
+    black_op_set = set()
+    for i in range(len(ops)):
+        op = ops[i]
+        if op.type in amp_lists.black_list:
+            black_op_set.add(op)
+        elif op.type in amp_lists.white_list:
+            white_op_set.add(op)
+        elif op.type in amp_lists.gray_list:
+            is_black_op = False
+            is_white_op = False
+            for in_name in op.input_names:
+                # if this op has inputs
+                if in_name:
+                    for in_var_name in op.input(in_name):
+                        in_var = block.var(in_var_name)
+                        # this in_var isn't the output of other op
+                        if in_var.op is None:
+                            continue
+                        if in_var.op is op:
+                            prev_op = find_true_prev_op(ops, in_var_name)
+                        else:
+                            prev_op = in_var.op
+                        # if it's one of inputs
+                        if prev_op in black_op_set or \
+                                prev_op.type in amp_lists.black_list:
+                            is_black_op = True
+                        if prev_op in white_op_set or \
+                                prev_op.type in amp_lists.white_list:
+                            is_white_op = True
+            if is_black_op:
+                black_op_set.add(op)
+            elif is_white_op:
+                white_op_set.add(op)
+            else:
+                pass
+        else:
+            # For numerical safe, we apply fp32 computation on ops that
+            # are not determined which list they should stay.
+            black_op_set.add(op)
+
+    idx = 0
+    while idx < len(ops):
+        op = ops[idx]
+        num_cast_ops = 0
+        if op in black_op_set:
+            num_cast_ops = _insert_cast_op(block, op, idx,
+                                           core.VarDesc.VarType.FP16,
+                                           core.VarDesc.VarType.FP32)
+        elif op in white_op_set:
+            num_cast_ops = _insert_cast_op(block, op, idx,
+                                           core.VarDesc.VarType.FP32,
+                                           core.VarDesc.VarType.FP16)
+        else:
+            pass
+
+        idx += num_cast_ops + 1
+
+
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
                         num_bad_steps, incr_every_n_steps,
                         decr_every_n_nan_or_inf, incr_ratio, decr_ratio):

@@ -188,8 +188,8 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
+        self._role_maker = role_maker
         self._role_maker.generate_role()
-
         self._is_initialized = True
 
     @abc.abstractmethod

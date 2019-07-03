@@ -16,6 +16,8 @@ from __future__ import print_function
 
 from . import nn
 from .nn import *
+from .rnn_impl import *
 
 __all__ = []
 __all__ += nn.__all__
+__all__ += rnn_impl.__all__
