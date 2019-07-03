@@ -230,7 +230,7 @@ TEST(Analyzer_bert, compare_determine) {
                        inputs);
 }
 
-TEST(Analyzer_bert, transfer_scope_cache) {
+void verify_transfer_scope_cache(bool is_static = false) {
   AnalysisConfig config;
   SetConfig(&config);
 
@@ -251,6 +251,7 @@ TEST(Analyzer_bert, transfer_scope_cache) {
     threads.emplace_back([&, i]() {
       std::getline(fin, line);
       ParseLine(line, &input);
+      if (is_static) platform::set_cur_mkldnn_session_id(1);
       predictor->Run(input, &output, FLAGS_batch_size);
       global_transfer_scope_cache.insert(
           &paddle::framework::global_transfer_scope_cache());
@@ -264,9 +265,21 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   // Since paddle::framework::global_transfer_scope_cache() and
   // paddle::framework::global_transfer_data_cache() are thread_local,
   // their pointer should be different among different thread id.
-  PADDLE_ENFORCE(global_transfer_scope_cache.size(), threads_num);
-  PADDLE_ENFORCE(global_transfer_data_cache.size(), threads_num);
+  if (is_static) {
+    PADDLE_ENFORCE(global_transfer_scope_cache.size(), 1);
+    PADDLE_ENFORCE(global_transfer_data_cache.size(), 1);
+  } else {
+    PADDLE_ENFORCE(global_transfer_scope_cache.size(), threads_num);
+    PADDLE_ENFORCE(global_transfer_data_cache.size(), threads_num);
+  }
 }
 
+TEST(Analyzer_bert, threadlocal_transfer_scope_cache) {
+  verify_transfer_scope_cache(true);
+}
+
+TEST(Analyzer_bert, static_transfer_scope_cache) {
+  verify_transfer_scope_cache();
+}
 }  // namespace inference
 }  // namespace paddle
