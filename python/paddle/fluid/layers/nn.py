@@ -10810,12 +10810,9 @@ def hash(input, hash_size, num_hash=1, name=None):
         Given:
 
         # shape [2, 2]
-        input.data = [
+        input.data = 
             [[1, 2],
-             [3, 4]],
-        ]
-
-        input.lod = [[0, 2]]
+             [3, 4]]
 
         hash_size = 10000
 
@@ -10833,40 +10830,32 @@ def hash(input, hash_size, num_hash=1, name=None):
              [8310, 1327, 1654, 4567]],
         ]
 
-        output.lod = [[0, 2]]
-
     Args:
         input (Variable): The input variable which is a one-hot word. The
-            dimensions of the input variable must be 2.
+            dimensions of the input variable must be 2. Both Tensor and LoDTensor are supported.
         hash_size (int): The space size for hash algorithm. The output value
             will keep in the range:math:`[0, hash_size - 1]`.
         num_hash (int): The times of hash, default 1.
         name (str, default None): The name of this layer.
 
     Returns:
-       Variable: The hash result variable which is a LoDTensor.
+       Variable: The hash result variable, which the same variable type as `input`.
 
     Examples:
        .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import numpy as np
 
+            # titles has shape [batch, 1]
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=0)
+            # hash_r has shape [batch, 2]
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
+
+
+            # titles has shape [batch, 1] and lod information
             titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
-
-            place = fluid.core.CPUPlace()
-            exece = fluid.Executor(place)
-            exece.run(fluid.default_startup_program()) 
-
-            # Init Tensor
-            tensor = fluid.core.LoDTensor() 
-            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
-            # Set LoD
-            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
-
-            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
+            # hash_r has shape [batch, 2] and inherits lod information from titles
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
