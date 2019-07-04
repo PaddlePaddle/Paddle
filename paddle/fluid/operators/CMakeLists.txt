@@ -115,3 +115,8 @@ endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
+
+if (NOT WITH_MKL)
+    set(exclude_ops match_matrix_tensor_op var_conv_2d_op)
+endif
+register_operators(DEPS ${exclude_ops})
