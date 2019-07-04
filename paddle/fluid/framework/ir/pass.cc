@@ -38,6 +38,8 @@ Graph* Pass::Apply(Graph* graph) const {
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*graph),
                  "Illegal Pass. Generated graph shouldn't has cycle.");
+  PADDLE_ENFORCE(VarDescIsConsistency(*graph),
+                 "The VarDescs of persistable variable are not consistency.");
   PADDLE_ENFORCE(graph == native_graph,
                  "Pass::Apply() cannot delete the passed graph and shouldn't "
                  "return a new graph.(For the need of pybind11)");
