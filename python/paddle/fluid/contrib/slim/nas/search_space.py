@@ -42,10 +42,10 @@ class SearchSpace(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def get_model_latency(self, tokens):
-        """Get model latency according to tokens.
+    def get_model_latency(self, program):
+        """Get model latency according to program.
         Args:
-            tokens(list<int>): The tokens which represent a network.
+            program(Program): The program to get latency.
         Return:
             (float): model latency.
         """

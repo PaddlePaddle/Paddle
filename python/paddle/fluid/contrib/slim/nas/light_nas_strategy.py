@@ -136,7 +136,7 @@ class LightNASStrategy(Strategy):
         flops = GraphWrapper(test_prog).flops()
         if flops <= self._max_flops:
             if self._max_latency > 0 and context:
-                latency = context.search_space.get_model_latency(tokens)
+                latency = context.search_space.get_model_latency(test_prog)
                 return latency <= self._max_latency
             return True
         else:
@@ -155,8 +155,8 @@ class LightNASStrategy(Strategy):
                 flops = context.eval_graph.flops()
                 if flops > self._max_flops or (
                         self._max_latency > 0 and
-                        context.search_space.get_model_latency(
-                            self._current_tokens) > self._max_latency):
+                        context.search_space.get_model_latency(test_p) >
+                        self._max_latency):
                     self._current_tokens = self._search_agent.next_tokens()
                 else:
                     break
