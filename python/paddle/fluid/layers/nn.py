@@ -207,6 +207,10 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'match_matrix_tensor',
+    'var_conv_2d',
+    'sequence_topk_avg_pooling',
+    'sequence_topk_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -12516,3 +12520,330 @@ def deformable_roi_pooling(input,
             "trans_std": trans_std
         })
     return output
+
+
+def sequence_topk_pooling(input, topk, channel_num):
+    """
+    This function will take the :attr:`topk` feature by value as output features for the 
+    each channel from every input sequence. The :attr:`channel_num` is the number of input 
+    channel. It will pool :attr:`topk` * :attr:`channel_num` features from each input sequence.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            Given a 1-level LoDTensor input with channel_num is 3:
+                input.lod =  [[36, 48, 24]]
+                input.dims = [108, 1]
+
+            If topk is 5, then we will get a 1-level output LoDTensor:
+                out.lod =  [[15, 15, 15]] # where 15 is channel_num * topk
+                out.dims = [45, 1]
+
+        * Example 2:
+
+            Given a 1-level LoDTensor input with channel_num is 3:
+                input.lod =  [[36, 48, 24]]
+                input.dims = [108, 1]
+
+             If topk is 10, then we get a 1-level LoDTensor:
+                out.lod =  [[30, 30, 30]] # where 15 is channel_num * topk
+                out.dims = [90, 1]
+
+            In this case, x.lod[0][3] is 24 < 30, It will padding 0. at the back in each channel.
+
+    Args:
+        input (Variable): Input variable which should 1-level LodTensor.
+        topk (int): Take :attr:`topk` features for by value from each channel input sequence.
+        channel_num (int): The number of input channel.
+
+    Returns:
+        Variable: Output variable with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            out = layers.sequence_topk_pooling(input=x_lod_tensor, topk=3, channel_num=5) 
+    """
+    helper = LayerHelper('sequence_topk_pooling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    pos = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_topk_pooling',
+        inputs={'X': input},
+        outputs={'Out': out,
+                 'pos': pos},
+        attrs={'topk': topk,
+               'channel_num': channel_num})
+    return out
+
+
+def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
+    """
+    The :attr:`topks` is a list with incremental values in this function. For each topk,
+    it will average the topk features as an output feature for each channel of every 
+    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height 
+    and width infomation for :attr:`input` tensor. If feature of input sequence is less 
+    than topk, it will padding 0. at the back.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            If channel_num is 2 and given row lodTensor and col lodTensor as follows:
+                row.lod = [[5, 4]]
+                col.lod = [[6, 7]]
+            input is a lodTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i] 
+                input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
+                input.dims = [116, 1]   # where 116 = 60 + 56
+
+            If topks is [1, 3, 5], then we get a 1-level LoDTensor:
+                out.lod =  [[5, 4]] # share Lod info with row LodTensor
+                out.dims = [9, 6]   # where 6 = len(topks) * channel_num
+
+    Args:
+        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row shoud be 1-level LodTensor.
+        col (Variable): The col shoud be 1-level LodTensor.
+        topks (list): A list of increasing value to average the topk feature.
+        channel_num (int): The number of input channel.
+
+    Returns:
+        Variable: output with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
+            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+            out = layers.sequence_topk_pooling(input=x_lod_tensor,
+                                               row=row_lod_tensor,
+                                               col=col_lod_tensor,
+                                               topks=[1, 3, 5],
+                                               channel_num=5)
+    """
+    helper = LayerHelper('sequence_topk_avg_pooling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    pos = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_topk_avg_pooling',
+        inputs={'X': input,
+                'ROW': row,
+                'COLUMN': col},
+        outputs={'Out': out,
+                 'pos': pos},
+        attrs={'topks': topks,
+               'channel_num': channel_num})
+    return out
+
+
+def var_conv_2d(input,
+                row,
+                col,
+                input_channel,
+                output_channel,
+                filter_size,
+                stride=1,
+                param_attr=None,
+                act=None,
+                dtype='float32',
+                name=None):
+    """
+    The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
+    row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
+    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    padding. Besides, input.dims[1] should be 1. 
+
+    .. code-block:: text
+
+        * Example 1:
+            
+            If input_channel is 2 and given row lodTensor and col lodTensor as follows:
+                row.lod = [[5, 4]]
+                col.lod = [[6, 7]]
+            input is a lodTensor: 
+                input.lod = [[60, 56]]  # where 60 = input_channel * 5 * 6
+                input.dims = [116, 1]    # where 116 = 60 + 56
+            
+            If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
+                output.lod = [[90, 84]] where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
+                output.dims = [174, 1]  # where 174 = 90 + 84
+
+    Args:
+        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row shoud be 1-level LodTensor to provide height information.
+        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input_channel (int): The number of input channel.
+        output_channel (int): The number of output channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None
+        dtype ('float32'): The data type of parameter and output.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None
+
+    Returns:
+        Variable: Output variable with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
+            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+            out = layers.var_conv_2d(input=x_lod_tensor, 
+                                     row=row_lod_tensor,
+                                     col=col_lod_tensor,
+                                     input_channel=3,
+                                     output_channel=5,
+                                     filter_size=[3, 3],
+                                     stride=1)
+    """
+    helper = LayerHelper('var_conv_2d', **locals())
+    x_shape = list(input.shape)
+    assert len(x_shape) == 2
+
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+
+    filter_shape = [
+        int(output_channel),
+        int(input_channel) * filter_size[0] * filter_size[1]
+    ]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype, )
+
+    conv_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+
+    helper.append_op(
+        type='var_conv_2d',
+        inputs={
+            'X': input,
+            'ROW': row,
+            'COLUMN': col,
+            'W': filter_param,
+        },
+        outputs={"Out": conv_res,
+                 "Col": tmp_res},
+        attrs={
+            'InputChannel': input_channel,
+            'OutputChannel': output_channel,
+            'StrideH': stride[0],
+            'StrideW': stride[1],
+            'KernelH': filter_size[0],
+            'KernelW': filter_size[1],
+        })
+
+    return helper.append_activation(conv_res)
+
+
+def match_matrix_tensor(x,
+                        y,
+                        channel_num,
+                        act=None,
+                        param_attr=None,
+                        dtype='float32',
+                        is_test=False,
+                        name=None):
+    """
+    Calculate the semantic matching matrix of two word sequences with variable length.
+    Given a query A of length `n` and a title B of length `m`, the input shape are respectively
+    [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
+    it will generate a learnable parameter matrix W with shape [h, 3, h].
+    Then the semantic matching matrix of query A and title B is calculated by 
+    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
+    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
+    the corresponding activation function will be applied to output matrix.
+
+    The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            Given a 1-level LoDTensor x:
+                x.lod =  [[2,                     3,                               ]]
+                x.data = [[0.3, 0.1], [0.2, 0.3], [0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
+                x.dims = [5, 2]
+
+            y is a Tensor:
+                y.lod =  [[3,                                 1,       ]]
+                y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
+                y.dims = [4, 2]
+
+            set channel_num 2, then we get a 1-level LoDTensor:
+                out.lod =  [[12, 6]]   # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
+                out.dims = [18, 1]     # where 18 = 12 + 6
+
+    Args:
+        x (Variable): Input variable x which should be 1-level LodTensor.
+        y (Variable): Input variable y which should be 1-level LodTensor.
+        channel_num (int): The channel number of learnable parameter W.
+        act (str, default None): Activation to be applied to the output of this layer.
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+            parameters/weights of this layer.
+        dtype ('float32'): The data type of w data.
+        is_test(bool): A flag indicating whether execution is in test phase.
+        name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
+
+    Returns:
+        Variable: output with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+            x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
+            y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
+            out, out_tmp = layers.match_matrix_tensor(x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
+    """
+    helper = LayerHelper('match_matrix_tensor', **locals())
+
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    assert len(x_shape) == 2 and len(y_shape) == 2 and x_shape[-1] == y_shape[
+        -1]
+
+    weight_shape = [x_shape[-1], channel_num, y_shape[-1]]
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=weight_shape, dtype=dtype, is_bias=False)
+    mm_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+    helper.append_op(
+        type='match_matrix_tensor',
+        inputs={
+            'X': x,
+            'Y': y,
+            'W': w,
+        },
+        outputs={"Out": mm_res,
+                 "Tmp": tmp_res},
+        attrs={'dim_t': channel_num})
+
+    return helper.append_activation(mm_res), tmp_res
