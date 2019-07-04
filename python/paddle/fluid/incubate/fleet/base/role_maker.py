@@ -234,6 +234,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         super(MPISymetricRoleMaker, self).__init__()
         self._node_type = None
         self._proc_per_node = 2
+        self._pserver_rand_port = 0
 
     def _check_role_generation(self):
         if not self._role_is_generated:
@@ -247,6 +248,16 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         if self._check_role_generation():
             return self.is_worker() and 0 == self.worker_index()
         return False
+
+    def get_pserver_endpoints(self):
+        if self._pserver_rand_port <= 0:
+            import random
+            self._pserver_rand_port = random.randint(60001, 64000)
+        endpoints = [
+            x + ":" + str(self._pserver_rand_port)
+            for x in self._server_endpoints
+        ]
+        return endpoints
 
     def worker_num(self):
         return self._worker_num()
