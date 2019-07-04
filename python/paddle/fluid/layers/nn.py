@@ -145,6 +145,7 @@ __all__ = [
     'pad2d',
     'unstack',
     'sequence_enumerate',
+    'unique',
     'expand',
     'sequence_concat',
     'scale',
@@ -165,6 +166,7 @@ __all__ = [
     'slice',
     'shape',
     'rank',
+    'size',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -1677,7 +1679,8 @@ def chunk_eval(input,
                label,
                chunk_scheme,
                num_chunk_types,
-               excluded_chunk_types=None):
+               excluded_chunk_types=None,
+               seq_length=None):
     """
     **Chunk Evaluator**
 
@@ -1749,6 +1752,7 @@ def chunk_eval(input,
         chunk_scheme (str): ${chunk_scheme_comment}
         num_chunk_types (int): ${num_chunk_types_comment}
         excluded_chunk_types (list): ${excluded_chunk_types_comment}
+        seq_length(Variable): 1-D Tensor specifying sequence length when input and label are Tensor type.
 
     Returns:
         tuple: tuple containing: precision, recall, f1_score,
@@ -1790,10 +1794,14 @@ def chunk_eval(input,
     num_correct_chunks = helper.create_variable_for_type_inference(
         dtype="int64")
 
+    this_input = {"Inference": [input], "Label": [label]}
+
+    if seq_length:
+        this_input["SeqLength"] = [seq_length]
+
     helper.append_op(
         type="chunk_eval",
-        inputs={"Inference": [input],
-                "Label": [label]},
+        inputs=this_input,
         outputs={
             "Precision": [precision],
             "Recall": [recall],
@@ -5345,7 +5353,12 @@ def topk(input, k, name=None):
     return values, indices
 
 
-def edit_distance(input, label, normalized=True, ignored_tokens=None):
+def edit_distance(input,
+                  label,
+                  normalized=True,
+                  ignored_tokens=None,
+                  input_length=None,
+                  label_length=None):
     """
     Edit distance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
@@ -5359,52 +5372,49 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
 
     "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    The input is a LoDTensor consisting of all the hypothesis strings with
+    The input is a LoDTensor/Tensor consisting of all the hypothesis strings with
     the total number denoted by `batch_size`, and the separation is specified
-    by the LoD information. And the `batch_size` reference strings are arranged
-    in order in the same way in the input LoDTensor.
+    by the LoD information or input_length. And the `batch_size` reference strings are arranged
+    in order in the same way as `input`.
 
     The output contains the `batch_size` results and each stands for the edit
     distance for a pair of strings respectively. If Attr(normalized) is true,
     the edit distance will be divided by the length of reference string.
 
     Args:
-        input(Variable): The indices for hypothesis strings.
-        label(Variable): The indices for reference strings.
+        input(Variable): The indices for hypothesis strings, it should have rank 2 and dtype int64.
+        label(Variable): The indices for reference strings, it should have rank 2 and dtype int64.
         normalized(bool, default True): Indicated whether to normalize the edit distance by
                           the length of reference string.
         ignored_tokens(list<int>, default None): Tokens that should be removed before
                                      calculating edit distance.
-        name (str): The name of this layer. It is optional.
+        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
+        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
-        Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
+        edit_distance_out(Variable): edit distance result in shape [batch_size, 1]. \n
+        sequence_num(Variable): sequence number in shape [].
+        
 
     Examples:
         .. code-block:: python
-
+            
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost, _ = fluid.layers.edit_distance(input=x, label=y)
 
-            cpu = fluid.core.CPUPlace()
-            exe = fluid.Executor(cpu)
-            exe.run(fluid.default_startup_program())
+            # using LoDTensor
+            x_lod = fluid.layers.data(name='x_lod', shape=[1], dtype='int64', lod_level=1)
+            y_lod = fluid.layers.data(name='y_lod', shape=[1], dtype='int64', lod_level=1)
+            distance_lod, seq_num_lod = fluid.layers.edit_distance(input=x_lod, label=y_lod)
 
-            import numpy
-            x_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
-            y_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
+            # using Tensor
+            x_seq_len = 5
+            y_seq_len = 6
+            x_pad = fluid.layers.data(name='x_pad', shape=[x_seq_len], dtype='int64')
+            y_pad = fluid.layers.data(name='y_pad', shape=[y_seq_len], dtype='int64')
+            x_len = fluid.layers.data(name='x_len', shape=[], dtype='int64')
+            y_len = fluid.layers.data(name='y_len', shape=[], dtype='int64')
+            distance_pad, seq_num_pad = fluid.layers.edit_distance(input=x_pad, label=y_pad, input_length=x_len, label_length=y_len)
 
-            print(x_)
-            print(y_)
-
-            x = fluid.create_lod_tensor(x_, [[2]], cpu)
-            y = fluid.create_lod_tensor(y_, [[2]], cpu)
-
-            outs = exe.run(feed={'x':x, 'y':y}, fetch_list=[cost.name])
-
-            print(outs)
     """
     helper = LayerHelper("edit_distance", **locals())
 
@@ -5427,13 +5437,17 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
             attrs={"tokens": ignored_tokens})
         label = erased_label
 
+    this_inputs = {"Hyps": [input], "Refs": [label]}
+    if input_length and label_length:
+        this_inputs['HypsLength'] = [input_length]
+        this_inputs['RefsLength'] = [label_length]
+
     # edit distance op
     edit_distance_out = helper.create_variable_for_type_inference(dtype="int64")
     sequence_num = helper.create_variable_for_type_inference(dtype="int64")
     helper.append_op(
         type="edit_distance",
-        inputs={"Hyps": [input],
-                "Refs": [label]},
+        inputs=this_inputs,
         outputs={"Out": [edit_distance_out],
                  "SequenceNum": [sequence_num]},
         attrs={"normalized": normalized})
@@ -9891,6 +9905,35 @@ def rank(input):
     return out
 
 
+def size(input):
+    """
+    **Size Layer**
+
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
+
+    Args:
+        input (Variable): The input variable.
+
+    Returns:
+        Variable: The number of elements for the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid.layers as layers
+
+            input = layers.data(
+                name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
+            rank = layers.size(input) # 300
+    """
+
+    helper = LayerHelper('size', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int64')
+    helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
+
+    return out
+
+
 def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -10780,12 +10823,9 @@ def hash(input, hash_size, num_hash=1, name=None):
         Given:
 
         # shape [2, 2]
-        input.data = [
+        input.data = 
             [[1, 2],
-             [3, 4]],
-        ]
-
-        input.lod = [[0, 2]]
+             [3, 4]]
 
         hash_size = 10000
 
@@ -10803,40 +10843,32 @@ def hash(input, hash_size, num_hash=1, name=None):
              [8310, 1327, 1654, 4567]],
         ]
 
-        output.lod = [[0, 2]]
-
     Args:
         input (Variable): The input variable which is a one-hot word. The
-            dimensions of the input variable must be 2.
+            dimensions of the input variable must be 2. Both Tensor and LoDTensor are supported.
         hash_size (int): The space size for hash algorithm. The output value
             will keep in the range:math:`[0, hash_size - 1]`.
         num_hash (int): The times of hash, default 1.
         name (str, default None): The name of this layer.
 
     Returns:
-       Variable: The hash result variable which is a LoDTensor.
+       Variable: The hash result variable, which the same variable type as `input`.
 
     Examples:
        .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import numpy as np
 
+            # titles has shape [batch, 1]
+            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=0)
+            # hash_r has shape [batch, 2]
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
+
+
+            # titles has shape [batch, 1] and lod information
             titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
-
-            place = fluid.core.CPUPlace()
-            exece = fluid.Executor(place)
-            exece.run(fluid.default_startup_program()) 
-
-            # Init Tensor
-            tensor = fluid.core.LoDTensor() 
-            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
-            # Set LoD
-            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
-
-            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
+            # hash_r has shape [batch, 2] and inherits lod information from titles
+            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
@@ -12047,6 +12079,45 @@ def sign(x):
     helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
 
     return out
+
+
+def unique(x, dtype='int32'):
+    """
+    **unique** 
+
+    Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
+
+    Args:
+        x(Variable): A 1-D input tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
+
+    Returns:
+        tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
+            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor.
+
+    Examples:
+        .. code-block:: python
+
+             import numpy as np
+             import paddle.fluid as fluid
+             x = fluid.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
+             out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
+    """
+
+    helper = LayerHelper("unique", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    index = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='unique',
+        inputs={'X': x},
+        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
+        outputs={'Out': [out],
+                 'Index': [index]})
+
+    return out, index
 
 
 def deformable_conv(input,
