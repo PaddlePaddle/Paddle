@@ -14,12 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/var_conv_2d_op.h"
 #include <vector>
-#ifndef WIN32
-// #include "naive_gemm.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/mklml.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -269,31 +266,16 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     auto* w_data = w->data<T>();
     auto* col_data = col->data<T>();
 
-#ifndef WIN32
-#ifndef __NAIVE_GEMM__
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-#endif  // !__NAIVE_GEMM__
-
-#endif
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {
         continue;
       }
-#ifndef WIN32
 
-#ifndef __NAIVE_GEMM__
       blas.GEMM(CblasNoTrans, CblasNoTrans, output_channel, top_im_size,
                 input_channel * kernel_h * kernel_w, 1.0, w_data,
                 col_data + col_offset[b], 0.0, top_data + top_offset[b]);
-#else
-      naive::gemm<T>(false, false, output_channel, top_im_size,
-                     input_channel * kernel_h * kernel_w, 1.0, w_data,
-                     col_data + col_offset[b], 0.0, top_data + top_offset[b]);
-
-#endif  // !__NAIVE_GEMM__
-
-#endif
     }
   }
 };
@@ -409,41 +391,21 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int batch = x->lod()[0].size() - 1;
     const auto& top_offset = out->lod()[0];
     const auto& col_offset = col->lod()[0];
-#ifndef WIN32
-#ifndef __NAIVE_GEMM__
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-#endif  // !__NAIVE_GEMM__
-#endif
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {
         continue;
       }
-#ifndef WIN32
 
-#ifndef __NAIVE_GEMM__
       blas.GEMM(CblasTrans, CblasNoTrans, input_channel * kernel_h * kernel_w,
                 top_im_size, output_channel, 1.0, w_data,
                 top_diff + top_offset[b], 1.0, col_diff + col_offset[b]);
-#else
-      naive::gemm<T>(true, false, input_channel * kernel_h * kernel_w,
-                     top_im_size, output_channel, 1.0, w_data,
-                     top_diff + top_offset[b], 1.0, col_diff + col_offset[b]);
-#endif  // !__NAIVE_GEMM__
 
-#ifndef __NAIVE_GEMM__
       blas.GEMM(CblasNoTrans, CblasTrans, output_channel,
                 input_channel * kernel_h * kernel_w, top_im_size, 1.0,
                 top_diff + top_offset[b], col_data + col_offset[b], 1.0,
                 w_diff);
-#else
-      naive::gemm<T>(false, true, output_channel,
-                     input_channel * kernel_h * kernel_w, top_im_size, 1.0,
-                     top_diff + top_offset[b], col_data + col_offset[b], 1.0,
-                     w_diff);
-#endif  // !__NAIVE_GEMM__
-
-#endif
     }
     Im2ColGrad(ctx, col_diff);
   }

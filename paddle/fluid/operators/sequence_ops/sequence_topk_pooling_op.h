@@ -159,8 +159,6 @@ class SequenceTopkPoolingGradKernel : public framework::OpKernel<T> {
           if (pos_slice_data[k] == -1) {
             continue;
           } else {
-            // LOG(ERROR) << i << " " << j << " " << k << " " <<
-            // pos_slice_data[k] << " " << out_slice_data[k];
             in_slice_data[pos_slice_data[k]] = out_slice_data[k];
           }
         }

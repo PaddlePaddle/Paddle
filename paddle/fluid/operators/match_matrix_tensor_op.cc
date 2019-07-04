@@ -162,7 +162,6 @@ void MatchMatrixTensorOpMaker::Make() {
 
     )DOC");
 }
-#ifndef WIN32
 
 template <typename DeviceContext, typename T>
 void lego_cpu_gemm(const math::BlasT<DeviceContext, T>& blas,
@@ -171,13 +170,7 @@ void lego_cpu_gemm(const math::BlasT<DeviceContext, T>& blas,
                    const T* A, const T* B, const T beta, T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-// #ifdef LEGO_USE_FLOAT
-#ifndef __NAIVE_GEMM__
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-#else
-  naive::gemm<T>(true, (TransA == CblasTrans), (TransB == CblasTrans), M, N, K,
-                 alpha, A, lda, B, ldb, beta, C, N);
-#endif
 }
 
 template <typename DeviceContext, typename T>
@@ -186,25 +179,15 @@ void lego_cpu_gemm_with_lda(const math::BlasT<DeviceContext, T>& blas,
                             const CBLAS_TRANSPOSE TransB, const int M,
                             const int N, const int K, const T alpha, const T* A,
                             const T* B, const T beta, T* C, int lda) {
-  //        int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-// #ifdef LEGO_USE_FLOAT
 
-#ifndef __NAIVE_GEMM__
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-#else
-  naive::gemm<T>(true, (TransA == CblasTrans), (TransB == CblasTrans), M, N, K,
-                 alpha, A, lda, B, ldb, beta, C, N);
-#endif
 }
-
-#endif
 
 template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#ifndef WIN32
     auto* x = ctx.Input<LoDTensor>("X");
     auto* y = ctx.Input<LoDTensor>("Y");
     auto* w = ctx.Input<Tensor>("W");
@@ -263,8 +246,6 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     out_lod.push_back(top_offset);
 
     out->set_lod(out_lod);
-
-#endif
   }
 };
 
@@ -272,7 +253,6 @@ template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#ifndef WIN32
     auto* x = ctx.Input<LoDTensor>("X");
     auto* y = ctx.Input<LoDTensor>("Y");
     auto* w = ctx.Input<Tensor>("W");
@@ -300,7 +280,6 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     auto* d_y = ctx.Output<LoDTensor>(framework::GradVarName("Y"));
-    // auto* d_tmp = ctx.Input<LoDTensor>(framework::GradVarName("Tmp"));
 
     Tensor tmp_grad;
     tmp_grad.Resize(tmp->dims());
@@ -308,7 +287,6 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* top_diff = d_out->data<T>();
     auto* bottom_l_diff = d_x->mutable_data<T>(ctx.GetPlace());
     auto* bottom_r_diff = d_y->mutable_data<T>(ctx.GetPlace());
-    // auto* d_tmp_data = d_tmp->data<T>();
     auto* bottom_l_trans_diff = const_cast<T*>(d_tmp_data);
     memset(bottom_l_diff, 0.0, x->dims()[0] * x->dims()[1] * sizeof(T));
     memset(bottom_r_diff, 0.0, y->dims()[0] * y->dims()[1] * sizeof(T));
@@ -356,7 +334,6 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     lego_cpu_gemm(blas, CblasTrans, CblasNoTrans, dim_in, dim_t * dim_in,
                   x->dims()[0], 1.0f, bottom_l_data, bottom_l_trans_diff, 1.0f,
                   t_diff);
-#endif
   }
 };
 
