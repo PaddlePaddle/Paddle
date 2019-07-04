@@ -915,6 +915,12 @@ EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
+    if [[ ${WITH_GPU} == "ON"  ]]; then
+        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    RUN rm /usr/lib/x86_64-linux-gnu/libnccl.so
+    RUN ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/lib/x86_64-linux-gnu/libnccl.so
+EOF
+    fi
 }
 
 function gen_fluid_lib() {
