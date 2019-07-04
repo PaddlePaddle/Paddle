@@ -35,7 +35,7 @@ namespace details {
 class ShareTensorBufferOpHandle : public OpHandleBase {
  public:
   ShareTensorBufferOpHandle(
-      ir::Node *node, const Scope *scope, size_t scope_idx,
+      ir::Node *node, Scope *scope, size_t scope_idx,
       const std::string &op_type,
       const std::vector<ir::MemOptVarInfo *> &in_vars_infos,
       const std::vector<std::string> &out_var_names);
@@ -55,17 +55,18 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   void InitCUDA() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
+
  private:
   void CallOnce();
 
-  const Scope *scope_;
+  Scope *scope_;
   size_t scope_idx_;
   std::string op_type_;
   std::vector<ir::MemOptVarInfo *> in_var_infos_;
   std::vector<std::string> out_var_names_;
-  std::vector<bool> is_shared_;
 
-  std::vector<std::pair<Variable *, Variable *>> in_out_vars_;
+  std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
 };
 
 }  // namespace details

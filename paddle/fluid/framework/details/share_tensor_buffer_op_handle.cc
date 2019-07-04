@@ -25,6 +25,14 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+static inline const Tensor *GetTensorFromVar(const Variable *var) {
+  if (var->IsType<LoDTensor>()) {
+    return &(var->Get<LoDTensor>());
+  } else {
+    PADDLE_THROW("Variable must be type of LoDTensor");
+  }
+}
+
 static inline Tensor *GetTensorFromVar(Variable *var) {
   // TODO(zjl): support SelectedRows
   if (var->IsType<LoDTensor>()) {
@@ -35,8 +43,7 @@ static inline Tensor *GetTensorFromVar(Variable *var) {
 }
 
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
-    ir::Node *node, const Scope *scope, size_t scope_idx,
-    const std::string &op_type,
+    ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<ir::MemOptVarInfo *> &in_var_infos,
     const std::vector<std::string> &out_var_names)
     : OpHandleBase(node),
@@ -77,7 +84,7 @@ void ShareTensorBufferOpHandle::InitCUDA() {
 
 void ShareTensorBufferOpHandle::CallOnce() {
   PADDLE_ENFORCE(in_out_vars_.empty(), "in_out_vars_ must be initialized here");
-  Scope *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  Scope *exec_scope = local_exec_scopes_[0];
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     auto *in_var = exec_scope->FindVar(in_var_infos_[i]->Name());
     auto *out_var = exec_scope->FindVar(out_var_names_[i]);
@@ -85,7 +92,6 @@ void ShareTensorBufferOpHandle::CallOnce() {
     PADDLE_ENFORCE_NOT_NULL(out_var);
     in_out_vars_.emplace_back(in_var, out_var);
   }
-  is_shared_.assign(in_var_infos_.size(), false);
 }
 
 void ShareTensorBufferOpHandle::RunImpl() {
@@ -95,29 +101,25 @@ void ShareTensorBufferOpHandle::RunImpl() {
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     auto in_var_info = in_var_infos_[i];
+    auto *in_tensor = GetTensorFromVar(in_out_vars_[i].first);
+    auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
     if (UNLIKELY(in_var_info->IsSkipped())) {
       // If in_var is inplaced in the previous batch and we want to fetch
       // in_var in the current batch, we have to reset memory of out_var
       // to avoid wrong calcualtion result.
-      if (is_shared_[i]) {
-        auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
+      if (in_tensor->Holder() == out_tensor->Holder()) {
         VLOG(1) << "Clear " << out_var_names_[i]
                 << " because you may want to fetch an inplaced variable "
                 << in_var_info->Name()
                 << " in previous batch: " << in_var_info->Name() << " -> "
                 << out_var_names_[i];
         out_tensor->clear();
-        is_shared_[i] = false;
       }
     } else {
-      auto *in_tensor = GetTensorFromVar(in_out_vars_[i].first);
-      auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
       out_tensor->ShareBufferWith(*in_tensor);
 
       VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
               << in_var_info->Name() << " -> " << out_var_names_[i];
-
-      is_shared_[i] = true;
     }
   }
 }

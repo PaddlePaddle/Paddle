@@ -201,16 +201,10 @@ Variable* Scope::FindVarLocally(const std::string& name) const {
 }
 
 void Scope::ClearWithPreserve(const std::unordered_set<Variable*>& vars) {
-  {
-    SCOPE_KIDS_WRITER_LOCK
-    for (Scope* s : kids_) {
-      delete s;
-    }
-    kids_.clear();
-  }
+  DropKids();
 
   {
-    SCOPE_KIDS_WRITER_LOCK
+    SCOPE_VARS_WRITER_LOCK
     for (auto iter = vars_.begin(); iter != vars_.end();) {
       if (vars.count(iter->second.get()) != 0) {
         ++iter;

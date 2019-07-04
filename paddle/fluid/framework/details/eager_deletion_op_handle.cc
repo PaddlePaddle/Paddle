@@ -31,7 +31,7 @@ namespace framework {
 namespace details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
-    ir::Node *node, const Scope *scope, const platform::Place &place,
+    ir::Node *node, Scope *scope, const platform::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars, GarbageCollector *gc)
     : OpHandleBase(node),
       scope_(scope),
@@ -75,7 +75,7 @@ void EagerDeletionOpHandle::InitCUDA() {
 
 void EagerDeletionOpHandle::CallOnce() {
   PADDLE_ENFORCE(vars_.empty(), "vars_ must be initialized here");
-  Scope *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  Scope *exec_scope = local_exec_scopes_[0];
   for (auto *var_info : var_infos_) {
     auto *var = exec_scope->FindVar(var_info->Name());
     PADDLE_ENFORCE_NOT_NULL(var, "Variable %s should not be nullptr",

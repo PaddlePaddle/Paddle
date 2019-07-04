@@ -34,7 +34,7 @@ namespace details {
 
 class EagerDeletionOpHandle : public OpHandleBase {
  public:
-  EagerDeletionOpHandle(ir::Node *node, const Scope *scope,
+  EagerDeletionOpHandle(ir::Node *node, Scope *scope,
                         const platform::Place &place,
                         const std::unordered_set<ir::MemOptVarInfo *> &vars,
                         GarbageCollector *gc);
@@ -55,12 +55,14 @@ class EagerDeletionOpHandle : public OpHandleBase {
 
   void InitCUDA() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
+
  private:
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
   void CallOnce();
 
-  const Scope *scope_;
+  Scope *scope_;
   std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
   GarbageCollector *gc_;                        // not own
   std::vector<Variable *> vars_;
