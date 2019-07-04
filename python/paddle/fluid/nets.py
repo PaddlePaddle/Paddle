@@ -190,6 +190,7 @@ def img_conv_group(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
@@ -328,6 +329,7 @@ def glu(input, dim=-1):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
