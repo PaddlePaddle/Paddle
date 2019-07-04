@@ -49,11 +49,11 @@ if (WITH_DISTRIBUTE)
 endif()
 
 if (NOT WITH_MKL)
-    set(exclude_ops match_matrix_tensor_op var_conv_2d_op)
+    set(exclude_ops var_conv_2d_op match_matrix_tensor_op)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op deformable_conv_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS} ${exclude_ops})
+	sync_batch_norm_op deformable_conv_op ${exclude_ops} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
