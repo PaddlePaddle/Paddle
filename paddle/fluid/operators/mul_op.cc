@@ -189,14 +189,14 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
 
-    if (ctx->HasOutput("DX")) {
+    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
+      ctx->ShareDim("DOut", "DDOut");
+    }
+    if (ctx->HasOutput("DX") && ctx->HasInput("DDY")) {
       ctx->ShareDim("X", "DX");
     }
-    if (ctx->HasOutput("DY")) {
+    if (ctx->HasOutput("DY") && ctx->HasInput("DDX")) {
       ctx->ShareDim("Y", "DY");
-    }
-    if (ctx->HasOutput("DDOut")) {
-      ctx->ShareDim("DOut", "DDOut");
     }
   }
 };
@@ -216,9 +216,15 @@ class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
     retv->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     retv->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
 
-    retv->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    retv->SetOutput("DX", InputGrad("X"));
-    retv->SetOutput("DY", InputGrad("Y"));
+    auto ddx = OutputGrad(framework::GradVarName("X"));
+    auto ddw = OutputGrad(framework::GradVarName("Y"));
+    std::vector<std::string> empty_str = {};
+
+    retv->SetOutput("DDOut", (ddx.empty())
+                                 ? empty_str
+                                 : InputGrad(framework::GradVarName("Out")));
+    retv->SetOutput("DX", ddw.empty() ? empty_str : InputGrad("X"));
+    retv->SetOutput("DY", ddx.empty() ? empty_str : InputGrad("Y"));
 
     retv->SetAttrMap(Attrs());
     return retv;

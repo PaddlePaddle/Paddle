@@ -137,7 +137,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         "The activation type used in update gate and reset gate.")
         .SetDefault("sigmoid");
     AddAttr<bool>("is_reverse",
-                  "(bool, defalut: False) "
+                  "(bool, default: False) "
                   "whether to compute reversed GRU.")
         .SetDefault(false);
     AddAttr<bool>("origin_mode",
