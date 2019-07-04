@@ -1101,7 +1101,7 @@ TEST(JITKernel_pool, more) {
   size_t target_num = 8;
 
 #ifdef __AVX__
-  target_num += 2;
+  target_num += 3;
 #endif
 
 #ifdef PADDLE_WITH_MKLML
@@ -1113,7 +1113,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 31UL);
+  EXPECT_EQ(kers.size(), 32UL);
 }
 
 // test helper
