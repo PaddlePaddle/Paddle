@@ -252,7 +252,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
     def get_pserver_endpoints(self):
         if self._pserver_rand_port <= 0:
             import random
-            random.seed(self._server_num)
+            random.seed(self._server_num())
             self._pserver_rand_port = random.randint(60001, 64000)
         endpoints = [
             x + ":" + str(self._pserver_rand_port)
@@ -293,9 +293,10 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of server
         """
         if self._check_role_generation():
-            if self.is_server():
-                return self._get_size() / 2
-        return 0
+            return self._get_size() / 2
+        else:
+            self.generate_role()
+            return self._get_size() / 2
 
     def worker_index(self):
         """
@@ -303,7 +304,9 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             return self._rank / self._proc_per_node
-        return 0
+        else:
+            self.generate_role()
+            return self._get_size() / 2
 
     def server_index(self):
         """
@@ -311,7 +314,9 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             return self._rank / self._proc_per_node
-        return 0
+        else:
+            self.generate_role()
+            return self._get_size() / 2
 
     def _barrier_worker(self):
         """
@@ -320,6 +325,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         if self._check_role_generation():
             if self.is_worker():
                 self._node_type_comm.barrier()
+        else:
+            raise Exception("You should check role generation first")
 
     def _barrier_server(self):
         """
@@ -328,6 +335,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         if self._check_role_generation():
             if self.is_server():
                 self._node_type_comm.barrier()
+        else:
+            raise Exception("You should check role generation first")
 
     def generate_role(self):
         """
@@ -344,6 +353,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
                 self._node_type = 1
             self._node_type_comm = self._comm.Split(self._node_type)
             self._role_is_generated = True
+        else:
+            raise Exception("You should check role generation first")
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
