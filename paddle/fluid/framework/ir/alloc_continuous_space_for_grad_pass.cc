@@ -206,6 +206,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       details::GroupParamsAndGrads *group_params_grads) const {
     SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
     SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
+    ReGroupByMemoryOrLayerSize(var_nodes, params_grads, group_params_grads);
   }
 
   void SetGroupAccordingToLayers(
@@ -331,11 +332,13 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
           break;
         }
 
+        /*
         auto next_var_type =
             GetDtypeOfVar(var_nodes, group_params_grads->at(j).front().second);
         if (next_var_type != var_type) {
           break;
         }
+        */
       }
     }
 
@@ -345,6 +348,64 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       VLOG(10) << string::Sprintf(
           "SetGroupAccordingToMemorySize(memory_size: %f):", group_memory_size);
       PrintGroupInfo(var_nodes, group_params_grads);
+    }
+  }
+
+  struct GroupMeta {
+    size_t gps_size = 0;
+    proto::VarType::Type dtype = 5;  // fp32
+  };
+  void ReGroupByMemoryOrLayerSize(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const details::ParamsAndGrads &params_grads,
+      details::GroupParamsAndGrads *group_params_grads) const {
+    if (IsUnifiedDtype(params_grads, var_name2node)) {
+      VLOG(1) << "needn't regroup fusion params_grads";
+      return;
+    }
+
+    std::vector<GroupMeta> gpms;
+    for (size_t i = 0; i < group_params_grads->size(); ++i) {
+      size_t gps_size = 0;
+      for (auto &p_g : group_params_grads->at(i)) {
+        auto iter = var_nodes.find(p_g.first);
+        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", p_g.first);
+        auto shape = iter->second->Var()->GetShape();
+        size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
+        std::for_each(shape.begin(), shape.end(),
+                      [&size](const int64_t &n) { size *= n; });
+        gps_size += size;
+      }
+
+      auto dtype = this->GetDtypeOfVar(var_nodes,
+                                       group_params_grads->at(i).front().first);
+      GroupMeta m;
+      m.gps_size = gps_size;
+      m.dtype = dtype;
+
+      gpms.push_back(m);
+    }
+
+    PADDLE_ENFORCE(gpms.size() == group_params_grads->size(),
+                   "group meta size:%u != group_params_grads size:%u",
+                   gpms.size(), group_params_grads.size());
+
+    while (i < group_params_grads->size()) {
+      auto local_group_memory_size = gpms[i].gps_size;
+      while (i < group_params_grads->size()) {
+      }
+    }
+
+    while (j < group_params_grads->size()) {
+      local_group_params_grads.emplace_back();
+      auto &group_p_g = local_group_params_grads.back();
+
+      auto &grad_name = group_params_grads->at(j).front().second;
+      auto var_type = GetDtypeOfVar(var_nodes, grad_name);
+
+      size_t local_group_memory_size = 0;
+      while (j < group_params_grads->size()) {
+      }
     }
   }
 
