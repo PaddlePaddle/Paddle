@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/deformable_conv_op.h"
+#include "paddle/fluid/operators/deformable_conv_v1_op.h"
 #include <memory>
 #include "paddle/fluid/operators/conv_op.h"
 
 namespace paddle {
 namespace operators {
-class DeformableConvOpMaker : public framework::OpProtoAndCheckerMaker {
+class DeformableConvV1OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
@@ -29,10 +29,6 @@ class DeformableConvOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input offset. "
              "The shape of the offset is "
              "[N, deformable_groups * kernel_w * kernel_h * 2, H, W");
-    AddInput("Mask",
-             "(Tensor) The input mask. "
-             "The shape of the mask is "
-             "[N, deformable_groups * kernel_w * kernel_h, H, W].");
     AddInput("Filter",
              "(Tensor) The Input Filter "
              "The shape of the wight is "
@@ -79,20 +75,18 @@ Compute 2-D deformable convolution on 4-D input.
 Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
 
 $$
-y(p) = \\sum_{k=1}^{K}{w_k * x(p + p_k + \\Delta p_k) * \\Delta m_k}
+y(p) = \\sum_{k=1}^{K}{w_k * x(p + p_k + \\Delta p_k)}
 $$
 
-Where $$\\Delta p_k$$ and $$\Delta m_k$$ are the learnable offset and modulation scalar for the k-th location, respectively.
+Where $$\\Delta p_k$$ is the learnable offset for the k-th location, respectively.
 
-Refer to 'Deformable ConvNets v2: More Deformable, Better Results
-'<https://arxiv.org/abs/1811.11168v2>
+Refer to 'https://arxiv.org/abs/1703.06211 '<https://arxiv.org/abs/1703.06211>
 
 Example:
   Input:
        Input shape: $(N, C_{in}, H_{in}, W_{in})$
        Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
        Offset shape: $(N, 2 * deformable_groups, * H_f * W_f, H_{out}, W_{out})$
-       Mask shape: $(N, deformable_groups * H_f * W_f, H_{out}, W_{out})$
   Output:
        Output shape: $(N, C_{out}, H_{out}, W_{out})$
                      where $H_{out}, W_{out}$ must be equal to $H_{in}, W_{in}$ respectively.
@@ -105,7 +99,7 @@ $$
   }
 };
 
-class DeformableConvOp : public framework::OperatorWithKernel {
+class DeformableConvV1Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
@@ -114,9 +108,6 @@ class DeformableConvOp : public framework::OperatorWithKernel {
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Offset"),
                    "Input(Offset) of DeformableConvOp "
-                   "should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Mask"),
-                   "Input(Mask) of DeformableConvOp "
                    "should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
                    "Input(Filter) of DeformableConvOp "
@@ -128,7 +119,6 @@ class DeformableConvOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
     auto offset_dims = ctx->GetInputDim("Offset");
-    auto mask_dims = ctx->GetInputDim("Mask");
 
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
@@ -190,15 +180,7 @@ class DeformableConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
                       deformable_groups,
                       "offset filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
-                      "output height must equal to mask map height.");
-    PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
-                      "output width must equal to mask map width.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
-                      "mask filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
-                      deformable_groups,
-                      "mask filter must divide deformable group size.");
+
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   }
 
@@ -210,7 +192,8 @@ class DeformableConvOp : public framework::OperatorWithKernel {
   }
 };
 
-class DeformableConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+class DeformableConvV1GradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
@@ -218,24 +201,22 @@ class DeformableConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
 
-    op->SetType("deformable_conv_grad");
+    op->SetType("deformable_conv_v1_grad");
     op->SetInput("Input", Input("Input"));
     op->SetInput("Filter", Input("Filter"));
     op->SetInput("Offset", Input("Offset"));
-    op->SetInput("Mask", Input("Mask"));
     op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
 
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Offset"), InputGrad("Offset"));
-    op->SetOutput(framework::GradVarName("Mask"), InputGrad("Mask"));
 
     op->SetAttrMap(Attrs());
     return op;
   }
 };
 
-class DeformableConvGradOp : public framework::OperatorWithKernel {
+class DeformableConvV1GradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -243,7 +224,6 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
     auto offset_dims = ctx->GetInputDim("Offset");
-    auto mask_dims = ctx->GetInputDim("Mask");
 
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Output")),
                    "the gradient of output(Out) must not be null");
@@ -255,9 +235,6 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasOutput(framework::GradVarName("Offset"))) {
       ctx->SetOutputDim(framework::GradVarName("Offset"), offset_dims);
-    }
-    if (ctx->HasOutput(framework::GradVarName("Mask"))) {
-      ctx->SetOutputDim(framework::GradVarName("Mask"), mask_dims);
     }
   }
 
@@ -272,13 +249,12 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
-                  ops::DeformableConvOpMaker,
-                  ops::DeformableConvGradOpDescMaker);
-REGISTER_OPERATOR(deformable_conv_grad, ops::DeformableConvGradOp);
+REGISTER_OPERATOR(deformable_conv_v1, ops::DeformableConvV1Op,
+                  ops::DeformableConvV1OpMaker,
+                  ops::DeformableConvV1GradOpDescMaker);
+REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);
 
-REGISTER_OP_CPU_KERNEL(deformable_conv, ops::DeformableConvCPUKernel<float>,
-                       ops::DeformableConvCPUKernel<double>);
-REGISTER_OP_CPU_KERNEL(deformable_conv_grad,
-                       ops::DeformableConvGradCPUKernel<float>,
-                       ops::DeformableConvGradCPUKernel<double>);
+REGISTER_OP_CPU_KERNEL(deformable_conv_v1,
+                       ops::DeformableConvV1CPUKernel<float>);
+REGISTER_OP_CPU_KERNEL(deformable_conv_v1_grad,
+                       ops::DeformableConvV1GradCPUKernel<float>);

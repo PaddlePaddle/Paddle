@@ -12133,6 +12133,7 @@ def deformable_conv(input,
                     im2col_step=None,
                     param_attr=None,
                     bias_attr=None,
+                    modulated=True,
                     name=None):
     """
     **Deformable Convolution Layer**
@@ -12172,7 +12173,7 @@ def deformable_conv(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format.
-        offset (Variable): The input coord offset of deformable convolution layer.
+        offset (Variable): The input coordinate offset of deformable convolution layer.
         Mask (Variable): The input mask of deformable covolution layer.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -12211,6 +12212,8 @@ def deformable_conv(input,
             to the output units. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
+        modulated (bool): Make sure which version should be used between v1 and v2, where v2 is \
+            used while True. Default: True.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
     Returns:
@@ -12222,12 +12225,22 @@ def deformable_conv(input,
     Examples:
         .. code-block:: python
 
+          #deformable conv v2:
+         
           import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                             num_filters=2, filter_size=3, padding=1)
+                                             num_filters=2, filter_size=3, padding=1, modulated=True)
+
+          #deformable conv v1:
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
+          out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
+                                             num_filters=2, filter_size=3, padding=1, modulated=False)
     """
 
     num_channels = input.shape[1]
@@ -12240,8 +12253,6 @@ def deformable_conv(input,
         raise TypeError("Input of deformable_conv must be Variable")
     if not isinstance(offset, Variable):
         raise TypeError("Input Offset of deformable_conv must be Variable")
-    if not isinstance(mask, Variable):
-        raise TypeError("Input Mask of deformable_conv must be Variable")
 
     if groups is None:
         num_filter_channels = num_channels
@@ -12271,23 +12282,44 @@ def deformable_conv(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(
-        type='deformable_conv',
-        inputs={
-            'Input': input,
-            'Filter': filter_param,
-            'Offset': offset,
-            'Mask': mask,
-        },
-        outputs={"Output": pre_bias},
-        attrs={
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'deformable_groups': deformable_groups,
-            'im2col_step': im2col_step,
-        })
+    if modulated:
+        if not isinstance(mask, Variable):
+            raise TypeError("Input Mask of deformable_conv must be Variable")
+        helper.append_op(
+            type='deformable_conv',
+            inputs={
+                'Input': input,
+                'Filter': filter_param,
+                'Offset': offset,
+                'Mask': mask,
+            },
+            outputs={"Output": pre_bias},
+            attrs={
+                'strides': stride,
+                'paddings': padding,
+                'dilations': dilation,
+                'groups': groups,
+                'deformable_groups': deformable_groups,
+                'im2col_step': im2col_step,
+            })
+
+    else:
+        helper.append_op(
+            type='deformable_conv_v1',
+            inputs={
+                'Input': input,
+                'Filter': filter_param,
+                'Offset': offset,
+            },
+            outputs={"Output": pre_bias},
+            attrs={
+                'strides': stride,
+                'paddings': padding,
+                'dilations': dilation,
+                'groups': groups,
+                'deformable_groups': deformable_groups,
+                'im2col_step': im2col_step,
+            })
 
     output = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
     return output

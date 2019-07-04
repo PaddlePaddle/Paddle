@@ -1962,32 +1962,31 @@ class TestBook(LayerTest):
         print(str(program))
 
     def test_deformable_conv(self):
-        if core.is_compiled_with_cuda():
-            with program_guard(fluid.default_main_program(),
-                               fluid.default_startup_program()):
-                input = layers.data(
-                    name='input',
-                    append_batch_size=False,
-                    shape=[2, 3, 32, 32],
-                    dtype="float32")
-                offset = layers.data(
-                    name='offset',
-                    append_batch_size=False,
-                    shape=[2, 18, 32, 32],
-                    dtype="float32")
-                mask = layers.data(
-                    name='mask',
-                    append_batch_size=False,
-                    shape=[2, 9, 32, 32],
-                    dtype="float32")
-                out = layers.deformable_conv(
-                    input=input,
-                    offset=offset,
-                    mask=mask,
-                    num_filters=2,
-                    filter_size=3,
-                    padding=1)
-                return (out)
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                append_batch_size=False,
+                shape=[2, 3, 32, 32],
+                dtype="float32")
+            offset = layers.data(
+                name='offset',
+                append_batch_size=False,
+                shape=[2, 18, 32, 32],
+                dtype="float32")
+            mask = layers.data(
+                name='mask',
+                append_batch_size=False,
+                shape=[2, 9, 32, 32],
+                dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=mask,
+                num_filters=2,
+                filter_size=3,
+                padding=1)
+            return (out)
 
     def test_unfold(self):
         with self.static_graph():
@@ -2023,6 +2022,29 @@ class TestBook(LayerTest):
                 sample_per_part=4,
                 trans_std=0.1)
         return (out)
+
+    def test_deformable_conv_v1(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                append_batch_size=False,
+                shape=[2, 3, 32, 32],
+                dtype="float32")
+            offset = layers.data(
+                name='offset',
+                append_batch_size=False,
+                shape=[2, 18, 32, 32],
+                dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=None,
+                num_filters=2,
+                filter_size=3,
+                padding=1,
+                modulated=False)
+            return (out)
 
     def test_retinanet_target_assign(self):
         with program_guard(fluid.default_main_program(),
