@@ -25,13 +25,16 @@ namespace framework {
 namespace details {
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
-    std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
+    std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
+    std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
+      local_exec_scopes_(std::move(local_exec_scopes)),
       var_infos_(std::move(var_infos)),
       places_(std::move(places)) {
+  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
   PrepareLocalExeScopes();
 }
 
@@ -62,8 +65,8 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 }
 
 void ScopeBufferedSSAGraphExecutor::InitVariables() {
-  for (auto &vars_per_scope : tmp_vars_) {
-    for (auto &pair : vars_per_scope) {
+  for (auto &info : tmp_var_infos_) {
+    for (auto &pair : info) {
       InitializeVariable(pair.first, pair.second);
     }
   }
@@ -78,8 +81,8 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
 
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
     local_exec_scopes_[i]->ClearWithPreserve(preserve_vars_[i]);
-    for (auto &tmp_var : tmp_vars_[i]) {
-      tmp_var.first->Clear();
+    for (auto &preserve_var : preserve_vars_[i]) {
+      preserve_var->Clear();
     }
     VLOG(3) << "Drop local execution scope: " << local_scopes_[i];
   }
@@ -88,26 +91,12 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
 void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
   // Create local scopes.
   preserve_vars_.resize(local_scopes_.size());
-  tmp_vars_.resize(local_scopes_.size());
-  local_exec_scopes_.resize(local_scopes_.size());
+  tmp_var_infos_.resize(local_scopes_.size());
 
   for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
-    auto &scope = *it;
-    Scope &local_scope = scope->NewScope();
-    PADDLE_ENFORCE(scope->FindLocalVar(kLocalExecScopeName) == nullptr,
-                   "%s has been existed. Maybe you should have share global "
-                   "scope in different CompiledProgram/ParallelExecutor. "
-                   "If you are using CompiledProgram/ParallelExecutor for "
-                   "inference, please set share_vars_from to be the "
-                   "CompiledProgram/ParallelExecutor for train when "
-                   "constructing CompiledProgram/ParallelExecutor for infer.",
-                   kLocalExecScopeName);
-    Variable *local_scope_var = scope->Var(kLocalExecScopeName);
-    *local_scope_var->GetMutable<Scope *>() = &local_scope;
-
     size_t idx = local_scopes_.size() - 1 - (it - local_scopes_.rbegin());
-    local_exec_scopes_[idx] = &local_scope;
-    preserve_vars_[idx].emplace(local_scope_var);
+    auto *scope = local_scopes_[idx];
+    auto *local_scope = local_exec_scopes_[idx];
 
     for (auto &info : var_infos_) {
       if (scope->FindVar(info.name_) != nullptr) {
@@ -120,9 +109,9 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
       if (info.persistable_) {  // Persistable
         InitializeVariable(scope->Var(info.name_), info.type_);
       } else {
-        Variable *tmp_var = local_scope.Var(info.name_);
+        Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);
-        tmp_vars_[idx].emplace_back(tmp_var, info.type_);
+        tmp_var_infos_[idx].emplace_back(tmp_var, info.type_);
       }
     }
   }

@@ -30,6 +30,7 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
+                           const std::vector<Scope *> &local_exec_scopes,
                            const std::vector<platform::Place> &places,
                            ir::Graph *graph);
   ~ParallelSSAGraphExecutor() final = default;

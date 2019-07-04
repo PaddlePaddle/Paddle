@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
@@ -67,7 +68,7 @@ class ParallelExecutorPrivate {
 
   ~ParallelExecutorPrivate() {
     if (own_local_scope_) {
-      for (size_t i = 0; i < local_scopes_.size(); ++i) {
+      for (size_t i = 1; i < local_scopes_.size(); ++i) {
         // Skip the first scope, since it is the global scope.
         Scope *local_scope = local_scopes_[i];
         if (global_scope_->HasKid(local_scope)) {
@@ -190,7 +191,7 @@ class ParallelExecutorPrivate {
 
   inline bool IsPersistable(const std::string &name) const {
     auto iter = is_persistable_.find(name);
-    return iter == is_persistable_.end() || iter->second;
+    return iter != is_persistable_.end() && iter->second;
   }
 
   BuildStrategy build_strategy_;
@@ -344,7 +345,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Create local scopes
   if (local_scopes.empty()) {
     member_->own_local_scope_ = true;
-    member_->local_scopes_.emplace_back(&member_->global_scope_->NewScope());
+    member_->local_scopes_.emplace_back(member_->global_scope_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&scope->NewScope());
     }
@@ -392,9 +393,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // same communicators.
     auto *nccl_ctxs =
         member_->nccl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
+    auto &pool = platform::DeviceContextPool::Instance();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           pool.Get(member_->places_[dev_id]));
       auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
@@ -495,17 +495,26 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
+  std::unordered_map<Scope *, Scope *> scope_map;
+  for (auto *scope : member_->local_scopes_) {
+    auto &local_exec_scope = scope->NewScope();
+    member_->local_exec_scopes_.emplace_back(&local_exec_scope);
+    scope_map.emplace(scope, &local_exec_scope);
+  }
+
   if (build_strategy.async_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_, async_graphs));
+        exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+        member_->places_, async_graphs));
   } else if (build_strategy.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_, graph));
+        exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+        member_->places_, graph));
 #else
     PADDLE_THROW(
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
@@ -514,25 +523,36 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
       VLOG(3) << "use ThreadedSSAGraphExecutor";
       member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->places_, graph));
+          exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+          member_->places_, graph));
     } else {
       VLOG(3) << "use FastThreadedSSAGraphExecutor";
       member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->places_, graph));
+          exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+          member_->places_, graph));
     }
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
   if (!build_strategy.async_mode_) {
     member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, std::move(var_infos),
-        member_->places_, std::move(member_->executor_)));
+        exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+        std::move(var_infos), member_->places_, std::move(member_->executor_)));
   }
 
-  for (auto *scope : member_->local_scopes_) {
-    member_->local_exec_scopes_.emplace_back();
-    member_->local_exec_scopes_.back() =
-        *(scope->FindVar(details::kLocalExecScopeName)->GetMutable<Scope *>());
+  std::vector<ir::Graph *> final_graphs;
+  if (build_strategy.async_mode_) {
+    final_graphs = async_graphs;
+  } else {
+    final_graphs.emplace_back(graph);
+  }
+
+  for (auto *g : final_graphs) {
+    auto ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*g);
+    PADDLE_ENFORCE(!ops.empty(), "Op should not be empty");
+    for (auto *op : ops) {
+      op->SetLocalExecScopes(scope_map);
+    }
   }
 }
 
@@ -641,10 +661,18 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
     for (auto &pair : map) {
-      Scope *feed_scope = member_->IsPersistable(pair.first)
-                              ? member_->local_scopes_[i]
-                              : member_->local_exec_scopes_[i];
-      auto *trg = feed_scope->Var(pair.first)->GetMutable<LoDTensor>();
+      bool is_persistable = member_->IsPersistable(pair.first);
+      Variable *feed_var = nullptr;
+      if (is_persistable) {
+        feed_var = member_->local_scopes_[i]->FindVar(pair.first);
+        if (!feed_var) {
+          feed_var = member_->local_scopes_[i]->Var(pair.first);
+        }
+      } else {
+        feed_var = member_->local_exec_scopes_[i]->Var(pair.first);
+      }
+
+      auto *trg = feed_var->GetMutable<LoDTensor>();
       trg->ShareDataWith(pair.second);
       trg->set_lod(pair.second.lod());
     }
@@ -673,10 +701,17 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 
     bool is_persistable = member_->IsPersistable(pair.first);
     for (size_t j = 0; j < member_->places_.size(); ++j) {
-      Scope *feed_scope = is_persistable ? member_->local_scopes_[j]
-                                         : member_->local_exec_scopes_[j];
+      Variable *feed_var = nullptr;
+      if (is_persistable) {
+        feed_var = member_->local_scopes_[j]->FindVar(pair.first);
+        if (!feed_var) {
+          feed_var = member_->local_scopes_[j]->Var(pair.first);
+        }
+      } else {
+        feed_var = member_->local_exec_scopes_[j]->Var(pair.first);
+      }
 
-      auto t = feed_scope->Var(pair.first)->GetMutable<LoDTensor>();
+      auto t = feed_var->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
     }

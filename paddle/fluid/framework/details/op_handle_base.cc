@@ -238,6 +238,17 @@ size_t OpHandleBase::NotReadyInputSize() const {
   return res.size();
 }
 
+void OpHandleBase::SetLocalExecScopes(
+    const std::unordered_map<Scope *, Scope *> &scope_map) {
+  local_exec_scopes_.clear();
+  auto scopes = GetLocalScopes();
+  for (auto *scope : scopes) {
+    auto iter = scope_map.find(scope);
+    PADDLE_ENFORCE(iter != scope_map.end(), "Local scope not found");
+    local_exec_scopes_.emplace_back(iter->second);
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

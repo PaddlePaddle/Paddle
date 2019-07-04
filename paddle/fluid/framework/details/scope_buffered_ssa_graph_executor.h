@@ -41,6 +41,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ScopeBufferedSSAGraphExecutor(
       ExecutionStrategy strategy, std::vector<Scope*> local_scopes,
+      std::vector<Scope*> local_exec_scopes,
       std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
       std::unique_ptr<SSAGraphExecutor>&& underlying_executor);
 
@@ -67,7 +68,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope*> local_exec_scopes_;
   std::vector<std::unordered_set<Variable*>> preserve_vars_;
   std::vector<std::vector<std::pair<Variable*, proto::VarType::Type>>>
-      tmp_vars_;
+      tmp_var_infos_;
 
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
