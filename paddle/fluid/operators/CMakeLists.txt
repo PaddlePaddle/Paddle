@@ -48,8 +48,12 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
+if (NOT WITH_MKL)
+    set(exclude_ops match_matrix_tensor_op var_conv_2d_op)
+endif()
+
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op deformable_conv_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+	sync_batch_norm_op deformable_conv_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS} ${exclude_ops})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -115,8 +119,3 @@ endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
-
-if (NOT WITH_MKL)
-    set(exclude_ops match_matrix_tensor_op var_conv_2d_op)
-endif
-register_operators(DEPS ${exclude_ops})
