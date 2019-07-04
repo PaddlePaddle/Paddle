@@ -26,9 +26,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
   // get filelist from trainer_desc here
-  dataset->CreateReaders();
-  VLOG(3) << "readers created";
-  const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
+  const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
   // change thread num to readers num
@@ -75,7 +73,6 @@ void MultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
-  dataset_ptr_->DestroyReaders();
   root_scope_->DropKids();
 }
 
