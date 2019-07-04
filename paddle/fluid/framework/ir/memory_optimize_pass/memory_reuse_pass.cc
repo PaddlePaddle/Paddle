@@ -55,6 +55,12 @@ void MemoryReusePass::ApplyImpl(Graph *graph) const {
   reused_var_names_.resize(all_vars_->size());
   var_descs_.resize(all_vars_->size());
 
+  // Collect the existing ShareTensorBufferOpHandles.
+  // This is because (1) we want to reuse the existing
+  // ShareTensorBufferOpHandles to avoid inserting too many ops;
+  // (2) what is more important, a variable cannot be reused
+  // by two different variables, which may cause wrong calculation
+  // results. We have to know which variables have been reused.
   CollectShareTensorBufferOpHandles();
   CollectReusedVars();
   Run(graph);
@@ -138,10 +144,13 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
       op->GetPlace(),
       platform::DeviceContextPool::Instance().Get(op->GetPlace()));
 
+  // Inputs of `buffer_share_op` should be all inputs of `op`
   for (auto *in_var : op->Inputs()) {
     buffer_share_op->AddInput(in_var);
   }
 
+  // Add a dep_var to resolve write-after-write data hazard between
+  // `buffer_share_op` and `op`.
   auto *dep_var = new details::DummyVarHandle(graph_->CreateControlDepVar());
   graph_->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
   op->AddInput(dep_var);
@@ -224,7 +233,6 @@ bool MemoryReusePass::IsVarsReusable(details::VarHandle *in_var,
   return true;
 }
 
-// TODO(zjl): need to update LastLiveOpOfVars!!!
 void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
                                   details::VarHandle *in_var,
                                   details::VarHandle *out_var) const {
@@ -236,6 +244,12 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
   }
 
   auto *share_buffer_op = ops_[op];
+
+  // Outputs of share_buffer_op should be variables whose names are
+  // the same with output variables of op, but version is 1 less than
+  // output variables of op.
+  // TODO(zjl): in fact, we can remove new_out_var? Because data hazard
+  // has been resolved by dep_var.
   auto *new_out_var = InsertNewVarHandleBefore(out_var);
 
   auto &all_input_vars = share_buffer_op->Inputs();

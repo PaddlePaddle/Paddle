@@ -26,7 +26,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : graph_(graph),
       local_scopes_(local_scopes),
-      local_exec_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes),
       places_(places),
       fetch_ctxs_(places),
       strategy_(strategy),

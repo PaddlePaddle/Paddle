@@ -31,6 +31,45 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * MemoryReusePass is the base class of InplacePass and MemoryOptimizePass.
+ *
+ * Unlike the legacy Python API fluid.memory_optimize() which changes
+ * variable names in the program/graph, MemoryReusePass inserts
+ * ShareTensorBufferOpHandle into the graph. It is because if we use the
+ * way of changing variable names:
+ *
+ * 1. There are so many corner cases we should skip. For example, (1) variables
+ *    that relates to send/recv ops cannot be renamed (otherwise, pserver
+ *    and trainer cannot find the matching variables), (2) ins/outs of ops
+ *    containing sub-blocks cannot be optimized, (3) variables inside
+ *    op_role_vars cannot be renamed.
+ *
+ * 2. It is very difficult to avoid reusing variables that users want to fetch.
+ *    This is because the memory-optimize passes/transpiler runs before users
+ *    fetch, i.e., exe.run(...). We cannot know what users want to fetch in the
+ *    future. As a result, we have to set var.persistable = True before
+ *    applying memory-optimize passes/transpiler, which is rather ugly and not
+ *    friendly to users.
+ *
+ * 3. Dim and LoD of the reused variable would be changed, which may result
+ *    in potential errors in InferShape stage of the following ops. What's
+ *    more, it makes that we cannot use the information from
+ *    NoNeedBufferVarsInference.
+ *
+ * Considering the drawbacks of the former renaming strategy, we design a
+ * novel memory-optimize pass to fix these issues. Whether in-place is
+ * performed can be decided during run-time. ShareTensorBufferOpHandle
+ * would only share tensor buffers between in/out, never rename variable,
+ * and not change dim and LoD of variable. If users want to fetch a certain
+ * variable, we can skip in-place during run-time.
+ *
+ * The only concern on speed performance may be: there are too many
+ * ShareTensorBufferOpHandles in the graph. This can be avoided by moving
+ * tensor buffer sharing in each ComputationOpHandle::Run() method. We need
+ * a pass to clean all ShareTensorBufferOpHandles and move sharing to
+ * ComputationOpHandle::Run() in the future.
+ */
 class MemoryReusePass : public Pass {
  protected:
   void ApplyImpl(Graph *graph) const final;

@@ -504,19 +504,24 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     scope_map.emplace(scope, &local_exec_scope);
   }
 
-  if (member_->build_strategy.async_mode_) {
+  std::vector<ir::Graph *> final_graphs;
+
+  if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
         member_->places_, async_graphs));
-  } else if (member_->build_strategy.enable_parallel_graph_) {
+    final_graphs = async_graphs;
+  } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
-    member_->executor_.reset(new details::ParallelSSAGraphExecutor(
+    auto *pg_exe = new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-        member_->places_, graph));
+        member_->places_, graph);
+    final_graphs = pg_exe->Graphs();
+    member_->executor_.reset(pg_exe);
 #else
     PADDLE_THROW(
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
@@ -533,6 +538,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
           member_->places_, graph));
     }
+    final_graphs.emplace_back(graph);
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -542,16 +548,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         std::move(var_infos), member_->places_, std::move(member_->executor_)));
   }
 
-  std::vector<ir::Graph *> final_graphs;
-  if (build_strategy.async_mode_) {
-    final_graphs = async_graphs;
-  } else {
-    final_graphs.emplace_back(graph);
-  }
-
   for (auto *g : final_graphs) {
     auto ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*g);
-    PADDLE_ENFORCE(!ops.empty(), "Op should not be empty");
     for (auto *op : ops) {
       op->SetLocalExecScopes(scope_map);
     }

@@ -37,6 +37,8 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
 
   const ir::Graph &Graph() const override { return *graphs_[0]; }
 
+  std::vector<ir::Graph *> Graphs();
+
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
  private:

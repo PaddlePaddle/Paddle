@@ -106,7 +106,7 @@ void ShareTensorBufferOpHandle::RunImpl() {
     if (UNLIKELY(in_var_info->IsSkipped())) {
       // If in_var is inplaced in the previous batch and we want to fetch
       // in_var in the current batch, we have to reset memory of out_var
-      // to avoid wrong calcualtion result.
+      // to avoid wrong calculation result.
       if (in_tensor->Holder() == out_tensor->Holder()) {
         VLOG(1) << "Clear " << out_var_names_[i]
                 << " because you may want to fetch an inplaced variable "

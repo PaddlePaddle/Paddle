@@ -114,6 +114,15 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   }
 }
 
+std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {
+  std::vector<ir::Graph *> result;
+  result.reserve(graphs_.size());
+  for (auto &g : graphs_) {
+    result.emplace_back(g.get());
+  }
+  return result;
+}
+
 FeedFetchList ParallelSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::vector<std::future<FeedFetchList>> run_futures;
