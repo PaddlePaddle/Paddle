@@ -263,45 +263,68 @@ class PSLib(Fleet):
                                                    decay)
         self._role_maker._barrier_worker()
 
-    def load_one_table(self, table_id, model_path, mode=0):
+    def load_one_table(self, table_id, model_path, **kwargs):
         """
-        load params in pserver for one table
+        load pslib model for one table or load params from paddle model
 
         Args:
             table_id(int): load table id
             model_path(str): load model path, can be local or hdfs/afs path
-            mode(int): load model mode. 0 is for load whole model,
-                       1 is for load delta model (load diff), default is 0.
+            kwargs(dict): user defined params, currently support following:
+                only for load pslib model for one table:
+                    mode(int): load model mode. 0 is for load whole model, 1 is
+                               for load delta model (load diff), default is 0.
+                only for load params from paddle model:
+                    scope(Scope): Scope object
+                    model_proto_file(str): path of program desc proto binary
+                                           file, can be local or hdfs/afs file
+                    load_combine(bool): load from a file or splited param files
+                                        default False.
 
         Examples:
             .. code-block:: python
 
-              fleet.load_one_table(1, "hdfs:/xx/xxx")
+              # load pslib model for one table
+              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+
+              # load params from paddle model
+              fleet.load_one_table(my_scope, my_table_id, "./model",
+                                             "./my_program.bin", True)
+
+              # below is how to save proto binary file
+              with open("my_program.bin", "wb") as fout:
+                  my_program = fluid.default_main_program()
+                  fout.write(my_program.desc.serialize_to_string())
 
         """
-        self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
+        mode = kwargs.get("mode", 0)
+        scope = kwargs.get("scope", None)
+        model_proto_file = kwargs.get("model_proto_file", None)
+        load_combine = kwargs.get("load_combine", False)
+        if scope is not None and model_proto_file is not None:
+            self._load_one_table_from_paddle_model(scope, table_id, model_path,
+                                                   model_proto_file,
+                                                   load_combine)
+        else:
+            self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
 
-    def load_one_table(self,
-                       scope,
-                       table_id,
-                       model_path,
-                       model_proto_file,
-                       load_combine=False):
+    def _load_one_table_from_paddle_model(self,
+                                          scope,
+                                          table_id,
+                                          model_path,
+                                          model_proto_file,
+                                          load_combine=False):
         """
         load params from paddle model, and push params to pserver
 
         Args:
             scope(Scope): Scope object
             table_id(int): the id of table to load
-            model_path(str): path of paddle model
-            model_proto_file(str): path of program desc proto file
+            model_path(str): path of paddle model, can be local or hdfs/afs file
+            model_proto_file(str): path of program desc proto binary file,
+                                   can be local or hdfs/afs file
             load_combine(bool): load from a file or splited param files
-
-        Examples:
-            .. code-block:: python
-
-              fleet.load_from_paddle_model(my_scope, my_table_id, "./model",
-                                           "./program.bin", True)
 
         """
         self._role_maker._barrier_worker()
