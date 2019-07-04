@@ -290,9 +290,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       local_group_params_grads.emplace_back();
       auto &group_p_g = local_group_params_grads.back();
 
-      auto &grad_name = group_params_grads->at(j).front().second;
-      auto var_type = GetDtypeOfVar(var_nodes, grad_name);
-
       size_t local_group_memory_size = 0;
       while (j < group_params_grads->size()) {
         std::for_each(
@@ -347,7 +344,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
-    if (IsUnifiedDtype(params_grads, var_name2node)) {
+    if (IsUnifiedDtype(params_grads, var_nodes)) {
       VLOG(1) << "needn't regroup fusion params_grads";
       return;
     }
@@ -355,7 +352,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     std::map<proto::VarType::Type, size_t> type_idx;
     details::GroupParamsAndGrads new_group_params_grads;
 
-    for (auto &group_p_g : group_params_grads) {
+    for (auto &group_p_g : *group_params_grads) {
       details::GroupParamsAndGrads local_group_params_grads;
 
       for (auto &p_g : group_p_g) {
@@ -367,33 +364,25 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
           idx = var_idx_iter->second;
         } else {
           local_group_params_grads.emplace_back();
-          idx = local->size() - 1;
-          type_idx[var_key] = idx;
+          idx = local_group_params_grads.size() - 1;
+          type_idx[dtype] = idx;
         }
 
-        auto &local = local_group_params_grads->at(idx);
+        auto &local = local_group_params_grads.at(idx);
         local.emplace_back(p_g);
       }
 
       new_group_params_grads.insert(new_group_params_grads.end(),
                                     local_group_params_grads.begin(),
                                     local_group_params_grads.end());
-
-      /*
-      for (auto& group_p_g : local_group_params_grads) {
-          new_group_params_grads.emplace_back();
-          auto& new_group_p_g = new_group_params_grads.end();
-          new_group_p_g.insert(new_group_p_g.end(), group_p_g.begin(),
-      group_p_g.end());
-      }
-      */
     }
 
     std::swap(*group_params_grads, new_group_params_grads);
 
     if (VLOG_IS_ON(10)) {
       VLOG(10) << string::Sprintf(
-          "ReGroupByMemoryOrLayerSize(memory_size: %f):", group_memory_size);
+          "ReGroupByMemoryOrLayerSize(memory_size: %f MB, %u):",
+          GetFuseParameterMemorySize(), GetFuseParameterGroupsSize());
       PrintGroupInfo(var_nodes, group_params_grads);
     }
   }
