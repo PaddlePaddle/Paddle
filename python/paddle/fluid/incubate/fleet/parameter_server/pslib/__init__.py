@@ -289,8 +289,10 @@ class PSLib(Fleet):
               fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
 
               # load params from paddle model
-              fleet.load_one_table(my_scope, my_table_id, "./model",
-                                             "./my_program.bin", True)
+              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                   scope = my_scope,
+                                   model_proto_file = "./my_program.bin",
+                                   load_combine = False)
 
               # below is how to save proto binary file
               with open("my_program.bin", "wb") as fout:
