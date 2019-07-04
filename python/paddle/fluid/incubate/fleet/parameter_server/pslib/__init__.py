@@ -192,6 +192,7 @@ class PSLib(Fleet):
         when using fleet, it will save sparse and dense feature
 
         Args:
+            executor(Executor): fluid executor
             dirname(str): save path. It can be hdfs/afs path or local path
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
@@ -281,7 +282,6 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
 
-
     def load_one_table(self,
                        scope,
                        table_id,
@@ -305,7 +305,6 @@ class PSLib(Fleet):
                                            "./program.bin", True)
 
         """
-
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             # get fs config from fleet_desc
