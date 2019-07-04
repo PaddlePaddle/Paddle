@@ -331,14 +331,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
             group_memory_size) {
           break;
         }
-
-        /*
-        auto next_var_type =
-            GetDtypeOfVar(var_nodes, group_params_grads->at(j).front().second);
-        if (next_var_type != var_type) {
-          break;
-        }
-        */
       }
     }
 
@@ -351,10 +343,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
   }
 
-  struct GroupMeta {
-    size_t gps_size = 0;
-    proto::VarType::Type dtype = 5;  // fp32
-  };
   void ReGroupByMemoryOrLayerSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
@@ -364,48 +352,49 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       return;
     }
 
-    std::vector<GroupMeta> gpms;
-    for (size_t i = 0; i < group_params_grads->size(); ++i) {
-      size_t gps_size = 0;
-      for (auto &p_g : group_params_grads->at(i)) {
-        auto iter = var_nodes.find(p_g.first);
-        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", p_g.first);
-        auto shape = iter->second->Var()->GetShape();
-        size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
-        std::for_each(shape.begin(), shape.end(),
-                      [&size](const int64_t &n) { size *= n; });
-        gps_size += size;
+    std::map<proto::VarType::Type, size_t> type_idx;
+    details::GroupParamsAndGrads new_group_params_grads;
+
+    for (auto &group_p_g : group_params_grads) {
+      details::GroupParamsAndGrads local_group_params_grads;
+
+      for (auto &p_g : group_p_g) {
+        auto dtype = GetDtypeOfVar(var_nodes, p_g.second);
+
+        size_t idx = 0;
+        auto var_idx_iter = type_idx.find(dtype);
+        if (var_idx_iter != type_idx.end()) {
+          idx = var_idx_iter->second;
+        } else {
+          local_group_params_grads.emplace_back();
+          idx = local->size() - 1;
+          type_idx[var_key] = idx;
+        }
+
+        auto &local = local_group_params_grads->at(idx);
+        local.emplace_back(p_g);
       }
 
-      auto dtype = this->GetDtypeOfVar(var_nodes,
-                                       group_params_grads->at(i).front().first);
-      GroupMeta m;
-      m.gps_size = gps_size;
-      m.dtype = dtype;
+      new_group_params_grads.insert(new_group_params_grads.end(),
+                                    local_group_params_grads.begin(),
+                                    local_group_params_grads.end());
 
-      gpms.push_back(m);
+      /*
+      for (auto& group_p_g : local_group_params_grads) {
+          new_group_params_grads.emplace_back();
+          auto& new_group_p_g = new_group_params_grads.end();
+          new_group_p_g.insert(new_group_p_g.end(), group_p_g.begin(),
+      group_p_g.end());
+      }
+      */
     }
 
-    PADDLE_ENFORCE(gpms.size() == group_params_grads->size(),
-                   "group meta size:%u != group_params_grads size:%u",
-                   gpms.size(), group_params_grads.size());
+    std::swap(*group_params_grads, new_group_params_grads);
 
-    while (i < group_params_grads->size()) {
-      auto local_group_memory_size = gpms[i].gps_size;
-      while (i < group_params_grads->size()) {
-      }
-    }
-
-    while (j < group_params_grads->size()) {
-      local_group_params_grads.emplace_back();
-      auto &group_p_g = local_group_params_grads.back();
-
-      auto &grad_name = group_params_grads->at(j).front().second;
-      auto var_type = GetDtypeOfVar(var_nodes, grad_name);
-
-      size_t local_group_memory_size = 0;
-      while (j < group_params_grads->size()) {
-      }
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << string::Sprintf(
+          "ReGroupByMemoryOrLayerSize(memory_size: %f):", group_memory_size);
+      PrintGroupInfo(var_nodes, group_params_grads);
     }
   }
 
