@@ -263,7 +263,6 @@ class PSLib(Fleet):
                                                    decay)
         self._role_maker._barrier_worker()
 
-
     def load_one_table(self, table_id, model_path, mode=0):
         """
         load params in pserver for one table
