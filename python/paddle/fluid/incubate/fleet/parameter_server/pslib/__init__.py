@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import os
 import sys
 from optimizer_factory import *
 from google.protobuf import text_format
@@ -261,12 +262,32 @@ class PSLib(Fleet):
                                                    decay)
         self._role_maker._barrier_worker()
 
-    def load_from_paddle_model(self,
-                               scope,
-                               table_id,
-                               model_path,
-                               model_proto_file,
-                               load_combine=False):
+
+    def load_one_table(self, table_id, model_path, mode=0):
+        """
+        load params in pserver for one table
+
+        Args:
+            table_id(int): load table id
+            model_path(str): load model path, can be local or hdfs/afs path
+            mode(int): load model mode. 0 is for load whole model,
+                       1 is for load delta model (load diff), default is 0.
+
+        Examples:
+            .. code-block:: python
+
+              fleet.load_one_table(1, "hdfs:/xx/xxx")
+
+        """
+        self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
+
+
+    def load_one_table(self,
+                       scope,
+                       table_id,
+                       model_path,
+                       model_proto_file,
+                       load_combine=False):
         """
         load params from paddle model, and push params to pserver
 
@@ -281,12 +302,38 @@ class PSLib(Fleet):
             .. code-block:: python
 
               fleet.load_from_paddle_model(my_scope, my_table_id, "./model",
-                                           "./model.prototxt", True)
+                                           "./program.bin", True)
 
         """
 
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
+            # get fs config from fleet_desc
+            fs_name = self._opt_info["fleet_desc"].fs_client_param.uri
+            fs_ugi = self._opt_info["fleet_desc"].fs_client_param.user + "," + \
+                     self._opt_info["fleet_desc"].fs_client_param.passwd
+            hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
+            # download model_path if it's hdfs/afs
+            if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+                dest = "./model_for_load_table_%s" % table_id
+                cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
+                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + model_path + \
+                      " " + dest
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError("download model failed")
+                model_path = dest
+            # download model_proto_file if it's hdfs/afs
+            if model_proto_file.startswith("hdfs:") or \
+                    model_proto_file.startswith("afs:"):
+                dest = "./model_proto_file_for_load_table_%s" % table_id
+                cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
+                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + \
+                      model_proto_file + " " + dest
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError("download model proto file failed")
+                model_proto_file = dest
             for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
                 if table_id is not None and table_id != i.table_id:
                     continue

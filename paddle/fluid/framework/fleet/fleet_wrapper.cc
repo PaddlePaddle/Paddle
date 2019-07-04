@@ -445,6 +445,21 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 #endif
 }
 
+void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
+                                     const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->load(table_id, path,
+                                           std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "load model of table id: " << table_id << ", from path:"
+               << path << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));

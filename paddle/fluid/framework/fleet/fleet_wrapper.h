@@ -139,6 +139,10 @@ class FleetWrapper {
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
+  // mode = 0, load all feature
+  // mode = 1, laod delta feature, which means load diff
+  void LoadModelOneTable(const uint64_t table_id, const std::string& path,
+                         const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
