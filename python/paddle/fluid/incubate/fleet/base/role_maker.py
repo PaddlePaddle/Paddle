@@ -252,6 +252,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
     def get_pserver_endpoints(self):
         if self._pserver_rand_port <= 0:
             import random
+            random.seed(self._server_num)
             self._pserver_rand_port = random.randint(60001, 64000)
         endpoints = [
             x + ":" + str(self._pserver_rand_port)
