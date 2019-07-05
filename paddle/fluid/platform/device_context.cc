@@ -462,7 +462,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
     // In cache clearing mode, cur_input_shape_cache_capacity defines
     // max pblob capacity
     if ((sid == kMKLDNNSessionID_CacheClearing) &&
-        (sBlob->size() ==
+        (sBlob->size() >=
          static_cast<size_t>(cur_input_shape_cache_capacity))) {
       VLOG(2) << "sid=" << sid
               << ", remove all blobs of shape: " << sBlob->begin()->first;
