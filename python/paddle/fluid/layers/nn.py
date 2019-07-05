@@ -207,6 +207,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'sequence_topk_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -12516,3 +12517,51 @@ def deformable_roi_pooling(input,
             "trans_std": trans_std
         })
     return output
+
+
+def sequence_topk_pooling(input, topk, channel_num):
+    """
+    This function will take the :attr:`topk` feature by value as output features for the 
+    each channel from every input sequence. The :attr:`channel_num` is the number of input 
+    channel. It will pool :attr:`topk` * :attr:`channel_num` features from each input sequence.
+    .. code-block:: text
+        * Example 1:
+            Given a 1-level LoDTensor input with channel_num is 3:
+                input.lod =  [[36, 48, 24]]
+                input.dims = [108, 1]
+            If topk is 5, then we will get a 1-level output LoDTensor:
+                out.lod =  [[15, 15, 15]] # where 15 is channel_num * topk
+                out.dims = [45, 1]
+        * Example 2:
+            Given a 1-level LoDTensor input with channel_num is 3:
+                input.lod =  [[36, 48, 24]]
+                input.dims = [108, 1]
+             If topk is 10, then we get a 1-level LoDTensor:
+                out.lod =  [[30, 30, 30]] # where 15 is channel_num * topk
+                out.dims = [90, 1]
+            In this case, x.lod[0][3] is 24 < 30, It will padding 0. at the back in each channel.
+    Args:
+        input (Variable): Input variable which should 1-level LodTensor.
+        topk (int): Take :attr:`topk` features for by value from each channel input sequence.
+        channel_num (int): The number of input channel.
+    Returns:
+        Variable: Output variable with LoD specified by this layer.
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            from paddle.fluid import layers
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            out = layers.sequence_topk_pooling(input=x_lod_tensor, topk=3, channel_num=5) 
+    """
+    helper = LayerHelper('sequence_topk_pooling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    pos = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_topk_pooling',
+        inputs={'X': input},
+        outputs={'Out': out,
+                 'pos': pos},
+        attrs={'topk': topk,
+               'channel_num': channel_num})
+    return out
