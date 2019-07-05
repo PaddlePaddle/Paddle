@@ -202,7 +202,7 @@ ProgramDesc BuildProgramDesc(int num_inputs_of_concat) {
     SetOp(&prog, "sequence_pool",
           std::vector<std::string>({seqpool_prefix + "in"}),
           std::vector<std::string>(
-              {seqpool_prefix + "out", seqpool_prefix + "out_unused"}));
+              {seqpool_prefix + "out_unused", seqpool_prefix + "out"}));
 
     std::string cvm_prefix = "cvm_op_" + std::to_string(i);
     new_var(cvm_prefix + "out");
