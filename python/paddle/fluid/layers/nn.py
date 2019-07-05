@@ -37,6 +37,7 @@ from ..dygraph import layers
 
 __all__ = [
     'fc',
+    'center_loss',
     'embedding',
     'dynamic_lstm',
     'dynamic_lstmp',
@@ -352,6 +353,38 @@ def fc(input,
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
+
+
+def center_loss(input,
+                labels,
+                num_classes,
+                alpha,
+                param_attr,
+                update_center=True):
+    helper = LayerHelper('center_loss', **locals())
+    dtype = helper.input_dtype()
+    centers_shape = [num_classes, input.shape[1]]
+    centers_param = helper.create_parameter(
+        attr=helper.param_attr, shape=centers_shape, dtype=dtype)
+
+    centersdiff = helper.create_variable_for_type_inference(dtype=input.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='center_loss',
+        inputs={
+            'X': [input],
+            'Label': [labels],
+            'Centers': [centers_param],
+            'CenterUpdateRate': [alpha]
+        },
+        outputs={
+            'CentersDiff': [centersdiff],
+            'Loss': [loss],
+            'CentersOut': [centers_param]
+        },
+        attrs={'cluster_num': num_classes,
+               'need_update': update_center})
+    return loss
 
 
 def embedding(input,
