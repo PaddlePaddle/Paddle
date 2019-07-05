@@ -287,15 +287,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     size_t j = 0;
     while (j < group_params_grads->size()) {
-      VLOG(10) << "j:" << j
-               << ", group_params_grads->size():" << group_params_grads->size();
       local_group_params_grads.emplace_back();
       auto &group_p_g = local_group_params_grads.back();
 
       size_t local_group_memory_size = 0;
       while (j < group_params_grads->size()) {
-        VLOG(10) << "second j:" << j << ", group_params_grads->size():"
-                 << group_params_grads->size();
         std::for_each(
             group_params_grads->at(j).begin(), group_params_grads->at(j).end(),
             [&local_group_memory_size,
@@ -348,7 +344,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
-    VLOG(10) << "begin ReGroupByMemoryOrLayerSize";
     if (IsUnifiedDtype(params_grads, var_nodes)) {
       VLOG(1) << "needn't regroup fusion params_grads";
       return;
@@ -384,8 +379,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
                                     local_group_params_grads.end());
     }
 
-    VLOG(10) << "final new_group_params_grads size:"
-             << new_group_params_grads.size();
     std::swap(*group_params_grads, new_group_params_grads);
 
     if (VLOG_IS_ON(10)) {
