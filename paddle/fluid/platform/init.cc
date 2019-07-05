@@ -127,6 +127,16 @@ void InitDevices(bool init_p2p) {
     devices = platform::GetSelectedDevices();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+    LOG(WARNING) << "Note: This may caused by:"
+                 << "\n 1. CUDA_VISIBLE_DEVICES="
+                    ", in this case just export CUDA_VISIBLE_DEVICES as your "
+                    "devices' ids"
+                 << "\n or 2. Something Wrong with your NVIDIA@CUDA or GPU "
+                    "Driver installation, in "
+                 << "this case please reinstall CUDA_ToolKit follow NVIDIA "
+                    "official website:"
+                 << " https://developer.nvidia.com/cuda-downloads"
+                 << "\n or 3. There is no GPU on your device";
   }
 #endif
   InitDevices(init_p2p, devices);

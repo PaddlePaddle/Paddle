@@ -109,6 +109,17 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
     LOG(WARNING) << "Can not find library: " << dso_path
                  << ". The process maybe hang. Please try to add the lib path "
                     "to LD_LIBRARY_PATH.";
+    if (dso_path.find("libnccl.so") != std::string::npos) {
+      LOG(WARNING) << "Note: You may need to reinstall 'nccl2' from NVIDIA "
+                      "official website: "
+                   << "https://developer.nvidia.com/nccl"
+                   << "before install PaddlePaddle";
+    } else if (dso_path.find("libcudnn.so") != std::string::npos) {
+      LOG(WARNING) << "Note: You may need to reinstall 'cuDNN 7.3+' from "
+                      "NVIDIA official website: "
+                   << "https://developer.nvidia.com/cudnn"
+                   << "before install PaddlePaddle";
+    }
   }
   return dso_handle;
 }
