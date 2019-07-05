@@ -324,6 +324,7 @@ class ParallelExecutor(object):
                   loss = fluid.layers.mean(hidden)
 
               place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              exe = fluid.Executor(place)
               exe.run(startup_program)
 
               parallel_exe = fluid.ParallelExecutor(use_cuda=use_cuda,

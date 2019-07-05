@@ -113,6 +113,7 @@ def reset_profiler():
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             with profiler.profiler('CPU', 'total', '/tmp/profile'):
                 for iter in range(10):
@@ -141,6 +142,7 @@ def start_profiler(state):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
 
             profiler.start_profiler('GPU')
@@ -190,6 +192,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
 
             profiler.start_profiler('GPU')
@@ -257,6 +260,7 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
             import numpy as np
 

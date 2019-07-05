@@ -79,7 +79,7 @@ def generate(key):
 
 # FIXME(zjl): The previous naming rule in static graph would
 # cause memory leak in dygraph mode. It is because the previous
-# nameing rule would use `conv_0.tmp` as the key, and in dygraph
+# naming rule would use `conv_0.tmp` as the key, and in dygraph
 # mode, `conv_i` increases as batch increases. Thus, keys would
 # increase in a way like `conv_0.tmp`, `conv_1.tmp`, .... 
 # Not find a better way to fix this bug in dygraph mode. In TF,
@@ -87,7 +87,7 @@ def generate(key):
 # PyTorch, there is no variable name at all. Maybe we should
 # discard variable name in dygraph mode.
 #
-# Another concern is that save/load inference. Usually, user
+# Another concern is that save/load interfaces. Usually, user
 # would save model in static graph mode, and load it in dygraph
 # mode. Therefore, we keep the variable name of Parameter currently.
 # 
