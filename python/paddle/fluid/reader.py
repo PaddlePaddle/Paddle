@@ -23,6 +23,7 @@ from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
+import logging
 
 __all__ = ['PyReader']
 
@@ -72,6 +73,10 @@ class PyReader(object):
 
         .. code-block:: python
 
+           import paddle
+           import paddle.fluid as fluid
+           import numpy as np
+
            EPOCH_NUM = 3
            ITER_NUM = 5
            BATCH_SIZE = 3
@@ -116,6 +121,10 @@ class PyReader(object):
            object into :code:`Executor.run(feed=...)`.  
 
         .. code-block:: python
+
+           import paddle
+           import paddle.fluid as fluid
+           import numpy as np
 
            EPOCH_NUM = 3
            ITER_NUM = 5
@@ -343,7 +352,11 @@ class PyReader(object):
         
 	Example:
 	    .. code-block:: python
-	
+
+                import paddle
+                import paddle.fluid as fluid
+                import numpy as np
+
                 BATCH_SIZE = 10
 
                 def generator():
@@ -378,6 +391,10 @@ class PyReader(object):
         
         Example:
             .. code-block:: python
+
+                import paddle
+                import paddle.fluid as fluid
+                import numpy as np
 
                 BATCH_SIZE = 10
 
@@ -425,6 +442,7 @@ class PyReader(object):
                 self._queue.close()
             except Exception as ex:
                 self._queue.close()
+                logging.warn('Your decorated reader has raised an exception!')
                 raise ex
 
         self._thread = threading.Thread(target=__thread_main__)
@@ -458,6 +476,9 @@ class PyReader(object):
 
         Example:
             .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
 
                 EPOCH_NUM = 3
                 ITER_NUM = 15
@@ -539,6 +560,10 @@ class PyReader(object):
         Example:
             .. code-block:: python
 
+                import paddle
+                import paddle.fluid as fluid
+                import numpy as np
+
                 EPOCH_NUM = 3
                 ITER_NUM = 15
                 BATCH_SIZE = 3
@@ -608,6 +633,9 @@ class PyReader(object):
 
         Example:
             .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
 
                 EPOCH_NUM = 3
                 ITER_NUM = 15
