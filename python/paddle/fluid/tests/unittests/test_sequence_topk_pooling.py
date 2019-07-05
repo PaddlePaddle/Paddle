@@ -55,7 +55,7 @@ class TestSequenceTopkPoolingOp(OpTest):
             self.assertTrue(x_len % channel_num == 0,
                             "x_len: %s can't mod channel_num: %s" %
                             (x_len, channel_num))
-            feature = x_len / channel_num
+            feature = int(x_len / channel_num)
             for ch in range(channel_num):
                 x_sub = x_data[offset:(offset + feature)]
                 topk_val, topk_pos = self.get_topk(x_sub, topk)

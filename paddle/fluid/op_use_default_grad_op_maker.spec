@@ -35,6 +35,7 @@ requantize
 reshape
 rnn_memory_helper
 sequence_softmax
+sequence_topk_pooling
 spp
 squeeze
 tensor_array_to_tensor
