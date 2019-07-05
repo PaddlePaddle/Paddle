@@ -285,7 +285,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             if self.is_worker():
-                return self._get_size() / 2
+                return self._get_size() / self._proc_per_node
         return 0
 
     def _server_num(self):
@@ -293,10 +293,10 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of server
         """
         if self._check_role_generation():
-            return self._get_size() / 2
+            return self._get_size() / self._proc_per_node
         else:
             self.generate_role()
-            return self._get_size() / 2
+            return self._get_size() / self._proc_per_node
 
     def worker_index(self):
         """
@@ -316,7 +316,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             return self._rank / self._proc_per_node
         else:
             self.generate_role()
-            return self._get_size() / 2
+            return self._get_size() / self._proc_per_node
 
     def _barrier_worker(self):
         """
