@@ -48,6 +48,15 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(inference_dim == label_dim,
                    "Inference's shape must be the same as Label's shape.");
 
+    bool use_padding = ctx->HasInput("SeqLength");
+    if (use_padding) {
+      PADDLE_ENFORCE(inference_dim.size() == 3,
+                     "when SeqLength is provided, Inference should be of dim 3 "
+                     "(batch, bucket, 1)");
+      auto seq_length_dim = ctx->GetInputDim("SeqLength");
+      PADDLE_ENFORCE(seq_length_dim.size() == 1, "seq_length should be rank 1");
+    }
+
     ctx->SetOutputDim("Precision", {1});
     ctx->SetOutputDim("Recall", {1});
     ctx->SetOutputDim("F1-Score", {1});
@@ -72,6 +81,10 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
              "Predictions from the network.");
     AddInput("Label",
              "(Tensor, default: Tensor<int64_t>). The true tag sequences.");
+    AddInput("SeqLength",
+             "(Tensor, default: Tensor<int64_t>). The length of each sequence, "
+             "used when Inference and Label are Tensor type .")
+        .AsDispensable();
     AddOutput("Precision",
               "(float). The evaluated precision (called positive predictive "
               "value) of chunks on the given mini-batch.");

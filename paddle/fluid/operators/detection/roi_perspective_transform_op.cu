@@ -278,7 +278,7 @@ __global__ void RoiTransformKernel(
     const float* input_data, const float* rois_data, const int* roi2image_data,
     int num_rois, int in_height, int in_width, int channels,
     int transformed_height, int transformed_width, float spatial_scale,
-    T* output_data, int* out2in_idx, T* out2in_w) {
+    T* output_data, int* out2in_idx, T* out2in_w, int* mask, T* matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
 
@@ -303,7 +303,6 @@ __global__ void RoiTransformKernel(
     }
 
     // Get transform matrix
-    T matrix[9];
     get_transform_matrix<T>(transformed_width, transformed_height, roi_x, roi_y,
                             matrix);
 
@@ -317,17 +316,20 @@ __global__ void RoiTransformKernel(
           GT<T>(-0.5, in_h) || GT<T>(in_h, static_cast<T>(in_height - 0.5))) {
         // Skip if source coords is not in input image
         output_data[index] = 0.0;
+        mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
       } else {
         // Perform bilinear interpolation
         int in_n = roi2image_data[n];
         bilinear_interpolate<T>(input_data, channels, in_width, in_height, in_n,
                                 c, in_w, in_h, output_data + index, index,
                                 out2in_idx, out2in_w);
+        mask[(n * transformed_height + out_h) * transformed_width + out_w] = 1;
       }
 
     } else {
       // Skip if source coords is not in quad
       output_data[index] = 0.0;
+      mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
     }
   }
 }
@@ -341,7 +343,11 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* out2in_idx = ctx.Output<framework::Tensor>("Out2InIdx");
     auto* out2in_w = ctx.Output<framework::Tensor>("Out2InWeights");
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out_transform_matrix =
+        ctx.Output<framework::Tensor>("TransformMatrix");
 
+    int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
     int* out2in_idx_data =
         out2in_idx->mutable_data<int>({out->numel(), 4}, ctx.GetPlace());
     T* out2in_w_data =
@@ -382,10 +388,14 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (out_size + block - 1) / block;
 
+    // Get transform matrix
+    T* matrix = out_transform_matrix->mutable_data<T>({9}, ctx.GetPlace());
+
     RoiTransformKernel<T><<<grid, block, 0, stream>>>(
         input_data, rois_data, roi2image_dev.data<int>(), rois_num, in_height,
         in_width, channels, transformed_height, transformed_width,
-        spatial_scale, output_data, out2in_idx_data, out2in_w_data);
+        spatial_scale, output_data, out2in_idx_data, out2in_w_data, mask_data,
+        matrix);
   }
 };
 
