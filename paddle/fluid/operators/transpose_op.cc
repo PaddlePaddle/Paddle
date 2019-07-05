@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/transpose_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -289,8 +290,12 @@ REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     transpose2_grad,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);

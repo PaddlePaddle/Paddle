@@ -15,7 +15,6 @@ fusion_seqexpand_concat_fc
 fusion_seqpool_concat
 fusion_squared_mat_sub
 gru
-hierarchical_sigmoid
 lrn
 lstm_unit
 max_pool2d_with_index

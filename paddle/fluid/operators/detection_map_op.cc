@@ -150,7 +150,7 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The class number.");
     AddAttr<int>(
         "background_label",
-        "(int, defalut: 0) "
+        "(int, default: 0) "
         "The index of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(0);

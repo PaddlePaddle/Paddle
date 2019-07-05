@@ -259,7 +259,7 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, defalut is False.")
+                "for cuDNN convolution or not, default is False.")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.
@@ -378,7 +378,7 @@ void Conv3DOpMaker::Make() {
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, defalut is False.")
+                "for cuDNN convolution or not, default is False.")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution3D Operator.
@@ -533,9 +533,16 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
     // ddO, dI, dW
     // Unlike grad op, double grad op does not use name@GRAD@GRAD
     // as key of ops' inputs and outputs.
-    op->SetOutput("DDOutput", InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", InputGrad("Filter"));
-    op->SetOutput("DInput", InputGrad("Input"));
+    auto ddx = OutputGrad(framework::GradVarName("Input"));
+    auto ddw = OutputGrad(framework::GradVarName("Filter"));
+    std::vector<std::string> empty_str = {};
+
+    op->SetOutput(
+        "DDOutput",
+        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
+
     op->SetAttrMap(Attrs());
 
     return std::unique_ptr<framework::OpDesc>(op);
@@ -547,13 +554,13 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
   auto w_dims = ctx->GetInputDim("Filter");
   auto do_dims = ctx->GetInputDim("DOutput");
 
-  if (ctx->HasOutput("DDOutput")) {
+  if (ctx->HasOutput("DDOutput") && ctx->HasInput("DDInput")) {
     ctx->SetOutputDim("DDOutput", do_dims);
   }
-  if (ctx->HasOutput("DFilter")) {
+  if (ctx->HasOutput("DFilter") && ctx->HasInput("DDInput")) {
     ctx->SetOutputDim("DFilter", w_dims);
   }
-  if (ctx->HasOutput("DInput")) {
+  if (ctx->HasOutput("DInput") && ctx->HasInput("DDFilter")) {
     ctx->SetOutputDim("DInput", x_dims);
   }
 }

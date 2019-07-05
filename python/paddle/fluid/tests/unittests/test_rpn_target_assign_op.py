@@ -167,6 +167,105 @@ def rpn_target_assign_in_python(all_anchors,
     return loc_indexes, score_indexes, tgt_bboxes, tgt_labels, bbox_inside_weights
 
 
+def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
+                            negative_overlap):
+    anchor_to_gt_argmax = anchor_by_gt_overlap.argmax(axis=1)
+    anchor_to_gt_max = anchor_by_gt_overlap[np.arange(
+        anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax]
+
+    gt_to_anchor_argmax = anchor_by_gt_overlap.argmax(axis=0)
+    gt_to_anchor_max = anchor_by_gt_overlap[gt_to_anchor_argmax, np.arange(
+        anchor_by_gt_overlap.shape[1])]
+    anchors_with_max_overlap = np.where(
+        anchor_by_gt_overlap == gt_to_anchor_max)[0]
+
+    labels = np.ones((anchor_by_gt_overlap.shape[0], ), dtype=np.int32) * -1
+    labels[anchors_with_max_overlap] = 1
+    labels[anchor_to_gt_max >= positive_overlap] = 1
+
+    fg_inds = np.where(labels == 1)[0]
+    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float32)
+
+    bg_inds = np.where(anchor_to_gt_max < negative_overlap)[0]
+    enable_inds = bg_inds
+
+    fg_fake_inds = np.array([], np.int32)
+    fg_value = np.array([fg_inds[0]], np.int32)
+    fake_num = 0
+    for bg_id in enable_inds:
+        if bg_id in fg_inds:
+            fake_num += 1
+            fg_fake_inds = np.hstack([fg_fake_inds, fg_value])
+    labels[enable_inds] = 0
+
+    bbox_inside_weight[fake_num:, :] = 1
+    fg_inds = np.where(labels == 1)[0]
+    bg_inds = np.where(labels == 0)[0]
+    loc_index = np.hstack([fg_fake_inds, fg_inds])
+    score_index = np.hstack([fg_inds, bg_inds])
+    score_index_tmp = np.hstack([fg_inds])
+    labels = labels[score_index]
+
+    gt_inds = anchor_to_gt_argmax[loc_index]
+    label_inds = anchor_to_gt_argmax[score_index_tmp]
+    labels[0:len(fg_inds)] = np.squeeze(gt_labels[label_inds])
+    fg_num = len(fg_fake_inds) + len(fg_inds) + 1
+    assert not np.any(labels == -1), "Wrong labels with -1"
+    return loc_index, score_index, labels, gt_inds, bbox_inside_weight, fg_num
+
+
+def retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels,
+                                      is_crowd, im_info, lod, positive_overlap,
+                                      negative_overlap):
+    anchor_num = all_anchors.shape[0]
+    batch_size = len(lod) - 1
+    for i in range(batch_size):
+        im_scale = im_info[i][2]
+
+        inds_inside = np.arange(all_anchors.shape[0])
+        inside_anchors = all_anchors
+        b, e = lod[i], lod[i + 1]
+        gt_boxes_slice = gt_boxes[b:e, :] * im_scale
+        gt_labels_slice = gt_labels[b:e, :]
+        is_crowd_slice = is_crowd[b:e]
+
+        not_crowd_inds = np.where(is_crowd_slice == 0)[0]
+        gt_boxes_slice = gt_boxes_slice[not_crowd_inds]
+        gt_labels_slice = gt_labels_slice[not_crowd_inds]
+        iou = _bbox_overlaps(inside_anchors, gt_boxes_slice)
+
+        loc_inds, score_inds, labels, gt_inds, bbox_inside_weight, fg_num = \
+                         retinanet_target_assign(iou, gt_labels_slice,
+                                                positive_overlap, negative_overlap)
+        # unmap to all anchor
+        loc_inds = inds_inside[loc_inds]
+        score_inds = inds_inside[score_inds]
+
+        sampled_gt = gt_boxes_slice[gt_inds]
+        sampled_anchor = all_anchors[loc_inds]
+        box_deltas = _box_to_delta(sampled_anchor, sampled_gt, [1., 1., 1., 1.])
+
+        if i == 0:
+            loc_indexes = loc_inds
+            score_indexes = score_inds
+            tgt_labels = labels
+            tgt_bboxes = box_deltas
+            bbox_inside_weights = bbox_inside_weight
+            fg_nums = [[fg_num]]
+        else:
+            loc_indexes = np.concatenate(
+                [loc_indexes, loc_inds + i * anchor_num])
+            score_indexes = np.concatenate(
+                [score_indexes, score_inds + i * anchor_num])
+            tgt_labels = np.concatenate([tgt_labels, labels])
+            tgt_bboxes = np.vstack([tgt_bboxes, box_deltas])
+            bbox_inside_weights = np.vstack([bbox_inside_weights, \
+                                             bbox_inside_weight])
+            fg_nums = np.concatenate([fg_nums, [[fg_num]]])
+
+    return loc_indexes, score_indexes, tgt_bboxes, tgt_labels, bbox_inside_weights, fg_nums
+
+
 class TestRpnTargetAssignOp(OpTest):
     def setUp(self):
         n, c, h, w = 2, 4, 14, 14
@@ -228,6 +327,66 @@ class TestRpnTargetAssignOp(OpTest):
             'TargetBBox': tgt_bbox.astype('float32'),
             'TargetLabel': labels.astype('int32'),
             'BBoxInsideWeight': bbox_inside_weights.astype('float32')
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestRetinanetTargetAssignOp(OpTest):
+    def setUp(self):
+        n, c, h, w = 2, 4, 14, 14
+        all_anchors = get_anchor(n, c, h, w)
+        gt_num = 10
+        all_anchors = all_anchors.reshape(-1, 4)
+        anchor_num = all_anchors.shape[0]
+
+        images_shape = [[64, 64], [64, 64]]
+        groundtruth, lod = _generate_groundtruth(images_shape, 3, 4)
+        lod = [0, 4, 8]
+
+        im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        for i in range(len(images_shape)):
+            im_info[i, 0] = images_shape[i][0]
+            im_info[i, 1] = images_shape[i][1]
+            im_info[i, 2] = 0.8  #scale
+        gt_boxes = np.vstack([v['boxes'] for v in groundtruth])
+        is_crowd = np.hstack([v['is_crowd'] for v in groundtruth])
+        gt_labels = np.vstack([
+            v['gt_classes'].reshape(len(v['gt_classes']), 1)
+            for v in groundtruth
+        ])
+        gt_labels = gt_labels.reshape(len(gt_labels), 1)
+        all_anchors = all_anchors.astype('float32')
+        gt_boxes = gt_boxes.astype('float32')
+        gt_labels = gt_labels.astype('int32')
+
+        positive_overlap = 0.5
+        negative_overlap = 0.4
+
+        loc_index, score_index, tgt_bbox, labels, bbox_inside_weights, fg_num = \
+            retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels, is_crowd,
+                                   im_info, lod, positive_overlap, negative_overlap)
+        labels = labels[:, np.newaxis]
+        self.op_type = "retinanet_target_assign"
+        self.inputs = {
+            'Anchor': all_anchors,
+            'GtBoxes': (gt_boxes, [[4, 4]]),
+            'GtLabels': (gt_labels, [[4, 4]]),
+            'IsCrowd': (is_crowd, [[4, 4]]),
+            'ImInfo': (im_info, [[1, 1]])
+        }
+        self.attrs = {
+            'positive_overlap': positive_overlap,
+            'negative_overlap': negative_overlap
+        }
+        self.outputs = {
+            'LocationIndex': loc_index.astype('int32'),
+            'ScoreIndex': score_index.astype('int32'),
+            'TargetBBox': tgt_bbox.astype('float32'),
+            'TargetLabel': labels.astype('int32'),
+            'BBoxInsideWeight': bbox_inside_weights.astype('float32'),
+            'ForegroundNumber': fg_num.astype('int32')
         }
 
     def test_check_output(self):

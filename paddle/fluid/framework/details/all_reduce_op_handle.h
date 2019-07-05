@@ -34,7 +34,7 @@ class AllReduceOpHandle : public NCCLOpHandleBase {
  public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
-                    const platform::MultiNCCLContextMap *ctxs);
+                    const platform::NCCLCommunicator *ctxs);
 #else
 class AllReduceOpHandle : public OpHandleBase {
  public:

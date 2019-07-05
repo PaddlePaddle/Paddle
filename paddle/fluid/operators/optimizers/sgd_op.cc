@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-
+#include <string>
 namespace paddle {
 namespace operators {
 
@@ -45,6 +45,17 @@ class SGDOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
     return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "LearningRate") {
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
