@@ -173,16 +173,17 @@ TEST(Analyzer_MM_DNN, compare_determine) {
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-void TestMkldnnCacheClear(int mkldnn_input_shape_cache_size) {
+void TestMkldnnCacheClear(int mkldnn_input_shape_cache_capacity) {
   AnalysisConfig config;
   SetConfig(&config);
   config.EnableMKLDNN();
   // TODO(luotao): explicit following settings will be deprecated after enhance
   // config.EnableMKLDNN() interface.
-  if (mkldnn_input_shape_cache_size > 0) {
+  if (mkldnn_input_shape_cache_capacity > 0) {
     platform::set_cur_mkldnn_session_id(
         platform::kMKLDNNSessionID_CacheClearing);
-    platform::set_cur_input_shape_cache_size(mkldnn_input_shape_cache_size);
+    platform::set_cur_input_shape_cache_capacity(
+        mkldnn_input_shape_cache_capacity);
   }
 
   std::vector<PaddleTensor> input, output;
@@ -196,7 +197,7 @@ void TestMkldnnCacheClear(int mkldnn_input_shape_cache_size) {
       pool.Get(platform::CPUPlace()));
   for (int i = 0; i < sample_num; i++) {
     PrepareInputs(&input, &data, FLAGS_batch_size);
-    if (mkldnn_input_shape_cache_size > 0) {
+    if (mkldnn_input_shape_cache_capacity > 0) {
       std::stringstream ss;
       for (size_t i = 0; i < input.size(); i++) {
         for (size_t j = 0; j < input[i].shape.size(); ++j) {
@@ -209,13 +210,11 @@ void TestMkldnnCacheClear(int mkldnn_input_shape_cache_size) {
     }
     predictor->Run(input, &output, 1);
   }
-  if (mkldnn_input_shape_cache_size > 0) {
-    PADDLE_ENFORCE_EQ(
-        dev_ctx->GetShapeBlobSize(platform::kMKLDNNSessionID_CacheClearing),
-        mkldnn_input_shape_cache_size);
+  if (mkldnn_input_shape_cache_capacity > 0) {
+    PADDLE_ENFORCE_EQ(dev_ctx->GetShapeBlobSize(),
+                      mkldnn_input_shape_cache_capacity);
   } else {
-    PADDLE_ENFORCE_EQ(
-        dev_ctx->GetShapeBlobSize(platform::kMKLDNNSessionID_Default), 1UL);
+    PADDLE_ENFORCE_EQ(dev_ctx->GetShapeBlobSize(), 1UL);
   }
   dev_ctx->ResetBlobMap();
 }
@@ -224,7 +223,7 @@ TEST(Analyzer_MM_DNN, mkldnn_cache_clear) {
   // 0 means do not use cache clear strategy.
   TestMkldnnCacheClear(0);
   // 4 means use cache clear strategy, and the
-  // mkldnn_input_shape_cache_size is 4.
+  // mkldnn_input_shape_cache_capacity is 4.
   TestMkldnnCacheClear(4);
 }
 #endif
