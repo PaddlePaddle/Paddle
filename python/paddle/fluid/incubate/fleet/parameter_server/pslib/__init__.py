@@ -305,9 +305,8 @@ class PSLib(Fleet):
         model_proto_file = kwargs.get("model_proto_file", None)
         load_combine = kwargs.get("load_combine", False)
         if scope is not None and model_proto_file is not None:
-            self._load_one_table_from_paddle_model(scope, table_id, model_path,
-                                                   model_proto_file,
-                                                   load_combine)
+            self._load_one_table_from_paddle_model(
+                scope, table_id, model_path, model_proto_file, load_combine)
         else:
             self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
 
