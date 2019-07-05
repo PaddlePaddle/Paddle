@@ -585,7 +585,7 @@ if not os.path.isdir("./samplecode_temp"):
     os.mkdir("./samplecode_temp")
 
 tests = ["initializer.py"]
-for filename in filenames:
+for filename in tests:
 
     srcfile = open(filename, 'r')
 
@@ -604,8 +604,14 @@ statusf.write("status_all:\n" + str(status_all))
 
 status_groups = {-2: [], -1: [], 0: [], 1: [], 2: [], 3: []}
 
+ci_pass = True
+
 for key in status_all:
     statusl = status_all[key]
+    for ele in statusl:
+        if (ele != 0):
+            ci_pass = False
+            break
     if len(statusl) == 1:
         status_groups[statusl[0]].append(key)
     else:
@@ -615,3 +621,7 @@ for key in status_all:
 statusf.write('\n\ngrouped apis:\n' + str(status_groups) + '\n')
 statusf.close()
 logf.close()
+
+if not ci_pass:
+    print "Mistakes found in sample codes, refer to the log for details"
+    exit(1)
