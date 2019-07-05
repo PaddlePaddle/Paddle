@@ -59,7 +59,11 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
     T ele = pool_process.initial();
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
+#if __CUDA_ARCH__ >= 320
         pool_process.compute(__ldg(input_data + h * input_width + w), &ele);
+#else
+        pool_process.compute(input_data[h * input_width + w], &ele);
+#endif
       }
     }
     int pool_size = (exclusive || adaptive) ? (hend - hstart) * (wend - wstart)
@@ -96,7 +100,11 @@ __global__ void Pool2DForwardCUDAKernel(const int X_H, const int X_W,
     T ele = pool_process.initial();
     for (int i = t; i < b; ++i) {
       for (int j = l; j < r; ++j) {
+#if __CUDA_ARCH__ >= 320
         pool_process.compute(__ldg(X_ptr + i * X_W + j), &ele);
+#else
+        pool_process.compute(X_ptr[i * X_W + j], &ele);
+#endif
       }
     }
     pool_process.finalize(scale, &ele);
@@ -163,8 +171,13 @@ __global__ void KernelPool2DGrad(
                                 : ksize_height * ksize_width;
         }
         int output_sub_idx = ph * output_width + pw;
+#ifdef __CUDA_ARCH__ >= 320
         pool_process.compute(0, 0, __ldg(output_grad + output_sub_idx),
                              static_cast<T>(1.0 / pool_size), &gradient);
+#else
+        pool_process.compute(0, 0, output_grad[output_sub_idx],
+                             static_cast<T>(1.0 / pool_size), &gradient);
+#endif
       }
     }
     input_grad[index] = gradient;
@@ -197,12 +210,21 @@ __global__ void KernelMaxPool2DGrad(
     input_data += (batch_idx * channels + c) * input_height * input_width;
     input_grad += (batch_idx * channels + c) * input_height * input_width;
 
+#ifdef __CUDA_ARCH__ >= 320
     T ele = __ldg(output_data + index);
+#else
+    T ele = output_data[index];
+#endif
+
     int maxIndex = -1;
     bool stop = false;
     for (int h = hstart; h < hend && !stop; ++h) {
       for (int w = wstart; w < wend && !stop; ++w) {
+#ifdef __CUDA_ARCH__ >= 320
         if (ele == __ldg(input_data + h * input_width + w)) {
+#else
+        if (ele == input_data[h * input_width + w]) {
+#endif
           maxIndex = h * input_width + w;
           stop = true;
         }
@@ -210,9 +232,13 @@ __global__ void KernelMaxPool2DGrad(
     }
 
     if (maxIndex != -1) {
-      // atomic add
+// atomic add
+#ifdef __CUDA_ARCH__ >= 320
       platform::CudaAtomicAdd(input_grad + maxIndex,
                               __ldg(output_grad + index));
+#else
+      platform::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+#endif
     }
   }
 }
