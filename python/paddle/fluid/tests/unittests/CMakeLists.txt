@@ -68,6 +68,10 @@ if(NOT WITH_MKLML)
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
 
+if(NOT WITH_MKL)
+  list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
+endif(NOT WITH_MKL)
+
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
     set(options SERIAL)
