@@ -99,14 +99,13 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
     auto *local_scope = local_exec_scopes_[idx];
 
     for (auto &info : var_infos_) {
-      if (scope->FindVar(info.name_) != nullptr) {
-        if (!info.persistable_) {
-          VLOG(2) << info.name_ << " is found in parent scope, skipped";
-        }
-        continue;
-      }
-
       if (info.persistable_) {  // Persistable
+        auto var = scope->FindVar(info.name_);
+        if (var != nullptr) {
+          VLOG(2) << info.name_ << " is found in parent scope, skipped";
+          InitializeVariable(var, info.type_);
+          continue;
+        }
         InitializeVariable(scope->Var(info.name_), info.type_);
       } else {
         Variable *tmp_var = local_scope->Var(info.name_);

@@ -142,7 +142,6 @@ struct VarHandle : public VarHandleBase {
   }
 
   size_t version() const { return version_; }
-  void set_version(size_t version) { version_ = version; }
   size_t scope_idx() const { return scope_idx_; }
   const std::string& Name() const override { return name_; }
   const std::string& name() const { return name_; }

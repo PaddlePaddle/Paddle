@@ -63,6 +63,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
   void CallOnce();
 
   Scope *scope_;
+  platform::Place place_;
   std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
   GarbageCollector *gc_;                        // not own
   std::vector<Variable *> vars_;

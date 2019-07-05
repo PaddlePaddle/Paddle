@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -64,6 +65,16 @@ void MemoryReusePass::ApplyImpl(Graph *graph) const {
   CollectShareTensorBufferOpHandles();
   CollectReusedVars();
   Run(graph);
+
+  std::map<size_t, size_t> op_num;
+  for (auto &pair : ops_) {
+    ++op_num[pair.first->GetScopeIdx()];
+  }
+
+  for (auto &pair : op_num) {
+    VLOG(2) << "Create " << pair.second
+            << " ShareTensorBufferOpHandles in Scope " << pair.first;
+  }
 }
 
 bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
@@ -160,31 +171,6 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
   return buffer_share_op;
 }
 
-details::VarHandle *MemoryReusePass::InsertNewVarHandleBefore(
-    details::VarHandle *var) const {
-  size_t scope_idx = var->scope_idx();
-  auto iter = (*all_vars_)[scope_idx].find(var->Name());
-  PADDLE_ENFORCE(iter != (*all_vars_)[scope_idx].end(),
-                 "Cannot find variable %s", var->Name());
-  auto &all_version_vars = iter->second;
-
-  auto var_iter =
-      std::find(all_version_vars.begin(), all_version_vars.end(), var);
-  PADDLE_ENFORCE(var_iter != all_version_vars.end(), "Cannot find variable %s",
-                 var->Name());
-
-  auto *new_var_node = graph_->CreateVarNode(var->Node()->Var());
-  auto new_var =
-      new details::VarHandle(new_var_node, var->version(), var->scope_idx(),
-                             var->Name(), var->place());
-
-  var_iter = all_version_vars.insert(var_iter, new_var);
-  while (++var_iter != all_version_vars.end()) {
-    (*var_iter)->set_version((*var_iter)->version() + 1);
-  }
-  return new_var;
-}
-
 bool MemoryReusePass::IsVarsReusable(details::VarHandle *in_var,
                                      details::VarHandle *out_var) const {
   const auto in_name = in_var->Name();
@@ -199,6 +185,16 @@ bool MemoryReusePass::IsVarsReusable(details::VarHandle *in_var,
   }
 
   if (IsVarAlreadyReused(in_var)) {
+    return false;
+  }
+
+  // out_var must be the first version!!!
+  auto out_var_iter = (*all_vars_)[out_var->scope_idx()].find(out_name);
+  PADDLE_ENFORCE(out_var_iter != (*all_vars_)[out_var->scope_idx()].end() &&
+                     !out_var_iter->second.empty(),
+                 "Cannot find variable %s", out_name);
+
+  if (out_var_iter->second[0] != out_var) {
     return false;
   }
 
@@ -245,13 +241,6 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
 
   auto *share_buffer_op = ops_[op];
 
-  // Outputs of share_buffer_op should be variables whose names are
-  // the same with output variables of op, but version is 1 less than
-  // output variables of op.
-  // TODO(zjl): in fact, we can remove new_out_var? Because data hazard
-  // has been resolved by dep_var.
-  auto *new_out_var = InsertNewVarHandleBefore(out_var);
-
   auto &all_input_vars = share_buffer_op->Inputs();
   bool has_input = std::find(all_input_vars.begin(), all_input_vars.end(),
                              in_var) != all_input_vars.end();
@@ -260,7 +249,6 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
     share_buffer_op->AddInput(in_var);
   }
 
-  share_buffer_op->AddOutput(new_out_var);
   share_buffer_op->Add(
       (*var_infos_)[op->GetScopeIdx()].at(in_var->Name()).get(),
       out_var->Name());

@@ -97,8 +97,6 @@ class MemoryReusePass : public Pass {
   details::ShareTensorBufferOpHandle *InsertShareTensorBufferOpHandleToGraph(
       details::ComputationOpHandle *op) const;
 
-  details::VarHandle *InsertNewVarHandleBefore(details::VarHandle *var) const;
-
   void CollectShareTensorBufferOpHandles() const;
 
   void CollectReusedVars() const;

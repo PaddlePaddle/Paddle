@@ -25,16 +25,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static inline const Tensor *GetTensorFromVar(const Variable *var) {
+// TODO(zjl): support SelectedRows
+static inline const Tensor &GetTensorFromVar(const Variable *var) {
   if (var->IsType<LoDTensor>()) {
-    return &(var->Get<LoDTensor>());
+    return var->Get<LoDTensor>();
   } else {
     PADDLE_THROW("Variable must be type of LoDTensor");
   }
 }
 
-static inline Tensor *GetTensorFromVar(Variable *var) {
-  // TODO(zjl): support SelectedRows
+static inline Tensor *GetMutableTensorFromVar(Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else {
@@ -52,10 +52,10 @@ ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
       op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names) {
-  for (auto &in_var_info : in_var_infos_) {
-    PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
-  }
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size());
+  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
+    Add(in_var_infos_[i], out_var_names_[i]);
+  }
 }
 
 std::unordered_set<std::string> ShareTensorBufferOpHandle::ReusedVarSet()
@@ -69,7 +69,9 @@ std::unordered_set<std::string> ShareTensorBufferOpHandle::ReusedVarSet()
 
 void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
                                     const std::string &out_var_name) {
-  PADDLE_ENFORCE_NOT_NULL(in_var_info);
+  PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
+  PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
+                    "in/out cannot have same name: %s", out_var_name);
   in_var_infos_.emplace_back(in_var_info);
   out_var_names_.emplace_back(out_var_name);
 }
@@ -90,6 +92,7 @@ void ShareTensorBufferOpHandle::CallOnce() {
     auto *out_var = exec_scope->FindVar(out_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(in_var);
     PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_NE(in_var, out_var);
     in_out_vars_.emplace_back(in_var, out_var);
   }
 }
@@ -100,14 +103,15 @@ void ShareTensorBufferOpHandle::RunImpl() {
   }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    auto in_var_info = in_var_infos_[i];
-    auto *in_tensor = GetTensorFromVar(in_out_vars_[i].first);
-    auto *out_tensor = GetTensorFromVar(in_out_vars_[i].second);
+    const auto &in_tensor = GetTensorFromVar(in_out_vars_[i].first);
+    auto *out_tensor = GetMutableTensorFromVar(in_out_vars_[i].second);
+    auto *in_var_info = in_var_infos_[i];
+
     if (UNLIKELY(in_var_info->IsSkipped())) {
       // If in_var is inplaced in the previous batch and we want to fetch
       // in_var in the current batch, we have to reset memory of out_var
       // to avoid wrong calculation result.
-      if (in_tensor->Holder() == out_tensor->Holder()) {
+      if (in_tensor.Holder() == out_tensor->Holder()) {
         VLOG(1) << "Clear " << out_var_names_[i]
                 << " because you may want to fetch an inplaced variable "
                 << in_var_info->Name()
@@ -116,7 +120,7 @@ void ShareTensorBufferOpHandle::RunImpl() {
         out_tensor->clear();
       }
     } else {
-      out_tensor->ShareBufferWith(*in_tensor);
+      out_tensor->ShareBufferWith(in_tensor);
 
       VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
               << in_var_info->Name() << " -> " << out_var_names_[i];

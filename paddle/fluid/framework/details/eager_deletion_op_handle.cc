@@ -35,6 +35,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     const std::unordered_set<ir::MemOptVarInfo *> &vars, GarbageCollector *gc)
     : OpHandleBase(node),
       scope_(scope),
+      place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {
 #ifdef PADDLE_WITH_CUDA
@@ -99,7 +100,7 @@ void EagerDeletionOpHandle::RunImpl() {
       continue;
     }
 
-    VLOG(2) << "Erase variable " << var_info->Name();
+    VLOG(2) << "Erase variable " << var_info->Name() << " on " << place_;
 
     Variable *var = vars_[i];
 

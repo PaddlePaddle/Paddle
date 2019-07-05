@@ -504,6 +504,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     scope_map.emplace(scope, &local_exec_scope);
   }
 
+  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(),
+                    member_->local_exec_scopes_.size());
+
   std::vector<ir::Graph *> final_graphs;
 
   if (member_->build_strategy_.async_mode_) {
@@ -662,15 +665,9 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
     auto &map = tensors[i];
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
-      Variable *feed_var = nullptr;
-      if (is_persistable) {
-        feed_var = member_->local_scopes_[i]->FindVar(pair.first);
-        if (!feed_var) {
-          feed_var = member_->local_scopes_[i]->Var(pair.first);
-        }
-      } else {
-        feed_var = member_->local_exec_scopes_[i]->Var(pair.first);
-      }
+      auto *feed_scope = is_persistable ? member_->local_scopes_[i]
+                                        : member_->local_exec_scopes_[i];
+      auto *feed_var = feed_scope->Var(pair.first);
 
       auto *trg = feed_var->GetMutable<LoDTensor>();
       trg->ShareDataWith(pair.second);
@@ -701,15 +698,9 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 
     bool is_persistable = member_->IsPersistable(pair.first);
     for (size_t j = 0; j < member_->places_.size(); ++j) {
-      Variable *feed_var = nullptr;
-      if (is_persistable) {
-        feed_var = member_->local_scopes_[j]->FindVar(pair.first);
-        if (!feed_var) {
-          feed_var = member_->local_scopes_[j]->Var(pair.first);
-        }
-      } else {
-        feed_var = member_->local_exec_scopes_[j]->Var(pair.first);
-      }
+      auto *feed_scope = is_persistable ? member_->local_scopes_[j]
+                                        : member_->local_exec_scopes_[j];
+      auto *feed_var = feed_scope->Var(pair.first);
 
       auto t = feed_var->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);

@@ -28,11 +28,13 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
                             Scope *local_scope) {
   VLOG(3) << "InitVarsInScope";
   for (auto &info : var_infos) {
-    if (scope->FindVar(info.name_) != nullptr) {
-      continue;
-    }
-
     if (info.persistable_) {  // Persistable
+      auto *var = scope->FindVar(info.name_);
+      if (var != nullptr) {
+        VLOG(2) << info.name_ << " is found in parent scope, skipped";
+        InitializeVariable(var, info.type_);
+        continue;
+      }
       InitializeVariable(scope->Var(info.name_), info.type_);
     } else {
       InitializeVariable(local_scope->Var(info.name_), info.type_);
