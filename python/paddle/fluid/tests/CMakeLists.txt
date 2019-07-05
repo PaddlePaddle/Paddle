@@ -5,6 +5,10 @@ if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_OPS test_communicator)
 endif(NOT WITH_DISTRIBUTE)
 
+if(NOT WITH_MKL)
+  list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
+endif(NOT WITH_MKL)
+
 foreach(src ${TEST_OPS})
   py_test(${src} SRCS ${src}.py)
 endforeach()
