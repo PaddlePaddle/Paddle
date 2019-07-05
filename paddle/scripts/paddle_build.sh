@@ -976,8 +976,8 @@ function build_document_preview() {
 function example() {
     pip install /paddle/build/python/dist/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl
     paddle version
-    cd ${PADDLE_ROOT}
-    python tools/sampcd_processor.py
+    cd ${PADDLE_ROOT}/python/paddle/fluid
+    python sampcd_processor.py 
     echo 11111
     if [ "$?" != "0" ];then
       echo "Code instance execution failed"
