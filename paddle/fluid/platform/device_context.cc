@@ -407,6 +407,9 @@ thread_local size_t cur_mkldnn_session_id = kMKLDNNSessionID_Default;
 // - For fixed-shape, it's a null string in default.
 // - For dynamic-shape, it's user specific.
 thread_local std::string cur_input_shape_str = "";
+// the cache size of different input shapes for MKLDNN.
+// Default 1 means fixed input shape, not dynamic shape.
+thread_local int cur_input_shape_cache_size = 1;
 }  // namespace
 
 void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
@@ -414,9 +417,21 @@ size_t get_cur_mkldnn_session_id(void) { return cur_mkldnn_session_id; }
 void set_cur_input_shape_str(std::string input_shape_str) {
   cur_input_shape_str = input_shape_str;
 }
-std::string get_cur_input_shape_str(void) { return cur_input_shape_str; }
+void set_cur_input_shape_cache_size(int input_shape_cache_size) {
+  cur_input_shape_cache_size = input_shape_cache_size;
+}
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
+
+size_t MKLDNNDeviceContext::GetShapeBlobSize(int mkldnn_session_id) const {
+  BlobMap* pMap = p_blobmap_.get();
+  auto map_it = pMap->find(mkldnn_session_id);
+  if (map_it == pMap->end()) {
+    LOG(FATAL) << "MKLDNNDeviceContext don't find mkldnn_session_id : "
+               << mkldnn_session_id;
+  }
+  return map_it->second->size();
+}
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
@@ -441,10 +456,17 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   }
 
   // Find KeyBlob for current input shape
-  std::string cur_input_shape_str = platform::get_cur_input_shape_str();
   auto key_it = sBlob->find(cur_input_shape_str);
 
   if (key_it == sBlob->end()) {
+    // In cache clearing mode, cur_input_shape_cache_size defines max pblob
+    // capacity
+    if ((tid == kMKLDNNSessionID_CacheClearing) &&
+        (sBlob->size() == static_cast<size_t>(cur_input_shape_cache_size))) {
+      VLOG(2) << "tid=" << tid
+              << ", remove all head blob of shape: " << sBlob->begin()->first;
+      sBlob->erase(sBlob->begin()->first);
+    }
     pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
     (*sBlob)[cur_input_shape_str] = pBlob;
   } else {
@@ -479,7 +501,6 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
     VLOG(2) << "GetBlob: tid=" << tid << ", miss tid\n";
     return nullptr;
   }
-  std::string cur_input_shape_str = platform::get_cur_input_shape_str();
   sBlob = map_it->second;
 
   // Find KeyBlob for current input shape secondly
