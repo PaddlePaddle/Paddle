@@ -87,10 +87,10 @@ class TestVarConv2dOp(OpTest):
             height = row_lod[0][idx]
             top_im_x = 0
             if width != 0:
-                top_im_x = (width - 1) / stride_w + 1
+                top_im_x = (width - 1) // stride_w + 1
             top_im_y = 0
             if height != 0:
-                top_im_y = (height - 1) / stride_h + 1
+                top_im_y = (height - 1) // stride_h + 1
             top_im_size = top_im_x * top_im_y
             out_lod[0].append(out_ch * top_im_size)
             if top_im_size == 0:
@@ -127,10 +127,10 @@ class TestVarConv2dOp(OpTest):
             height = row_lod[0][idx]
             top_im_x = 0
             if width != 0:
-                top_im_x = (width - 1) / stride_w + 1
+                top_im_x = (width - 1) // stride_w + 1
             top_im_y = 0
             if height != 0:
-                top_im_y = (height - 1) / stride_h + 1
+                top_im_y = (height - 1) // stride_h + 1
             top_x = top_im_x * top_im_y
             top_y = in_ch * kernel_h * kernel_w
             col_res_lod[0].append(top_x * top_y)
@@ -139,23 +139,23 @@ class TestVarConv2dOp(OpTest):
         col_res = np.zeros((top_size, 1)).astype('float32')
 
         kernel_win_size = kernel_h * kernel_w
-        half_kernel_h = kernel_h / 2
-        half_kernel_w = kernel_w / 2
+        half_kernel_h = kernel_h // 2
+        half_kernel_w = kernel_w // 2
         t_offset, b_offset = 0, 0
         for idx in range(batch_size):
             width = col_lod[0][idx]
             height = row_lod[0][idx]
             if width == 0 or height == 0:
                 continue
-            top_im_x = (width - 1) / stride_w + 1
-            top_im_y = (height - 1) / stride_h + 1
+            top_im_x = (width - 1) // stride_w + 1
+            top_im_y = (height - 1) // stride_h + 1
             top_x = top_im_x * top_im_y
             for z in range(in_ch):
                 row_offset = kernel_win_size * z
                 im_offset = z * width * height
                 for y in range(0, height, stride_h):
                     for x in range(0, width, stride_w):
-                        col_offset = x / stride_w + y / stride_h * top_im_x
+                        col_offset = x // stride_w + y // stride_h * top_im_x
                         for ky in range(kernel_h):
                             for kx in range(kernel_w):
                                 im_y = y + ky - half_kernel_h
