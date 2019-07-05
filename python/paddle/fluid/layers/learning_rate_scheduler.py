@@ -23,6 +23,7 @@ strategy according to this module.
 from __future__ import print_function
 
 import math
+import numbers
 
 from . import control_flow
 from . import nn
@@ -30,6 +31,7 @@ from . import ops
 from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
+from ..framework import Variable
 from ..dygraph import base as imperative_base
 from ..dygraph import learning_rate_scheduler as imperate_lr
 
@@ -54,6 +56,7 @@ def noam_decay(d_model, warmup_steps):
 
     .. code-block:: python
       
+      import padde.fluid as fluid
       import numpy as np
       # set hyper parameters
       d_model = 2
@@ -415,7 +418,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     Examples:
 	.. code-block:: python
 
-  	    base_lr = 0.1
+  	    import paddle.fluid as fluid
+        base_lr = 0.1
 	    lr = fluid.layers.cosine_decay(
 	    learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
@@ -448,8 +452,8 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     Args:
         learning_rate (float | Variable): A float value or Variable.
         warmup_steps (int): The warmup steps.
-        start_lr (float): The start learning of warmup.
-        end_lr (float): The end learning of warmup.
+        start_lr (float): The start learning rate of warmup.
+        end_lr (float): The end learning rate of warmup.
 
     Returns:
         The decayed learning rate in warmup period.
@@ -457,6 +461,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             boundaries = [100, 200]
             lr_steps = [0.1, 0.01, 0.001]
             warmup_steps = 50 
@@ -467,14 +472,16 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
                 warmup_steps, start_lr, end_lr)
 
     """
-    assert (isinstance(end_lr, float))
-    assert (isinstance(start_lr, float))
-    linear_step = end_lr - start_lr
+    dtype = 'float32'
+    if isinstance(learning_rate, Variable):
+        dtype = learning_rate.dtype
+
+    linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
         lr = tensor.create_global_var(
             shape=[1],
             value=0.0,
-            dtype='float32',
+            dtype=dtype,
             persistable=True,
             name="learning_rate_warmup")
 
@@ -486,5 +493,8 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
                                                        float(warmup_steps))
                 tensor.assign(decayed_lr, lr)
             with switch.default():
+                if not isinstance(learning_rate, Variable):
+                    learning_rate = tensor.fill_constant(
+                        shape=[1], dtype=dtype, value=float(learning_rate))
                 tensor.assign(learning_rate, lr)
     return lr

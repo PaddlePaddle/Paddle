@@ -5,22 +5,20 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 function(download_data install_dir data_file)
-    if (NOT EXISTS ${install_dir})
+    if (NOT EXISTS ${install_dir}/${data_file})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${data_file})
     endif()
 endfunction()
 
 function(download_int8_data install_dir data_file)
-    if (NOT EXISTS ${install_dir})
+    if (NOT EXISTS ${install_dir}/${data_file})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8 ${data_file})
     endif()
 endfunction()
 
 function(download_model_and_data install_dir model_name data_name)
-    if (NOT EXISTS ${install_dir})
-        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${model_name})
-        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${data_name})
-    endif()
+    download_data(${install_dir} ${model_name}) 
+    download_data(${install_dir} ${data_name})
 endfunction()
 
 function(inference_analysis_api_test target install_dir filename)
@@ -234,12 +232,12 @@ if(WITH_MKLDNN)
   inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   ### Object detection models
-  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_data.bin")
+  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_100.bin")
   set(INT8_OBJ_DETECT_TEST_APP "test_analyzer_int8_object_detection")
   set(INT8_OBJ_DETECT_TEST_APP_SRC "analyzer_int8_object_detection_tester.cc")
 
   # download dataset if necessary
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_100_head.tar.gz")
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_100.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_int8_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -255,27 +253,6 @@ endif()
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
-
-# anakin
-if (ANAKIN_FOUND AND WITH_MKL) # only needed in CI
-    # anakin rnn1
-    set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
-    set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
-    inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn.anakin2.model.bin")
-    inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn_data.txt")
-    cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc
-            ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
-                 --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
-            DEPS inference_anakin_api_shared)
-    # anakin mobilenet
-    if(WITH_GPU)
-        set(ANAKIN_MOBILENET_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/mobilenet")
-        inference_download(${ANAKIN_MOBILENET_INSTALL_DIR} ${INFERENCE_URL} "mobilenet_v2.anakin.bin")
-        cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc
-                ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                DEPS inference_anakin_api_shared dynload_cuda)
-    endif()
-endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
