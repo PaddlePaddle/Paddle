@@ -34,6 +34,7 @@ class DistributedStrategy(object):
         self.h_allreduce = False
 
     def build(self):
+        self.strategy_map = {}
         # make sure we set single precision config True
         if self.use_fp32 and self.use_fp16:
             self.use_fp16 = False
@@ -48,75 +49,19 @@ class DistributedStrategy(object):
 
 
 class DistributedOptimizerFactory(object):
-    def strategy_to_optimizer_map(self):
-        pattern = {}
-        pattern["fp16"] = [
-            "MixedPrecisionOptimizer", "MixedPrecisionLocalSGDOptimizer"
-        ]
-        pattern["fp32"] = ["FullPrecisionOptimizer", "LocalSGDOptimizer"]
-        pattern["localsgd"] = [
-            "MixedPrecisionLocalSGDOptimizer", "LocalSGDOptimizer"
-        ]
-        pattern["h_allreduce"] = [
-            "FullPrecisionOptimizer",
-            "LocalSGDOptimizer",
-            "MixedPrecisionOptimizer",
-            "MixedPrecisionLocalSGDOptimizer",
-        ]
-        self.pattern = pattern
-
-    def create_by_strategy(self, optimizer, strategy):
-        if strategy == None:
-            strategy = DistributedStrategy()
-        strategy.build()
-        strategy_list = []
-        for key in strategy.strategy_map:
-            if strategy.strategy_map[key]:
-                strategy_list.append(self.pattern[key])
-        classname = list(set.intersection(*map(set, strategy_list)))[0]
-        return globals()[classname](optimizer, strategy)
-
-
-class DistributedStrategy(object):
     def __init__(self):
-        # precision configs
-        self.use_fp16 = False
-        self.use_fp32 = True
-        # algorithmic communication
-        self.local_sgd = False
-        self.dgc = False
-        # communication topology configs
-        self.h_allreduce = False
+        self.strategy_to_optimizer_map()
 
-    def build(self):
-        # make sure we set single precision config True
-        if self.use_fp32 and self.use_fp16:
-            self.use_fp16 = False
-        # make sure we set single algorithmic communication True
-        if self.local_sgd and self.dgc:
-            self.local_sgd = False
-        self.strategy_map["fp16"] = self.use_fp16
-        self.strategy_map["fp32"] = self.use_fp32
-        self.strategy_map["localsgd"] = self.local_sgd
-        self.strategy_map["dgc"] = self.dgc
-        self.strategy_map["h_allreduce"] = self.h_allreduce
-
-
-class DistributedOptimizerFactory(object):
     def strategy_to_optimizer_map(self):
         pattern = {}
-        pattern["fp16"] = [
-            "MixedPrecisionOptimizer", "MixedPrecisionLocalSGDOptimizer"
-        ]
-        pattern["fp32"] = ["FullPrecisionOptimizer", "LocalSGDOptimizer"]
-        pattern["localsgd"] = [
-            "MixedPrecisionLocalSGDOptimizer", "LocalSGDOptimizer"
-        ]
+        pattern["fp16"] = ["FP16SGDOptimizer", "FP16LocalSGDOptimizer"]
+        pattern["fp32"] = ["FP32SGDOptimizer", "FP32LocalSGDOptimizer"]
+        pattern["localsgd"] = ["FP16LocalSGDOptimizer", "FP32LocalSGDOptimizer"]
         pattern["h_allreduce"] = [
-            "FullPrecisionOptimizer",
-            "LocalSGDOptimizer",
-            "MixedPrecisionOptimizer",
-            "MixedPrecisionLocalSGDOptimizer",
+            "FP32SGDOptimizer",
+            "FP32LocalSGDOptimizer",
+            "FP16SGDOptimizer",
+            "FP16LocalSGDOptimizer",
         ]
         self.pattern = pattern
 
@@ -158,8 +103,10 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
+        optimizer_factory = DistributedOptimizerFactory()
+
         self._optimizer = \
-            DistributedOptimizerFactory.create_by_strategy(optimizer, strategy)
+            optimizer_factory.create_by_strategy(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
@@ -182,28 +129,12 @@ fleet = Collective()
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
     """
-    TBA
+    Collective Operator Base Class For Distributed Optimizer
+    The class is invisible to a user
     """
 
     def __init__(self, optimizer, strategy=None):
         super(CollectiveOpBasedOptimizer, self).__init__(optimizer, strategy)
-
-    def _transpile_program(self, startup_program=None):
-        startup_program = startup_program if startup_program else \
-                          fluid.framework.default_startup_program()
-        worker_endpoints = fleet.worker_endpoints()
-        trainer_id = fleet.worker_index()
-        current_endpoint = fleet.worker_endpoints()[trainer_id]
-        # call transpiler
-        config = dist_transpiler.DistributeTranspilerConfig()
-        config.mode = "collective"
-        config.collective_mode = "sgd"
-        t = dist_transpiler.DistributeTranspiler(config=config)
-        t.transpile(
-            trainer_id,
-            trainers=','.join(worker_endpoints),
-            startup_program=startup_program,
-            current_endpoint=current_endpoint)
 
     def backward(self,
                  loss,
@@ -218,10 +149,13 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
 
-class MixedPrecisionOptimizer(CollectiveOpBasedOptimizer):
+class FP16SGDOptimizer(CollectiveOpBasedOptimizer):
     """
-    TBA
+    do all reduce within every minibatch
     """
+
+    def __init__(self, optimizer, strategy=None):
+        super(FP16SGDOptimizer, self).__init__(optimizer, strategy)
 
     def minimize(self,
                  loss,
@@ -231,32 +165,53 @@ class MixedPrecisionOptimizer(CollectiveOpBasedOptimizer):
         pass
 
 
-class FullPrecisionOptimizer(CollectiveOpBasedOptimizer):
-    """
-    TBA
-    """
-
+class FP32LocalSGDOptimizer(CollectiveOpBasedOptimizer):
     def __init__(self, optimizer, strategy=None):
-        super(FullPrecisionOptimizer, self).__init__(optimizer, strategy)
+        super(FP32LocalSGDOptimizer, self).__init__(optimizer, strategy)
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        self._transpile_program(startup_program)
+        opts, param_and_grads = self._optimizer.minimize(loss)
+        config = fluid.DistributeTranspilerConfig()
+        config.mode = 'collective'
+        config.collective_mode = 'local_sgd'
+        t = fluid.DistributeTranspiler(config=config)
+        t.transpile(
+            trainer_id=fleet.worker_index(),
+            trainers=fleet.worker_endpoints(),
+            current_endpoint=fleet.worker_endpoints()[fleet.worker_index()],
+            startup_program=startup_program,
+            program=loss.block.program)
+        return opts, param_and_grads
 
-        train_program = loss.block.program
-        param_grads = self.backward(loss)
-        train_program.global_block().append_op(type='c_sync_compute_stream')
-        data_parallel_param_grads = []
-        for p, g in param_grads:
-            # NOTE: scale will be done on loss scale
-            # in multi_devices_graph_pass using nranks.
-            reduced_g = fluid.layers.collective._allreduce(g, g)
-            data_parallel_param_grads.append([p, reduced_g])
-        train_program.global_block().append_op(type='c_sync_comm_stream')
-        self.apply_gradients(data_parallel_param_grads)
+
+class FP32SGDOptimizer(CollectiveOpBasedOptimizer):
+    def __init__(self, optimizer, strategy=None):
+        super(FP32SGDOptimizer, self).__init__(optimizer, strategy)
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        opts, param_and_grads = self._optimizer.minimize(loss)
+        config = fluid.DistributeTranspilerConfig()
+        config.mode = 'collective'
+        config.collective_mode = 'grad_allreduce'
+        t = fluid.DistributeTranspiler(config=config)
+
+        print(fleet.worker_index())
+        print(fleet.worker_endpoints())
+        t.transpile(
+            trainer_id=fleet.worker_index(),
+            trainers=fleet.worker_endpoints(),
+            current_endpoint=fleet.worker_endpoints()[fleet.worker_index()],
+            startup_program=startup_program,
+            program=loss.block.program)
+        return opts, param_and_grads
 
 
 class CollectiveOptimizer(DistributedOptimizer):
