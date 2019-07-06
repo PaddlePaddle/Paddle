@@ -425,7 +425,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
           params_grads->emplace_back(std::make_pair(
               backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
         }
-      } catch (boost::bad_get e) {
+      } catch (boost::bad_get& e) {
       }
     }
   }
