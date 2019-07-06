@@ -424,6 +424,7 @@ void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity) {
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
+  std::lock_guard<std::mutex> lock(*p_mutex_);
   BlobMap* pMap = p_blobmap_.get();
   auto map_it = pMap->find(cur_mkldnn_session_id);
   if (map_it == pMap->end()) {
