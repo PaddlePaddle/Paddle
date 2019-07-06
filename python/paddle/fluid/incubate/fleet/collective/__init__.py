@@ -203,8 +203,6 @@ class FP32SGDOptimizer(CollectiveOpBasedOptimizer):
         config.collective_mode = 'grad_allreduce'
         t = fluid.DistributeTranspiler(config=config)
 
-        print(fleet.worker_index())
-        print(fleet.worker_endpoints())
         t.transpile(
             trainer_id=fleet.worker_index(),
             trainers=fleet.worker_endpoints(),
