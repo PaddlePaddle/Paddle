@@ -197,7 +197,7 @@ class BackWardOpDepsPass : public ir::Pass {
         params_grads->emplace_back(std::make_pair(
             backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
       }
-    } catch (boost::bad_get e) {
+    } catch (boost::bad_get& e) {
     }
   }
 
@@ -211,7 +211,7 @@ class BackWardOpDepsPass : public ir::Pass {
       if (!is_opt_op) return;
 
       opt_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
-    } catch (boost::bad_get e) {
+    } catch (boost::bad_get& e) {
     }
   }
 };

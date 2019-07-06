@@ -188,7 +188,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     VLOG(3) << place << " " << DebugStringEx(&scope);
-  } catch (platform::EnforceNotMet exception) {
+  } catch (platform::EnforceNotMet& exception) {
     if (Attrs().count("sub_block") != 0) {
       throw std::move(exception);
     }

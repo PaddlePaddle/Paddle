@@ -31,7 +31,7 @@ TEST(ENFORCE, FAILED) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE(false, "Enforce is not ok %d at all", 123);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(
         HasPrefix(StringPiece(error.what()), "Enforce is not ok 123 at all"));
@@ -41,7 +41,7 @@ TEST(ENFORCE, FAILED) {
   caught_exception = false;
   try {
     PADDLE_ENFORCE(false, "Enforce is not ok at all");
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(
         HasPrefix(StringPiece(error.what()), "Enforce is not ok at all"));
@@ -51,7 +51,7 @@ TEST(ENFORCE, FAILED) {
   caught_exception = false;
   try {
     PADDLE_ENFORCE(false);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_NE(std::string(error.what()).find("  at "), 0);
   }
@@ -71,7 +71,7 @@ TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_EQ(a, 1 + 3);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     HasPrefix(
         StringPiece(error.what()),
@@ -85,7 +85,7 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_EQ(a, 1 + 3, "%s size not match", "their");
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     HasPrefix(StringPiece(error.what()),
               "Enforce failed. Expected a == 1 + 3, but received a:2 != 1 + "
@@ -104,7 +104,7 @@ TEST(ENFORCE_NE, FAIL) {
   try {
     // 2UL here to check data type compatible
     PADDLE_ENFORCE_NE(1.0, 1UL);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(HasPrefix(
         StringPiece(error.what()),
@@ -119,7 +119,7 @@ TEST(ENFORCE_GT, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GT(1, 2);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(
         HasPrefix(StringPiece(error.what()),
@@ -137,7 +137,7 @@ TEST(ENFORCE_GE, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GE(1, 2);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(
         HasPrefix(StringPiece(error.what()),
@@ -157,7 +157,7 @@ TEST(ENFORCE_LE, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GT(1, 2);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(
         HasPrefix(StringPiece(error.what()),
@@ -175,7 +175,7 @@ TEST(ENFORCE_LT, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_LT(1UL, 0.12);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
                           "Enforce failed. Expected 1UL < 0.12, but "
@@ -194,7 +194,7 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
   try {
     int* a = nullptr;
     PADDLE_ENFORCE_NOT_NULL(a);
-  } catch (paddle::platform::EnforceNotMet error) {
+  } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "a should not be null"));
   }
@@ -247,7 +247,7 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
   bool caught_eof = false;
   try {
     PADDLE_THROW_EOF();
-  } catch (paddle::platform::EOFException error) {
+  } catch (paddle::platform::EOFException& error) {
     caught_eof = true;
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "There is no next data."));
   }
