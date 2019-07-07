@@ -234,7 +234,7 @@ class LayerNormKernel : public framework::OpKernel<T> {
             .At(right);
     ker(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
         scale->data<T>(), bias->data<T>(), static_cast<int>(left),
-        static_cast<const float>(epsilon), right);
+        static_cast<float>(epsilon), right);
 #endif
   }
 };
