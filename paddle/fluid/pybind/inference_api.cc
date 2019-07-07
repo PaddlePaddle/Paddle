@@ -286,8 +286,8 @@ void BindMkldnnQuantizerConfig(py::module *m) {
       .def("set_quant_batch_size", &MkldnnQuantizerConfig::SetWarmupBatchSize)
       .def(
           "set_enabled_op_types",
-          (void (MkldnnQuantizerConfig::*)(std::unordered_set<std::string> &)) &
-              MkldnnQuantizerConfig::SetEnabledOpTypes);
+          (void(MkldnnQuantizerConfig::*)(const std::unordered_set<std::string> &))
+              &MkldnnQuantizerConfig::SetEnabledOpTypes);
 }
 #endif
 

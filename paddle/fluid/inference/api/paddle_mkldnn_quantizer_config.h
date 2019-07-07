@@ -73,7 +73,7 @@ struct MkldnnQuantizerConfig {
 
   int warmup_batch_size() const { return warmup_bs_; }
 
-  void SetEnabledOpTypes(std::unordered_set<std::string> op_list) {
+  void SetEnabledOpTypes(const std::unordered_set<std::string>& op_list) {
     enabled_op_types_ = op_list;
   }
 
