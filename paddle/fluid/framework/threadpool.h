@@ -21,6 +21,8 @@ limitations under the License. */
 #include <queue>
 #include <thread>  // NOLINT
 #include <vector>
+#include <utility>
+#include <memory>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
