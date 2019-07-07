@@ -53,7 +53,7 @@ const std::string& TargetToStr(TargetType target) {
 
 const std::string& PrecisionToStr(PrecisionType precision) {
   static const std::string precision2string[] = {"unk", "float", "int8_t",
-                                                 "any"};
+                                                 "int32_t", "any"};
   auto x = static_cast<int>(precision);
   CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
   return precision2string[x];

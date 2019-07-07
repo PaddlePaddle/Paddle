@@ -426,6 +426,7 @@ bool bind_threads(const std::vector<int> cpu_ids) {
     return false;
   }
 #endif  // ARM_WITH_OMP
+  return true;
 }
 
 #endif  // LITE_WITH_LINUX
@@ -768,6 +769,7 @@ void DeviceInfo::RequestPowerRandHighMode(const int shift_num,
                                           const int thread_num) {
   int big_core_size = big_core_ids_.size();
   int little_core_size = little_core_ids_.size();
+  active_ids_.clear();
   if (big_core_size > 0) {
     mode_ = LITE_POWER_RAND_HIGH;
     if (thread_num > big_core_size) {
