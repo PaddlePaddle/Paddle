@@ -206,25 +206,23 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       details::GroupParamsAndGrads *group_params_grads) const {
     SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
     SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
-    ReGroupByMemoryOrLayerSize(var_nodes, params_grads, group_params_grads);
+    ReGroupByDtype(var_nodes, params_grads, group_params_grads);
   }
 
   void SetGroupAccordingToLayers(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
-    using var_dtype = std::pair<std::string, proto::VarType::Type>;
-    std::map<var_dtype, size_t> var_idx;
+    std::map<std::string, size_t> var_idx;
 
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
 
-      auto dtype = GetDtypeOfVar(var_nodes, params_grads[i].second);
-      var_dtype var_key;
+      std::string var_key;
       if (pos == std::string::npos) {
-        var_key = std::make_pair(params_grads[i].first, dtype);
+        var_key = params_grads[i].first;
       } else {
-        var_key = std::make_pair(params_grads[i].first.substr(0, pos), dtype);
+        var_key = params_grads[i].first.substr(0, pos);
       }
 
       size_t idx = 0;
@@ -340,7 +338,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     }
   }
 
-  void ReGroupByMemoryOrLayerSize(
+  void ReGroupByDtype(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
@@ -382,9 +380,9 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     std::swap(*group_params_grads, new_group_params_grads);
 
     if (VLOG_IS_ON(10)) {
-      VLOG(10) << string::Sprintf(
-          "ReGroupByMemoryOrLayerSize(memory_size: %f MB, %u):",
-          GetFuseParameterMemorySize(), GetFuseParameterGroupsSize());
+      VLOG(10) << string::Sprintf("ReGroupByDtype(memory_size: %f MB, %u):",
+                                  GetFuseParameterMemorySize(),
+                                  GetFuseParameterGroupsSize());
       PrintGroupInfo(var_nodes, group_params_grads);
     }
   }
