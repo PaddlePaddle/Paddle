@@ -14,23 +14,16 @@
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
 import numpy as np
-import os
-
 from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
 import logging
 
 __all__ = [
-    'enabled',
     'no_grad',
     'guard',
     'to_variable',
 ]
-
-
-def enabled():
-    return framework.in_dygraph_mode()
 
 
 @contextlib.contextmanager
@@ -90,6 +83,8 @@ def _no_grad_(func):
 
 
 no_grad = wrap_decorator(_no_grad_)
+# for fluidDoc
+no_grad.__doc__ = _no_grad_.__doc__
 _not_support = wrap_decorator(_dygraph_not_support_)
 
 
@@ -177,7 +172,8 @@ def to_variable(value, block=None, name=None):
 
     """
     if isinstance(value, np.ndarray):
-        assert enabled(), "to_variable could only be called in dygraph mode"
+        assert framework.in_dygraph_mode(
+        ), "to_variable could only be called in dygraph mode"
 
         if not block:
             block = framework.default_main_program().current_block()
