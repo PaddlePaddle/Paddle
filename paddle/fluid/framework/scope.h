@@ -67,6 +67,9 @@ class Scope {
 
   void EraseVars(const std::vector<std::string>& var_names);
 
+  // Erase all variables except the given `vars`
+  void EraseVarsExcept(const std::unordered_set<Variable*>& vars);
+
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   /// Caller doesn't own the returned Variable.
@@ -101,9 +104,6 @@ class Scope {
 
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
-
-  // Clear all sub-scopes and erase all variables except the preserve variables
-  void ClearWithPreserve(const std::unordered_set<Variable*>& vars);
 
  protected:
   struct KeyHasher {

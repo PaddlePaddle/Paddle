@@ -80,7 +80,8 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   }
 
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
-    local_exec_scopes_[i]->ClearWithPreserve(preserve_vars_[i]);
+    local_exec_scopes_[i]->EraseVarsExcept(preserve_vars_[i]);
+    local_exec_scopes_[i]->DropKids();
     for (auto &preserve_var : preserve_vars_[i]) {
       preserve_var->Clear();
     }
@@ -102,8 +103,9 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
       if (info.persistable_) {  // Persistable
         auto var = scope->FindVar(info.name_);
         if (var != nullptr) {
-          VLOG(2) << info.name_ << " is found in parent scope, skipped";
-          InitializeVariable(var, info.type_);
+          VLOG(2)
+              << info.name_
+              << " has been initialized beforehand in global scope, skipped";
           continue;
         }
         InitializeVariable(scope->Var(info.name_), info.type_);

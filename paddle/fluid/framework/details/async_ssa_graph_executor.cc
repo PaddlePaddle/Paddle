@@ -31,7 +31,8 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
     if (info.persistable_) {  // Persistable
       auto *var = scope->FindVar(info.name_);
       if (var != nullptr) {
-        VLOG(2) << info.name_ << " is found in parent scope, skipped";
+        VLOG(2) << info.name_
+                << " has been initialized beforehand in global scope, skipped";
         InitializeVariable(var, info.type_);
         continue;
       }
