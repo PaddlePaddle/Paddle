@@ -26,6 +26,11 @@ __all__ = [
 ]
 
 
+def enabled():
+    # Internal use only
+    return framework.in_dygraph_mode()
+
+
 @contextlib.contextmanager
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
