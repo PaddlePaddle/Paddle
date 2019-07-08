@@ -182,8 +182,10 @@ struct AnalysisConfig {
   bool ngraph_enabled() const { return use_ngraph_; }
 
   /** Turn on MKLDNN.
+   *  And set the cache capacity of different input shapes for MKLDNN.
+   *  Default 0 means don't cache any shape.
    */
-  void EnableMKLDNN();
+  void EnableMKLDNN(int mkldnn_input_shape_cache_capacity = 0);
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
@@ -316,8 +318,11 @@ struct AnalysisConfig {
   std::vector<std::string> anakin_passes_filter_;
   std::vector<std::string> anakin_ops_filter_;
 
+  // mkldnn related.
+  int mkldnn_input_shape_cache_capacity_{0};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.
   // Variables held by config can take up a lot of memory in some cases.
