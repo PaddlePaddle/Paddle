@@ -150,13 +150,17 @@ class LightNASStrategy(Strategy):
             for _ in range(self._max_try_times):
                 startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
                     self._current_tokens)
-                _logger.info("try [{}]".format(self._current_tokens))
                 context.eval_graph.program = test_p
                 flops = context.eval_graph.flops()
-                if flops > self._max_flops or (
-                        self._max_latency > 0 and
-                        context.search_space.get_model_latency(test_p) >
-                        self._max_latency):
+                if self._max_latency > 0:
+                    latency = context.search_space.get_model_latency(test_p)
+                    _logger.info("try [{}] with latency {} flops {}".format(
+                        self._current_tokens, latency, flops))
+                else:
+                    _logger.info("try [{}] with flops {}".format(
+                        self._current_tokens, flops))
+                if flops > self._max_flops or (self._max_latency > 0 and
+                                               latency > self._max_latency):
                     self._current_tokens = self._search_agent.next_tokens()
                 else:
                     break
@@ -182,7 +186,17 @@ class LightNASStrategy(Strategy):
             flops = context.eval_graph.flops()
             if flops > self._max_flops:
                 self._current_reward = 0.0
-            _logger.info("reward: {}; flops: {}; tokens: {}".format(
-                self._current_reward, flops, self._current_tokens))
+            if self._max_latency > 0:
+                test_p = context.search_space.create_net(self._current_tokens)[
+                    2]
+                latency = context.search_space.get_model_latency(test_p)
+                if latency > self._max_latency:
+                    self._current_reward = 0.0
+                _logger.info("reward: {}; latency: {}; flops: {}; tokens: {}".
+                             format(self._current_reward, latency, flops,
+                                    self._current_tokens))
+            else:
+                _logger.info("reward: {}; flops: {}; tokens: {}".format(
+                    self._current_reward, flops, self._current_tokens))
             self._current_tokens = self._search_agent.update(
                 self._current_tokens, self._current_reward)
