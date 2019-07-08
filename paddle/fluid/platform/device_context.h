@@ -396,7 +396,7 @@ constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
 void set_cur_mkldnn_session_id(size_t);
 size_t get_cur_mkldnn_session_id(void);
 void set_cur_input_shape_str(std::string input_shape_str);
-std::string get_cur_input_shape_str(void);
+void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
@@ -407,6 +407,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Remove all entries from the blob map
   void ResetBlobMap() const;
+
+  // Get the ShapeBlob size in cur_mkldnn_session_id.
+  size_t GetShapeBlobSize() const;
 
   // Set data to blob (i.e. name/data pair). Create blob if not existing
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
