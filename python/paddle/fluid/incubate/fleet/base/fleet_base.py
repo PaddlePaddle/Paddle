@@ -190,7 +190,6 @@ class Fleet(object):
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
-
         self._is_initialized = True
 
     @abc.abstractmethod

@@ -489,6 +489,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
             # network configuration code
             # loss from ...
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
@@ -551,7 +552,9 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
     op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-
+    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
+                                      block_no_grad_set)
+    block_no_grad_set.update(no_grad_vars)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
 
     input_grad_names_set = None
@@ -627,6 +630,26 @@ def _as_list(x):
     if x is None:
         return []
     return list(x) if isinstance(x, collections.Sequence) else [x]
+
+
+def _find_no_grad_vars(block, op_path, targets, no_grad_set):
+    """
+    Find the vars which is not used in the program, and
+    those var belong to no_grad_var.
+    """
+    output_names = set([out.name for out in targets])
+    no_grad_var = []
+    for i, op in reversed(list(enumerate(op_path))):
+        # If the op has sub_block, it is too complicated to find the correct no_grad_var.
+        if not op.has_attr("sub_block"):
+            for out_var in op.desc.output_arg_names():
+                if out_var not in output_names and out_var not in op.desc.input_arg_names(
+                ) and not block.vars[out_var].stop_gradient:
+                    no_grad_var.append(out_var)
+        for name in op.desc.input_arg_names():
+            if name not in no_grad_set:
+                output_names.add(name)
+    return set(no_grad_var)
 
 
 def _find_op_path_(block, outputs, inputs, no_grad_set):
