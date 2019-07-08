@@ -66,7 +66,7 @@ void PaddleInferenceAnakinPredictor<T, P, R>::InitGraph() {
   for (auto &input_str : inputs) {
     if (this->config_.init_inputs_shape.find(input_str) ==
         this->config_.init_inputs_shape.end()) {
-      LOG(FATAL) << input_str << " is not implemented.";
+      LOG(FATAL) << input_str << " should be set in init_inputs_shape.";
     }
     std::vector<int> shape =
         this->config_.init_inputs_shape.find(input_str)->second;
@@ -400,7 +400,8 @@ CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
             config));
   }
 #endif
-  LOG(FATAL) << "Anakin Predictor create on unknown platform.";
+  LOG(FATAL) << "Anakin Predictor create on unknown platform: "
+             << config.target_type;
   return nullptr;
 }
 template <typename T, Precision P, OpRunType R>
