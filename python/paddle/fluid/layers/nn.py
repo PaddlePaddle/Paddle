@@ -205,7 +205,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
-    'instag',
+    'filter_instag',
 ]
 
 kIgnoreIndex = -100
@@ -9335,52 +9335,60 @@ def stack(x, axis=0):
     return out
 
 
-@templatedoc(op_type="instag")
-def instag(x1, x2, x3):
+@templatedoc(op_type="filter_instag")
+def filter_instag(x1, x2, x3):
     """
-	**Instag Layer**
+    **Filter Instag Layer**
 
-    This layer split the inputs by tag.
-    
-    Every Ins has its tags, and every local FC has its tag, and then this op 
-    will select the ins who has same tags with local FC.
+    This layer filter the inputs by tag.Every Ins has its tags, and every local
+     FC has its tag, and then this op will select the ins who has same tags with local FC.
 
-    For example, one batch has 8 ins. ins 0 has tag 0 1 2, and local FC 0 has 
-    tag 0, local FC 1 has tag 1. Then ins 0 would be selected to local FC 0 
-    and local FC 1.
+    For example, one batch has 8 ins. Every ins has its tag list. 
+        Ins   |   Tag0
+         0    |   0, 1
+         1    |   1, 3
+         2    |   0, 3
+         3    |   2, 6
+
+    And the local FC has tags [1, 2]
+
+    Then we can pick Ins has tag 1 or 2, and group them as the final output.
+
+    The output should be Ins 0, 1 and 3.
 
     Beacuse ins tag list and fc tag list are varying length. So the dim is the 
     longest list, for shorter list, we should fill -1. And OpKernel and 
     OpKernel Grad will ignore these -1.
 
     Args:
-        x1 (Variable): Input Variable (Tensor), usually it is global FC 2D output
-        x2 (Variable): Input Variable (Tensor), usually it is ins tag list
-        x3 (Variable): Input Variable (Tensor), usually it is fc tag list
+        x1 (Variable): Input Variable (LoDTensor), usually it is global FC 2D output
+        x2 (Variable): Input Variable (LoDTensor), usually it is ins tag list
+        x3 (Variable): Input Variable (1D Tensor/List), usually it is fc tag list
 
     Returns:
-        Variable: the split output (Tensor) usually it is 3D Tensor output.
+        Variable: the output (LoDTensor) 
 
     Examples:
         .. code-block:: python
 
         import paddle.fluid.layers as layers
-        x1 = layers.data(name='x1', shape=[32,32], dtype='float64')
-        x2 = layers.data(name='x2', shape=[32,16], dtype='int64')
-        x3 = layers.data(name='x3', shape=[32,16], dtype='int64')
-        out = layers.instag(x1, x2, x3)
-		
-	"""
-    helper = LayerHelper('instag', **locals())
+        x1 = layers.data(name='x1', shape=[-1,32], lod_level=0, dtype='float64')
+        x2 = layers.data(name='x2', shape=[-1,16], lod_level=0, dtype='int64')
+        x3 = layers.data(name='x3', shape=[-1,16], dtype='int64')
+        out, map = layers.filter_instag(x1, x2, x3)
+        		
+    """
+    helper = LayerHelper('filter_instag', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x1.dtype)
-
+    mmap = helper.create_variable_for_type_inference(dtype=x2.dtype)
     helper.append_op(
-        type='instag',
+        type='filter_instag',
         inputs={'X1': x1,
                 'X2': x2,
                 'X3': x3},
-        outputs={'Out': out})
+        outputs={'Out': out,
+                 'Map': mmap})
     return out
 
 
