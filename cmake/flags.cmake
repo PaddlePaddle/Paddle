@@ -119,14 +119,17 @@ endif(BARRIER_FOUND)
 SET(CMAKE_EXTRA_INCLUDE_FILES "")
 
 # Only one sanitizer is allowed in compile time
-if(SANITIZE_ADDRESS)
+string(TOLOWER "${SANITIZER_TYPE}" sanitizer_type)
+if(sanitizer_type STREQUAL "address")
     set(fsanitize "-fsanitize=address")
-elseif(SANITIZE_LEAK)
+elseif(sanitizer_type STREQUAL "leak")
     set(fsanitize "-fsanitize=leak")
-elseif(SANITIZE_MEMORY)
+elseif(sanitizer_type STREQUAL "memory")
     set(fsanitize "-fsanitize=memory")
-elseif(SANITIZE_THREAD)
+elseif(sanitizer_type STREQUAL "thread")
     set(fsanitize "-fsanitize=thread")
+elseif(sanitizer_type STREQUAL "undefined")
+    set(fsanitize "-fsanitize=undefined")
 endif()
 
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
