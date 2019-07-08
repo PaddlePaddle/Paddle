@@ -30,12 +30,18 @@ cmake .. \
 make publish_inference_lite -j 4
 ```
 
-Make完成后查看要存在`build.lite.android.arm8.gcc/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so`
-这个文件。该文件为PaddleLite c++ 动态链接库。接下来Android Java 代码会load 这个库来跑c++ 代码
+Make完成后查看要存在
+```
+build.lite.android.arm8.gcc/paddle/fluid/lite/api/android/jni/native/libpaddle_lite_jni.so
+build.lite.android.arm8.gcc/paddle/fluid/lite/api/android/jni/PaddlePredictor.jar
+```
+这两个文件。他们分别为 PaddleLite c++ 动态链接库和 Java jar 包。包含 PaddleLite Java API，接下来 Android Java 代
+码会使用这些api 
 
-### 把.so动态库拷贝进安卓demo程序：
+### 把 .so 动态库和 .jar 拷贝进安卓demo程序：
 把本文件夹下 demo/PaddlePredictor 载入到AndroidStudio。把上一步提到的`libpaddle_lite_jni.so`
 拷贝进 `PaddlePredictor/app/src/main/jinLibs/所有架构文件夹下` 比如文件夹arm8里要包含该 .so文件：
+把上一步提到的 `PaddlePredictor.jar` 拷贝进 `PaddlePredictor/app/libs` 下
 
 ### 把demo使用到的模型文件拷贝进安卓程序：
 下载我们的5个模型文件，并复制到 `PaddlePredictor/app/src/main/assets` 这个文件夹中

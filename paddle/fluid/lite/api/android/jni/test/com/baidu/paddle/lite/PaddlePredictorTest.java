@@ -21,23 +21,28 @@ class PaddlePredictorTest {
 
     @Test
     public void run_defaultModel() {
-        PaddlePredictor.loadMobileModel("");
+        MobileConfig config = new MobileConfig();
+        config.setModelDir("");
+        PaddlePredictor predictor = PaddlePredictor.createPaddlePredictor(config);
 
         float[] inputBuffer = new float[10000];
         for (int i = 0; i < 10000; ++i) {
             inputBuffer[i] = i;
         }
-        int[] dims = { 100, 100 };
+        long[] dims = { 100, 100 };
 
-        PaddlePredictor.setInput(0, dims, inputBuffer);
-        PaddlePredictor.run();
-        float[] output = PaddlePredictor.getFloatOutput(0);
+        Tensor input = predictor.getInput(0);
+        input.resize(dims);
+        input.setData(inputBuffer);
 
-        assertEquals(output.length, 50000);
-        assertEquals(output[0], 50.2132f, 1e-3f);
-        assertEquals(output[1], -28.8729f, 1e-3f);
+        predictor.run();
+        
+        Tensor output = predictor.getOutput(0);
+        float[] outputBuffer = output.getFloatData();
 
-        PaddlePredictor.clear();
+        assertEquals(outputBuffer.length, 50000);
+        assertEquals(outputBuffer[0], 50.2132f, 1e-3f);
+        assertEquals(outputBuffer[1], -28.8729f, 1e-3f);
     }
 
 }
