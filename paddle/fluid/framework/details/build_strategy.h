@@ -72,7 +72,7 @@ struct BuildStrategy {
   // Add dependency between backward ops and optimization ops, make sure that
   // all the backward ops are finished before running the optimization ops.
   // It might make the training speed of data parallelism faster.
-  bool enable_backward_optimizer_op_deps_{True};
+  bool enable_backward_optimizer_op_deps_{true};
   // TODO(dev-paddle): enable_sequential_execution depends on
   // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
   // will be removed in the near future.
