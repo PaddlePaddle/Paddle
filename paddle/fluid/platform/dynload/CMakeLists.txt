@@ -2,9 +2,11 @@ cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
 list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc)
 
+list(APPEND DYNAMIC_LOADER dynamic_loader)
 # There is no macOS version of NCCL.
 if (NOT APPLE AND NOT WIN32)
   list(APPEND CUDA_SRCS nccl.cc)
+  list(APPEND DYNAMIC_LOADER nccl)
 endif()
 
 if (TENSORRT_FOUND)
@@ -15,7 +17,7 @@ configure_file(cupti_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/cupti_lib_path.h)
 if (CUPTI_FOUND)
     list(APPEND CUDA_SRCS cupti.cc)
 endif(CUPTI_FOUND)
-nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
+nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS ${DYNAMIC_LOADER})
 configure_file(warpctc_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/warpctc_lib_path.h)
 cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 if (WITH_MKLML)

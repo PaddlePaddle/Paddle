@@ -151,6 +151,7 @@ if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
 include(cupti)
 include(external/gzstream)
+include(external/nccl)      # download, build, install nccl
 endif (NOT WIN32)
 
 if(WITH_PSLIB)
