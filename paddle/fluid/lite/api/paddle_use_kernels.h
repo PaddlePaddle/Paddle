@@ -61,6 +61,7 @@ USE_LITE_KERNEL(concat, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(conv2d, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(depthwise_conv2d, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(pool2d, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(batch_norm, kX86, kFloat, kNCHW, def);
 #endif
 
 #ifdef LITE_WITH_CUDA

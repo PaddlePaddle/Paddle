@@ -56,11 +56,12 @@ class BatchNormCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
     // alloc memory
     param.y->template mutable_data<T>();
-    param.mean_out->template mutable_data<T>();
-    param.variance_out->template mutable_data<T>();
-    param.saved_mean->template mutable_data<T>();
-    param.saved_variance->template mutable_data<T>();
-
+    if (!param.is_test) {
+      param.mean_out->template mutable_data<T>();
+      param.variance_out->template mutable_data<T>();
+      param.saved_mean->template mutable_data<T>();
+      param.saved_variance->template mutable_data<T>();
+    }
     if (!global_stats) {
       // saved_xx is use just in this batch of data
       EigenVectorArrayMap<T> saved_mean_e(param.saved_mean->mutable_data<T>(),
