@@ -16,115 +16,79 @@ package com.baidu.paddle.lite;
 /** Java Native Interface (JNI) class for Paddle Lite APIs */
 public class PaddlePredictor {
 
-    /** name of C++ JNI lib */
-    private final static String JNI_LIB_NAME = "paddle_lite_jni";
+    /** 
+     * Java doesn't have pointer. To maintain the life cycle of under going
+     * C++ PaddlePredictor object, we use a long value to maintain it.
+     */
+    private long cppPaddlePredictorPointer;
 
-    /* load the C++ JNI lib */
-    static {
-        System.loadLibrary(JNI_LIB_NAME);
+    private PaddlePredictor(ConfigBase config) {
+        init(config);
     }
 
-    /**
-     * Loads mobile cxx model, which is the model before optimizing passes. The cxx
-     * model allow users to manage hardware place resources. Caller uses a place at
-     * Java to control Target, DataLayout, Precision, and Device ID. More details
-     * about the four fields see our Paddle-Mobile document.
-     * 
-     * 
-     * @param modelPath      modelPath model file path
-     * @param preferredPlace preferred place to run Cxx Model
-     * @param validPlaces    valid places to run Cxx Model
-     * @return true if load successfully
-     */
-    public static native boolean loadCxxModel(String modelPath, Place preferredPlace, Place[] validPlaces);
+    public static PaddlePredictor createPaddlePredictor(ConfigBase config) {
+        PaddlePredictor predictor = new PaddlePredictor(config);
+        return predictor.cppPaddlePredictorPointer == 0L ? null : predictor;
+    }
 
-    /**
-     * Loads mobile lite model, which is the model after optimizing passes.
-     *
-     * @param modelPath model file path
-     * @return true if load successfully
-     */
-    public static native boolean loadMobileModel(String modelPath);
+    public Tensor getInput(int offset) {
+        long cppTensorPointer = getInputCppTensorPointer(offset);
+        return cppTensorPointer == 0 ? null : new Tensor(cppTensorPointer, /* readOnly = */ false, this);
+    }
 
-    /**
-     * Saves optimized model, which is the model can be used by
-     * {@link loadMobileModel}
-     * 
-     * @param modelPath model file path
-     * @return true if save successfully
-     */
-    public static native boolean saveOptimizedModel(String modelPath);
+    public Tensor getOutput(int offset) {
+        long cppTensorPointer = getOutputCppTensorPointer(offset);
+        return cppTensorPointer == 0 ? null : new Tensor(cppTensorPointer, /* readOnly = */ true, this);
+    }
 
-    /**
-     * Clears the current loaded model.
-     * 
-     * @return true if a loaded model has been cleared.
-     */
-    public static native boolean clear();
+    public Tensor getTensor(String name) {
+        long cppTensorPointer = getCppTensorPointerByName(name);
+        return cppTensorPointer == 0 ? null : new Tensor(cppTensorPointer, /* readOnly = */ true, this); 
+    }
 
-    /**
-     * Set input data on offset-th column of feed data
-     *
-     * @param offset the offset-th column of feed data will be set
-     * @param buf    the input data
-     * @param dims   dimension format of the input image
-     * @return true if set successfully
-     */
-    public static native boolean setInput(int offset, int[] dims, float[] buf);
+    public native boolean run();
 
-    /**
-     * Set input data on offset-th column of feed data
-     *
-     * @param offset the offset-th column of feed data will be set
-     * @param buf    the input data
-     * @param dims   dimension format of the input image
-     * @return true if set successfully
-     */
-    public static native boolean setInput(int offset, int[] dims, byte[] buf);
+    public native boolean saveOptimizedModel(String modelDir);
 
-    /**
-     * Run the predict model
-     * 
-     * @return true if run successfully
-     */
-    public static native boolean run();
+    @Override
+    protected void finalize() throws Throwable {
+        clear();
+        super.finalize();
+    }
+    
+    protected boolean init(ConfigBase config) {
+        if (config instanceof CxxConfig) {
+            cppPaddlePredictorPointer = newCppPaddlePredictor((CxxConfig)config);
+        } else if (config instanceof MobileConfig) {
+            cppPaddlePredictorPointer = newCppPaddlePredictor((MobileConfig)config);
+        } else {
+            throw new IllegalArgumentException("Not supported PaddleLite Config type");
+        }
+        return cppPaddlePredictorPointer != 0L;
+    }
 
-    /**
-     * Get offset-th column of output data as float
-     *
-     * @param offset the offset-th column of output data will be returned
-     * @return model predict output
-     */
-    public static native float[] getFloatOutput(int offset);
+    protected boolean clear() {
+        boolean result = false;
+        if (cppPaddlePredictorPointer != 0L) {
+            result = deleteCppPaddlePredictor(cppPaddlePredictorPointer);
+            cppPaddlePredictorPointer = 0L;
+        }
+        return result;
+    }
 
-    /**
-     * Get offset-th column of output data as byte (int8 in C++ side)
-     *
-     * @param offset the offset-th column of output data will be returned
-     * @return model predict output
-     */
-    public static native byte[] getByteOutput(int offset);
+    private native long getInputCppTensorPointer(int offset);
 
-    /**
-     * Fetches a Tensor's value as Float data
-     * 
-     * @param name Tensor's name
-     * @return values of the Tensor
-     */
-    public static native float[] fetchFloat(String name);
+    private native long getOutputCppTensorPointer(int offset);
+    
+    private native long getCppTensorPointerByName(String name);
 
-    /**
-     * Fetches a Tensor's value as byte data (int8 at C++ side)
-     * 
-     * @param name Tensor's name
-     * @return values of the Tensor
-     */
-    public static native byte[] fetchByte(String name);
+    private native long newCppPaddlePredictor(CxxConfig config);
 
-    /**
-     * Main function for test
-     */
-    public static void main(String[] args) {
-        System.out.println("Load native library successfully");
+    private native long newCppPaddlePredictor(MobileConfig config);
+
+    private native boolean deleteCppPaddlePredictor(long nativePointer);
+
+    static {
+        PaddleLiteInitializer.init();
     }
 }

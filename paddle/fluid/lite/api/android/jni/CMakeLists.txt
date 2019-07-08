@@ -15,36 +15,38 @@ find_package(JNI REQUIRED)
 
 # Generate PaddlePredictor.jar
 include_directories(${JNI_INCLUDE_DIRS})
-add_jar(PaddlePredictor 
+add_jar(PaddlePredictor
+    src/com/baidu/paddle/lite/ConfigBase.java
+    src/com/baidu/paddle/lite/CxxConfig.java
+    src/com/baidu/paddle/lite/MobileConfig.java
+    src/com/baidu/paddle/lite/PaddleLiteInitializer.java
     src/com/baidu/paddle/lite/PaddlePredictor.java
-    src/com/baidu/paddle/lite/Place.java)
+    src/com/baidu/paddle/lite/Place.java
+    src/com/baidu/paddle/lite/PrecisionType.java
+    src/com/baidu/paddle/lite/Tensor.java)
 get_target_property(_jarFile PaddlePredictor JAR_FILE)
 get_target_property(_classDir PaddlePredictor CLASSDIR)
 set(_stubDir "${CMAKE_CURRENT_BINARY_DIR}")
 
-# Generate paddle_lite_jni.h
+# Generate native headers
 add_custom_target(
     paddle_lite_jni_header ALL
     COMMAND ${Java_JAVAH_EXECUTABLE} -verbose
         -classpath ${_classDir}
-        -o paddle_lite_jni.h
+        -o "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/native/paddle_lite_jni.h"
         -jni
         com.baidu.paddle.lite.PaddlePredictor
+    COMMAND ${Java_JAVAH_EXECUTABLE} -verbose
+        -classpath ${_classDir}
+        -o "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/native/tensor_jni.h"
+        -jni
+        com.baidu.paddle.lite.Tensor
+    COMMAND ${Java_JAVAH_EXECUTABLE} -verbose
+        -classpath ${_classDir}
+        -o "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/native/paddle_init_jni.h"
+        -jni
+        com.baidu.paddle.lite.PaddleLiteInitializer
     DEPENDS PaddlePredictor
 )
 
-# Generate paddle_lite_jni.so
-include_directories(${JNI_INCLUDE_DIRS} ${_classDir} ${_stubDir})
-lite_cc_library(paddle_lite_jni MODULE SRCS paddle_lite_jni.cc 
-    DEPS light_api_lite cxx_api_lite
-        paddle_api_full paddle_api_lite paddle_api_light
-    ARM_DEPS ${arm_kernels})
-if (APPLE)
-    # MacOS only accepts JNI lib ends with .jnilib or .dylib
-    set_target_properties(paddle_lite_jni PROPERTIES SUFFIX ".jnilib")
-elseif (WIN32)
-    # Windows only accepts JNI lib ends with .dll
-    set_target_properties(paddle_lite_jni PROPERTIES SUFFIX ".dll")
-endif (APPLE)
-target_link_libraries(paddle_lite_jni light_api_lite cxx_api_lite
-    paddle_api_full paddle_api_lite paddle_api_light ${arm_kernels})
+add_subdirectory(native)

@@ -272,7 +272,7 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
     # add java lib
         add_custom_target(publish_inference_java_lib ${TARGET}
             COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/java/so"
-            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/libpaddle_lite_jni.so" "${INFER_LITE_PUBLISH_ROOT}/java/so"
+            COMMAND cp "${CMAKE_BINARY_DIR}/paddle/fluid/lite/api/android/jni/native/libpaddle_lite_jni.so" "${INFER_LITE_PUBLISH_ROOT}/java/so"
             COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/api/android/jni/src" "${INFER_LITE_PUBLISH_ROOT}/java"
         )
         add_dependencies(publish_inference_java_lib paddle_lite_jni)
@@ -303,6 +303,7 @@ if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND LITE_WITH_ARM)
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java"
                     COMMAND cp -r "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/android" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
                     COMMAND cp "${CMAKE_SOURCE_DIR}/paddle/fluid/lite/demo/java/README.md" "${INFER_LITE_PUBLISH_ROOT}/demo/java"
+                    COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/libs"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm7"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm8"
                     COMMAND mkdir -p "${INFER_LITE_PUBLISH_ROOT}/demo/java/android/PaddlePredictor/app/src/main/jniLibs/arm64-v8a"
