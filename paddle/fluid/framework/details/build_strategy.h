@@ -72,7 +72,7 @@ struct BuildStrategy {
   // Add dependency between backward ops and optimization ops, make sure that
   // all the backward ops are finished before running the optimization ops.
   // It might make the training speed of data parallelism faster.
-  bool enable_backward_optimizer_op_deps_{false};
+  bool enable_backward_optimizer_op_deps_{True};
   // TODO(dev-paddle): enable_sequential_execution depends on
   // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
   // will be removed in the near future.
@@ -90,8 +90,6 @@ struct BuildStrategy {
   // should not be sparse types
   bool fuse_all_optimizer_ops_{false};
   bool fuse_all_reduce_ops_{false};
-  bool enable_backward_optimizer_op_deps_{true};
-
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
   bool fuse_relu_depthwise_conv_{false};
