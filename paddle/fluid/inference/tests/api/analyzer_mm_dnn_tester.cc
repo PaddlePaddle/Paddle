@@ -172,5 +172,61 @@ TEST(Analyzer_MM_DNN, compare_determine) {
                        input_slots_all);
 }
 
+#ifdef PADDLE_WITH_MKLDNN
+void TestMkldnnCacheClear(int mkldnn_input_shape_cache_capacity) {
+  AnalysisConfig config;
+  SetConfig(&config);
+  config.EnableMKLDNN();
+  // TODO(luotao): explicit following settings will be deprecated after enhance
+  // config.EnableMKLDNN() interface.
+  if (mkldnn_input_shape_cache_capacity > 0) {
+    platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_CacheClearing);
+    platform::set_cur_input_shape_cache_capacity(
+        mkldnn_input_shape_cache_capacity);
+  }
+
+  std::vector<PaddleTensor> input, output;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+  int sample_num = 10;
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+
+  auto &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext *>(
+      pool.Get(platform::CPUPlace()));
+  for (int i = 0; i < sample_num; i++) {
+    PrepareInputs(&input, &data, FLAGS_batch_size);
+    if (mkldnn_input_shape_cache_capacity > 0) {
+      std::stringstream ss;
+      for (size_t i = 0; i < input.size(); i++) {
+        for (size_t j = 0; j < input[i].shape.size(); ++j) {
+          ss << input[i].shape[j] << "-";
+        }
+      }
+      // TODO(luotao): explicit following settings will be deprecated after
+      // enhance config.EnableMKLDNN() interface.
+      platform::set_cur_input_shape_str(ss.str());
+    }
+    predictor->Run(input, &output, 1);
+  }
+  if (mkldnn_input_shape_cache_capacity > 0) {
+    PADDLE_ENFORCE_EQ(dev_ctx->GetShapeBlobSize(),
+                      mkldnn_input_shape_cache_capacity);
+  } else {
+    PADDLE_ENFORCE_EQ(dev_ctx->GetShapeBlobSize(), 1UL);
+  }
+  dev_ctx->ResetBlobMap();
+}
+
+TEST(Analyzer_MM_DNN, mkldnn_cache_clear) {
+  // 0 means do not use cache clear strategy.
+  TestMkldnnCacheClear(0);
+  // 4 means use cache clear strategy, and the
+  // mkldnn_input_shape_cache_capacity is 4.
+  TestMkldnnCacheClear(4);
+}
+#endif
+
 }  // namespace inference
 }  // namespace paddle

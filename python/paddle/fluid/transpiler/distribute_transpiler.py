@@ -47,6 +47,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
+from . import collective
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -157,7 +158,7 @@ class DistributeTranspilerConfig(object):
     split_method = None
     min_block_size = 8192
     enable_dc_asgd = False
-    # supported modes: pserver, nccl2
+    # supported modes: pserver, nccl2, collective
     mode = "pserver"
     print_log = False
     wait_port = True
@@ -173,6 +174,10 @@ class DistributeTranspilerConfig(object):
     hierarchical_allreduce_inter_nranks = 0
     #Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to nodes number.
     hierarchical_allreduce_exter_nranks = 0
+
+    # if mode is collective
+    # supported modes: sgd, local_sgd
+    collective_mode = None
 
 
 class DistributeTranspiler(object):
@@ -305,6 +310,46 @@ class DistributeTranspiler(object):
         else:
             raise ValueError("must set trainer_id > 0")
 
+    def _transpile_collective(self,
+                              collective_mode,
+                              trainer_id,
+                              trainers,
+                              current_endpoint,
+                              startup_program=None,
+                              main_program=None,
+                              wait_port=True):
+        if isinstance(trainers, str):
+            endpoints = trainers.split(",")
+        elif isinstance(trainers, list):
+            endpoints = trainers
+        else:
+            raise ValueError('invalid trainers config: ' + str(trainers))
+
+        if len(endpoints) == 1:
+            raise ValueError('invalid trainer number in distributed: 1')
+
+        if startup_program is None:
+            startup_program = default_startup_program()
+
+        if main_program is None:
+            main_program = default_main_program()
+
+        transpiler = None
+        if collective_mode == 'grad_allreduce':
+            transpiler = collective.GradAllReduce()
+        elif collective_mode == 'local_sgd':
+            transpiler = collective.LocalSGD()
+        else:
+            raise ValueError('invalid collective_mode: %s' % collective_mode)
+
+        transpiler.transpile(
+            startup_program=startup_program,
+            main_program=main_program,
+            rank=trainer_id,
+            endpoints=endpoints,
+            current_endpoint=current_endpoint,
+            wait_port=wait_port)
+
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
         sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
@@ -392,6 +437,17 @@ class DistributeTranspiler(object):
                 trainers,
                 current_endpoint,
                 startup_program=startup_program,
+                wait_port=self.config.wait_port)
+            return
+
+        if self.config.mode == "collective":
+            self._transpile_collective(
+                collective_mode=self.config.collective_mode,
+                trainer_id=trainer_id,
+                trainers=trainers,
+                current_endpoint=current_endpoint,
+                startup_program=startup_program,
+                main_program=program,
                 wait_port=self.config.wait_port)
             return
 

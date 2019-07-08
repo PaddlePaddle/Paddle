@@ -231,14 +231,14 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
         "entities.");
     AddAttr<std::string>(
         "match_type",
-        "(string, defalut: per_prediction) "
+        "(string, default: per_prediction) "
         "The type of matching method, should be 'bipartite' or "
-        "'per_prediction', 'bipartite' by defalut.")
+        "'per_prediction', 'bipartite' by default.")
         .SetDefault("bipartite")
         .InEnum({"bipartite", "per_prediction"});
     AddAttr<float>(
         "dist_threshold",
-        "(float, defalut: 0.5) "
+        "(float, default: 0.5) "
         "If `match_type` is 'per_prediction', this threshold is to determine "
         "the extra matching bboxes based on the maximum distance.")
         .SetDefault(0.5);
