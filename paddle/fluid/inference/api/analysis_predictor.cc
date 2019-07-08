@@ -194,7 +194,7 @@ void AnalysisPredictor::MkldnnPreRun(const std::vector<PaddleTensor> &inputs) {
   if (paddle::platform::get_cur_mkldnn_session_id() == 0 &&
       config_.mkldnn_input_shape_cache_size_ > 1) {
     paddle::platform::set_cur_mkldnn_session_id(-1);
-    paddle::platform::set_cur_input_shape_cache_size(
+    paddle::platform::set_cur_input_shape_cache_capacity(
         config_.mkldnn_input_shape_cache_size_);
   }
   // Set current_input_shape for caching dynamic shape.
