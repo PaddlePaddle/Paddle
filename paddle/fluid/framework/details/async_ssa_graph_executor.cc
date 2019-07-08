@@ -33,7 +33,6 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
       if (var != nullptr) {
         VLOG(2) << info.name_
                 << " has been initialized beforehand in global scope, skipped";
-        InitializeVariable(var, info.type_);
         continue;
       }
       InitializeVariable(scope->Var(info.name_), info.type_);
