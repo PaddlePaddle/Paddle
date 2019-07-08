@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,41 +24,40 @@ import gradient_checker
 from decorator_helper import prog_scope
 
 
-class TestInstagOp(OpTest):
+class TestFilterInstagOp(OpTest):
     def setUp(self):
-        self.op_type = 'instag'
+        self.op_type = 'filter_instag'
         batch_size = 4
         x1_embed_size = 4
         fc_cnt = 2
 
         x1 = np.array([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1],
                        [1, 1, 1, 1]]).astype('double')
-        x1_lod = [[1,1,1,1]]
+        x1_lod = [[1, 1, 1, 1]]
 
-        x2 = np.array([[1],[1],[2],[2]]).astype('int64')
-        x2_lod = [[1,1,1,1]]
+        x2 = np.array([[2], [1], [2], [1]]).astype('int64')
+        x2_lod = [[1, 1, 1, 1]]
 
         x3 = np.array([1]).astype('int64')
 
-        out = np.array(
-            [[1, 1, 1, 1], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]]
-        ).astype('double')
-        out_lod = x1_lod
+        out = np.array([[1, 1, 1, 1], [1, 1, 1, 1]]).astype('double')
+        out_lod = [[1, 1]]
 
+        mmap = np.array([[0, 1], [1, 3]]).astype('int64')
+        mmap_lod = [[1, 1]]
         self.inputs = {
             'X1': (x1, x1_lod),
             'X2': (x2, x2_lod),
             'X3': x3,
         }
 
-        self.outputs = {'Out': (out, out_lod)}
+        self.outputs = {'Out': (out, out_lod), 'Map': (mmap, mmap_lod)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
-
 
 
 if __name__ == '__main__':
