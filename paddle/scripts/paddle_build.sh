@@ -203,9 +203,6 @@ function cmake_base() {
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
-        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
-        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
@@ -238,9 +235,6 @@ EOF
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
-        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag}
@@ -509,7 +503,7 @@ function assert_api_spec_approvals() {
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,xsrobin 50069408,qingqing01 7845005,junjun315 3124479,shanyi15 35982308. 
+          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,xsrobin 50069408,qingqing01 7845005,junjun315 3124479,shanyi15 35982308. 
           approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
           if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 30176695 6836917 7845005`
@@ -536,7 +530,7 @@ function assert_api_spec_approvals() {
             elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
               echo "You must have xsrobin approval for the python/paddle/fluid/__init__.py change! ${API_FILE} for the management reason of the environment variables."
             else
-              echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao) approval for the api change! ${API_FILE} for the management reason of the underlying code for fluid."
+              echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the api change! ${API_FILE} for the management reason of the underlying code for fluid."
             fi
             exit 1
           fi
@@ -549,7 +543,7 @@ function assert_api_spec_approvals() {
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao) approval for the api change! ${API_FILE} for the avoidance of the bad C++ code habits."
+            echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the api change! ${API_FILE} for the avoidance of the bad C++ code habits."
             exit 1
         fi
     fi
@@ -830,7 +824,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
+        NCCL_DEPS="apt-get install -y --allow-change-held-packages libnccl2=2.4.7-1+cuda${CUDA_MAJOR} libnccl-dev=2.4.7-1+cuda${CUDA_MAJOR} || true"
     else
         NCCL_DEPS="true"
     fi
@@ -921,12 +915,6 @@ EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
-    if [[ ${WITH_GPU} == "ON"  ]]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-    RUN rm /usr/lib/x86_64-linux-gnu/libnccl.so
-    RUN ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/lib/x86_64-linux-gnu/libnccl.so
-EOF
-    fi
 }
 
 function gen_fluid_lib() {
