@@ -21,7 +21,7 @@ import functools
 from . import layers
 from . import framework
 from . import core
-from .dygraph import _not_support
+from .dygraph.base import _not_support
 
 __all__ = [
     'ErrorClipByValue',
