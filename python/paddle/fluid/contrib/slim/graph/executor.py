@@ -41,6 +41,7 @@ class SlimGraphExecutor(object):
             results(list): A list of result with the same order indicated by graph.out_nodes.
         """
         assert isinstance(graph, GraphWrapper)
+        feed = None
         if data is not None:
             feeder = DataFeeder(
                 feed_list=graph.in_nodes.values(),

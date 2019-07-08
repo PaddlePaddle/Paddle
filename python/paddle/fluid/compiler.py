@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import multiprocessing
 import os
 import six
@@ -98,6 +97,7 @@ class CompiledProgram(object):
     def __init__(self, program_or_graph):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
+            # don't not create a new program here.
             self._program = None
         elif isinstance(program_or_graph, framework.Program):
             self._graph = core.Graph(program_or_graph.desc)
@@ -106,7 +106,6 @@ class CompiledProgram(object):
             raise ValueError("Wrong program_to_graph type: %s" %
                              type(program_or_graph))
 
-        self._program_desc = self._graph.origin_program_desc()
         self._scope = None
         self._place = None
         self._executor = None
@@ -215,7 +214,8 @@ class CompiledProgram(object):
                 self._build_strategy.enable_inplace = False
             elif not self._build_strategy.memory_optimize or not self._build_strategy.enable_inplace:
                 # remind the user to try our memmory optimize strategy
-                logging.warn("""
+                six.print_(
+                    """
      You can try our memory optimize feature to save your memory usage:
          # create a build_strategy variable to set memory optimize option
          build_strategy = compiler.BuildStrategy()
@@ -236,7 +236,8 @@ class CompiledProgram(object):
          # if you need to fetch conv1, then:
          conv1.persistable = True
 
-                 """)
+                 """,
+                    file=sys.stderr)
 
         return self
 
@@ -274,6 +275,8 @@ class CompiledProgram(object):
                     "share_vars_from is not compiled and run, so there is no "
                     "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
+            # drop the local_exe_scopes of the previous parallel_executor
+            self._share_vars_from._executor.drop_local_exe_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
@@ -299,6 +302,7 @@ class CompiledProgram(object):
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
+        # TODO(gongwb): let user to set them once.
         if self._program and self._build_strategy.num_trainers > 1 and \
                 self._program._trainers_endpoints:
             tps = self._program._trainers_endpoints
@@ -306,6 +310,12 @@ class CompiledProgram(object):
             assert self._build_strategy.num_trainers == len(
                 tps), "num_trainers == len(end_points)"
             self._build_strategy.trainers_endpoints = tps
+
+        if self._program:
+            self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
+            self._build_strategy.use_hierarchical_allreduce_ = self._program._use_hierarchical_allreduce
+            self._build_strategy.hierarchical_allreduce_inter_nranks_ = self._program._hierarchical_allreduce_inter_nranks
+            self._build_strategy.hierarchical_allreduce_exter_nranks_ = self._program._hierarchical_allreduce_exter_nranks
 
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True

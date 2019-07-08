@@ -32,17 +32,17 @@ namespace reader {
 
 static inline void string_split(const std::string& s, const char delimiter,
                                 std::vector<std::string>* output) {
-  size_t start = 0;
-  size_t end = s.find_first_of(delimiter);
+  if (s.empty()) return;
 
-  while (end <= std::string::npos) {
-    output->emplace_back(s.substr(start, end - start));
-    if (end == std::string::npos) {
-      break;
-    }
+  size_t start = 0;
+  size_t end = s.find(delimiter);
+  while (end != std::string::npos) {
+    if (end > start) output->emplace_back(s.substr(start, end - start));
     start = end + 1;
-    end = s.find_first_of(delimiter, start);
+    end = s.find(delimiter, start);
   }
+  auto term = s.substr(start);
+  if (!term.empty()) output->emplace_back(term);
 }
 
 static inline void parse_line(
@@ -52,9 +52,9 @@ static inline void parse_line(
     std::unordered_map<std::string, std::vector<int64_t>>* slot_to_data) {
   std::vector<std::string> ret;
   string_split(line, ' ', &ret);
-  *label = std::stoi(ret[2]) > 0;
+  *label = std::stoi(ret[0]) > 0;
 
-  for (size_t i = 3; i < ret.size(); ++i) {
+  for (size_t i = 1; i < ret.size(); ++i) {
     const std::string& item = ret[i];
     std::vector<std::string> feasign_and_slot;
     string_split(item, ':', &feasign_and_slot);

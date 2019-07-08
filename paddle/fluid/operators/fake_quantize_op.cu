@@ -130,6 +130,23 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
 }
 
 template <typename T>
+__global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
+                                          const int bin_cnt, const int n,
+                                          T* out) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int tid = threadIdx.x;
+
+  T s = scale[0];
+  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
+    T x = in[i];
+    T v = x > s ? s : x;
+    v = v < -s ? -s : v;
+    v = bin_cnt / s * v;
+    out[i] = round(v) * s / bin_cnt;
+  }
+}
+
+template <typename T>
 struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
@@ -148,6 +165,27 @@ struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
 };
 
 template struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, float>;
+
+template <typename T>
+struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const framework::Tensor& in, const framework::Tensor& scale,
+                  const int bin_cnt, framework::Tensor* out) {
+    int num = in.numel();
+    int block = 1024;
+    int grid = (block - 1 + num) / block;
+
+    const T* in_data = in.data<T>();
+    const T* scale_data = scale.data<T>();
+    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+
+    ClipAndQuantDequantKernel<T><<<grid, block, 0, ctx.stream()>>>(
+        in_data, scale_data, bin_cnt, num, out_data);
+  }
+};
+
+template struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext,
+                                               float>;
 
 template <typename T>
 __global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
@@ -226,8 +264,8 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
 
     framework::Tensor need_find_max, out_size;
-    int* find_max = need_find_max.mutable_data<int>(gpu_place);
-    int* out_size_data = out_size.mutable_data<int>(gpu_place);
+    int* find_max = need_find_max.mutable_data<int>({1}, gpu_place);
+    int* out_size_data = out_size.mutable_data<int>({1}, gpu_place);
 
     FindRangeAbsMaxAndFillArray<T><<<1, 1, 0, ctx.stream()>>>(
         cur_scale.data<T>(), last_scale.data<T>(), iter.data<int64_t>(),
@@ -302,3 +340,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
                         ops::MovingAverageAbsMaxScaleKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(
+    fake_quantize_dequantize_moving_average_abs_max,
+    ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>);

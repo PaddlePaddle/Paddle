@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,33 +33,30 @@ void BuildGatherNode(
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
   auto x = platform::GetInputNode(op, "X", ngb_node_map);
+  PADDLE_ENFORCE_NOT_NULL(x);
   auto index = platform::GetInputNode(op, "Index", ngb_node_map);
-  auto x_shape = x->get_shape();
-  size_t axis_1 = x_shape[0];
-  size_t axis_2 = 1;
-  if (x_shape.size() > 1) {
-    axis_2 = std::accumulate(std::begin(x_shape) + 1, std::end(x_shape), 1,
-                             std::multiplies<size_t>());
-  }
-  std::vector<size_t> x_order(x_shape.size());
-  std::iota(std::begin(x_order), std::end(x_order), 0);
-  auto x_reshape = std::make_shared<ngraph::op::Reshape>(
-      x, ngraph::AxisVector(x_order), ngraph::Shape{axis_1, axis_2});
-  auto x_reshape_shape = x_reshape->get_shape();
-  auto result = std::make_shared<ngraph::op::EmbeddingLookup>(index, x_reshape);
-  auto result_shape = result->get_shape();
-  std::vector<size_t> out_shape(x_shape);
-  out_shape[0] = result_shape[0];
-  std::vector<size_t> axis_vector;
-  for (size_t i = 0; i < result_shape.size(); i++) {
-    axis_vector.push_back(i);
-  }
-  auto out = std::make_shared<ngraph::op::Reshape>(
-      result, ngraph::AxisVector(axis_vector), out_shape);
+  auto out = std::make_shared<ngraph::op::Gather>(x, index);
+
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
+}
+void BuildGatherGradNode(
+    const std::shared_ptr<paddle::framework::OperatorBase>& op,
+    std::shared_ptr<
+        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
+        ngb_node_map) {
+  auto dout = platform::GetInputNode(op, "Out@GRAD", ngb_node_map);
+  PADDLE_ENFORCE_NOT_NULL(dout);
+  auto x = platform::GetInputNode(op, "X", ngb_node_map);
+  auto index = platform::GetInputNode(op, "Index", ngb_node_map);
+
+  std::shared_ptr<ngraph::Node> x0 = paddle::platform::CreateConstant(
+      dout->get_element_type(), x->get_shape(), {0});
+  auto dx = std::make_shared<ngraph::op::ScatterAdd>(x0, index, dout);
+  paddle::platform::SetOutputNode(op, "X@GRAD", dx, ngb_node_map);
 }
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_NG_OP(gather, BuildGatherNode);
+REGISTER_NG_OP(gather_grad, BuildGatherGradNode);

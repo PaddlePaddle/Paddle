@@ -30,10 +30,10 @@ using framework::Tensor;
  * A thin wrapper for gathering on cpu tensor
  * Return a new tensor from source tensor, gathered according to index
  * input[src]: type-T source Tensor
- * input[index]: type-int index Tensor (1-D)
+ * input[index]: type-IndexT index Tensor (1-D)
  * return: output tensor
  */
-template <typename T>
+template <typename T, typename IndexT = int>
 void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
   PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
@@ -45,7 +45,7 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   auto src_dims = src.dims();
 
   const T* p_src = src.data<T>();
-  const int* p_index = index.data<int>();
+  const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
   // slice size
@@ -55,7 +55,7 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int64_t i = 0; i < index_size; ++i) {
-    int index_ = p_index[i];
+    IndexT index_ = p_index[i];
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }

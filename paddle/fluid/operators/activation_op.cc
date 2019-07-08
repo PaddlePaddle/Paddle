@@ -442,7 +442,7 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SoftRelu Activation Operator.
 
-$out = \ln(1 + \exp(\max(\min(x, threshold), threshold))$
+$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
 
 )DOC");
   }
@@ -632,10 +632,36 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
   }
 };
 
+template <ActBwdOpFwdDeps kDepValue>
+class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("Out", "DDOut");
+        ctx->ShareLoD("Out", "DDOut");
+      }
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
+  }
+};
+
 //
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
-//               dy = 0
 //
 class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
  public:
@@ -650,9 +676,7 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
     // input2: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
-    // output1: ddy
-    op->SetOutput("DOut", InputGrad("Out"));
-    // output2: ddy
+    // output: ddy
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }
@@ -675,7 +699,6 @@ class LeakyReluDoubleGradMaker
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
     // Out@GRAD@GRAD: ddy
-    op->SetOutput("DX", InputGrad("X"));
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }
@@ -775,7 +798,7 @@ REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   ops::ReluDoubleGradMaker);
 REGISTER_OPERATOR(
     relu_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::ReluGradFunctor<float>::FwdDeps()>);
+    ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>);
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
@@ -800,7 +823,7 @@ REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
                   ops::LeakyReluDoubleGradMaker);
 REGISTER_OPERATOR(
     leaky_relu_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::LeakyReluGradFunctor<float>::FwdDeps()>);
+    ops::ActivationOpDoubleGrad2<ops::LeakyReluGradFunctor<float>::FwdDeps()>);
 
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);

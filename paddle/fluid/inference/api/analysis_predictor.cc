@@ -185,14 +185,6 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::SetMkldnnThreadID(int tid) {
-#ifdef PADDLE_WITH_MKLDNN
-  platform::set_cur_thread_id(tid);
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-#endif
-}
-
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
@@ -202,6 +194,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -229,8 +222,15 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Here is a bugfix, collect all the container variables, and reset then to a
   // bool; the next time, the operator will call MutableData and construct a new
   // container again, so that the container will be empty for each batch.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
   tensor_array_batch_cleaner_.ResetNoTensorVars();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+
   return true;
 }
 
@@ -385,6 +385,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
   if (config_.anakin_engine_enabled()) {
@@ -435,6 +436,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
+  // The config and argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
+  argument_.PartiallyRelease();
+  config_.PartiallyRelease();
   LOG(INFO) << "== optimize end ==";
 }
 
@@ -442,6 +447,8 @@ template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
+  PADDLE_ENFORCE(config.is_valid(),
+                 "Note: Each config can only be used for one predictor.");
   if (config.use_gpu()) {
     // 1. GPU memory
     PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
@@ -471,6 +478,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
+  // Each config can only be used for one predictor.
+  config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
 
   if (!predictor_p->Init(nullptr)) {
@@ -582,6 +591,11 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+
   return true;
 }
 

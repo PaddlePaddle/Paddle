@@ -33,7 +33,7 @@ class TestOperator(unittest.TestCase):
         except ValueError as v_err:
             self.assertEqual(
                 cpt.get_exception_message(v_err),
-                "`type` to initilized an Operator can not be None.")
+                "`type` to initialized an Operator can not be None.")
         try:
             block.append_op(type="no_such_op")
             self.assertFail()

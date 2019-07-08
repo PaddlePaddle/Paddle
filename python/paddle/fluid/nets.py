@@ -190,6 +190,7 @@ def img_conv_group(input,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
@@ -328,6 +329,7 @@ def glu(input, dim=-1):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
@@ -389,6 +391,8 @@ def scaled_dot_product_attention(queries,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             queries = fluid.layers.data(name="queries",
                                         shape=[3, 5, 9],
@@ -516,7 +520,7 @@ def scaled_dot_product_attention(queries,
 
     key_dim_per_head = keys.shape[-1] // num_heads
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = layers.matmul(x=k, y=scaled_q, transpose_y=True)
+    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     weights = layers.reshape(
         x=layers.reshape(

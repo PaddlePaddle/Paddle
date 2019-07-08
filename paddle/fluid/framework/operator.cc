@@ -35,6 +35,9 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(fast_check_nan_inf, false,
+            "Fast checking NAN/INF after each operation. It will be a little"
+            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -947,6 +950,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx->Wait();
   }
 
+  if (FLAGS_fast_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      // only check inserted vars,
+      // please see executor.py for details of fast_check_nan_inf
+      if (vname.rfind("debug_var") == 0) {
+        VLOG(3) << "debugging nan/inf in var " << vname;
+
+        auto* var = exec_scope.FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+        } else if (var->IsType<framework::SelectedRows>()) {
+          CheckTensorNANOrInf(type_, vname,
+                              var->Get<framework::SelectedRows>().value());
+        }
+      }
+    }
+  }
+
   if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);
@@ -1142,7 +1164,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
                          input.first, i);
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(

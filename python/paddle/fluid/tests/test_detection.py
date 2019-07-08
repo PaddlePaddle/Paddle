@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid.layers import detection
 from paddle.fluid.framework import Program, program_guard
 import unittest
 
@@ -349,7 +350,7 @@ class TestDetectionMAP(unittest.TestCase):
                 append_batch_size=False,
                 dtype='float32')
 
-            map_out = layers.detection_map(detect_res, label, 21)
+            map_out = detection.detection_map(detect_res, label, 21)
             self.assertIsNotNone(map_out)
             self.assertEqual(map_out.shape, (1, ))
         print(str(program))

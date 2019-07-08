@@ -72,6 +72,9 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
 
 
 class TestLayerNormdOp(unittest.TestCase):
+    def setUp(self):
+        self.use_cudnn = True
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
@@ -160,7 +163,8 @@ class TestLayerNormdOp(unittest.TestCase):
                 self.__assert_close(bias_grad, out[5], "bias_grad")
 
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
         for place in places:

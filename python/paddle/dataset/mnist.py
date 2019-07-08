@@ -27,7 +27,7 @@ import struct
 from six.moves import range
 __all__ = ['train', 'test', 'convert']
 
-URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
+URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
 TEST_IMAGE_MD5 = '9fb629c4189551a2d022fa330f9573f3'
 TEST_LABEL_URL = URL_PREFIX + 't10k-labels-idx1-ubyte.gz'
@@ -78,7 +78,10 @@ def reader_creator(image_filename, label_filename, buffer_size):
                         buffer_size, rows * cols)).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
-                    images = images / 255.0 * 2.0 - 1.0
+                    images = images / 255.0
+                    images = images * 2.0
+                    images = images - 1.0
+
                     for i in range(buffer_size):
                         yield images[i, :], int(labels[i])
 
@@ -90,7 +93,7 @@ def train():
     MNIST training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [-1, 1] and label in [0, 9].
 
     :return: Training reader creator
     :rtype: callable
@@ -107,7 +110,7 @@ def test():
     MNIST test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [-1, 1] and label in [0, 9].
 
     :return: Test reader creator.
     :rtype: callable

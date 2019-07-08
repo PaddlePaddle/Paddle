@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'diag'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag'
 ]
 
 
@@ -49,6 +49,7 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
     helper = LayerHelper("create_tensor", **locals())
@@ -83,9 +84,11 @@ def create_parameter(shape,
         the created parameter.
 
     Examples:
-        >>> W = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-        >>> data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-        >>> hidden = fluid.layers.matmul(x=data, y=W)
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
@@ -122,8 +125,10 @@ def create_global_var(shape,
     Examples:
         .. code-block:: python
 
-            var = fluid.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                 persistable=True, force_cpu=True, name='new_var')
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+                                          persistable=True, force_cpu=True, name='new_var')
     """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
@@ -155,6 +160,7 @@ def cast(x, dtype):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(name='x', shape=[13], dtype='float32')
             result = fluid.layers.cast(x=data, dtype='float64')
     """
@@ -188,6 +194,7 @@ def concat(input, axis=0, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
             b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
             c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
@@ -244,7 +251,9 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import paddle.fluid as fluid
+            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -275,14 +284,23 @@ def sums(input, out=None):
     Examples:
         .. code-block:: python
 
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          a0 = layers.array_read(array=tmp, i=i)
-          i = layers.increment(x=i)
-          a1 = layers.array_read(array=tmp, i=i)
-          mean_a0 = layers.mean(a0)
-          mean_a1 = layers.mean(a1)
-          a_sum = layers.sums(input=[mean_a0, mean_a1])
+          import paddle.fluid as fluid
+
+          # sum of several tensors
+          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
+          sums = fluid.layers.sums(input=[a0, a1, a2])
+
+          # sum of a tensor array
+          array = fluid.layers.create_array('int64')
+          i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
+          fluid.layers.array_write(a0, array=array, i=i)
+          i = fluid.layers.increment(x=i)
+          fluid.layers.array_write(a1, array=array, i=i)
+          i = fluid.layers.increment(x=i)
+          fluid.layers.array_write(a2, array=array, i=i)
+          sums = fluid.layers.sums(input=array)
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -312,6 +330,8 @@ def assign(input, output=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
           out = fluid.layers.create_tensor(dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           fluid.layers.assign(hidden, out)
@@ -372,6 +392,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
 
@@ -425,6 +446,8 @@ def fill_constant_batch_size_like(input,
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
+             like = fluid.layers.data(name='like', shape=[1], dtype='float32')
              data = fluid.layers.fill_constant_batch_size_like(
                          input=like, shape=[1], value=0, dtype='int64')
 
@@ -464,6 +487,7 @@ def argmin(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out = fluid.layers.argmin(x, axis=0)
             out = fluid.layers.argmin(x, axis=-1)
@@ -496,6 +520,7 @@ def argmax(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out = fluid.layers.argmax(x, axis=0)
             out = fluid.layers.argmax(x, axis=-1)
@@ -547,6 +572,7 @@ def argsort(input, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out, indices = fluid.layers.argsort(input=x, axis=0)
     """
@@ -583,6 +609,7 @@ def ones(shape, dtype, force_cpu=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
     assert isinstance(shape, list) or isinstance(
@@ -612,6 +639,7 @@ def zeros(shape, dtype, force_cpu=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())
@@ -635,9 +663,11 @@ def reverse(x, axis):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.reverse(x=in, axis=0)
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
+          out = fluid.layers.reverse(x=data, axis=0)
           # or:
-          out = fluid.layers.reverse(x=in, axis=[0,1])
+          out = fluid.layers.reverse(x=data, axis=[0,1])
     """
     if isinstance(axis, int):
         axis = [axis]
@@ -690,6 +720,7 @@ def save_combine(x, file_path, overwrite=True):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             v1 = fluid.layers.data(name="data",
                                    shape=(4, 6),
                                    dtype="float32")
@@ -732,6 +763,14 @@ def has_inf(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+          
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_inf(data)
+
     """
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -748,6 +787,14 @@ def has_nan(x):
 
     Returns:
         Variable: The tensor variable storing the output, only a bool value.
+    
+    Examples:
+        .. code-block:: python
+    
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = fluid.layers.has_nan(data)
+
     """
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -765,6 +812,16 @@ def isfinite(x):
 
     Returns:
         Variable: The tensor variable storing the output, contains a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            var = fluid.layers.data(name="data",
+                                    shape=(4, 6),
+                                    dtype="float32")
+            out = fluid.layers.isfinite(v)
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -796,6 +853,7 @@ def range(start, end, step, dtype):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              data = fluid.layers.range(0, 10, 2, 'int32')
 
     """
@@ -837,6 +895,7 @@ def linspace(start, stop, num, dtype):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
@@ -878,6 +937,7 @@ def zeros_like(x, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 
@@ -910,7 +970,10 @@ def diag(diagonal):
           # [[3, 0, 0]
           #  [0, 4, 0]
           #  [0, 0, 5] 
-          data = fluid.layers.diag(np.arange(3, 6)) 
+
+          import paddle.fluid as fluid
+          import numpy as np
+          data = fluid.layers.diag(np.arange(3, 6, dtype='int32')) 
 
     """
 
@@ -925,4 +988,39 @@ def diag(diagonal):
         type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
 
     out.stop_gradient = True
+    return out
+
+
+def ones_like(x, out=None):
+    """
+    **ones_like**
+
+    This function creates a ones tensor which has identical shape and dtype 
+    with `x`.
+
+    Args:
+        x(Variable): The input tensor which specifies shape and dtype.
+        out(Variable): The output tensor.
+
+    Returns:
+        x(Variable): The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          data = fluid.layers.ones_like(x) # [1.0, 1.0, 1.0]
+
+    """
+
+    helper = LayerHelper("ones_like", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [x]},
+        attrs={'value': 1.0},
+        outputs={'Out': [out]})
     return out

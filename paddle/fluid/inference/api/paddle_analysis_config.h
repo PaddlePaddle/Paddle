@@ -142,7 +142,8 @@ struct AnalysisConfig {
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
-                            bool use_static = false);
+                            bool use_static = false,
+                            bool use_calib_mode = false);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -167,6 +168,13 @@ struct AnalysisConfig {
    * each analysis pass applied.
    */
   void SwitchIrDebug(int x = true);
+
+  /** Turn on NGRAPH.
+   */
+  void EnableNgraph();
+  /** A boolean state telling whether to use the NGRAPH.
+   */
+  bool ngraph_enabled() const { return use_ngraph_; }
 
   /** Turn on MKLDNN.
    */
@@ -202,7 +210,7 @@ struct AnalysisConfig {
   */
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
-  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
+  MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.
@@ -224,6 +232,8 @@ struct AnalysisConfig {
                          bool force_update_static_cache = false);
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
+  void SetInValid() const { is_valid_ = false; }
+  bool is_valid() const { return is_valid_; }
 
   friend class ::paddle::AnalysisPredictor;
 
@@ -231,6 +241,7 @@ struct AnalysisConfig {
    * Get a pass builder for customize the passes in IR analysis phase.
    */
   PassStrategy* pass_builder() const;
+  void PartiallyRelease();
 
  protected:
   // Update the config.
@@ -241,8 +252,8 @@ struct AnalysisConfig {
  protected:
   // Model pathes.
   std::string model_dir_;
-  std::string prog_file_;
-  std::string params_file_;
+  mutable std::string prog_file_;
+  mutable std::string params_file_;
 
   // GPU related.
   bool use_gpu_{false};
@@ -266,12 +277,14 @@ struct AnalysisConfig {
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_;
   bool trt_use_static_engine_;
+  bool trt_use_calib_mode_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool static_memory_optim_{false};
   bool static_memory_optim_force_update_{false};
 
+  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
@@ -302,6 +315,11 @@ struct AnalysisConfig {
 
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+  // If the config is already used on a predictor, it becomes invalid.
+  mutable bool is_valid_{true};
+  // Any config can only be used with one predictor.
+  // Variables held by config can take up a lot of memory in some cases.
+  // So we release the memory when the predictor is set up.
 };
 
 }  // namespace paddle

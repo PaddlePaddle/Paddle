@@ -61,20 +61,25 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
   std::shared_ptr<batch_norm_fwd::primitive_desc>
   AcquireBatchNormPrimitiveDescriptor(const batch_norm_fwd::desc &bn_fwd_desc,
                                       const mkldnn::engine &engine) {
-    const std::string key_batch_norm_fwd_pd = key_ + "@bn_fwd_pd";
-    auto batch_norm_pd =
-        std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
-            dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
+    // BatchNorm PD has to be passed to Grad op that
+    // may be executed by diffrent thread, hence
+    // for that one we use key that does not contain TID
+    const std::string key_batch_norm_fwd_pd = key_common_ + "@bn_fwd_pd";
+    batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
+        dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
 
-    if (batch_norm_pd == nullptr) {
-      batch_norm_pd_.reset(
-          new batch_norm_fwd::primitive_desc(bn_fwd_desc, engine));
-      dev_ctx_.SetBlob(key_batch_norm_fwd_pd, batch_norm_pd_);
-    } else {
-      batch_norm_pd_ = batch_norm_pd;
-      is_reusing_ = true;
+    if (batch_norm_pd_ == nullptr) {
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
+      batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
+          dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
+      if (batch_norm_pd_ == nullptr) {
+        batch_norm_pd_.reset(
+            new batch_norm_fwd::primitive_desc(bn_fwd_desc, engine));
+        dev_ctx_.SetBlob(key_batch_norm_fwd_pd, batch_norm_pd_);
+      }
     }
-
     return batch_norm_pd_;
   }
 
@@ -86,9 +91,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     auto prim_key = key_ + "@batch_norm_p";
     auto batch_norm_p =
         std::static_pointer_cast<batch_norm_fwd>(dev_ctx_.GetBlob(prim_key));
-
-    PADDLE_ENFORCE((batch_norm_p != nullptr) || !is_reusing_,
-                   "Fail to find batch norm primitive in device context");
 
     if (batch_norm_p == nullptr) {
       if (is_test) {
@@ -104,8 +106,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       }
 
       dev_ctx_.SetBlob(prim_key, batch_norm_p);
-    } else {
-      is_reusing_ = true;
     }
 
     return batch_norm_p;

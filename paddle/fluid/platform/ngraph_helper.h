@@ -77,9 +77,7 @@ std::shared_ptr<ngraph::Node> GetNode(
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
   auto& var_names = var_map.at(name);
-  PADDLE_ENFORCE_EQ(var_names.size(), 1,
-                    "op %s name %s expects one associated var", op->Type(),
-                    name);
+  if (var_names.size() == 0) return nullptr;
   if (ngb_node_map->find(var_names[0]) != ngb_node_map->end()) {
     return (*ngb_node_map)[var_names[0]];
   } else {
@@ -132,16 +130,6 @@ void SetOutputNode(
         ngb_node_map) {
   auto& var_names = op->Outputs().at(name);
   if (var_names.size() == 1) {
-    /*  */
-    auto dummy_out = GetOutputNode(op, name, ngb_node_map);
-    if (dummy_out && dummy_out->get_shape() != node->get_shape()) {
-      node = NgReshaper(node, dummy_out->get_shape());
-    }
-    if (dummy_out &&
-        dummy_out->get_element_type() != node->get_element_type()) {
-      node = std::make_shared<ngraph::op::Convert>(
-          node, dummy_out->get_element_type());
-    }
     (*ngb_node_map)[var_names[0]] = node;
   } else if (var_names.size() == 0) {
     (*ngb_node_map)[""] = node;
@@ -188,6 +176,22 @@ inline void TrimTrailingSingularDims(ngraph::Shape* shape) {
       shape->pop_back();
     }
   }
+}
+
+ngraph::element::Type GetNgType(paddle::framework::proto::VarType::Type dtype) {
+  ngraph::element::Type ng_dtype;
+  if (dtype == paddle::framework::proto::VarType::FP32) {
+    ng_dtype = ngraph::element::f32;
+  } else if (dtype == paddle::framework::proto::VarType::FP64) {
+    ng_dtype = ngraph::element::f64;
+  } else if (dtype == paddle::framework::proto::VarType::INT64) {
+    ng_dtype = ngraph::element::i64;
+  } else if (dtype == paddle::framework::proto::VarType::INT32) {
+    ng_dtype = ngraph::element::i32;
+  } else {
+    PADDLE_THROW("unsupported data type: %s", dtype);
+  }
+  return ng_dtype;
 }
 }  // namespace platform
 }  // namespace paddle

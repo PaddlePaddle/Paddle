@@ -162,8 +162,11 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
 
-        decay = block.create_var(
-            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+        if framework.in_dygraph_mode():
+            decay = block.create_var(dtype=param.dtype, shape=param.shape)
+        else:
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append Op to calculate decay
         block.append_op(
@@ -231,8 +234,11 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
 
-        decay = block.create_var(
-            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+        if framework.in_dygraph_mode():
+            decay = block.create_var(dtype=param.dtype, shape=param.shape)
+        else:
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append sign op
         block.append_op(

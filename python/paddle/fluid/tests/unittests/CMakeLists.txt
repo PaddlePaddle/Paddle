@@ -8,6 +8,8 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_simple_dist_transpiler)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_nccl)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_lars)
     LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     LIST(REMOVE_ITEM TEST_OPS test_dist_ctr)
     LIST(REMOVE_ITEM TEST_OPS test_dist_simnet_bow)
@@ -15,7 +17,18 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
 endif(NOT WITH_DISTRIBUTE)
+
+if(NOT WITH_GPU OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_allgather)
+    LIST(REMOVE_ITEM TEST_OPS test_allreduce)
+    LIST(REMOVE_ITEM TEST_OPS test_broadcast)
+    LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
+endif()
+
+
+LIST(REMOVE_ITEM TEST_OPS test_launch)
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -24,10 +37,14 @@ elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
+if(NOT WITH_GPU OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_pipeline)
+endif() 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
+
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -57,16 +74,50 @@ function(py_test_modules TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if (py_test_modules_SERIAL)
-        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run -a --branch ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+          ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
+
+    if (py_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)            
+    endif()
+
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
 endfunction()
+
+function(bash_test_modules TARGET_NAME)
+    if(NOT WITH_TESTING)
+        return()
+    endif()
+
+    set(options SERIAL)
+    set(oneValueArgs "")
+    set(multiValueArgs MODULES DEPS ENVS)
+    cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
+
+    add_test(NAME ${TARGET_NAME}
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${bash_test_modules_ENVS}
+        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (bash_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    endif()
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+endfunction()
+
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -86,6 +137,13 @@ list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
+list(REMOVE_ITEM TEST_OPS test_install_check)
+list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
+list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
+list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
+list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
@@ -126,47 +184,56 @@ foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_op_parallelism=4)
-py_test_modules(test_warpctc_op MODULES test_warpctc_op SERIAL)
-py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS} SERIAL)
-py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS} SERIAL)
+py_test_modules(test_warpctc_op MODULES test_warpctc_op)
+py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS})
+py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
+set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_resnet_sorted_gradient MODULES test_imperative_resnet_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
+set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
-    FLAGS_cudnn_deterministic=1 SERIAL)
+    FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mnist_sorted_gradient ENVS
-        FLAGS_cudnn_deterministic=1 SERIAL)
+        FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-
+set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_attention_model ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
+py_test_modules(test_install_check MODULES test_install_check ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
+set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 if(WITH_DISTRIBUTE)
-    py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
+    py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
-        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
-        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
+        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 300)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
-        py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl SERIAL)
+        py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
+        bash_test_modules(test_launch MODULES test_launch.sh)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
-        set_tests_properties(test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
     endif(NOT APPLE)
     # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()
 
-py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
-py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
+py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
-py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
+py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
-    py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer SERIAL)
+    py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -188,5 +255,5 @@ if(WITH_DISTRIBUTE)
 endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf
+        test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
         PROPERTIES LABELS "RUN_TYPE=DIST")

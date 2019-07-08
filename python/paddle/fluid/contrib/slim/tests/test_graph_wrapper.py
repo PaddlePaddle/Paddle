@@ -19,6 +19,8 @@ import six
 import numpy as np
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 from paddle.fluid import core
+import os
+os.environ['CPU_NUM'] = str(4)
 
 
 def residual_block(num):

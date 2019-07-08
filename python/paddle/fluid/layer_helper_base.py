@@ -85,19 +85,19 @@ class LayerHelperBase(object):
                       block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_norm'])),
                     dtype=dtype,
                     persistable=False)
             abs_out = block.create_var(
-                name=unique_name.generate(".".join(
+                name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_abs'])),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
                 type='abs', inputs={'X': x}, outputs={'Out': abs_out})
             pow_out = block.create_var(
-                name=unique_name.generate(".".join(
+                name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_pow'])),
                 dtype=dtype,
                 persistable=False)
@@ -107,7 +107,7 @@ class LayerHelperBase(object):
                 outputs={'Out': pow_out},
                 attrs={'factor': float(p)})
             sum_out = block.create_var(
-                name=unique_name.generate(".".join(
+                name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_sum'])),
                 dtype=dtype,
                 persistable=False)
@@ -133,7 +133,7 @@ class LayerHelperBase(object):
                          block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_reshape'])),
                     dtype=dtype,
                     persistable=False)
@@ -150,7 +150,7 @@ class LayerHelperBase(object):
                            block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_transpose'])),
                     dtype=dtype,
                     persistable=False)
@@ -168,7 +168,7 @@ class LayerHelperBase(object):
             """Computes the norm over all dimensions except dim"""
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_norm'])),
                     dtype=dtype,
                     persistable=False)
@@ -327,7 +327,8 @@ class LayerHelperBase(object):
             infer_var_type.
         """
         return self.main_program.current_block().create_var(
-            name=unique_name.generate(".".join([self.name, 'tmp'])),
+            name=unique_name.generate_with_ignorable_key(".".join(
+                [self.name, 'tmp'])),
             dtype=dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,

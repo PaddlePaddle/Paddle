@@ -174,15 +174,15 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
   AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
   AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
   AddAttr<bool>("use_peepholes",
-                "(bool, defalut: True) "
+                "(bool, default: True) "
                 "whether to enable diagonal/peephole connections.")
       .SetDefault(true);
   AddAttr<bool>("is_reverse",
-                "(bool, defalut: False) "
+                "(bool, default: False) "
                 "whether to compute reversed LSTM.")
       .SetDefault(false);
   AddAttr<bool>("use_seq",
-                "(bool, defalut: True) "
+                "(bool, default: True) "
                 "whether to use seq mode to compute.")
       .SetDefault(true);
   AddAttr<std::string>("gate_activation",
@@ -193,7 +193,7 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("cell_activation",
                        "(string, default: tanh)"
-                       "The activation for cell output, `tanh` by defalut.")
+                       "The activation for cell output, `tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("candidate_activation",

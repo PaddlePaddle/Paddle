@@ -59,19 +59,14 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization."               OFF)
 ################################ Internal Configurations #######################################
-option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
-option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
-# TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
-option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
-option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
@@ -185,6 +180,7 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+include(anakin_subgraph)
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags
@@ -207,22 +203,10 @@ if(WITH_DGC)
     add_definitions(-DPADDLE_WITH_DGC)
 endif()
 
-if(WITH_MKL OR WITH_MKLML)
-    include(external/anakin)
-elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
-endif()
-
 if (WITH_PROFILER)
     find_package(Gperftools REQUIRED)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
-endif()
-
-if (WITH_JEMALLOC)
-    find_package(JeMalloc REQUIRED)
-    include_directories(${JEMALLOC_INCLUDE_DIR})
-    add_definitions(-DPADDLE_WITH_JEMALLOC)
 endif()
 
 include(generic)            # simplify cmake module
