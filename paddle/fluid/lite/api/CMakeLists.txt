@@ -60,6 +60,21 @@ if(WITH_TESTING)
            ${ops_lite} ${host_kernels} ${x86_kernels}
            ARGS --model_dir=${LITE_MODEL_DIR}/googlenet)
         add_dependencies(test_googlenet_lite extern_lite_download_GoogleNet_inference_tar_gz)
+        lite_cc_test(test_mobilenetv1_lite_x86 SRCS test_mobilenetv1_lite_x86.cc
+           DEPS cxx_api_lite mir_passes lite_api_test_helper
+           ${ops_lite} ${host_kernels} ${x86_kernels}
+           ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v1)
+        add_dependencies(test_mobilenetv1_lite_x86 extern_lite_download_mobilenet_v1_tar_gz)
+        lite_cc_test(test_mobilenetv2_lite_x86 SRCS test_mobilenetv2_lite_x86.cc
+           DEPS cxx_api_lite mir_passes lite_api_test_helper
+           ${ops_lite} ${host_kernels} ${x86_kernels}
+           ARGS --model_dir=${LITE_MODEL_DIR}/mobilenet_v2_relu)
+        add_dependencies(test_mobilenetv2_lite_x86 extern_lite_download_mobilenet_v2_relu_tar_gz)
+        lite_cc_test(test_inceptionv4_lite_x86 SRCS test_inceptionv4_lite_x86.cc
+           DEPS cxx_api_lite mir_passes lite_api_test_helper
+           ${ops_lite} ${host_kernels} ${x86_kernels}
+           ARGS --model_dir=${LITE_MODEL_DIR}/inception_v4_simple)
+        add_dependencies(test_inceptionv4_lite_x86 extern_lite_download_inception_v4_simple_tar_gz)
     endif()
 endif()
 
