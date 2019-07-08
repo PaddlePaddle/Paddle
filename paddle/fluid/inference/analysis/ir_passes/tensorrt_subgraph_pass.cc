@@ -226,6 +226,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
   if (enable_int8 && calibration_data.size() != 0) {
     calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
+    LOG(INFO) << "RUN Paddle TRT int8 calibration mode...";
   }
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
