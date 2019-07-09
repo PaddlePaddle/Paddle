@@ -103,6 +103,46 @@ class RoleMakerBase(object):
         return self._server_endpoints
 
 
+class MultiProcessRoleMaker(RoleMakerBase):
+    """
+    MultiProcessRoleMaker is a default role maker for multi-process
+    GPU training. It works with paddle.distributed.lanuch.py by-design
+    """
+
+    def __init__(self):
+        super(MultiProcessRoleMaker, self).__init__()
+        self._role_is_generated = False
+
+    def generate_role(self):
+        import os
+        if not self._role_is_generated:
+            self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+            self._num_trainers = 1
+            self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
+            assert (self._training_role == "TRAINER")
+            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+            self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+            if self._worker_endpoints:
+                self._worker_endpoints = self._worker_endpoints.split(",")
+                self._num_trainers = len(self._worker_endpoints)
+            self._role_is_generated = True
+
+    def is_worker(self):
+        return True
+
+    def is_server(self):
+        return False
+
+    def is_first_worker(self):
+        return self._current_id == 0
+
+    def worker_index(self):
+        return self._current_id
+
+    def worker_num(self):
+        return self._worker_num
+
+
 class MPIRoleMaker(RoleMakerBase):
     """
     MPIRoleMaker is a MPI-API based role maker which is a counter-part of K8SRoleMaker
@@ -158,7 +198,7 @@ class MPIRoleMaker(RoleMakerBase):
         """
         finalize the current MPI instance.
         """
-        pass
+        self.MPI.Finalize()
 
     def _get_ips(self):
         """
@@ -194,6 +234,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         super(MPISymetricRoleMaker, self).__init__()
         self._node_type = None
         self._proc_per_node = 2
+        self._pserver_rand_port = 0
 
     def _check_role_generation(self):
         if not self._role_is_generated:
@@ -207,6 +248,20 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         if self._check_role_generation():
             return self.is_worker() and 0 == self.worker_index()
         return False
+
+    def get_pserver_endpoints(self):
+        if self._pserver_rand_port <= 0:
+            import random
+            random.seed(self._server_num())
+            # port will be randomly generated from 60001 to 63999
+            # random seed is server num so that all nodes will get
+            # the same port
+            self._pserver_rand_port = random.randint(60001, 64000)
+        endpoints = [
+            x + ":" + str(self._pserver_rand_port)
+            for x in self._server_endpoints
+        ]
+        return endpoints
 
     def worker_num(self):
         return self._worker_num()
@@ -233,7 +288,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             if self.is_worker():
-                return self._get_size() / 2
+                return self._get_size() / self._proc_per_node
         return 0
 
     def _server_num(self):
@@ -241,9 +296,10 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of server
         """
         if self._check_role_generation():
-            if self.is_server():
-                return self._get_size() / 2
-        return 0
+            return self._get_size() / self._proc_per_node
+        else:
+            self.generate_role()
+            return self._get_size() / self._proc_per_node
 
     def worker_index(self):
         """
@@ -251,7 +307,9 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             return self._rank / self._proc_per_node
-        return 0
+        else:
+            self.generate_role()
+            return self._get_size() / 2
 
     def server_index(self):
         """
@@ -259,7 +317,9 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             return self._rank / self._proc_per_node
-        return 0
+        else:
+            self.generate_role()
+            return self._get_size() / self._proc_per_node
 
     def _barrier_worker(self):
         """
@@ -268,6 +328,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         if self._check_role_generation():
             if self.is_worker():
                 self._node_type_comm.barrier()
+        else:
+            raise Exception("You should check role generation first")
 
     def _barrier_server(self):
         """
@@ -276,6 +338,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         if self._check_role_generation():
             if self.is_server():
                 self._node_type_comm.barrier()
+        else:
+            raise Exception("You should check role generation first")
 
     def generate_role(self):
         """
@@ -292,6 +356,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
                 self._node_type = 1
             self._node_type_comm = self._comm.Split(self._node_type)
             self._role_is_generated = True
+        else:
+            raise Exception("You should check role generation first")
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
@@ -316,6 +382,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             print("PaddleCloudRoleMaker() endpoints: %s" % self.endpoints)
             self.endpoints = self.endpoints.split(",")
             self._server_endpoints = self.endpoints
+            self._worker_endpoints = self.endpoints
             if self.role.upper() == "PSERVER":
                 self._current_id = self.endpoints.index(self.current_endpoint)
                 self._role = Role.SERVER

@@ -42,7 +42,8 @@ def force_init_on_cpu():
 
         .. code-block:: python
 
-	    if fluid.initializer.force_init_on_cpu():
+	    import paddle.fluid as fluid
+        if fluid.initializer.force_init_on_cpu():
     		step = fluid.layers.create_global_var(
         	    shape=[2,3], value=1.0, dtype='float32')
 
@@ -58,7 +59,8 @@ def init_on_cpu():
     Examples:
         .. code-block:: python
 
-	    with fluid.initializer.init_on_cpu():
+	    import paddle.fluid as fluid
+        with fluid.initializer.init_on_cpu():
     		step = fluid.layers.create_global_var(
         	    shape=[2,3], value=1.0, dtype='float32')
 
@@ -133,7 +135,8 @@ class ConstantInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-    	    x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+    	    import paddle.fluid as fluid
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
 	    fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.Constant(value=2.0))
 
@@ -292,7 +295,8 @@ class NormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-	    x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+	    import paddle.fluid as fluid
+        x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
 	    fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
@@ -608,7 +612,8 @@ class MSRAInitializer(Initializer):
     Examples:
         .. code-block:: python
 		
-	    x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+	    import paddle.fluid as fluid
+        x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
 	    fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.MSRA(uniform=False))
 
@@ -710,7 +715,8 @@ class BilinearInitializer(Initializer):
 
         .. code-block:: python
 
-	    factor = 2
+	    import paddle.fluid as fluid
+        factor = 2
 	    C = 2
 	    w_attr = fluid.param_attr.ParamAttr(
 		learning_rate=0., 
@@ -836,6 +842,7 @@ class NumpyArrayInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[5], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))

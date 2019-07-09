@@ -92,4 +92,19 @@ class PaddleInferenceAnakinMLUPredictor final
   void Predict() override;
 };
 #endif
+
+#ifdef ANAKIN_BM_PLACE
+template <Precision P, OpRunType R>
+class PaddleInferenceAnakinBMPredictor final
+    : public PaddleInferenceAnakinPredictor<anakin::BM, P, R> {
+ public:
+  explicit PaddleInferenceAnakinBMPredictor(const AnakinConfig& config) {
+    this->ResetConfig(config);
+    this->InitPredictor();
+  }
+  void OptimizeGraph() override;
+  void InitNet() override;
+  void Predict() override;
+};
+#endif
 }  // namespace paddle
