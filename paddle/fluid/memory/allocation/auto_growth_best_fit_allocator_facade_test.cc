@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -28,6 +29,11 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+static inline size_t AlignTo(size_t size, size_t alignment) {
+  auto remaining = size % alignment;
+  return remaining == 0 ? size : size + alignment - remaining;
+}
+
 TEST(allocator, allocator) {
 #ifdef PADDLE_WITH_CUDA
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
@@ -35,11 +41,11 @@ TEST(allocator, allocator) {
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
 #endif
 
-  FLAGS_allocator_strategy = "naive_best_fit";
+  FLAGS_allocator_strategy = "auto_growth";
 
   auto &instance = AllocatorFacade::Instance();
-  platform::Place place;
   size_t size = 1024;
+  platform::Place place;
 
   {
     place = platform::CPUPlace();
@@ -48,7 +54,7 @@ TEST(allocator, allocator) {
     ASSERT_NE(cpu_allocation, nullptr);
     ASSERT_NE(cpu_allocation->ptr(), nullptr);
     ASSERT_EQ(cpu_allocation->place(), place);
-    ASSERT_EQ(cpu_allocation->size(), size);
+    ASSERT_EQ(cpu_allocation->size(), AlignedSize(size, 1024));
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -59,7 +65,8 @@ TEST(allocator, allocator) {
     ASSERT_NE(gpu_allocation, nullptr);
     ASSERT_NE(gpu_allocation->ptr(), nullptr);
     ASSERT_EQ(gpu_allocation->place(), place);
-    ASSERT_GE(gpu_allocation->size(), size);
+    ASSERT_GE(gpu_allocation->size(),
+              AlignedSize(size, platform::GpuMinChunkSize()));
   }
 
   {
@@ -70,7 +77,8 @@ TEST(allocator, allocator) {
     ASSERT_NE(gpu_allocation, nullptr);
     ASSERT_NE(gpu_allocation->ptr(), nullptr);
     ASSERT_EQ(gpu_allocation->place(), place);
-    ASSERT_GE(gpu_allocation->size(), size);
+    ASSERT_GE(gpu_allocation->size(),
+              AlignedSize(size, platform::GpuMinChunkSize()));
   }
 
   {
@@ -81,7 +89,7 @@ TEST(allocator, allocator) {
     ASSERT_NE(cuda_pinned_allocation, nullptr);
     ASSERT_NE(cuda_pinned_allocation->ptr(), nullptr);
     ASSERT_EQ(cuda_pinned_allocation->place(), place);
-    ASSERT_GE(cuda_pinned_allocation->size(), size);
+    ASSERT_GE(cuda_pinned_allocation->size(), AlignedSize(size, 1 << 20));
   }
 #endif
 }
