@@ -978,7 +978,6 @@ function example() {
     paddle version
     cd ${PADDLE_ROOT}/python/paddle/fluid
     python sampcd_processor.py 
-    echo 11111
     if [ "$?" != "0" ];then
       echo "Code instance execution failed"
       exit 1
