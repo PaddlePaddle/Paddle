@@ -52,11 +52,11 @@ inline DataLayout ToPaddleLayout(const MKLDNNFormat& format) {
 
 inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
   static std::unordered_map<int, MKLDNNDataType> dict{
-      {DataTypeTrait<float>::DataType, MKLDNNDataType::f32},
-      {DataTypeTrait<int8_t>::DataType, MKLDNNDataType::s8},
-      {DataTypeTrait<uint8_t>::DataType, MKLDNNDataType::u8},
-      {DataTypeTrait<int16_t>::DataType, MKLDNNDataType::s16},
-      {DataTypeTrait<int32_t>::DataType, MKLDNNDataType::s32}};
+      {DataTypeTrait<float>::DataType(), MKLDNNDataType::f32},
+      {DataTypeTrait<int8_t>::DataType(), MKLDNNDataType::s8},
+      {DataTypeTrait<uint8_t>::DataType(), MKLDNNDataType::u8},
+      {DataTypeTrait<int16_t>::DataType(), MKLDNNDataType::s16},
+      {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32}};
   auto iter = dict.find(static_cast<int>(type));
   if (iter != dict.end()) return iter->second;
   return MKLDNNDataType::data_undef;
