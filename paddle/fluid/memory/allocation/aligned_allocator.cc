@@ -37,7 +37,7 @@ AlignedAllocator::AlignedAllocator(
     : underlying_allocator_(underlyning_allocator), alignment_(alignment) {
   PADDLE_ENFORCE(alignment_ > 0, "alignment must be positive integer");
   if (alignment_ & (alignment_ - 1)) {
-    PADDLE_THROW("alignment must be 2^N, but got %d", alignment);
+    PADDLE_THROW("alignment must be 2^N, but got %d", alignment_);
   }
 }
 

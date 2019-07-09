@@ -193,7 +193,7 @@ inline size_t AlignedSize(size_t size, size_t alignment) {
 }
 
 inline size_t AlignedPtrOffset(const void* ptr, size_t alignment) {
-  auto ptr_addr = reinterpret_cast<intptr_t>(ptr);
+  auto ptr_addr = reinterpret_cast<uintptr_t>(ptr);
   auto diff = ptr_addr % alignment;
   return diff == 0 ? 0 : alignment - diff;
 }

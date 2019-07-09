@@ -40,6 +40,7 @@ endif()
 list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator best_fit_allocator)
 
 cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
+cc_test(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS aligned_allocator)
 cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags ${AllocatorFacadeDeps})
 cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
 
