@@ -17,7 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_string(allocator_strategy, "naive_best_fit",
+DEFINE_string(allocator_strategy, "auto_growth",
               "The allocation strategy. naive_best_fit means the original best "
               "fit allocator of Fluid. "
               "auto_growth means the experimental auto-growth allocator. "
@@ -31,8 +31,6 @@ static AllocatorStrategy GetStrategyFromFlag() {
   if (FLAGS_allocator_strategy == "naive_best_fit") {
     return AllocatorStrategy::kNaiveBestFit;
   }
-
-  LOG(INFO) << "Allocator strategy is: " << FLAGS_allocator_strategy;
 
   if (FLAGS_allocator_strategy == "auto_growth") {
     return AllocatorStrategy::kAutoGrowth;
