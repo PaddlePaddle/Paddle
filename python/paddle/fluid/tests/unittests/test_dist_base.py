@@ -614,7 +614,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             env.update({
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                "PADDLE_TRAINER_ID": "{}".format(trainer_id)
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "FLAGS_selected_gpus": "{}".format(trainer_id)
             })
         else:
             env.update({'CPU_NUM': '1'})
@@ -624,8 +625,6 @@ class TestDistBase(unittest.TestCase):
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
-
-        env.update({"FLAGS_selected_gpus": "{}".format(trainer_id)})
 
         if self._use_hallreduce:
             tr_cmd += " --use_hallreduce --hallreduce_inter_nranks 2"

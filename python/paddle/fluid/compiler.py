@@ -205,13 +205,6 @@ class CompiledProgram(object):
             self._places = None
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
 
-        # For hierarchical allreduce
-        # FIXME(gongwb): better method for this?
-        if self._program:
-            self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
-            self._build_strategy.use_hierarchical_allreduce = self._program._use_hierarchical_allreduce
-            self._build_strategy.hierarchical_allreduce_inter_nranks = self._program._hierarchical_allreduce_inter_nranks
-
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
         # memory_optimize and enable_inplace default are True, but we can disable them on purpose
