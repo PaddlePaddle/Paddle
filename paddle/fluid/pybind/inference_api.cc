@@ -250,7 +250,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
-      .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
+      .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN,
+           py::arg("mkldnn_input_shape_cache_capacity") = 0)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
