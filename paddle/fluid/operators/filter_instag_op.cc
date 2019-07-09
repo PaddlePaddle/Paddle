@@ -39,7 +39,8 @@ class FilterInstagOp : public framework::OperatorWithKernel {
     } else {
       auto x1_dims = ctx->GetInputDim("X1");
       ctx->SetOutputDim("Out", framework::make_ddim({x1_dims[0], x1_dims[1]}));
-      ctx->SetOutputDim("Map", framework::make_ddim({x1_dims[0], 2}));
+      // 3 number is start line of Out, start line of X1, and line counts
+      ctx->SetOutputDim("Map", framework::make_ddim({x1_dims[0], 3}));
     }
   }
 
