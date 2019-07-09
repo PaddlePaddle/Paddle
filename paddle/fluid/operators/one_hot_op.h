@@ -25,10 +25,16 @@ struct OneHotOpFunctor {
   framework::LoDTensor* out_;
   int depth_;
   const DeviceContext& ctx_;
+  bool allow_out_of_range_;
 
   OneHotOpFunctor(const framework::LoDTensor* in, framework::LoDTensor* out,
-                  int depth, const DeviceContext& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
+                  int depth, const DeviceContext& ctx,
+                  bool allow_out_of_range = false)
+      : in_(in),
+        out_(out),
+        depth_(depth),
+        ctx_(ctx),
+        allow_out_of_range_(allow_out_of_range) {}
 
   template <typename OutT>
   void apply() const {
@@ -37,13 +43,21 @@ struct OneHotOpFunctor {
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
     math::set_constant(ctx_, out_, 0.0);
 
-    for (int i = 0; i < numel; ++i) {
-      PADDLE_ENFORCE_GE(p_in_data[i], 0,
-                        "Illegal index value, should be at least 0.");
-      PADDLE_ENFORCE_LT(p_in_data[i], depth_,
-                        "Illegal index value, should be less than depth (%d).",
-                        depth_);
-      *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
+    if (allow_out_of_range_) {
+      for (int i = 0; i < numel; ++i) {
+        if (p_in_data[i] >= 0 && p_in_data[i] < depth_) {
+          *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
+        }
+      }
+    } else {
+      for (int i = 0; i < numel; ++i) {
+        PADDLE_ENFORCE_GE(p_in_data[i], 0,
+                          "Illegal index value, should be at least 0.");
+        PADDLE_ENFORCE_LT(
+            p_in_data[i], depth_,
+            "Illegal index value, should be less than depth (%d).", depth_);
+        *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
+      }
     }
   }
 };
@@ -57,6 +71,7 @@ class OneHotKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
     int depth = context.Attr<int>("depth");
+    bool allow_out_of_range = context.Attr<bool>("allow_out_of_range");
     if (context.HasInput("depth_tensor")) {
       auto* depth_tensor = context.Input<Tensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
@@ -71,7 +86,8 @@ class OneHotKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(
             context.Attr<int>("dtype")),
         OneHotOpFunctor<DeviceContext, T>(
-            in, out, depth, context.template device_context<DeviceContext>()));
+            in, out, depth, context.template device_context<DeviceContext>(),
+            allow_out_of_range));
   }
 };
 

@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
+using Tensor = framework::Tensor;
 
 class ConcatOp : public framework::OperatorWithKernel {
  public:
@@ -36,7 +36,10 @@ class ConcatOp : public framework::OperatorWithKernel {
                    "Output(Out) of ConcatOp should not be null.");
 
     auto ins = ctx->GetInputsDim("X");
-    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
+    size_t axis =
+        ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
+                    static_cast<int64_t>(ins[0].size()));
+
     const size_t n = ins.size();
 
     PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
@@ -80,12 +83,12 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto vars = ctx.MultiInputVar("X");
+    auto inputs = ctx.MultiInput<Tensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
-    for (auto *var : vars) {
-      if (var->IsInitialized()) {
-        input_data_type = framework::GetDataTypeOfVar(var);
+    for (auto *input : inputs) {
+      if (input->IsInitialized() && input->numel() > 0) {
+        input_data_type = input->type();
         flag = 1;
         break;
       }
@@ -115,7 +118,10 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
     AddAttr<int>("axis",
-                 "The axis along which the input tensors will be concatenated.")
+                 "The axis along which the input tensors will be concatenated."
+                 "The axis could also be negative numbers. Negative axis is "
+                 "interpreted as counting from the end of the rank."
+                 "i.e., axis + rank(X) th dimension.")
         .SetDefault(0);
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "

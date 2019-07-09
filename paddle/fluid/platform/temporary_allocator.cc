@@ -90,8 +90,7 @@ void TemporaryAllocator::SetCallback(const std::function<void()> &callback) {
   callback_ = callback;
 }
 
-alloc::Allocation *TemporaryAllocator::AllocateImpl(
-    size_t size, alloc::Allocator::Attr attr) {
+alloc::Allocation *TemporaryAllocator::AllocateImpl(size_t size) {
   {
     // Find available allocation in temp_mem_map.
     std::unique_lock<std::mutex> lock(mtx_);
@@ -113,7 +112,7 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
   }
   // If not find the the available allocation, get allocation from
   // AllocatorFacadeInstance.
-  auto temp_mem = alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);
+  auto temp_mem = alloc::AllocatorFacade::Instance().Alloc(place_, size);
   VLOG(10) << "Alloc temporary allocation: " << temp_mem->ptr() << ": " << size;
   return temp_mem.release();
 }

@@ -33,7 +33,7 @@ namespace details {
 class NCCLOpHandleBase : public OpHandleBase {
  public:
   NCCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
-                   const platform::MultiNCCLContextMap* nccl_ctxs)
+                   const platform::NCCLCommunicator* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs == nullptr) {
       return;
@@ -215,7 +215,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 
  protected:
   std::vector<platform::Place> places_;
-  const platform::MultiNCCLContextMap* nccl_ctxs_{nullptr};
+  const platform::NCCLCommunicator* nccl_ctxs_{nullptr};
   // When multi trainer call collective function, they need run the same order.
   // Or the program will hang.So we use allreduce_deps_pass to set this
   // run_order_.

@@ -17,6 +17,7 @@ from __future__ import print_function
 import logging
 import os
 import multiprocessing
+import sys
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
@@ -72,6 +73,7 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy
 
             new_scope = fluid.Scope()
@@ -626,6 +628,23 @@ class Executor(object):
 
             list(numpy.array): fetch result according to fetch_list.
         """
+        try:
+            return self._run_impl(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+                use_program_cache=use_program_cache)
+        except Exception as e:
+            if not isinstance(e, core.EOFException):
+                print("An exception was thrown!\n {}".format(str(e)))
+            raise e
+
+    def _run_impl(self, program, feed, fetch_list, feed_var_name,
+                  fetch_var_name, scope, return_numpy, use_program_cache):
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
@@ -638,7 +657,7 @@ class Executor(object):
         compiled = isinstance(program, compiler.CompiledProgram)
         # For backward compatibility, run directly.
         if not compiled:
-            return self._run(
+            return self._run_program(
                 program,
                 self._default_executor,
                 feed=feed,
@@ -671,7 +690,7 @@ class Executor(object):
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
             # use_program_cache is not valid with CompiledProgram
-            return self._run(
+            return self._run_program(
                 program._program,
                 self._default_executor,
                 feed=feed,
@@ -682,8 +701,8 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=False)
 
-    def _run(self, program, exe, feed, fetch_list, feed_var_name,
-             fetch_var_name, scope, return_numpy, use_program_cache):
+    def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
+                     fetch_var_name, scope, return_numpy, use_program_cache):
 
         if feed is None:
             feed = {}
@@ -758,10 +777,26 @@ class Executor(object):
 
     def _dump_debug_info(self, program=None, trainer=None):
         with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
-            fout.write(trainer._desc())
+            fout.write(str(trainer))
         if program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))
+
+    def _adjust_pipeline_resource(self, pipeline_opt, dataset, pipeline_num):
+        filelist_length = len(dataset.dataset.get_filelist())
+        if filelist_length < pipeline_num:
+            pipeline_num = filelist_length
+            print(
+                "Pipeline training: setting the pipeline num to %d is enough because there are only %d files"
+                % (filelist_length, filelist_length))
+        if filelist_length < pipeline_num * pipeline_opt["concurrency_list"][0]:
+            print(
+                "Pipeline training: setting the 1st element in concurrency_list to %d is enough because there are only %d files"
+                % (filelist_length // pipeline_num, filelist_length))
+            pipeline_opt["concurrency_list"][
+                0] = filelist_length // pipeline_num
+        dataset.set_thread(pipeline_opt["concurrency_list"][0] * pipeline_num)
+        return pipeline_num
 
     def _prepare_trainer(self,
                          program=None,
@@ -781,12 +816,23 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
-            trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+            # TODO: Need a better way to distinguish and specify different execution mode
+            if program._pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program._pipeline_opt)
+            else:
+                trainer = TrainerFactory()._create_trainer(program._fleet_opt)
             trainer._set_program(program)
         else:
-            trainer = TrainerFactory()._create_trainer(
-                program.program._fleet_opt)
+            if program._pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program.program._pipeline_opt)
+            else:
+                trainer = TrainerFactory()._create_trainer(
+                    program.program._fleet_opt)
             trainer._set_program(program.program)
+
+        # The following thread_num-determined logic will be deprecated
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
@@ -796,6 +842,7 @@ class Executor(object):
                 trainer._set_thread(dataset.thread_num)
         else:
             trainer._set_thread(thread)
+
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
         return scope, trainer
@@ -858,6 +905,7 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
 
+        dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -869,11 +917,11 @@ class Executor(object):
             print_period=print_period)
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
-        dataset._prepare_to_run()
         self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._finish_to_run()
         return None
 
     def train_from_dataset(self,
@@ -938,6 +986,11 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
 
+        if program._pipeline_opt:
+            thread = self._adjust_pipeline_resource(program._pipeline_opt,
+                                                    dataset, thread)
+
+        dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -948,9 +1001,9 @@ class Executor(object):
             fetch_info=fetch_info,
             print_period=print_period)
         trainer._gen_trainer_desc()
-        dataset._prepare_to_run()
         self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._finish_to_run()
         return None

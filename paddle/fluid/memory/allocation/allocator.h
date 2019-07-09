@@ -146,42 +146,8 @@ class Allocation {
 };
 
 // Base interface class of memory Allocator.
-// To allocate a memory, allocator needs two parameters:
-//    1. size of bytes.
-//    2. Attribute of memory.
-// NOTE: the attribute of memory might be ignored if the allocator does not
-// care it.
 class Allocator {
  public:
-  enum Attr {
-    kDefault = 0,  // Default attribute. Uses the fast or stablest allocation
-                   // algorithm.
-
-    kFixedHuge = 1,  // The allocation may not be freed until the program
-                     // ends. e.g., `Parameters` and `Momentum`.
-
-    kFluxHuge = 2,  // The allocation may create and freed frequently and the
-                    // allocation is considerable huge. Like `activations`
-                    // and gradients.
-
-    kScratchpad =
-        3,  // The `Scratchpad` memory is allocated and freed very soon,
-            // usually within an operator or aux memory.
-            // Like CUDNN workspace, AUX memory in batch norm, etc.
-            //
-            // https://en.wikipedia.org/wiki/Scratchpad_memory
-
-    kCrossDevice =
-        4,  // The memory used cross-device memory copy/communication.
-            // For example:
-            // 1. it can use an `pinned` memory for CPU-GPU
-            //    communication.
-            // 2. it can use an `registered` memory for RDMA
-            //    communication.
-
-    NumOfAttrs = 5  // The number of all attributes. It is used internally.
-  };
-
   virtual ~Allocator() {}
 
   class AllocationDeleter {
@@ -195,8 +161,8 @@ class Allocator {
   using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
 
   // Allocate an allocation.
-  inline AllocationPtr Allocate(size_t size, Allocator::Attr attr = kDefault) {
-    auto ptr = AllocateImpl(size, attr);
+  inline AllocationPtr Allocate(size_t size) {
+    auto ptr = AllocateImpl(size);
     ptr->RegisterDecoratedAllocator(this);
     return AllocationPtr(ptr);
   }
@@ -211,7 +177,7 @@ class Allocator {
   virtual bool IsAllocThreadSafe() const;
 
  protected:
-  virtual Allocation* AllocateImpl(size_t size, Allocator::Attr attr) = 0;
+  virtual Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(Allocation* allocation);
 };
 

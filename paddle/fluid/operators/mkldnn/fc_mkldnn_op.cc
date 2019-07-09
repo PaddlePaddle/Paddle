@@ -198,8 +198,7 @@ class FCPrimitiveFactory {
       const ExecutionContext& ctx, Tensor* output) {
     auto dst_prim_desc = fc_prim_desc.dst_primitive_desc();
     auto buffer_size = dst_prim_desc.get_size();
-    T* output_data = output->mutable_data<T>(
-        ctx.GetPlace(), ::paddle::memory::Allocator::kDefault, buffer_size);
+    T* output_data = output->mutable_data<T>(ctx.GetPlace(), buffer_size);
     output->set_format((memory::format)dst_prim_desc.desc().data.format);
     return memory(dst_prim_desc, to_void_cast<T>(output_data));
   }

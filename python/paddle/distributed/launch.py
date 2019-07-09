@@ -164,6 +164,13 @@ def start_procs(args):
               ", node_ips:", node_ips, ", nranks:", nranks)
 
     current_env = copy.copy(default_env)
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
     procs = []
     cmds = []
     for i in range(0, selected_gpus_num):
@@ -173,11 +180,7 @@ def start_procs(args):
             "PADDLE_CURRENT_ENDPOINT":
             "%s:%d" % (current_node_ip, args.started_port + i),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
-            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints,
-            # paddle broadcast ncclUniqueId use socket, and
-            # proxy maybe make trainers unreachable, so set them to ""
-            "http_proxy": "",
-            "https_proxy": ""
+            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
 
         cmd = [sys.executable, "-u", args.training_script

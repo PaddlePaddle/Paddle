@@ -67,8 +67,8 @@ class CPUManagedAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
-    return normal_allocator_->Allocate(size, attr).release();
+  Allocation* AllocateImpl(size_t size) override {
+    return normal_allocator_->Allocate(size).release();
   }
 
  private:
@@ -101,11 +101,10 @@ class ChunkedAllocator : public Allocator {
 
     auto* cond_allocator = new ConditionalAllocator();
     cond_allocator
-        ->AddAllocator(
-            [this](size_t size, Attr attr) { return size < max_chunk_size_; },
-            default_allocator_)
+        ->AddAllocator([this](size_t size) { return size < max_chunk_size_; },
+                       default_allocator_)
         .AddAllocator(
-            [](size_t size, Attr attr) {
+            [](size_t size) {
               return true;  // default case
             },
             raw_allocator_);
@@ -133,8 +132,8 @@ class ChunkedAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
-    return default_allocator_->Allocate(size, attr).release();
+  Allocation* AllocateImpl(size_t size) override {
+    return default_allocator_->Allocate(size).release();
   }
 
  protected:
@@ -263,7 +262,7 @@ class AllocatorFacadePrivate {
     explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
 
    protected:
-    Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
+    Allocation* AllocateImpl(size_t size) override {
       return new Allocation(nullptr, 0, place_);
     }
 
@@ -304,13 +303,13 @@ AllocatorFacade& AllocatorFacade::Instance() {
 }
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
-    const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(Alloc(place, size, attr));
+    const platform::Place& place, size_t size) {
+  return std::shared_ptr<Allocation>(Alloc(place, size));
 }
 
-AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
-                                     Allocator::Attr attr) {
-  return m_->GetAllocator(place, size)->Allocate(size, attr);
+AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
+                                     size_t size) {
+  return m_->GetAllocator(place, size)->Allocate(size);
 }
 
 }  // namespace allocation

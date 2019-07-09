@@ -21,6 +21,7 @@ add_subdirectory(jit)
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
     add_subdirectory(distributed_ops)
+    add_subdirectory(collective)
 endif()
 
 add_subdirectory(reader)
@@ -33,7 +34,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
-if (ANAKIN_FOUND) 
+if (ANAKIN_SUBGRAPH) 
     add_subdirectory(anakin)
 endif()
 

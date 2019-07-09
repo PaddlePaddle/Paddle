@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+#include <memory>
 #include <random>
 #include <thread>  // NOLINT
+#include <utility>
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -33,10 +35,10 @@ class StubAllocation : public Allocation {
 TEST(BestFitAllocator, test_allocation) {
   StubAllocation stub(4UL * 1024 * 1024 * 1024);
   BestFitAllocator allocator(&stub);
-  { auto allocation = allocator.Allocate(64, allocator.kDefault); }
+  { auto allocation = allocator.Allocate(64); }
 
   {
-    auto allocation = allocator.Allocate(80, allocator.kDefault);
+    auto allocation = allocator.Allocate(80);
 
     {
       auto best_fit_allocation =
@@ -48,10 +50,10 @@ TEST(BestFitAllocator, test_allocation) {
       ASSERT_EQ(allocation->ptr(), nullptr);
     }
 
-    auto allocation2 = allocator.Allocate(60, allocator.kDefault);
-    auto allocation3 = allocator.Allocate(90, allocator.kDefault);
+    auto allocation2 = allocator.Allocate(60);
+    auto allocation3 = allocator.Allocate(90);
     allocation2.reset();
-    allocation2 = allocator.Allocate(30, allocator.kDefault);
+    allocation2 = allocator.Allocate(30);
 
     {
       auto best_fit_allocation =
@@ -59,7 +61,7 @@ TEST(BestFitAllocator, test_allocation) {
       ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80);
     }
     allocation2.reset();
-    allocation2 = allocator.Allocate(60, allocator.kDefault);
+    allocation2 = allocator.Allocate(60);
 
     {
       auto best_fit_allocation =
@@ -70,7 +72,7 @@ TEST(BestFitAllocator, test_allocation) {
     allocation.reset();
     allocation2.reset();
 
-    allocation = allocator.Allocate(80 + 60, allocator.kDefault);
+    allocation = allocator.Allocate(80 + 60);
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation.get());
@@ -79,8 +81,8 @@ TEST(BestFitAllocator, test_allocation) {
 
     allocation.reset();
 
-    allocation = allocator.Allocate(80, allocator.kDefault);
-    allocation2 = allocator.Allocate(60, allocator.kDefault);
+    allocation = allocator.Allocate(80);
+    allocation2 = allocator.Allocate(60);
     allocation = nullptr;
     allocation2 = nullptr;
     allocation3 = nullptr;
@@ -91,8 +93,7 @@ TEST(BestFitAllocator, test_allocation) {
 
 TEST(BestFitAllocator, test_concurrent_cpu_allocation) {
   CPUAllocator allocator;
-  auto global_allocation =
-      allocator.Allocate(256UL * 1024 * 1024, allocator.kDefault);
+  auto global_allocation = allocator.Allocate(256UL * 1024 * 1024);
 
   std::unique_ptr<Allocator> best_fit_allocator(
       new BestFitAllocator(global_allocation.get()));
@@ -106,8 +107,8 @@ TEST(BestFitAllocator, test_concurrent_cpu_allocation) {
     for (size_t i = 0; i < 128; ++i) {
       size_t allocate_size = dist(engine);
 
-      auto allocation = locked_allocator.Allocate(
-          sizeof(size_t) * allocate_size, locked_allocator.kDefault);
+      auto allocation =
+          locked_allocator.Allocate(sizeof(size_t) * allocate_size);
 
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 
