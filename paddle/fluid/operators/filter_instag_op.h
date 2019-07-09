@@ -62,6 +62,7 @@ class FilterInstagKernel : public framework::OpKernel<T> {
     auto x2_lods = x2->lod()[0];
     auto x1_lods = x1->lod()[0];
 
+    std::unordered_map<int64_t, int64_t> mmap_aux;
     std::vector<size_t> ins_after_filter;
     Vector<size_t> out_lods(1, 0);
     for (size_t i = 0; i < x2_lods.size() - 1; i++) {
@@ -69,6 +70,7 @@ class FilterInstagKernel : public framework::OpKernel<T> {
         if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
           ins_after_filter.push_back(x2_lods[i]);
           size_t batch_len = x1_lods[i + 1] - x1_lods[i];
+          mmap_aux[out_lods.back()] = x1_lods[i];
           out_lods.push_back(out_lods.back() + batch_len);
           break;
         }
@@ -87,14 +89,15 @@ class FilterInstagKernel : public framework::OpKernel<T> {
     size_t x1_embed_size = x1->dims()[1];
     out->Resize(framework::make_ddim(
         {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-    map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 2}));
+    map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 3}));
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
 
     Vector<size_t> map_lods;
     for (size_t i = 0; i < ins_after_filter.size(); i++) {
-      map_data[i * 2] = i;
-      map_data[i * 2 + 1] = (int64_t)ins_after_filter[i];
+      map_data[i * 3] = (int64_t)out_lods[i];
+      map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
+      map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
       map_lods.push_back(i);
     }
     map_lods.push_back(ins_after_filter.size());
@@ -136,11 +139,14 @@ class FilterInstagGradKernel : public framework::OpKernel<T> {
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
     memset(x1_grad_data, 0, x1->dims()[0] * x1->dims()[1] * sizeof(T));
     auto output_dims = output_grad->dims();
-    for (size_t i = 0; i < output_dims[0]; i++) {
-      int src_ln = mmap_data[i * 2], dst_ln = mmap_data[i * 2 + 1];
-      for (size_t j = 0; j < output_dims[1]; j++) {
-        x1_grad_data[dst_ln * output_dims[1] + j] =
-            output_grad_data[src_ln * output_dims[1] + j];
+    for (size_t i = 0; i < mmap->dims()[0]; i++) {
+      int src_ln = mmap_data[i * 3], dst_ln = mmap_data[i * 3 + 1];
+      int line_cnt = mmap_data[i * 3 + 2];
+      for (size_t l = 0; l < line_cnt; l++) {
+        for (size_t j = 0; j < output_dims[1]; j++) {
+          x1_grad_data[(dst_ln + l) * output_dims[1] + j] =
+              output_grad_data[(src_ln + l) * output_dims[1] + j];
+        }
       }
     }
   }
