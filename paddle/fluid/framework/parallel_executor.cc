@@ -182,8 +182,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-  void InitOrGetNCCLCommunicator(framework::Scope *scope,
-                                 const BuildStrategy &bst) {
+  void InitOrGetNCCLCommunicator(framework::Scope *scope, BuildStrategy *bst) {
     const std::string var_name = "NCCLCommunicator";
     auto var = scope->FindVar(var_name);
     if (var != nullptr) {
@@ -195,9 +194,24 @@ class ParallelExecutorPrivate {
       return;
     }
 
+    if (bst->use_hierarchical_allreduce_) {
+      PADDLE_ENFORCE(bst->num_trainers_ > 1, "num_trainers:%llu < 1",
+                     bst->num_trainers_);
+      PADDLE_ENFORCE(bst->hierarchical_allreduce_inter_nranks_ > 1,
+                     "inter_nranks:%d < 1",
+                     bst->hierarchical_allreduce_inter_nranks_);
+      PADDLE_ENFORCE(
+          (bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_ == 0),
+          "num_trainers:%llu mod inter_nranks:%d != 0", bst->num_trainers_,
+          bst->hierarchical_allreduce_inter_nranks_);
+
+      bst->hierarchical_allreduce_exter_nranks_ =
+          bst->num_trainers_ / bst->hierarchical_allreduce_inter_nranks_;
+    }
+
     VLOG(1) << "not find " << var_name << " in scope, so recreate it!";
     nccl_ctxs_ = scope->Var(var_name)->GetMutable<platform::NCCLCommunicator>();
-    InitNCCLCtxs(scope, bst);
+    InitNCCLCtxs(scope, *bst);
   }
 #endif
 
@@ -375,7 +389,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   if (member_->use_cuda_ && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    member_->InitOrGetNCCLCommunicator(scope, member_->build_strategy_);
+    member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.

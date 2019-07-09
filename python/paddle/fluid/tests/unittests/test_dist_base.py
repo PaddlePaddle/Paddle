@@ -146,6 +146,7 @@ class TestDistRunnerBase(object):
                 type(self).__name__,
                 "get trainer program done. with nccl2 mode")
             trainer_prog = fluid.default_main_program()
+            print("train_prog:", trainer_prog._use_hierarchical_allreduce)
         else:
             my_print(
                 type(self).__name__,
@@ -175,6 +176,10 @@ class TestDistRunnerBase(object):
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
 
+        if args.use_hallreduce:
+            build_stra.use_hierarchical_allreduce = True
+            build_stra.hierarchical_allreduce_inter_nranks = args.hallreduce_inter_nranks
+
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         else:
@@ -200,15 +205,6 @@ class TestDistRunnerBase(object):
             build_strategy=build_stra,
             exec_strategy=exec_strategy)
         my_print(type(self).__name__, "program compiled with data parallel")
-
-        if args.use_cuda and args.update_method == "nccl2":
-            # it just for test share_vars_from feature.
-            test_exe = fluid.ParallelExecutor(
-                use_cuda=True,
-                loss_name=avg_cost.name,
-                build_strategy=build_stra,
-                main_program=test_program,
-                share_vars_from=binary._executor)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -238,6 +234,16 @@ class TestDistRunnerBase(object):
             out_losses.append(loss[0])
             my_print(type(self).__name__, "run step %d finished" % i)
         my_print(type(self).__name__, "trainer run finished")
+        """
+        if args.use_cuda and args.update_method == "nccl2":
+            # it just for test share_vars_from feature.
+            test_exe = fluid.ParallelExecutor(
+                use_cuda=True,
+                loss_name=avg_cost.name,
+                build_strategy=build_stra,
+                main_program=test_program,
+                share_vars_from=binary._executor)
+        """
 
         if six.PY2:
             print(pickle.dumps(out_losses))
@@ -330,10 +336,8 @@ def runtime_main(test_class):
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
-    parser.add_argument(
-        '--enable_backward_deps', type=bool, required=False, default=False)
-    parser.add_argument(
-        '--use_hallreduce', type=bool, required=False, default=False)
+    parser.add_argument('--enable_backward_deps', action='store_true')
+    parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
@@ -414,10 +418,10 @@ class TestDistBase(unittest.TestCase):
         self._use_dgc = False
         self._dygraph = False
         self._nccl_comm_num = 1
-        self._setup_config()
-        self._after_setup_config()
         self._enable_backward_deps = False
         self._use_hallreduce = False
+        self._setup_config()
+        self._after_setup_config()
 
     def _find_free_port(self):
         def __free_port():
@@ -626,7 +630,7 @@ class TestDistBase(unittest.TestCase):
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
                                trainer_num):
         env = {}
-        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+        tr_cmd = "%s -u %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
         tr_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
                    trainer_id, ep, update_method, self._lr)
@@ -647,7 +651,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             #tr1_cmd += " --use_cuda"
             env = {
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
+                #"CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id)
             }
@@ -678,7 +682,7 @@ class TestDistBase(unittest.TestCase):
             #env0.update({"FLAGS_selected_gpus": "0,1"})
             #env1.update({"FLAGS_selected_gpus": "2,3"})
 
-            tr_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
+            tr_cmd += " --use_hallreduce --hallreduce_inter_nranks 2"
             #tr1_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
 
         if self._enable_backward_deps:
@@ -691,24 +695,28 @@ class TestDistBase(unittest.TestCase):
 
     def _run_cluster_nccl2(self, model, envs, nccl2_reduce_layer,
                            check_error_log):
+        if self._use_hallreduce:
+            self._ps_endpoints = ""
+            for i in range(0, 4):
+                self._ps_endpoints += "127.0.0.1:%s," % (self._find_free_port())
+            self._ps_endpoints = self._ps_endpoints[:-1]
+
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
         worker_endpoints = self._ps_endpoints.split(",")
-        #w0_ep, w1_ep = worker_endpoints
         if nccl2_reduce_layer:
             update_method = "nccl2_reduce_layer"
         else:
             update_method = "nccl2"
 
-        trainer_num = 2
-        if self._use_hallreduce:
-            trainer_num = 4
+        trainer_num = len(worker_endpoints)
 
         procs = []
         pipes = []
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num)
-            print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
+            print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
+                self._use_hallreduce, tr_cmd, tr_env))
             tr_env.update(envs)
 
             tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
@@ -732,6 +740,10 @@ class TestDistBase(unittest.TestCase):
             pipes[i].close()
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
 
+        #print("outs 0:", outs[0])
+        #print("outs 1:", outs[1])
+        #print("pickle:", pickle.loads(outs[0]))
+
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def check_with_place(self,
@@ -754,7 +766,7 @@ class TestDistBase(unittest.TestCase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses\
