@@ -353,6 +353,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
+    } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
+      if (!use_cuda) {
+        LOG(WARNING) << "backward_optimizer_op_deps_pass is only supported on "
+                        "GPU, skipped.";
+        continue;
+      }
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
