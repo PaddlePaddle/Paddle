@@ -146,7 +146,6 @@ class TestDistRunnerBase(object):
                 type(self).__name__,
                 "get trainer program done. with nccl2 mode")
             trainer_prog = fluid.default_main_program()
-            print("train_prog:", trainer_prog._use_hierarchical_allreduce)
         else:
             my_print(
                 type(self).__name__,
@@ -234,16 +233,6 @@ class TestDistRunnerBase(object):
             out_losses.append(loss[0])
             my_print(type(self).__name__, "run step %d finished" % i)
         my_print(type(self).__name__, "trainer run finished")
-        """
-        if args.use_cuda and args.update_method == "nccl2":
-            # it just for test share_vars_from feature.
-            test_exe = fluid.ParallelExecutor(
-                use_cuda=True,
-                loss_name=avg_cost.name,
-                build_strategy=build_stra,
-                main_program=test_program,
-                share_vars_from=binary._executor)
-        """
 
         if six.PY2:
             print(pickle.dumps(out_losses))
@@ -739,10 +728,6 @@ class TestDistBase(unittest.TestCase):
             outs.append(tr_out)
             pipes[i].close()
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
-
-        #print("outs 0:", outs[0])
-        #print("outs 1:", outs[1])
-        #print("pickle:", pickle.loads(outs[0]))
 
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
