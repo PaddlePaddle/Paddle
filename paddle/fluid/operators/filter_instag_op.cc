@@ -40,25 +40,6 @@ class FilterInstagOp : public framework::OperatorWithKernel {
       auto x1_dims = ctx->GetInputDim("X1");
       ctx->SetOutputDim("Out", framework::make_ddim({x1_dims[0], x1_dims[1]}));
       ctx->SetOutputDim("Map", framework::make_ddim({x1_dims[0], 2}));
-      /*auto x1 = Scope.Var("X1")->GetMutable<LoDTensor>();
-      auto x2 = Scope.Var("X2")->GetMutable<LoDTensor>();
-      auto x3 = Scope.Var("X3")->GetMutable<Tensor>();
-      template <typename T>;
-      using Vector = framework::CPUVector<T>;
-      std::unordered_set<int64_t> filter_tag;
-      auto* x3_data = x3->data<int64_t>();
-      for (size_t i = 0; i < len; i++) {
-          filter_tag.insert(x3_data[i]);
-      }
-      auto* x2_data = x2->data<int64_t>();
-      auto x2_lods = x2->lod()[0];
-      auto x1_lods = x1->lod()[0];
-      std::vector<size_t> ins_after_filter;
-      Vector<size_t> out_lods(1, 0);
-      for (size_t i = 0; i < x2_lods.size() -1 ; i++) {
-          for(size_t j = x2_lods[i]; j < x2_lods[i+1]; j++) {
-              if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
-      */
     }
   }
 
