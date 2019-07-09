@@ -123,7 +123,7 @@ if (REPLACE_ENFORCE_GLOG)
   add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
 
-if (NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
+if (SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
 endif()
