@@ -117,10 +117,6 @@ class DDim {
 
   bool operator!=(const DDim& d) const;
 
-  DDim operator+(const DDim& d) const;
-
-  DDim operator*(const DDim& d) const;
-
   inline const int64_t* Get() const { return dim_.Get(); }
 
   inline int64_t* GetMutable() { return dim_.GetMutable(); }
