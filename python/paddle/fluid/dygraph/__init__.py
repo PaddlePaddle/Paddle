@@ -26,10 +26,6 @@ from .nn import *
 from . import tracer
 from .tracer import *
 
-# no need it now
-# from . import profiler
-# from .profiler import *
-
 from . import parallel
 from .parallel import *
 
@@ -47,7 +43,6 @@ __all__ += layers.__all__
 __all__ += base.__all__
 __all__ += nn.__all__
 __all__ += tracer.__all__
-# __all__ += profiler.__all__
 __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__

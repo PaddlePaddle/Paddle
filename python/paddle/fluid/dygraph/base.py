@@ -26,6 +26,7 @@ __all__ = [
 ]
 
 
+# This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
     # Internal use only
     return framework.in_dygraph_mode()
