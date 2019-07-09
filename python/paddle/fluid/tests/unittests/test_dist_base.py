@@ -175,10 +175,6 @@ class TestDistRunnerBase(object):
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
 
-        if args.use_hallreduce:
-            build_stra.use_hierarchical_allreduce = True
-            build_stra.hierarchical_allreduce_inter_nranks = args.hallreduce_inter_nranks
-
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         else:
@@ -598,22 +594,6 @@ class TestDistBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
-        # print server log
-        '''
-        with open("/tmp/ps0_err.log", "rb") as fn:
-            sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "rb") as fn:
-            sys.stderr.write("ps1 stderr: %s\n" % fn.read())
-        '''
-
-        # print log
-        '''
-        with open("/tmp/tr0_err.log", "rb") as fn:
-            sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        with open("/tmp/tr1_err.log", "rb") as fn:
-            sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
-        '''
-
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
@@ -623,63 +603,36 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
                    trainer_id, ep, update_method, self._lr)
-        #tr1_cmd = tr_cmd % \
-        #          (self._python_interp, model, self._ps_endpoints,
-        #           1, w1_ep, update_method, self._lr)
 
         if self._mem_opt:
             tr_cmd += " --mem_opt"
-            #tr1_cmd += " --mem_opt"
         if self._use_reduce:
             tr_cmd += " --use_reduce"
-            #tr1_cmd += " --use_reduce"
         if self._use_reader_alloc:
             tr_cmd += " --use_reader_alloc"
-            #tr1_cmd += " --use_reader_alloc"
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
-            #tr1_cmd += " --use_cuda"
-            env = {
-                #"CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
+            env.update({
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id)
-            }
-            """
-            env1 = {
-                "CUDA_VISIBLE_DEVICES": "1",
-                "PADDLE_TRAINERS_NUM": "2",
-                "PADDLE_TRAINER_ID": "1"
-            }
-            """
+            })
         else:
-            env = {'CPU_NUM': '1'}
-            #env1 = {'CPU_NUM': '1'}
+            env.update({'CPU_NUM': '1'})
 
         if self._use_dgc:
             tr_cmd += " --use_dgc"
-            #tr1_cmd += " --use_dgc"
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
-            #tr1_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
 
-        if self._mp_mode or self._use_hallreduce:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
-            #env1 = {"FLAGS_selected_gpus": "1"}
+        env.update({"FLAGS_selected_gpus": "{}".format(trainer_id)})
 
         if self._use_hallreduce:
-            #env0.update({"FLAGS_selected_gpus": "0,1"})
-            #env1.update({"FLAGS_selected_gpus": "2,3"})
-
             tr_cmd += " --use_hallreduce --hallreduce_inter_nranks 2"
-            #tr1_cmd += " --use_hallreduce 1 --hallreduce_inter_nranks 2"
 
         if self._enable_backward_deps:
-            tr_cmd += " --enable_backward_deps 1"
-            #tr1_cmd += " --enable_backward_deps 1"
+            tr_cmd += " --enable_backward_deps"
 
-        #env0.update(envs)
-        #env1.update(envs)
         return tr_cmd, env
 
     def _run_cluster_nccl2(self, model, envs, nccl2_reduce_layer,
@@ -704,9 +657,9 @@ class TestDistBase(unittest.TestCase):
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num)
+            tr_env.update(envs)
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
-            tr_env.update(envs)
 
             tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
 
@@ -745,7 +698,6 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
             "http_proxy": "",
-            "NCCL_P2P_DISABLE": "1"
         }
 
         required_envs.update(need_envs)
