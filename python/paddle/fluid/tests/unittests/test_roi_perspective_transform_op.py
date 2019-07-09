@@ -200,6 +200,7 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
     out = np.zeros([rois_num, channels, transformed_height, transformed_width])
     mask = np.zeros(
         [rois_num, 1, transformed_height, transformed_width]).astype('int')
+    matrix = np.zeros([rois_num, 9], dtype=in_data.dtype)
     for n in range(rois_num):
         roi_x = []
         roi_y = []
@@ -209,7 +210,7 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
         image_id = roi2image[n]
         transform_matrix = get_transform_matrix(
             transformed_width, transformed_height, roi_x, roi_y)
-
+        matrix[n] = transform_matrix
         for c in range(channels):
             for out_h in range(transformed_height):
                 for out_w in range(transformed_width):
@@ -224,7 +225,7 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
                     else:
                         out[n][c][out_h][out_w] = 0.0
                         mask[n][0][out_h][out_w] = 0
-    return out.astype("float32"), mask, transform_matrix
+    return out.astype("float32"), mask, matrix
 
 
 class TestROIPoolOp(OpTest):

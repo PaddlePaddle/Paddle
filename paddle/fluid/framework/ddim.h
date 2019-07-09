@@ -170,9 +170,6 @@ DDim make_ddim(const std::vector<int>& dims);
  */
 DDim make_ddim(std::initializer_list<int64_t> dims);
 
-int64_t get(const DDim& dim, int idx);
-void set(DDim& dim, int idx, int val);  // NOLINT
-
 std::vector<int64_t> vectorize(const DDim& ddim);
 std::vector<int> vectorize2int(const DDim& ddim);
 
