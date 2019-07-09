@@ -88,7 +88,8 @@ class MulPrimitiveFactory {
       auto dst_mdesc = CreateMemDescriptor<T>(data, dst_fmt);
       x_tmp.mutable_data<T>(ctx.GetPlace(), data->memory_size());
 
-      Reorder(src_mdesc, dst_mdesc, data->data<T>(), x_tmp.data<T>());
+      Reorder(src_mdesc, dst_mdesc, to_void_cast<T>(data->data<T>()),
+              to_void_cast<T>(x_tmp.data<T>()));
 
       x_tmp.Resize(data->dims());
       x_tmp.set_format((memory::format)dst_mdesc.data.format);
@@ -102,7 +103,7 @@ class MulPrimitiveFactory {
 
   void UpdateDataPointers(const ExecutionContext &ctx, Tensor *out,
                           const Tensor *in) {
-    x_input_->set_data_handle(const_cast<XT *>(in->data<XT>()));
+    x_input_->set_data_handle(to_void_cast<XT>(in->data<XT>()));
     output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
 
     if (out->format() == memory::format::format_undef) {
@@ -128,8 +129,7 @@ class MulPrimitiveFactory {
 
   template <typename T>
   memory CreateMemory(const memory::desc &desc, const Tensor *tensor) {
-    const void *data = tensor->data<T>();
-    return memory({desc, engine_}, const_cast<void *>(data));
+    return memory({desc, engine_}, to_void_cast<T>(tensor->data<T>()));
   }
 
   memory CreateDstMemory(
@@ -144,11 +144,10 @@ class MulPrimitiveFactory {
   }
 
   memory Reorder(const memory::desc &src_desc, const memory::desc &dst_desc,
-                 const void *src_data, const void *dst_data = NULL) {
-    auto src_mem = memory({src_desc, engine_}, const_cast<void *>(src_data));
-    auto dst_mem =
-        dst_data ? memory({dst_desc, engine_}, const_cast<void *>(dst_data))
-                 : memory({dst_desc, engine_});
+                 void *src_data, void *dst_data = NULL) {
+    auto src_mem = memory({src_desc, engine_}, src_data);
+    auto dst_mem = dst_data ? memory({dst_desc, engine_}, dst_data)
+                            : memory({dst_desc, engine_});
 
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
     stream(stream::kind::eager).submit({reorder}).wait();
@@ -161,7 +160,7 @@ class MulPrimitiveFactory {
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor<YT>(dims, memory::format::io);
     auto dst_desc = CreateMemDescriptor<YT>(dims, memory::format::oi);
-    return Reorder(src_desc, dst_desc, input_y->data<YT>());
+    return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
   }
 
   inner_product_forward CreateMulPrimitive(const memory &x_memory,
@@ -239,14 +238,13 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
   }
 
   memory ReorderWithScale(const memory::desc &src_desc,
-                          const memory::desc &dst_desc, const void *src_data,
+                          const memory::desc &dst_desc, void *src_data,
                           const std::vector<float> &scale) {
     auto mask = scale.size() > 1 ? 1 : 0;
     mkldnn::primitive_attr attr;
     attr.set_output_scales(mask, scale);
 
-    auto src_mem =
-        memory({src_desc, this->engine_}, const_cast<void *>(src_data));
+    auto src_mem = memory({src_desc, this->engine_}, src_data);
     auto dst_mem = memory({dst_desc, this->engine_});
 
     auto reorder_pd = mkldnn::reorder::primitive_desc(
