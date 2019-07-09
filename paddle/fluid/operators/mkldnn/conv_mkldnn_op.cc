@@ -358,13 +358,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dst_dt = unsigned_output
                       ? paddle::framework::ToMKLDNNDataType(
-                            framework::DataTypeTrait<uint8_t>::DataType)
+                            framework::DataTypeTrait<uint8_t>::DataType())
                       : paddle::framework::ToMKLDNNDataType(
-                            framework::DataTypeTrait<int8_t>::DataType);
+                            framework::DataTypeTrait<int8_t>::DataType());
 
     if (force_fp32_output) {
       dst_dt = paddle::framework::ToMKLDNNDataType(
-          framework::DataTypeTrait<float>::DataType);
+          framework::DataTypeTrait<float>::DataType());
     }
 
     if (fuse_residual_conn) {
