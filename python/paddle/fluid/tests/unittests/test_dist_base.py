@@ -693,7 +693,7 @@ class TestDistBase(unittest.TestCase):
                            check_error_log):
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
         worker_endpoints = self._ps_endpoints.split(",")
-        w0_ep, w1_ep = worker_endpoints
+        #w0_ep, w1_ep = worker_endpoints
         if nccl2_reduce_layer:
             update_method = "nccl2_reduce_layer"
         else:
@@ -706,8 +706,9 @@ class TestDistBase(unittest.TestCase):
         procs = []
         pipes = []
         for i in range(0, trainer_num):
-            tr_cmd, tr_env = _get_nccl2_trainer_cmd()
-            print("tr_cmd:{}, env: {}".format(tr_cmd, env))
+            tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
+                model, worker_endpoints[i], update_method, i, trainer_num)
+            print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
             tr_env.update(envs)
 
             tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
