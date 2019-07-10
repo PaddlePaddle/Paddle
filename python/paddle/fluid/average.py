@@ -56,7 +56,7 @@ class WeightedAverage(object):
             avg.eval()
 
             # The result is 3.333333333.
-            # For (2.0 * 1 + 4.0 * 2) / (1 + 2) = 3.333333333
+            # For (3.0 * 1 + 4.0 * 2) / (1 + 2) = 3.333333333
     """
 
     def __init__(self):
