@@ -32,6 +32,13 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 using LoDTensor = framework::LoDTensor;
+#if defined(PADDLE_WITH_CUDA)
+template <typename T>
+using Vector = framework::Vector<T>;
+#else
+template <typename T>
+using Vector = framework::CPUVector<T>;
+#endif
 
 template <typename T>
 class FilterInstagKernel : public framework::OpKernel<T> {
@@ -62,7 +69,7 @@ class FilterInstagKernel : public framework::OpKernel<T> {
 
     std::unordered_map<int64_t, int64_t> mmap_aux;
     std::vector<size_t> ins_after_filter;
-    framework::CPUVector<size_t> out_lods(1, 0);
+    Vector<size_t> out_lods(1, 0);
     for (size_t i = 0; i < x2_lods.size() - 1; i++) {
       for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
         if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
@@ -91,7 +98,7 @@ class FilterInstagKernel : public framework::OpKernel<T> {
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
 
-    framework::CPUVector<size_t> map_lods;
+    Vector<size_t> map_lods;
     for (size_t i = 0; i < ins_after_filter.size(); i++) {
       map_data[i * 3] = (int64_t)out_lods[i];
       map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
@@ -99,12 +106,12 @@ class FilterInstagKernel : public framework::OpKernel<T> {
       map_lods.push_back(i);
     }
     map_lods.push_back(ins_after_filter.size());
-    std::vector<framework::CPUVector<size_t>> map_lod_info;
+    std::vector<Vector<size_t>> map_lod_info;
     map_lod_info.push_back(map_lods);
 
     map->set_lod(map_lod_info);
 
-    std::vector<framework::CPUVector<size_t>> out_lod_info;
+    std::vector<Vector<size_t>> out_lod_info;
     out_lod_info.push_back(out_lods);
     out->set_lod(out_lod_info);
     memset(out_data, 0, out->dims()[0] * out->dims()[1] * sizeof(T));
