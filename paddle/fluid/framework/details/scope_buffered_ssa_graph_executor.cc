@@ -21,7 +21,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -37,6 +36,8 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       var_infos_(std::move(var_infos)),
       places_(std::move(places)) {
   PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  pre_local_exec_scopes_.resize(local_exec_scopes_.size());
+  post_local_exec_scopes_.resize(local_exec_scopes_.size());
   PrepareLocalExeScopes();
 }
 
@@ -49,11 +50,14 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 
   std::vector<framework::LoDTensor> fetch_data;
   std::exception_ptr eptr = nullptr;
-  try {
-    fetch_data = underlying_executor_->Run(fetch_tensors);
-  } catch (...) {
-    eptr = std::current_exception();
-  }
+
+  RecordHistoryLocalExecScopes(fetch_tensors.size() > 0, [&]() {
+    try {
+      fetch_data = underlying_executor_->Run(fetch_tensors);
+    } catch (...) {
+      eptr = std::current_exception();
+    }
+  });
 
   ++drop_scope_counter_;
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
@@ -63,6 +67,61 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     std::rethrow_exception(eptr);
   } else {
     return fetch_data;
+  }
+}
+
+void ScopeBufferedSSAGraphExecutor::RecordHistoryLocalExecScopes(
+    bool has_fetch, const std::function<void()> &callback) {
+  for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
+    pre_local_exec_scopes_.at(scope_id).clear();
+    auto scopes = local_exec_scopes_.at(scope_id)->kids();
+    VLOG(10) << "pre_local_exec_scopes[" << scope_id
+             << "] sub-scope: " << scopes.size();
+    pre_local_exec_scopes_.at(scope_id).insert(scopes.begin(), scopes.end());
+  }
+
+  callback();
+
+  for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
+    post_local_exec_scopes_.at(scope_id).clear();
+    auto scopes = local_exec_scopes_.at(scope_id)->kids();
+    VLOG(10) << "post_local_exec_scopes[" << scope_id
+             << "] sub-scope: " << scopes.size();
+    post_local_exec_scopes_.at(scope_id).insert(scopes.begin(), scopes.end());
+  }
+
+  history_local_exec_scopes_.emplace_back();
+  auto &incr_local_exec_scopes = history_local_exec_scopes_.back();
+  incr_local_exec_scopes.resize(local_exec_scopes_.size());
+  for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
+    for (auto &scope : post_local_exec_scopes_.at(scope_id)) {
+      if (!pre_local_exec_scopes_.at(scope_id).count(scope)) {
+        incr_local_exec_scopes.at(scope_id).insert(scope);
+      }
+    }
+    if (VLOG_IS_ON(10)) {
+      std::stringstream out;
+      out << scope_id << " kids: ";
+      for (auto &scope : incr_local_exec_scopes.at(scope_id)) {
+        out << scope << ", ";
+      }
+      VLOG(10) << out.str();
+    }
+  }
+
+  size_t history_step = history_local_exec_scopes_.size();
+  if (has_fetch && history_step >= 2) {
+    VLOG(10) << "delete pre_incr_local_exec_scopes.";
+    for (size_t i = 0; i < history_step - 1; ++i) {
+      auto &pre_incr_local_exec_scopes = history_local_exec_scopes_.front();
+      for (size_t scope_idx = 0; scope_idx < pre_incr_local_exec_scopes.size();
+           ++scope_idx) {
+        for (auto scope : pre_incr_local_exec_scopes[scope_idx]) {
+          local_exec_scopes_.at(scope_idx)->DeleteScope(scope);
+        }
+      }
+      history_local_exec_scopes_.pop_front();
+    }
   }
 }
 
@@ -104,6 +163,7 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
 
+  history_local_exec_scopes_.clear();
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
     local_exec_scopes_[i]->EraseVarsExcept(preserve_vars_[i]);
     local_exec_scopes_[i]->DropKids();
