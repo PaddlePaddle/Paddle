@@ -30,10 +30,10 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
+    bool overwrite = ctx.Attr<bool>("overwrite");
 
     Out->ShareDataWith(*X);
-
-    GPUScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
+    GPUScatterAssign<T>(ctx, *Updates, *Ids, Out, overwrite);
   }
 };
 

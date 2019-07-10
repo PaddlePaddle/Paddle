@@ -111,8 +111,8 @@ class ParallelExecutorPrivate {
     std::vector<ncclUniqueId *> flat_nccl_ids;
     if (nranks_ == 1) {
       // FIXME(gongwb): need not to create ncclid when nranks==1
-      nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                              bst.trainer_id_);
+      nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                               bst.trainer_id_);
       return;
     }
 
@@ -132,16 +132,16 @@ class ParallelExecutorPrivate {
 
       flat_nccl_ids.push_back(nccl_id);
 
-      nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                              bst.trainer_id_);
+      nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                               bst.trainer_id_);
       VLOG(1) << "init bst nccl context complete!";
       return;
     }
 
     // num_trainers ==1 && places > 1
     if (bst.num_trainers_ == 1) {
-      nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                              bst.trainer_id_);
+      nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                               bst.trainer_id_);
       return;
     }
 
@@ -153,8 +153,8 @@ class ParallelExecutorPrivate {
       flat_nccl_ids.push_back(nccl_id);
     }
 
-    nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
-                            bst.trainer_id_);
+    nccl_ctxs_->InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                             bst.trainer_id_);
 
     if (bst.use_hierarchical_allreduce_) {
       std::vector<ncclUniqueId *> inter_nccl_ids;
@@ -175,11 +175,29 @@ class ParallelExecutorPrivate {
         exter_nccl_ids.push_back(nccl_id);
       }
 
-      nccl_ctxs_.InitHierarchicalCtxs(places_, inter_nccl_ids, exter_nccl_ids,
-                                      bst.num_trainers_, bst.trainer_id_,
-                                      bst.hierarchical_allreduce_inter_nranks_,
-                                      bst.hierarchical_allreduce_exter_nranks_);
+      nccl_ctxs_->InitHierarchicalCtxs(
+          places_, inter_nccl_ids, exter_nccl_ids, bst.num_trainers_,
+          bst.trainer_id_, bst.hierarchical_allreduce_inter_nranks_,
+          bst.hierarchical_allreduce_exter_nranks_);
     }
+  }
+
+  void InitOrGetNCCLCommunicator(framework::Scope *scope,
+                                 const BuildStrategy &bst) {
+    const std::string var_name = "NCCLCommunicator";
+    auto var = scope->FindVar(var_name);
+    if (var != nullptr) {
+      PADDLE_ENFORCE(var->IsInitialized(),
+                     "if %s exists, it must be initialized", var_name);
+      VLOG(1) << "find " << var_name
+              << " in scope, so use it and does not recreate!";
+      nccl_ctxs_ = var->GetMutable<platform::NCCLCommunicator>();
+      return;
+    }
+
+    VLOG(1) << "not find " << var_name << " in scope, so recreate it!";
+    nccl_ctxs_ = scope->Var(var_name)->GetMutable<platform::NCCLCommunicator>();
+    InitNCCLCtxs(scope, bst);
   }
 #endif
 
@@ -190,7 +208,7 @@ class ParallelExecutorPrivate {
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  platform::MultiNCCLContextMap nccl_ctxs_;
+  platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
   bool use_cuda_;
@@ -281,27 +299,6 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-/*
- * When nccl inits nccl comm using ncclCommInitAll, it meets error when
- * allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
- * create a new nccl comm for sync_batch_norm_op. And these codes should be
- * polished with a unified nccl management.
- */
-platform::NCCLContextMap *ParallelExecutor::GetNCCLContextForSyncbatchNomrOp(
-    framework::Scope *scope) {
-  auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
-  if (nccl_id_var != nullptr) {
-    return member_->nccl_ctxs_.DefaultFlatCtx();
-  }
-
-  if (dev_nccl_ctxs_.get() == nullptr) {
-    dev_nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
-  }
-  return dev_nccl_ctxs_.get();
-}
-#endif
-
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -314,19 +311,27 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->build_strategy_ = build_strategy;
-  member_->use_all_reduce_ =
-      build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
+  member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
+                             BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
+  if (!member_->use_all_reduce_ && member_->nranks_ == 1) {
+    LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
+                 "the number of places should be greater than 1.";
+    member_->build_strategy_.reduce_ =
+        BuildStrategy::ReduceStrategy::kAllReduce;
+    member_->use_all_reduce_ = true;
+  }
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
   if (member_->use_cuda_) {
     PADDLE_ENFORCE(places.size() == 1, "Windows can support Single GPU only.");
   }
 #endif
-  if (!member_->use_all_reduce_) {
-    PADDLE_ENFORCE(places.size() > 1,
-                   "If you set build_strategy.reduce with 'Reduce',"
-                   "the number of places must be greater than 1.");
-  }
+
+  LOG(INFO) << string::Sprintf(
+      "The number of %s, which is used in ParallelExecutor, is %lu. And "
+      "the Program will be copied %lu copies",
+      (member_->use_cuda_ ? "CUDAPlace" : "CPUPlace"), places.size(),
+      places.size());
 
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
@@ -345,7 +350,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   std::vector<ir::Graph *> graphs;
-  if (build_strategy.async_mode_) {
+  if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
     graphs.push_back(graph);
@@ -359,17 +364,18 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
-  build_strategy.enable_parallel_graph_ =
-      EnableParallelGraphExecution(*graph, exec_strategy, build_strategy);
-  if (build_strategy.enable_parallel_graph_)
-    VLOG(0) << "The Executor would execute the graph by ParallelGraph "
-               "Execution which can get better performance,"
-            << "you can force it off by env FLAGS_enable_parallel_graph=0";
+  member_->build_strategy_.enable_parallel_graph_ =
+      EnableParallelGraphExecution(*graph, exec_strategy,
+                                   member_->build_strategy_);
+  if (member_->build_strategy_.enable_parallel_graph_) {
+    LOG(INFO) << "The Executor would execute the graph by ParallelGraph "
+                 "Execution which can get better performance,"
+              << "you can force it off by env FLAGS_enable_parallel_graph=0";
+  }
 
-  if (member_->use_cuda_) {
-// Bcast Parameters to all GPUs
+  if (member_->use_cuda_ && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    member_->InitNCCLCtxs(scope, build_strategy);
+    member_->InitOrGetNCCLCommunicator(scope, member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.
@@ -378,7 +384,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
-    auto *nccl_ctxs = GetNCCLContextForSyncbatchNomrOp(scope);
+    auto *nccl_ctxs =
+        member_->nccl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
@@ -391,7 +398,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
-    if (build_strategy.num_trainers_ > 1) {
+    if (member_->build_strategy_.num_trainers_ > 1) {
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;
     } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
@@ -401,49 +408,51 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
     return false;
   };
-
+  // Bcast Parameters to all GPUs
   if (need_broadcast()) {
-    BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
+    BCastParamsToDevices(bcast_vars, member_->build_strategy_.trainer_id_);
   }
+
   // Startup Program has been run. All local scopes has correct parameters.
 
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  if (build_strategy.async_mode_) {
+  if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
-    graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
-                                 {member_->local_scopes_[0]}, 1,
-                                 member_->use_cuda_, &member_->nccl_ctxs_);
+    graph = member_->build_strategy_.Apply(
+        graph, {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, 1, member_->use_cuda_,
+        member_->nccl_ctxs_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
-      graphs[i] =
-          build_strategy.Apply(graphs[i], {member_->places_[i]}, loss_var_name,
-                               {member_->local_scopes_[i]}, 1,
-                               member_->use_cuda_, &member_->nccl_ctxs_);
+      graphs[i] = member_->build_strategy_.Apply(
+          graphs[i], {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, 1, member_->use_cuda_,
+          member_->nccl_ctxs_);
       async_graphs[i] = graphs[i];
     }
   } else {
-    graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
-                                 member_->local_scopes_, member_->nranks_,
-                                 member_->use_cuda_, &member_->nccl_ctxs_);
+    graph = member_->build_strategy_.Apply(
+        graph, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_);
   }
 #else
-  if (build_strategy.async_mode_) {
+  if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
-    graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
-                                 {member_->local_scopes_[0]}, 1,
-                                 member_->use_cuda_);
+    graph = member_->build_strategy_.Apply(
+        graph, {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, 1, member_->use_cuda_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
-      graphs[i] = build_strategy.Apply(
+      graphs[i] = member_->build_strategy_.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
           {member_->local_scopes_[i]}, 1, member_->use_cuda_);
       async_graphs[i] = graphs[i];
     }
   } else {
-    graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
-                                 member_->local_scopes_, member_->nranks_,
-                                 member_->use_cuda_);
+    graph = member_->build_strategy_.Apply(
+        graph, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->nranks_, member_->use_cuda_);
   }
 #endif
 
@@ -484,11 +493,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
-  if (build_strategy.async_mode_) {
+  if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
     member_->executor_.reset(new details::AsyncSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->places_, async_graphs));
-  } else if (build_strategy.enable_parallel_graph_) {
+  } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
@@ -512,7 +521,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  if (!build_strategy.async_mode_) {
+  if (!member_->build_strategy_.async_mode_) {
     member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, std::move(var_infos),
         member_->places_, std::move(member_->executor_)));
@@ -559,7 +568,7 @@ void ParallelExecutor::BCastParamsToDevices(
       PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
                         "variables' buffer size to bcast NOT equal to places");
       {
-        auto *nccl_ctxs = member_->nccl_ctxs_.DefaultFlatCtx();
+        auto *nccl_ctxs = member_->nccl_ctxs_->DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);
@@ -643,7 +652,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           "The number(%d) of samples of "
           "current batch is less than the count(%d) of "
           "devices(%s), currently, it is not allowed. ",
-          member_->places_.size(), lod_tensors.size(),
+          lod_tensors.size(), member_->places_.size(),
           (is_cpu_place ? "CPU" : "GPU"));
       if (is_cpu_place) {
         error_info +=

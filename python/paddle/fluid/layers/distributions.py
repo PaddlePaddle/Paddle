@@ -20,6 +20,8 @@ from . import ops
 from . import nn
 import math
 import numpy as np
+import warnings
+
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
 
@@ -85,15 +87,23 @@ class Distribution(object):
                 if isinstance(arg, cls):
                     valid_arg = True
                     break
-            assert valid_arg, "type of input args must be float, list, np.ndarray or Variable"
+            assert valid_arg, "type of input args must be float, list, numpy.ndarray or Variable."
             if isinstance(arg, float):
                 arg = np.zeros(1) + arg
-            arg_np = np.array(arg).astype('float32')
+            arg_np = np.array(arg)
+            arg_dtype = arg_np.dtype
+            if str(arg_dtype) not in ['float32']:
+                warnings.warn(
+                    "data type of argument only support float32, your argument will be convert to float32."
+                )
+                arg_np = arg_np.astype('float32')
             tmp = tmp + arg_np
             numpy_args.append(arg_np)
+
+        dtype = tmp.dtype
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
-            arg_variable = tensor.create_tensor(dtype='float32')
+            arg_variable = tensor.create_tensor(dtype=dtype)
             tensor.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 
@@ -123,6 +133,10 @@ class Uniform(Distribution):
 
     The parameters `low` and `high` must be shaped in a way that supports
     broadcasting (e.g., `high - low` is a valid operation).
+
+    Args:
+        low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.
+        high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.
 
     Examples:
         .. code-block:: python
@@ -186,7 +200,7 @@ class Uniform(Distribution):
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, 'float32', 0.)
+                self.low + self.high, batch_shape + shape, self.low.dtype, 0.)
             uniform_random_tmp = nn.uniform_random_batch_size_like(
                 zero_tmp, zero_tmp.shape, min=0., max=1., seed=seed)
             output = uniform_random_tmp * (zero_tmp + self.high - self.low
@@ -196,7 +210,7 @@ class Uniform(Distribution):
             output_shape = shape + batch_shape
             output = ops.uniform_random(
                 output_shape, seed=seed) * (tensor.zeros(
-                    output_shape, dtype='float32') +
+                    output_shape, dtype=self.low.dtype) +
                                             (self.high - self.low)) + self.low
             if self.all_arg_is_float:
                 return nn.reshape(output, shape)
@@ -215,8 +229,8 @@ class Uniform(Distribution):
         """
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
-        lb = tensor.cast(lb_bool, dtype='float32')
-        ub = tensor.cast(ub_bool, dtype='float32')
+        lb = tensor.cast(lb_bool, dtype=value.dtype)
+        ub = tensor.cast(ub_bool, dtype=value.dtype)
         return nn.log(lb * ub) - nn.log(self.high - self.low)
 
     def entropy(self):
@@ -249,7 +263,11 @@ class Normal(Distribution):
     * :math:`loc = \mu`: is the mean.
     * :math:`scale = \sigma`: is the std.
     * :math:`Z`: is the normalization constant.
-    
+
+    Args:
+        loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.
+        scale(float|list|numpy.ndarray|Variable): The std of normal distribution.
+
     Examples:
         .. code-block:: python
 
@@ -320,7 +338,7 @@ class Normal(Distribution):
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, 'float32', 0.)
+                self.loc + self.scale, batch_shape + shape, self.loc.dtype, 0.)
             normal_random_tmp = nn.gaussian_random_batch_size_like(
                 zero_tmp, zero_tmp.shape, mean=0., std=1., seed=seed)
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
@@ -328,7 +346,7 @@ class Normal(Distribution):
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
-                     (tensor.zeros(output_shape, dtype='float32') + self.scale) + self.loc
+                     (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale) + self.loc
             if self.all_arg_is_float:
                 return nn.reshape(output, shape)
             else:
@@ -343,7 +361,7 @@ class Normal(Distribution):
         """
         batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(
-            self.loc + self.scale, batch_shape, 'float32', 0.)
+            self.loc + self.scale, batch_shape, self.loc.dtype, 0.)
         return 0.5 + 0.5 * math.log(2 * math.pi) + nn.log(
             (self.scale + zero_tmp))
 
@@ -567,3 +585,4 @@ class MultivariateNormalDiag(Distribution):
         kl = 0.5 * (tr_cov_matmul + tri_matmul - k + ln_cov)
 
         return kl
+

@@ -103,6 +103,33 @@ bool HasCircle(const Graph &graph) {
   return HasCircleInternal(BuildOperationAdjList(graph), nullptr);
 }
 
+bool VarDescIsConsistency(const Graph &graph) {
+  std::unordered_map<std::string, std::unordered_set<ir::Node *>>
+      var_name2node_set;
+  for (ir::Node *node : graph.Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      // Note: The graph may have the same name node. For example, parameter
+      // is the input of operator and it also is the output of optimizer;
+      var_name2node_set[node->Var()->Name()].emplace(node);
+    }
+  }
+  for (auto &iter : var_name2node_set) {
+    auto &first_node = *iter.second.begin();
+    bool is_persistable = std::any_of(iter.second.begin(), iter.second.end(),
+                                      [&first_node](const ir::Node *node) {
+                                        return node->Var()->Persistable();
+                                      });
+    if (is_persistable) {
+      bool is_consistency =
+          std::all_of(iter.second.begin(), iter.second.end(),
+                      [&first_node](const ir::Node *node) {
+                        return *node->Var() == *first_node->Var();
+                      });
+      if (!is_consistency) return false;
+    }
+  }
+  return true;
+}
 bool FindCircleSubGraph(const Graph &graph,
                         std::vector<std::vector<ir::Node *>> *circles) {
   return HasCircleInternal(BuildOperationAdjList(graph), circles);
