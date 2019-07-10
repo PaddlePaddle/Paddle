@@ -215,6 +215,8 @@ void AnalysisPredictor::MkldnnPostReset() {
   if (config_.mkldnn_cache_capacity_ > 0) {
     paddle::platform::set_cur_mkldnn_session_id(
         platform::kMKLDNNSessionID_Default);
+    platform::set_cur_input_shape_cache_capacity(0);
+    platform::set_cur_input_shape_str("");
   }
 #endif
 }
