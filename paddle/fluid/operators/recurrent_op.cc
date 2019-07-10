@@ -469,16 +469,36 @@ class RecurrentGradOp : public RecurrentBase {
             zero_op->Run(scope, place);
           }
 
-          auto new_inside_name = cur_scope.Rename(inside_grad_name);
+          // add inside grad variable to outside grad variable
+          // if subblock's variable affect parent block varieble.
+          if (inside_grad_name.compare(pg_names[param_id]) != 0) {
+            const framework::Tensor &cur_var =
+                cur_scope.FindLocalVar(pg_names[param_id])
+                    ->Get<framework::LoDTensor>();
+            auto &pre_var = const_cast<framework::LoDTensor &>(
+                scope.FindLocalVar(inside_grad_name)
+                    ->Get<framework::LoDTensor>());
+            pre_var.ShareDataWith(cur_var);
 
-          // sum gradient
-          auto sum_op = framework::OpRegistry::CreateOp(
-              "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-              {{"Out", {pg_names[param_id]}}},
-              framework::AttributeMap{{"use_mkldnn", {false}}});
-          sum_op->Run(cur_scope, place);
+            auto sum_op = framework::OpRegistry::CreateOp(
+                "sum", {{"X", {pg_names[param_id], inside_grad_name}}},
+                {{"Out", {pg_names[param_id]}}},
+                framework::AttributeMap{{"use_mkldnn", {false}}});
 
-          cur_scope.Rename(new_inside_name, inside_grad_name);
+            sum_op->Run(scope, place);
+
+          } else {
+            auto new_inside_name = cur_scope.Rename(inside_grad_name);
+
+            // sum gradient
+            auto sum_op = framework::OpRegistry::CreateOp(
+                "sum", {{"X", {pg_names[param_id], new_inside_name}}},
+                {{"Out", {pg_names[param_id]}}},
+                framework::AttributeMap{{"use_mkldnn", {false}}});
+            sum_op->Run(cur_scope, place);
+
+            cur_scope.Rename(new_inside_name, inside_grad_name);
+          }
         }
       }
       VLOG(5) << "Accumulate Parameter finished ";
