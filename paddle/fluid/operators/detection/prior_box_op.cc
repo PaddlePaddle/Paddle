@@ -87,10 +87,10 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       auto input_image_type = ctx.Input<framework::Tensor>("Image")->type();
       int customized_type_value =
           framework::OpKernelType::kDefaultCustomizedTypeValue;
-      if (input_image_type == framework::DataTypeTrait<float>::DataType) {
+      if (input_image_type == framework::DataTypeTrait<float>::DataType()) {
         customized_type_value = kPriorBoxFLOAT;
       } else if (input_image_type ==
-                 framework::DataTypeTrait<double>::DataType) {
+                 framework::DataTypeTrait<double>::DataType()) {
         customized_type_value = kPriorBoxDOUBLE;
       }
       return framework::OpKernelType(input_input_type, ctx.GetPlace(), layout_,
