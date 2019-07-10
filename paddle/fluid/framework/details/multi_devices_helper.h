@@ -45,6 +45,7 @@ constexpr char kGraphVars[] = "vars";
 constexpr char kPlaces[] = "places";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
+constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
@@ -57,15 +58,15 @@ constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 typedef std::string FusedOptType;
 constexpr char kFusedOptType[] = "fused_opt_type";
 
-typedef std::string FusedGrads;
+typedef std::vector<std::string> FusedGrads;
 constexpr char kFusedGrads[] = "fused_gradients";
 
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
-    GroupGradsAndParams;
-constexpr char kGroupGradsAndParams[] = "group_grads_params";
+    GroupParamsAndGrads;
+constexpr char kGroupParamsAndGrads[] = "group_params_grads";
 
 }  // namespace details
 }  // namespace framework

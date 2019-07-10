@@ -238,6 +238,8 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       zero(dev_ctx, w_grad, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     } else {
+      PADDLE_ENFORCE(path != nullptr,
+                     "Sparse mode should not be used without custom tree!");
       framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));

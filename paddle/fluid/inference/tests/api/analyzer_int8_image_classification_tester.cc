@@ -70,9 +70,9 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
     const std::vector<std::vector<PaddleTensor>> &test_data,
     int num_images = FLAGS_warmup_batch_size) {
   int test_data_batch_size = test_data[0][0].shape[0];
-  auto iterations_max = test_data.size();
+  auto iterations = test_data.size();
   PADDLE_ENFORCE(
-      static_cast<size_t>(num_images) <= iterations_max * test_data_batch_size,
+      static_cast<size_t>(num_images) <= iterations * test_data_batch_size,
       "The requested quantization warmup data size " +
           std::to_string(num_images) + " is bigger than all test data size.");
 
@@ -130,7 +130,11 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
                                      label_batch_shape, "label");
 
   auto iterations_max = total_images / batch_size;
-  for (auto i = 0; i < iterations_max; i++) {
+  auto iterations = iterations_max;
+  if (FLAGS_iterations > 0 && FLAGS_iterations < iterations_max) {
+    iterations = FLAGS_iterations;
+  }
+  for (auto i = 0; i < iterations; i++) {
     auto images = image_reader.NextBatch();
     auto labels = label_reader.NextBatch();
     inputs->emplace_back(
@@ -138,7 +142,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   }
 }
 
-TEST(Analyzer_int8_resnet50, quantization) {
+TEST(Analyzer_int8_image_classification, quantization) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 

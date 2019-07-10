@@ -36,7 +36,9 @@ inline framework::LoD ConcatLoD(const Container &xs,
     for (size_t j = 0; j < xs.size(); ++j) {
       auto &x_lod = xs[j].get().lod()[0];
       const framework::Tensor &tensor = xs[j].get();
-      xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
+      if (x_lod[i - 1] < x_lod[i]) {
+        xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
+      }
       sum += x_lod[i];
     }
     result[i] = sum;
@@ -102,6 +104,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
 
         framework::LoDTensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
+        if (x_lod[i - 1] == x_lod[i]) continue;
 
         auto prev_lod = x_lod[i - 1];
         auto next_lod = x_lod[i];

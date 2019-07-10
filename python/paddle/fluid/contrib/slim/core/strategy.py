@@ -46,3 +46,6 @@ class Strategy(object):
 
     def on_compression_end(self, context):
         pass
+
+    def restore_from_checkpoint(self, context):
+        pass

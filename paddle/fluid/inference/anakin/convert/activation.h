@@ -22,7 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class ActivationOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class ActivationOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   explicit ActivationOpConverter(const std::string &op_type);
 
@@ -36,18 +37,36 @@ class ActivationOpConverter : public AnakinOpConverter {
   std::string op_type_;
   std::string anakin_op_type_;
   std::map<std::string, std::string> anakin_op_types_{{"tanh", "TanH"},
-                                                      {"sigmoid", "Sigmoid"}};
+                                                      {"sigmoid", "Sigmoid"},
+                                                      {"relu6", "ClippedRelu"},
+                                                      {"swish", "Swish"}};
 };
 
-class TanhOpConverter : public ActivationOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class TanhOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
  public:
-  TanhOpConverter() : ActivationOpConverter("tanh") {}
+  TanhOpConverter() : ActivationOpConverter<TargetT, PrecisionT>("tanh") {}
 };
 
-class SigmoidOpConverter : public ActivationOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SigmoidOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
  public:
-  SigmoidOpConverter() : ActivationOpConverter("sigmoid") {}
+  SigmoidOpConverter()
+      : ActivationOpConverter<TargetT, PrecisionT>("sigmoid") {}
 };
+
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class Relu6OpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
+ public:
+  Relu6OpConverter() : ActivationOpConverter<TargetT, PrecisionT>("relu6") {}
+};
+
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SwishOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
+ public:
+  SwishOpConverter() : ActivationOpConverter<TargetT, PrecisionT>("swish") {}
+};
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

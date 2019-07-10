@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer']
+import sys
+from os import path
+__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 
 # can be initialized from train_desc,
@@ -23,15 +25,20 @@ class TrainerDesc(object):
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         '''
+        # Workaround for relative import in protobuf under python3
+        # TODO: should be fixed
+        cur_path = path.dirname(__file__)
+        sys.path.append(cur_path)
+        sys.path.append(cur_path + "/proto")
         from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
         # set default thread num == cpu count
         self.proto_desc.thread_num = mp.cpu_count()
-        self.fleet_desc_ = None
-        self.device_worker_ = None
-        self.program_ = None
-        self.infer_ = False
+        self._fleet_desc = None
+        self._device_worker = None
+        self._program = None
+        self._infer = False
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
@@ -47,23 +54,29 @@ class TrainerDesc(object):
         self.proto_desc.thread_num = thread_num
 
     def _set_device_worker(self, device_worker):
-        self.device_worker_ = device_worker
+        self._device_worker = device_worker
 
     def _set_infer(self, infer):
-        self.infer_ = infer
+        self._infer = infer
 
     def _set_fleet_desc(self, fleet_desc):
-        self.fleet_desc_ = fleet_desc
+        self._fleet_desc = fleet_desc
 
     def _gen_trainer_desc(self):
         pass
 
     def _set_program(self, program):
-        self.program_ = program
+        self._program = program
+
+    def _set_use_cvm(self, use_cvm=False):
+        self.proto_desc.use_cvm = use_cvm
 
     def _desc(self):
         from google.protobuf import text_format
-        return text_format.MessageToString(self.proto_desc)
+        return self.proto_desc.SerializeToString()
+
+    def __str__(self):
+        return str(self.proto_desc)
 
 
 class MultiTrainer(TrainerDesc):
@@ -73,13 +86,13 @@ class MultiTrainer(TrainerDesc):
 
     def _set_program(self, program):
         super(MultiTrainer, self)._set_program(program)
-        self.program_ = program
+        self._program = program
 
     def _gen_trainer_desc(self):
         super(MultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
-        self.device_worker_._set_infer(self.infer_)
-        self.device_worker_._gen_worker_desc(self.proto_desc)
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._gen_worker_desc(self.proto_desc)
 
 
 class DistMultiTrainer(TrainerDesc):
@@ -89,13 +102,32 @@ class DistMultiTrainer(TrainerDesc):
 
     def _set_program(self, program):
         super(DistMultiTrainer, self)._set_program(program)
-        self.program_ = program
+        self._program = program
 
     def _gen_trainer_desc(self):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
-        if self.program_ == None:
+        if self._program == None:
             raise RuntimeError("None Program")
-        self.device_worker_._set_infer(self.infer_)
-        self.device_worker_._set_program(self.program_)
-        self.device_worker_._gen_worker_desc(self.proto_desc)
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class PipelineTrainer(TrainerDesc):
+    def __init__(self):
+        super(PipelineTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(PipelineTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(PipelineTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "PipelineTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)

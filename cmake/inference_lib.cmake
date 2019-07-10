@@ -117,11 +117,21 @@ endif ()
 
 if (WITH_MKLML)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mklml")
-    copy(mklml_lib
-            SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
-            DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
-            DEPS mklml
-            )
+    if(WIN32)
+        copy(mklml_lib
+                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
+                    ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
+                    ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+                DEPS mklml
+                )
+    else()
+        copy(mklml_lib
+                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
+                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+                DEPS mklml
+                )
+    endif()
 elseif (NOT CBLAS_FOUND OR WIN32)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
     copy(openblas_lib
@@ -131,22 +141,21 @@ elseif (NOT CBLAS_FOUND OR WIN32)
             )
 endif ()
 
-if (WITH_GPU AND NOT WIN32)
-    set(dgc_dir "${FLUID_INSTALL_DIR}/third_party/install/dgc")
-    copy(dgc_lib
-            SRCS ${DGC_INSTALL_DIR}/lib ${DGC_INSTALL_DIR}/include
-            DSTS ${dgc_dir} ${dgc_dir}
-            DEPS dgc)
-endif()
-
-
 if (WITH_MKLDNN)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mkldnn")
-    copy(mkldnn_lib
-            SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-            DSTS ${dst_dir} ${dst_dir}/lib
-            DEPS mkldnn_shared_lib
-            )
+    if(WIN32)
+        copy(mkldnn_lib
+                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+                DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib
+                DEPS mkldnn_shared_lib
+                )
+    else()
+        copy(mkldnn_lib
+                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                DSTS ${dst_dir} ${dst_dir}/lib
+                DEPS mkldnn_shared_lib
+                )
+    endif()
 endif ()
 
 if (WITH_NGRAPH)
@@ -198,14 +207,6 @@ copy(memory_lib
 set(inference_deps paddle_fluid_shared paddle_fluid)
 
 set(module "inference/api")
-if (WITH_ANAKIN AND WITH_MKL)
-    copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
-            SRCS
-            ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
-            ${ANAKIN_INSTALL_DIR} # anakin release
-            DSTS ${FLUID_INSTALL_DIR}/third_party/install/anakin ${FLUID_INSTALL_DIR}/third_party/install/anakin)
-    list(APPEND inference_deps anakin_inference_lib)
-endif ()
 
 if (TENSORRT_FOUND)
     copy(tensorrt_lib DEPS ${inference_deps} 
@@ -213,6 +214,11 @@ if (TENSORRT_FOUND)
         DSTS ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/include ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/lib)
 endif ()
 
+if (ANAKIN_FOUND)
+    copy(anakin_lib DEPS ${inference_deps} 
+        SRCS ${ANAKIN_ROOT}/*
+        DSTS ${FLUID_INSTALL_DIR}/third_party/install/anakin)
+endif ()
 
 set(module "inference")
 if(WIN32)

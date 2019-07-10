@@ -18,14 +18,13 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC, core
 from paddle.fluid.dygraph.base import to_variable
 
 
 class SimpleImgConvPool(fluid.Layer):
     def __init__(self,
                  name_scope,
-                 num_channels,
                  num_filters,
                  filter_size,
                  pool_size,
@@ -45,7 +44,6 @@ class SimpleImgConvPool(fluid.Layer):
 
         self._conv2d = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -76,10 +74,10 @@ class MNIST(fluid.Layer):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 1, 20, 5, 2, 2, act="relu")
+            self.full_name(), 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 20, 50, 5, 2, 2, act="relu")
+            self.full_name(), 50, 5, 2, 2, act="relu")
 
         pool_2_shape = 50 * 4 * 4
         SIZE = 10
@@ -99,9 +97,19 @@ class MNIST(fluid.Layer):
 
 
 class TestDygraphCheckpoint(unittest.TestCase):
-    def save_load_persistables(self):
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                image = np.array(item[0]).reshape(1, 28, 28)
+                label = np.array(item[1]).astype('int64').reshape(1)
+                yield image, label
+
+        return _reader_imple
+
+    def test_save_load_persistables(self):
         seed = 90
         epoch_num = 1
+        batch_size = 128
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -109,22 +117,21 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+            batch_py_reader = fluid.io.PyReader(capacity=1)
+            batch_py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    self.reader_decorator(paddle.dataset.mnist.train()),
+                    batch_size=batch_size,
+                    drop_last=True),
+                places=fluid.CPUPlace())
 
             dy_param_init_value = {}
 
-            step = 0
             for epoch in range(epoch_num):
-                for batch_id, data in enumerate(train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(128, 1)
-
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
+                for batch_id, data in enumerate(batch_py_reader()):
+                    img = data[0]
+                    label = data[1]
                     label.stop_gradient = True
 
                     cost = mnist(img)
@@ -135,27 +142,25 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     avg_loss.backward()
                     sgd.minimize(avg_loss)
-                    fluid.dygraph.save_persistables(mnist, "save_dir")
+                    fluid.dygraph.save_persistables(mnist.state_dict(),
+                                                    "save_dir")
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param.numpy()
 
-                    mnist.load_dict(
-                        fluid.dygraph.load_persistables(mnist, "save_dir"))
-
-                    restore = mnist.parameters()
+                    restore, _ = fluid.dygraph.load_persistables("save_dir")
+                    mnist.load_dict(restore)
 
                     self.assertEqual(len(dy_param_init_value), len(restore))
-                    for value in restore:
+                    for ky, value in restore.items():
                         self.assertTrue(
-                            np.allclose(value, dy_param_init_value[value.name]))
-                        self.assertTrue(np.isfinite(value.all()))
-                        self.assertFalse(np.isnan(value.any()))
+                            np.allclose(value.numpy(), dy_param_init_value[
+                                value.name]))
+                        self.assertTrue(np.isfinite(value.numpy().all()))
+                        self.assertFalse(np.isnan(value.numpy().any()))
 
-                    step += 1
-
-                    if step > 20:
+                    if batch_id > 10:
                         break
 
 

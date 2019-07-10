@@ -28,12 +28,14 @@ namespace framework {
 
 TEST(LoD, PrintLoDTensor) {
   LoDTensor tensor1;
+  tensor1.Resize({2});
   tensor1.mutable_data<float>(platform::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
   tensor1.data<float>()[1] = 0.5;
   LOG(INFO) << tensor1;
 
   LoDTensor tensor2;
+  tensor2.Resize({2});
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
   tensor2.data<int64_t>()[1] = 2;

@@ -58,6 +58,11 @@ class ParallelExecutor {
 
   std::vector<Scope *> &GetLocalScopes();
 
+  void DropLocalExeScopes();
+
+  // This API is used to check whether DropLocalExeScopes work.
+  bool NeedCreateLocalExeScope();
+
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
    * size of local scopes.
@@ -82,10 +87,6 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ncclUniqueId> local_nccl_id_;
-#endif
 };
-
 }  // namespace framework
 }  // namespace paddle

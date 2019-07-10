@@ -107,6 +107,15 @@ void GarbageCollector::Add(Container &&objs) {
 
 template <typename Container, typename Callback>
 void GarbageCollector::Add(Container &&objs, Callback &&callback) {
+  // Special case when FLAGS_eager_delete_tensor_gb=0.0
+  // It speeds up GC about 2~3%.
+  if (max_memory_size_ <= 1) {
+    callback();
+    auto *container = new Container(std::move(objs));
+    ClearCallback([container] { delete container; });
+    return;
+  }
+
   GarbageQueue *garbage_queue = nullptr;
   {
     std::lock_guard<std::mutex> guard(mutex_);

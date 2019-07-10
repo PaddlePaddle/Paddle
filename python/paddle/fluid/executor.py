@@ -14,8 +14,10 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import multiprocessing
+import sys
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
@@ -37,6 +39,15 @@ def global_scope():
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+          numpy.array(fluid.global_scope().find_var("data").get_tensor())
+
     Returns:
         Scope: The global/default scope instance.
     """
@@ -56,15 +67,21 @@ def scope_guard(scope):
     Change the global/default scope instance by Python `with` statement. All
     variable in runtime will assigned to the new scope.
 
-    Examples:
-        >>> import paddle.fluid as fluid
-        >>> new_scope = fluid.Scope()
-        >>> with fluid.scope_guard(new_scope):
-        >>>     ...
-
     Args:
         scope: The new global/default scope.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy
+
+            new_scope = fluid.Scope()
+            with fluid.scope_guard(new_scope):
+                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            numpy.array(new_scope.find_var("data").get_tensor())
     """
+
     ex = _switch_scope(scope)
     yield
     _switch_scope(ex)
@@ -74,11 +91,18 @@ def as_numpy(tensor):
     """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
     For higher dimensional sequence data, please use LoDTensor directly.
+
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> outs = executor.run(...)
-        >>> np_outs = map(lambda x: as_numpy(x), outs)
-        >>>     ...
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          new_scope = fluid.Scope()
+          with fluid.scope_guard(new_scope):
+              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+          tensor = new_scope.find_var("data").get_tensor()
+          fluid.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
        tensor(Variable): a instance of Tensor
@@ -97,7 +121,10 @@ def as_numpy(tensor):
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
-    return np.array(tensor)
+    if tensor._is_initialized():
+        return np.array(tensor)
+    else:
+        return None
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -222,6 +249,10 @@ def _to_name_str(var):
         raise TypeError(str(var) + " should be Variable or str")
 
 
+def _get_strong_program_cache_key(program, feed, fetch_list):
+    return str(id(program)) + _get_program_cache_key(feed, fetch_list)
+
+
 def _get_program_cache_key(feed, fetch_list):
     feed_var_names = list(feed.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
@@ -262,57 +293,106 @@ def _as_lodtensor(data, place):
 
 class Executor(object):
     """
-    An Executor in Python, supports single/multiple-GPU running, and single/multiple-CPU running.
-    Python executor takes a program, adds feed operators and fetch operators to this program according
-    to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-    the variables(or names) that user wants to get after program runs. Note: the executor will run all
-    operators in the program but not only the operators dependent by the fetch_list.
-    It stores the global variables into the global scope, and creates a local scope for the temporary
-    variables. The contents in local scope may be discarded after every minibatch forward/backward
-    finished. But the global scope variables will be persistent through different runs.
+    An Executor in Python, supports single/multiple-GPU running,
+    and single/multiple-CPU running. Python executor takes a program,
+    adds feed operators and fetch operators to this program according
+    to feed map and fetch_list. Feed map provides input data for the
+    program. fetch_list provides the variables(or names) that user wants
+    to get after program runs. Note: the executor will run all operators
+    in the program but not only the operators dependent by the fetch_list.
+    It stores the global variables into the global scope, and creates a
+    local scope for the temporary variables. The contents in local scope
+    may be discarded after every minibatch forward/backward finished.
+    But the global scope variables will be persistent through different runs.
 
-
-    Example:
-
+    Examples:
         .. code-block:: python
 
-            # First create the Executor.
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
+          import paddle.fluid as fluid
+          import paddle.fluid.compiler as compiler
+          import numpy
+          import os
 
-            # Run the startup program once and only once.
-            # Not need to optimize/compile the startup program.
-            exe.run(fluid.default_startup_program())
+          use_cuda = True
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          exe = fluid.Executor(place)
 
-            # Run the main program directly without compile.
-            loss, = exe.run(fluid.default_main_program(),
-                            feed=feed_dict,
-                            fetch_list=[loss.name])
-            # Or, compiled the program and run. See `CompiledProgram` for more detail.
-            compiled_prog = compiler.CompiledProgram(
-                fluid.default_main_program()).with_data_parallel(
-                loss_name=loss.name)
-            loss, = exe.run(compiled_prog,
-                            feed=feed_dict,
-                            fetch_list=[loss.name])
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+          # Run the startup program once and only once.
+          # Not need to optimize/compile the startup program.
+          startup_program.random_seed=1
+          exe.run(startup_program)
+
+          # Run the main program directly without compile.
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          loss_data, = exe.run(train_program,
+                               feed={"X": x},
+                               fetch_list=[loss.name])
+
+          # Or, compiled the program and run. See `CompiledProgram`
+          # for more detail.
+          # NOTE: If you use CPU to run the program, you need
+          # to specify the CPU_NUM, otherwise, fluid will use
+          # all the number of the logic core as the CPU_NUM,
+          # in that case, the batch size of the input should be
+          # greater than CPU_NUM, if not, the process will be
+          # failed by an exception.
+          if not use_cuda:
+              os.environ['CPU_NUM'] = str(2)
+
+          compiled_prog = compiler.CompiledProgram(
+              train_program).with_data_parallel(
+              loss_name=loss.name)
+          loss_data, = exe.run(compiled_prog,
+                               feed={"X": x},
+                               fetch_list=[loss.name])
 
     Args:
-        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
+        place(fluid.CPUPlace|fluid.CUDAPlace(n)): indicate the executor run on which device.
+
     """
 
     def __init__(self, place):
         self.place = place
         self.program_caches = dict()
+        self.ctx_caches = dict()
+        self.scope_caches = dict()
+        self.var_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+
+    def _get_var_cache(self, program_cache_key):
+        return self.var_caches.get(program_cache_key, None)
+
+    def _get_scope_cache(self, program_cache_key):
+        return self.scope_caches.get(program_cache_key, None)
+
+    def _get_ctx_cache(self, program_cache_key):
+        return self.ctx_caches.get(program_cache_key, None)
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
     def _add_program_cache(self, program_cache_key, program):
         self.program_caches[program_cache_key] = program
+
+    def _add_ctx_cache(self, ctx_cache_key, ctx):
+        self.ctx_caches[ctx_cache_key] = ctx
+
+    def _add_scope_cache(self, scope_cache_key, scope):
+        self.scope_caches[scope_cache_key] = scope
+
+    def _add_var_cache(self, var_cache_key, var):
+        self.var_caches[var_cache_key] = var
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
                             fetch_var_name):
@@ -391,14 +471,18 @@ class Executor(object):
         Close this executor.
 
         You can no longer use this executor after calling this method.
-        For the distributed training, this method would free the resource on PServers related to
-        the current Trainer.
+        For the distributed training, this method would free the resource
+        on PServers related to the current Trainer.
 
-        Example:
-            >>> cpu = core.CPUPlace()
-            >>> exe = Executor(cpu)
-            >>> ...
-            >>> exe.close()
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+
+              cpu = fluid.CPUPlace()
+              exe = fluid.Executor(cpu)
+              # execute training or testing
+              exe.close()
         """
         if not self._closed:
             self._default_executor.close()
@@ -449,6 +533,36 @@ class Executor(object):
             return as_numpy(arr)
         return [arr[i] for i in range(len(arr))]
 
+    def _check_fetch_vars_persistable(self, program, fetch_list):
+        for var in fetch_list:
+            if isinstance(var, Variable):
+                persistable = var.persistable
+            else:
+                block_num = program.desc.num_blocks()
+                persistable = None
+                var_name = cpt.to_bytes(var)
+                for i in six.moves.range(block_num):
+                    var_desc = program.desc.block(i).find_var(var_name)
+                    if var_desc:
+                        persistable = var_desc.persistable()
+                        break
+                assert persistable is not None, "Variable {} is not found".format(
+                    var)
+
+            if not persistable:
+                logging.warn("""
+     Detect that memory optimize or inplace is enabled, but the some variables in the fetch
+     list is not persistable, you may get wrong fetched value, or an exeception may be thrown
+     about cannot find variable of the fetch list. 
+
+     TO FIX this:
+         # Sample
+         conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None) 
+         # if you need to fetch conv1, then:
+         conv1.persistable = True
+
+                 """)
+
     def run(self,
             program=None,
             feed=None,
@@ -459,13 +573,37 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-        Python executor takes a program, add feed operators and fetch operators to this program according
-        to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+        Run program by this Executor. Feed data by feed map, fetch result by
+        fetch_list. Python executor takes a program, add feed operators and
+        fetch operators to this program according to feed map and fetch_list.
+        Feed map provides input data for the program. fetch_list provides
         the variables(or names) that user want to get after program run.
 
-        Note: the executor will run all
-        operators in the program but not only the operators dependent by the fetch_list
+        Note: the executor will run all operators in the program but not
+        only the operators dependent by the fetch_list.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import numpy
+
+              # First create the Executor.
+              place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+              exe = fluid.Executor(place)
+
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              adam = fluid.optimizer.Adam()
+              adam.minimize(loss)
+
+              # Run the startup program once and only once.
+              exe.run(fluid.default_startup_program())
+
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              outs = exe.run(feed={'X': x},
+                             fetch_list=[loss.name])
 
         Args:
             program(Program|CompiledProgram): the program that need to run,
@@ -489,27 +627,24 @@ class Executor(object):
         Returns:
 
             list(numpy.array): fetch result according to fetch_list.
-
-
-        Examples:
-
-            >>> data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-            >>> out = fluid.layers.create_tensor(dtype='float32')
-            >>> hidden = fluid.layers.fc(input=data, size=10)
-            >>> fluid.layers.assign(hidden,out)
-            >>> loss = fluid.layers.mean(out)
-            >>> adam = fluid.optimizer.Adam()
-						>>> adam.minimize(loss)
-
-            >>> cpu = core.CPUPlace()
-            >>> exe = fluid.Executor(cpu)
-            >>> exe.run(fluid.default_startup_program())
-
-            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> outs = exe.run(
-            >>>     feed={'X': x},
-            >>>     fetch_list=[loss.name])
         """
+        try:
+            return self._run_impl(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+                use_program_cache=use_program_cache)
+        except Exception as e:
+            if not isinstance(e, core.EOFException):
+                print("An exception was thrown!\n {}".format(str(e)))
+            raise e
+
+    def _run_impl(self, program, feed, fetch_list, feed_var_name,
+                  fetch_var_name, scope, return_numpy, use_program_cache):
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
@@ -522,7 +657,7 @@ class Executor(object):
         compiled = isinstance(program, compiler.CompiledProgram)
         # For backward compatibility, run directly.
         if not compiled:
-            return self._run(
+            return self._run_program(
                 program,
                 self._default_executor,
                 feed=feed,
@@ -532,6 +667,11 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
+        else:
+            if fetch_list and program._is_data_parallel and program._program and (
+                    program._build_strategy.memory_optimize or
+                    program._build_strategy.enable_inplace):
+                self._check_fetch_vars_persistable(program._program, fetch_list)
 
         program._compile(scope, self.place)
         if program._is_data_parallel:
@@ -549,7 +689,8 @@ class Executor(object):
             # performance.
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
-            return self._run(
+            # use_program_cache is not valid with CompiledProgram
+            return self._run_program(
                 program._program,
                 self._default_executor,
                 feed=feed,
@@ -558,10 +699,10 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=False)
 
-    def _run(self, program, exe, feed, fetch_list, feed_var_name,
-             fetch_var_name, scope, return_numpy, use_program_cache):
+    def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
+                     fetch_var_name, scope, return_numpy, use_program_cache):
 
         if feed is None:
             feed = {}
@@ -581,9 +722,12 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
-        cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
+            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
             cached_program = self._get_program_cache(cache_key)
+            cached_ctx = self._get_ctx_cache(cache_key)
+            cached_scope = self._get_scope_cache(cache_key)
+            cached_var = self._get_var_cache(cache_key)
             if cached_program is None:
                 cached_program = self._add_feed_fetch_ops(
                     program=program,
@@ -592,9 +736,25 @@ class Executor(object):
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
                 self._add_program_cache(cache_key, cached_program)
+                fetch_list_str = list(map(_to_name_str, fetch_list))
+                cached_ctx = self._default_executor.prepare_ctx_cache(
+                    cached_program.desc, 0, fetch_list_str, False)
+                cached_var = self._default_executor.create_variables(
+                    cached_program.desc, scope, 0)
+                # currently, we cache program, vars, sub_scope here
+                # we suppose that in a life cycle of training, a user
+                # will not create many programs. So, here the basic
+                # rule of caching is to cache all unseen (program, var, scope)
+                # when a user use use_program_cache.
+                cached_scope = scope.new_scope()
+                self._add_ctx_cache(cache_key, cached_ctx)
+                self._add_var_cache(cache_key, cached_var)
+                self._add_scope_cache(cache_key, cached_scope)
             program = cached_program
+            ctx = cached_ctx
+            scope = cached_scope
+            var = cached_var
         else:
-            self.program_caches.pop(cache_key, None)
             program = self._add_feed_fetch_ops(
                 program=program,
                 feed=feed,
@@ -603,7 +763,10 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        if not use_program_cache:
+            exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+        else:
+            exe.run_cached_prepared_ctx(ctx, scope, False, False, False)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
@@ -614,10 +777,26 @@ class Executor(object):
 
     def _dump_debug_info(self, program=None, trainer=None):
         with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
-            fout.write(trainer._desc())
+            fout.write(str(trainer))
         if program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))
+
+    def _adjust_pipeline_resource(self, pipeline_opt, dataset, pipeline_num):
+        filelist_length = len(dataset.dataset.get_filelist())
+        if filelist_length < pipeline_num:
+            pipeline_num = filelist_length
+            print(
+                "Pipeline training: setting the pipeline num to %d is enough because there are only %d files"
+                % (filelist_length, filelist_length))
+        if filelist_length < pipeline_num * pipeline_opt["concurrency_list"][0]:
+            print(
+                "Pipeline training: setting the 1st element in concurrency_list to %d is enough because there are only %d files"
+                % (filelist_length // pipeline_num, filelist_length))
+            pipeline_opt["concurrency_list"][
+                0] = filelist_length // pipeline_num
+        dataset.set_thread(pipeline_opt["concurrency_list"][0] * pipeline_num)
+        return pipeline_num
 
     def _prepare_trainer(self,
                          program=None,
@@ -637,12 +816,23 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
-            trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+            # TODO: Need a better way to distinguish and specify different execution mode
+            if program._pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program._pipeline_opt)
+            else:
+                trainer = TrainerFactory()._create_trainer(program._fleet_opt)
             trainer._set_program(program)
         else:
-            trainer = TrainerFactory()._create_trainer(
-                program.program._fleet_opt)
+            if program._pipeline_opt:
+                trainer = TrainerFactory()._create_trainer(
+                    program.program._pipeline_opt)
+            else:
+                trainer = TrainerFactory()._create_trainer(
+                    program.program._fleet_opt)
             trainer._set_program(program.program)
+
+        # The following thread_num-determined logic will be deprecated
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
@@ -652,6 +842,7 @@ class Executor(object):
                 trainer._set_thread(dataset.thread_num)
         else:
             trainer._set_thread(thread)
+
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
         return scope, trainer
@@ -696,13 +887,15 @@ class Executor(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                place = fluid.CPUPlace()
+
+                place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", type="int64")
-                y = fluid.layers.data(name="y", type="int64")
+                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
-                filelist = ["dataA.txt", "dataB.txt"]
+                dataset.set_thread(1)
+                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
                 dataset.set_filelist(filelist)
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
@@ -712,10 +905,7 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
 
-        if not isinstance(self.place, core.CPUPlace):
-            raise RuntimeError("infer_from_dataset is verified on CPUPlace"
-                               "We will open CUDAPlace in the future")
-
+        dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -727,12 +917,11 @@ class Executor(object):
             print_period=print_period)
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
-        dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._finish_to_run()
         return None
 
     def train_from_dataset(self,
@@ -779,14 +968,15 @@ class Executor(object):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              place = fluid.CPUPlace()
+
+              place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", type="int64")
-              y = fluid.layers.data(name="y", type="int64")
+              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
-              dataset.set_thread(2)
-              filelist = ["dataA.txt", "dataB.txt"]
+              dataset.set_thread(1)
+              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
               dataset.set_filelist(filelist)
               exe.run(fluid.default_startup_program())
               exe.train_from_dataset(program=fluid.default_main_program(),
@@ -796,10 +986,11 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
 
-        if not isinstance(self.place, core.CPUPlace):
-            raise RuntimeError("train_from_dataset is verified on CPUPlace"
-                               "We will open CUDAPlace in the future")
+        if program._pipeline_opt:
+            thread = self._adjust_pipeline_resource(program._pipeline_opt,
+                                                    dataset, thread)
 
+        dataset._prepare_to_run()
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -810,10 +1001,9 @@ class Executor(object):
             fetch_info=fetch_info,
             print_period=print_period)
         trainer._gen_trainer_desc()
-        dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._finish_to_run()
         return None

@@ -28,15 +28,15 @@ class SamplingIdOp : public framework::OperatorWithKernel {
                    "Input(X) of SamplingIdOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SamplingIdOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
-        "min must less then max");
+    PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
+                      ctx->Attrs().Get<float>("max"), "min must less then max");
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(input_dims.size() == 2,
                    "Input(X, Filter) should be 2-D tensor.");
 
-    framework::DDim dims = input_dims;
+    auto dim0 = input_dims[0];
+    framework::DDim dims = framework::make_ddim({dim0});
     ctx->SetOutputDim("Out", dims);
     ctx->ShareLoD("X", "Out");
   }

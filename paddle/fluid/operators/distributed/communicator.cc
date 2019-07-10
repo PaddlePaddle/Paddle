@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/communicator.h"
 
 #include <gflags/gflags.h>
+#include <paddle/fluid/framework/program_desc.h>
 #include <chrono>  // NOLINT
 #include <thread>  // NOLINT
 
@@ -29,13 +30,18 @@ DEFINE_bool(communicator_independent_recv_thread, true,
             "use an independent to recv vars from parameter server");
 DEFINE_int32(communicator_send_queue_size, 20,
              "queue size to recv gradient before send");
-DEFINE_int32(communicator_max_send_grad_num_before_recv, 20,
+DEFINE_int32(communicator_min_send_grad_num_before_recv, 20,
              "max grad num to send before recv parameters");
 DEFINE_int32(communicator_thread_pool_size, 5, "thread num to do send or recv");
+DEFINE_int32(communicator_send_wait_times, 5,
+             "times that send thread will wait if merge num does not reach "
+             "max_merge_var_num");
 DEFINE_int32(communicator_max_merge_var_num, 20,
              "max var num to merge and send");
 DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
+DEFINE_bool(communicator_merge_sparse_grad, true,
+            "merge sparse gradient before sending");
 
 namespace paddle {
 namespace operators {
@@ -47,8 +53,7 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-std::unique_ptr<Communicator> Communicator::communicator_(nullptr);
-std::once_flag Communicator::init_flag_;
+std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
 Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
                            const RpcCtxMap &recv_varname_to_ctx,
@@ -61,13 +66,17 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
           << FLAGS_communicator_independent_recv_thread;
   VLOG(0) << "communicator_send_queue_size: "
           << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_max_send_grad_num_before_recv: "
-          << FLAGS_communicator_max_send_grad_num_before_recv;
+  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
+          << FLAGS_communicator_min_send_grad_num_before_recv;
   VLOG(0) << "communicator_thread_pool_size: "
           << FLAGS_communicator_thread_pool_size;
+  VLOG(0) << "communicator_send_wait_times: "
+          << FLAGS_communicator_send_wait_times;
   VLOG(0) << "communicator_max_merge_var_num: "
           << FLAGS_communicator_max_merge_var_num;
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
+  VLOG(0) << "communicator_merge_sparse_grad: "
+          << FLAGS_communicator_merge_sparse_grad;
   send_scope_.reset(new Scope());
   for (auto &iter : send_varname_to_ctx_) {
     send_varname_to_queue_[iter.first] =
@@ -79,11 +88,17 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
 }
 
 Communicator::~Communicator() {
-  VLOG(3) << "~Communicator";
+  if (FLAGS_v >= 3) {
+    std::string msg("~Communicator");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
   running_ = false;
   if (send_thread_) send_thread_->join();
   if (recv_thread_) recv_thread_->join();
-  VLOG(3) << "~Communicator done";
+  if (FLAGS_v >= 3) {
+    std::string msg("~Communicator done");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
 }
 
 void Communicator::SendThread() {
@@ -101,20 +116,32 @@ void Communicator::SendThread() {
           VLOG(3) << var_name << " merge and send";
           std::vector<std::shared_ptr<Variable>> vars;
           size_t merged_var_num = 0;
-          while (var_queue->Size() > 0 &&
-                 merged_var_num < FLAGS_communicator_max_merge_var_num) {
-            vars.push_back(var_queue->Pop());
-            // only count the send number of the first var
-            if (var_name == send_varname_to_queue_.begin()->first) {
-              grad_num_.fetch_add(1, std::memory_order_relaxed);
+          size_t wait_times = 0;
+          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
+            if (var_queue->Size() == 0) {
+              VLOG(3) << "wait_times -> " << wait_times;
+              if (wait_times >= FLAGS_communicator_send_wait_times) {
+                break;
+              }
+              std::this_thread::sleep_for(std::chrono::milliseconds(10));
+              wait_times++;
+              continue;
+            } else {
+              wait_times = 0;
+
+              vars.push_back(var_queue->Pop());
+              // only count the send number of the first var
+              if (var_name == send_varname_to_queue_.begin()->first) {
+                grad_num_.fetch_add(1, std::memory_order_relaxed);
+              }
+              merged_var_num++;
             }
-            merged_var_num++;
           }
           auto before_merge = GetCurrentUS();
           MergeVars(var_name, vars, send_scope_.get());
           auto after_merge = GetCurrentUS();
-          VLOG(3) << "merge " << var_name << " use time "
-                  << after_merge - before_merge;
+          VLOG(3) << "merge " << merged_var_num << " " << var_name
+                  << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
           auto &ctx = send_varname_to_ctx_.at(var_name);
           if (!FLAGS_communicator_fake_rpc) {
@@ -127,7 +154,7 @@ void Communicator::SendThread() {
         task_futures.emplace_back(
             send_threadpool_->enqueue(std::move(send_task)));
       } else {
-        VLOG(3) << var_name << " queue empty";
+        VLOG(4) << var_name << " queue empty";
       }
     }
     for (auto &task_f : task_futures) {
@@ -143,17 +170,19 @@ void Communicator::SendThread() {
       RecvAll();
     }
   }
+  VLOG(0) << "communicator stopped, send thread exit";
 }
 
 void Communicator::RecvAll() {
   VLOG(3) << "parallel run recv graph";
+  if (!running_) return;
   auto before_send = GetCurrentUS();
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(recv_varname_to_ctx_.size());
   for (auto &iter : recv_varname_to_ctx_) {
     auto recv_task = [this, &iter] {
       auto &var_name = iter.first;
-      VLOG(3) << "recv var " << var_name;
+      VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
       if (!FLAGS_communicator_fake_rpc) {
         recv_functor(iter.second, *recv_scope_);
@@ -172,7 +201,7 @@ void Communicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {
     auto grad_num = grad_num_.load();
-    if (grad_num > FLAGS_communicator_max_send_grad_num_before_recv) {
+    if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
       VLOG(1) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);
@@ -180,6 +209,7 @@ void Communicator::RecvThread() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+  VLOG(0) << "communicator stopped, recv thread exit";
 }
 
 void Communicator::Send(const std::string &var_name,
@@ -188,24 +218,106 @@ void Communicator::Send(const std::string &var_name,
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
-  auto tmp_grad_var = std::make_shared<Variable>();
-  framework::CopyVariable(*grad_var, tmp_grad_var.get());
-  auto &queue = send_varname_to_queue_.at(var_name);
-  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-  queue->Push(tmp_grad_var);
+  if (grad_var->IsType<framework::SelectedRows>() &&
+      !FLAGS_communicator_merge_sparse_grad) {
+    auto send_functor = distributed::ParameterSend<float>();
+    auto &ctx = send_varname_to_ctx_.at(var_name);
+    if (!FLAGS_communicator_fake_rpc) {
+      send_functor(ctx, scope, true);
+    }
+  } else {
+    auto tmp_grad_var = std::make_shared<Variable>();
+    framework::CopyVariable(*grad_var, tmp_grad_var.get());
+    auto &queue = send_varname_to_queue_.at(var_name);
+    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+    queue->Push(tmp_grad_var);
+  }
+}
+
+void Communicator::Init(const paddle::framework::ProgramDesc &program,
+                        Scope *param_scope) {
+  using RpcCtxMap = operators::distributed::RpcCtxMap;
+  VLOG(3) << "ProcessGraph";
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+  for (auto *op : program.Block(0).AllOps()) {
+    VLOG(3) << "node name " << op->Type();
+    if (op->Type() == "send") {
+      auto send_var_name = op->Input("X")[0];
+      auto send_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("send_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto height_section =
+          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+          send_var_name, send_varnames, epmap, height_section, trainer_id);
+      VLOG(3) << "find and init an send op: "
+              << send_varname_to_ctx[send_var_name];
+    } else if (op->Type() == "recv") {
+      auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
+      PADDLE_ENFORCE_GT(do_not_run, 0, "recv should not run!");
+      auto recv_var_name = op->Output("Out")[0];
+      auto recv_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("recv_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+          recv_var_name, recv_varnames, epmap, {}, trainer_id);
+    }
+  }
+
+  // init communicator here
+  if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
+    LOG(WARNING) << "no var need to send and recv!!";
+  }
+  operators::distributed::Communicator::Init(send_varname_to_ctx,
+                                             recv_varname_to_ctx, param_scope);
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }
 
+std::shared_ptr<Communicator> Communicator::GetInstantcePtr() {
+  return communicator_;
+}
+
 void Communicator::Start() {
-  running_ = true;
-  // start send and recv thread
-  send_thread_.reset(
-      new std::thread(std::bind(&Communicator::SendThread, this)));
-  if (FLAGS_communicator_independent_recv_thread) {
-    recv_thread_.reset(
-        new std::thread(std::bind(&Communicator::RecvThread, this)));
+  VLOG(0) << "Communicator start";
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    VLOG(1) << "start send thread and recv thread";
+    running_ = true;
+    // start send and recv thread
+    send_thread_.reset(
+        new std::thread(std::bind(&Communicator::SendThread, this)));
+    if (FLAGS_communicator_independent_recv_thread) {
+      recv_thread_.reset(
+          new std::thread(std::bind(&Communicator::RecvThread, this)));
+    }
   }
+}
+
+void Communicator::Stop() {
+  VLOG(0) << "Communicator stop";
+  running_ = false;
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    if (send_thread_) {
+      VLOG(1) << "stop send thread";
+      send_thread_->join();
+      send_thread_.reset(nullptr);
+    }
+    if (recv_thread_) {
+      VLOG(1) << "stop recv thread";
+      recv_thread_->join();
+      recv_thread_.reset(nullptr);
+    }
+  }
+  VLOG(0) << "Communicator stop done";
 }
 
 }  // namespace distributed

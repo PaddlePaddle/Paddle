@@ -17,23 +17,16 @@
 #include <string>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void Pool2dOpConverter::operator()(const framework::proto::OpDesc &op,
-                                   const framework::BlockDesc &block_desc,
-                                   const framework::Scope &scope,
-                                   bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void Pool2dOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -65,13 +58,13 @@ void Pool2dOpConverter::operator()(const framework::proto::OpDesc &op,
     PADDLE_THROW("TensorRT unsupported pooling type!");
   }
 
-  engine_->AddOp(op_name, "Pooling", {x_name}, {y_name});
-  engine_->AddOpAttr<PTuple<int>>(op_name, "pool_size", ksize);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "strides", strides);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "padding", paddings);
-  engine_->AddOpAttr(op_name, "method", anakin_pool_type);
-  engine_->AddOpAttr(op_name, "global_pooling", global_pooling);
-  engine_->AddOpAttr(op_name, "cmp_out_shape_floor_as_conv", !ceil_mode);
+  this->engine_->AddOp(op_name, "Pooling", {x_name}, {y_name});
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "pool_size", ksize);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "strides", strides);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "padding", paddings);
+  this->engine_->AddOpAttr(op_name, "method", anakin_pool_type);
+  this->engine_->AddOpAttr(op_name, "global_pooling", global_pooling);
+  this->engine_->AddOpAttr(op_name, "cmp_out_shape_floor_as_conv", !ceil_mode);
 }
 
 }  // namespace anakin

@@ -24,7 +24,9 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-
+#ifdef EXIT  // NOLINT
+#undef EXIT  // NOLINT
+#endif       // NOLINT
 #include "framework/core/net/net.h"
 #include "framework/core/types.h"
 #include "framework/graph/graph.h"
@@ -32,7 +34,6 @@
 #include "saber/saber_types.h"
 
 using anakin::Precision;
-using anakin::saber::NV;
 
 namespace anakin {
 
@@ -58,9 +59,11 @@ class AnakinEngine {
  public:
   explicit AnakinEngine(
       bool need_summary = false, int device = 0, int max_batch_size = 1,
-      std::map<std::string, std::vector<int>> max_input_shape = {});
+      std::map<std::string, std::vector<int>> max_input_shape = {},
+      std::vector<std::string> program_inputs = {},
+      bool auto_config_layout = false);
   ~AnakinEngine();
-  void InitGraph();
+  void InitNet();
   void SetInputShape(const std::string &name, std::vector<int> shape);
   void AddOp(const std::string &name, const std::string &type,
              const std::vector<std::string> &inputs,
@@ -81,49 +84,71 @@ class AnakinEngine {
   void SetMaxInputShape(std::map<std::string, std::vector<int>> shape) {
     max_input_shape_ = shape;
   }
+  const std::vector<std::string> &GetScalableInputs() {
+    return program_inputs_;
+  }
+  void SetScalableInputs(std::vector<std::string> program_inputs) {
+    program_inputs_ = program_inputs;
+  }
   int GetMaxBatchSize() { return max_batch_size_; }
   void Freeze();
   void Optimize();
-  void AllocTmpMem() {
-    PADDLE_ENFORCE(net_->alloc_memory_first(*graph_),
-                   "anakin alloc temp memory first failed");
-  }
+  void RegistBlock(::anakin::PBlock<TargetT> *block_p);
   void Save(std::string path) { graph_->save(path); }
-
   bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }
+  void AddTensorScale(const std::string &tensor_name, float scale) {
+    tensor_scales_[tensor_name] = scale;
+  }
+  std::unordered_map<std::string, float> GetTensorScales() {
+    return tensor_scales_;
+  }
+  void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
+               const std::map<std::string, framework::LoDTensor *> &outputs);
+#ifdef PADDLE_WITH_CUDA
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
                const std::map<std::string, framework::LoDTensor *> &outputs,
                cudaStream_t stream);
+#endif
+
+ private:
+  void BindInput(const std::map<std::string, framework::LoDTensor *> &inputs);
 
  private:
   bool initialized_{false};
+  int device_;
   int max_batch_size_;
   std::map<std::string, std::vector<int>> max_input_shape_;
-  int device_;
+  std::vector<std::string> program_inputs_;
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
+  static std::once_flag init_anakin_;
+  std::unordered_map<std::string, float> tensor_scales_;
+  // Always be false in gpu mode but true in most cpu cases.
+  bool auto_config_layout_;
 };
 
+template <typename TargetT, ::anakin::Precision PrecisionType>
 class AnakinEngineManager {
-  using AnakinNvEngineT = AnakinEngine<NV, Precision::FP32>;
+  using AnakinEngineT = AnakinEngine<TargetT, PrecisionType>;
 
  public:
   bool HasEngine(const std::string &name) const {
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
-  AnakinNvEngineT *Get(const std::string &name) const {
+  AnakinEngineT *Get(const std::string &name) const {
     return engines_.at(name).get();
   }
 
-  AnakinNvEngineT *Create(
-      bool need_summary, int device, int max_batch_size,
-      std::map<std::string, std::vector<int>> max_input_shape,
-      std::string engine_name) {
+  AnakinEngineT *Create(bool need_summary, int device, int max_batch_size,
+                        std::map<std::string, std::vector<int>> max_input_shape,
+                        std::vector<std::string> program_inputs,
+                        bool auto_config_layout, std::string engine_name) {
     std::unique_lock<std::mutex> lk(mut_);
-    auto *p = new AnakinEngine<NV, Precision::FP32>(
-        need_summary, device, max_batch_size, max_input_shape);
+    auto *p = new AnakinEngine<TargetT, PrecisionType>(
+        need_summary, device, max_batch_size, max_input_shape, program_inputs,
+        auto_config_layout);
     engines_[engine_name].reset(p);
     return p;
   }
@@ -135,7 +160,7 @@ class AnakinEngineManager {
   }
 
  private:
-  std::unordered_map<std::string, std::unique_ptr<AnakinNvEngineT>> engines_;
+  std::unordered_map<std::string, std::unique_ptr<AnakinEngineT>> engines_;
   std::mutex mut_;
 };
 }  // namespace anakin

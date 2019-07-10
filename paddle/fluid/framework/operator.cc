@@ -35,6 +35,9 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(fast_check_nan_inf, false,
+            "Fast checking NAN/INF after each operation. It will be a little"
+            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -884,8 +887,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // result of HasAttr.
   if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context = true;
-  if (!enable_cache_expected_kernel && HasAttr(kEnableCacheExpectedKernel))
-    enable_cache_expected_kernel = true;
   if (!all_kernels_must_compute_runtime_shape &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape = true;
@@ -894,9 +895,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RunImpl(scope, place, &ctx);
   } else {
     const Scope* cur_scope = &scope;
-    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
-      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-      pre_scope_ = cur_scope;
+    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+      std::lock_guard<std::mutex> lock(cache_update_mutex_);
+      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        pre_scope_ = cur_scope;
+      }
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -908,7 +912,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  if (!enable_cache_expected_kernel || !kernel_type_) {
+  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
     ChooseKernel(*runtime_ctx, scope, place);
   }
 
@@ -944,6 +948,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
+  }
+
+  if (FLAGS_fast_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      // only check inserted vars,
+      // please see executor.py for details of fast_check_nan_inf
+      if (vname.rfind("debug_var") == 0) {
+        VLOG(3) << "debugging nan/inf in var " << vname;
+
+        auto* var = exec_scope.FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+        } else if (var->IsType<framework::SelectedRows>()) {
+          CheckTensorNANOrInf(type_, vname,
+                              var->Get<framework::SelectedRows>().value());
+        }
+      }
+    }
   }
 
   if (FLAGS_check_nan_inf) {
@@ -996,8 +1019,11 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  kernel_type_.reset(new OpKernelType(expected_kernel_key));
-  kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
+  std::lock_guard<std::mutex> lock(cache_update_mutex_);
+  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+    kernel_type_.reset(new OpKernelType(expected_kernel_key));
+    kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
+  }
 }
 
 void OperatorWithKernel::TransferInplaceVarsBack(
@@ -1095,6 +1121,17 @@ Scope* OperatorWithKernel::PrepareData(
       if (!new_scope) {
         new_scope = &scope.NewScope();
       }
+      // For inference, if a gpu model has an op which could only run on CPU,
+      // each result of different input will be the same with the first one.
+      // The reason is that if a gpu tensor is the input of a cpu kernel,
+      // we will create a new cpu tensor in new scope.
+      // However, if enable_cache_runtime_context, we get the cpu tensor each
+      // time, not the gpu tensor.
+      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
+      // RunImpl().
+      if (enable_cache_runtime_context) {
+        pre_scope_ = nullptr;
+      }
 
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
@@ -1127,12 +1164,12 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
                          input.first, i);
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
               tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s %s must be the same. Get (%d) != (%d)",
+              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
               Type(), input.first, DataTypeToString(data_type),
               DataTypeToString(tmp));
           data_type = tmp;

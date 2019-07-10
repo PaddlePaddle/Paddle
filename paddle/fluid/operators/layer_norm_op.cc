@@ -46,11 +46,18 @@ class LayerNormOp : public framework::OperatorWithKernel {
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right);
+
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right,
+                          "scale should with right");
+      }
     }
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right);
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right,
+                          "bias should with right");
+      }
     }
 
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));

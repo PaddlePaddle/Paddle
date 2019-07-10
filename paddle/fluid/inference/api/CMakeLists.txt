@@ -27,20 +27,28 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-if (ANAKIN_FOUND)
+if (ANAKIN_SUBGRAPH)
     set(inference_deps ${inference_deps} anakin_op_converter anakin_engine)
+endif()
+
+if(WITH_NGRAPH)
+    set(inference_deps ${inference_deps} ngraph)
 endif()
 
 add_subdirectory(details)
 
 if(WITH_MKLDNN)
-	set(mkldnn_quantizer_src mkldnn_quantizer.cc)
-	set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
-	cc_library(${mkldnn_quantizer_cfg} SRCS mkldnn_quantizer_config.cc DEPS lod_tensor paddle_pass_builder)
+  set(mkldnn_quantizer_src mkldnn_quantizer.cc)
+  set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
+  cc_library(${mkldnn_quantizer_cfg} SRCS mkldnn_quantizer_config.cc DEPS lod_tensor paddle_pass_builder)
 endif()
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder)
-cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
+if(WITH_NGRAPH)
+  cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc DEPS ngraph)
+else(WITH_NGRAPH)
+  cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
+endif(WITH_NGRAPH)
 cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS paddle_inference_api zero_copy_tensor
   reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager ${inference_deps})
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
@@ -48,25 +56,27 @@ cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
            paddle_pass_builder zero_copy_tensor
            reset_tensor_array)
 
-cc_test(test_paddle_inference_api
-        SRCS api_tester.cc
-        DEPS paddle_inference_api)
+cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 
 if(WITH_TESTING)
   inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
                       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
+  set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
 
-if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
-    # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml zero_copy_tensor_dummy device_context)
-    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber zero_copy_tensor_dummy device_context)
-    function(anakin_target target_name)
-      target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    endfunction()
-    anakin_target(inference_anakin_api)
-    anakin_target(inference_anakin_api_shared)
+if(ANAKIN_FOUND)
+  # Do not turn warnings into errors.
+  set_source_files_properties(api.cc api_anakin_engine.cc PROPERTIES COMPILE_FLAGS "-Wno-error")
+  cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
+  target_link_libraries(inference_anakin_api anakin anakin_saber_common)
+  cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
+  target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
+  function(anakin_target target_name)
+    target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+  endfunction()
+  anakin_target(inference_anakin_api)
+  anakin_target(inference_anakin_api_shared)
 endif()

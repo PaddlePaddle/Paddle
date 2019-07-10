@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
-#include <paddle/fluid/framework/ir/fuse_pass_base.h>
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -56,8 +57,9 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
   auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   argument->SetMainGraph(graph.release());
-  argument->main_graph().Set(framework::ir::kParamScopeAttr,
-                             new framework::Scope *(argument->scope_ptr()));
+  auto *scope_ptr = argument->scope_ptr();
+  PADDLE_ENFORCE(scope_ptr);
+  argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

@@ -21,14 +21,14 @@ from .... import core
 from ....compiler import CompiledProgram
 from ....compiler import BuildStrategy
 from ....framework import IrGraph, Variable, Program
+from ....log_helper import get_logger
 from ..core.strategy import Strategy
 from .quantization_pass import *
 
 __all__ = ['QuantizationStrategy']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class QuantizationStrategy(Strategy):
@@ -53,11 +53,11 @@ class QuantizationStrategy(Strategy):
             start_epoch(int): The 'on_epoch_begin' function will be called in start_epoch. default: 0
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
             float_model_save_path(str): The path to save model with float weights.
-                            None means it doesn't save float model. defalut: None.
+                            None means it doesn't save float model. default: None.
             mobile_model_save_path(str): The path to save model for paddle-mobile execution.
-                            None means it doesn't save mobile model. defalut: None.
+                            None means it doesn't save mobile model. default: None.
             int8_model_save_path(str): The path to save model with int8_t weight.
-                            None means it doesn't save int8 model. defalut: None.
+                            None means it doesn't save int8 model. default: None.
             activation_bits(int): quantization bit number for activation. default: 8.
             weight_bits(int): quantization bit number for weights. The bias is not quantized.
                               default: 8.
@@ -88,9 +88,9 @@ class QuantizationStrategy(Strategy):
         self.save_out_nodes = save_out_nodes
         self.save_in_nodes = save_in_nodes
 
-    def on_compression_begin(self, context):
+    def restore_from_checkpoint(self, context):
         """
-        Restore graph when the compressoin task is inited from checkpoint.
+        Restore graph when the compression task is inited from checkpoint.
         """
         # It is inited from checkpoint and has missed start epoch.
         if context.epoch_id != 0 and context.epoch_id > self.start_epoch:
@@ -100,7 +100,7 @@ class QuantizationStrategy(Strategy):
 
     def _modify_graph_for_quantization(self, context):
         """
-        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        Insert fake_quantize_op and fake_dequantize_op before training and testing.
         """
         train_ir_graph = IrGraph(
             core.Graph(context.optimize_graph.program.clone().desc),
@@ -143,16 +143,15 @@ class QuantizationStrategy(Strategy):
             train_ir_graph.graph).with_data_parallel(
                 loss_name=context.optimize_graph.out_nodes['loss'],
                 build_strategy=build_strategy)
-        # for evaluation. And program compiled from ir graph must be with data parallel.
-        context.eval_graph.compiled_graph = CompiledProgram(
-            test_ir_graph.graph).with_data_parallel(
-                build_strategy=build_strategy)
+
+        context.eval_graph.program = test_ir_graph.to_program()
+
         # for saving inference model after training
         context.put('quantization_test_ir_graph_backup', test_ir_graph)
 
     def on_epoch_begin(self, context):
         """
-        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        Insert fake_quantize_op and fake_dequantize_op before training and testing.
         """
         super(QuantizationStrategy, self).on_epoch_begin(context)
         if self.start_epoch == context.epoch_id:

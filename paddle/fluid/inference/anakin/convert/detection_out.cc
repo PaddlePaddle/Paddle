@@ -16,19 +16,14 @@
 #include <algorithm>
 #include <map>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void DetectionOutOpConverter::operator()(const framework::proto::OpDesc &op,
-                                         const framework::BlockDesc &block_desc,
-                                         const framework::Scope &scope,
-                                         bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void DetectionOutOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   auto target_name = op_desc.Input("TargetBox").front();
   auto prior_box_name = op_desc.Input("PriorBox").front();
@@ -52,18 +47,19 @@ void DetectionOutOpConverter::operator()(const framework::proto::OpDesc &op,
         "Not support encode_center_size code_type in DetectionOut of anakin");
   }
 
-  engine_->AddOp(op_name, "DetectionOutput",
-                 {target_name, scores_name, prior_box_name}, {output_name});
-  engine_->AddOpAttr(op_name, "share_location", true);
-  engine_->AddOpAttr(op_name, "variance_encode_in_target", false);
-  engine_->AddOpAttr(op_name, "class_num", static_cast<int>(0));
-  engine_->AddOpAttr(op_name, "background_id", background_label);
-  engine_->AddOpAttr(op_name, "keep_top_k", keep_top_k);
-  engine_->AddOpAttr(op_name, "code_type", anakin_code_type);
-  engine_->AddOpAttr(op_name, "conf_thresh", score_threshold);
-  engine_->AddOpAttr(op_name, "nms_top_k", nms_top_k);
-  engine_->AddOpAttr(op_name, "nms_thresh", nms_threshold);
-  engine_->AddOpAttr(op_name, "nms_eta", nms_eta);
+  this->engine_->AddOp(op_name, "DetectionOutput",
+                       {target_name, scores_name, prior_box_name},
+                       {output_name});
+  this->engine_->AddOpAttr(op_name, "share_location", true);
+  this->engine_->AddOpAttr(op_name, "variance_encode_in_target", false);
+  this->engine_->AddOpAttr(op_name, "class_num", static_cast<int>(0));
+  this->engine_->AddOpAttr(op_name, "background_id", background_label);
+  this->engine_->AddOpAttr(op_name, "keep_top_k", keep_top_k);
+  this->engine_->AddOpAttr(op_name, "code_type", anakin_code_type);
+  this->engine_->AddOpAttr(op_name, "conf_thresh", score_threshold);
+  this->engine_->AddOpAttr(op_name, "nms_top_k", nms_top_k);
+  this->engine_->AddOpAttr(op_name, "nms_thresh", nms_threshold);
+  this->engine_->AddOpAttr(op_name, "nms_eta", nms_eta);
 }
 
 }  // namespace anakin

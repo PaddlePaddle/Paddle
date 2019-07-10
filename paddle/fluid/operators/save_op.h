@@ -102,13 +102,26 @@ class SaveOpKernel : public framework::OpKernel<T> {
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
                         const platform::Place &place,
                         const framework::Variable *var) const {
-    framework::Variable *out_put_var = ctx.OutputVar(LOOKUP_TABLE_PATH);
-    PADDLE_ENFORCE(
-        out_put_var != nullptr,
-        "Can not find variable kLookupTablePath for SaveSelectedRows");
-    auto *lt_var = out_put_var->GetMutable<std::string>();
+    auto file_path = ctx.Attr<std::string>("file_path");
+    auto overwrite = ctx.Attr<bool>("overwrite");
 
-    std::string filename = lt_var->data();
+    std::string filename = file_path;
+    VLOG(4) << "SaveSelectedRows output file_path: " << file_path;
+
+    framework::Variable *out_put_var = ctx.scope().FindVar(LOOKUP_TABLE_PATH);
+    if (out_put_var != nullptr) {
+      auto *lt_var = out_put_var->GetMutable<std::string>();
+      if (lt_var->length() > 0) {
+        VLOG(4) << "SaveSelectedRows output var name: " << *lt_var;
+        filename = *lt_var;
+      }
+    }
+
+    if (FileExists(filename) && !overwrite) {
+      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
+                   filename, overwrite);
+    }
+
     VLOG(4) << "SaveSelectedRows get File name: " << filename;
 
     MkDirRecursively(DirName(filename).c_str());

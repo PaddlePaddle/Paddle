@@ -12,30 +12,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/sync_batch_norm_pass.h"
 #include <memory>
 #include <string>
 #include <utility>
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SyncBatchNormPass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(3) << "Use synchronous batch norm";
-  for (const Node* n : graph->Nodes()) {
-    if (n->IsOp()) {
-      auto* op = n->Op();
-      if (op->Type() == "batch_norm") {
-        op->SetType("sync_batch_norm");
-      }
-      if (op->Type() == "batch_norm_grad") {
-        op->SetType("sync_batch_norm_grad");
+class SyncBatchNormPass : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph *graph) const override {
+    VLOG(3) << "Use synchronous batch norm";
+    for (const Node *n : graph->Nodes()) {
+      if (n->IsOp()) {
+        auto *op = n->Op();
+        if (op->Type() == "batch_norm") {
+          op->SetType("sync_batch_norm");
+        }
+        if (op->Type() == "batch_norm_grad") {
+          op->SetType("sync_batch_norm_grad");
+        }
       }
     }
   }
-}
-
+};
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

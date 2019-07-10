@@ -17,40 +17,32 @@ limitations under the License. */
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#if defined(__CUDA_ARCH__)
-#include <stdio.h>
-#define PADDLE_ASSERT(e)                                           \
-  do {                                                             \
-    if (!(e)) {                                                    \
-      printf("%s:%d Assertion `%s` failed.\n", __FILE__, __LINE__, \
-             TOSTRING(e));                                         \
-      asm("trap;");                                                \
-    }                                                              \
-  } while (0)
-
-#define PADDLE_ASSERT_MSG(e, m)                                         \
-  do {                                                                  \
-    if (!(e)) {                                                         \
-      printf("%s:%d Assertion `%s` failed (%s).\n", __FILE__, __LINE__, \
-             TOSTRING(e), m);                                           \
-      asm("trap;");                                                     \
-    }                                                                   \
-  } while (0)
-
-#define PADDLE_ASSERT_MSG_CODE(e, m, c)                                     \
-  do {                                                                      \
-    if (!(e)) {                                                             \
-      printf("%s:%d Assertion `%s` failed (%s %ld).\n", __FILE__, __LINE__, \
-             TOSTRING(e), m, c);                                            \
-      asm("trap;");                                                         \
-    }                                                                       \
-  } while (0)
-#else
-#include <assert.h>
 // For cuda, the assertions can affect performance and it is therefore
 // recommended to disable them in production code
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
-#define PADDLE_ASSERT(e) assert((e))
-#define PADDLE_ASSERT_MSG(e, m) assert((e) && (m))
-#define PADDLE_ASSERT_MSG_CODE(e, m, c) assert((e) && (m) && (c || 1))
+#if defined(__CUDA_ARCH__)
+#include <stdio.h>
+#define EXIT() asm("trap;")
+#else
+#include <assert.h>
+#define EXIT() throw std::runtime_error("Exception encounter.")
 #endif
+
+#define PADDLE_ASSERT(_IS_NOT_ERROR)                                          \
+  do {                                                                        \
+    if (!(_IS_NOT_ERROR)) {                                                   \
+      printf("Exception: %s:%d Assertion `%s` failed.\n", __FILE__, __LINE__, \
+             TOSTRING(_IS_NOT_ERROR));                                        \
+      EXIT();                                                                 \
+    }                                                                         \
+  } while (0)
+
+// NOTE: PADDLE_ASSERT is mainly used in CUDA Kernel or HOSTDEVICE function.
+#define PADDLE_ASSERT_MSG(_IS_NOT_ERROR, __MSG, __VAL)                       \
+  do {                                                                       \
+    if (!(_IS_NOT_ERROR)) {                                                  \
+      printf("Exception: %s:%d Assertion `%s` failed (%s %ld).\n", __FILE__, \
+             __LINE__, TOSTRING(_IS_NOT_ERROR), __MSG, __VAL);               \
+      EXIT();                                                                \
+    }                                                                        \
+  } while (0)

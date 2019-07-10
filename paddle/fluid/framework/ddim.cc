@@ -121,6 +121,16 @@ int64_t product(const DDim& ddim) {
   return ddim.apply_visitor(ProductVisitor());
 }
 
+bool contain_unknown_dim(const DDim& ddim) {
+  for (int i = 0; i < ddim.size(); ++i) {
+    if (ddim[i] < 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 DDim slice_ddim(const DDim& dim, int begin, int end) {
   PADDLE_ENFORCE(begin >= 0 && end <= dim.size(),
                  "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.",

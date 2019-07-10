@@ -33,6 +33,13 @@ os.environ['CPU_NUM'] = '2'
 
 
 class BuildIrMemOptBase(unittest.TestCase):
+    def setup_reader(self):
+        self.batch_size = 32
+        self.word_dict = paddle.dataset.imdb.word_dict()
+        self.train_reader = paddle.batch(
+            paddle.dataset.imdb.train(self.word_dict),
+            batch_size=self.batch_size)
+
     def check_network_convergence(self,
                                   network,
                                   use_cuda=True,
@@ -51,35 +58,34 @@ class BuildIrMemOptBase(unittest.TestCase):
             return
         fluid.default_startup_program().random_seed = 100
         fluid.default_main_program().random_seed = 100
-        batch_size = 32
-        batch_size *= fluid.core.get_cuda_device_count() if use_cuda else int(
-            os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-
-        # build network
-        word_dict = paddle.dataset.imdb.word_dict()
-        train_reader = paddle.batch(
-            paddle.dataset.imdb.train(word_dict), batch_size=batch_size)
 
         data = fluid.layers.data(
             name="words", shape=[1], dtype="int64", lod_level=1)
 
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
-        cost = network(data, label, len(word_dict))
+        cost = network(data, label, len(self.word_dict))
         optimizer = fluid.optimizer.Adam(learning_rate=0.001)
         optimizer.minimize(cost)
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
         if memory_opt:
             fluid.memory_optimize(fluid.default_main_program())
+        else:
+            build_strategy.enable_inplace = use_ir_memory_optimize
+            build_strategy.memory_optimize = enable_inplace
 
         # execution
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
-        reader = feeder.decorate_reader(train_reader, multi_devices=True)
+        reader = feeder.decorate_reader(self.train_reader, multi_devices=True)
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
         train_cp = compiler.CompiledProgram(fluid.default_main_program())
-        train_cp = train_cp.with_data_parallel(loss_name=cost.name)
+        train_cp = train_cp.with_data_parallel(
+            loss_name=cost.name, build_strategy=build_strategy)
         fetch_list = [cost.name]
 
         begin = time.time()
@@ -100,7 +106,7 @@ class BuildIrMemOptBase(unittest.TestCase):
         end = time.time()
 
         print("%.4f Instance per second" % (
-            (batch_size * iter) / (end - begin)))
+            (self.batch_size * iter) / (end - begin)))
 
         print(first_loss, last_loss)
         avg_last_loss_val = np.array(last_loss).mean()
@@ -120,31 +126,21 @@ class TestIrMemOptBase(BuildIrMemOptBase):
         if self.network is None or not core.is_compiled_with_cuda():
             return
 
-        baseline_first_loss, baseline_last_loss = None, None
-        for use_cuda in [True]:
-            for use_python_mem_opt in [True, False]:
-                print(
-                    'network: {}, use_cuda: {}, use_python_mem_opt: {}, use_ir_mem_opt : {}'.
-                    format(self.network.__name__, use_cuda, use_python_mem_opt,
-                           not use_python_mem_opt))
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    with fluid.scope_guard(core.Scope()):
-                        if use_cuda is True and use_python_mem_opt is True:
-                            baseline_first_loss, baseline_last_loss = self.check_network_convergence(
-                                self.network,
-                                use_cuda=use_cuda,
-                                memory_opt=use_python_mem_opt)
-                        else:
-                            cur_first_loss, cur_last_loss = self.check_network_convergence(
-                                self.network,
-                                use_cuda=use_cuda,
-                                memory_opt=use_python_mem_opt)
+        self.setup_reader()
 
-                            self.assertAlmostEquals(
-                                np.mean(baseline_last_loss),
-                                np.mean(cur_last_loss),
-                                delta=1e-2)
-                            self.assertAlmostEquals(
-                                np.mean(baseline_first_loss),
-                                np.mean(cur_first_loss),
-                                delta=1e-2)
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with fluid.scope_guard(core.Scope()):
+                baseline_first_loss, baseline_last_loss = self.check_network_convergence(
+                    self.network)
+
+                cur_first_loss, cur_last_loss = self.check_network_convergence(
+                    self.network, memory_opt=False)
+
+                self.assertAlmostEquals(
+                    np.mean(baseline_last_loss),
+                    np.mean(cur_last_loss),
+                    delta=1e-6)
+                self.assertAlmostEquals(
+                    np.mean(baseline_first_loss),
+                    np.mean(cur_first_loss),
+                    delta=1e-6)

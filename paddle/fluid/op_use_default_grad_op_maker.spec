@@ -15,10 +15,8 @@ fusion_seqexpand_concat_fc
 fusion_seqpool_concat
 fusion_squared_mat_sub
 gru
-hierarchical_sigmoid
 lrn
 lstm_unit
-lstmp
 max_pool2d_with_index
 max_pool3d_with_index
 maxout
@@ -30,7 +28,6 @@ prelu
 quantize
 rank_loss
 reduce_max
-reduce_mean
 reduce_min
 reduce_prod
 reduce_sum

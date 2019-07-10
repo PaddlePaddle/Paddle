@@ -169,6 +169,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
   // Hot fix the bug that result diff in multi-thread.
   // TODO(Superjomn) re-implement a real clone here.
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<NativePaddlePredictor *>(cls.get()));
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
@@ -210,6 +211,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       return false;
     }
 
+    PADDLE_ENFORCE_NOT_NULL(input_ptr);
+    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
@@ -277,13 +280,13 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
-    if (type == framework::DataTypeTrait<float>::DataType) {
+    if (type == framework::DataTypeTrait<float>::DataType()) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType()) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
-    } else if (type == framework::DataTypeTrait<int32_t>::DataType) {
+    } else if (type == framework::DataTypeTrait<int32_t>::DataType()) {
       GetFetchOne<int32_t>(fetch, output);
       output->dtype = PaddleDType::INT32;
     } else {
@@ -316,6 +319,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
+  PADDLE_ENFORCE_NOT_NULL(
+      dynamic_cast<NativePaddlePredictor *>(predictor.get()));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }

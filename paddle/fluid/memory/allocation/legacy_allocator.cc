@@ -17,10 +17,6 @@
 #include <utility>
 #include <vector>
 
-#ifdef PADDLE_WITH_JEMALLOC
-#include <jemalloc/jemalloc.h>
-#endif
-
 #include "glog/logging.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
@@ -29,6 +25,9 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -100,11 +99,7 @@ struct NaiveAllocator {
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-#ifdef PADDLE_WITH_JEMALLOC
-  void *p = malloc(size);
-#else
   void *p = GetCPUBuddyAllocator()->Alloc(size);
-#endif
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -116,21 +111,12 @@ template <>
 void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-#ifdef PADDLE_WITH_JEMALLOC
-  free(p);
-#else
   GetCPUBuddyAllocator()->Free(p);
-#endif
 }
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
-#ifdef PADDLE_WITH_JEMALLOC
-  // fake the result of used memory when PADDLE_WITH_JEMALLOC is ON
-  return 0U;
-#else
   return GetCPUBuddyAllocator()->Used();
-#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -142,7 +128,6 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   std::call_once(init_flag, [gpu_id]() {
     devices = platform::GetSelectedDevices();
     int gpu_num = devices.size();
-
     allocation::GPUMemMonitor.Initialize(devices.size());
 
     a_arr = new BuddyAllocator *[gpu_num];
@@ -168,9 +153,9 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
                << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
                << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
     }
+    platform::SetDeviceId(gpu_id);
   });
 
-  platform::SetDeviceId(gpu_id);
   auto pos = std::distance(devices.begin(),
                            std::find(devices.begin(), devices.end(), gpu_id));
   return a_arr[pos];
@@ -193,20 +178,18 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    int cur_dev = platform::GetCurrentDeviceId();
-    platform::SetDeviceId(place.device);
+    platform::CUDADeviceGuard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
                << " in GPU " << place.device << ", available "
-               << string::HumanReadableSize(avail) << "total " << total
-               << "GpuMinChunkSize "
+               << string::HumanReadableSize(avail) << ", total "
+               << string::HumanReadableSize(total) << ", GpuMinChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
-               << "GpuMaxChunkSize "
+               << ", GpuMaxChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
-               << "GPU memory used: "
+               << ", GPU memory used: "
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
-    platform::SetDeviceId(cur_dev);
   } else {
     if (FLAGS_benchmark) {
       allocation::GPUMemMonitor.Add(place.device, size);
@@ -339,7 +322,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
 
-Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation *LegacyAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
@@ -347,7 +330,7 @@ Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   return tmp_alloc;
 }
 
-void LegacyAllocator::Free(Allocation *allocation) {
+void LegacyAllocator::FreeImpl(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());

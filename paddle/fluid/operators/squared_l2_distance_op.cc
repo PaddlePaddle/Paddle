@@ -45,13 +45,26 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
     int rank = framework::arity(x_dims);
     PADDLE_ENFORCE_GE(rank, 2, "Tensor rank should be at least equal to 2.");
-    PADDLE_ENFORCE_EQ(product(x_dims) / x_dims[0], product(y_dims) / y_dims[0],
-                      "Product of dimensions expcet the first dimension of "
-                      "input and target must be equal.");
-    PADDLE_ENFORCE(y_dims[0] == 1 || y_dims[0] == x_dims[0],
-                   "First dimension of target must be equal to input "
-                   "or to 1.");
-
+    bool check = true;
+    if ((!ctx->IsRuntime()) &&
+        (framework::product(x_dims) <= 0 || framework::product(y_dims) <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE_EQ(product(x_dims) / x_dims[0],
+                        product(y_dims) / y_dims[0],
+                        "Product of dimensions expcet the first dimension of "
+                        "input and target must be equal.");
+    }
+    check = true;
+    if ((!ctx->IsRuntime()) && (y_dims[0] <= 0 || x_dims[0] <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE(y_dims[0] == 1 || y_dims[0] == x_dims[0],
+                     "First dimension of target must be equal to input "
+                     "or to 1.");
+    }
     ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("Out", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -124,12 +137,12 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
-                      "First dimension of output gradient and "
-                      "input value must be equal.");
-    PADDLE_ENFORCE_EQ(out_dims[1], 1,
-                      "Second dimension of output gradient "
-                      "must be 1.");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[0], x_dims[0],
+                                 "First dimension of output gradient and "
+                                 "input value must be equal.");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[1], 1,
+                                 "Second dimension of output gradient "
+                                 "must be 1.");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);

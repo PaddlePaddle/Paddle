@@ -38,6 +38,7 @@ class Tracer(core.Tracer):
         self._ops = defaultdict()
         self._vars = defaultdict()
         self._trace_id = 0
+        self._train_mode = True
 
     def trace_var(self, name, var):
         self._vars[name] = var
@@ -46,29 +47,26 @@ class Tracer(core.Tracer):
         return list((item for name, item in six.iteritems(self._vars)
                      if isinstance(item, framework.Parameter)))
 
-    def trace_op(self, op, stop_gradient=False):
+    def _clear_ops(self):
+        self._ops = defaultdict()
+        self._trace_id = 0
+
+    def trace_op(self, op, inputs, outputs, stop_gradient=False):
         # record op's trace id
         op.iop._trace_id = self._trace_id
 
-        backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.attrs,
-                                   framework._current_expected_place(),
-                                   stop_gradient)
+        self.trace(op.iop, inputs, outputs, op.attrs,
+                   framework._current_expected_place(), stop_gradient)
 
-        if not stop_gradient:
+        if not stop_gradient and self._train_mode:
             self._trace_id += 1
             self._ops[op.iop._trace_id] = op
 
             # register backward hooks and variables if needed
-            if len(backward_refs) > 0:
-                op.iop.register_backward_hooks(release_op)
+            op.iop.register_backward_hooks(release_op)
 
-                # TODO(minqiyang): remove all inputs and outputs after separate
-                # var and grad
-                op.backward_refs = defaultdict(list)
-                for k, v in six.iteritems(op.inputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = op.inputs[k]
+    def train_mode(self):
+        self._train_mode = True
 
-                for k, v in six.iteritems(op.outputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = op.outputs[k]
+    def eval_mode(self):
+        self._train_mode = False

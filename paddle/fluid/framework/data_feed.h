@@ -14,6 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include <fstream>
 #include <future>  // NOLINT
 #include <memory>
@@ -24,7 +29,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -59,7 +66,7 @@ class DataFeed {
     file_idx_ = nullptr;
   }
   virtual ~DataFeed() {}
-  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename) {
     PADDLE_THROW("This function(CheckFile) is not implemented.");
   }
@@ -84,18 +91,19 @@ class DataFeed {
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
 
+  // This function is used for binding feed_vec memory in a given scope
+  virtual void AssignFeedVar(const Scope& scope);
+
   // This function will do nothing at default
-  virtual void SetMemoryData(void* memory_data) {}
+  virtual void SetInputChannel(void* channel) {}
   // This function will do nothing at default
-  virtual void SetMemoryDataMutex(std::mutex* mutex) {}
+  virtual void SetOutputChannel(void* channel) {}
+  // This function will do nothing at default
+  virtual void SetConsumeChannel(void* channel) {}
   // This function will do nothing at default
   virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
   virtual void SetThreadNum(int thread_num) {}
-  // This function will do nothing at default
-  virtual void SetTrainerNum(int trainer_num) {}
-  // This function will do nothing at default
-  virtual void SetFleetSendBatchSize(int64_t size) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -103,18 +111,6 @@ class DataFeed {
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
-  virtual void LocalShuffle() {
-    PADDLE_THROW("This function(LocalShuffle) is not implemented.");
-  }
-  virtual void GlobalShuffle() {
-    PADDLE_THROW("This function(GlobalShuffle) is not implemented.");
-  }
-  // This function will do nothing at default
-  virtual void FillMemoryDataToChannel() {}
-  // This function will do nothing at default
-  virtual void FillChannelToMemoryData() {}
-  // This function will do nothing at default
-  virtual void PutInsToChannel(const std::string& ins_str) {}
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -142,6 +138,11 @@ class DataFeed {
   // object)
   std::vector<std::string> all_slots_;
   std::vector<std::string> all_slots_type_;
+  std::vector<std::vector<int>> use_slots_shape_;
+  std::vector<int> inductive_shape_index_;
+  std::vector<int> total_dims_without_inductive_;
+  // For the inductive shape passed within data
+  std::vector<std::vector<int>> multi_inductive_shape_index_;
   std::vector<int>
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
@@ -167,7 +168,6 @@ class PrivateQueueDataFeed : public DataFeed {
  public:
   PrivateQueueDataFeed() {}
   virtual ~PrivateQueueDataFeed() {}
-  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual int Next();
 
@@ -202,49 +202,32 @@ class PrivateQueueDataFeed : public DataFeed {
 };
 
 template <typename T>
-class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
+class InMemoryDataFeed : public DataFeed {
  public:
   InMemoryDataFeed();
   virtual ~InMemoryDataFeed() {}
-  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
+  virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool Start();
   virtual int Next();
-  virtual void SetMemoryData(void* memory_data);
-  virtual void SetMemoryDataMutex(std::mutex* mutex);
+  virtual void SetInputChannel(void* channel);
+  virtual void SetOutputChannel(void* channel);
+  virtual void SetConsumeChannel(void* channel);
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
-  virtual void SetTrainerNum(int trainer_num);
-  virtual void SetFleetSendBatchSize(int64_t size);
-  virtual void PutInsToChannel(const std::string& ins_str);
-  virtual void FillMemoryDataToChannel();
-  virtual void FillChannelToMemoryData();
   virtual void LoadIntoMemory();
-  virtual void LocalShuffle();
-  virtual void GlobalShuffle();
 
  protected:
-  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
-                                   int index) = 0;
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void PutToFeedVec(const T& ins_vec) = 0;
-  virtual void SerializeIns(const std::vector<T*>& ins, std::string* str) = 0;
-  virtual void DeserializeIns(std::vector<T>* ins, const std::string& str) = 0;
-  virtual std::pair<int64_t, int64_t> GetMemoryDataInterval();
+  virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
 
   int thread_id_;
   int thread_num_;
-  int trainer_num_;
-  uint32_t rand_seed;
-  std::vector<T>* memory_data_;
-  std::mutex* mutex_for_update_memory_data_;
-  // when read ins, we put ins from one channel to the other,
-  // and when finish reading, we set cur_channel = 1 - cur_channel,
-  // so if cur_channel=0, all data are in shuffled_ins_, else shuffled_ins_out_
-  int cur_channel_;
-  std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_;
-  std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_out_;
-  int64_t fleet_send_batch_size_;
+  std::ifstream file_;
+  std::shared_ptr<FILE> fp_;
+  paddle::framework::ChannelObject<T>* input_channel_;
+  paddle::framework::ChannelObject<T>* output_channel_;
+  paddle::framework::ChannelObject<T>* consume_channel_;
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
@@ -252,16 +235,25 @@ class MultiSlotType {
  public:
   MultiSlotType() {}
   ~MultiSlotType() {}
-  void Init(const std::string& type) {
+  void Init(const std::string& type, size_t reserved_size = 0) {
     CheckType(type);
     if (type_[0] == 'f') {
       float_feasign_.clear();
+      if (reserved_size) {
+        float_feasign_.reserve(reserved_size);
+      }
     } else if (type_[0] == 'u') {
       uint64_feasign_.clear();
+      if (reserved_size) {
+        uint64_feasign_.reserve(reserved_size);
+      }
     }
     type_ = type;
   }
-  void InitOffset() {
+  void InitOffset(size_t max_batch_size = 0) {
+    if (max_batch_size > 0) {
+      offset_.reserve(max_batch_size + 1);
+    }
     offset_.resize(1);
     // LoDTensor' lod is counted from 0, the size of lod
     // is one size larger than the size of data.
@@ -277,6 +269,16 @@ class MultiSlotType {
     CheckUint64();
     uint64_feasign_.push_back(v);
   }
+  void CopyValues(const float* input, size_t size) {
+    CheckFloat();
+    float_feasign_.resize(size);
+    memcpy(float_feasign_.data(), input, size * sizeof(float));
+  }
+  void CopyValues(const uint64_t* input, size_t size) {
+    CheckUint64();
+    uint64_feasign_.resize(size);
+    memcpy(uint64_feasign_.data(), input, size * sizeof(uint64_t));
+  }
   void AddIns(const MultiSlotType& ins) {
     if (ins.GetType()[0] == 'f') {  // float
       CheckFloat();
@@ -290,11 +292,22 @@ class MultiSlotType {
       uint64_feasign_.insert(uint64_feasign_.end(), vec.begin(), vec.end());
     }
   }
+  void AppendValues(const uint64_t* input, size_t size) {
+    CheckUint64();
+    offset_.push_back(offset_.back() + size);
+    uint64_feasign_.insert(uint64_feasign_.end(), input, input + size);
+  }
+  void AppendValues(const float* input, size_t size) {
+    CheckFloat();
+    offset_.push_back(offset_.back() + size);
+    float_feasign_.insert(float_feasign_.end(), input, input + size);
+  }
   const std::vector<float>& GetFloatData() const { return float_feasign_; }
   std::vector<float>& MutableFloatData() { return float_feasign_; }
   const std::vector<uint64_t>& GetUint64Data() const { return uint64_feasign_; }
   std::vector<uint64_t>& MutableUint64Data() { return uint64_feasign_; }
   const std::string& GetType() const { return type_; }
+  size_t GetBatchSize() { return offset_.size() - 1; }
   std::string& MutableType() { return type_; }
 
   std::string DebugString() {
@@ -336,6 +349,126 @@ class MultiSlotType {
   std::vector<size_t> offset_;
 };
 
+template <class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const MultiSlotType& ins) {
+  ar << ins.GetType();
+#ifdef _LINUX
+  ar << ins.GetOffset();
+#else
+  const auto& offset = ins.GetOffset();
+  ar << (uint64_t)offset.size();
+  for (const size_t& x : offset) {
+    ar << (const uint64_t)x;
+  }
+#endif
+  ar << ins.GetFloatData();
+  ar << ins.GetUint64Data();
+  return ar;
+}
+
+template <class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           MultiSlotType& ins) {
+  ar >> ins.MutableType();
+#ifdef _LINUX
+  ar >> ins.MutableOffset();
+#else
+  auto& offset = ins.MutableOffset();
+  offset.resize(ar.template Get<uint64_t>());
+  for (size_t& x : offset) {
+    uint64_t t;
+    ar >> t;
+    x = (size_t)t;
+  }
+#endif
+  ar >> ins.MutableFloatData();
+  ar >> ins.MutableUint64Data();
+  return ar;
+}
+
+union FeatureKey {
+  uint64_t uint64_feasign_;
+  float float_feasign_;
+};
+
+struct FeatureItem {
+  FeatureItem() {}
+  FeatureItem(FeatureKey sign, uint16_t slot) {
+    this->sign() = sign;
+    this->slot() = slot;
+  }
+  FeatureKey& sign() { return *(reinterpret_cast<FeatureKey*>(sign_buffer())); }
+  const FeatureKey& sign() const {
+    const FeatureKey* ret = reinterpret_cast<FeatureKey*>(sign_buffer());
+    return *ret;
+  }
+  uint16_t& slot() { return slot_; }
+  const uint16_t& slot() const { return slot_; }
+
+ private:
+  char* sign_buffer() const { return const_cast<char*>(sign_); }
+  char sign_[sizeof(FeatureKey)];
+  uint16_t slot_;
+};
+
+// sizeof Record is much less than std::vector<MultiSlotType>
+struct Record {
+  std::vector<FeatureItem> uint64_feasigns_;
+  std::vector<FeatureItem> float_feasigns_;
+  std::string ins_id_;
+};
+
+template <class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const FeatureKey& fk) {
+  ar << fk.uint64_feasign_;
+  ar << fk.float_feasign_;
+  return ar;
+}
+
+template <class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           FeatureKey& fk) {
+  ar >> fk.uint64_feasign_;
+  ar >> fk.float_feasign_;
+  return ar;
+}
+
+template <class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const FeatureItem& fi) {
+  ar << fi.sign();
+  ar << fi.slot();
+  return ar;
+}
+
+template <class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           FeatureItem& fi) {
+  ar >> fi.sign();
+  ar >> fi.slot();
+  return ar;
+}
+
+template <class AR>
+paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
+                                           const Record& r) {
+  ar << r.uint64_feasigns_;
+  ar << r.float_feasigns_;
+  ar << r.ins_id_;
+  return ar;
+}
+
+template <class AR>
+paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
+                                           Record& r) {
+  ar >> r.uint64_feasigns_;
+  ar >> r.float_feasigns_;
+  ar >> r.ins_id_;
+  return ar;
+}
+
 // This DataFeed is used to feed multi-slot type data.
 // The format of multi-slot type data:
 //   [n feasign_0 feasign_1 ... feasign_n]*
@@ -344,9 +477,8 @@ class MultiSlotDataFeed
  public:
   MultiSlotDataFeed() {}
   virtual ~MultiSlotDataFeed() {}
-  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual void Init(const DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
-  // virtual void ReadThread();
 
  protected:
   virtual void ReadThread();
@@ -358,25 +490,66 @@ class MultiSlotDataFeed
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
 };
 
-class MultiSlotInMemoryDataFeed
-    : public InMemoryDataFeed<std::vector<MultiSlotType>> {
+class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  public:
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
-  virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
+  virtual void Init(const DataFeedDesc& data_feed_desc);
 
  protected:
-  virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
-                                   const std::vector<MultiSlotType>& instance,
-                                   int index);
-  virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
-  virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
-  virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
-  virtual void SerializeIns(const std::vector<std::vector<MultiSlotType>*>& ins,
-                            std::string* str);
-  virtual void DeserializeIns(std::vector<std::vector<MultiSlotType>>* ins,
-                              const std::string& str);
+  virtual bool ParseOneInstance(Record* instance);
+  virtual bool ParseOneInstanceFromPipe(Record* instance);
+  virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
 };
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+template <typename T>
+class PrivateInstantDataFeed : public DataFeed {
+ public:
+  PrivateInstantDataFeed() {}
+  virtual ~PrivateInstantDataFeed() {}
+  void Init(const DataFeedDesc& data_feed_desc) override;
+  bool Start() override { return true; }
+  int Next() override;
+
+ protected:
+  // The batched data buffer
+  std::vector<MultiSlotType> ins_vec_;
+
+  // This function is used to preprocess with a given filename, e.g. open it or
+  // mmap
+  virtual bool Preprocess(const std::string& filename) = 0;
+
+  // This function is used to postprocess system resource such as closing file
+  // NOTICE: Ensure that it is safe to call before Preprocess
+  virtual bool Postprocess() = 0;
+
+  // The reading and parsing method.
+  virtual bool ParseOneMiniBatch() = 0;
+
+  // This function is used to put ins_vec to feed_vec
+  virtual void PutToFeedVec();
+};
+
+class MultiSlotFileInstantDataFeed
+    : public PrivateInstantDataFeed<std::vector<MultiSlotType>> {
+ public:
+  MultiSlotFileInstantDataFeed() {}
+  virtual ~MultiSlotFileInstantDataFeed() {}
+
+ protected:
+  int fd_{-1};
+  char* buffer_{nullptr};
+  size_t end_{0};
+  size_t offset_{0};
+
+  bool Preprocess(const std::string& filename) override;
+
+  bool Postprocess() override;
+
+  bool ParseOneMiniBatch() override;
+};
+#endif
 
 }  // namespace framework
 }  // namespace paddle

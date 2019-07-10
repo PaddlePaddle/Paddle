@@ -1,7 +1,6 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
 # When you modify it, please be aware of cudnn-runtime version
-# and libcudnn.so.x in paddle/scripts/docker/build.sh
 FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
@@ -76,7 +75,7 @@ RUN curl -s -q https://glide.sh/get | sh
 # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
-RUN wget -q https://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
+RUN wget -q https://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
     tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
     cp -rf /usr/local/TensorRT/lib /usr
@@ -125,6 +124,12 @@ RUN pip3 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.6 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.7 --no-cache-dir install pylint pytest astroid isort
 RUN pip --no-cache-dir install pylint pytest astroid isort LinkChecker
+
+# for coverage
+RUN pip3 --no-cache-dir install coverage
+RUN pip3.6 --no-cache-dir install coverage
+RUN pip3.7 --no-cache-dir install coverage
+RUN pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
 RUN pip3 --no-cache-dir install -r /root/requirements.txt

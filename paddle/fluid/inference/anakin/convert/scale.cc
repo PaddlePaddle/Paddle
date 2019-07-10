@@ -16,19 +16,14 @@
 #include <algorithm>
 #include <map>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ScaleOpConverter::operator()(const framework::proto::OpDesc &op,
-                                  const framework::BlockDesc &block_desc,
-                                  const framework::Scope &scope,
-                                  bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ScaleOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -44,10 +39,10 @@ void ScaleOpConverter::operator()(const framework::proto::OpDesc &op,
   PADDLE_ENFORCE(bias_after_scale,
                  "The anakin scale layer only support bias after scale now.");
 
-  engine_->AddOp(op_name, "Power", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "shift", bias);
-  engine_->AddOpAttr(op_name, "scale", scale);
-  engine_->AddOpAttr(op_name, "power", static_cast<float>(1.0));
+  this->engine_->AddOp(op_name, "Power", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "shift", bias);
+  this->engine_->AddOpAttr(op_name, "scale", scale);
+  this->engine_->AddOpAttr(op_name, "power", static_cast<float>(1.0));
 }
 
 }  // namespace anakin

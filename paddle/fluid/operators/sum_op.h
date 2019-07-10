@@ -28,6 +28,96 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
+void SelectedRowsCompute(const framework::ExecutionContext &context) {
+  auto in_vars = context.MultiInputVar("X");
+  auto out_var = context.OutputVar("Out");
+  bool in_place = out_var == in_vars[0];
+
+  if (in_place && in_vars.size() < 2) {
+    return;
+  }
+
+  std::vector<const paddle::framework::SelectedRows *> inputs;
+  SelectedRows temp_in0;
+
+  if (in_place) {
+    auto &in0 = in_vars[0]->Get<SelectedRows>();
+    temp_in0.set_height(in0.height());
+    temp_in0.set_rows(in0.rows());
+    framework::TensorCopy(in0.value(), in0.place(), context.device_context(),
+                          temp_in0.mutable_value());
+    inputs.push_back(&temp_in0);
+    for (size_t i = 1; i < in_vars.size(); ++i) {
+      auto &in = in_vars[i]->Get<SelectedRows>();
+      if (in.rows().size() > 0) {
+        inputs.push_back(&in);
+      }
+    }
+  } else {
+    for (auto &in_var : in_vars) {
+      auto &in = in_var->Get<SelectedRows>();
+      if (in.rows().size() > 0) {
+        inputs.push_back(&in_var->Get<SelectedRows>());
+      }
+    }
+  }
+
+  auto *out = context.Output<SelectedRows>("Out");
+  out->mutable_rows()->clear();
+
+  bool has_data = false;
+  for (auto &in : inputs) {
+    if (in->rows().size() > 0) {
+      has_data = true;
+      break;
+    }
+  }
+  if (has_data) {
+    math::scatter::MergeAdd<DeviceContext, T> merge_add;
+    merge_add(context.template device_context<DeviceContext>(), inputs, out);
+
+    out->SyncIndex();
+
+  } else {
+    // no data, just set a empty out tensor.
+    out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
+                                          context.GetPlace());
+  }
+}
+
+template <typename DeviceContext, typename T>
+void LodTensorArrayCompute(const framework::ExecutionContext &context) {
+  auto in_vars = context.MultiInputVar("X");
+  auto out_var = context.OutputVar("Out");
+  bool in_place = out_var == in_vars[0];
+  auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
+  for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
+    PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
+                   "Only support all inputs are TensorArray");
+    auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
+
+    for (size_t i = 0; i < in_array.size(); ++i) {
+      if (in_array[i].numel() != 0) {
+        if (i >= out_array.size()) {
+          out_array.resize(i + 1);
+        }
+        if (out_array[i].numel() == 0) {
+          framework::TensorCopy(in_array[i], in_array[i].place(),
+                                context.device_context(), &out_array[i]);
+          out_array[i].set_lod(in_array[i].lod());
+        } else {
+          PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
+          auto in = EigenVector<T>::Flatten(in_array[i]);
+          auto result = EigenVector<T>::Flatten(out_array[i]);
+          result.device(*context.template device_context<DeviceContext>()
+                             .eigen_device()) = result + in;
+        }
+      }
+    }
+  }
+}
+
+template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -83,84 +173,9 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      if (in_place && in_vars.size() < 2) {
-        return;
-      }
-
-      std::vector<const paddle::framework::SelectedRows *> inputs;
-      SelectedRows temp_in0;
-
-      if (in_place) {
-        auto &in0 = in_vars[0]->Get<SelectedRows>();
-        temp_in0.set_height(in0.height());
-        temp_in0.set_rows(in0.rows());
-        framework::TensorCopy(in0.value(), in0.place(),
-                              context.device_context(),
-                              temp_in0.mutable_value());
-        inputs.push_back(&temp_in0);
-        for (size_t i = 1; i < in_vars.size(); ++i) {
-          auto &in = in_vars[i]->Get<SelectedRows>();
-          if (in.rows().size() > 0) {
-            inputs.push_back(&in);
-          }
-        }
-      } else {
-        for (auto &in_var : in_vars) {
-          auto &in = in_var->Get<SelectedRows>();
-          if (in.rows().size() > 0) {
-            inputs.push_back(&in_var->Get<SelectedRows>());
-          }
-        }
-      }
-
-      auto *out = context.Output<SelectedRows>("Out");
-      out->mutable_rows()->clear();
-
-      bool has_data = false;
-      for (auto &in : inputs) {
-        if (in->rows().size() > 0) {
-          has_data = true;
-          break;
-        }
-      }
-      if (has_data) {
-        math::scatter::MergeAdd<DeviceContext, T> merge_add;
-        merge_add(context.template device_context<DeviceContext>(), inputs,
-                  out);
-
-        out->SyncIndex();
-
-      } else {
-        // no data, just set a empty out tensor.
-        out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
-                                              context.GetPlace());
-      }
+      SelectedRowsCompute<DeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
-      for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
-                       "Only support all inputs are TensorArray");
-        auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
-
-        for (size_t i = 0; i < in_array.size(); ++i) {
-          if (in_array[i].numel() != 0) {
-            if (i >= out_array.size()) {
-              out_array.resize(i + 1);
-            }
-            if (out_array[i].numel() == 0) {
-              framework::TensorCopy(in_array[i], in_array[i].place(),
-                                    context.device_context(), &out_array[i]);
-              out_array[i].set_lod(in_array[i].lod());
-            } else {
-              PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
-              auto in = EigenVector<T>::Flatten(in_array[i]);
-              auto result = EigenVector<T>::Flatten(out_array[i]);
-              result.device(*context.template device_context<DeviceContext>()
-                                 .eigen_device()) = result + in;
-            }
-          }
-        }
-      }
+      LodTensorArrayCompute<DeviceContext, T>(context);
     } else {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
                    framework::ToTypeName(out_var->Type()));

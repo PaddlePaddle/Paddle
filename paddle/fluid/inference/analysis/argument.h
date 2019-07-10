@@ -59,25 +59,34 @@ struct Argument {
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
-  using engine_opt_info_t = std::map<std::string, std::string>;
   using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
+  void PartiallyRelease() {
+    if (Has("model_program_path")) {
+      if (Has("model_from_memory") && model_from_memory()) {
+        model_program_path().clear();
+        model_program_path().shrink_to_fit();
+        model_params_path().clear();
+        model_params_path().shrink_to_fit();
+      }
+    }
+  }
 
-#define DECL_ARGUMENT_FIELD(field__, Field, type__) \
- public:                                            \
-  type__& field__() {                               \
-    PADDLE_ENFORCE(Has(#field__));                  \
-    return field__##_;                              \
-  }                                                 \
-  void Set##Field(const type__& x) {                \
-    field__##_ = x;                                 \
-    valid_fields_.insert(#field__);                 \
-  }                                                 \
-  DECL_ARGUMENT_FIELD_VALID(field__);               \
-  type__* field__##_ptr() { return &field__##_; }   \
-                                                    \
- private:                                           \
+#define DECL_ARGUMENT_FIELD(field__, Field, type__)          \
+ public:                                                     \
+  type__& field__() {                                        \
+    PADDLE_ENFORCE(Has(#field__), "There is no such field"); \
+    return field__##_;                                       \
+  }                                                          \
+  void Set##Field(const type__& x) {                         \
+    field__##_ = x;                                          \
+    valid_fields_.insert(#field__);                          \
+  }                                                          \
+  DECL_ARGUMENT_FIELD_VALID(field__);                        \
+  type__* field__##_ptr() { return &field__##_; }            \
+                                                             \
+ private:                                                    \
   type__ field__##_;
 
 #define DECL_ARGUMENT_FIELD_VALID(field__) \
@@ -120,7 +129,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
-  DECL_ARGUMENT_FIELD(engine_opt_info, EngineOptInfo, engine_opt_info_t);
+  DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -164,12 +173,20 @@ struct Argument {
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
 
   DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
                       anakin_max_shape_t);
   DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(anakin_precision_mode, AnakinPrecisionMode,
+                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(anakin_auto_config_layout, AnakinAutoConfigLayout, bool);
   DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
+  DECL_ARGUMENT_FIELD(anakin_passes_filter, AnakinPassesFilter,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(anakin_ops_filter, AnakinOpsFilter,
+                      std::vector<std::string>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

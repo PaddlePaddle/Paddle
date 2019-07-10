@@ -270,22 +270,16 @@ class Flatten2GradOp : public framework::OperatorBase {
 class FlattenOpInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
-    std::unordered_map<std::string, std::string> inplace_in_to_out = {
-        {"X", "Out"},
-    };
-    return inplace_in_to_out;
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
   }
 };
 
 class FlattenGradInplaceinToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
-    std::unordered_map<std::string, std::string> inplace_in_to_out = {
-        {framework::GradVarName("Out"), framework::GradVarName("X")},
-    };
-    return inplace_in_to_out;
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
   }
 };
 

@@ -47,7 +47,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
 
   distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
   size_t out_num = rpc_ctx.splited_var_names.size();

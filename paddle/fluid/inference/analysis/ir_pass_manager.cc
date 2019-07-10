@@ -38,9 +38,9 @@ IRPassManager::IRPassManager(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, main_program);
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
-    graph_->Set(framework::ir::kParamScopeAttr,
-                new framework::Scope *(
-                    const_cast<framework::Scope *>(&argument->scope())));
+    auto *scope_ptr = argument->scope_ptr();
+    PADDLE_ENFORCE(scope_ptr);
+    graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
@@ -87,15 +87,27 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool enable_int8 = argument->tensorrt_precision_mode() ==
                          AnalysisConfig::Precision::kInt8;
 
+      pass->Set("predictor_id", new int(argument->predictor_id()));
+      bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
+      pass->Set("use_calib_mode", new bool(use_calib_mode));
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
-      bool int8_valid = !(model_from_memory && enable_int8);
+      std::string optim_cache_dir = argument->optim_cache_dir();
+      bool int8_valid =
+          !(model_from_memory && optim_cache_dir.empty() && enable_int8);
       PADDLE_ENFORCE(int8_valid,
-                     "TRT INT8 Now don't support model load from memory.");
+                     "When you are in TRT INT8 mode, and load model from "
+                     "memory, you should set optim_cache_dir using "
+                     "config.SetOptimCacheDir()");
+      PADDLE_ENFORCE(!(model_from_memory && use_static_engine),
+                     "When you are using Paddle-TRT, and also using load model "
+                     "from memory, you should set the use_static to false.");
 
-      if ((!model_from_memory && use_static_engine) || enable_int8) {
+      if (!optim_cache_dir.empty()) {
+        pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
+      } else if (use_static_engine || enable_int8) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -107,21 +119,28 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
-                                       argument->engine_opt_info()));
     }
-
+    if (pass_name == "ngraph_subgraph_pass") {
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
+    }
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
-                                       argument->engine_opt_info()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
       pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
                                        argument->anakin_max_input_shape()));
       pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
+      bool enable_int8 =
+          argument->anakin_precision_mode() == AnalysisConfig::Precision::kInt8;
+      pass->Set("enable_int8", new bool(enable_int8));
+      pass->Set("anakin_ops_filter",
+                new std::vector<std::string>(argument->anakin_ops_filter()));
+      pass->Set("auto_config_layout",
+                new bool(argument->anakin_auto_config_layout()));
     }
 
     pre_pass = pass_name;

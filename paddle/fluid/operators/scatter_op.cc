@@ -42,10 +42,6 @@ class ScatterOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
                       ctx->GetInputDim("Ids")[0],
                       "Updates and Ids should have same batch-size.");
-    framework::DDim data_dim(updates_dims);
-    for (int i = 1; i < data_dim.size(); ++i) {
-      PADDLE_ENFORCE_EQ(data_dim[i], updates_dims[i]);
-    }
     ctx->SetOutputDim("Out", ref_dims);
   }
 
@@ -84,6 +80,14 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ids", "The index input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of scatter op");
     AddOutput("Out", "The output of scatter op");
+    AddAttr<bool>("overwrite",
+                  "(bool, defalut: True) "
+                  "The mode that updating the output when has same index,"
+                  "If True, use the overwrite mode to update the output"
+                  "of the same index, if False, use the accumulate mode to"
+                  "update the output of the same index,Default value is True."
+                  "You can set overwrite=False to implement scatter_add.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Scatter Operator.
 

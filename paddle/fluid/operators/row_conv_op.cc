@@ -45,9 +45,12 @@ class RowConvOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(
-        x_dims[1], filter_dims[1],
-        "The 2nd dimension of Input(X) and Input(Filter) should be same.");
+    if (ctx->IsRuntime() || (x_dims[1] > 0 && filter_dims[1] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[1], filter_dims[1],
+          "The 2nd dimension of Input(X) and Input(Filter) should be same.");
+    }
+
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
   }

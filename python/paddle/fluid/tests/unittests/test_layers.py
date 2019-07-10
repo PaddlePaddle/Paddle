@@ -17,7 +17,7 @@ import unittest
 
 import contextlib
 import numpy as np
-import decorators
+from decorator_helper import prog_scope
 import inspect
 from six.moves import filter
 
@@ -190,8 +190,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             ret = conv2d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -200,8 +199,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
 
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
@@ -1171,7 +1169,7 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             get_places(device_count=1)
 
-    @decorators.prog_scope()
+    @prog_scope()
     def make_nce(self):
         window_size = 5
         words = []
@@ -1221,10 +1219,25 @@ class TestBook(LayerTest):
             y = self._get_data(name='label', shape=[1], dtype='int64')
             loss, softmax = layers.softmax_with_cross_entropy(
                 x, y, return_softmax=True)
-            return (loss)
-            return (softmax)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
+
             loss = layers.softmax_with_cross_entropy(x, y)
-            return (loss)
+            self.assertIsNotNone(loss)
+
+            x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
+            y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
+            y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
+            y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
+            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
+            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
+            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
+            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            self.assertIsNotNone(loss1)
+            self.assertIsNotNone(loss2)
+            self.assertIsNotNone(loss3)
+            self.assertIsNotNone(loss4)
+            return (loss4)
 
     def make_smooth_l1(self):
         with program_guard(fluid.default_main_program(),
@@ -1251,6 +1264,12 @@ class TestBook(LayerTest):
                 dtype='float32')
             out = layers.scatter(input=x, index=idx, updates=updates)
             return (out)
+
+    def make_one_hot(self):
+        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
+            label = self._get_data(name="label", shape=[1], dtype="int32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            return (one_hot_label)
 
     def make_label_smooth(self):
         # TODO(minqiyang): support gpu ut
@@ -1759,10 +1778,20 @@ class TestBook(LayerTest):
     def test_lod_reset(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
+            # case 1
             x = layers.data(name='x', shape=[10], dtype='float32')
             y = layers.data(
                 name='y', shape=[10, 20], dtype='float32', lod_level=2)
-            return (layers.lod_reset(x=x, y=y))
+            z = layers.lod_reset(x=x, y=y)
+            self.assertTrue(z.lod_level == 2)
+            # case 2
+            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int64')
+            z = layers.lod_reset(x=x, y=lod_tensor_in)
+            self.assertTrue(z.lod_level == 1)
+            # case 3
+            z = layers.lod_reset(x=x, target_lod=[1, 2, 3])
+            self.assertTrue(z.lod_level == 1)
+            return z
 
     def test_affine_grid(self):
         with self.static_graph():
@@ -1924,6 +1953,180 @@ class TestBook(LayerTest):
                 dtype="float32")
             out = layers.flatten(x, axis=1, name="flatten")
             return (out)
+
+    def test_linspace(self):
+        program = Program()
+        with program_guard(program):
+            out = layers.linspace(20, 10, 5, 'float64')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_deformable_conv(self):
+        if core.is_compiled_with_cuda():
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                input = layers.data(
+                    name='input',
+                    append_batch_size=False,
+                    shape=[2, 3, 32, 32],
+                    dtype="float32")
+                offset = layers.data(
+                    name='offset',
+                    append_batch_size=False,
+                    shape=[2, 18, 32, 32],
+                    dtype="float32")
+                mask = layers.data(
+                    name='mask',
+                    append_batch_size=False,
+                    shape=[2, 9, 32, 32],
+                    dtype="float32")
+                out = layers.deformable_conv(
+                    input=input,
+                    offset=offset,
+                    mask=mask,
+                    num_filters=2,
+                    filter_size=3,
+                    padding=1)
+                return (out)
+
+    def test_unfold(self):
+        with self.static_graph():
+            x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
+            out = layers.unfold(x, [3, 3], 1, 1, 1)
+            return (out)
+
+    def test_deform_roi_pooling(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                shape=[2, 3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            rois = layers.data(
+                name="rois", shape=[4], dtype='float32', lod_level=1)
+            trans = layers.data(
+                name="trans",
+                shape=[2, 3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            out = layers.deformable_roi_pooling(
+                input=input,
+                rois=rois,
+                trans=trans,
+                no_trans=False,
+                spatial_scale=1.0,
+                group_size=(1, 1),
+                pooled_height=8,
+                pooled_width=8,
+                part_size=(8, 8),
+                sample_per_part=4,
+                trans_std=0.1)
+        return (out)
+
+    def test_retinanet_target_assign(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            bbox_pred = layers.data(
+                name='bbox_pred',
+                shape=[1, 100, 4],
+                append_batch_size=False,
+                dtype='float32')
+            cls_logits = layers.data(
+                name='cls_logits',
+                shape=[1, 100, 10],
+                append_batch_size=False,
+                dtype='float32')
+            anchor_box = layers.data(
+                name='anchor_box',
+                shape=[100, 4],
+                append_batch_size=False,
+                dtype='float32')
+            anchor_var = layers.data(
+                name='anchor_var',
+                shape=[100, 4],
+                append_batch_size=False,
+                dtype='float32')
+            gt_boxes = layers.data(
+                name='gt_boxes',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            gt_labels = layers.data(
+                name='gt_labels',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='float32')
+            is_crowd = layers.data(
+                name='is_crowd',
+                shape=[1],
+                append_batch_size=False,
+                dtype='float32')
+            im_info = layers.data(
+                name='im_info',
+                shape=[1, 3],
+                append_batch_size=False,
+                dtype='float32')
+            return (layers.retinanet_target_assign(
+                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes,
+                gt_labels, is_crowd, im_info, 10))
+
+    def test_sigmoid_focal_loss(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='data',
+                shape=[10, 80],
+                append_batch_size=False,
+                dtype='float32')
+            label = layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='int32')
+            fg_num = layers.data(
+                name='fg_num',
+                shape=[1],
+                append_batch_size=False,
+                dtype='int32')
+            out = fluid.layers.sigmoid_focal_loss(
+                x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
+            return (out)
+
+    def test_retinanet_detection_output(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            bboxes = layers.data(
+                name='bboxes',
+                shape=[1, 21, 4],
+                append_batch_size=False,
+                dtype='float32')
+            scores = layers.data(
+                name='scores',
+                shape=[1, 21, 10],
+                append_batch_size=False,
+                dtype='float32')
+            anchors = layers.data(
+                name='anchors',
+                shape=[21, 4],
+                append_batch_size=False,
+                dtype='float32')
+            im_info = layers.data(
+                name="im_info",
+                shape=[1, 3],
+                append_batch_size=False,
+                dtype='float32')
+            nmsed_outs = layers.retinanet_detection_output(
+                bboxes=[bboxes, bboxes],
+                scores=[scores, scores],
+                anchors=[anchors, anchors],
+                im_info=im_info,
+                score_threshold=0.05,
+                nms_top_k=1000,
+                keep_top_k=100,
+                nms_threshold=0.3,
+                nms_eta=1.)
+            return (nmsed_outs)
 
 
 if __name__ == '__main__':

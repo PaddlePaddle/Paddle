@@ -88,6 +88,10 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
 
+    // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
+    // not be set as Input in grad Maker, use Out_grad to replace here
+    if (!input1) input1 = input2;
+
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::From(*input1);
@@ -270,3 +274,12 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
                     paddle::framework::DefaultGradOpDescMaker<true>);    \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
+
+#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name)                         \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+   protected:                                                            \
+    virtual std::string GetName() const { return #op_name; }             \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; } \
+  };                                                                     \
+  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
+                    paddle::framework::EmptyGradOpMaker);

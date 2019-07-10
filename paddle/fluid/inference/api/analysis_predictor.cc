@@ -120,7 +120,11 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    if (config_.use_gpu_) {
+      paddle::framework::InitDevices(false, {config_.device_id_});
+    } else {
+      paddle::framework::InitDevices(false, {});
+    }
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -181,25 +185,16 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::SetMkldnnThreadID(int tid) {
-#ifdef PADDLE_WITH_MKLDNN
-  platform::set_cur_thread_id(tid);
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-#endif
-}
-
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
-    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-  }
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -227,8 +222,15 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Here is a bugfix, collect all the container variables, and reset then to a
   // bool; the next time, the operator will call MutableData and construct a new
   // container again, so that the container will be empty for each batch.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
   tensor_array_batch_cleaner_.ResetNoTensorVars();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+
   return true;
 }
 
@@ -258,6 +260,9 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
+
+    PADDLE_ENFORCE_NOT_NULL(input_ptr);
+    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
 
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
@@ -355,10 +360,10 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
-  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
   argument_.SetUseAnakin(config_.anakin_engine_enabled());
   argument_.SetPredictorID(predictor_id_);
+  argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -380,12 +385,17 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
-  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+  if (config_.anakin_engine_enabled()) {
     argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
     argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
     argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
+    argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
+    argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);
+    argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
+    argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
     LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
@@ -426,6 +436,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
+  // The config and argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
+  argument_.PartiallyRelease();
+  config_.PartiallyRelease();
   LOG(INFO) << "== optimize end ==";
 }
 
@@ -433,6 +447,8 @@ template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
+  PADDLE_ENFORCE(config.is_valid(),
+                 "Note: Each config can only be used for one predictor.");
   if (config.use_gpu()) {
     // 1. GPU memory
     PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
@@ -454,12 +470,16 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
+      flags.push_back("--selected_gpus=" +
+                      std::to_string(config.gpu_device_id()));
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
+  // Each config can only be used for one predictor.
+  config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
 
   if (!predictor_p->Init(nullptr)) {
@@ -566,10 +586,16 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+
   return true;
 }
 
@@ -829,6 +855,45 @@ std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
 }
 
+// Add SaveOptimModel
+void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
+  // save model
+  std::string model_name = dir + "/model";
+  std::ofstream outfile;
+  outfile.open(model_name, std::ios::out | std::ios::binary);
+  std::string inference_prog_desc = GetSerializedProgram();
+  outfile << inference_prog_desc;
+  // save params
+  framework::ProgramDesc save_program;
+  auto *save_block = save_program.MutableBlock(0);
+
+  const framework::ProgramDesc &main_program = program();
+  const framework::BlockDesc &global_block = main_program.Block(0);
+  std::vector<std::string> save_var_list;
+  for (framework::VarDesc *var : global_block.AllVars()) {
+    if (IsPersistable(var)) {
+      framework::VarDesc *new_var = save_block->Var(var->Name());
+      new_var->SetShape(var->GetShape());
+      new_var->SetDataType(var->GetDataType());
+      new_var->SetType(var->GetType());
+      new_var->SetLoDLevel(var->GetLoDLevel());
+      new_var->SetPersistable(true);
+
+      save_var_list.push_back(new_var->Name());
+    }
+  }
+  std::sort(save_var_list.begin(), save_var_list.end());
+  auto *op = save_block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", save_var_list);
+  op->SetAttr("file_path", dir + "/params");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(save_program, scope(), 0, true, true);
+}
+
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config) {
@@ -888,4 +953,9 @@ USE_ANAKIN_CONVERTER(density_prior_box);
 USE_ANAKIN_CONVERTER(dropout);
 USE_ANAKIN_CONVERTER(sum);
 USE_ANAKIN_CONVERTER(prior_box);
+USE_ANAKIN_CONVERTER(leaky_relu);
+USE_ANAKIN_CONVERTER(affine_channel);
+USE_ANAKIN_CONVERTER(relu6);
+USE_ANAKIN_CONVERTER(swish);
+USE_ANAKIN_CONVERTER(shuffle_channel);
 #endif

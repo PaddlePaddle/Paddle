@@ -87,6 +87,28 @@ class TestTopkOp3d(OpTest):
         self.check_output()
 
 
+class TestTopkOp1(OpTest):
+    def setUp(self):
+        self.op_type = "top_k"
+        k = 2
+        m = 2056
+        input = np.random.random(m).astype("float32")
+        output = np.ndarray(k)
+        indices = np.ndarray(k).astype("int64")
+
+        self.inputs = {'X': input}
+        self.attrs = {'k': k}
+
+        row = input
+        output = -np.sort(-row)[:k]
+        indices = (-row).argsort()[:k]
+
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestTopkOp2(OpTest):
     def setUp(self):
         self.op_type = "top_k"

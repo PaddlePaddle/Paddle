@@ -241,6 +241,7 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   outputs_ = outputs;
   attrs_ = attrs;
   need_update_ = true;
+  block_ = nullptr;
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {

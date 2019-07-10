@@ -17,20 +17,16 @@
 #include <string>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
-                                      const framework::BlockDesc &block_desc,
-                                      const framework::Scope &scope,
-                                      bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void TransposeOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -38,7 +34,7 @@ void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  engine_->AddOp(op_name, "Permute", {input}, {output});
+  this->engine_->AddOp(op_name, "Permute", {input}, {output});
 
   auto axis = boost::get<std::vector<int>>(op_desc.GetAttr("axis"));
   size_t axis_size = axis.size();
@@ -46,7 +42,7 @@ void TransposeOpConverter::operator()(const framework::proto::OpDesc &op,
     axis.push_back(axis_size);
     axis_size += 1;
   }
-  engine_->AddOpAttr<PTuple<int>>(op_name, "dims", axis);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "dims", axis);
 }
 
 }  // namespace anakin

@@ -40,30 +40,40 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     auto max_probs_dims = ctx->GetInputDim("MaxProbs");
     auto labels_dims = ctx->GetInputDim("Labels");
 
-    PADDLE_ENFORCE_EQ(max_probs_dims[1], 1,
-                      "Each instance contains one max probability, so the "
-                      "shape of Input(MaxProbs) should be [batch_size, 1].");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Indices"), max_probs_dims,
-                      "The shape of Input(Indices) should be [batch_size, 1].");
-    PADDLE_ENFORCE_EQ(max_probs_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(MaxProbs) and "
-                      "Input(Labels) both are batch_size and the shape should "
-                      "be the same.");
-    PADDLE_ENFORCE_EQ(labels_dims[1], 1,
-                      "The 2nd dimension of Input(Labels) contains instance "
-                      "label and the shape should be equal to 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(max_probs_dims[1], 1,
+                        "Each instance contains one max probability, so the "
+                        "shape of Input(MaxProbs) should be [batch_size, 1].");
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Indices"), max_probs_dims,
+          "The shape of Input(Indices) should bes same with max_probs_dims");
+      PADDLE_ENFORCE_EQ(
+          max_probs_dims[0], labels_dims[0],
+          "The 1st dimension of Input(MaxProbs) and "
+          "Input(Labels) both are batch_size and the shape should "
+          "be the same.");
+      PADDLE_ENFORCE_EQ(labels_dims[1], 1,
+                        "The 2nd dimension of Input(Labels) contains instance "
+                        "label and the shape should be equal to 1.");
+    }
     if (ctx->HasInput("Weights")) {
       auto weights_dims = ctx->GetInputDim("Weights");
-      PADDLE_ENFORCE_EQ(weights_dims,
-                        framework::make_ddim({max_probs_dims[0], 1}),
-                        "The shape of Input(Weights) should be "
-                        "[batch_size, 1].");
+
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(weights_dims,
+                          framework::make_ddim({max_probs_dims[0], 1}),
+                          "The shape of Input(Weights) should be "
+                          "[batch_size, 1].");
+      }
     }
     if (ctx->HasInput("StatesInfo")) {
       auto states_dims = ctx->GetInputDim("StatesInfo");
-      PADDLE_ENFORCE_EQ(states_dims, framework::make_ddim({cls_num, 4}),
-                        "The shape of Input(StatesInfo) should be "
-                        "[class_number, 4].");
+
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(states_dims, framework::make_ddim({cls_num, 4}),
+                          "The shape of Input(StatesInfo) should be "
+                          "[class_number, 4].");
+      }
     }
 
     // Layouts of BatchMetrics and AccumMetrics both are:

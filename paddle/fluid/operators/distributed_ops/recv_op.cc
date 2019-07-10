@@ -36,7 +36,7 @@ class RecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    bool do_not_run = Attr<bool>("do_not_run");
+    int do_not_run = Attr<int>("do_not_run");
     if (do_not_run) {
       VLOG(3) << "recv do not run!";
       return;
@@ -50,17 +50,18 @@ class RecvOp : public framework::OperatorBase {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
+    auto trainer_id = Attr<int>("trainer_id");
 
     distributed::RPCClient *rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-            Attr<int>("trainer_id"));
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
     std::vector<std::string> recv_varnames =
         Attr<std::vector<std::string>>("recv_varnames");
 
     if (recv_varnames.size() > 0) {
       auto recv_functor = distributed::ParameterRecv<float>();
-      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {});
+      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {},
+                                             trainer_id);
       recv_functor(rpc_ctx, scope);
     } else {
       if (with_barrier) {
@@ -131,7 +132,7 @@ This operator can get variables from server side.
         "(vector<string>) "
         "the splited parameter varnames to be recved from pserver")
         .SetDefault(std::vector<std::string>{});
-    AddAttr<bool>("do_not_run", "if recv need to really run").SetDefault(false);
+    AddAttr<int>("do_not_run", "if recv need to really run").SetDefault(0);
   }
 };
 
