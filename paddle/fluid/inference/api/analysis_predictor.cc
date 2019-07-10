@@ -185,17 +185,17 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::MkldnnPreRun(const std::vector<PaddleTensor> &inputs) {
+void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
           << platform::get_cur_mkldnn_session_id();
   // In cache clearing mode.
-  if (config_.mkldnn_input_shape_cache_capacity_ > 0) {
+  if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
     platform::set_cur_mkldnn_session_id(
         platform::kMKLDNNSessionID_CacheClearing);
     platform::set_cur_input_shape_cache_capacity(
-        config_.mkldnn_input_shape_cache_capacity_);
+        config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -209,12 +209,22 @@ void AnalysisPredictor::MkldnnPreRun(const std::vector<PaddleTensor> &inputs) {
 #endif
 }
 
+void AnalysisPredictor::MkldnnPostReset() {
+#ifdef PADDLE_WITH_MKLDNN
+  // In cache clearing mode.
+  if (config_.mkldnn_cache_capacity_ > 0) {
+    paddle::platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_Default);
+  }
+#endif
+}
+
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
-  if (config_.use_mkldnn_) MkldnnPreRun(inputs);
+  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
@@ -257,6 +267,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
   return true;
 }
 

@@ -182,10 +182,12 @@ struct AnalysisConfig {
   bool ngraph_enabled() const { return use_ngraph_; }
 
   /** Turn on MKLDNN.
-   *  And set the cache capacity of different input shapes for MKLDNN.
+   */
+  void EnableMKLDNN();
+  /** set the cache capacity of different input shapes for MKLDNN.
    *  Default 0 means don't cache any shape.
    */
-  void EnableMKLDNN(int mkldnn_input_shape_cache_capacity = 0);
+  void SetMkldnnCacheCapacity(int capacity);
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
@@ -319,7 +321,7 @@ struct AnalysisConfig {
   std::vector<std::string> anakin_ops_filter_;
 
   // mkldnn related.
-  int mkldnn_input_shape_cache_capacity_{0};
+  int mkldnn_cache_capacity_{0};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
 
