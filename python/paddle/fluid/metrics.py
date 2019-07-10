@@ -154,6 +154,7 @@ class CompositeMetric(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
             preds = [[0.1], [0.7], [0.8], [0.9], [0.2],
                      [0.2], [0.3], [0.5], [0.8], [0.6]]
@@ -226,6 +227,7 @@ class Precision(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
 
             metric = fluid.metrics.Precision()
@@ -287,6 +289,7 @@ class Recall(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
 
             metric = fluid.metrics.Recall()
@@ -346,6 +349,7 @@ class Accuracy(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             #suppose we have batch_size = 128
             batch_size=128
             accuracy_manager = fluid.metrics.Accuracy()
@@ -416,6 +420,7 @@ class ChunkEvaluator(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             # init the chunck-level evaluation manager
             metric = fluid.metrics.ChunkEvaluator()
 
@@ -505,6 +510,7 @@ class EditDistance(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
 
             # suppose that batch_size is 128
@@ -605,6 +611,7 @@ class Auc(MetricBase):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
             # init the auc metric
             auc_metric = fluid.metrics.Auc("ROC")
@@ -729,6 +736,7 @@ class DetectionMAP(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             batch_size = -1 # can be any size
@@ -758,9 +766,6 @@ class DetectionMAP(object):
             map_evaluator = fluid.metrics.DetectionMAP(nmsed_outs, gt_label, gt_box, difficult, class_num = 3)
 
             cur_map, accum_map = map_evaluator.get_map_var()
-
-            # see detailed examples at 
-            https://github.com/PaddlePaddle/models/blob/43cdafbb97e52e6d93cc5bbdc6e7486f27665fc8/PaddleCV/object_detection
 
  
     """

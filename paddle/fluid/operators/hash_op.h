@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,10 +47,6 @@ class HashKernel : public framework::OpKernel<T> {
     int num_hash = context.Attr<int>("num_hash");
 
     auto in_dims = in_t->dims();
-    auto in_lod = in_t->lod();
-    PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
-        "The actual input data's size mismatched with LoD information.");
 
     std::vector<int64_t> out_dims;
     HashOutputSize(in_dims, out_dims, num_hash);
@@ -67,6 +63,7 @@ class HashKernel : public framework::OpKernel<T> {
       }
       input += last_dim;
     }
+
     out_t->set_lod(in_t->lod());
   }
 };

@@ -119,9 +119,9 @@ class DeviceWorker {
   }
 
  protected:
-  Scope* root_scope_;
+  Scope* root_scope_ = nullptr;
   paddle::platform::Place place_;
-  DataFeed* device_reader_;
+  DataFeed* device_reader_ = nullptr;
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;
