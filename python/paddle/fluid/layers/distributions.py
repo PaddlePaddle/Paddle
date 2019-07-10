@@ -405,6 +405,9 @@ class Categorical(Distribution):
     one of K possible categories, with the probability of each category 
     separately specified.
 
+    Args:
+        logits(list|numpy.ndarray|Variable): The logits input of categorical distribution.
+
     Examples:
         .. code-block:: python
 
@@ -486,7 +489,13 @@ class Categorical(Distribution):
 
 class MultivariateNormalDiag(Distribution):
     """
-    Multivateate Normal Distribution with a diagonal covariance matrix which is positive-definite.
+    A multivariate normal (also called Gaussian) distribution parameterized by a mean vector
+    and a covariance matrix.
+
+    Args:
+        loc(list|numpy.ndarray|Variable): The mean of multivariateNormal distribution.
+        scale(list|numpy.ndarray|Variable): The positive definite diagonal covariance matrix of
+        multivariateNormal distribution.
 
     Examples:
         .. code-block:: python
@@ -532,10 +541,10 @@ class MultivariateNormalDiag(Distribution):
     def _det(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype="float32")
+        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
             tensor.ones(
-                shape=[batch_shape[0]], dtype='float32'))
+                shape=[batch_shape[0]], dtype=self.loc.dtype))
         det_diag = nn.reduce_prod(value + one_all - one_diag)
 
         return det_diag
@@ -543,10 +552,10 @@ class MultivariateNormalDiag(Distribution):
     def _inv(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype="float32")
+        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
             tensor.ones(
-                shape=[batch_shape[0]], dtype='float32'))
+                shape=[batch_shape[0]], dtype=self.loc.dtype))
         inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag))
 
         return inv_diag
@@ -585,4 +594,3 @@ class MultivariateNormalDiag(Distribution):
         kl = 0.5 * (tr_cov_matmul + tri_matmul - k + ln_cov)
 
         return kl
-
