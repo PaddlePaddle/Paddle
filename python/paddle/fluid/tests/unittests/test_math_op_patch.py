@@ -56,7 +56,7 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_sub_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
-        b = a - 10m
+        b = a - 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = numpy.random.random(size=[10, 1]).astype('float32')
