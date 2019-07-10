@@ -917,7 +917,7 @@ static void SetDstMemoryQuantized(
 
   auto dst_md = platform::MKLDNNMemDesc(
       {dst_tz}, paddle::framework::ToMKLDNNDataType(
-                    framework::DataTypeTrait<T>::DataType),
+                    framework::DataTypeTrait<T>::DataType()),
       dst_fmt);
   dst_pd.reset(new mkldnn::memory::primitive_desc(dst_md, engine));
   dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
