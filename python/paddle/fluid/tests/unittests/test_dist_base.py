@@ -615,8 +615,7 @@ class TestDistBase(unittest.TestCase):
             env.update({
                 "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
-                "NCCL_SHM_DISABLE": "1"
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id)
             })
         else:
             env.update({'CPU_NUM': '1'})
@@ -625,7 +624,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_dgc"
 
         if self._mp_mode:
-            env.update({"FLAGS_selected_gpus": "{}".format(trainer_id)})
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
