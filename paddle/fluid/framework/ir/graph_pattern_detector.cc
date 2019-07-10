@@ -504,6 +504,16 @@ PDNode *PDNode::assert_op_has_n_outputs(const std::string &op_type, size_t n) {
   return this;
 }
 
+PDNode *PDNode::assert_has_n_inputs(size_t n) {
+  asserts_.emplace_back([=](Node *x) { return x->inputs.size() == n; });
+  return this;
+}
+
+PDNode *PDNode::assert_has_n_outputs(size_t n) {
+  asserts_.emplace_back([=](Node *x) { return x->outputs.size() == n; });
+  return this;
+}
+
 PDNode *PDNode::assert_more(PDNode::teller_t &&teller) {
   asserts_.emplace_back(std::move(teller));
   return this;
@@ -1469,11 +1479,13 @@ PDNode *patterns::ConvAffineChannel::operator()(
   auto *ac_scale_var = pattern->NewNode(ac_scale_repr())
                            ->AsInput()
                            ->assert_is_persistable_var()
+                           ->assert_has_n_outputs(1)
                            ->assert_is_op_input("affine_channel", "Scale");
   // AC Bias
   auto *ac_bias_var = pattern->NewNode(ac_bias_repr())
                           ->AsInput()
                           ->assert_is_persistable_var()
+                          ->assert_has_n_outputs(1)
                           ->assert_is_op_input("affine_channel", "Bias");
 
   // AC output
