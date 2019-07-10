@@ -31,7 +31,7 @@ limitations under the License. */
 // input data range.
 DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
             "Whether enable CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode for cudnn "
-            "batch_norm, defalut is False.");
+            "batch_norm, default is False.");
 
 namespace paddle {
 namespace operators {

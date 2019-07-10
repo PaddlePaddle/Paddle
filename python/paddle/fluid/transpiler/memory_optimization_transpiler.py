@@ -497,7 +497,7 @@ def memory_optimize(input_program,
                     skip_opt_set=None,
                     print_log=False,
                     level=0,
-                    skip_grads=False):
+                    skip_grads=True):
     """
     | Legacy memory optimization strategy, reduce total memory consumption by reuse variable memory between different operators.
     | Simple sample to explain the algorithm:

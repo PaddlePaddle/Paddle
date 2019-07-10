@@ -16,12 +16,24 @@ from __future__ import print_function
 
 import sys
 import os
-from cpuinfo import get_cpu_info
+
+core_suffix = 'so'
+if os.name == 'nt':
+    core_suffix = 'pyd'
+
+has_avx_core = False
+has_noavx_core = False
+
+current_path = os.path.abspath(os.path.dirname(__file__))
+if os.path.exists(current_path + os.sep + 'core_avx.' + core_suffix):
+    has_avx_core = True
+
+if os.path.exists(current_path + os.sep + 'core_noavx.' + core_suffix):
+    has_noavx_core = True
 
 try:
     if os.name == 'nt':
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
+        third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] += ';' + third_lib_path
         sys.path.append(third_lib_path)
 
@@ -44,8 +56,112 @@ except ImportError as e:
 except Exception as e:
     raise e
 
+
+def avx_supported():
+    """
+    Whether current system(Linux, MacOS, Windows) is supported with AVX.
+    """
+    import platform
+    from .. import compat as cpt
+    sysstr = platform.system().lower()
+    has_avx = False
+    if sysstr == 'linux':
+        try:
+            has_avx = os.popen('cat /proc/cpuinfo | grep -i avx').read() != ''
+        except Exception as e:
+            sys.stderr.write('Can not get the AVX flag from /proc/cpuinfo.\n'
+                             'The original error is: %s\n' %
+                             cpt.get_exception_message(e))
+        return has_avx
+    elif sysstr == 'darwin':
+        try:
+            has_avx = os.popen(
+                'sysctl machdep.cpu.features | grep -i avx').read() != ''
+        except Exception as e:
+            sys.stderr.write(
+                'Can not get the AVX flag from machdep.cpu.features.\n'
+                'The original error is: %s\n' % cpt.get_exception_message(e))
+        if not has_avx:
+            try:
+                has_avx = os.popen(
+                    'sysctl machdep.cpu.leaf7_features | grep -i avx').read(
+                    ) != ''
+            except Exception as e:
+                sys.stderr.write(
+                    'Can not get the AVX flag from machdep.cpu.leaf7_features.\n'
+                    'The original error is: %s\n' %
+                    cpt.get_exception_message(e))
+        return has_avx
+    elif sysstr == 'windows':
+        import ctypes
+        ONE_PAGE = ctypes.c_size_t(0x1000)
+
+        def asm_func(code_str, restype=ctypes.c_uint32, argtypes=()):
+            # Call the code_str as a function
+            # Alloc 1 page to ensure the protection
+            pfnVirtualAlloc = ctypes.windll.kernel32.VirtualAlloc
+            pfnVirtualAlloc.restype = ctypes.c_void_p
+            MEM_COMMIT = ctypes.c_ulong(0x1000)
+            PAGE_READWRITE = ctypes.c_ulong(0x4)
+            address = pfnVirtualAlloc(None, ONE_PAGE, MEM_COMMIT,
+                                      PAGE_READWRITE)
+            if not address:
+                raise Exception("Failed to VirtualAlloc")
+
+            # Copy the code into the memory segment
+            memmove = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p,
+                                       ctypes.c_void_p,
+                                       ctypes.c_size_t)(ctypes._memmove_addr)
+            if memmove(address, code_str, len(code_str)) < 0:
+                raise Exception("Failed to memmove")
+
+            # Enable execute permissions
+            PAGE_EXECUTE = ctypes.c_ulong(0x10)
+            pfnVirtualProtect = ctypes.windll.kernel32.VirtualProtect
+            res = pfnVirtualProtect(
+                ctypes.c_void_p(address), ONE_PAGE, PAGE_EXECUTE,
+                ctypes.byref(ctypes.c_ulong(0)))
+            if not res:
+                raise Exception("Failed VirtualProtect")
+
+            # Flush instruction cache
+            pfnGetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
+            pfnGetCurrentProcess.restype = ctypes.c_void_p
+            prochandle = ctypes.c_void_p(pfnGetCurrentProcess())
+            res = ctypes.windll.kernel32.FlushInstructionCache(
+                prochandle, ctypes.c_void_p(address), ONE_PAGE)
+            if not res:
+                raise Exception("Failed FlushInstructionCache")
+
+            # Cast the memory to function
+            functype = ctypes.CFUNCTYPE(restype, *argtypes)
+            func = functype(address)
+            return func, address
+
+        # http://en.wikipedia.org/wiki/CPUID#EAX.3D1:_Processor_Info_and_Feature_Bits
+        # mov eax,0x1; cpuid; mov cx, ax; ret
+        code_str = b"\xB8\x01\x00\x00\x00\x0f\xa2\x89\xC8\xC3"
+        avx_bit = 28
+        retval = 0
+        try:
+            # Convert the code_str into a function that returns uint
+            func, address = asm_func(code_str)
+            retval = func()
+            ctypes.windll.kernel32.VirtualFree(
+                ctypes.c_void_p(address), ctypes.c_size_t(0), ONE_PAGE)
+        except Exception as e:
+            sys.stderr.write('Failed getting the AVX flag on Windows.\n'
+                             'The original error is: %s\n' %
+                             cpt.get_exception_message(e))
+        return (retval & (1 << avx_bit)) > 0
+    else:
+        sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
+        return False
+
+
 load_noavx = False
-if 'avx' in get_cpu_info()['flags']:
+
+if avx_supported():
     try:
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
@@ -59,12 +175,17 @@ if 'avx' in get_cpu_info()['flags']:
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
-    except ImportError:
-        sys.stderr.write(
-            'WARNING: Can not import avx core. You may not build with AVX, '
-            'but AVX is supported on local machine, you could build paddle '
-            'WITH_AVX=ON to get better performance. ')
-        load_noavx = True
+    except Exception as e:
+        if has_avx_core:
+            raise e
+        else:
+            from .. import compat as cpt
+            sys.stderr.write(
+                'WARNING: Do not have avx core. You may not build with AVX, '
+                'but AVX is supported on local machine.\n You could build paddle '
+                'WITH_AVX=ON to get better performance.\n'
+                'The original error is: %s\n' % cpt.get_exception_message(e))
+            load_noavx = True
 else:
     load_noavx = True
 
@@ -82,7 +203,9 @@ if load_noavx:
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
-    except ImportError as error:
-        sys.exit("Error: Can not load core_noavx.* ." +
-                 error.__class__.__name__)
-        load_noavx = True
+    except Exception as e:
+        if has_noavx_core:
+            sys.stderr.write(
+                'Error: Can not import noavx core while this file exists ' +
+                current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
+        raise e
