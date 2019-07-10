@@ -701,6 +701,8 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
             "http_proxy": "",
+            "NCCL_P2P_DISABLE": "1",
+            "NCCL_SHM_DISABLE": "1"
         }
 
         required_envs.update(need_envs)
