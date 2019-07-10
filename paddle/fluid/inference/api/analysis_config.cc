@@ -115,7 +115,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
-  CP_MEMBER(mkldnn_input_shape_cache_capacity_);
+  CP_MEMBER(mkldnn_cache_capacity_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -152,16 +152,24 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   Update();
 }
 
-void AnalysisConfig::EnableMKLDNN(int mkldnn_input_shape_cache_capacity) {
+void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_ = true;
-  mkldnn_input_shape_cache_capacity_ = mkldnn_input_shape_cache_capacity;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
   use_mkldnn_ = false;
 #endif
 
   Update();
+}
+
+void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
+#ifdef PADDLE_WITH_MKLDNN
+  mkldnn_cache_capacity_ = capacity;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
+  mkldnn_cache_capacity_ = 0;
+#endif
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {
@@ -345,6 +353,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_ngraph_;
 
   ss << use_mkldnn_;
+  ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
