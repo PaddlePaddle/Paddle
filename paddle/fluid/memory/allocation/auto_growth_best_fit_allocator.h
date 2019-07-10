@@ -33,39 +33,41 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   bool IsAllocThreadSafe() const override { return true; }
 
-  struct Chunk {
-    struct Block {
-      Block(void *ptr, size_t size, bool is_free, Chunk *chunk)
-          : ptr_(ptr), size_(size), is_free_(is_free), chunk_(chunk) {}
-
-      void *ptr_;
-      size_t size_;
-      bool is_free_;
-      Chunk *chunk_;  // which chunk it is from
-    };
-
-    explicit Chunk(AllocationPtr allocation)
-        : allocation_(std::move(allocation)) {}
-
-    AllocationPtr allocation_;
-    std::list<Block> blocks_;
-
-    struct BlockAllocation : public Allocation {
-      explicit BlockAllocation(const std::list<Block>::iterator &it)
-          : Allocation(it->ptr_, it->size_, it->chunk_->allocation_->place()),
-            block_it_(it) {}
-
-      std::list<Block>::iterator block_it_;
-    };
-  };
-
  protected:
   Allocation *AllocateImpl(size_t size) override;
 
   void FreeImpl(Allocation *allocation) override;
 
  private:
-  using BlockIt = std::list<Chunk::Block>::iterator;
+  struct Chunk;
+
+  struct Block {
+    Block(void *ptr, size_t size, bool is_free, Chunk *chunk)
+        : ptr_(ptr), size_(size), is_free_(is_free), chunk_(chunk) {}
+
+    void *ptr_;
+    size_t size_;
+    bool is_free_;
+    Chunk *chunk_;  // which chunk it is from
+  };
+
+  struct Chunk {
+    explicit Chunk(AllocationPtr allocation)
+        : allocation_(std::move(allocation)) {}
+
+    AllocationPtr allocation_;
+    std::list<Block> blocks_;
+  };
+
+  struct BlockAllocation : public Allocation {
+    explicit BlockAllocation(const std::list<Block>::iterator &it)
+        : Allocation(it->ptr_, it->size_, it->chunk_->allocation_->place()),
+          block_it_(it) {}
+
+    std::list<Block>::iterator block_it_;
+  };
+
+  using BlockIt = std::list<Block>::iterator;
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::map<std::pair<size_t, void *>, BlockIt> free_blocks_;

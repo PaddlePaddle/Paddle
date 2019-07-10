@@ -49,7 +49,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
       VLOG(2) << "Found and no remaining";
     } else {
       auto remaining_free_block = chunk->blocks_.insert(
-          block_it, Chunk::Block(block_it->ptr_, remaining_size, true, chunk));
+          block_it, Block(block_it->ptr_, remaining_size, true, chunk));
       free_blocks_.emplace(std::make_pair(remaining_size, block_it->ptr_),
                            remaining_free_block);
       block_it->ptr_ =
@@ -59,7 +59,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
       VLOG(2) << "Found and remaining " << remaining_size;
     }
   } else {
-    size_t alloc_size = size;
+    size_t alloc_size = std::max(size, chunk_size_);
 
     try {
       chunks_.emplace_back(underlying_allocator_->Allocate(alloc_size));
@@ -83,11 +83,11 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
             << remaining_size;
   }
   VLOG(2) << "After allocate, free blocks " << free_blocks_.size();
-  return new Chunk::BlockAllocation(block_it);
+  return new BlockAllocation(block_it);
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
-  auto &block_it = static_cast<Chunk::BlockAllocation *>(allocation)->block_it_;
+  auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
 
   std::lock_guard<std::mutex> guard(mtx_);
