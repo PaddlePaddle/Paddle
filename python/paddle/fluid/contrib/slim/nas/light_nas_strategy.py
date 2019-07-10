@@ -127,6 +127,14 @@ class LightNASStrategy(Strategy):
         self._search_agent = SearchAgent(
             self._server_ip, self._server_port, key=self._key)
 
+    def __getstate__(self):
+        """Socket can't be pickled."""
+        d = {}
+        for key in self.__dict__:
+            if key not in ["_search_agent", "_server"]:
+                d[key] = self.__dict__[key]
+        return d
+
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
         _, _, test_prog, _, _, _, _ = context.search_space.create_net(tokens)
