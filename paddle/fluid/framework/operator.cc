@@ -892,7 +892,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     all_kernels_must_compute_runtime_shape = true;
   if (!enable_cache_runtime_context) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
-    RunImpl(scope, place, &ctx);
+    if (FLAGS_fast_check_nan_inf) {
+      RunImplDebug(scope, place, &ctx);
+    } else {
+      RunImpl(scope, place, &ctx);
+    }
   } else {
     const Scope* cur_scope = &scope;
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -902,7 +906,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         pre_scope_ = cur_scope;
       }
     }
-    RunImpl(scope, place, runtime_ctx_.get());
+    if (FLAGS_fast_check_nan_inf) {
+      RunImplDebug(scope, place, runtime_ctx_.get());
+    } else {
+      RunImpl(scope, place, runtime_ctx_.get());
+    }
   }
 }
 
@@ -935,6 +943,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
+
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
@@ -950,10 +959,70 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx->Wait();
   }
 
-  if (FLAGS_fast_check_nan_inf) {
+  if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
-      // only check inserted vars,
-      // please see executor.py for details of fast_check_nan_inf
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
+      }
+    }
+  }
+}
+
+void OperatorWithKernel::RunImplDebug(const Scope& scope,
+                                      const platform::Place& place,
+                                      RuntimeContext* runtime_ctx) const {
+  Scope* transfer_scope = nullptr;
+
+  try {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
+
+    if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+      ChooseKernel(*runtime_ctx, scope, place);
+    }
+
+    std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
+
+    std::vector<std::string> transfered_inplace_vars;
+    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
+                                 runtime_ctx);
+
+    const Scope& exec_scope =
+        (transfer_scope == nullptr ? scope : *transfer_scope);
+
+    if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
+      dev_ctx = pool.Get(kernel_type_->place_);
+    }
+
+    if (!all_kernels_must_compute_runtime_shape) {
+      RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+      this->InferShape(&infer_shape_ctx);
+    }
+
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+
+    if (!transfered_inplace_vars.empty()) {
+      TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+    }
+
+    if (FLAGS_benchmark) {
+      dev_ctx->Wait();
+    }
+  } catch (...) {
+    VLOG(3) << "exception happens in fast debugging, which is ok for now.";
+  }
+
+  if (FLAGS_fast_check_nan_inf) {
+    const Scope& exec_scope =
+        (transfer_scope == nullptr ? scope : *transfer_scope);
+
+    for (auto& vname : OutputVars(true)) {
       if (vname.rfind("debug_var") == 0) {
         VLOG(3) << "debugging nan/inf in var " << vname;
 
@@ -965,19 +1034,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           CheckTensorNANOrInf(type_, vname,
                               var->Get<framework::SelectedRows>().value());
         }
-      }
-    }
-  }
-
-  if (FLAGS_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-      } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(type_, vname,
-                            var->Get<framework::SelectedRows>().value());
       }
     }
   }

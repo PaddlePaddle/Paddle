@@ -282,7 +282,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     graph(path, show=False)
 
 
-def prepare_fast_nan_inf_debug(_program):
+def prepare_fast_nan_inf_debug(_program, skip_list=[]):
     """
     Given a program to run, insert a (reduce) sum op for every var in that program.
     Instead of checking all vars originally defined in the program,
@@ -299,15 +299,31 @@ def prepare_fast_nan_inf_debug(_program):
     for _block in _program.blocks:
         # fetch vars in the current block
         _vars_in_prog = []
+        _skip_vars = {}
         for _var_name in _block.vars:
             _vars_in_prog.append((_var_name, _block.vars[_var_name]))
+
+            skip = False
+            for skip_name in skip_list:
+                if _var_name.find(skip_name) >= 0:
+                    skip = True
+                    break
+
+            if skip:
+                _skip_vars[_var_name] = True
 
         # append sum_op in the current block
         for _var_name, _var in _vars_in_prog:
 
             try:
 
-                if _var.dtype == -1:
+                if _var.dtype not in [
+                        core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32,
+                        core.VarDesc.VarType.FP64
+                ]:
+                    continue
+
+                if _var_name in _skip_vars:
                     continue
 
                 ## create a var for holding sum output
