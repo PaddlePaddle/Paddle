@@ -613,15 +613,19 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
-                "FLAGS_selected_gpus": "{}".format(trainer_id)
+                "NCCL_SHM_DISABLE": "1"
             })
         else:
             env.update({'CPU_NUM': '1'})
 
         if self._use_dgc:
             tr_cmd += " --use_dgc"
+
+        if self._mp_mode:
+            env.update({"FLAGS_selected_gpus": "{}".format(trainer_id)})
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
@@ -681,6 +685,7 @@ class TestDistBase(unittest.TestCase):
             pipes[i].close()
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
 
+        print("outs:", outs[0])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def check_with_place(self,

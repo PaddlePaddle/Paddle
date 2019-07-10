@@ -125,9 +125,12 @@ class ParallelExecutorPrivate {
       auto nccl_id_var = scope->FindVar(var_name);
       if (nccl_id_var) {
         nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        VLOG(10) << "find nccl_id_var:" << var_name << ", nccl_id:" << nccl_id;
       } else {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+        VLOG(10) << "can't find nccl_id_var:" << var_name
+                 << ", nccl_id:" << nccl_id;
       }
 
       flat_nccl_ids.push_back(nccl_id);

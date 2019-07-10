@@ -33,7 +33,8 @@ class TestDistMnistNCCL2(TestDistBase):
                 need_envs={
                     "FLAGS_enable_parallel_graph": "1",
                     "FLAGS_sync_nccl_allreduce": "1"
-                })
+                },
+                check_error_log=True)
 
 
 if __name__ == "__main__":
