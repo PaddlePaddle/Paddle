@@ -494,6 +494,39 @@ void MultiSlotDataset::MergeByInsId() {
     return a.ins_id_ < b.ins_id_;
   });
 
+  auto sort_cmp_uint64 = [&merge_slots](const FeatureItem& a,
+                                        const FeatureItem& b) {
+    auto& a_sign = a.sign().uint64_feasign_;
+    auto& b_sign = b.sign().uint64_feasign_;
+    return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
+  };
+  auto sort_cmp_float = [&merge_slots](const FeatureItem& a,
+                                       const FeatureItem& b) {
+    auto& a_sign = a.sign().float_feasign_;
+    auto& b_sign = b.sign().float_feasign_;
+    return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
+  };
+  auto unique_eq_uint64 = [&merge_slots](const FeatureItem& a,
+                                         const FeatureItem& b) {
+    if (a.slot() == b.slot() &&
+        merge_slots.find(a.slot()) == merge_slots.end()) {
+      return true;
+    }
+    auto& a_sign = a.sign().uint64_feasign_;
+    auto& b_sign = b.sign().uint64_feasign_;
+    return a_sign == b_sign && a.slot() == b.slot();
+  };
+  auto unique_eq_float = [&merge_slots](const FeatureItem& a,
+                                        const FeatureItem& b) {
+    if (a.slot() == b.slot() &&
+        merge_slots.find(a.slot()) == merge_slots.end()) {
+      return true;
+    }
+    auto& a_sign = a.sign().float_feasign_;
+    auto& b_sign = b.sign().float_feasign_;
+    return a_sign == b_sign && a.slot() == b.slot();
+  };
+
   std::vector<Record> results;
   VLOG(3) << "recs.size() " << recs.size();
   for (size_t i = 0; i < recs.size();) {
@@ -510,58 +543,81 @@ void MultiSlotDataset::MergeByInsId() {
       i = j;
       continue;
     }
+
+    std::vector<FeatureItem> merge_uint64_feasigns;
+    std::vector<FeatureItem> merge_float_feasigns;
     Record rec = std::move(recs[i]);
+
     for (size_t k = i + 1; k < j; k++) {
-      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
-                                  recs[k].uint64_feasigns_.begin(),
-                                  recs[k].uint64_feasigns_.end());
-      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
-                                 recs[k].float_feasigns_.begin(),
-                                 recs[k].float_feasigns_.end());
+      for (auto& feature : recs[k].uint64_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_uint64_feasigns.push_back(std::move(feature));
+        }
+      }
+      for (auto& feature : recs[k].float_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_float_feasigns.push_back(std::move(feature));
+        }
+      }
       recs[k] = Record();
     }
     i = j;
-    auto sort_cmp_uint64 = [](const FeatureItem& a, const FeatureItem& b) {
-      auto& a_sign = a.sign().uint64_feasign_;
-      auto& b_sign = b.sign().uint64_feasign_;
-      return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
-    };
-    auto sort_cmp_float = [](const FeatureItem& a, const FeatureItem& b) {
-      auto& a_sign = a.sign().float_feasign_;
-      auto& b_sign = b.sign().float_feasign_;
-      return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
-    };
-    auto unique_eq_uint64 = [&](const FeatureItem& a, const FeatureItem& b) {
-      if (a.slot() == b.slot() &&
-          merge_slots.find(a.slot()) == merge_slots.end()) {
-        return true;
+
+    if (!erase_duplicate_feas_) {
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
+                                  merge_uint64_feasigns.begin(),
+                                  merge_uint64_feasigns.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 merge_float_feasigns.begin(),
+                                 merge_float_feasigns.end());
+    } else {
+      std::vector<FeatureItem> not_merge_uint64_feasigns;
+      std::vector<FeatureItem> not_merge_float_feasigns;
+
+      for (auto& feature : rec.uint64_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_uint64_feasigns.push_back(std::move(feature));
+        } else {
+          not_merge_uint64_feasigns.push_back(std::move(feature));
+        }
       }
-      auto& a_sign = a.sign().uint64_feasign_;
-      auto& b_sign = b.sign().uint64_feasign_;
-      return a_sign == b_sign && a.slot() == b.slot();
-    };
-    auto unique_eq_float = [&](const FeatureItem& a, const FeatureItem& b) {
-      if (a.slot() == b.slot() &&
-          merge_slots.find(a.slot()) == merge_slots.end()) {
-        return true;
+      for (auto& feature : rec.float_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_float_feasigns.push_back(std::move(feature));
+        } else {
+          not_merge_float_feasigns.push_back(std::move(feature));
+        }
       }
-      auto& a_sign = a.sign().float_feasign_;
-      auto& b_sign = b.sign().float_feasign_;
-      return a_sign == b_sign && a.slot() == b.slot();
-    };
-    if (erase_duplicate_feas_) {
-      std::sort(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
+      rec.uint64_feasigns_.clear();
+      rec.float_feasigns_.clear();
+
+      // erase duplicate uint64 feasigns
+      std::sort(merge_uint64_feasigns.begin(), merge_uint64_feasigns.end(),
                 sort_cmp_uint64);
-      rec.uint64_feasigns_.erase(
-          std::unique(rec.uint64_feasigns_.begin(), rec.uint64_feasigns_.end(),
-                      unique_eq_uint64),
-          rec.uint64_feasigns_.end());
-      std::sort(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
+      merge_uint64_feasigns.erase(
+          std::unique(merge_uint64_feasigns.begin(),
+                      merge_uint64_feasigns.end(), unique_eq_uint64),
+          merge_uint64_feasigns.end());
+      rec.uint64_feasigns_.insert(
+                                  rec.uint64_feasigns_.end(),
+                                  merge_uint64_feasigns.begin(),
+                                  merge_uint64_feasigns.end());
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
+                                  not_merge_uint64_feasigns.begin(),
+                                  not_merge_uint64_feasigns.end());
+
+      // erase duplicate float feasigns
+      std::sort(merge_float_feasigns.begin(), merge_float_feasigns.end(),
                 sort_cmp_float);
-      rec.float_feasigns_.erase(
-          std::unique(rec.float_feasigns_.begin(), rec.float_feasigns_.end(),
-                      unique_eq_float),
-          rec.float_feasigns_.end());
+      merge_float_feasigns.erase(
+          std::unique(merge_float_feasigns.begin(), merge_float_feasigns.end(),
+                      unique_eq_float), merge_float_feasigns.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 merge_float_feasigns.begin(),
+                                 merge_float_feasigns.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 not_merge_float_feasigns.begin(),
+                                 not_merge_float_feasigns.end());
     }
     results.push_back(rec);
   }
