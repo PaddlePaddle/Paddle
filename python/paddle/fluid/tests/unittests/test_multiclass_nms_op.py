@@ -156,12 +156,14 @@ def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
 def lod_multiclass_nms(boxes, scores, background, score_threshold,
                        nms_threshold, nms_top_k, keep_top_k, box_lod,
                        normalized):
+    num_class = boxes.shape[1]
     det_outs = []
     lod = []
     head = 0
     for n in range(len(box_lod[0])):
         box = boxes[head:head + box_lod[0][n]]
         score = scores[head:head + box_lod[0][n]]
+        offset = head
         head = head + box_lod[0][n]
         nmsed_outs, nmsed_num = multiclass_nms(
             box,
@@ -180,13 +182,15 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = box[idx, c, :]
-                tmp_det_out.append([c, score[idx][c], xmin, ymin, xmax, ymax])
+                tmp_det_out.append([
+                    c, score[idx][c], xmin, ymin, xmax, ymax,
+                    offset * num_class + idx * num_class + c
+                ])
         sorted_det_out = sorted(
             tmp_det_out, key=lambda tup: tup[0], reverse=False)
         det_outs.extend(sorted_det_out)
     if len(lod) == 0:
         lod.append(1)
-
     return det_outs, lod
 
 
@@ -199,8 +203,9 @@ def batched_multiclass_nms(boxes,
                            keep_top_k,
                            normalized=True):
     batch_size = scores.shape[0]
-
+    num_boxes = scores.shape[2]
     det_outs = []
+    index_outs = []
     lod = []
     for n in range(batch_size):
         nmsed_outs, nmsed_num = multiclass_nms(
@@ -221,8 +226,10 @@ def batched_multiclass_nms(boxes,
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = boxes[n][idx][:]
-                tmp_det_out.append(
-                    [c, scores[n][c][idx], xmin, ymin, xmax, ymax])
+                tmp_det_out.append([
+                    c, scores[n][c][idx], xmin, ymin, xmax, ymax,
+                    idx + n * num_boxes
+                ])
         sorted_det_out = sorted(
             tmp_det_out, key=lambda tup: tup[0], reverse=False)
         det_outs.extend(sorted_det_out)
@@ -262,15 +269,18 @@ class TestMulticlassNMSOp(OpTest):
         boxes[:, :, 0:2] = boxes[:, :, 0:2] * 0.5
         boxes[:, :, 2:4] = boxes[:, :, 2:4] * 0.5 + 0.5
 
-        nmsed_outs, lod = batched_multiclass_nms(boxes, scores, background,
-                                                 score_threshold, nms_threshold,
-                                                 nms_top_k, keep_top_k)
-        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
-        nmsed_outs = np.array(nmsed_outs).astype('float32')
+        det_outs, lod = batched_multiclass_nms(boxes, scores, background,
+                                               score_threshold, nms_threshold,
+                                               nms_top_k, keep_top_k)
+        det_outs = [[-1, 0]] if not det_outs else det_outs
+        det_outs = np.array(det_outs)
 
         self.op_type = 'multiclass_nms'
         self.inputs = {'BBoxes': boxes, 'Scores': scores}
-        self.outputs = {'Out': (nmsed_outs, [lod])}
+        self.outputs = {
+            'Out': (det_outs[:, :-1], [lod]),
+            'Index': (det_outs[:, -1:].astype('int64'), [lod])
+        }
         self.attrs = {
             'background_label': 0,
             'nms_threshold': nms_threshold,
@@ -324,17 +334,21 @@ class TestMulticlassNMSLoDInput(OpTest):
         boxes[:, :, 2] = boxes[:, :, 2] * 10 + 10
         boxes[:, :, 3] = boxes[:, :, 3] * 10 + 10
 
-        nmsed_outs, lod = lod_multiclass_nms(
+        det_outs, lod = lod_multiclass_nms(
             boxes, scores, background, score_threshold, nms_threshold,
             nms_top_k, keep_top_k, box_lod, normalized)
-        nmsed_outs = [-1] if not nmsed_outs else nmsed_outs
-        nmsed_outs = np.array(nmsed_outs).astype('float32')
+
+        det_outs = [[-1, 0]] if not det_outs else det_outs
+        det_outs = np.array(det_outs)
         self.op_type = 'multiclass_nms'
         self.inputs = {
             'BBoxes': (boxes, box_lod),
             'Scores': (scores, box_lod),
         }
-        self.outputs = {'Out': (nmsed_outs, [lod])}
+        self.outputs = {
+            'Out': (det_outs[:, :-1], [lod]),
+            'Index': (det_outs[:, -1:], [lod])
+        }
         self.attrs = {
             'background_label': 0,
             'nms_threshold': nms_threshold,

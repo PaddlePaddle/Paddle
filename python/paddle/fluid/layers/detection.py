@@ -446,7 +446,8 @@ def detection_output(loc,
                      nms_top_k=400,
                      keep_top_k=200,
                      score_threshold=0.01,
-                     nms_eta=1.0):
+                     nms_eta=1.0,
+                     return_index=False):
     """
     **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
@@ -489,21 +490,23 @@ def detection_output(loc,
         score_threshold(float): Threshold to filter out bounding boxes with
             low confidence score. If not provided, consider all boxes.
         nms_eta(float): The parameter for adaptive NMS.
+        return_index(bool): Whether return selected index. Default: False
 
     Returns:
-        Variable:
-
-            The detection outputs is a LoDTensor with shape [No, 6].
-            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
-            `No` is the total number of detections in this mini-batch. For each
-            instance, the offsets in first dimension are called LoD, the offset
-            number is N + 1, N is the batch size. The i-th image has
-            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
-            has no detected results. If all images have not detected results,
-            LoD will be set to {1}, and output tensor only contains one
-            value, which is -1.
-            (After version 1.3, when no boxes detected, the lod is changed
+        Out: (Variable) The detection outputs is a LoDTensor with shape [No, 6].
+             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
+             `No` is the total number of detections in this mini-batch. For each
+             instance, the offsets in first dimension are called LoD, the offset
+             number is N + 1, N is the batch size. The i-th image has
+             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+             has no detected results. If all images have not detected results,
+             LoD will be set to {1}, and output tensor only contains one
+             value, which is -1.
+             (After version 1.3, when no boxes detected, the lod is changed
              from {0} to {1}.)
+         
+        Index: (Variable) A 2-D LoDTensor with shape [No, 1] represents the
+               selected index. The index is the absolute value cross batches.
 
     Examples:
         .. code-block:: python
@@ -534,20 +537,25 @@ def detection_output(loc,
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int')
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
                 'BBoxes': decoded_box},
-        outputs={'Out': nmsed_outs},
+        outputs={'Out': nmsed_outs,
+                 'Index': index},
         attrs={
             'background_label': 0,
             'nms_threshold': nms_threshold,
             'nms_top_k': nms_top_k,
             'keep_top_k': keep_top_k,
             'score_threshold': score_threshold,
-            'nms_eta': 1.0
+            'nms_eta': 1.0,
         })
     nmsed_outs.stop_gradient = True
+    index.stop_gradient = True
+    if return_index:
+        return nmsed_outs, index
     return nmsed_outs
 
 
@@ -2677,6 +2685,7 @@ def multiclass_nms(bboxes,
                    normalized=True,
                    nms_eta=1.,
                    background_label=0,
+                   return_index=False,
                    name=None):
     """
     **Multiclass NMS**
@@ -2731,6 +2740,7 @@ def multiclass_nms(bboxes,
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
         normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
@@ -2745,6 +2755,9 @@ def multiclass_nms(bboxes,
              (After version 1.3, when no boxes detected, the lod is changed 
              from {0} to {1}) 
 
+        Index: A 2-D LoDTensor with shape [No, 1] represents the selected index.
+               The index is the absolute value cross batches.  
+
 
     Examples:
         .. code-block:: python
@@ -2755,18 +2768,20 @@ def multiclass_nms(bboxes,
                                       dtype='float32', lod_level=1)
             scores = fluid.layers.data(name='scores', shape=[81],
                                       dtype='float32', lod_level=1)
-            out = fluid.layers.multiclass_nms(bboxes=boxes,
+            out, index = fluid.layers.multiclass_nms(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
                                               nms_top_k=400,
                                               nms_threshold=0.3,
                                               keep_top_k=200,
-                                              normalized=False)
+                                              normalized=False,
+                                              return_index=True)
     """
     helper = LayerHelper('multiclass_nms', **locals())
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int')
     helper.append_op(
         type="multiclass_nms",
         inputs={'BBoxes': bboxes,
@@ -2781,9 +2796,13 @@ def multiclass_nms(bboxes,
             'nms_eta': nms_eta,
             'normalized': normalized
         },
-        outputs={'Out': output})
+        outputs={'Out': output,
+                 'Index': index})
     output.stop_gradient = True
+    index.stop_gradient = True
 
+    if return_index:
+        return output, index
     return output
 
 
