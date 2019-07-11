@@ -204,7 +204,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("all_reduce_deps_pass");
     }
 
-    if (strategy_.enable_backward_optimizer_op_deps_) {
+    if (strategy_.num_trainers_ > 1 && !strategy_.async_mode_ &&
+        !strategy_.is_distribution_ &&
+        strategy_.enable_backward_optimizer_op_deps_) {
       VLOG(1) << "Add backward_op_deps_pass";
       AppendPass("backward_optimizer_op_deps_pass");
     }
@@ -351,6 +353,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
+    } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
+      if (!use_cuda) {
+        VLOG(1) << "backward_optimizer_op_deps_pass is only supported on "
+                   "GPU, skipped.";
+        continue;
+      }
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
