@@ -162,7 +162,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto propagation = src_md.data.data_type == mkldnn_f32
                              ? mkldnn::prop_kind::forward_training
                              : mkldnn::prop_kind::forward_scoring;
-      pool_pd =
+      std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
           CreatePrimitiveDesc(src_md, dst_md, propagation, strides,
                               padding_left_top, padding_right_bottom, ksize,
                               pooling_type, mkldnn_engine, ceil_mode, is_test);
