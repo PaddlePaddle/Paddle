@@ -567,13 +567,13 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
+#ifdef PADDLE_WITH_MKLML
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB, int64_t head_number) const {
-#ifdef PADDLE_WITH_MKLML
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N * head_number;
@@ -599,31 +599,8 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
                          &beta, c_array.data(), &ldc, 1 /* group_count */,
                          &batchCount);
   }
-
-#else
-  for (int k = 0; k < batchCount; k++) {
-    auto *Ak = &A[k * strideA];
-    auto *Bk = &B[k * strideB];
-    auto *Ck = &C[k * M * head_number * N];
-    int lda = (transA == CblasNoTrans) ? K : M;
-    int ldb = (transB == CblasNoTrans) ? N : K;
-    int ldc = N * head_number;
-
-    for (int i = 0; i < head_number; i++) {
-      int sub_matA_offset = (transA == CblasNoTrans)
-                                ? i * (K / head_number)
-                                : i * (K / head_number) * M;
-      int sub_matB_offset = (transB == CblasNoTrans) ? i * (K / head_number) * N
-                                                     : i * (K / head_number);
-      int sub_matC_offset = i * N;
-
-      this->template GEMM<T>(transA, transB, M, N, K / head_number, alpha,
-                             Ak + sub_matA_offset, lda, Bk + sub_matB_offset,
-                             ldb, beta, Ck + sub_matC_offset, ldc);
-    }
-  }
-#endif
 }
+#endif
 
 template <typename DeviceContext>
 template <typename T>
@@ -686,6 +663,7 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
   }
 }
 
+#ifdef PADDLE_WITH_MKLML
 /*
  * Multiple two matrixes with multiple heads
  *
@@ -743,6 +721,7 @@ void Blas<DeviceContext>::MatMulWithHead(
         dim_a.stride_, dim_b.stride_, head_number);
   }
 }
+#endif
 
 template <typename DeviceContext>
 template <typename T>

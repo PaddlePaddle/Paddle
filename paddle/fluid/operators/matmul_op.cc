@@ -61,6 +61,7 @@ class MatMulKernel : public framework::OpKernel<T> {
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
+#ifdef PADDLE_WITH_MKLML
     int head_number = context.Attr<int>("head_number");
     if (1 == head_number) {
       blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
@@ -68,6 +69,9 @@ class MatMulKernel : public framework::OpKernel<T> {
       blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
                           T(0));
     }
+#else
+    blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+#endif
   }
 };
 
@@ -302,19 +306,33 @@ class MatMulOp : public framework::OperatorWithKernel {
                      mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
     }
     std::vector<int64_t> dim_out;
+#ifdef PADDLE_WITH_MKLML
     int head_number = context->Attrs().Get<int>("head_number");
     PADDLE_ENFORCE_GE(head_number, 1);
     PADDLE_ENFORCE_LE(head_number, mat_dim_x.width_);
+#endif
     if (mat_dim_x.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
+#ifdef PADDLE_WITH_MKLML
       dim_out[dim_out.size() - 1] = head_number * mat_dim_y.width_;
+#else
+      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+#endif
     } else if (mat_dim_y.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
+#ifdef PADDLE_WITH_MKLML
       dim_out[dim_out.size() - 1] = head_number * mat_dim_y.width_;
+#else
+      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+#endif
     } else {
+#ifdef PADDLE_WITH_MKLML
       dim_out = {mat_dim_x.height_, head_number * mat_dim_y.width_};
+#else
+      dim_out = {mat_dim_x.height_, mat_dim_y.width_};
+#endif
     }
 
     if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
@@ -349,8 +367,10 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
+#ifdef PADDLE_WITH_MKLML
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
+#endif
     AddComment(R"DOC(
 MatMul Operator.
 
