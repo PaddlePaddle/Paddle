@@ -40,18 +40,13 @@ void BroadcastOpHandle::RunImpl() {
 
   WaitInputVarGenerated();
 
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
-
-  BroadcastOneVar(*in_var_handle, out_var_handles, var_scopes);
+  BroadcastOneVar(*in_var_handle, out_var_handles, local_exec_scopes_);
 }
 
 void BroadcastOpHandle::BroadcastOneVar(
     const VarHandle &in_var_handle,
     const std::vector<VarHandle *> &out_var_handles,
-    const std::vector<const Scope *> &var_scopes) {
+    const std::vector<Scope *> &var_scopes) {
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
   PADDLE_ENFORCE_NOT_NULL(in_var);
@@ -140,10 +135,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 void BroadcastOpHandle::InitOutputValue(
     const VarHandle &in_var_handle,
     const std::vector<VarHandle *> &out_var_handles) const {
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
+  auto &var_scopes = local_exec_scopes_;
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
 
