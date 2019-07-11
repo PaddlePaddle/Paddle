@@ -207,7 +207,7 @@ void AttentionLSTMOpMaker::Make() {
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("cell_activation",
                        "(string, default: tanh)"
-                       "The activation for cell output, `tanh` by defalut.")
+                       "The activation for cell output, `tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("candidate_activation",
