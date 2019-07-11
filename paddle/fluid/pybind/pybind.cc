@@ -1549,6 +1549,13 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property("_use_legacy_memory_optimize_strategy",
+                    [](const BuildStrategy &self) {
+                      return self.use_legacy_memory_optimize_strategy_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.use_legacy_memory_optimize_strategy_ = b;
+                    })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },

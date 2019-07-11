@@ -48,33 +48,13 @@ class SingleOpInplaceInToOut : public InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
       const OpDesc& op_desc, bool use_cuda) const override {
-    PADDLE_ENFORCE(!op_desc.InputNames().empty(),
-                   "Op inputs must not be empty");
-    PADDLE_ENFORCE(!op_desc.OutputNames().empty(),
-                   "Op outputs must not be empty");
+    PADDLE_ENFORCE_EQ(op_desc.InputNames().size(), 1,
+                      "Op inputs must be unique");
+    PADDLE_ENFORCE_EQ(op_desc.OutputNames().size(), 1,
+                      "Op outputs must be unique");
     auto x_name = op_desc.InputNames().at(0);
     auto out_name = op_desc.OutputNames().at(0);
     return std::unordered_map<std::string, std::string>{{x_name, out_name}};
-  }
-};
-
-/*
-  Gradient op. Inplace output use it's Input.
-  For example, Input@Grad->Input reuse strategy.
- */
-class GradOpInplaceInToOut : public InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, bool use_cuda) const override {
-    std::unordered_map<std::string, std::string> ret;
-    std::unordered_set<std::string> output_names(op_desc.OutputNames().begin(),
-                                                 op_desc.OutputNames().end());
-    for (auto& input_name : op_desc.InputNames()) {
-      if (output_names.count(GradVarName(input_name))) {
-        ret.insert({input_name, GradVarName(input_name)});
-      }
-    }
-    return ret;
   }
 };
 
