@@ -61,7 +61,7 @@ class MatMulKernel : public framework::OpKernel<T> {
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     int head_number = context.Attr<int>("head_number");
     if (1 == head_number) {
       blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));

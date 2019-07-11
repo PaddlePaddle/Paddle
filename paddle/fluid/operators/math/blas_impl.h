@@ -567,7 +567,7 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
@@ -663,7 +663,7 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
   }
 }
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
 /*
  * Multiple two matrixes with multiple heads
  *

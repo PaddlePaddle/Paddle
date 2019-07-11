@@ -113,12 +113,14 @@ class Blas {
   template <typename T>
   void GEMM_FREE(T* data) const;
 
+#if !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void MatMulWithHead(const framework::Tensor& mat_a,
                       const MatDescriptor& dim_a,
                       const framework::Tensor& mat_b,
                       const MatDescriptor& dim_b, T alpha, int head_number,
                       framework::Tensor* mat_out, T beta) const;
+#endif
 #endif
 
   template <typename T>
@@ -183,11 +185,13 @@ class Blas {
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
+#if !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
                            int M, int N, int K, T alpha, const T* A, const T* B,
                            T beta, T* C, int batchCount, int64_t strideA,
                            int64_t strideB, int64_t head_number) const;
+#endif
 
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
