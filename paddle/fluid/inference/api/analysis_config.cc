@@ -90,6 +90,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
 
+  CP_MEMBER(opt_cache_dir_);
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
@@ -404,11 +405,6 @@ void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   model_from_memory_ = true;
 
   Update();
-}
-
-void AnalysisConfig::SetEngineOptInfo(
-    std::map<std::string, std::string> engine_opt_info) {
-  engine_opt_info_ = engine_opt_info;
 }
 
 NativeConfig AnalysisConfig::ToNativeConfig() const {

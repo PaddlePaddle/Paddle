@@ -53,11 +53,11 @@ class QuantizationStrategy(Strategy):
             start_epoch(int): The 'on_epoch_begin' function will be called in start_epoch. default: 0
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
             float_model_save_path(str): The path to save model with float weights.
-                            None means it doesn't save float model. defalut: None.
+                            None means it doesn't save float model. default: None.
             mobile_model_save_path(str): The path to save model for paddle-mobile execution.
-                            None means it doesn't save mobile model. defalut: None.
+                            None means it doesn't save mobile model. default: None.
             int8_model_save_path(str): The path to save model with int8_t weight.
-                            None means it doesn't save int8 model. defalut: None.
+                            None means it doesn't save int8 model. default: None.
             activation_bits(int): quantization bit number for activation. default: 8.
             weight_bits(int): quantization bit number for weights. The bias is not quantized.
                               default: 8.
@@ -90,7 +90,7 @@ class QuantizationStrategy(Strategy):
 
     def restore_from_checkpoint(self, context):
         """
-        Restore graph when the compressoin task is inited from checkpoint.
+        Restore graph when the compression task is inited from checkpoint.
         """
         # It is inited from checkpoint and has missed start epoch.
         if context.epoch_id != 0 and context.epoch_id > self.start_epoch:
@@ -100,7 +100,7 @@ class QuantizationStrategy(Strategy):
 
     def _modify_graph_for_quantization(self, context):
         """
-        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        Insert fake_quantize_op and fake_dequantize_op before training and testing.
         """
         train_ir_graph = IrGraph(
             core.Graph(context.optimize_graph.program.clone().desc),
@@ -151,7 +151,7 @@ class QuantizationStrategy(Strategy):
 
     def on_epoch_begin(self, context):
         """
-        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        Insert fake_quantize_op and fake_dequantize_op before training and testing.
         """
         super(QuantizationStrategy, self).on_epoch_begin(context)
         if self.start_epoch == context.epoch_id:

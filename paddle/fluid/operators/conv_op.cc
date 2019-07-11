@@ -103,8 +103,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
             ? kConvMKLDNNINT8
             : kConvMKLDNNFP32;
   }
@@ -259,7 +259,7 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, defalut is False.")
+                "for cuDNN convolution or not, default is False.")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.
@@ -378,7 +378,7 @@ void Conv3DOpMaker::Make() {
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, defalut is False.")
+                "for cuDNN convolution or not, default is False.")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution3D Operator.
