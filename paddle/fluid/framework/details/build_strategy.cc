@@ -355,8 +355,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
       if (!use_cuda) {
-        LOG(WARNING) << "backward_optimizer_op_deps_pass is only supported on "
-                        "GPU, skipped.";
+        VLOG(1) << "backward_optimizer_op_deps_pass is only supported on "
+                   "GPU, skipped.";
         continue;
       }
     }
