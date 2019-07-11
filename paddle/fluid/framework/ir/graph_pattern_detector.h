@@ -131,6 +131,9 @@ struct PDNode {
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
 
+  PDNode* assert_has_n_inputs(size_t n);
+  PDNode* assert_has_n_outputs(size_t n);
+
   template <typename T>
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {

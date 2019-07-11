@@ -22,9 +22,11 @@ namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : graph_(graph),
       local_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes),
       places_(places),
       fetch_ctxs_(places),
       strategy_(strategy),
@@ -176,7 +178,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_);
+    auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_,
+                                 &local_exec_scopes_);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {

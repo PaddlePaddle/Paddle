@@ -28,9 +28,11 @@ namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
       fetch_ctxs_(places),
@@ -143,7 +145,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_);
+    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                 &local_exec_scopes_);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {

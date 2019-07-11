@@ -58,8 +58,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   std::vector<LoDTensor *> outs;
   int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    auto &local_scope =
-        local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto *local_scope = local_exec_scopes_[i];
     auto original_name =
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
     auto encode_var_name = original_name + g_dgc_encoded;
@@ -135,9 +134,8 @@ int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto var_name = original_name + g_dgc_k;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[0];
-  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  auto var = local_scope->FindVar(var_name);
+  auto *scope = local_exec_scopes_[0];
+  auto var = scope->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(var);
   auto tensor = var->Get<LoDTensor>().data<float>();
   return *tensor;
@@ -151,8 +149,7 @@ bool SparseAllReduceOpHandle::IsEncoded() {
   auto step_name = g_dgc_rampup_begin_step;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[0];
-  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto *local_scope = local_exec_scopes_[0];
   auto count_var = local_scope->FindVar(counter_name);
   auto step_var = local_scope->FindVar(step_name);
   if (count_var == nullptr || step_var == nullptr) {
