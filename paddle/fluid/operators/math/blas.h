@@ -112,6 +112,13 @@ class Blas {
 
   template <typename T>
   void GEMM_FREE(T* data) const;
+
+  template <typename T>
+  void MatMulWithHead(const framework::Tensor& mat_a,
+                      const MatDescriptor& dim_a,
+                      const framework::Tensor& mat_b,
+                      const MatDescriptor& dim_b, T alpha, int head_number,
+                      framework::Tensor* mat_out, T beta) const;
 #endif
 
   template <typename T>
@@ -188,13 +195,6 @@ class Blas {
               T alpha, framework::Tensor* mat_out, T beta) const;
 
   template <typename T>
-  void MatMulWithHead(const framework::Tensor& mat_a,
-                      const MatDescriptor& dim_a,
-                      const framework::Tensor& mat_b,
-                      const MatDescriptor& dim_b, T alpha, int head_number,
-                      framework::Tensor* mat_out, T beta) const;
-
-  template <typename T>
   void VINV(int n, const T* a, T* y) const;
 
   template <typename T>
@@ -234,16 +234,16 @@ class BlasT : private Blas<DeviceContext> {
   void GEMM_FREE(ARGS... args) const {
     Base()->template GEMM_FREE<T>(args...);
   }
+
+  template <typename... ARGS>
+  void MatMulWithHead(ARGS... args) const {
+    Base()->template MatMulWithHead<T>(args...);
+  }
 #endif
 
   template <typename... ARGS>
   void MatMul(ARGS... args) const {
     Base()->template MatMul<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void MatMulWithHead(ARGS... args) const {
-    Base()->template MatMulWithHead<T>(args...);
   }
 
   template <typename... ARGS>

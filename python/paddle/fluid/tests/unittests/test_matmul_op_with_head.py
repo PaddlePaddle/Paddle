@@ -19,11 +19,11 @@ import numpy as np
 from op_test import OpTest
 
 
-def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
+def generate_compatible_shapes_mul_head(dim_X, dim_Y, transpose_X, transpose_Y):
     BATCH_SIZE = 2
     M = 3
     N = 4
-    K = 5
+    K = 24
     if (dim_X == 1 and transpose_X) or (dim_Y == 1 and transpose_Y):
         K = 1
     if dim_X == 1:
@@ -53,7 +53,38 @@ def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
     return shape_X, shape_Y
 
 
-def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
+def matmul_head(X, Y, head_number=1):
+    x = []
+    y = []
+    z = []
+    sub_x_width = X.shape[-1] // head_number
+    sub_y_height = Y.shape[-2] // head_number
+    if np.ndim(X) == 2:
+        for i in range(0, head_number):
+            x.append(X[:, i * sub_x_width:i * sub_x_width + sub_x_width])
+            y.append(Y[i * sub_y_height:i * sub_y_height + sub_y_height, :])
+        for i in range(0, head_number):
+            z.append(np.matmul(x[i], y[i]))
+        Z = np.concatenate((z), axis=1)
+
+    elif np.ndim(X) == 3:
+        for i in range(0, head_number):
+            x.append(X[:, :, i * sub_x_width:i * sub_x_width + sub_x_width])
+            y.append(Y[:, i * sub_y_height:i * sub_y_height + sub_y_height, :])
+        for i in range(0, head_number):
+            z.append(np.matmul(x[i], y[i]))
+        Z = np.concatenate((z), axis=2)
+    else:
+        print("ERROR: Not supported dimension")
+
+    return Z
+
+
+def reference_matmul_mul_head(X,
+                              Y,
+                              head_number=1,
+                              transpose_X=False,
+                              transpose_Y=False):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
@@ -74,7 +105,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
-    Out = np.matmul(X, Y)
+    Out = matmul_head(X, Y, head_number)
     if not Out.shape:
         # We do not support 0-dimensional Tensors (scalars). So where
         # np.matmul outputs a scalar, we must convert to a Tensor of
@@ -84,91 +115,47 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     return Out
 
 
-class Generator(object):
+# Generator for multiple head
+class GeneratorMulHead(object):
     def setUp(self):
         self.op_type = "matmul"
         X = np.random.random(self.shape_X).astype("float32")
         Y = np.random.random(self.shape_Y).astype("float32")
-        Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
+        Out = reference_matmul_mul_head(X, Y, 4, self.transpose_X,
+                                        self.transpose_Y)
+
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
             'transpose_X': self.transpose_X,
-            'transpose_Y': self.transpose_Y
+            'transpose_Y': self.transpose_Y,
+            'head_number': self.head_number
         }
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
 
-    def test_check_grad_ignore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X"))
-
-    def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
-
-
-# Generate test cases for all possibilities
-def inject_test(dim_x, dim_y, trans_x, trans_y):
-    test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-        dim_x, dim_y, trans_x, trans_y))
-    shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-                                                  trans_y)
-    globals()[test_name] = type(test_name, (Generator, OpTest), {
+def inject_test_multiple_head(dim_x, dim_y, trans_x, trans_y, head_number):
+    test_name = (
+        'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head_{}'.format(
+            dim_x, dim_y, trans_x, trans_y, head_number))
+    shape_x, shape_y = generate_compatible_shapes_mul_head(dim_x, dim_y,
+                                                           trans_x, trans_y)
+    globals()[test_name] = type(test_name, (GeneratorMulHead, OpTest), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
         'transpose_X': trans_x,
         'transpose_Y': trans_y,
+        'head_number': head_number
     })
 
 
-for dim_X in (1, 2, 3):
-    for dim_Y in (1, 2, 3):
-        for transose_x in (False, True):
-            for transose_y in (False, True):
-                inject_test(dim_X, dim_Y, transose_x, transose_y)
-
-
-# Test case n-dim
-def generate_compatible_shapes(dim, transpose_X, transpose_Y):
-    M = 2
-    N = 4
-    K = 3
-    shape_X = [2 for _ in range(dim - 2)]
-    shape_Y = [2 for _ in range(dim - 2)]
-
-    if transpose_X:
-        shape_X += [K, M]
-    else:
-        shape_X += [M, K]
-
-    if transpose_Y:
-        shape_Y += [N, K]
-    else:
-        shape_Y += [K, N]
-
-    return shape_X, shape_Y
-
-
-# # Test case n-dim
-for dim in [4]:
-    for transpose_X in [False, True]:
-        for transpose_Y in [False, True]:
-            test_name = (
-                'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                    dim, dim, transpose_X, transpose_Y))
-            shape_X, shape_Y = generate_compatible_shapes(dim, transpose_X,
-                                                          transpose_Y)
-            globals()[test_name] = type(test_name, (Generator, OpTest), {
-                'shape_X': shape_X,
-                'shape_Y': shape_Y,
-                'transpose_X': transpose_X,
-                'transpose_Y': transpose_Y,
-            })
+#test case for multiple head
+for dim in (2, 3):
+    for transose_x in (False, True):
+        for transose_y in (False, True):
+            inject_test_multiple_head(dim, dim, transose_x, transose_y, 4)
 
 if __name__ == "__main__":
     unittest.main()
