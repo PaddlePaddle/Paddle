@@ -981,6 +981,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     }
   }
+
+  if (transfer_scope && !run_by_executor_ && !enable_transferscope_cache) {
+    scope.DeleteScope(transfer_scope);
+  }
 }
 
 void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
@@ -1114,9 +1118,13 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
-      if (!run_by_executor_) {
+      enable_transferscope_cache = false;
+      if (!run_by_executor_ &&
+          (platform::is_gpu_place(kernel_type_for_var.place_) ||
+           platform::is_gpu_place(expected_kernel_key.place_))) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
+        enable_transferscope_cache = true;
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
