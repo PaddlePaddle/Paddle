@@ -288,9 +288,8 @@ class CompiledProgram(object):
 
         if self._program:
             self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
-            self._build_strategy.use_hierarchical_allreduce_ = self._program._use_hierarchical_allreduce
-            self._build_strategy.hierarchical_allreduce_inter_nranks_ = self._program._hierarchical_allreduce_inter_nranks
-            self._build_strategy.hierarchical_allreduce_exter_nranks_ = self._program._hierarchical_allreduce_exter_nranks
+            self._build_strategy.use_hierarchical_allreduce = self._program._use_hierarchical_allreduce
+            self._build_strategy.hierarchical_allreduce_inter_nranks = self._program._hierarchical_allreduce_inter_nranks
 
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True
