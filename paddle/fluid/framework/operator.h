@@ -502,7 +502,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool enable_cache_runtime_context = false;
   mutable bool all_kernels_must_compute_runtime_shape = false;
   mutable std::mutex cache_update_mutex_;
-  mutable bool enable_transferscope_cache = false;
+  mutable bool enable_cache_transfer_scope = false;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

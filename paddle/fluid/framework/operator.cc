@@ -982,7 +982,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
   }
 
-  if (transfer_scope && !run_by_executor_ && !enable_transferscope_cache) {
+  // To solve issue #15032, have a discussion with @Luotao for cpu inference,
+  // do not cache transfer scope, hence in this case delete transfer scope
+  // after run to avoid memory leak
+  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope) {
     scope.DeleteScope(transfer_scope);
   }
 }
@@ -1118,13 +1121,18 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
-      enable_transferscope_cache = false;
+      //
+      // To solve issue #15032, have a discussion with @Luotao for cpu
+      // inference, for all cpu kernels cases without GPU participation, here
+      // not do transfer scope caching, and cpu inference performance is not
+      // impacted by test.
+      enable_cache_transfer_scope = false;
       if (!run_by_executor_ &&
           (platform::is_gpu_place(kernel_type_for_var.place_) ||
            platform::is_gpu_place(expected_kernel_key.place_))) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
-        enable_transferscope_cache = true;
+        enable_cache_transfer_scope = true;
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
