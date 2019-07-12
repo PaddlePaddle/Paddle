@@ -65,6 +65,9 @@ endif()
 if(NOT WITH_MKLML)
     # this op is not support on openblas
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
+endif()
+
+if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
     LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
 endif()
