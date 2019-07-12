@@ -52,11 +52,18 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
            int batch_size = -1) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
-  bool Reset(const AnakinConfig& config,
-             std::shared_ptr<anakin::graph::Graph<T, P>> graph_p);
+  bool Reset(PaddleInferenceAnakinPredictor<T, P, R>* predictor);
   void InitPredictor();
-  std::vector<std::string> GetInputNames() { return this->input_names_; }
-  std::vector<std::string> GetOutputNames() { return this->output_names_; }
+  std::shared_ptr<anakin::graph::Graph<T, P>> GetGraph() {
+    return this->graph_p_;
+  }
+  std::vector<std::string> GetInputNames() override {
+    return this->input_names_;
+  }
+  std::vector<std::string> GetOutputNames() override {
+    return this->output_names_;
+  }
+  const AnakinConfig& GetConfig() const { return this->config_; }
 
   ~PaddleInferenceAnakinPredictor() override;
 

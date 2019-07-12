@@ -266,10 +266,11 @@ bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
 }
 template <typename T, Precision P, OpRunType R>
 bool PaddleInferenceAnakinPredictor<T, P, R>::Reset(
-    const AnakinConfig &config,
-    std::shared_ptr<anakin::graph::Graph<T, P>> graph_p) {
-  this->config_ = config;
-  this->graph_p_ = graph_p;
+    PaddleInferenceAnakinPredictor<T, P, R> *predictor) {
+  this->config_ = predictor->GetConfig();
+  this->graph_p_ = predictor->GetGraph();
+  this->input_names_ = predictor->GetInputNames();
+  this->output_names_ = predictor->GetOutputNames();
   this->ctx_p_ = std::make_shared<anakin::Context<T>>(
       this->config_.device_id, this->config_.data_stream_id,
       this->config_.compute_stream_id);
@@ -294,7 +295,7 @@ PaddleInferenceAnakinPredictor<T, P, R>::Clone() {
   if (!anakin_predictor_p) {
     LOG(FATAL) << "fail to call Init";
   }
-  anakin_predictor_p->Reset(this->config_, this->graph_p_);
+  anakin_predictor_p->Reset(this);
   return cls;
 }
 
