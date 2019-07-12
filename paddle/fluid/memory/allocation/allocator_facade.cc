@@ -295,7 +295,7 @@ class AllocatorFacadePrivate {
 
 // Pimpl. Make interface clean.
 AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
-AllocatorFacade::~AllocatorFacade() { delete m_; }
+AllocatorFacade::~AllocatorFacade() {}
 
 AllocatorFacade& AllocatorFacade::Instance() {
   static AllocatorFacade instance;
