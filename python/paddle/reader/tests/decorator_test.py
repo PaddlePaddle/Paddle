@@ -62,10 +62,10 @@ class TestBuffered(unittest.TestCase):
         for idx, i in enumerate(b()):
             elapsed_time = time.time() - last_time
             if i == 0:
-                time.sleep(0.3)
+                time.sleep(1)
             else:
                 # read time should be short, meaning already buffered.
-                self.assertLess(elapsed_time, 0.05)
+                self.assertLess(elapsed_time, 0.08)
             last_time = time.time()
 
 
@@ -198,7 +198,7 @@ class TestMultiProcessReader(unittest.TestCase):
             results.append(data)
         self.assertEqual(sorted(self.samples), sorted(results))
 
-    def test_multi_process_reader(self):
+    def test_distributed_batch_reader(self):
         self.reader_test(use_pipe=False)
         self.reader_test(use_pipe=True)
 

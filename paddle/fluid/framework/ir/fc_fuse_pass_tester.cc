@@ -29,6 +29,7 @@ void SetOp(ProgramDesc* prog, const std::string& type,
   if (type == "mul") {
     op->SetInput("X", {inputs[0]});
     op->SetInput("Y", {inputs[1]});
+    op->SetAttr("x_num_col_dims", {1});
   } else if (type == "elementwise_add") {
     op->SetInput("X", inputs);
   }
@@ -72,7 +73,7 @@ TEST(FCFusePass, basic) {
 
   int pre_nodes = graph->Nodes().size();
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   int after_nodes = graph->Nodes().size();
 

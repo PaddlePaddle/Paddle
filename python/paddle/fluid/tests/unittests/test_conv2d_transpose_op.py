@@ -68,8 +68,11 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv2dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
+        self.is_test = False
         self.use_cudnn = False
+        self.use_mkldnn = False
         self.output_size = None
+        self.data_format = "AnyLayout"
         self.init_op_type()
         self.init_test_case()
 
@@ -83,7 +86,9 @@ class TestConv2dTransposeOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
+            'is_test': self.is_test,
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format
         }
         if self.output_size is not None:
             self.attrs['output_size'] = self.output_size

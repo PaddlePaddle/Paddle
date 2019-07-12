@@ -30,7 +30,8 @@ void Init(const std::vector<std::string> argv);
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
-                      const std::string& param_filename);
+                      const std::string& param_filename,
+                      bool model_from_memory);
 
 std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
@@ -40,6 +41,10 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
                                              const std::string& prog_filename,
                                              const std::string& param_filename);
+
+std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
+    framework::Executor* executor, framework::Scope* scope,
+    const std::string& prog_buffer, const std::string& param_buffer);
 
 // Save the variables from a scope to disk.
 void SaveVars(const framework::Scope& scope,

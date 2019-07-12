@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -76,12 +77,28 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class ClipGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("clip_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ClipGradOpDescMaker);
 REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);

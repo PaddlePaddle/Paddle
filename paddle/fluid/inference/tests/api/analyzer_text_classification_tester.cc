@@ -36,6 +36,8 @@ struct DataReader {
     tensor.lod.front().push_back(data.size());
 
     tensor.data.Resize(data.size() * sizeof(int64_t));
+    CHECK(tensor.data.data() != nullptr);
+    CHECK(data.data() != nullptr);
     memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
     tensor.shape.push_back(data.size());
     tensor.shape.push_back(1);
@@ -47,11 +49,10 @@ struct DataReader {
 };
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -70,22 +71,30 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  cfg.SwitchIrDebug();
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1) {
     // Get output
-    LOG(INFO) << "get outputs " << outputs.size();
-    for (auto &output : outputs) {
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    LOG(INFO) << "get outputs " << outputs.back().size();
+    for (auto &output : outputs.back()) {
       LOG(INFO) << "output.shape: " << to_string(output.shape);
       // no lod ?
       CHECK_EQ(output.lod.size(), 0UL);
       LOG(INFO) << "output.dtype: " << output.dtype;
       std::stringstream ss;
-      for (int i = 0; i < 5; i++) {
+      int num_data = 1;
+      for (auto i : output.shape) {
+        num_data *= i;
+      }
+
+      for (int i = 0; i < num_data; i++) {
         ss << static_cast<float *>(output.data.data())[i] << " ";
       }
       LOG(INFO) << "output.data summary: " << ss.str();
@@ -98,23 +107,35 @@ TEST(Analyzer_Text_Classification, profile) {
 TEST(Analyzer_Text_Classification, compare) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_Text_Classification, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   // Enable embedding_fc_lstm_fuse_pass (disabled by default)
-  auto it = std::find(cfg.ir_passes.begin(), cfg.ir_passes.end(),
-                      "embedding_fc_lstm_fuse_pass");
-  if (it != cfg.ir_passes.end()) cfg.ir_passes.erase(it);
+  cfg.pass_builder()->InsertPass(2, "embedding_fc_lstm_fuse_pass");
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 }  // namespace inference

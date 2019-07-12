@@ -20,7 +20,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
 
-def create_op(scope, op_type, inputs, outputs, attrs):
+def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     kwargs = dict()
 
     op_maker = core.op_proto_and_checker_maker
@@ -43,6 +43,11 @@ def create_op(scope, op_type, inputs, outputs, attrs):
                     __create_var__(in_name, sub_in_name)
             else:
                 __create_var__(in_name, in_name)
+    if cache_list != None and isinstance(cache_list, list):
+        for name in cache_list:
+            kwargs[name] = []
+            scope.var(name)
+            kwargs[name].append(name)
 
     for out_name, out_dup in Operator.get_op_outputs(op_type):
         if out_name in outputs:
@@ -132,9 +137,9 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
     var_dict = {}
     for var_proto in proto_list:
         var_name = str(var_proto.name)
+        if (var_name not in np_list) and var_proto.dispensable:
+            continue
         if is_input:
-            if (var_name not in np_list) and var_proto.dispensable:
-                continue
             assert (var_name in np_list) or (var_proto.dispensable), \
                 "Missing {} as input".format(var_name)
         if var_proto.duplicable:

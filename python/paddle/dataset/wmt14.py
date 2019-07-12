@@ -15,7 +15,7 @@
 WMT14 dataset.
 The original WMT14 dataset is too large and a small set of data for set is
 provided. This module will download dataset from
-http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
+http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
 parse training set and test set into paddle reader creators.
 
 """

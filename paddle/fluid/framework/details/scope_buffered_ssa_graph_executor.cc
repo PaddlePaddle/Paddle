@@ -15,87 +15,47 @@
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/details/reference_count_op_handle.h"
-#endif
 
 namespace paddle {
 namespace framework {
 namespace details {
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
-    std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
+    std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
+    std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
+      local_exec_scopes_(std::move(local_exec_scopes)),
       var_infos_(std::move(var_infos)),
-      places_(std::move(places)) {}
+      places_(std::move(places)) {
+  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  PrepareLocalExeScopes();
+}
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   if (drop_scope_counter_ == 0) {
-    // Create local scopes.
-    for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
-      auto &scope = *it;
-      Scope &local_scope = scope->NewScope();
-      *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
-          &local_scope;
-
-      for (auto &info : var_infos_) {
-        if (scope->FindVar(info.name_) != nullptr) {
-          continue;
-        }
-
-        if (info.persistable_) {  // Persistable
-          InitializeVariable(scope->Var(info.name_), info.type_);
-        } else {
-          InitializeVariable(local_scope.Var(info.name_), info.type_);
-        }
-      }
-    }
+    platform::RecordEvent e("InitLocalVars");
+    InitVariables();
   }
+
   std::vector<framework::LoDTensor> fetch_data;
-  std::exception_ptr eptr;
+  std::exception_ptr eptr = nullptr;
   try {
     fetch_data = underlying_executor_->Run(fetch_tensors);
   } catch (...) {
     eptr = std::current_exception();
   }
 
-  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
-  drop_scope_counter_ += 1;
-
-#ifdef PADDLE_WITH_CUDA
-  const std::string gc_name = "garbage_collector";
-  DeviceGarbageCollectorMap *gc =
-      Graph().Has(gc_name) ? &(Graph().Get<DeviceGarbageCollectorMap>(gc_name))
-                           : nullptr;
-#endif
-
-  if (!fetch_tensors.empty() ||
-      drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    drop_scope_counter_ = 0;
-    // Wait All computational streams
-    for (auto p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
-#ifdef PADDLE_WITH_CUDA
-      if (gc != nullptr && platform::is_gpu_place(p)) {
-        auto gpu_place = boost::get<platform::CUDAPlace>(p);
-        auto &gc_at_place = gc->at(gpu_place.device);
-        gc_at_place->Wait();
-        gc_at_place->Reset();
-      }
-#endif
-    }
-    for (auto &scope : local_scopes_) {
-      auto &local_scope =
-          *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-      scope->DeleteScope(local_scope);
-    }
+  ++drop_scope_counter_;
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+    DropLocalExeScopes();
   }
   if (eptr) {
     std::rethrow_exception(eptr);
@@ -103,6 +63,65 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     return fetch_data;
   }
 }
+
+void ScopeBufferedSSAGraphExecutor::InitVariables() {
+  for (auto &info : tmp_var_infos_) {
+    for (auto &pair : info) {
+      InitializeVariable(pair.first, pair.second);
+    }
+  }
+}
+
+void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
+  platform::RecordEvent drop_scope_event("DropLocalExeScopes");
+  drop_scope_counter_ = 0;
+  for (auto &p : places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+
+  for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
+    local_exec_scopes_[i]->EraseVarsExcept(preserve_vars_[i]);
+    local_exec_scopes_[i]->DropKids();
+    for (auto &preserve_var : preserve_vars_[i]) {
+      preserve_var->Clear();
+    }
+    VLOG(3) << "Drop local execution scope: " << local_scopes_[i];
+  }
+}
+
+void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
+  // Create local scopes.
+  preserve_vars_.resize(local_scopes_.size());
+  tmp_var_infos_.resize(local_scopes_.size());
+
+  for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
+    size_t idx = local_scopes_.size() - 1 - (it - local_scopes_.rbegin());
+    auto *scope = local_scopes_[idx];
+    auto *local_scope = local_exec_scopes_[idx];
+
+    for (auto &info : var_infos_) {
+      if (info.persistable_) {  // Persistable
+        auto var = scope->FindVar(info.name_);
+        if (var != nullptr) {
+          VLOG(2)
+              << info.name_
+              << " has been initialized beforehand in global scope, skipped";
+          continue;
+        }
+        InitializeVariable(scope->Var(info.name_), info.type_);
+      } else {
+        Variable *tmp_var = local_scope->Var(info.name_);
+        preserve_vars_[idx].emplace(tmp_var);
+        tmp_var_infos_[idx].emplace_back(tmp_var, info.type_);
+      }
+    }
+  }
+}
+
+bool ScopeBufferedSSAGraphExecutor::NeedCreateLocalExeScope() {
+  return drop_scope_counter_ == 0;
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

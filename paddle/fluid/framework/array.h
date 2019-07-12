@@ -15,33 +15,122 @@
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/framework/unroll_array_ops.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+
 template <typename T, size_t N>
 class Array {
-  static_assert(N > 0, "The size of array must be larger than 0");
-
  public:
-  HOSTDEVICE Array() {}
+  static constexpr size_t kSize = N;
 
-  HOSTDEVICE explicit Array(const T &val) {
-    for (size_t i = 0; i < N; ++i) data_[i] = val;
+  HOSTDEVICE inline Array() {}
+
+  template <typename... Args>
+  HOSTDEVICE inline explicit Array(const T &val, Args... args) {
+    static_assert(N == sizeof...(Args) + 1, "Invalid argument");
+    UnrollVarArgsAssign<T>::Run(data_, val, args...);
   }
 
-  HOSTDEVICE const T *Get() const { return data_; }
+  HOSTDEVICE inline void Fill(const T &val) {
+    UnrollFillConstant<N>::Run(data_, val);
+  }
 
-  HOSTDEVICE T *GetMutable() { return data_; }
+  HOSTDEVICE inline const T *Get() const { return data_; }
 
-  HOSTDEVICE T &operator[](size_t index) { return data_[index]; }
+  HOSTDEVICE inline T *GetMutable() { return data_; }
 
-  HOSTDEVICE const T &operator[](size_t index) const { return data_[index]; }
+  HOSTDEVICE inline T &operator[](size_t i) { return *advance(data_, i); }
+
+  // Writing "return data_[i]" would cause compilation warning/error:
+  // "array subscript is above array bound" in Python 35 CI.
+  // It seems that it is a false warning of GCC if we do not check the bounds
+  // of array index. But for better performance, we do not check in operator[]
+  // like what is in STL. If users want to check the bounds, use at() instead
+  HOSTDEVICE inline const T &operator[](size_t i) const {
+    return *advance(data_, i);
+  }
+
+  HOSTDEVICE inline T &at(size_t i) {
+#ifndef __CUDA_ARCH__
+    PADDLE_ENFORCE_LT(i, N, "Array index out of bounds");
+#endif
+    return (*this)[i];
+  }
+
+  HOSTDEVICE inline const T &at(size_t i) const {
+#ifndef __CUDA_ARCH__
+    PADDLE_ENFORCE_LT(i, N, "Array index out of bounds");
+#endif
+    return (*this)[i];
+  }
 
   HOSTDEVICE constexpr size_t size() const { return N; }
 
+  HOSTDEVICE inline bool operator==(const Array<T, N> &other) const {
+    return UnrollCompare<N>::Run(data_, other.data_);
+  }
+
+  HOSTDEVICE inline bool operator!=(const Array<T, N> &other) const {
+    return !(*this == other);
+  }
+
  private:
+  template <typename U>
+  HOSTDEVICE static inline U *advance(U *ptr, size_t i) {
+    return ptr + i;
+  }
+
   T data_[N];
+};
+
+template <typename T>
+class Array<T, 0> {
+ public:
+  static constexpr size_t kSize = 0;
+
+  HOSTDEVICE inline Array() {}
+
+  HOSTDEVICE inline void Fill(const T &val) {}
+
+  HOSTDEVICE inline constexpr T *Get() const { return nullptr; }
+
+  // Add constexpr to GetMutable() cause warning in MAC
+  HOSTDEVICE inline T *GetMutable() { return nullptr; }
+
+  HOSTDEVICE inline T &operator[](size_t) {
+#ifdef __CUDA_ARCH__
+    static T obj();
+    return obj;
+#else
+    PADDLE_THROW("Array<T, 0> has no element");
+#endif
+  }
+
+  HOSTDEVICE inline const T &operator[](size_t) const {
+#ifdef __CUDA_ARCH__
+    static const T obj();
+    return obj;
+#else
+    PADDLE_THROW("Array<T, 0> has no element");
+#endif
+  }
+
+  HOSTDEVICE inline T &at(size_t i) { return (*this)[i]; }
+
+  HOSTDEVICE inline const T &at(size_t i) const { return (*this)[i]; }
+
+  HOSTDEVICE constexpr size_t size() const { return 0; }
+
+  HOSTDEVICE constexpr bool operator==(const Array<T, 0> &other) const {
+    return true;
+  }
+
+  HOSTDEVICE constexpr bool operator!=(const Array<T, 0> &other) const {
+    return false;
+  }
 };
 
 }  // namespace framework

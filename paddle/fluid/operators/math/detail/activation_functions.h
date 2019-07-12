@@ -15,12 +15,9 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <string>
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
-
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 namespace paddle {
 namespace operators {

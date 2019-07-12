@@ -72,7 +72,8 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
                                         T *gate_value, T *prev_output_value,
                                         T *output_value, int frame_size,
                                         int batch_size,
-                                        ActivationType active_node) {
+                                        ActivationType active_node,
+                                        bool origin_mode) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -94,10 +95,126 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
   }
 
   op_final_output(&r_value_update_gate, &r_value_frame_state, &r_prev_out,
-                  &r_output, active_node);
+                  &r_output, active_node, origin_mode);
 
   gate_value[frame_idx + frame_size * 2] = r_value_frame_state;
   output_value[frame_idx] = r_output;
+}
+
+/*
+ * threads(tile_size, 1)
+ * grid(frame_blocks, 1)
+ */
+template <class T, int Tiled_size>
+__global__ void KeFastCollectiveGruGate(T *gate_value, T *prev_output_value,
+                                        T *gate_weight, T *reset_output,
+                                        int frame_size,
+                                        ActivationType active_node) {
+  T xt_0 = 0.0f;
+  T a0 = 0.0f;
+  T c0 = 0.0f;
+  T b0[Tiled_size];
+
+  int COL = blockIdx.x * blockDim.x + threadIdx.x;
+  int Tiled_mask = ((1 << Tiled_size) - 1);
+  // Tiled  matrix multiply using register shift, faster than sm.
+  if (prev_output_value) {
+    for (int k = 0; k < (((frame_size - 1) / Tiled_size) + 1); ++k) {
+      a0 = 0;
+      if ((threadIdx.x + k * Tiled_size) < frame_size) {
+        a0 = prev_output_value[threadIdx.x + (k * Tiled_size)];
+      }
+      for (int i = 0; i < Tiled_size; i++) {
+        if (COL < frame_size * 2 && (i + k * Tiled_size) < frame_size) {
+          b0[i] = gate_weight[(i + k * Tiled_size) * frame_size * 2 + COL];
+        }
+      }
+
+      for (int i = 0; i < Tiled_size; ++i) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+        c0 = c0 + __shfl_sync(Tiled_mask, a0, i, Tiled_size) * b0[i];
+#else
+        c0 = c0 + __shfl(a0, i, Tiled_size) * b0[i];
+#endif
+      }
+    }
+  }
+
+  __syncthreads();
+
+  if (COL < frame_size * 2) {
+    xt_0 = gate_value[COL];
+    c0 += xt_0;
+    c0 = forward::activation(c0, active_node);
+    gate_value[COL] = c0;
+    if (frame_size <= COL && COL < frame_size * 2) {
+      T htp_0 = 0.0;
+      if (prev_output_value) {
+        htp_0 = prev_output_value[COL - frame_size];
+      }
+      reset_output[COL - frame_size] = c0 * htp_0;
+    } else if (COL < frame_size) {
+      gate_value[COL] = c0;
+    }
+  }
+}
+
+/*
+ * threads(tile_size, 1)
+ * grid(frame_blocks, 1)
+ */
+template <class T, int Tiled_size>
+__global__ void KeFastCollectiveGruOut(T *gate_weight, T *prev_out_value,
+                                       T *output_value, T *gate_value,
+                                       T *reset_value, int frame_size,
+                                       ActivationType act_node,
+                                       bool origin_mode) {
+  int COL = blockIdx.x * blockDim.x + threadIdx.x;
+
+  T a0 = 0.0f;
+  T b0[Tiled_size];
+  T c0 = 0.0f;
+
+  int Tiled_mask = ((1 << Tiled_size) - 1);
+  //- Tiled  matrix multiply with register shift
+  if (prev_out_value) {
+    for (int k = 0; k < (((frame_size - 1) / Tiled_size) + 1); ++k) {
+      a0 = 0;
+      if ((threadIdx.x + k * Tiled_size) < frame_size) {
+        a0 = reset_value[threadIdx.x + (k * Tiled_size)];
+      }
+      for (int i = 0; i < Tiled_size; i++) {
+        if (COL < frame_size && (i + k * Tiled_size) < frame_size) {
+          b0[i] = gate_weight[(i + k * Tiled_size) * frame_size + COL];
+        }
+      }
+
+      for (int i = 0; i < Tiled_size; ++i) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+        c0 = c0 + __shfl_sync(Tiled_mask, a0, i, Tiled_size) * b0[i];
+#else
+        c0 = c0 + __shfl(a0, i, Tiled_size) * b0[i];
+#endif
+      }
+    }
+  }
+
+  __syncthreads();
+
+  if (COL < frame_size) {
+    T xt_0 = gate_value[COL + 2 * frame_size];
+    T gta_0 = gate_value[COL];
+    T htp_0 = 0;
+    if (prev_out_value) htp_0 = prev_out_value[COL];
+    c0 += xt_0;
+    c0 = forward::activation(c0, act_node);
+    gate_value[COL + 2 * frame_size] = c0;
+    if (origin_mode) {
+      output_value[COL] = htp_0 * gta_0 + (1 - gta_0) * c0;
+    } else {
+      output_value[COL] = c0 * gta_0 + (1 - gta_0) * htp_0;
+    }
+  }
 }
 
 /*
@@ -109,7 +226,8 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
                                        T *gate_grad, T *prev_out_value,
                                        T *prev_out_grad, T *output_grad,
                                        int frame_size, int batch_size,
-                                       ActivationType active_node) {
+                                       ActivationType active_node,
+                                       bool origin_mode) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -139,7 +257,7 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
 
   op_state_grad(&r_update_gate_value, &r_update_gate_grad, &r_frame_state_value,
                 &r_frame_state_grad, &r_prev_out_value, &r_prev_out_grad,
-                &r_out_grad, active_node);
+                &r_out_grad, active_node, origin_mode);
 
   gate_grad[frame_idx + frame_size * 0] = r_update_gate_grad;
   gate_grad[frame_idx + frame_size * 2] = r_frame_state_grad;

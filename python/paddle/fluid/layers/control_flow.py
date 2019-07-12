@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, fill_constant
@@ -28,21 +28,10 @@ import six
 from functools import reduce
 
 __all__ = [
-    'While',
-    'Switch',
-    'increment',
-    'array_write',
-    'create_array',
-    'less_than',
-    'equal',
-    'array_read',
-    'array_length',
-    'IfElse',
-    'DynamicRNN',
-    'StaticRNN',
-    'reorder_lod_tensor_by_rank',
-    'Print',
-    'is_empty',
+    'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
+    'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
+    'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
 
@@ -69,6 +58,7 @@ def split_lod_tensor(input, mask, level=0):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[1])
           x.persistable = True
 
@@ -118,6 +108,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = layers.data(
                       name='x', shape=[1], dtype='float32', stop_gradient=False)
           y = layers.data(
@@ -176,21 +167,31 @@ def Print(input,
                 print the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor, same data with input tensor.
+        Variable: Output tensor.
 
+    NOTES:
+        The input and output are two different variables, and in the
+        following process, you should use the output variable but not the input,
+        otherwise, the print layer doesn't have backward.
 
     Examples:
-
         .. code-block:: python
+           
+           import paddle.fluid as fluid
+           
+           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+           input = fluid.layers.Print(input, message = "The content of input layer:")
+           # value = some_layer(...)
+           # Print(value, summarize=10,
+           #    message="The content of some_layer: ")
 
-           value = some_layer(...)
-           Print(value, summarize=10,
-               message="The content of some_layer: ")
     '''
-    helper = LayerHelper('print', **locals())
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',
         inputs={'In': input},
+        outputs={'Out': output},
         attrs={
             'first_n': first_n,
             'summarize': summarize,
@@ -201,6 +202,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
+    return output
 
 
 class BlockGuard(object):
@@ -226,156 +228,6 @@ class BlockGuard(object):
         return True
 
 
-class ParallelDo(object):
-    """
-    ParallelDo is used to represent multi-thread data parallel processing.
-
-    Its vanilla implementation can be shown as the following (:math:`|` means
-    single thread and :math:`||||` means multiple threads)
-
-    .. code-block:: text
-
-      In the forward pass
-        |      Split input onto different devices
-        |      Copy parameter onto different devices
-        ||||   Compute forward pass in parallel
-        |      Merge output from different devices
-
-      In the backward pass
-        |      Split output@grad onto different devices
-        ||||   Compute backward pass in parallel
-        |      accumulate param@grad from different devices to the first device
-        |      Merge input@grad from different devices
-        |      Copy param@grad to the place of parallel_do_op
-
-    Examples:
-
-    .. code-block:: python
-
-      images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-      label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-      # ParallelDo version & Single-thread version
-      if thread_num > 1:
-          places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.control_flow.ParallelDo(places)
-          with pd.do():
-              images = pd.read_input(images)
-              label = pd.read_input(label)
-              predict = cnn_model(images)
-              cost = fluid.layers.cross_entropy(input=predict, label=label)
-
-              avg_cost = fluid.layers.mean(x=cost)
-              pd.write_output(avg_cost)
-
-          avg_cost = pd()
-          avg_cost = fluid.layers.mean(avg_cost)
-      else:
-          predict = cnn_model(images)
-          cost = fluid.layers.cross_entropy(input=predict, label=label)
-          avg_cost = fluid.layers.mean(x=cost)
-
-    .. warning::
-
-       It will be soon deprecated, please use ParallelExecutor instead.
-    """
-
-    def __init__(self, places, use_nccl=False, name=None):
-        warnings.warn(
-            "API ParallelDo is deprecated since 0.15.0. Please use ParallelExecutor instead.",
-            Warning)
-        self.helper = LayerHelper("parallel_do", name=name)
-        self.inputs = []
-        self.places = places
-        self.outputs = []
-        self.status = StaticRNN.BEFORE_RNN_BLOCK
-        self.use_nccl = use_nccl
-
-    def do(self):
-        return BlockGuardWithCompletion(self)
-
-    def parent_block(self):
-        prog = self.helper.main_program
-        parent_idx = prog.current_block().parent_idx
-        assert parent_idx >= 0
-        parent_block = prog.block(parent_idx)
-        return parent_block
-
-    def __call__(self, *args, **kwargs):
-        if self.status != StaticRNN.AFTER_RNN_BLOCK:
-            raise ValueError("RNN output can only be retrieved after rnn block")
-        if len(self.outputs) == 0:
-            raise ValueError("RNN has no output")
-        elif len(self.outputs) == 1:
-            return self.outputs[0]
-        else:
-            return self.outputs
-
-    def read_input(self, var):
-        self.inputs.append(var)
-        return var
-
-    def write_output(self, var):
-        self.outputs.append(var)
-
-    def get_parameters(self):
-        main_program = self.helper.main_program
-        current_block = main_program.current_block()
-        parent_block = self.parent_block()
-
-        local_inputs = set()
-        params = list()
-        for var in self.inputs:
-            local_inputs.add(var.name)
-
-        for op in current_block.ops:
-            for iname in op.input_names:
-                for in_var_name in op.input(iname):
-                    if in_var_name not in local_inputs:
-                        params.append(in_var_name)
-
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    local_inputs.add(out_var_name)
-
-        params = list(set(params))
-
-        return [parent_block.var(name) for name in params]
-
-    def _complete_op(self):
-        main_program = self.helper.main_program
-        current_block = main_program.current_block()
-        parent_block = self.parent_block()
-
-        step_scope = parent_block.create_var(
-            type=core.VarDesc.VarType.STEP_SCOPES)
-
-        self.outputs = [
-            parent_block.create_var(
-                name=o.name,
-                shape=o.shape,
-                dtype=o.dtype,
-                lod_level=o.lod_level,
-                persistable=o.persistable,
-                stop_gradient=o.stop_gradient) for o in self.outputs
-        ]
-
-        inputs = [parent_block.var(i.name) for i in self.inputs]
-        outputs = [parent_block.var(o.name) for o in self.outputs]
-
-        parent_block.append_op(
-            type='parallel_do',
-            inputs={
-                'inputs': inputs,
-                'parameters': self.get_parameters(),
-                'places': self.places
-            },
-            outputs={'outputs': outputs,
-                     'parallel_scopes': [step_scope]},
-            attrs={'sub_block': current_block,
-                   'use_nccl': self.use_nccl})
-
-
 class BlockGuardWithCompletion(BlockGuard):
     """
     BlockGuardWithCompletion class.
@@ -384,9 +236,8 @@ class BlockGuardWithCompletion(BlockGuard):
     """
 
     def __init__(self, rnn):
-        if not (isinstance(rnn, StaticRNN) or isinstance(rnn, ParallelDo)):
-            raise TypeError(
-                "BlockGuardWithCompletion takes a StaticRNN or ParallelDo")
+        if not isinstance(rnn, StaticRNN):
+            raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
         super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
@@ -430,8 +281,47 @@ class StaticRNN(object):
     """
     StaticRNN class.
 
-    StaticRNN class is used to create a StaticRNN. The RNN will have its
-    own parameters like inputs, outputs, memories, status and length.
+    The StaticRNN can process a batch of sequence data. The length of each
+    sample sequence must be equal. The StaticRNN will have its own parameters
+    like inputs, outputs, memories. **Note that the first dimension of inputs
+    represents sequence length, and all the sequence length of inputs must be
+    the same. And the meaning of each axis of input and output are the same.**
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            vocab_size, hidden_size=10000, 200
+            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x_emb = layers.embedding(
+                input=x,
+                size=[vocab_size, hidden_size],
+                dtype='float32',
+                is_sparse=False)
+            x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+            rnn = fluid.layers.StaticRNN()
+            with rnn.step():
+                word = rnn.step_input(x_emb)
+                prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                rnn.update_memory(prev, hidden)  # set prev to hidden
+                rnn.step_output(hidden)
+                rnn.output(word)
+
+            result = rnn()
+
+    The StaticRNN will unfold sequence into time steps. Users need to define
+    how to process each time step during the :code:`with` step.
+
+    The :code:`memory` is used as a staging data cross time step. The initial
+    value of memory can be a variable that is filled with a constant value or
+    a specified variable.
+
+    The StaticRNN can mark multiple variables as its output. Use `rnn()` to
+    get the output sequence.
     """
     BEFORE_RNN_BLOCK = 0
     IN_RNN_BLOCK = 1
@@ -447,6 +337,9 @@ class StaticRNN(object):
         self.seq_len = None
 
     def step(self):
+        """
+        The block for user to define operators in RNN.
+        """
         return BlockGuardWithCompletion(self)
 
     def _assert_in_rnn_block_(self, method):
@@ -461,13 +354,49 @@ class StaticRNN(object):
                init_batch_dim_idx=0,
                ref_batch_dim_idx=1):
         """
+        Create a memory variable for static rnn.
+
+        If the :code:`init` is not None, :code:`memory` will be initialized by
+        this Variable. If the :code:`init` is None, :code:`shape` and :code:`batch_ref`
+        must be set, and this function will initialize a :code:`init` Variable.
+
         Args:
-            init: boot memory, if not set, a shape, batch_ref must be provided
-            shape: shape of the boot memory
-            batch_ref: batch size reference variable
-            init_value: the init value of boot memory
-            init_batch_dim_idx: the index of batch size in init's dimension
-            ref_batch_dim_idx: the index of batch size in batch_ref's dimension
+            init(Variable|None): The initialized variable. If it is not set,
+                :code:`shape` and :code:`batch_ref` must be provided.
+                Default: None.
+            shape(list|tuple): The shape of the boot memory. NOTE the shape
+                does not contain batch_size. Default: None.
+            batch_ref(Variable|None): The batch size reference Variable.
+                Default: None.
+            init_value(float): the init value of boot memory. Default: 0.0.
+            init_batch_dim_idx(int): the batch_size axis of the
+                :code:`init` Variable. Default: 0.
+            ref_batch_dim_idx(int): the batch_size axis of the
+                :code:`batch_ref` Variable. Default: 1.
+
+        Returns:
+            The memory variable.
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import paddle.fluid.layers as layers
+
+                vocab_size, hidden_size=10000, 200
+                x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+                x_emb = layers.embedding(
+                    input=x,
+                    size=[vocab_size, hidden_size],
+                    dtype='float32',
+                    is_sparse=False)
+                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+                rnn = fluid.layers.StaticRNN()
+                with rnn.step():
+                    word = rnn.step_input(x_emb)
+                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                    rnn.update_memory(prev, hidden)
         """
         self._assert_in_rnn_block_('memory')
         if init is None:
@@ -475,7 +404,7 @@ class StaticRNN(object):
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
             parent_block = self._parent_block()
-            var_name = unique_name.generate("@".join(
+            var_name = unique_name.generate_with_ignorable_key("@".join(
                 [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name,
@@ -498,7 +427,8 @@ class StaticRNN(object):
             return self.memory(init=boot_var)
         else:
             pre_mem = self.helper.create_variable(
-                name=unique_name.generate("@".join([self.helper.name, "mem"])),
+                name=unique_name.generate_with_ignorable_key("@".join(
+                    [self.helper.name, "mem"])),
                 dtype=init.dtype,
                 shape=init.shape)
             self.memories[pre_mem.name] = StaticRNNMemoryLink(
@@ -506,12 +436,22 @@ class StaticRNN(object):
             return pre_mem
 
     def step_input(self, x):
+        """
+        Mark a sequence as a StaticRNN input.
+
+        Args:
+            x(Variable): The input sequence, the shape of x
+                should be [seq_len, ...].
+
+        Returns:
+            The current time step in the input sequence.
+        """
         self._assert_in_rnn_block_('step_input')
         if not isinstance(x, Variable):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
-        elif self.seq_len != x.shape[0]:
+        elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
@@ -520,6 +460,15 @@ class StaticRNN(object):
         return ipt
 
     def step_output(self, o):
+        """
+        Mark a sequence as a StaticRNN output.
+
+        Args:
+            o(Variable): The output sequence.
+
+        Returns:
+            None.
+        """
         self._assert_in_rnn_block_('step_output')
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
@@ -539,10 +488,30 @@ class StaticRNN(object):
         self.outputs.append(out_var)
 
     def output(self, *outputs):
+        """
+        Mark the StaticRNN output variables.
+
+        Args:
+            outputs: The output Variables.
+
+        Returns:
+            None
+        """
         for each in outputs:
             self.step_output(each)
 
     def update_memory(self, mem, var):
+        """
+        Update the memory from ex_mem to new_mem. NOTE that the shape and data
+        type of :code:`ex_mem` and :code:`new_mem` must be same.
+
+        Args:
+            mem(Variable): the memory variable.
+            var(Variable): the plain variable generated in RNN block.
+
+        Returns:
+            None
+        """
         if not isinstance(mem, Variable) or not isinstance(var, Variable):
             raise TypeError("update memory should take variables")
         self.memories[mem.name].mem = var
@@ -582,6 +551,9 @@ class StaticRNN(object):
         for m in self.memories:
             local_inputs.add(m)
 
+        # NOTE(zcd): the params have two categories of variables.
+        #   - the variables that are the out of StaticRnn.
+        #   - the variables that are the parameters of some layers, for example, conv2d.
         params = list()
         for op in rnn_block.ops:
             assert isinstance(op, Operator)
@@ -598,17 +570,19 @@ class StaticRNN(object):
         inlinks = [parent_block.var(i.name) for i in self.inputs]
         outlinks = self.outputs
 
+        # NOTE(zcd): the states maybe empty in some case.
         boot_memories = []
         pre_memories = []
         memories = []
         for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
+            assert mem.mem is not None, "%s should be updated in every step." % (
+                mem.init.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
             new_mem = self.helper.create_variable_for_type_inference(
                 dtype=mem_var.dtype)
-
             rnn_block.append_op(
                 type='rnn_memory_helper',
                 inputs={'X': [mem_var]},
@@ -627,6 +601,7 @@ class StaticRNN(object):
             outputs={'outputs': outlinks,
                      'step_scopes': [step_scope]},
             attrs={
+                'has_states': len(pre_memories) > 0,
                 'ex_states': pre_memories,
                 'states': memories,
                 'sub_block': rnn_block
@@ -657,24 +632,26 @@ class While(object):
     while loop control flow.
 
     Args:
-        cond (Variable): condition used to compare.
+        cond(Variable): condition used to compare.
         is_test(bool): A flag indicating whether execution is in test phase.
-        name (str): The name of this layer.
+        name(str): The name of this layer.
 
     Examples:
           .. code-block:: python
+            
+            import paddle.fluid as fluid
+            
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            d0 = fluid.layers.data("d0", shape=[10], dtype='float32')
+            data_array = fluid.layers.array_write(x=d0, i=i)
+            array_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=3)
 
-            d0 = layers.data("d0", shape=[10], dtype='float32')
-            data_array = layers.array_write(x=d0, i=i)
-            array_len = layers.fill_constant(shape=[1],dtype='int64', value=3)
-
-            cond = layers.less_than(x=i, y=array_len)
-            while_op = layers.While(cond=cond)
+            cond = fluid.layers.less_than(x=i, y=array_len)
+            while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                d = layers.array_read(array=data_array, i=i)
-                i = layers.increment(x=i, in_place=True)
-                layers.array_write(result, i=i, array=d)
-                layers.less_than(x=i, y=array_len, cond=cond)
+                d = fluid.layers.array_read(array=data_array, i=i)
+                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                fluid.layers.less_than(x=i, y=array_len, cond=cond)            
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -717,8 +694,9 @@ class While(object):
 
         out_vars = []
         for inner_out_name in inner_outputs:
-            if inner_out_name in parent_block.vars:
-                out_vars.append(parent_block.var(inner_out_name))
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_vars.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -739,7 +717,8 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    """
+    LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
     a length, both of which are int type. Refering to specified level of LoD,
@@ -780,6 +759,7 @@ def lod_rank_table(x, level=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[10],
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
@@ -846,6 +826,7 @@ def lod_tensor_to_array(x, table):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[10])
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
@@ -879,6 +860,7 @@ def array_to_lod_tensor(x, table):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[10])
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
@@ -896,9 +878,10 @@ def array_to_lod_tensor(x, table):
 
 def increment(x, value=1.0, in_place=True):
     """
-    This function performs an operation that increments each value in the
+    This function performs an operation that increments the value in the
     input :math:`x` by an amount: :math:`value` as mentioned in the input
-    parameter. This operation is performed in-place by default.
+    parameter. This operation is performed in-place by default. Notice that
+    the number of elements in :math:`x` must be equal to 1.
 
     Args:
         x (Variable|list): The tensor that has the input values.
@@ -911,7 +894,9 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='data', shape=[1], dtype='float32',
+                                   append_batch_size=False)
           data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())
@@ -950,9 +935,10 @@ def array_write(x, i, array=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_write(tmp, i=i)
+          arr = fluid.layers.array_write(tmp, i=i)
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
@@ -984,6 +970,7 @@ def create_array(dtype):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.create_array(dtype='float32')
 
     """
@@ -995,12 +982,9 @@ def create_array(dtype):
 
 
 @templatedoc()
-def less_than(x, y, force_cpu=None, cond=None, **ignored):
+def less_than(x, y, force_cpu=None, cond=None):
     """
     ${comment}
-
-    >>> import paddle.fluid as fluid
-    >>> less = fluid.layers.less_than(x=label, y=limit)
 
     Args:
         x(${x_type}): ${x_comment}.
@@ -1010,6 +994,14 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
+          cond = fluid.layers.less_than(x=label, y=limit)
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
@@ -1031,10 +1023,129 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
     return cond
 
 
-def equal(x, y, cond=None, **ignored):
+@templatedoc()
+def less_equal(x, y, cond=None):
     """
-    **equal**
+    This layer returns the truth value of :math:`x <= y` elementwise, which is equivalent to the overloaded operator `<=`.
 
+    Args:
+        x(Variable): First operand of *less_equal*
+        y(Variable): Second operand of *less_equal*
+        cond(Variable|None): Optional output variable to store the result of *less_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
+          out = fluid.layers.less_equal(x=label, y=limit)
+    """
+    helper = LayerHelper("less_equal", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    attrs = dict()
+    if force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
+    helper.append_op(
+        type='less_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs=attrs)
+    return cond
+
+
+@templatedoc()
+def greater_than(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x > y` elementwise, which is equivalent to the overloaded operator `>`.
+
+    Args:
+        x(Variable): First operand of *greater_than*
+        y(Variable): Second operand of *greater_than*
+        cond(Variable|None): Optional output variable to store the result of *greater_than*
+
+    Returns:
+        Variable: The tensor variable storing the output of *greater_than*.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
+          out = fluid.layers.greater_than(x=label, y=limit)
+    """
+    helper = LayerHelper("greater_than", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    attrs = dict()
+    if force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
+    helper.append_op(
+        type='greater_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs=attrs)
+    return cond
+
+
+@templatedoc()
+def greater_equal(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x >= y` elementwise, which is equivalent to the overloaded operator `>=`.
+
+    Args:
+        x(Variable): First operand of *greater_equal*
+        y(Variable): Second operand of *greater_equal*
+        cond(Variable|None): Optional output variable to store the result of *greater_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *greater_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
+          out = fluid.layers.greater_equal(x=label, y=limit)
+
+    """
+    helper = LayerHelper("greater_equal", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    attrs = dict()
+    if force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
+    helper.append_op(
+        type='greater_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs=attrs)
+    return cond
+
+
+def equal(x, y, cond=None):
+    """
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:
@@ -1048,6 +1159,9 @@ def equal(x, y, cond=None, **ignored):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          label = fluid.layers.data(name="label", shape=[3,10,32,32], dtype="float32")
+          limit = fluid.layers.data(name="limit", shape=[3,10,32,32], dtype="float32")
           less = fluid.layers.equal(x=label, y=limit)
     """
     helper = LayerHelper("equal", **locals())
@@ -1058,6 +1172,38 @@ def equal(x, y, cond=None, **ignored):
     helper.append_op(
         type='equal', inputs={'X': [x],
                               'Y': [y]}, outputs={'Out': [cond]})
+    return cond
+
+
+def not_equal(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x != y` elementwise, which is equivalent to the overloader operator `!=`.
+
+    Args:
+        x(Variable): First operand of *not_equal*
+        y(Variable): Second operand of *not_equal*
+        cond(Variable|None): Optional output variable to store the result of *not_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *not_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
+          out = fluid.layers.not_equal(x=label, y=limit)
+    """
+    helper = LayerHelper("not_equal", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='not_equal', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [cond]})
     return cond
 
 
@@ -1090,9 +1236,10 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          import paddle.fluid as fluid
+          array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_read(tmp, i=i)
+          item = fluid.layers.array_read(array, i)
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
@@ -1164,6 +1311,7 @@ def array_length(array):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tmp = fluid.layers.zeros(shape=[10], dtype='int32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
           arr = fluid.layers.array_write(tmp, i=i)
@@ -1216,6 +1364,7 @@ class ConditionalBlock(object):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              cond = layers.less_than(x=label, y=limit)
              true_image, false_image = layers.split_lod_tensor(
                  input=image, mask=cond)
@@ -1262,10 +1411,11 @@ class ConditionalBlock(object):
             if each_name not in input_set
         ]
 
-        out_list = [
-            parent_block.var(var_name) for var_name in parent_block.vars
-            if var_name in intermediate
-        ]
+        out_list = []
+        for inner_out_name in intermediate:
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_list.append(inner_var)
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -1300,23 +1450,30 @@ class Switch(object):
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid as fluid
 
-            lr = fluid.layers.tensor.create_global_var(
+            lr = fluid.layers.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype='float32',
                 persistable=True,
                 name="learning_rate")
-            one_var = tensor.fill_constant(
+            zero_var = fluid.layers.fill_constant(
+                 shape=[1], dtype='float32', value=0.0)
+            one_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
-            two_var = tensor.fill_constant(
-                shape=[1], dtype='float32', value=2.0)
+            two_var = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=2.0) 
+
+            global_step = fluid.layers.autoincreased_step_counter(
+                   counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.tensor.assign(input=one_var, output=lr)
+                    fluid.layers.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.tensor.assign(input=two_var, output=lr)
+                    fluid.layers.assign(input=two_var, output=lr)
 
     """
 
@@ -1326,8 +1483,6 @@ class Switch(object):
         self.pre_not_conditions = []
 
     def case(self, condition):
-        """create a new block for this condition
-        """
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
 
@@ -1349,9 +1504,6 @@ class Switch(object):
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
-        """
-        create a default case for this switch
-        """
         pre_cond_num = len(self.pre_not_conditions)
         if pre_cond_num == 0:
             raise ValueError("there should be at least one condition")
@@ -1420,8 +1572,12 @@ class IfElse(object):
     Examples:
           .. code-block:: python
 
+            import paddle.fluid as fluid
+
+            image = fluid.layers.data(name="X", shape=[2, 5, 5], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             limit = fluid.layers.fill_constant_batch_size_like(
-                input=label, dtype='int64', shape=[1], value=5.0)
+                 input=label, dtype='int64', shape=[1], value=5.0)
             cond = fluid.layers.less_than(x=label, y=limit)
             ie = fluid.layers.IfElse(cond)
             with ie.true_block():
@@ -1459,11 +1615,13 @@ class IfElse(object):
         if id(x) not in self.input_table:
             parent_block = self._parent_block()
             out_true = parent_block.create_var(
-                name=unique_name.generate('ifelse_input' + self.helper.name),
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
                 dtype=x.dtype)
 
             out_false = parent_block.create_var(
-                name=unique_name.generate('ifelse_input' + self.helper.name),
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
                 dtype=x.dtype)
             parent_block.append_op(
                 type='split_lod_tensor',
@@ -1505,7 +1663,7 @@ class IfElse(object):
                 raise TypeError("Each output should be a variable")
             # create outside tensor
             outside_out = parent_block.create_var(
-                name=unique_name.generate("_".join(
+                name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, 'output'])),
                 dtype=each_out.dtype)
             out_table.append(outside_out)
@@ -1545,23 +1703,7 @@ class DynamicRNN(object):
     sample sequence can be different. This API automatically process them in
     batch.
 
-    The input lod must be set. Please reference `lod_tensor`
-
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name='sentence', dtype='int64', lod_level=1)
-    >>> embedding = fluid.layers.embedding(input=data, size=[65535, 32],
-    >>>                                    is_sparse=True)
-    >>>
-    >>> drnn = fluid.layers.DynamicRNN()
-    >>> with drnn.block():
-    >>>     word = drnn.step_input(embedding)
-    >>>     prev = drnn.memory(shape=[200])
-    >>>     hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
-    >>>     drnn.update_memory(prev, hidden)  # set prev to hidden
-    >>>     drnn.output(hidden)
-    >>>
-    >>> # last is the last time step of rnn. It is the encoding result.
-    >>> last = fluid.layers.sequence_last_step(drnn())
+    The input lod must be set. Please reference to `lod_tensor`.
 
     The dynamic RNN will unfold sequence into timesteps. Users need to define
     how to process each time step during the :code:`with` block.
@@ -1571,10 +1713,30 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
-    
+
     NOTES:
         Currently it is not supported that setting is_sparse to True of any 
         layers within DynamicRNN.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
+          embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
+    
+          drnn = fluid.layers.DynamicRNN()
+          with drnn.block():
+              word = drnn.step_input(embedding)
+              prev = drnn.memory(shape=[200])
+              hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
+              drnn.update_memory(prev, hidden)  # set prev to hidden
+              drnn.output(hidden)
+
+          # Get the last time step of rnn. It is the encoding result.
+          rnn_output = drnn()
+          last = fluid.layers.sequence_last_step(rnn_output)
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1596,15 +1758,16 @@ class DynamicRNN(object):
         self.input_array = []
         self.mem_link = []
 
-    def step_input(self, x):
+    def step_input(self, x, level=0):
         """
         Mark a sequence as a dynamic RNN input.
+
         Args:
-            x(Variable): The input sequence.
+            x (Variable): The input sequence which should have lod information.
+            level (int): The level of lod used to split steps. Default: 0.
 
         Returns:
             The current timestep in the input sequence.
-
         """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
@@ -1619,7 +1782,8 @@ class DynamicRNN(object):
             parent_block.append_op(
                 type='lod_rank_table',
                 inputs={"X": x},
-                outputs={"Out": self.lod_rank_table})
+                outputs={"Out": self.lod_rank_table},
+                attrs={"level": level})
             self.max_seq_len = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_max_seq_len'),
                 dtype='int64')
@@ -1651,12 +1815,37 @@ class DynamicRNN(object):
     def static_input(self, x):
         """
         Mark a variable as a RNN input. The input will not be scattered into
-        time steps.
+        time steps. It is optional.
+
         Args:
-            x(Variable): The input variable.
+            x (Variable): The input variable.
 
         Returns:
             The input variable that can access in RNN.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+
+              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
+              encoder_proj = fluid.layers.data(name='encoder_proj', dtype='float32', shape=[32], lod_level=1)
+              decoder_boot = fluid.layers.data(name='boot', dtype='float32', shape=[10], lod_level=1)
+
+              drnn = fluid.layers.DynamicRNN()
+              with drnn.block():
+                  current_word = drnn.step_input(sentence)
+                  encoder_word = drnn.static_input(encoder_proj)
+                  hidden_mem = drnn.memory(init=decoder_boot, need_reorder=True)
+                  fc_1 = fluid.layers.fc(input=encoder_word, size=30, bias_attr=False)
+                  fc_2 = fluid.layers.fc(input=current_word, size=30, bias_attr=False)
+                  decoder_inputs = fc_1 + fc_2
+                  h, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=hidden_mem, size=30)
+                  drnn.update_memory(hidden_mem, h)
+                  out = fluid.layers.fc(input=h, size=10, bias_attr=True, act='softmax') 
+                  drnn.output(out)
+
+              rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
         if not isinstance(x, Variable):
@@ -1677,11 +1866,10 @@ class DynamicRNN(object):
             outputs={'Out': [x_reordered]})
         return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def block(self):
         """
-        The block for user to define operators in RNN. See the class docstring
-        for more details.
+        The block for user to define operators in RNN.
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
@@ -1734,61 +1922,55 @@ class DynamicRNN(object):
         the input variable. It should be set to true when the initialized memory
         depends on the input sample.
 
-        For example,
+        Examples:
+            .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> sentence = fluid.layers.data(
-        >>>                 name='sentence', dtype='float32', shape=[32])
-        >>> boot_memory = fluid.layers.data(
-        >>>                 name='boot', dtype='float32', shape=[10])
-        >>>
-        >>> drnn = fluid.layers.DynamicRNN()
-        >>> with drnn.block():
-        >>>     word = drnn.step_input(sentence)
-        >>>     memory = drnn.memory(init=boot_memory, need_reorder=True)
-        >>>     hidden = fluid.layers.fc(
-        >>>                 input=[word, memory], size=10, act='tanh')
-        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
-        >>>     drnn.output(hidden)
-        >>> rnn_output = drnn()
+              import paddle.fluid as fluid
+
+              sentence = fluid.layers.data(name='sentence', shape=[32], dtype='float32', lod_level=1)
+              boot_memory = fluid.layers.data(name='boot', shape=[10], dtype='float32', lod_level=1)
+              
+              drnn = fluid.layers.DynamicRNN()
+              with drnn.block():
+                  word = drnn.step_input(sentence)
+                  memory = drnn.memory(init=boot_memory, need_reorder=True)
+                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                  drnn.output(hidden)
+
+              rnn_output = drnn()
 
 
         Otherwise, if :code:`shape`, :code:`value`, :code:`dtype` are set, the
         :code:`memory` will be initialized by this :code:`value`.
 
-        For example,
+        Examples:
+            .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> sentence = fluid.layers.data(
-        >>>                 name='sentence', dtype='float32', shape=[32])
-        >>>
-        >>> drnn = fluid.layers.DynamicRNN()
-        >>> with drnn.block():
-        >>>     word = drnn.step_input(sentence)
-        >>>     memory = drnn.memory(shape=[10], dtype='float32', value=0)
-        >>>     hidden = fluid.layers.fc(
-        >>>             input=[word, memory], size=10, act='tanh')
-        >>>     drnn.update_memory(ex_mem=memory, new_mem=hidden)
-        >>>     drnn.output(hidden)
-        >>> rnn_output = drnn()
+              import paddle.fluid as fluid
+
+              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
+              
+              drnn = fluid.layers.DynamicRNN()
+              with drnn.block():
+                  word = drnn.step_input(sentence)
+                  memory = drnn.memory(shape=[10], dtype='float32', value=0)
+                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                  drnn.output(hidden)
+
+              rnn_output = drnn()
 
 
         Args:
             init(Variable|None): The initialized variable.
-
-            shape(list|tuple): The memory shape. NOTE the shape does not contain
-            batch_size.
-
+            shape(list|tuple): The memory shape. The shape does not contain batch_size.
             value(float): the initalized value.
-
-            need_reorder(bool): True if the initialized memory depends on the
-            input sample.
-
+            need_reorder(bool): True if the initialized memory depends on the input sample.
             dtype(str|numpy.dtype): The data type of the initialized memory.
 
         Returns:
-            the memory variable.
-
+            The memory variable.
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
@@ -1861,6 +2043,7 @@ class DynamicRNN(object):
         """
         Update the memory from ex_mem to new_mem. NOTE that the shape and data
         type of :code:`ex_mem` and :code:`new_mem` must be same.
+        
         Args:
             ex_mem(Variable): the memory variable.
             new_mem(Variable): the plain variable generated in RNN block.
@@ -1886,7 +2069,7 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        mark the RNN output variables.
+        Mark the RNN output variables.
 
         Args:
             outputs: The output variables.
@@ -1898,7 +2081,7 @@ class DynamicRNN(object):
         parent_block = self._parent_block_()
         for each in outputs:
             outside_array = parent_block.create_var(
-                name=unique_name.generate("_".join(
+                name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, "output_array", each.name])),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=each.dtype)
@@ -1935,8 +2118,31 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc()
+@templatedoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
+    """
+    ${comment}
+
+    Args:
+    
+        x(${x_type}): ${x_comment}
+        rank_table(${rank_table_type}): ${rank_table_type}
+    
+    Returns:
+        out(${out_type}): ${out_comment} 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data_desc = (['input', [9], 0], ['ref', [5], 1])
+          data = fluid.layers.data(name=data_desc[0][0], shape=data_desc[0][1])
+          rank_data = fluid.layers.data(name=data_desc[1][0], shape=data_desc[1][1])
+          table = fluid.layers.control_flow.lod_rank_table(rank_data)
+          new_data = fluid.layers.reorder_lod_tensor_by_rank(
+                           x=data, rank_table=table)
+
+    """
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
@@ -1950,7 +2156,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     return out
 
 
-def is_empty(x, cond=None, **ignored):
+def is_empty(x, cond=None):
     """
     Test whether a Variable is empty.
 
@@ -1969,9 +2175,12 @@ def is_empty(x, cond=None, **ignored):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+          input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
           res = fluid.layers.is_empty(x=input)
           # or:
-          fluid.layers.is_empty(x=input, cond=res)
+          # fluid.layers.is_empty(x=input, cond=res)
+
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:

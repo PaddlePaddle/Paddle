@@ -21,7 +21,7 @@ function(CheckCompilerCXX11Flag)
             if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.3)
                 message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.3 required.")
             endif()
-        endif()   
+        endif()
     endif()
 endfunction()
 
@@ -129,6 +129,9 @@ set(COMMON_FLAGS
     -Wno-error=parentheses-equality # Warnings in pybind11
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
+    -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
+    -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
 )
 
 set(GPU_COMMON_FLAGS
@@ -144,19 +147,12 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-
-else(NOT WIN32)
-set(COMMON_FLAGS
-    "/w") #disable all warnings.
-set(GPU_COMMON_FLAGS
-    "/w") #disable all warnings
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif(NOT WIN32)
 
 if (APPLE)
-    if(NOT CMAKE_CROSSCOMPILING)
-        # On Mac OS X build fat binaries with x86_64 architectures by default.
-        set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
-    endif()
+    # On Mac OS X build fat binaries with x86_64 architectures by default.
+    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
     # On Mac OS X register class specifier is deprecated and will cause warning error on latest clang 10.0
     set (COMMON_FLAGS -Wno-deprecated-register)
 endif(APPLE)
@@ -192,8 +188,7 @@ safe_set_static_flag()
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "/W3")
-        string(REGEX REPLACE "/W3" "/w" ${flag_var} "${${flag_var}}")
-      endif(${flag_var} MATCHES "/W3")
+        string(REGEX REPLACE "(^| )/W[0-9]( |$)" " " ${flag_var} "${${flag_var}}")
+        set(flag_var "${flag_var} /w")
     endforeach(flag_var)
 endif(WIN32)

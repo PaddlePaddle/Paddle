@@ -64,7 +64,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
       output->mutable_data<T>(context.GetPlace());
     } else {
       PADDLE_THROW("Unexpected branch, input variable type is %s",
-                   in_var->Type().name());
+                   framework::ToTypeName(in_var->Type()));
     }
 
     PADDLE_ENFORCE_NOT_NULL(input);
@@ -80,6 +80,60 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     Eigen::array<int, 1> one_dim{{1}};
     Eigen::DSizes<int, 1> m_dsize(input->numel());
     out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+  }
+};
+
+class ClipByNormOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ClipByNormOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ClipByNormOp should not be null.");
+    auto max_norm = ctx->Attrs().Get<float>("max_norm");
+    PADDLE_ENFORCE_GT(max_norm, 0, "max_norm should be greater than 0.");
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "(Tensor) The input of clip_by_norm op."
+             "The number of dimensions must be between [1, 9].");
+    AddOutput("Out",
+              "(Tensor) The output of clip_by_norm op with shape as input(X)");
+    AddAttr<float>("max_norm", "(float) The maximum norm value.");
+    AddComment(R"DOC(
+ClipByNorm Operator.
+
+This operator limits the L2 norm of the input $X$ within $max\_norm$.
+If the L2 norm of $X$ is less than or equal to $max\_norm$, $Out$ will be
+the same as $X$. If the L2 norm of $X$ is greater than $max\_norm$, $X$ will
+be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
+shown in the following formula:
+
+$$
+Out = \\frac{max\\_norm * X}{norm(X)},
+$$
+
+where $norm(X)$ represents the L2 norm of $X$.
+
+Examples:
+        .. code-block:: python
+
+            data = fluid.layer.data(
+                name='data', shape=[2, 4, 6], dtype='float32')
+            reshaped = fluid.layers.clip_by_norm(
+                x=data, max_norm=0.5)
+
+)DOC");
   }
 };
 

@@ -14,10 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/jit_kernel.h"
-
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {
@@ -32,22 +30,22 @@ inline void FCCompute(const BlasT<DeviceContext, T>& blas, const int M,
     return;
   }
   if (relu) {
-    const auto& vaddrelu = jitkernel::KernelPool::Instance()
-                               .template Get<jitkernel::VAddReluKernel<T>>(N);
+    auto compute =
+        jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
+            N);
     for (int i = 0; i < M; i++) {
       T* dst = Y + i * N;
-      vaddrelu->Compute(B, dst, dst);
+      compute(B, dst, dst, N);
     }
   } else {
-    const auto& vadd = jitkernel::KernelPool::Instance()
-                           .template Get<jitkernel::VAddKernel<T>>(N);
-
+    auto compute =
+        jit::KernelFuncs<jit::VAddTuple<T>, platform::CPUPlace>::Cache().At(N);
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
+#pragma omp parallel for
 #endif
     for (int i = 0; i < M; i++) {
       T* dst = Y + i * N;
-      vadd->Compute(B, dst, dst);
+      compute(B, dst, dst, N);
     }
   }
 }

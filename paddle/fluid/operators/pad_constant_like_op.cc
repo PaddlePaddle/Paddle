@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pad_constant_like_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -38,8 +39,16 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
                       "The dimention of X and Y should be the same.");
 
     for (int i = 0; i < x_dim.size(); ++i) {
-      PADDLE_ENFORCE_GE(x_dim[i], y_dim[i]);
+      if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
+        continue;
+      } else {
+        PADDLE_ENFORCE_GE(
+            x_dim[i], y_dim[i],
+            "expected X_dim[i] >= Y_dim[i], but received %d < %d for dim %d",
+            x_dim[i], y_dim[i], i);
+      }
     }
+
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -47,9 +56,8 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Y")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Y")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -74,7 +82,7 @@ PadConstantLikeOp Operator.
 
 Pad input(Y) with a pad_value, the number of values padded to the edges of each
 axis is specified by the difference of the shape of X and Y.
-((0, shape_x_0 - shape_y_0), … (0, shape_x_n - shape_y_n)) unique pad widths for
+((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n)) unique pad widths for
 each axis.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
@@ -163,7 +171,14 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
       ctx->ShareLoD("Y", /*->*/ y_grad_name);
 
       for (int i = 0; i < y_dim.size(); ++i) {
-        PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i]);
+        if ((!ctx->IsRuntime()) && ((dout_dim[i] == -1) || (y_dim[i] == -1))) {
+          continue;
+        } else {
+          PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i],
+                            "expected Out_dim[i] >= Y_dim[i], but received %d "
+                            "< %d for dim %d",
+                            dout_dim[i], y_dim[i], i);
+        }
       }
     }
   }
@@ -171,9 +186,8 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Y")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Y")->type(),
+                                   ctx.device_context());
   }
 };
 

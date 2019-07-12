@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -84,7 +86,7 @@ TEST(GraphToProgramPass, Basic) {
 
   ProgramDesc compiled_prog;
   pass->SetNotOwned<paddle::framework::ProgramDesc>("program", &compiled_prog);
-  pass->Apply(std::move(g));
+  pass->Apply(g.get());
   std::vector<OpDesc*> ops = compiled_prog.Block(0).AllOps();
   EXPECT_EQ(ops[0]->Type(), "op1");
   EXPECT_EQ(ops[1]->Type(), "op2");

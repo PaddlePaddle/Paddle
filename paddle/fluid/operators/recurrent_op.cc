@@ -23,6 +23,7 @@ constexpr char kInitialStates[] = "initial_states";
 constexpr char kParameters[] = "parameters";
 constexpr char kOutputs[] = "outputs";
 constexpr char kStepScopes[] = "step_scopes";
+constexpr char kHasStates[] = "has_states";
 constexpr char kExStates[] = "ex_states";
 constexpr char kStates[] = "states";
 constexpr char kStepBlock[] = "sub_block";
@@ -35,6 +36,20 @@ constexpr char kParamGrads[] = "parameters" GRAD_SUFFIX;
 constexpr char kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
 
 using StepScopeVar = std::vector<framework::Scope *>;
+
+static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
+                            framework::Scope *parent_scope,
+                            StepScopeVar *step_scopes) {
+  if (step_scopes->empty()) return;
+
+  dev_ctx.Wait();
+
+  for (auto *sub_scope : *step_scopes) {
+    parent_scope->DeleteScope(sub_scope);
+  }
+
+  step_scopes->clear();
+}
 
 // StepScopes manages scopes inside RNN.
 //    StepScopes::CurScope() get the current scope
@@ -52,7 +67,8 @@ using StepScopeVar = std::vector<framework::Scope *>;
 //   access scopes from begin to end.
 class StepScopes {
  public:
-  StepScopes(const framework::Scope &parent, StepScopeVar *scopes,
+  StepScopes(const platform::DeviceContext &dev_ctx,
+             const framework::Scope &parent, StepScopeVar *scopes,
              bool is_train, size_t seq_len, bool is_backward = false)
       : counter_(is_backward ? seq_len - 1 : 0UL),
         scopes_(scopes),
@@ -62,7 +78,7 @@ class StepScopes {
     PADDLE_ENFORCE(is_train || !is_backward,
                    "Cannot backward when is not training");
     if (!is_backward_) {
-      PADDLE_ENFORCE(scopes->empty());
+      ClearStepScopes(dev_ctx, const_cast<framework::Scope *>(&parent), scopes);
       scopes->reserve(static_cast<size_t>(num_step_scopes));
       for (size_t i = 0; i < num_step_scopes; ++i) {
         scopes->emplace_back(&parent.NewScope());
@@ -157,11 +173,13 @@ class RecurrentBase : public framework::OperatorBase {
                                      const std::vector<std::string> &src_vars,
                                      framework::Scope *dst_scope,
                                      const std::vector<std::string> &dst_vars,
-                                     Callback callback) {
+                                     Callback callback,
+                                     bool is_backward = false) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
-      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
+      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
+                   is_backward);
     }
   }
 
@@ -173,11 +191,13 @@ class RecurrentBase : public framework::OperatorBase {
                                      const std::vector<std::string> &src_vars,
                                      const framework::Scope &dst_scope,
                                      const std::vector<std::string> &dst_vars,
-                                     Callback callback) {
+                                     Callback callback,
+                                     bool is_backward = false) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
-      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
+      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
+                   is_backward);
     }
   }
 
@@ -194,9 +214,13 @@ class RecurrentBase : public framework::OperatorBase {
   static void AccessTensor(const framework::Scope &src_scope,
                            const std::string &src_var_name,
                            framework::Scope *dst_scope,
-                           const std::string &dst_var_name, Callback callback) {
+                           const std::string &dst_var_name, Callback callback,
+                           bool is_backward = false) {
     auto *src_var = src_scope.FindVar(src_var_name);
-    PADDLE_ENFORCE(src_var != nullptr);
+    if (is_backward && src_var == nullptr) {
+      return;
+    }
+    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
 
     auto *dst_var = dst_scope->Var(dst_var_name);
@@ -208,12 +232,16 @@ class RecurrentBase : public framework::OperatorBase {
   static void AccessTensor(const framework::Scope &src_scope,
                            const std::string &src_var_name,
                            const framework::Scope &dst_scope,
-                           const std::string &dst_var_name, Callback callback) {
-    auto *src_var = src_scope.FindVar(src_var_name);
-    PADDLE_ENFORCE(src_var != nullptr);
-    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+                           const std::string &dst_var_name, Callback callback,
+                           bool is_backward = false) {
     auto *dst_var = dst_scope.FindVar(dst_var_name);
-    PADDLE_ENFORCE(dst_var != nullptr);
+    if (is_backward && dst_var == nullptr) {
+      return;
+    }
+    auto *src_var = src_scope.FindVar(src_var_name);
+    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+    PADDLE_ENFORCE(dst_var != nullptr, "%s is not found.", dst_var_name);
     auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
     callback(src_tensor, dst_tensor);
   }
@@ -229,15 +257,24 @@ class RecurrentOp : public RecurrentBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    bool has_state = Attr<bool>(kHasStates);
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+
     VLOG(3) << "Static RNN input sequence length = " << seq_len;
-    StepScopes scopes = CreateStepScopes(scope, seq_len);
+    StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     auto *program = block->Program();
+    auto ctx = executor.Prepare(
+        *program, block->ID(), std::vector<std::string>() /*skip_ref_cnt_vars*/,
+        true /*force_disable_gc*/);
 
     for (size_t i = 0; i < seq_len; ++i) {
       size_t seq_offset = reverse ? seq_len - i - 1 : i;
@@ -257,25 +294,23 @@ class RecurrentOp : public RecurrentBase {
             inside->Resize(framework::make_ddim(dims));
           });
 
-      if (i == 0) {
-        // Link initial states  --> ex_states
-        LinkTensor(scope, Inputs(kInitialStates), &cur_scope,
-                   Attr<std::vector<std::string>>(kExStates));
-      } else {
-        auto &ex_scope = scopes.ExScope();
-        // Link ex_scope::state --> cur_scope::ex_state
-        LinkTensor(ex_scope, Attr<std::vector<std::string>>(kStates),
-                   &cur_scope, Attr<std::vector<std::string>>(kExStates));
+      if (has_state) {
+        if (i == 0) {
+          // Link initial states  --> ex_states
+          LinkTensor(scope, Inputs(kInitialStates), &cur_scope,
+                     Attr<std::vector<std::string>>(kExStates));
+        } else {
+          auto &ex_scope = scopes.ExScope();
+          // Link ex_scope::state --> cur_scope::ex_state
+          LinkTensor(ex_scope, Attr<std::vector<std::string>>(kStates),
+                     &cur_scope, Attr<std::vector<std::string>>(kExStates));
+        }
       }
 
       // Every inputs are linked now, execute!
-      executor.Run(*program, &cur_scope, block->ID(),
-                   false /*create_local_scope*/);
-
-      // get device context from pool
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(place);
+      executor.RunPreparedContext(ctx.get(), &cur_scope,
+                                  false /*create_local_scope*/,
+                                  true /*create_vars*/, true /* keep_kids */);
 
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
@@ -299,11 +334,12 @@ class RecurrentOp : public RecurrentBase {
   }
 
  private:
-  StepScopes CreateStepScopes(const framework::Scope &scope,
+  StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
+                              const framework::Scope &scope,
                               size_t seq_len) const {
     auto *var = scope.FindVar(Output(kStepScopes));
     PADDLE_ENFORCE(var != nullptr);
-    return StepScopes(scope, var->GetMutable<StepScopeVar>(),
+    return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
                       Attr<bool>(kIsTrain), seq_len);
   }
 };
@@ -319,23 +355,28 @@ class RecurrentGradOp : public RecurrentBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
-    StepScopes scopes = CreateStepScopes(scope, seq_len);
-    auto reverse = Attr<bool>(kReverse);
-
-    framework::Executor executor(place);
-    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
-
-    auto *program = block->Program();
+    bool has_state = Attr<bool>(kHasStates);
+    const size_t seq_len = static_cast<size_t>(GetSequenceLength(scope));
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
+    StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
+    auto reverse = Attr<bool>(kReverse);
+
+    framework::Executor executor(place);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+    auto *program = block->Program();
+    auto ctx = executor.Prepare(
+        *program, block->ID(), std::vector<std::string>() /*skip_ref_cnt_vars*/,
+        true /*force_disable_gc*/);
+
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
       VLOG(3) << "Recurrent backward operate at the time step " << seq_offset;
       auto &cur_scope = scopes.CurScope();
+
       // Link outside::output_grads --> inside::output_grads
       //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
       LinkTensorWithCallback(
@@ -345,7 +386,8 @@ class RecurrentGradOp : public RecurrentBase {
             auto dims = framework::vectorize(inside->dims());
             dims.erase(dims.begin());
             inside->Resize(framework::make_ddim(dims));
-          });
+          },
+          true /*is_backward*/);
       auto og_set = List2Set(Inputs(kOutputGrads));
 
       if (VLOG_IS_ON(10)) {
@@ -355,37 +397,40 @@ class RecurrentGradOp : public RecurrentBase {
         VLOG(10) << " RNN output gradients = [" << sout.str() << "]";
       }
 
-      // Link states
-      //   if cur_scope::cur_state_grad in out_grads:
-      //     cur_scope::cur_state_grad += ex_scope::ex_state_grad
-      //   else:
-      //     ex_scope::ex_state_grad --> cur_scope::cur_state_grad
-      if (step_id != 0) {  // not at beginning
-        auto &ex_scope = scopes.ExScope();
-        auto ex_state_grads =
-            GradVarLists(Attr<std::vector<std::string>>(kExStates));
-        auto cur_state_grads =
-            GradVarLists(Attr<std::vector<std::string>>(kStates));
+      if (has_state) {
+        // Link states
+        //   if cur_scope::cur_state_grad in out_grads:
+        //     cur_scope::cur_state_grad += ex_scope::ex_state_grad
+        //   else:
+        //     ex_scope::ex_state_grad --> cur_scope::cur_state_grad
+        if (step_id != 0) {  // not at beginning
+          auto &ex_scope = scopes.ExScope();
+          auto ex_state_grads =
+              GradVarLists(Attr<std::vector<std::string>>(kExStates));
+          auto cur_state_grads =
+              GradVarLists(Attr<std::vector<std::string>>(kStates));
 
-        PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size());
-        for (size_t i = 0; i < ex_state_grads.size(); ++i) {
-          auto &cur_grad = cur_state_grads[i];
-          auto &ex_grad = ex_state_grads[i];
-          auto &ex_tensor =
-              ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
+          PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size());
+          for (size_t i = 0; i < ex_state_grads.size(); ++i) {
+            auto &cur_grad = cur_state_grads[i];
+            auto &ex_grad = ex_state_grads[i];
+            auto &ex_tensor =
+                ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
 
-          VLOG(10) << " RNN link " << cur_grad << " from " << ex_grad;
-          auto *cur_grad_var = cur_scope.Var(cur_grad);
-          auto cur_grad_tensor =
-              cur_grad_var->GetMutable<framework::LoDTensor>();
-          framework::TensorCopy(ex_tensor, place, dev_ctx, cur_grad_tensor);
+            VLOG(10) << " RNN link " << cur_grad << " from " << ex_grad;
+            auto *cur_grad_var = cur_scope.Var(cur_grad);
+            auto cur_grad_tensor =
+                cur_grad_var->GetMutable<framework::LoDTensor>();
+            framework::TensorCopy(ex_tensor, place, dev_ctx, cur_grad_tensor);
+          }
         }
       }
 
       VLOG(5) << "Recurrent memory linking finished ";
       // Run step block with cur_scope
-      executor.Run(*program, &cur_scope, block->ID(),
-                   false /*create_local_scope*/);
+      executor.RunPreparedContext(ctx.get(), &cur_scope,
+                                  false /*create_local_scope*/,
+                                  true /*create_vars*/, true /* keep_kids */);
 
       VLOG(5) << "executor.Run finished ";
 
@@ -414,7 +459,7 @@ class RecurrentGradOp : public RecurrentBase {
             auto &inside_tensor = cur_scope.FindVar(inside_grad_name)
                                       ->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["dtype"] = framework::ToDataType(inside_tensor.type());
+            attrs["dtype"] = inside_tensor.type();
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
@@ -425,8 +470,8 @@ class RecurrentGradOp : public RecurrentBase {
           }
 
           auto new_inside_name = cur_scope.Rename(inside_grad_name);
-          // sum gradient
 
+          // sum gradient
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
               {{"Out", {pg_names[param_id]}}},
@@ -454,32 +499,44 @@ class RecurrentGradOp : public RecurrentBase {
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(inside, place, dev_ctx, &dst);
-          });
+          },
+          true /*is_backward*/);
       VLOG(5) << "Link outside gradient finished ";
 
-      if (step_id + 1 == seq_len) {  // at_end
-        // copy initialize states gradient from inside to outside
-        LinkTensorWithCallback(
-            cur_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
-            scope, Outputs(kInitStateGrads),
-            [&](const framework::LoDTensor &inside,
-                framework::LoDTensor *outside) {
-              outside->Resize(inside.dims());
-              outside->mutable_data(place, inside.type());
-              framework::TensorCopy(inside, place, dev_ctx, outside);
-            });
-        VLOG(5) << "Link initialize state gradient finished ";
+      if (has_state) {
+        if (step_id + 1 == seq_len) {  // at_end
+          // copy initialize states gradient from inside to outside
+          LinkTensorWithCallback(
+              cur_scope,
+              GradVarLists(Attr<std::vector<std::string>>(kExStates)), scope,
+              Outputs(kInitStateGrads),
+              [&](const framework::LoDTensor &inside,
+                  framework::LoDTensor *outside) {
+                outside->Resize(inside.dims());
+                outside->mutable_data(place, inside.type());
+                framework::TensorCopy(inside, place, dev_ctx, outside);
+              },
+              true /*is_backward*/);
+          VLOG(5) << "Link initialize state gradient finished ";
+        }
       }
       scopes.Next();
     }
+    // Delete the scope of StepScopes
+    auto *var = scope.FindVar(Input(kStepScopes));
+    PADDLE_ENFORCE(var != nullptr);
+    auto *step_scopes = var->GetMutable<StepScopeVar>();
+    ClearStepScopes(dev_ctx, const_cast<framework::Scope *>(&scope),
+                    step_scopes);
   }
 
  private:
-  StepScopes CreateStepScopes(const framework::Scope &scope,
+  StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
+                              const framework::Scope &scope,
                               size_t seq_len) const {
     auto *var = scope.FindVar(Input(kStepScopes));
     PADDLE_ENFORCE(var != nullptr);
-    return StepScopes(scope, var->GetMutable<StepScopeVar>(),
+    return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
                       Attr<bool>(kIsTrain), seq_len, true /*is_backward*/);
   }
 
@@ -522,6 +579,7 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput(kStepScopes,
               "StepScopes contain all local variables in each time step.");
+    AddAttr<bool>(kHasStates, "Whether has states.").SetDefault(false);
     AddAttr<std::vector<std::string>>(kExStates,
                                       string::Sprintf(
                                           R"DOC(The ex-state variable names.
@@ -605,22 +663,44 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
 class RecurrentGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    std::vector<std::string> input{kInputs, kInitialStates};
     std::vector<std::string> output{kOutputs};
-    for (auto &s : input) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
-                     "Cannot find the gradient variable %s",
-                     framework::GradVarName(s));
+
+    // In some case the kInitialStates is empty.
+    // If the kInitialStates is empty, all the states should be empty.
+    if (!ctx->HasInputs(kInitialStates)) {
+      PADDLE_ENFORCE_EQ(
+          ctx->Attrs().Get<std::vector<std::string>>(kExStates).size(), 0,
+          "The Attr(%s) should be empty.", kExStates);
+      PADDLE_ENFORCE_EQ(
+          ctx->Attrs().Get<std::vector<std::string>>(kStates).size(), 0,
+          "The Attr(%s) should be empty.", kStates);
     }
-    for (auto &s : output) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
+
+    PADDLE_ENFORCE(ctx->HasInputs(kInputs),
+                   "The input(%s) should not be empty.", kInputs);
+    PADDLE_ENFORCE(ctx->HasInputs(kOutputs),
+                   "The input(%s) should not be empty.", kOutputs);
+
+    // In some case the kInitialStates is empty.
+    if (ctx->HasInputs(kInitialStates)) {
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kInitialStates)),
+                     "The output of(%s) should not be empty.",
+                     framework::GradVarName(kInitialStates));
+      ctx->SetOutputsDim(framework::GradVarName(kInitialStates),
+                         ctx->GetInputsDim(kInitialStates));
     }
-    for (auto &s : input) {
-      ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
-    }
+
+    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kInputs)),
+                   "The output of(%s) should not be empty.",
+                   framework::GradVarName(kInputs));
+    ctx->SetOutputsDim(framework::GradVarName(kInputs),
+                       ctx->GetInputsDim(kInputs));
+
+    // In some case the kParameters is empty.
     if (ctx->HasInputs(kParameters)) {
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)),
+                     "The output of(%s) should not be empty.",
+                     framework::GradVarName(kParameters));
       ctx->SetOutputsDim(framework::GradVarName(kParameters),
                          ctx->GetInputsDim(kParameters));
     }

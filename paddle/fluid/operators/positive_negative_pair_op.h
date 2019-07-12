@@ -14,7 +14,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 namespace operators {

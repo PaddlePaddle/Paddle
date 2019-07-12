@@ -66,9 +66,10 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
           x_lod.empty() ? max_seq_len : x_lod[0][i + 1] - x_lod[0][i];
       for (int j = 0; j < max_length; ++j) {
         for (int k = 0; k < half_size; ++k) {
-          const double val = (half_size > 1)
-                                 ? j / pow(10000.0, double(k) / (half_size - 1))
-                                 : j / 10000.0;
+          const double val =
+              (half_size > 1)
+                  ? j / pow(10000.0, static_cast<double>(k) / (half_size - 1))
+                  : j / 10000.0;
           dst_ptr[k] = src_ptr[k] * alpha + sin(val) * beta;
           dst_ptr[half_size + k] =
               src_ptr[half_size + k] * alpha + cos(val) * beta;

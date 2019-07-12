@@ -24,15 +24,37 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext &context,
                       GRUMetaValue<T> value, int frame_size, int batch_size,
                       const detail::ActivationType active_node,
-                      const detail::ActivationType active_gate) {
+                      const detail::ActivationType active_gate,
+                      bool origin_mode) {
     auto stream = context.stream();
     dim3 threads;
     dim3 grid;
     if (batch_size == 1) {
-      int frame_per_block = frame_size <= 1024 ? frame_size : 1024;
-      int frame_blocks = (frame_size + 1024 - 1) / 1024;
-      threads = dim3(frame_per_block, 1);
-      grid = dim3(frame_blocks, 1);
+      if (context.GetComputeCapability() >= 70) {
+        constexpr int tiled_size = 16;
+        int frame_blocks = (frame_size * 2 + tiled_size - 1) / tiled_size;
+        threads = dim3(tiled_size, 1);
+        grid = dim3(frame_blocks, 1);
+        detail::KeFastCollectiveGruGate<
+            T, tiled_size><<<grid, threads, 0, stream>>>(
+            value.gate_value, value.prev_out_value, value.gate_weight,
+            value.reset_output_value, frame_size, active_gate);
+
+        frame_blocks = (frame_size + tiled_size - 1) / tiled_size;
+        grid = dim3(frame_blocks, 1);
+        detail::KeFastCollectiveGruOut<
+            T, tiled_size><<<grid, threads, 0, stream>>>(
+            value.state_weight, value.prev_out_value, value.output_value,
+            value.gate_value, value.reset_output_value, frame_size, active_node,
+            origin_mode);
+
+        return;
+      } else {
+        int frame_per_block = frame_size <= 1024 ? frame_size : 1024;
+        int frame_blocks = (frame_size + 1024 - 1) / 1024;
+        threads = dim3(frame_per_block, 1);
+        grid = dim3(frame_blocks, 1);
+      }
     } else {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
@@ -73,14 +95,14 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
                                       T><<<grid, threads, 0, stream>>>(
           detail::forward::gru_finalOutput<T>(), value.gate_value,
           value.prev_out_value, value.output_value, frame_size, batch_size,
-          active_node);
+          active_node, origin_mode);
     } else {
       detail::KeGruForwardFinalOutput<detail::forward::gru_finalOutput<T>,
                                       /* is_batch= */ true,
                                       T><<<grid, threads, 0, stream>>>(
           detail::forward::gru_finalOutput<T>(), value.gate_value,
           value.prev_out_value, value.output_value, frame_size, batch_size,
-          active_node);
+          active_node, origin_mode);
     }
   }
 };
@@ -91,7 +113,8 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
                       GRUMetaValue<T> value, GRUMetaGrad<T> grad,
                       int frame_size, int batch_size,
                       const detail::ActivationType active_node,
-                      const detail::ActivationType active_gate) {
+                      const detail::ActivationType active_gate,
+                      bool origin_mode) {
     auto stream = context.stream();
     dim3 threads;
     dim3 grid;
@@ -111,14 +134,14 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
           /* is_batch= */ false><<<grid, threads, 0, stream>>>(
           detail::backward::gru_stateGrad<T>(), value.gate_value,
           grad.gate_grad, value.prev_out_value, grad.prev_out_grad,
-          grad.output_grad, frame_size, batch_size, active_node);
+          grad.output_grad, frame_size, batch_size, active_node, origin_mode);
     } else {
       detail::KeGruBackwardStateGrad<
           detail::backward::gru_stateGrad<T>,
           /* is_batch= */ true><<<grid, threads, 0, stream>>>(
           detail::backward::gru_stateGrad<T>(), value.gate_value,
           grad.gate_grad, value.prev_out_value, grad.prev_out_grad,
-          grad.output_grad, frame_size, batch_size, active_node);
+          grad.output_grad, frame_size, batch_size, active_node, origin_mode);
     }
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);

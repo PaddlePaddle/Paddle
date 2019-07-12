@@ -14,16 +14,18 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -57,6 +59,8 @@ struct BuildStrategy {
   enum class GradientScaleStrategy {
     kCoeffNumDevice = 0,
     kOne = 1,
+    // user can customize gradient scale to use, and just feed
+    // it into exe.run().
     kCustomized = 2,
   };
 
@@ -65,38 +69,118 @@ struct BuildStrategy {
 
   std::string debug_graphviz_path_{""};
 
-  bool fuse_elewise_add_act_ops_{false};
-
-  bool enable_data_balance_{false};
-
+  // Add dependency between backward ops and optimization ops, make sure that
+  // all the backward ops are finished before running the optimization ops.
+  // It might make the training speed of data parallelism faster.
+  bool enable_backward_optimizer_op_deps_{true};
+  // TODO(dev-paddle): enable_sequential_execution depends on
+  // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
+  // will be removed in the near future.
   bool enable_sequential_execution_{false};
+  bool remove_unnecessary_lock_{true};
+  // TODO(dev-paddle): cache_runtime_context may cause some models to hang up
+  // while running.
+  bool cache_runtime_context_{false};
 
-  bool fuse_broadcast_op_{false};
+  // Operator fusion
+  // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
+  // cycle.
+  bool fuse_elewise_add_act_ops_{false};
+  // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
+  // should not be sparse types
+  bool fuse_all_optimizer_ops_{false};
+  bool fuse_all_reduce_ops_{false};
+  // fuse_relu_depthwise_conv can fuse the `relu ->
+  // depthwise_conv`
+  bool fuse_relu_depthwise_conv_{false};
+  // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program
+  // faster. Because fusing broadcast OP equals delaying the execution of all
+  // broadcast Ops, in this case, all nccl streams are used only for reduce
+  // operations for a period of time.
+  bool fuse_broadcast_ops_{false};
+  // replace batch_norm with sync_batch_norm.
+  bool sync_batch_norm_{false};
 
-  bool remove_unnecessary_lock_{false};
+  // mkldnn_enabled_op_types specify the operator type list to
+  // use MKLDNN acceleration. It is null in default, means
+  // that all the operators supported by MKLDNN will be
+  // accelerated. And it should not be set when
+  // FLAGS_use_mkldnn=false
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+
+  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
+  // to open them by default, we need to solve the fetch variable issue
+  // TODO(liuwei1031): memory_optimize depends on kStaleProgramOpDescs,
+  // it is not appropriate, because kStaleProgramOpDescs will be removed in the
+  // near future.
+  bool memory_optimize_{false};
+
+  // Turn on inplace by default.
+  bool enable_inplace_{true};
+
+  // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
+  bool use_legacy_memory_optimize_strategy_{false};
+
+  // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
+  // num_trainers is 1, so the current fields of build_strategy doesn't tell if
+  // it's distributed model.
+  bool is_distribution_{false};
+  bool async_mode_{false};
+  int num_trainers_{1};
+  int trainer_id_{0};
+  std::vector<std::string> trainers_endpoints_;
+
+  // NCCL config
+  size_t nccl_comm_num_{1};
+  // The picture is here:
+  // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+  bool use_hierarchical_allreduce_{false};
+  // Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu
+  // cards' number in most cases.
+  size_t hierarchical_allreduce_inter_nranks_{0};
+  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to
+  // nodes number.
+  size_t hierarchical_allreduce_exter_nranks_{0};
+
+  // NOTE:
+  // Before you add new options, think if it's a general strategy that works
+  // with other strategy. If not, the strategy should be created through
+  // CreatePassesFromStrategy and the pass can be managed separately.
 
   // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
   // from python side.
   // A new PassBuilder is created based on configs defined above and
   // passes are owned by the PassBuilder.
-  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy() const;
+  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy(
+      bool finalize_strategy) const;
+
+  bool IsFinalized() const { return is_finalized_; }
+
+  bool IsMultiDevPass(const std::string &pass_name) const;
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(
-      const ProgramDesc &main_program,
-      const std::vector<platform::Place> &places,
-      const std::string &loss_var_name,
-      const std::unordered_set<std::string> &param_names,
-      const std::vector<Scope *> &local_scopes,
-#ifdef PADDLE_WITH_CUDA
-      const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const;
+  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+                   const std::string &loss_var_name,
+                   const std::vector<Scope *> &local_scopes,
+                   const size_t &nranks,
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+                   const bool use_cuda,
+                   platform::NCCLCommunicator *nccl_ctxs) const;
 #else
-      const bool use_cuda) const;
+                   const bool use_cuda) const;
 #endif
 
+  // If set true, ParallelExecutor would build the main_program into multiple
+  // graphs,
+  // each of the graphs would run with one device. This approach can achieve
+  // better performance
+  // on some scenarios.
+  mutable bool enable_parallel_graph_ = false;
+
  private:
+  mutable bool is_finalized_ = false;
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
 

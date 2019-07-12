@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/multiplex_op.h"
+#include <memory>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -53,9 +55,8 @@ class MultiplexOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.MultiInput<Tensor>("X")[0]->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -112,29 +113,47 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null.");
-    PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
-                   "Output(X@Grad) should not be null.");
+    auto& dxs = ctx->Outputs(framework::GradVarName("X"));
+    PADDLE_ENFORCE(!dxs.empty(), "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
-    ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
+    auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
+    ctx->SetOutputsDim(framework::GradVarName("X"),
+                       std::vector<framework::DDim>(dxs.size(), dout_dim));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
+  }
+};
+
+class MultiplexGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("multiplex_grad");
+    op->SetInput("Ids", Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<false>);
+                  ops::MultiplexGradDescMaker);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
     multiplex,

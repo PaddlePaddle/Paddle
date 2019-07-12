@@ -38,7 +38,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         rows = [0, 5, 7, 4, 20]
-        height = 20
+        height = 21
         row_numel = 2
 
         # initialize input variable X
@@ -63,6 +63,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         # expected output selected rows
         expected_out0_rows = [0, 4]
         expected_out1_rows = [0, 2]
+        expected_out2_rows = []
         expected_out4_rows = [0]
 
         op = Operator(
@@ -75,6 +76,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
 
         self.assertEqual(outs[0].rows(), expected_out0_rows)
         self.assertEqual(outs[1].rows(), expected_out1_rows)
+        self.assertEqual(outs[2].rows(), expected_out2_rows)
         self.assertEqual(outs[4].rows(), expected_out4_rows)
 
         self.assertEqual(outs[0].height(), height_sections[0])
@@ -83,6 +85,9 @@ class TestSpliteSelectedRows(unittest.TestCase):
         self.assertAlmostEqual(2.0, np.array(outs[0].get_tensor())[0, 0])
         self.assertAlmostEqual(4.0, np.array(outs[1].get_tensor())[1, 1])
         self.assertAlmostEqual(8.0, np.array(outs[4].get_tensor())[0, 1])
+
+        self.assertEqual(outs[2].numel(), 0)
+        self.assertEqual(outs[3].numel(), 0)
 
     def check_grad_with_place(self, place):
         scope = core.Scope()

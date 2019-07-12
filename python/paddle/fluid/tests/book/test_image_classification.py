@@ -239,7 +239,7 @@ def infer(use_cuda, save_dirname=None):
         assert len(results[0]) == len(transpiler_results[0])
         for i in range(len(results[0])):
             np.testing.assert_almost_equal(
-                results[0][i], transpiler_results[0][i], decimal=5)
+                results[0][i], transpiler_results[0][i], decimal=4)
 
         print("infer results: ", results[0])
 

@@ -20,18 +20,18 @@ namespace paddle {
 namespace framework {
 namespace details {
 ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
-                                         platform::Place place)
+                                         platform::Place place,
+                                         size_t scope_idx)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(*node->Op())),
       scope_(scope),
-      place_(place) {}
+      place_(place),
+      scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
-  auto run_func = [this]() {
-    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
-  };
+  auto run_func = [this]() { op_->Run(*local_exec_scopes_[0], place_); };
 
   if (is_lock_and_record_event_free_) {
     run_func();

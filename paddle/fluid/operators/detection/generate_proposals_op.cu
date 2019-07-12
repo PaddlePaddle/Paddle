@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -67,17 +68,14 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   size_t temp_storage_bytes = 0;
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
       nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
-
   // Allocate temporary storage
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-  void *d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out,
-      num);
-
-  memory::Free(place, d_temp_storage);
+      d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
+      idx_out, num);
 }
 
 template <typename T>
@@ -287,7 +285,8 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   }
   int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
   memory::Copy(place, keep, platform::CPUPlace(), keep_vec.data(),
-               sizeof(int) * num_to_keep, 0);
+               sizeof(int) * num_to_keep, ctx.stream());
+  ctx.Wait();
 }
 
 template <typename T>
@@ -330,7 +329,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   int keep_num;
   const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
-               keep_num_t.data<int>(), sizeof(int), 0);
+               keep_num_t.data<int>(), sizeof(int), ctx.stream());
+  ctx.Wait();
   keep_index.Resize({keep_num});
 
   Tensor scores_filter, proposals_filter;
@@ -439,9 +439,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       Tensor &scores = box_score_pair.second;
 
       memory::Copy(place, rpn_rois_data + num_proposals * 4, place,
-                   proposals.data<T>(), sizeof(T) * proposals.numel(), 0);
+                   proposals.data<T>(), sizeof(T) * proposals.numel(),
+                   dev_ctx.stream());
       memory::Copy(place, rpn_roi_probs_data + num_proposals, place,
-                   scores.data<T>(), sizeof(T) * scores.numel(), 0);
+                   scores.data<T>(), sizeof(T) * scores.numel(),
+                   dev_ctx.stream());
+      dev_ctx.Wait();
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
     }

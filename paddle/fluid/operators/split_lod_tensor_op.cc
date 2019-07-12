@@ -63,7 +63,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
     auto *mask_data = cpu_mask->data<bool>();
 
-    std::vector<std::vector<CopyRange>> copy_ranges(mask_dim[0]);
+    std::vector<std::vector<CopyRange>> copy_ranges(2);
 
     // set out_true/out_false lod
     for (size_t t = 0; t < 2; t++) {
@@ -157,7 +157,9 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(), 2);
-    PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+    if (context->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+    }
 
     context->SetOutputDim("OutTrue", context->GetInputDim("X"));
     context->SetOutputDim("OutFalse", context->GetInputDim("X"));

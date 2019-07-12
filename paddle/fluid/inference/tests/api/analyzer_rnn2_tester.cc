@@ -105,12 +105,10 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -128,18 +126,21 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_rnn2, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
     PADDLE_ENFORCE_GT(outputs.size(), 0);
-    size_t size = GetSize(outputs[0]);
+    auto output = outputs.back();
+    PADDLE_ENFORCE_GT(output.size(), 0);
+    size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
+    float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);
     }
@@ -153,7 +154,19 @@ TEST(Analyzer_rnn2, compare) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_rnn2, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace inference

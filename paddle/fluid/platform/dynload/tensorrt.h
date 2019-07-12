@@ -33,7 +33,7 @@ extern void* tensorrt_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                      \
   struct DynLoad__##__name {                                            \
     template <typename... Args>                                         \
-    auto operator()(Args... args) -> decltype(__name(args...)) {        \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {    \
       using tensorrt_func = decltype(__name(args...)) (*)(Args...);     \
       std::call_once(tensorrt_dso_flag, []() {                          \
         tensorrt_dso_handle =                                           \

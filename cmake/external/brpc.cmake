@@ -14,14 +14,16 @@
 
 INCLUDE(ExternalProject)
 
-find_library(SSL_LIBRARY NAMES ssl)
+find_package(OpenSSL REQUIRED) 
+
+message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
+message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
+
 ADD_LIBRARY(ssl SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${SSL_LIBRARY})
+SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
 
-find_library(CRYPTO_LIBRARY NAMES crypto)
 ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${CRYPTO_LIBRARY})
-
+SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 
 SET(BRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/brpc)
 SET(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
@@ -31,14 +33,15 @@ SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.a" CACHE FILEPATH "brpc libr
 INCLUDE_DIRECTORIES(${BRPC_INCLUDE_DIR})
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
-set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib")
+set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog")
 
 # If minimal .a is need, you can set  WITH_DEBUG_SYMBOLS=OFF
 ExternalProject_Add(
     extern_brpc
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    # TODO(gongwb): change to de newst repo when they changed.
     GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
-    GIT_TAG         "7dc04defad1fd4173aae170c3fcbde131b65155a"
+    GIT_TAG         "e9b67ec1b7458f2af5fae76451afe1e27e01b4b4"
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -50,7 +53,7 @@ ExternalProject_Add(
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     -DCMAKE_PREFIX_PATH=${prefix_path}
-                    -DBRPC_WITH_GLOG=ON
+                    -DWITH_GLOG=ON
                     -DIOBUF_WITH_HUGE_BLOCK=ON
                     -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
                     ${EXTERNAL_OPTIONAL_ARGS}
@@ -65,5 +68,4 @@ ADD_LIBRARY(brpc STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET brpc PROPERTY IMPORTED_LOCATION ${BRPC_LIBRARIES})
 ADD_DEPENDENCIES(brpc extern_brpc)
 
-
-LIST(APPEND external_project_dependencies brpc)
+add_definitions(-DBRPC_WITH_GLOG)

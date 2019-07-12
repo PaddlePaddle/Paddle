@@ -25,7 +25,7 @@ namespace detail {
  */
 template <typename T, typename... ARGS>
 inline T& Ref(T* ptr, ARGS&&... args) {
-  PADDLE_ENFORCE(ptr != nullptr, args...);
+  PADDLE_ENFORCE(ptr != nullptr, ::paddle::string::Sprintf(args...));
   return *ptr;
 }
 

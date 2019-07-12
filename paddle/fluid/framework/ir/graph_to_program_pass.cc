@@ -15,49 +15,67 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
-    std::unique_ptr<Graph> graph) const {
+void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
+  // Remove the unneeded variables after memory optimization.
+  std::unordered_set<std::string> vars2remove;
+  if (graph->Has(kGraphToProgramVarsToRemove)) {
+    vars2remove = graph->Get<std::unordered_set<std::string>>(
+        kGraphToProgramVarsToRemove);
+    VLOG(2) << "graph to program remove " << vars2remove.size() << " nodes";
+  }
+
   ProgramDesc& program = Get<ProgramDesc>("program");
 
   std::unique_ptr<proto::ProgramDesc> program_pb(
       new proto::ProgramDesc(*program.Proto()));
 
   auto block = program_pb->mutable_blocks(kRootBlockIndex);
+  block->set_idx(kRootBlockIndex);
   block->clear_vars();
   std::unordered_set<std::string> visited_vars;
   for (ir::Node* n : graph->Nodes()) {
-    if (n->NodeType() == ir::Node::Type::kVariable) {
-      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0) {
+    if (n->IsVar()) {
+      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
+          !vars2remove.count(n->Var()->Name())) {
         visited_vars.insert(n->Var()->Name());
         block->add_vars()->MergeFrom(*n->Var()->Proto());
       }
     }
   }
-
   block->clear_ops();
-  std::vector<ir::Node*> nodes = TopologySortOperations(*graph);
+
+  std::vector<ir::Node*> nodes;
+  if (Has(kGraphToProgramSortKind)) {
+    // Inference Memory Optimize relays on this branch.
+    int sort_kind = Get<int>(kGraphToProgramSortKind);
+    nodes = TopologyVarientSort(
+        *graph, static_cast<framework::ir::SortKind>(sort_kind));
+  } else {
+    nodes = TopologySortOperations(*graph);
+  }
+
   for (ir::Node* n : nodes) {
-    if (!n->Op()) {
-      continue;
-    }
+    if (!n->Op()) continue;
+
     block->add_ops()->MergeFrom(*n->Op()->Proto());
   }
 
   program.CopyFrom(*program_pb);
-  return graph;
 }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

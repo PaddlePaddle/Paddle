@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace framework {
@@ -151,5 +152,6 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
                src_ptr, size);
 }
 
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
 }  // namespace framework
 }  // namespace paddle

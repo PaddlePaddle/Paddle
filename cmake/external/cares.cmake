@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-IF(MOBILE_INFERENCE OR NOT WITH_DISTRIBUTE)
+IF(NOT WITH_DISTRIBUTE)
     return()
 ENDIF()
 

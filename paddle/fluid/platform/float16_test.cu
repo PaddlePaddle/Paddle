@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/float16.h"
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <bitset>
@@ -270,11 +271,13 @@ TEST(float16, isinf) {
   float16 b = float16(INFINITY);
   // underflow to 0
   float16 native_a(5e-40f);
-  // overflow to inf
-  float16 native_b(5e40f);
   EXPECT_EQ(std::isinf(a), true);
   EXPECT_EQ(std::isinf(b), true);
+#ifndef _WIN32
+  // overflow to inf
+  float16 native_b(5e40f);
   EXPECT_EQ(std::isinf(native_b), true);
+#endif
   EXPECT_EQ(native_a, float16(0));
 }
 

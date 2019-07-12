@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <stdexcept>
 
+#include <time.h>
 #include <memory>
 #include <string>
 
@@ -24,21 +25,21 @@
 #include "glog/logging.h"
 
 #if !defined(_WIN32)
-#define UNUSED __attribute__((unused))
 #include <dlfcn.h>     //  dladdr
 #include <execinfo.h>  // backtrace
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <algorithm>  // std::accumulate
 #else
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+// solve static linking error in windows
+// https://github.com/google/glog/issues/301
+#define GOOGLE_GLOG_DLL_DECL
 #include <io.h>  // _popen, _pclose
+#include <stdio.h>
 #include <windows.h>
-#if defined(_WIN32)
 #include <numeric>  // std::accumulate in msvc
-#endif
-// windows version of __attribute__((unused))
-#define UNUSED __pragma(warning(suppress : 4100))
-
-#ifndef S_ISDIR  // windows port for sys/stat.h
+#ifndef S_ISDIR     // windows port for sys/stat.h
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
 #endif  // S_ISDIR
 
@@ -54,7 +55,6 @@ static void *dlsym(void *handle, const char *symbol_name) {
 
 static void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
-  file_name.replace(0, file_name.size() - 1, '/', '\\');
   HMODULE hModule = LoadLibrary(file_name.c_str());
   if (!hModule) {
     throw std::runtime_error(file_name + " not found.");
@@ -62,6 +62,25 @@ static void *dlopen(const char *filename, int flag) {
   return reinterpret_cast<void *>(hModule);
 }
 
+static int gettimeofday(struct timeval *tp, void *tzp) {
+  time_t clock;
+  struct tm tm;
+  SYSTEMTIME wtm;
+
+  GetLocalTime(&wtm);
+  tm.tm_year = wtm.wYear - 1900;
+  tm.tm_mon = wtm.wMonth - 1;
+  tm.tm_mday = wtm.wDay;
+  tm.tm_hour = wtm.wHour;
+  tm.tm_min = wtm.wMinute;
+  tm.tm_sec = wtm.wSecond;
+  tm.tm_isdst = -1;
+  clock = mktime(&tm);
+  tp->tv_sec = clock;
+  tp->tv_usec = wtm.wMilliseconds * 1000;
+
+  return (0);
+}
 #endif  // !_WIN32
 
 static void ExecShellCommand(const std::string &cmd, std::string *message) {
@@ -137,10 +156,12 @@ static void MkDir(const char *path) {
     }
   }
 #else
-  CreateDirectory(path, NULL);
-  auto errorno = GetLastError();
-  if (errorno != ERROR_ALREADY_EXISTS) {
-    throw std::runtime_error(path_error);
+  BOOL return_value = CreateDirectory(path, NULL);
+  if (!return_value) {
+    auto errorno = GetLastError();
+    if (errorno != ERROR_ALREADY_EXISTS) {
+      throw std::runtime_error(path_error);
+    }
   }
 #endif  // !_WIN32
 }

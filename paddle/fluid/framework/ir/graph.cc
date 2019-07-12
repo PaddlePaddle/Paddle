@@ -13,79 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <memory>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-namespace {
-
-void CheckProgram(const ProgramDesc &program) {
-#define _INT(role) static_cast<int>(role)
-
-  std::map<int, bool> visit;
-  for (OpDesc *op : program.Block(0).AllOps()) {
-    // For backward compatibility, some program doesn't have role added.
-    if (!op->HasAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) continue;
-    int role_id =
-        boost::get<int>(op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    visit[role_id] = true;
-    switch (role_id) {
-      case _INT(OpRole::kForward):
-        if (visit.find(_INT(OpRole::kBackward)) != visit.end()) {
-          LOG(ERROR)
-              << "Cannot add backward operator before forward operator %s."
-              << op->Type();
-        }
-        break;
-      case _INT(OpRole::kBackward):
-      case _INT(OpRole::kBackward) | _INT(OpRole::kLoss):
-        PADDLE_ENFORCE(
-            visit.find(_INT(OpRole::kOptimize)) == visit.end(),
-            "Cannot add backward operator %s after optimize operator.",
-            op->Type());
-        break;
-      case _INT(OpRole::kForward) | _INT(OpRole::kLoss):
-        PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward) |
-                                  _INT(OpRole::kLoss)) == visit.end(),
-                       "Cannot add backward|loss operator before "
-                       "forward|loss operator %s.",
-                       op->Type());
-        PADDLE_ENFORCE(
-            visit.find(_INT(OpRole::kOptimize)) == visit.end(),
-            "Cannot add forward|loss operator %s after optimize operator.",
-            op->Type());
-        break;
-      case _INT(OpRole::kOptimize):
-      case _INT(OpRole::kOptimize) | _INT(OpRole::kLRSched):
-        PADDLE_ENFORCE(visit.find(_INT(OpRole::kBackward)) != visit.end(),
-                       "Optimize operators %s must follow backward operator.",
-                       op->Type());
-        break;
-      case _INT(OpRole::kLRSched):
-      case _INT(OpRole::kDist):
-      case _INT(OpRole::kRPC):
-      case _INT(OpRole::kNotSpecified):
-        break;
-      default:
-        LOG(FATAL) << "Unknown operator role. Don't add new role because "
-                      "you don't know what you are doing.";
-    }
-  }
-
-#undef _INT
-}
-}  // namespace
 
 Graph::Graph(const ProgramDesc &program) : program_(program) {
-  CheckProgram(program_);
-  // Make the nodes id start from 0.
-  Node::ResetId();
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
 }
@@ -122,7 +66,16 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       var->outputs.push_back(node);
     }
     // For output args, always create a new var.
+    std::unordered_set<std::string> out_arg_set;
     for (auto &each_var_name : op->OutputArgumentNames()) {
+      if (each_var_name != kEmptyVarName) {
+        PADDLE_ENFORCE(out_arg_set.count(each_var_name) == 0,
+                       "Program is wrong. %s occurs in output of %s several "
+                       "times.",
+                       each_var_name, op->Type());
+        out_arg_set.insert(each_var_name);
+      }
+
       ir::Node *var = nullptr;
       if (all_vars.count(each_var_name) != 0) {
         var = CreateVarNode(all_vars.at(each_var_name));
@@ -137,7 +90,10 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       var->inputs.push_back(node);
     }
   }
-  return std::move(var_nodes);
+  Set<const std::vector<OpDesc *>>(
+      details::kStaleProgramOpDescs,
+      new std::vector<OpDesc *>(program.Block(0).AllOps()));
+  return var_nodes;
 }
 
 void Graph::ResolveHazard(
@@ -165,7 +121,10 @@ void Graph::ResolveHazard(
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
 
-      PADDLE_ENFORCE(write_op, "The write_op should not be empty.");
+      PADDLE_ENFORCE(
+          write_op,
+          string::Sprintf("The write_op of var %s should not be empty.",
+                          (*it_new)->Name()));
 
       // Add write after write dependence
       ir::Node *upstream_op =
@@ -175,6 +134,7 @@ void Graph::ResolveHazard(
         ir::Node *dep_var = CreateControlDepVar();
         write_op->inputs.push_back(dep_var);
         upstream_op->outputs.push_back(dep_var);
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         dep_var->outputs.push_back(write_op);
         dep_var->inputs.push_back(upstream_op);
       }
@@ -198,6 +158,7 @@ void Graph::ResolveHazard(
         if (has_dep) continue;
 
         ir::Node *dep_var = CreateControlDepVar();
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         read_op->outputs.push_back(dep_var);
         dep_var->inputs.push_back(read_op);
         write_op->inputs.push_back(dep_var);
@@ -205,6 +166,39 @@ void Graph::ResolveHazard(
       }
     }
   }
+}
+
+std::shared_ptr<Graph> Graph::Clone() {
+  auto cloned_graph = std::make_shared<Graph>(this->program_);
+  cloned_graph->ReleaseNodes();
+  cloned_graph->num_node_created_ = 0;
+  std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
+  for (auto *n : this->node_set_) {
+    ir::Node *cloned_node = nullptr;
+    if (n->IsCtrlVar()) {
+      cloned_node = cloned_graph->CreateControlDepVar();
+    } else if (!n->var_desc_ && !n->op_desc_) {  // empty node
+      cloned_node = cloned_graph->CreateEmptyNode(n->Name(), n->NodeType());
+    } else if (n->IsVar()) {
+      cloned_node = cloned_graph->CreateVarNode(n->Var());
+    } else if (n->IsOp()) {
+      cloned_node = cloned_graph->CreateOpNode(n->Op());
+    }
+    if (cloned_node) {
+      origin_to_cloned[n] = cloned_node;
+    } else {
+      PADDLE_THROW("The cloned node's type is not supported!");
+    }
+  }
+  for (auto *n : this->node_set_) {
+    for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {
+      origin_to_cloned[n]->inputs.push_back(origin_to_cloned[*it]);
+    }
+    for (auto it = n->outputs.begin(); it != n->outputs.end(); it++) {
+      origin_to_cloned[n]->outputs.push_back(origin_to_cloned[*it]);
+    }
+  }
+  return cloned_graph;
 }
 
 bool IsControlDepVar(const ir::Node &var) {

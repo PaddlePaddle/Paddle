@@ -28,12 +28,14 @@ namespace framework {
 
 TEST(LoD, PrintLoDTensor) {
   LoDTensor tensor1;
+  tensor1.Resize({2});
   tensor1.mutable_data<float>(platform::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
   tensor1.data<float>()[1] = 0.5;
   LOG(INFO) << tensor1;
 
   LoDTensor tensor2;
+  tensor2.Resize({2});
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
   tensor2.data<int64_t>()[1] = 2;
@@ -217,6 +219,11 @@ TEST(LoD, CheckLoD) {
   // check with underlying tensor storage.
   ASSERT_TRUE(CheckLoD(relative_lod, 5));
   ASSERT_FALSE(CheckLoD(relative_lod, 9));
+
+  // check whether lod is ascending-sorted (allow same items)
+  ASSERT_TRUE(CheckLoD({{0, 1, 2, 3, 4, 5}}, 5));
+  ASSERT_TRUE(CheckLoD({{0, 1, 3, 3, 4, 5}}, 5));
+  ASSERT_FALSE(CheckLoD({{0, 1, 3, 2, 5}}, 5));
 }
 
 TEST(LoD, CheckAbsLoD) {
@@ -274,7 +281,6 @@ TEST(LoD, ConvertToOffsetBasedLoD) {
   EXPECT_EQ(offset_lod, expected);
 }
 
-#if !defined(_WIN32)
 template <typename T>
 static void TestRecordIO() {
   LoDTensor tensor;
@@ -321,7 +327,6 @@ TEST(LoDTensor, RecordIO) {
   TestRecordIO<float>();
   TestRecordIO<double>();
 }
-#endif  // !defined(_WIN32)
 
 }  // namespace framework
 }  // namespace paddle

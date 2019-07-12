@@ -25,7 +25,7 @@ class DropoutOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a fluid dropout op to tensorrt dropout layer";
+    VLOG(3) << "convert a fluid dropout op to tensorrt dropout layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -55,11 +55,8 @@ class DropoutOpConverter : public OpConverter {
     engine_->weight_map[op_desc.Output("Out").front() + "_dropout"] =
         std::move(weight_tensor);
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName(("dropout (Output: " + output_name + ")").c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
+
+    RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
   }
 };
 

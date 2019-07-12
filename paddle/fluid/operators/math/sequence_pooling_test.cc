@@ -66,15 +66,15 @@ void TestSequencePoolingSum(const paddle::framework::LoD& lod) {
     cpu_in_grad.set_lod(in_grad.lod());
   }
 
-  EXPECT_EQ(in_grad.numel(), lod[0].back() * second_dim);
+  EXPECT_EQ(in_grad.numel(), static_cast<int64_t>(lod[0].back() * second_dim));
   EXPECT_EQ(in_grad.lod(), lod);
 
   if (paddle::platform::is_cpu_place(*place)) {
-    for (int64_t i = 0; i < in_grad.lod()[0].size() - 1; ++i) {
+    for (size_t i = 0; i < in_grad.lod()[0].size() - 1; ++i) {
       int64_t begin = in_grad.lod()[0][i];
       int64_t end = in_grad.lod()[0][i + 1];
       paddle::framework::Tensor tmp = in_grad.Slice(begin, end);
-      for (int64_t j = 0; j != tmp.numel() / second_dim; ++j) {
+      for (size_t j = 0; j != tmp.numel() / second_dim; ++j) {
         for (int64_t m = 0; m != second_dim; ++m) {
           EXPECT_EQ(tmp.data<T>()[m + j * second_dim],
                     out_grad.data<T>()[m + i * second_dim]);
@@ -82,11 +82,11 @@ void TestSequencePoolingSum(const paddle::framework::LoD& lod) {
       }
     }
   } else {
-    for (int64_t i = 0; i < cpu_in_grad.lod()[0].size() - 1; ++i) {
+    for (size_t i = 0; i < cpu_in_grad.lod()[0].size() - 1; ++i) {
       int64_t begin = cpu_in_grad.lod()[0][i];
       int64_t end = cpu_in_grad.lod()[0][i + 1];
       paddle::framework::Tensor tmp = cpu_in_grad.Slice(begin, end);
-      for (int64_t j = 0; j != tmp.numel() / second_dim; ++j) {
+      for (size_t j = 0; j != tmp.numel() / second_dim; ++j) {
         for (int64_t m = 0; m != second_dim; ++m) {
           EXPECT_EQ(tmp.data<T>()[m + j * second_dim],
                     cpu_out_grad.data<T>()[m + i * second_dim]);

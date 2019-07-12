@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import sys
 import paddle.fluid as fluid
-import paddle.v2 as paddle
 
 
 def load_vocab(filename):

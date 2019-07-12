@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <array>
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -24,6 +28,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -36,7 +41,7 @@ size_t PDPattern::id_ = 0UL;
 
 PDNode *PDPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
-    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
                       "PDNode's name should be unique, get duplicate [%s]",
                       name);
   }
@@ -49,7 +54,7 @@ PDNode *PDPattern::NewNode(const std::string &name) {
 
 PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
   if (!name.empty()) {
-    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
                       "PDNode's name should be unique, get duplicate [%s]",
                       name);
   }
@@ -88,7 +93,8 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
+  PrettyLogEndl(Style::detail(), "---  detected %d subgraphs",
+                subgraphs.size());
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -103,7 +109,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "pdnode " << pdnode->name() << " marked";
+        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -113,11 +119,6 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
       VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
       // return false;
-    }
-  }
-  for (auto &item : pdnodes2nodes_) {
-    for (auto &n : item.second) {
-      GetMarkedNodes(const_cast<Graph *>(&graph)).insert(n);
     }
   }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
@@ -166,10 +167,12 @@ struct HitGroup {
 
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
-      if (!roles.count(pat)) return false;
-      return roles[pat] == node;
+      if (roles.count(pat) && roles[pat] == node) return true;
+      return false;
+    } else {
+      if (roles.count(pat) && roles[pat] != node) return false;
+      return true;
     }
-    return !roles.count(pat) || roles.at(pat) == node;
   }
 
   void Register(Node *node, PDNode *pat) {
@@ -197,7 +200,6 @@ GraphPatternDetector::DetectPatterns() {
   std::vector<GraphPatternDetector::subgraph_t> result;
   std::vector<HitGroup> init_groups;
   std::array<std::vector<HitGroup>, 2> bi_records;
-  // PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
   auto *first_pnode = pattern_.edges().empty() ? pattern().nodes().front().get()
                                                : pattern_.edges().front().first;
   if (!pdnodes2nodes_.count(first_pnode)) return result;
@@ -227,11 +229,12 @@ GraphPatternDetector::DetectPatterns() {
         VLOG(8) << "check " << source->id() << " -- " << target->id();
         // TODO(Superjomn) add some prune strategies.
         for (const auto &group : pre_groups) {
-          HitGroup new_group = group;
-          if (IsNodesLink(source, target) &&
-              new_group.Match(source, edge.first)) {
-            new_group.Register(source, edge.first);
-            if (new_group.Match(target, edge.second)) {
+          if (IsNodesLink(source, target)) {
+            HitGroup new_group = group;
+            bool flag = new_group.Match(source, edge.first) &&
+                        new_group.Match(target, edge.second);
+            if (flag) {
+              new_group.Register(source, edge.first);
               new_group.Register(target, edge.second);
               cur_groups.push_back(new_group);
               // TODO(Superjomn) need to unique
@@ -259,14 +262,16 @@ GraphPatternDetector::DetectPatterns() {
   return result;
 }
 
-bool GraphItemCMP(const std::pair<PDNode *, Node *> &a,
+struct GraphItemLessThan {
+  bool operator()(const std::pair<PDNode *, Node *> &a,
                   const std::pair<PDNode *, Node *> &b) {
-  if (a.first != b.first) {
-    return a.first < b.first;
-  } else {
-    return a.second < b.second;
+    if (a.first != b.first) {
+      return a.first < b.first;
+    } else {
+      return a.second < b.second;
+    }
   }
-}
+};
 
 // TODO(Superjomn) enhance the function as it marks unique unique as duplicates
 // see https://github.com/PaddlePaddle/Paddle/issues/13550
@@ -280,7 +285,7 @@ void GraphPatternDetector::UniquePatterns(
   for (auto &g : *subgraphs) {
     // Sort the items in the sub-graph, and transform to a string key.
     std::vector<std::pair<PDNode *, Node *>> sorted_keys(g.begin(), g.end());
-    std::sort(sorted_keys.begin(), sorted_keys.end(), GraphItemCMP);
+    std::sort(sorted_keys.begin(), sorted_keys.end(), GraphItemLessThan());
     std::stringstream ss;
     for (auto &item : sorted_keys) {
       ss << item.first << ":" << item.second;
@@ -499,6 +504,16 @@ PDNode *PDNode::assert_op_has_n_outputs(const std::string &op_type, size_t n) {
   return this;
 }
 
+PDNode *PDNode::assert_has_n_inputs(size_t n) {
+  asserts_.emplace_back([=](Node *x) { return x->inputs.size() == n; });
+  return this;
+}
+
+PDNode *PDNode::assert_has_n_outputs(size_t n) {
+  asserts_.emplace_back([=](Node *x) { return x->outputs.size() == n; });
+  return this;
+}
+
 PDNode *PDNode::assert_more(PDNode::teller_t &&teller) {
   asserts_.emplace_back(std::move(teller));
   return this;
@@ -597,8 +612,17 @@ bool VarLinksToOp(Node *node, const std::string &op_type) {
 bool IsNthInput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE(var->IsVar());
   PADDLE_ENFORCE(op->IsOp());
-  if (op->Op()->Input(argument).size() <= nth) return false;
+  if (!HasInput(op, argument) || op->Op()->Input(argument).size() <= nth)
+    return false;
   return var->Name() == op->Op()->Input(argument)[nth];
+}
+
+bool HasInput(Node *op, const std::string &argument) {
+  PADDLE_ENFORCE(op->IsOp());
+  auto const &names = op->Op()->InputNames();
+  if (std::find(names.begin(), names.end(), argument) == names.end())
+    return false;
+  return true;
 }
 
 bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
@@ -774,6 +798,33 @@ PDNode *patterns::ConvReLU::operator()(
   return relu_out_var;
 }
 
+PDNode *patterns::ConvBReLU::operator()(
+    paddle::framework::ir::PDNode *conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *brelu_op = pattern->NewNode(brelu_repr())->assert_is_op("relu6");
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("relu6");
+  // output
+  auto *brelu_out_var = pattern->NewNode(brelu_out_repr())
+                            ->AsOutput()
+                            ->assert_is_op_output("relu6");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  brelu_op->LinksFrom({conv_out_var}).LinksTo({brelu_out_var});
+  return brelu_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
@@ -856,6 +907,33 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
     elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
     return fc_out;
   }
+}
+
+PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
+                                       bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("fc", "Input");
+
+  auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  // Create variables
+  // Filter
+  auto *fc_weight_var = pattern->NewNode(weights_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()
+                            ->assert_is_op_input("fc", "W");
+  // Bias
+  auto *fc_bias_var = pattern->NewNode(bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("fc", "Bias");
+  // Output
+  auto *fc_out_var = pattern->NewNode(output_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("fc", "Out")
+                         ->assert_is_only_output_of_op("fc");
+
+  fc_op->LinksFrom({x, fc_weight_var, fc_bias_var}).LinksTo({fc_out_var});
+  return fc_out_var;
 }
 
 PDNode *patterns::Embedding::operator()(PDNode *x) {
@@ -1024,11 +1102,12 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
   return ele_add_grad;
 }
 
+// conv_type: conv2d, conv3d, conv2d_transpose
 PDNode *patterns::ConvBias::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
+    paddle::framework::ir::PDNode *conv_input, std::string conv_type) {
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
   auto *eltiwse_op =
       pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
   // Create variables
@@ -1036,11 +1115,11 @@ PDNode *patterns::ConvBias::operator()(
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(conv_type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_only_output_of_op(conv_type)
                            ->assert_is_op_input("elementwise_add");
   // Bias stored in elementwise_add
   auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
@@ -1072,22 +1151,69 @@ PDNode *patterns::Conv::operator()() {
                         ->AsOutput()
                         ->assert_is_op_output("conv2d", "Output");
 
-  conv_op->LinksFrom({input_var, filter_var});
-  conv_op->LinksTo({output_var});
-
+  conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
   return output_var;
 }
 
-PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var) {
+PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+  if (!with_residual_data) {
+    conv_op->assert_more([&](Node *x) {
+      auto node_names = x->Op()->InputNames();
+      if (!HasInput(x, "ResidualData") ||
+          x->Op()->Input("ResidualData").size() == 0)
+        return true;
+      return false;
+    });
+  }
+
+  auto input_var = pattern->NewNode(conv_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("conv2d", "Input");
+
+  auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("conv2d", "Filter");
+
+  auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("conv2d", "Output");
+
+  std::vector<PDNode *> links_from{input_var, filter_var};
+
+  if (with_residual_data) {
+    auto res_conn_var = pattern->NewNode(conv_residual_data_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("conv2d", "ResidualData");
+    links_from.push_back(res_conn_var);
+  }
+
+  conv_op->LinksFrom(links_from).LinksTo({output_var});
+  return output_var;
+}
+
+PDNode *patterns::Pool::operator()() {
+  auto pool_op = pattern->NewNode(pool_op_repr())->assert_is_op("pool2d");
+
+  auto input_var = pattern->NewNode(pool_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("pool2d", "X");
+
+  auto output_var = pattern->NewNode(pool_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("pool2d", "Out");
+
+  pool_op->LinksFrom({input_var}).LinksTo({output_var});
+  return output_var;
+}
+
+PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
 
-  x_var->assert_is_op_input("elementwise_add", "X");
-
-  auto y_var = pattern->NewNode(elementwise_add_x_repr())
-                   ->AsInput()
-                   ->assert_is_op_input("elementwise_add", "Y");
-
+  x_var->AsInput()->assert_is_op_input("elementwise_add", "X");
+  y_var->AsInput()->assert_is_op_input("elementwise_add", "Y");
   auto out_var = pattern->NewNode(elementwise_add_out_repr())
                      ->AsOutput()
                      ->assert_is_op_output("elementwise_add", "Out");
@@ -1097,6 +1223,726 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var) {
 
   return out_var;
 }
+
+PDNode *patterns::Concat::operator()() {
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+
+  auto output_var = pattern->NewNode(concat_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("concat", "Out");
+
+  concat_op->LinksTo({output_var});
+  return output_var;
+}
+
+PDNode *patterns::ConcatReLU::operator()() {
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
+
+  auto concat_out =
+      pattern->NewNode(concat_out_repr())->assert_is_op_output("concat", "Out");
+
+  auto relu_out = pattern->NewNode(relu_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("relu", "Out");
+
+  concat_op->LinksTo({concat_out});
+  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
+
+  return relu_out;
+}
+
+PDNode *patterns::ConvConcatReLU::operator()() {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
+  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
+
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d", "Output");
+
+  auto concat_out = pattern->NewNode(concat_out_repr())
+                        ->assert_is_op_output("concat", "Out")
+                        ->assert_is_op_input("relu", "X");
+
+  auto relu_out = pattern->NewNode(relu_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("relu", "Out");
+
+  conv_op->LinksTo({conv_out});
+  concat_op->LinksFrom({conv_out}).LinksTo({concat_out});
+  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
+
+  return relu_out;
+}
+
+PDNode *patterns::PriorBox::operator()() {
+  auto prior_box_op =
+      pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
+
+  auto input_var = pattern->NewNode(prior_box_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("prior_box", "Input");
+
+  auto image_var = pattern->NewNode(prior_box_image_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("prior_box", "Image");
+
+  auto boxes_var = pattern->NewNode(prior_box_boxes_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("prior_box", "Boxes");
+
+  auto variances_var = pattern->NewNode(prior_box_variances_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("prior_box", "Variances");
+
+  prior_box_op->LinksFrom({input_var, image_var})
+      .LinksTo({boxes_var, variances_var});
+  return boxes_var;
+}
+
+std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+
+PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+  conv_in->AsInput();
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->AsIntermediate();
+
+  auto act_op = pattern->NewNode(act_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      auto op_type = node->Name();
+                      return conv_act_set.count(op_type);
+                    });
+
+  auto act_out = pattern->NewNode(act_out_repr())
+                     ->assert_is_var()
+                     // is activation op's output.
+                     ->assert_more([&](Node *node) {
+                       for (auto *in_op : node->inputs) {
+                         if (conv_act_set.count(in_op->Name())) {
+                           return true;
+                         }
+                       }
+                       return false;
+                     })
+                     ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter});
+  conv_out->LinksFrom({conv_op});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+  act_op->LinksFrom({elementwise_add_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
+PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->assert_is_op_input("elementwise_add", "Y")
+                                 ->AsIntermediate();
+
+  auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr())
+                                  ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
+                                    ->assert_is_op_input("elementwise_add", "X")
+                                    ->AsInput();
+  auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_out_1_repr())
+                                   ->assert_is_op_output("elementwise_add")
+                                   ->AsIntermediate();
+
+  auto act_op = pattern->NewNode(act_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      auto op_type = node->Name();
+                      return conv_act_set.count(op_type);
+                    });
+  auto act_out = pattern->NewNode(act_out_repr())
+                     ->assert_is_var()
+                     // is activation op's output.
+                     ->assert_more([&](Node *node) {
+                       for (auto *in_op : node->inputs) {
+                         if (conv_act_set.count(in_op->Name())) {
+                           return true;
+                         }
+                       }
+                       return false;
+                     })
+                     ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter}).LinksTo({conv_out});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+  elementwise_add_op_1->LinksFrom({elementwise_add_out, elementwise_add_in_y_1})
+      .LinksTo({elementwise_add_out_1});
+  act_op->LinksFrom({elementwise_add_out_1}).LinksTo({act_out});
+  return act_out;
+}
+
+PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
+  conv_in->AsInput();
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d")
+                      ->assert_is_op_input("elementwise_add", "X")
+                      ->AsIntermediate();
+  auto conv_filter = pattern->NewNode(conv_filter_repr())
+                         ->assert_is_op_input("conv2d", "Filter")
+                         ->AsInput();
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_op_input("elementwise_add", "Y")
+                                  ->AsInput();
+  auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                 ->assert_is_op_output("elementwise_add")
+                                 ->AsOutput();
+
+  conv_op->LinksFrom({conv_in, conv_filter});
+  conv_out->LinksFrom({conv_op});
+  elementwise_add_op->LinksFrom({conv_out, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+
+  return elementwise_add_out;
+}
+
+PDNode *patterns::ConvAffineChannel::operator()(
+    paddle::framework::ir::PDNode *conv_input, bool with_eltwise_add) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+
+  PDNode *eltwise_op = nullptr;
+  if (with_eltwise_add) {
+    eltwise_op =
+        pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
+  }
+
+  auto *affine_channel_op =
+      pattern->NewNode(affine_channel_repr())->assert_is_op("affine_channel");
+  // Create variables
+  // Conv Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d");
+
+  PDNode *eltwise_y_in_var = nullptr;
+  PDNode *eltwise_out_var = nullptr;
+  if (with_eltwise_add) {
+    // Conv output as Bias input
+    conv_out_var->assert_is_op_input("elementwise_add", "X");
+    // Bias
+    eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
+                           ->assert_is_op_input("elementwise_add", "Y")
+                           ->AsInput();
+    eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("elementwise_add");
+  } else {
+    // Conv output as AffineChannel input
+    conv_out_var->assert_is_op_input("affine_channel", "X");
+  }
+
+  // AC Scale
+  auto *ac_scale_var = pattern->NewNode(ac_scale_repr())
+                           ->AsInput()
+                           ->assert_is_persistable_var()
+                           ->assert_has_n_outputs(1)
+                           ->assert_is_op_input("affine_channel", "Scale");
+  // AC Bias
+  auto *ac_bias_var = pattern->NewNode(ac_bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_has_n_outputs(1)
+                          ->assert_is_op_input("affine_channel", "Bias");
+
+  // AC output
+  auto *ac_out_var = pattern->NewNode(ac_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("affine_channel");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+
+  if (with_eltwise_add) {
+    eltwise_op->LinksFrom({conv_out_var, eltwise_y_in_var})
+        .LinksTo({eltwise_out_var});
+    affine_channel_op->LinksFrom({eltwise_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  } else {
+    affine_channel_op->LinksFrom({conv_out_var, ac_scale_var, ac_bias_var})
+        .LinksTo({ac_out_var});
+  }
+  return ac_out_var;
+}
+
+PDNode *patterns::DequantQuantAny::operator()() {
+  auto *dequant_in = pattern->NewNode(dequant_in_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("dequantize", "Input");
+
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize", "Output");
+
+  auto *quant_op = pattern->NewNode(quant_op_repr())
+                       ->assert_is_op("quantize")
+                       ->AsIntermediate();
+
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("quantize");
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
+  quant_op->LinksFrom({dequant_out}).LinksTo({quant_out});
+  next_op->LinksFrom({quant_out});
+
+  return quant_out;
+}
+
+PDNode *patterns::DequantAny::operator()() {
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize", "Output");
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  dequant_op->LinksTo({dequant_out});
+  next_op->LinksFrom({dequant_out});
+
+  return dequant_out;
+}
+
+// a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
+// b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
+// ...
+// z -> transpose_op(n) -> transpose_out_z -> flatten_op(n) -> flatten_out_z
+// flatten_out_a -> concat_op  flatten_out_b -> concat_op ... flatten_out_z ->
+// concat_op
+PDNode *patterns::TransposeFlattenConcat::operator()(
+    std::vector<PDNode *> conv_in, int times) {
+  // The times represents the repeat times of the
+  // {trans, trans_out, flatten, flatten_out}
+  const int kNumFields = 4;
+  const int kTransOutOffset = 1;
+  const int kFlattenOffset = 2;
+  const int kFlattenOutOffset = 3;
+
+  std::vector<PDNode *> nodes;
+
+  for (int i = 0; i < times; i++) {
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("transpose" + std::to_string(i)))
+            ->assert_is_op("transpose2"));
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("transpose_out" + std::to_string(i)))
+            ->assert_is_op_output("transpose2")
+            ->assert_is_op_input("flatten2", "X")
+            ->AsIntermediate());
+    nodes.push_back(pattern->NewNode(GetNodeName("flatten" + std::to_string(i)))
+                        ->assert_is_op("flatten2"));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("flatten_out" + std::to_string(i)))
+            ->assert_is_op_output("flatten2")
+            ->assert_is_op_nth_input("concat", "X", i)
+            ->AsIntermediate());
+  }
+
+  auto concat_op = pattern->NewNode(GetNodeName("concat"))
+                       ->assert_is_op("concat")
+                       ->assert_op_has_n_inputs("concat", times);
+  auto concat_out = pattern->NewNode(GetNodeName("concat_out"))
+                        ->assert_is_op_output("concat")
+                        ->AsOutput();
+
+  std::vector<PDNode *> flatten_outs;
+  for (int i = 0; i < times; i++) {
+    conv_in[i]->AsInput();
+    // trans
+    nodes[i * kNumFields]->LinksFrom({conv_in[i]});
+    // trans_out
+    nodes[i * kNumFields + kTransOutOffset]->LinksFrom({nodes[i * kNumFields]});
+    // flatten
+    nodes[i * kNumFields + kFlattenOffset]->LinksFrom(
+        {nodes[i * kNumFields + kTransOutOffset]});
+    // flatten_out
+    nodes[i * kNumFields + kFlattenOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kFlattenOffset]});
+    flatten_outs.push_back(nodes[i * kNumFields + kFlattenOutOffset]);
+  }
+
+  concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
+  return concat_out;
+}
+
+PDNode *patterns::AnakinDetectionPattern::operator()(
+    std::vector<PDNode *> conv_in, int times, std::string priorbox_type,
+    bool is_reshape) {
+  // The times represents the repeat times of the
+  // {prior_box, prior_box_loc_out, flatten, prior_box_var_out, reshape}
+  const int kNumFields = 7;
+  const int kPriorBoxLocOffset = 1;
+  const int kReshape1Offset = 2;
+  const int kReshape1OutOffset = 3;
+  const int kPriorBoxVarOffset = 4;
+  const int kReshape2Offset = 5;
+  const int kReshape2OutOffset = 6;
+
+  const int kBoxCoderThirdInputOffset = times;
+  const int kMultiClassSecondInputNmsOffset = times + 1;
+
+  std::vector<PDNode *> nodes;
+  std::string op_after_priorbox = is_reshape ? "reshape2" : "flatten2";
+
+  for (int i = 0; i < times; i++) {
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("prior_box" + std::to_string(i)))
+            ->assert_is_op(priorbox_type));
+    nodes.push_back(pattern->NewNode(GetNodeName("box_out" + std::to_string(i)))
+                        ->assert_is_op_output(priorbox_type, "Boxes")
+                        ->assert_is_op_input(op_after_priorbox, "X")
+                        ->AsIntermediate());
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("reshape1" + std::to_string(i)))
+            ->assert_is_op(op_after_priorbox));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("reshape1_out" + std::to_string(i)))
+            ->assert_is_op_output(op_after_priorbox)
+            ->assert_is_op_nth_input("concat", "X", i)
+            ->AsIntermediate());
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("box_var_out" + std::to_string(i)))
+            ->assert_is_op_output(priorbox_type, "Variances")
+            ->assert_is_op_input(op_after_priorbox, "X")
+            ->AsIntermediate());
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("reshape2" + std::to_string(i)))
+            ->assert_is_op(op_after_priorbox));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("reshape2_out" + std::to_string(i)))
+            ->assert_is_op_output(op_after_priorbox)
+            ->assert_is_op_nth_input("concat", "X", i)
+            ->AsIntermediate());
+  }
+
+  auto concat_op1 = pattern->NewNode(GetNodeName("concat1"))
+                        ->assert_is_op("concat")
+                        ->assert_op_has_n_inputs("concat", times);
+  auto concat_out1 = pattern->NewNode(GetNodeName("concat1_out"))
+                         ->assert_is_op_output("concat")
+                         ->AsIntermediate();
+
+  auto concat_op2 = pattern->NewNode(GetNodeName("concat2"))
+                        ->assert_is_op("concat")
+                        ->assert_op_has_n_inputs("concat", times);
+  auto concat_out2 = pattern->NewNode(GetNodeName("concat2_out"))
+                         ->assert_is_op_output("concat")
+                         ->AsIntermediate();
+
+  auto box_coder_op = pattern->NewNode(GetNodeName("box_coder"))
+                          ->assert_is_op("box_coder")
+                          ->assert_op_has_n_inputs("box_coder", 3);
+
+  auto box_coder_out = pattern->NewNode(GetNodeName("box_coder_out"))
+                           ->assert_is_op_output("box_coder")
+                           ->AsIntermediate();
+
+  auto transpose_before_nms =
+      pattern->NewNode(GetNodeName("transpose_before_nms"))
+          ->assert_is_op("transpose2");
+
+  auto transpose_before_nms_out =
+      pattern->NewNode(GetNodeName("transpose_before_nms_out"))
+          ->assert_is_op_output("transpose2")
+          ->assert_is_op_input("multiclass_nms", "Scores")
+          ->AsIntermediate();
+
+  auto multiclass_nms_op = pattern->NewNode(GetNodeName("multiclass_nms"))
+                               ->assert_is_op("multiclass_nms")
+                               ->assert_op_has_n_inputs("multiclass_nms", 2);
+
+  auto multiclass_nms_out = pattern->NewNode(GetNodeName("multiclass_nms_out"))
+                                ->assert_is_op_output("multiclass_nms")
+                                ->AsOutput();
+
+  std::vector<PDNode *> reshape1_outs;
+  std::vector<PDNode *> reshape2_outs;
+
+  for (int i = 0; i < times; i++) {
+    conv_in[i]->AsInput();
+    // prior_box
+    nodes[i * kNumFields]->LinksFrom({conv_in[i]});
+    // prior_box box out
+    nodes[i * kNumFields + kPriorBoxLocOffset]->LinksFrom(
+        {nodes[i * kNumFields]});
+    // reshape
+    nodes[i * kNumFields + kReshape1Offset]->LinksFrom(
+        {nodes[i * kNumFields + kPriorBoxLocOffset]});
+    // reshape_out
+    nodes[i * kNumFields + kReshape1OutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kReshape1Offset]});
+
+    nodes[i * kNumFields + kPriorBoxVarOffset]->LinksFrom(
+        {nodes[i * kNumFields]});
+    // reshape
+    nodes[i * kNumFields + kReshape2Offset]->LinksFrom(
+        {nodes[i * kNumFields + kPriorBoxVarOffset]});
+    // reshape_out
+    nodes[i * kNumFields + kReshape2OutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kReshape2Offset]});
+
+    reshape1_outs.push_back(nodes[i * kNumFields + kReshape1OutOffset]);
+    reshape2_outs.push_back(nodes[i * kNumFields + kReshape2OutOffset]);
+  }
+
+  concat_op1->LinksFrom(reshape1_outs);
+  concat_op2->LinksFrom(reshape2_outs);
+  concat_out1->LinksFrom({concat_op1});
+  concat_out2->LinksFrom({concat_op2});
+
+  conv_in[kBoxCoderThirdInputOffset]->AsInput();
+  conv_in[kMultiClassSecondInputNmsOffset]->AsInput();
+
+  box_coder_op->LinksFrom(
+      {concat_out1, concat_out2, conv_in[kBoxCoderThirdInputOffset]});
+  box_coder_out->LinksFrom({box_coder_op});
+
+  transpose_before_nms->LinksFrom({conv_in[kMultiClassSecondInputNmsOffset]});
+  transpose_before_nms_out->LinksFrom({transpose_before_nms});
+
+  multiclass_nms_op->LinksFrom({box_coder_out, transpose_before_nms_out})
+      .LinksTo({multiclass_nms_out});
+
+  return multiclass_nms_out;
+}
+
+PDNode *patterns::FillConstantElementWiseMulFuse::operator()(
+    PDNode *elementwise_op_input) {
+  auto fill_constant =
+      pattern->NewNode(fill_constant_repr())->assert_is_op("fill_constant");
+
+  auto fill_constant_out = pattern->NewNode(fill_constant_out_repr())
+                               ->assert_is_op_output("fill_constant")
+                               ->assert_is_op_input("elementwise_mul", "Y")
+                               ->AsIntermediate();
+
+  auto elementwise_mul_op =
+      pattern->NewNode(elementwise_mul_repr())->assert_is_op("elementwise_mul");
+
+  auto elementwise_mul_out = pattern->NewNode(elementwise_mul_out_repr())
+                                 ->assert_is_op_output("elementwise_mul")
+                                 ->AsOutput();
+
+  fill_constant_out->LinksFrom({fill_constant});
+  elementwise_mul_op->LinksFrom({elementwise_op_input, fill_constant_out});
+  elementwise_mul_out->LinksFrom({elementwise_mul_op});
+  return elementwise_mul_out;
+}
+
+void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
+                                              const std::string &op_type,
+                                              const std::string &weight_name,
+                                              int times,
+                                              const std::string &quant_type,
+                                              const std::string &dequant_type) {
+  int kNumFields = 5;
+  const int kQuantizedWeightOffset = 0;
+  const int kQuantizedOpOffset = 1;
+  const int kQuantizedOpOutOffset = 2;
+  const int kDequantOpOffset = 3;
+  const int kDequantOpOutOffset = 4;
+  const int kDequantOpWeightScaleOffset = 5;
+
+  // the quant op always be one.
+  auto quant_op_in_scale = pattern->NewNode(GetNodeName("quant_op_in_scale"))
+                               ->assert_is_op_input(quant_type, "InScale")
+                               ->AsInput();
+  auto quant_op =
+      pattern->NewNode(GetNodeName("quant_op"))->assert_is_op(quant_type);
+
+  PDNode *quant_op_out_scale = nullptr;
+  if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
+    kNumFields += 1;
+    quant_op_out_scale = pattern->NewNode(GetNodeName("quant_op_out_scale"))
+                             ->assert_is_op_output(quant_type, "OutScale")
+                             ->assert_is_op_nth_input(dequant_type, "Scales", 1)
+                             ->AsIntermediate();
+  } else {
+    quant_op_out_scale = pattern->NewNode(GetNodeName("quant_op_out_scale"))
+                             ->assert_is_op_output(quant_type, "OutScale")
+                             ->assert_is_op_input(dequant_type, "Scale")
+                             ->AsIntermediate();
+  }
+
+  auto quant_op_out = pattern->NewNode(GetNodeName("quant_op_out"))
+                          ->assert_is_op_output(quant_type, "Out")
+                          ->assert_is_op_input(op_type)
+                          ->AsIntermediate();
+
+  // there are 'times' quantized and dequant op
+  std::vector<PDNode *> nodes;
+  for (int i = 0; i < times; i++) {
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("quantized_op_weight") + std::to_string(i))
+            ->assert_is_op_input(op_type, weight_name)
+            ->AsInput());
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("quantized_op") + std::to_string(i))
+            ->assert_is_op(op_type));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("quantized_op_out") + std::to_string(i))
+            ->assert_is_op_output(op_type)
+            ->assert_is_op_input(dequant_type, "X")
+            ->AsIntermediate());
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("dequant_op") + std::to_string(i))
+            ->assert_is_op(dequant_type));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("dequant_op_out") + std::to_string(i))
+            ->assert_is_op_output(dequant_type, "Out")
+            ->AsOutput());
+
+    if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
+      nodes.push_back(pattern
+                          ->NewNode(GetNodeName("dequant_channel_scale") +
+                                    std::to_string(i))
+                          ->assert_is_op_nth_input(dequant_type, "Scales", 0)
+                          ->AsInput());
+    }
+  }
+
+  quant_op->LinksFrom({quant_op_input, quant_op_in_scale});
+  quant_op_out->LinksFrom({quant_op});
+  for (int i = 0; i < times; i++) {
+    nodes[i * kNumFields + kQuantizedOpOffset]->LinksFrom(
+        {quant_op_out, nodes[i * kNumFields + kQuantizedWeightOffset]});
+    nodes[i * kNumFields + kQuantizedOpOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kQuantizedOpOffset]});
+    if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
+      nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
+          {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale,
+           nodes[i * kNumFields + kDequantOpWeightScaleOffset]});
+    } else {
+      nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
+          {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale});
+    }
+    nodes[i * kNumFields + kDequantOpOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kDequantOpOffset]});
+  }
+}
+
+void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
+  auto reshape1_op =
+      pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
+
+  auto reshape1_out = pattern->NewNode(reshape1_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->assert_is_op_input("transpose2")
+                          ->AsIntermediate();
+
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->assert_is_op_output("transpose2", "Out")
+                           ->assert_is_op_input("reshape2")
+                           ->AsIntermediate();
+
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto reshape2_out = pattern->NewNode(reshape2_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->AsOutput();
+
+  reshape1_op->LinksFrom({reshape1_in});
+  reshape1_out->LinksFrom({reshape1_op});
+  transpose_op->LinksFrom({reshape1_out});
+  transpose_out->LinksFrom({transpose_op});
+  reshape2_op->LinksFrom({transpose_out});
+  reshape2_out->LinksFrom({reshape2_op});
+}
+
+void patterns::DeleteQuantDequantOpPattern::operator()() {
+  auto any_op_out =
+      pattern->NewNode(any_op_out_repr())
+          ->assert_is_op_input(
+              "fake_quantize_dequantize_moving_average_abs_max", "X")
+          ->AsInput();
+
+  auto quant_dequant_op_inscale =
+      pattern->NewNode(quant_dequant_op_inscale_repr())
+          ->assert_is_op_input(
+              "fake_quantize_dequantize_moving_average_abs_max", "InScale")
+          ->AsInput();
+  auto quant_dequant_op =
+      pattern->NewNode(quant_dequant_op_repr())
+          ->assert_is_op("fake_quantize_dequantize_moving_average_abs_max");
+
+  auto quant_dequant_out =
+      pattern->NewNode(quant_dequant_op_out_repr())
+          ->assert_is_op_output(
+              "fake_quantize_dequantize_moving_average_abs_max", "Out")
+          ->AsIntermediate();
+
+  auto quant_dequant_op_outscale =
+      pattern->NewNode(quant_dequant_op_outscale_repr())
+          ->assert_is_op_output(
+              "fake_quantize_dequantize_moving_average_abs_max", "OutScale")
+          ->AsOutput();
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  quant_dequant_op->LinksFrom({any_op_out, quant_dequant_op_inscale});
+  quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
+  quant_dequant_out->LinksFrom({quant_dequant_op});
+  any_op2->LinksFrom({quant_dequant_out});
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

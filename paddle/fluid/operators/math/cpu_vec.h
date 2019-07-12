@@ -18,9 +18,6 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -33,11 +30,11 @@ namespace math {
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 
-#define AVX_FLOAT_BLOCK 8
+#define YMM_FLOAT_BLOCK 8
 #define AVX_DOUBLE_BLOCK 4
-#define AVX2_FLOAT_BLOCK 8
+#define YMM_FLOAT_BLOCK 8
 #define AVX2_DOUBLE_BLOCK 4
-#define AVX512_FLOAT_BLOCK 16
+#define ZMM_FLOAT_BLOCK 16
 #define AVX512_DOUBLE_BLOCK 8
 
 template <typename T>
@@ -57,7 +54,14 @@ inline void vec_scal(const int n, const T a, T* x) {
 #ifdef PADDLE_WITH_MKLML
 template <>
 inline void vec_exp<float>(const int n, const float* x, float* y) {
-  platform::dynload::vsExp(n, x, y);
+  constexpr int small_enough = 128;
+  if (n < small_enough) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = std::exp(x[i]);
+    }
+  } else {
+    platform::dynload::vsExp(n, x, y);
+  }
 }
 
 template <>
@@ -77,7 +81,7 @@ inline void vec_scal<double>(const int n, const double a, double* x) {
 #endif
 
 // MKL scal only support inplace, choose this if src and dst are not equal
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_scal(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a * x[i];
@@ -85,12 +89,12 @@ inline void vec_scal(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_scal<float, platform::jit::avx>(const int n, const float a,
-                                                const float* x, float* y) {
+inline void vec_scal<float, platform::avx>(const int n, const float a,
+                                           const float* x, float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
-    vec_scal<float, platform::jit::isa_any>(n, a, x, y);
+    vec_scal<float, platform::isa_any>(n, a, x, y);
     return;
   }
   const int rest = n % block;
@@ -114,24 +118,138 @@ inline void vec_scal<float, platform::jit::avx>(const int n, const float a,
     y[i] = a * x[i];
   }
 #else
-  vec_scal<float, platform::jit::isa_any>(n, a, x, y);
+  vec_scal<float, platform::isa_any>(n, a, x, y);
 #endif
 }
 
 template <>
-inline void vec_scal<float, platform::jit::avx2>(const int n, const float a,
-                                                 const float* x, float* y) {
-  vec_scal<float, platform::jit::avx>(n, a, x, y);
+inline void vec_scal<float, platform::avx2>(const int n, const float a,
+                                            const float* x, float* y) {
+  vec_scal<float, platform::avx>(n, a, x, y);
 }
 
 template <>
-inline void vec_scal<float, platform::jit::avx512f>(const int n, const float a,
-                                                    const float* x, float* y) {
+inline void vec_scal<float, platform::avx512f>(const int n, const float a,
+                                               const float* x, float* y) {
   // TODO(TJ): enable me
-  vec_scal<float, platform::jit::avx2>(n, a, x, y);
+  vec_scal<float, platform::avx2>(n, a, x, y);
 }
 
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_sum(const size_t n, const T* x, T* s) {
+  s[0] = x[0];
+  for (size_t i = 1; i < n; ++i) {
+    s[0] += x[i];
+  }
+}
+
+template <>
+inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
+                                          float* s) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_sum<float, platform::isa_any>(n, x, s);
+    return;
+  }
+
+  unsigned int i, end;
+  i = end = 0;
+  s[0] = 0.f;
+
+  end = n & ~(block - 1);
+  __m256 tmp = _mm256_setzero_ps();
+  for (i = 0; i < end; i += block) {
+    tmp = _mm256_add_ps(tmp, _mm256_load_ps(x + i));
+  }
+
+  __m256 hsum = _mm256_hadd_ps(tmp, tmp);
+  hsum = _mm256_add_ps(hsum, _mm256_permute2f128_ps(hsum, hsum, 0x1));
+  _mm_store_ss(s, _mm_hadd_ps(_mm256_castps256_ps128(hsum),
+                              _mm256_castps256_ps128(hsum)));
+
+  for (; i < n; i++) {
+    s[0] += x[i];
+  }
+#else
+  vec_sum<float, platform::isa_any>(n, x, s);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_mul(const size_t n, const T* x, const T* y, T* z) {
+  for (size_t i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+}
+
+template <>
+inline void vec_mul<float, platform::avx>(const size_t n, const float* x,
+                                          const float* y, float* z) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_mul<float, platform::isa_any>(n, x, y, z);
+    return;
+  }
+
+  unsigned int i = 0, end = 0;
+  end = n & ~(block - 1);
+  for (i = 0; i < end; i += block) {
+    _mm256_storeu_ps(
+        z + i, _mm256_mul_ps(_mm256_loadu_ps(x + i), _mm256_loadu_ps(y + i)));
+  }
+
+  for (; i < n; i++) {
+    z[i] = x[i] * y[i];
+  }
+#else
+  vec_mul<float, platform::isa_any>(n, x, y, z);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_mul_reduce(const size_t n, const T* x, const T* y, T* z) {
+  z[0] = x[0] * y[0];
+  for (size_t i = 1; i < n; ++i) {
+    z[0] += x[i] * y[i];
+  }
+}
+
+template <>
+inline void vec_mul_reduce<float, platform::avx>(const size_t n, const float* x,
+                                                 const float* y, float* z) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_mul_reduce<float, platform::isa_any>(n, x, y, z);
+    return;
+  }
+
+  unsigned int i = 0, end = 0;
+  z[0] = 0.f;
+
+  end = n & ~(block - 1);
+  __m256 tmp = _mm256_setzero_ps();
+  for (i = 0; i < end; i += block) {
+    tmp = _mm256_add_ps(
+        tmp, _mm256_mul_ps(_mm256_loadu_ps(x + i), _mm256_loadu_ps(y + i)));
+  }
+
+  __m256 hsum = _mm256_hadd_ps(tmp, tmp);
+  hsum = _mm256_add_ps(hsum, _mm256_permute2f128_ps(hsum, hsum, 0x1));
+  _mm_store_ss(z, _mm_hadd_ps(_mm256_castps256_ps128(hsum),
+                              _mm256_castps256_ps128(hsum)));
+
+  for (; i < n; i++) {
+    z[0] += x[i] * y[i];
+  }
+#else
+  vec_mul_reduce<float, platform::isa_any>(n, x, y, z);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a - x[i];
@@ -139,12 +257,12 @@ inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_bias_sub<float, platform::jit::avx>(const int n, const float a,
-                                                    const float* x, float* y) {
+inline void vec_bias_sub<float, platform::avx>(const int n, const float a,
+                                               const float* x, float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
-    vec_bias_sub<float, platform::jit::isa_any>(n, a, x, y);
+    vec_bias_sub<float, platform::isa_any>(n, a, x, y);
     return;
   }
   const int rest = n % block;
@@ -168,27 +286,25 @@ inline void vec_bias_sub<float, platform::jit::avx>(const int n, const float a,
     y[i] = a - x[i];
   }
 #else
-  vec_bias_sub<float, platform::jit::isa_any>(n, a, x, y);
+  vec_bias_sub<float, platform::isa_any>(n, a, x, y);
 #endif
 }
 
 template <>
-inline void vec_bias_sub<float, platform::jit::avx2>(const int n, const float a,
-                                                     const float* x, float* y) {
-  vec_bias_sub<float, platform::jit::avx>(n, a, x, y);
+inline void vec_bias_sub<float, platform::avx2>(const int n, const float a,
+                                                const float* x, float* y) {
+  vec_bias_sub<float, platform::avx>(n, a, x, y);
 }
 
 template <>
-inline void vec_bias_sub<float, platform::jit::avx512f>(const int n,
-                                                        const float a,
-                                                        const float* x,
-                                                        float* y) {
+inline void vec_bias_sub<float, platform::avx512f>(const int n, const float a,
+                                                   const float* x, float* y) {
   // TODO(TJ): enable me
-  vec_bias_sub<float, platform::jit::avx2>(n, a, x, y);
+  vec_bias_sub<float, platform::avx2>(n, a, x, y);
 }
 
 // out = x*y + (1-x)*z
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_cross(const int n, const T* x, const T* y, const T* z, T* out) {
   for (int i = 0; i < n; ++i) {
     out[i] = x[i] * y[i] + (static_cast<T>(1) - x[i]) * z[i];
@@ -196,13 +312,13 @@ inline void vec_cross(const int n, const T* x, const T* y, const T* z, T* out) {
 }
 
 template <>
-inline void vec_cross<float, platform::jit::avx>(const int n, const float* x,
-                                                 const float* y, const float* z,
-                                                 float* out) {
+inline void vec_cross<float, platform::avx>(const int n, const float* x,
+                                            const float* y, const float* z,
+                                            float* out) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
-    vec_cross<float, platform::jit::isa_any>(n, x, y, z, out);
+    vec_cross<float, platform::isa_any>(n, x, y, z, out);
     return;
   }
   const int rest = n % block;
@@ -228,25 +344,59 @@ inline void vec_cross<float, platform::jit::avx>(const int n, const float* x,
     out[i] = x[i] * y[i] + (1.f - x[i]) * z[i];
   }
 #else
-  vec_cross<float, platform::jit::isa_any>(n, x, y, z, out);
+  vec_cross<float, platform::isa_any>(n, x, y, z, out);
 #endif
 }
 
 template <>
-inline void vec_cross<float, platform::jit::avx2>(const int n, const float* x,
-                                                  const float* y,
-                                                  const float* z, float* out) {
-  vec_cross<float, platform::jit::avx>(n, x, y, z, out);
+inline void vec_cross<float, platform::avx2>(const int n, const float* x,
+                                             const float* y, const float* z,
+                                             float* out) {
+  vec_cross<float, platform::avx>(n, x, y, z, out);
 }
 
 template <>
-inline void vec_cross<float, platform::jit::avx512f>(
-    const int n, const float* x, const float* y, const float* z, float* out) {
+inline void vec_cross<float, platform::avx512f>(const int n, const float* x,
+                                                const float* y, const float* z,
+                                                float* out) {
   // TODO(TJ): enable me
-  vec_cross<float, platform::jit::avx>(n, x, y, z, out);
+  vec_cross<float, platform::avx>(n, x, y, z, out);
 }
 
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_clip(const size_t n, const T a, const T* x, T* y) {
+  for (size_t i = 0; i < n; ++i) {
+    y[i] = x[i] < a ? a : x[i];
+  }
+}
+
+template <>
+inline void vec_clip<float, platform::avx>(const size_t n, const float a,
+                                           const float* x, float* y) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_clip<float, platform::isa_any>(n, a, x, y);
+    return;
+  }
+
+  unsigned int i = 0, end = 0;
+  end = n & ~(block - 1);
+  __m256 threshold = _mm256_set1_ps(a);
+
+  for (i = 0; i < end; i += block) {
+    _mm256_storeu_ps(y + i, _mm256_max_ps(_mm256_loadu_ps(x + i), threshold));
+  }
+
+  for (; i < n; i++) {
+    y[i] = x[i] < a ? a : x[i];
+  }
+#else
+  vec_clip<float, platform::isa_any>(n, a, x, y);
+#endif
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] + a;
@@ -254,12 +404,12 @@ inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_add_bias<float, platform::jit::avx>(const int n, const float a,
-                                                    const float* x, float* y) {
+inline void vec_add_bias<float, platform::avx>(const int n, const float a,
+                                               const float* x, float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
-    vec_add_bias<float, platform::jit::isa_any>(n, a, x, y);
+    vec_add_bias<float, platform::isa_any>(n, a, x, y);
     return;
   }
   const int rest = n % block;
@@ -283,32 +433,30 @@ inline void vec_add_bias<float, platform::jit::avx>(const int n, const float a,
     y[i] = x[i] + a;
   }
 #else
-  vec_add_bias<float, platform::jit::isa_any>(n, a, x, y);
+  vec_add_bias<float, platform::isa_any>(n, a, x, y);
 #endif
 }
 
 template <>
-inline void vec_add_bias<float, platform::jit::avx2>(const int n, const float a,
-                                                     const float* x, float* y) {
-  vec_add_bias<float, platform::jit::avx>(n, a, x, y);
+inline void vec_add_bias<float, platform::avx2>(const int n, const float a,
+                                                const float* x, float* y) {
+  vec_add_bias<float, platform::avx>(n, a, x, y);
 }
 
 template <>
-inline void vec_add_bias<float, platform::jit::avx512f>(const int n,
-                                                        const float a,
-                                                        const float* x,
-                                                        float* y) {
+inline void vec_add_bias<float, platform::avx512f>(const int n, const float a,
+                                                   const float* x, float* y) {
   // TODO(TJ): enable me
-  vec_add_bias<float, platform::jit::avx2>(n, a, x, y);
+  vec_add_bias<float, platform::avx2>(n, a, x, y);
 }
 
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_identity(const int n, const T* x, T* y) {
   // do nothing
   return;
 }
 
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_sigmoid(const int n, const T* x, T* y) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
@@ -323,12 +471,12 @@ inline void vec_sigmoid(const int n, const T* x, T* y) {
 }
 
 template <>
-inline void vec_sigmoid<float, platform::jit::avx>(const int n, const float* x,
-                                                   float* y) {
+inline void vec_sigmoid<float, platform::avx>(const int n, const float* x,
+                                              float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
-    vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
+    vec_sigmoid<float, platform::isa_any>(n, x, y);
     return;
   }
   const int rest = n % block;
@@ -377,25 +525,24 @@ inline void vec_sigmoid<float, platform::jit::avx>(const int n, const float* x,
     y[i] = 1.f / (1.f + y[i]);
   }
 #else
-  vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
+  vec_sigmoid<float, platform::isa_any>(n, x, y);
 #endif
 }
 
 template <>
-inline void vec_sigmoid<float, platform::jit::avx2>(const int n, const float* x,
-                                                    float* y) {
-  vec_sigmoid<float, platform::jit::avx>(n, x, y);
+inline void vec_sigmoid<float, platform::avx2>(const int n, const float* x,
+                                               float* y) {
+  vec_sigmoid<float, platform::avx>(n, x, y);
 }
 
 template <>
-inline void vec_sigmoid<float, platform::jit::avx512f>(const int n,
-                                                       const float* x,
-                                                       float* y) {
+inline void vec_sigmoid<float, platform::avx512f>(const int n, const float* x,
+                                                  float* y) {
   // TODO(TJ): enable me
-  vec_sigmoid<float, platform::jit::avx2>(n, x, y);
+  vec_sigmoid<float, platform::avx2>(n, x, y);
 }
 
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_tanh(const int n, const T* x, T* y) {
   vec_scal<T, isa>(n, static_cast<T>(2), x, y);
   vec_sigmoid<T, isa>(n, y, y);
@@ -404,7 +551,7 @@ inline void vec_tanh(const int n, const T* x, T* y) {
 }
 
 // TODO(TJ): make relu clip
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 inline void vec_relu(const int n, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] > 0 ? x[i] : 0;
@@ -412,12 +559,12 @@ inline void vec_relu(const int n, const T* x, T* y) {
 }
 
 template <>
-inline void vec_relu<float, platform::jit::avx>(const int n, const float* x,
-                                                float* y) {
+inline void vec_relu<float, platform::avx>(const int n, const float* x,
+                                           float* y) {
 #ifdef __AVX__
-  constexpr int block = AVX_FLOAT_BLOCK;
+  constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block * 4) {
-    vec_relu<float, platform::jit::isa_any>(n, x, y);
+    vec_relu<float, platform::isa_any>(n, x, y);
     return;
   }
 
@@ -441,26 +588,26 @@ inline void vec_relu<float, platform::jit::avx>(const int n, const float* x,
 #undef MOVE_ONE_STEP
 
 #else
-  vec_relu<float, platform::jit::isa_any>(n, x, y);
+  vec_relu<float, platform::isa_any>(n, x, y);
 #endif
 }
 
 template <>
-inline void vec_relu<float, platform::jit::avx2>(const int n, const float* x,
-                                                 float* y) {
-  vec_relu<float, platform::jit::avx>(n, x, y);
+inline void vec_relu<float, platform::avx2>(const int n, const float* x,
+                                            float* y) {
+  vec_relu<float, platform::avx>(n, x, y);
 }
 
 template <>
-inline void vec_relu<float, platform::jit::avx512f>(const int n, const float* x,
-                                                    float* y) {
+inline void vec_relu<float, platform::avx512f>(const int n, const float* x,
+                                               float* y) {
   // TODO(TJ): enable me
-  vec_relu<float, platform::jit::avx2>(n, x, y);
+  vec_relu<float, platform::avx2>(n, x, y);
 }
 
 // TODO(TJ): optimize double of sigmoid, tanh and relu if necessary
 
-template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
 class VecActivations {
  public:
   std::function<void(const int, const T*, T*)> operator()(

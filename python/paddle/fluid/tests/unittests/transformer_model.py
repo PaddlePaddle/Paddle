@@ -17,6 +17,7 @@ from __future__ import print_function
 from functools import partial
 import numpy as np
 
+import os
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.layers.io import open_recordio_file
@@ -135,7 +136,7 @@ def multi_head_attention(queries,
         # The current implementation of softmax_op only supports 2D tensor,
         # consequently it cannot be directly used here.
         # If to use the reshape_op, Besides, the shape of product inferred in
-        # compile-time is not the actual shape in run-time. It cann't be used
+        # compile-time is not the actual shape in run-time. It can't be used
         # to set the attribute of reshape_op.
         # So, here define the softmax for temporary solution.
 
@@ -408,7 +409,7 @@ def transformer(
         trg_pad_idx,
         pos_pad_idx, ):
     file_obj = open_recordio_file(
-        filename='/tmp/wmt16.recordio',
+        filename=os.environ.get('RECORDIO_FILENAME', '/tmp/wmt16.recordio'),
         shapes=[
             [batch_size * max_length, 1],
             [batch_size * max_length, 1],

@@ -44,7 +44,8 @@ struct GRUUnitFunctor {
   static void compute(const DeviceContext &context, GRUMetaValue<T> value,
                       int frame_size, int batch_size,
                       const detail::ActivationType active_node,
-                      const detail::ActivationType active_gate);
+                      const detail::ActivationType active_gate,
+                      bool origin_mode);
 };
 
 template <typename DeviceContext, typename T>
@@ -52,7 +53,8 @@ struct GRUUnitGradFunctor {
   static void compute(const DeviceContext &context, GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad, int frame_size, int batch_size,
                       const detail::ActivationType active_node,
-                      const detail::ActivationType active_gate);
+                      const detail::ActivationType active_gate,
+                      bool origin_mode);
 };
 
 }  // namespace math

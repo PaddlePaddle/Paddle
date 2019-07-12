@@ -72,7 +72,7 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(framework::ToDataType(input_.type()), func);
+    framework::VisitDataType(input_.type(), func);
   }
 };
 
@@ -131,9 +131,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
     }
 
-    auto &outputs = *const_cast<framework::Scope &>(scope)
-                         .Var()
-                         ->GetMutable<std::map<size_t, framework::Tensor>>();
+    std::map<size_t, framework::Tensor> outputs;
 
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
@@ -192,15 +190,18 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     // The first dim of each LoDTensor in Output can only be set at run-time.;
     // We still have to Resize each LoDTensor in Output.
     context->SetOutputDim("Out", x_dim);
+    // The lod level should be passed to out in compile time.
+    if (!context->IsRuntime()) {
+      context->DecreaseLoDLevel("X", /*->*/ "Out");
+    }
   }
 };
 
 class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR_ARRAY);
     }
   }
 };

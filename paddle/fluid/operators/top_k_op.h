@@ -29,6 +29,10 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {
  public:
@@ -37,8 +41,16 @@ class TopkKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
-    // k is determined by Attr
-    const size_t k = static_cast<int>(ctx.Attr<int>("k"));
+
+    size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    auto* k_t = ctx.Input<Tensor>("K");
+    if (k_t) {
+      k = k_t->data<int>()[0];
+      framework::DDim output_dims = output->dims();
+      output_dims[output_dims.size() - 1] = k;
+      output->Resize(output_dims);
+      indices->Resize(output_dims);
+    }
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
@@ -49,17 +61,24 @@ class TopkKernel : public framework::OpKernel<T> {
         framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
-    // NOTE: eigen shape doesn't affect paddle tensor.
-    auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
-
+// NOTE: eigen shape doesn't affect paddle tensor.
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
     for (size_t i = 0; i < row; i++) {
       std::vector<std::pair<T, size_t>> vec;
       vec.reserve(col);
-      for (size_t j = 0; j < col; j++) {
-        vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
+      // 1D vector
+      if (inputdims.size() == 1) {
+        auto eg_input = EigenVector<T>::Flatten(*input);
+        for (size_t j = 0; j < col; j++) {
+          vec.push_back(std::pair<T, size_t>(eg_input(j), j));
+        }
+      } else {
+        auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
+        for (size_t j = 0; j < col; j++) {
+          vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
+        }
       }
 
       std::partial_sort(

@@ -25,7 +25,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -35,7 +35,7 @@ namespace details {
 
 struct FusedBroadcastOpHandle : public BroadcastOpHandle {
  public:
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   FusedBroadcastOpHandle(ir::Node *node,
                          const std::vector<Scope *> local_scopes,
                          const std::vector<platform::Place> &places,

@@ -31,7 +31,7 @@ class TestRandomCropOp(OpTest):
             np.array([[6, 7, 8], [10, 11, 12]]).astype(np.int32)
         ]
         self.op_type = "random_crop"
-        self.inputs = {'X': to_crop, 'Seed': np.array([10])}
+        self.inputs = {'X': to_crop, 'Seed': np.array([10]).astype('int64')}
         self.outputs = {'Out': np.array([]), 'SeedOut': np.array([])}
         self.attrs = {'shape': [2, 3]}
 

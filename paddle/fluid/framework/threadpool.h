@@ -58,7 +58,7 @@ class ThreadPool {
   ~ThreadPool();
 
   // Run pushes a function to the task queue and returns a std::future
-  // object.  To wait for the completion of the task, call
+  // object. To wait for the completion of the task, call
   // std::future::wait().
   template <typename Callback>
   std::future<void> Run(Callback fn) {
@@ -69,7 +69,6 @@ class ThreadPool {
   template <typename Callback>
   std::future<std::unique_ptr<platform::EnforceNotMet>> RunAndGetException(
       Callback fn) {
-    std::unique_lock<std::mutex> lock(mutex_);
     Task task([fn]() -> std::unique_ptr<platform::EnforceNotMet> {
       try {
         fn();
@@ -84,7 +83,13 @@ class ThreadPool {
       return nullptr;
     });
     std::future<std::unique_ptr<platform::EnforceNotMet>> f = task.get_future();
-    tasks_.push(std::move(task));
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (!running_) {
+        PADDLE_THROW("enqueue on stopped ThreadPool");
+      }
+      tasks_.push(std::move(task));
+    }
     scheduled_.notify_one();
     return f;
   }

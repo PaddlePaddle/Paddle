@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -91,10 +92,10 @@ void FindWhileOp(Graph* graph) {
 #undef OP_SET_IN
 #undef OP_SET_OUT
 
-  auto* X = graph->RetriveNode(34);
-  auto* LSTMOUT = graph->RetriveNode(81);
-  auto* cell_init = graph->RetriveNode(6);
-  auto* hidden_init = graph->RetriveNode(8);
+  auto* X = graph->RetrieveNode(34);
+  auto* LSTMOUT = graph->RetrieveNode(81);
+  auto* cell_init = graph->RetrieveNode(6);
+  auto* hidden_init = graph->RetrieveNode(8);
 
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
@@ -135,22 +136,22 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 void PrepareParameters(Graph* graph, const Param& param) {
   // Check parameters
   PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-  auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+  auto& scope = graph->Get<Scope>(kParamScopeAttr);
 
   // Create new parameters.
-  scope->Var(param.LSTMWeight)->GetMutable<LoDTensor>();
-  scope->Var(param.LSTMBias)->GetMutable<LoDTensor>();
-  scope->Var(param.Hidden)->GetMutable<LoDTensor>();
-  scope->Var(param.Cell)->GetMutable<LoDTensor>();
-  scope->Var(param.AttentionedX)->GetMutable<LoDTensor>();
-  scope->Var(param.AttentionFCOut)->GetMutable<LoDTensor>();
-  scope->Var(param.LSTMX)->GetMutable<LoDTensor>();
-  scope->Var(param.LSTMOUT)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();
+  scope.Var(param.Hidden)->GetMutable<LoDTensor>();
+  scope.Var(param.Cell)->GetMutable<LoDTensor>();
+  scope.Var(param.AttentionedX)->GetMutable<LoDTensor>();
+  scope.Var(param.AttentionFCOut)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMX)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMOUT)->GetMutable<LoDTensor>();
 
 #define GATE_W(name__)                                               \
-  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");            \
-  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");            \
-  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");            \
+  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");             \
+  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");             \
+  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");             \
   CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);       \
   VLOG(4) << #name__ "_w0"                                           \
           << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
@@ -168,26 +169,26 @@ void PrepareParameters(Graph* graph, const Param& param) {
   GATE_W(c);
 #undef GATE_W
 
-  auto* attention_fc_w = scope->FindVar("attention_fc.w_0");
-  auto* attention_fc_b = scope->FindVar("attention_fc.b_0");
-  auto* attention_output_w = scope->FindVar("attention_output.w_0");
-  auto* attention_output_b = scope->FindVar("attention_output.b_0");
+  auto* attention_fc_w = scope.FindVar("attention_fc.w_0");
+  auto* attention_fc_b = scope.FindVar("attention_fc.b_0");
+  auto* attention_output_w = scope.FindVar("attention_output.w_0");
+  auto* attention_output_b = scope.FindVar("attention_output.b_0");
   CHECK_P4(attention_fc_w, attention_fc_b, attention_output_w,
            attention_output_b);
 
-  auto* lstm_weight = scope->Var(param.LSTMWeight);
+  auto* lstm_weight = scope.Var(param.LSTMWeight);
   auto* lstm_weight_t = lstm_weight->GetMutable<LoDTensor>();
-  auto* lstm_bias = scope->Var(param.LSTMBias);
+  auto* lstm_bias = scope.Var(param.LSTMBias);
   auto* lstm_bias_t = lstm_bias->GetMutable<LoDTensor>();
 
   // reshape attention_bias
   auto* attention_bias_t =
-      scope->FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
+      scope.FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
   PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1);
   attention_bias_t->Resize(make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
-      scope->FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
+      scope.FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
   attention_scalar_bias_t->Resize(
       make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
@@ -211,12 +212,12 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
-  std::array<const float*, 4> tensors(
-      {{W_forget_w0.data<float>(), W_input_w0.data<float>(),
-        W_output_w0.data<float>(), W_cell_w0.data<float>()}});
-  std::array<const float*, 4> tensors1(
-      {{W_forget_w1.data<float>(), W_input_w1.data<float>(),
-        W_output_w1.data<float>(), W_cell_w1.data<float>()}});
+  std::array<const float*, 4> tensors{
+      W_forget_w0.data<float>(), W_input_w0.data<float>(),
+      W_output_w0.data<float>(), W_cell_w0.data<float>()};
+  std::array<const float*, 4> tensors1{
+      W_forget_w1.data<float>(), W_input_w1.data<float>(),
+      W_output_w1.data<float>(), W_cell_w1.data<float>()};
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -238,9 +239,9 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
 void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out) {
-  std::array<const float*, 4> tensors(
-      {{B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-        B_cell.data<float>()}});
+  std::array<const float*, 4> tensors{
+      B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
+      B_cell.data<float>()};
 
   PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
   int D = B_forget.dims()[0];
@@ -253,8 +254,7 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 // Parameters
 
-std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   PDPattern external_pattern, subblock_pattern;
 
   // Use the following variables to tell whether this model is RNN1.
@@ -269,12 +269,11 @@ std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
     }
   }
   if (count < specified_vars.size()) {
-    return graph;
+    return;
   }
 
   // Continue to fuse.
-  FindWhileOp(graph.get());
-  return graph;
+  FindWhileOp(graph);
 }
 
 }  // namespace ir

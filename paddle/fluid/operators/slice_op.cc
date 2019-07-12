@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -38,30 +39,60 @@ class SliceOp : public framework::OperatorWithKernel {
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
+    auto decrease_axis = ctx->Attrs().Get<std::vector<int>>("decrease_axis");
 
     PADDLE_ENFORCE_EQ(starts.size(), ends.size());
     PADDLE_ENFORCE_EQ(starts.size(), axes.size());
     int dim_value, start, end;
     for (size_t i = 0; i < axes.size(); ++i) {
       dim_value = out_dims[axes[i]];
-      start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
-      end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
-      start = std::max(start, 0);
-      end = std::max(end, 0);
-      start = std::min(start, dim_value);
-      end = std::min(end, dim_value);
-      start = std::min(start, end);
-      out_dims[axes[i]] = end - start;
+      if (dim_value > 0) {
+        start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
+        end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
+        start = std::max(start, 0);
+        end = std::max(end, 0);
+        // start = std::min(start, dim_value);
+        end = std::min(end, dim_value);
+        // start = std::min(start, end);
+        PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+        out_dims[axes[i]] = end - start;
+      }
     }
+
+    // generate new shape
+    if (decrease_axis.size() > 0) {
+      std::vector<int> new_out_shape;
+      for (size_t i = 0; i < decrease_axis.size(); ++i) {
+        if (ctx->IsRuntime()) {
+          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
+                            "decrease dim should be 1");
+        }
+        out_dims[decrease_axis[i]] = 0;
+      }
+
+      for (int i = 0; i < out_dims.size(); ++i) {
+        if (out_dims[i] != 0) {
+          new_out_shape.push_back(out_dims[i]);
+        }
+      }
+      if (new_out_shape.size() == 0) {
+        new_out_shape.push_back(1);
+      }
+
+      out_dims = framework::make_ddim(new_out_shape);
+    }
+
     ctx->SetOutputDim("Out", out_dims);
+    if (axes[0] != 0) {
+      ctx->ShareLoD("Input", /*->*/ "Out");
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                   ctx.Input<Tensor>("Input")->place());
   }
 };
 
@@ -81,7 +112,8 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "ends",
         "(list<int>) Starting indices of corresponding axis in `axes`.");
-
+    AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
+        .SetDefault({});
     AddComment(R"DOC(
 Slice Operator.
 
@@ -94,27 +126,27 @@ the start or end indices, it represents number of elements before the end
 of that dimension. If the value passed to start or end is larger than
 the n (the number of elements in this dimension), it represents n.
 For slicing to the end of a dimension with unknown size, it is recommended
-to pass in INT_MAX. If axes are omitted, they are set to [0, ..., ndim-1].
+to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
 Following examples will explain how slice works:
 
-    .. code-block:: text
+.. code-block:: text
 
-        Cast1:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [1, 0]
-                ends = [2, 3]
-            Then:
-                result = [ [5, 6, 7], ]
+    Case1:
+        Given:
+            data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+            axes = [0, 1]
+            starts = [1, 0]
+            ends = [2, 3]
+        Then:
+            result = [ [5, 6, 7], ]
 
-        Cast2:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                starts = [0, 1]
-                ends = [-1, 1000]
-            Then:
-                result = [ [2, 3, 4], ]
+    Case2:
+        Given:
+            data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+            starts = [0, 1]
+            ends = [-1, 1000]
+        Then:
+            result = [ [2, 3, 4], ]
 )DOC");
   }
 };
@@ -132,6 +164,13 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
   }
 };
 
@@ -151,13 +190,17 @@ class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
+                                      "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker);
-REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad);
+REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
+                  ops::SliceOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,

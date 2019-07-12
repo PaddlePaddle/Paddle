@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -43,8 +44,8 @@ class RequestSendHandler final : public RequestHandler {
   virtual ~RequestSendHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override;
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
 
  private:
   bool enable_dc_asgd_;
@@ -59,12 +60,31 @@ class RequestGetHandler final : public RequestHandler {
   virtual ~RequestGetHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override;
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
 
  private:
   bool enable_dc_asgd_;
 };
+
+class RequestGetNoBarrierHandler final : public RequestHandler {
+ public:
+  RequestGetNoBarrierHandler() : RequestHandler(false) {}
+  virtual ~RequestGetNoBarrierHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
+};
+
+static inline void BuildVar(const std::string& param_name,
+                            std::initializer_list<const char*> arguments,
+                            paddle::framework::proto::OpDesc::Var* var) {
+  var->set_parameter(param_name);
+  for (auto& arg_name : arguments) {
+    *var->mutable_arguments()->Add() = arg_name;
+  }
+}
 
 class RequestPrefetchHandler final : public RequestHandler {
  public:
@@ -72,8 +92,22 @@ class RequestPrefetchHandler final : public RequestHandler {
   virtual ~RequestPrefetchHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override;
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
+
+ private:
+  std::unique_ptr<paddle::framework::OperatorBase> BuildLookupTableOp(
+      const std::string& table_name, const std::string& id_name,
+      const std::string& out_name) {
+    paddle::framework::proto::OpDesc op_desc;
+    op_desc.set_type("lookup_table");
+    BuildVar("W", {table_name.data()}, op_desc.add_inputs());
+    BuildVar("Ids", {id_name.data()}, op_desc.add_inputs());
+    BuildVar("Out", {out_name.data()}, op_desc.add_outputs());
+
+    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    return op;
+  }
 };
 
 class RequestCheckpointHandler final : public RequestHandler {
@@ -85,8 +119,8 @@ class RequestCheckpointHandler final : public RequestHandler {
   virtual ~RequestCheckpointHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id,
-              const std::string& out_var_name = "") override;
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
 
  private:
   int checkpoint_notify_id;

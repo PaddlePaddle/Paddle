@@ -204,9 +204,11 @@ class TestQuantizeTranspiler(unittest.TestCase):
         build_program(test_program, startup, True)
         test_program = test_program.clone(for_test=True)
 
-        quant_transpiler = QuantizeTranspiler()
-        quant_transpiler.training_transpile(main)
-        quant_transpiler.training_transpile(test_program)
+        quant_type = 'range_abs_max'  # 'range_abs_max' or 'abs_max'
+        quant_transpiler = QuantizeTranspiler(
+            activation_quantize_type=quant_type)
+        quant_transpiler.training_transpile(main, startup)
+        quant_transpiler.training_transpile(test_program, startup)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)

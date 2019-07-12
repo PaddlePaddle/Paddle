@@ -25,7 +25,7 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       // TODO(Superjomn) should avoid the case when a TensorArray is a
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
-      if (var->Type() == typeid(framework::LoDTensorArray)) {
+      if (var->IsType<framework::LoDTensorArray>()) {
         VLOG(4) << "collect " << var_name;
         arrays_.push_back(var->GetMutable<framework::LoDTensorArray>());
       }
@@ -43,6 +43,29 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
 void TensorArrayBatchCleaner::ResetTensorArray() {
   for (auto *arr : arrays_) {
     arr->clear();
+  }
+}
+
+void TensorArrayBatchCleaner::CollectNoTensorVars(framework::Scope *scope) {
+  if (no_tensor_flag_) {
+    for (auto &var_name : scope->LocalVarNames()) {
+      auto *var = scope->FindVar(var_name);
+      if (!var->IsInitialized()) continue;
+      if (!valid_types_.count(var->Type())) {
+        no_tensor_vars_.insert(var);
+      }
+    }
+
+    for (auto *kid : scope->kids()) {
+      CollectTensorArrays(kid);
+    }
+    no_tensor_flag_ = false;  // Only collect one time.
+  }
+}
+
+void TensorArrayBatchCleaner::ResetNoTensorVars() {
+  for (auto *var : no_tensor_vars_) {
+    var->Clear();
   }
 }
 
