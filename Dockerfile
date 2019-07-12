@@ -25,6 +25,17 @@ RUN apt-get update && \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
 
+# Downgrade gcc&&g++
+RUN apt-get update
+WORKDIR /usr/bin
+RUN apt install -y gcc-4.8 g++-4.8
+RUN cp gcc gcc.bak
+RUN cp g++ g++.bak
+RUN rm gcc
+RUN rm g++
+RUN ln -s gcc-4.8 gcc
+RUN ln -s g++-4.8 g++
+
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
@@ -55,6 +66,31 @@ RUN apt-get update && \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools libtool ccache && \
     apt-get clean -y
+
+# Install Python2.7.15
+WORKDIR /home
+ENV version=2.7.15
+RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz
+RUN tar -xvf Python-$version.tgz
+WORKDIR /home/Python-$version
+RUN ./configure
+RUN make && make install
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/d3/3e/1d74cdcb393b68ab9ee18d78c11ae6df8447099f55fe86ee842f9c5b166c/setuptools-40.0.0.zip
+RUN apt-get -y install unzip
+RUN unzip setuptools-40.0.0.zip
+WORKDIR /home/setuptools-40.0.0
+RUN python setup.py build
+RUN python setup.py install
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/ae/e8/2340d46ecadb1692a1e455f13f75e596d4eab3d11a57446f08259dee8f02/pip-10.0.1.tar.gz
+RUN tar -zxvf pip-10.0.1.tar.gz
+WORKDIR pip-10.0.1
+RUN python setup.py install
+
+WORKDIR /home
+RUN rm Python-$version.tgz setuptools-40.0.0.zip pip-10.0.1.tar.gz && \
+    rm -r Python-$version setuptools-40.0.0 pip-10.0.1
 
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
@@ -92,17 +128,16 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3 --no-cache-dir install -U wheel && \
+RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.6 --no-cache-dir install -U wheel && \
+    pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.7 --no-cache-dir install -U wheel && \
+    pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    easy_install -U pip && \
-    pip --no-cache-dir install -U pip setuptools wheel && \
+    pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
@@ -124,12 +159,6 @@ RUN pip3 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.6 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.7 --no-cache-dir install pylint pytest astroid isort
 RUN pip --no-cache-dir install pylint pytest astroid isort LinkChecker
-
-# for coverage
-RUN pip3 --no-cache-dir install coverage
-RUN pip3.6 --no-cache-dir install coverage
-RUN pip3.7 --no-cache-dir install coverage
-RUN pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
 RUN pip3 --no-cache-dir install -r /root/requirements.txt
