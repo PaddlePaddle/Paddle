@@ -885,12 +885,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
-  if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))
-    enable_cache_runtime_context = true;
-  if (!all_kernels_must_compute_runtime_shape &&
+  if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
+    enable_cache_runtime_context_ = true;
+  if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
-    all_kernels_must_compute_runtime_shape = true;
-  if (!enable_cache_runtime_context) {
+    all_kernels_must_compute_runtime_shape_ = true;
+  if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
   } else {
@@ -931,7 +931,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
-  if (!all_kernels_must_compute_runtime_shape) {
+  if (!all_kernels_must_compute_runtime_shape_) {
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -980,6 +980,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                             var->Get<framework::SelectedRows>().value());
       }
     }
+  }
+
+  // To solve issue #15032, have a discussion with @Luotao for cpu inference,
+  // do not cache transfer scope, hence in this case delete transfer scope
+  // after run to avoid memory leak
+  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
+    scope.DeleteScope(transfer_scope);
   }
 }
 
@@ -1114,9 +1121,18 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
-      if (!run_by_executor_) {
+      //
+      // To solve issue #15032, have a discussion with @Luotao for cpu
+      // inference, for all cpu kernels cases without GPU participation, here
+      // not do transfer scope caching, and cpu inference performance is not
+      // impacted by test.
+      enable_cache_transfer_scope_ = false;
+      if (!run_by_executor_ &&
+          (platform::is_gpu_place(kernel_type_for_var.place_) ||
+           platform::is_gpu_place(expected_kernel_key.place_))) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
+        enable_cache_transfer_scope_ = true;
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
@@ -1125,11 +1141,11 @@ Scope* OperatorWithKernel::PrepareData(
       // each result of different input will be the same with the first one.
       // The reason is that if a gpu tensor is the input of a cpu kernel,
       // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context, we get the cpu tensor each
+      // However, if enable_cache_runtime_context_, we get the cpu tensor each
       // time, not the gpu tensor.
       // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
       // RunImpl().
-      if (enable_cache_runtime_context) {
+      if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }
 
