@@ -295,6 +295,8 @@ class AllocatorFacadePrivate {
 
 // Pimpl. Make interface clean.
 AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
+// delete m_ may cause core dump when the destructor of python in conflict with
+// cpp.
 AllocatorFacade::~AllocatorFacade() {}
 
 AllocatorFacade& AllocatorFacade::Instance() {
