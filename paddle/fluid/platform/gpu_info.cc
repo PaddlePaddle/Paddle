@@ -111,7 +111,8 @@ int GetCUDAComputeCapability(int id) {
   auto e = cudaGetDeviceProperties(&device_prop, id);
   int a = 10;
   char c[] = "helloworld";
-  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id), a, c);
+  string str = "helloworld";
+  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id), a, c, str);
   return device_prop.major * 10 + device_prop.minor;
 }
 
