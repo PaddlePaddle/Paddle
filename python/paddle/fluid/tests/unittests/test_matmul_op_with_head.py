@@ -80,6 +80,17 @@ def matmul_head(X, Y, head_number=1):
     return Z
 
 
+def transpose_mat(X):
+    if X.ndim == 1:
+        X = X.reshape((X.size, 1))
+    else:
+        dim = np.arange(X.ndim)
+        dim[[-1, -2]] = dim[[-2, -1]]
+        X = np.transpose(X, tuple(dim))
+
+    return X
+
+
 def reference_matmul_mul_head(X,
                               Y,
                               head_number=1,
@@ -89,21 +100,9 @@ def reference_matmul_mul_head(X,
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
     if transpose_X:
-        if X.ndim == 1:
-            X = X.reshape((X.size, 1))
-        elif X.ndim == 2:
-            X = X.T
-        else:
-            dim = [i for i in range(len(X.shape))]
-            dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
-            X = np.transpose(X, tuple(dim))
+        X = transpose_mat(X)
     if transpose_Y:
-        if Y.ndim == 1:
-            Y = Y.reshape((1, Y.size))
-        else:
-            dim = [i for i in range(len(Y.shape))]
-            dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
-            Y = np.transpose(Y, tuple(dim))
+        Y = transpose_mat(Y)
 
     Out = matmul_head(X, Y, head_number)
     if not Out.shape:

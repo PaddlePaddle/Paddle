@@ -306,33 +306,25 @@ class MatMulOp : public framework::OperatorWithKernel {
                      mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
     }
     std::vector<int64_t> dim_out;
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     int head_number = context->Attrs().Get<int>("head_number");
     PADDLE_ENFORCE_GE(head_number, 1);
     PADDLE_ENFORCE_LE(head_number, mat_dim_x.width_);
+    int64_t dim_out_y = head_number * mat_dim_y.width_;
+#else
+    int64_t dim_out_y = mat_dim_y.width_;
 #endif
+
     if (mat_dim_x.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-#ifdef PADDLE_WITH_MKLML
-      dim_out[dim_out.size() - 1] = head_number * mat_dim_y.width_;
-#else
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
-#endif
+      dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-#ifdef PADDLE_WITH_MKLML
-      dim_out[dim_out.size() - 1] = head_number * mat_dim_y.width_;
-#else
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
-#endif
+      dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
-#ifdef PADDLE_WITH_MKLML
-      dim_out = {mat_dim_x.height_, head_number * mat_dim_y.width_};
-#else
-      dim_out = {mat_dim_x.height_, mat_dim_y.width_};
-#endif
+      dim_out = {mat_dim_x.height_, dim_out_y};
     }
 
     if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
@@ -367,7 +359,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
 #endif
@@ -392,7 +384,7 @@ Examples without transpose:
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
 
-Example of matrix multiple with head_number of H
+Example of matrix multiplication with head_number of H
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
 
 The behavior is designed to be similar to the `numpy.matmul` function.
@@ -403,7 +395,7 @@ The differences are:
   Y must be equal, and the first `rank - 2` dimensions must be equal.
 - We add `transpose_X` and `transpose_Y` flags.
 - We add `head_number` attribute, which is used to multiple two matrixes head
-  by head, and eventually concatenates the output of several(head_number)
+  by head, and eventually concatenates the output of several (head_number)
   small matrixes multiplication.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,

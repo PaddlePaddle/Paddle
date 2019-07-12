@@ -185,7 +185,7 @@ class Blas {
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
-#if !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
                            int M, int N, int K, T alpha, const T* A, const T* B,
@@ -239,10 +239,12 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GEMM_FREE<T>(args...);
   }
 
+#if !defined(PADDLE_WITH_CUDA)
   template <typename... ARGS>
   void MatMulWithHead(ARGS... args) const {
     Base()->template MatMulWithHead<T>(args...);
   }
+#endif
 #endif
 
   template <typename... ARGS>
