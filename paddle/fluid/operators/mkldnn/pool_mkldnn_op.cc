@@ -78,12 +78,10 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(input->type());
     auto fmt = input->format();
 
-    // fmt -- what if diffrent fmt is in BWD????
     const std::string key = platform::PoolingMKLDNNHandler::GetHash(
         src_tz, pooling_type, ksize, strides, paddings, dt, fmt,
         ctx.op().Output("Out"));
 
-    // Make handler
     platform::PoolingMKLDNNHandler handler(pooling_type, dt,
                                            ctx.Attr<bool>("is_test"), dev_ctx,
                                            mkldnn_engine, key);
@@ -100,7 +98,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_md =
         platform::MKLDNNMemDesc(dst_tz, dt, mkldnn::memory::format::any);
 
-    // Create PD here
     auto pooling_pd = handler.AcquirePoolingPrimitiveDescriptor(
         src_tz, dst_tz, src_md, dst_md, ksize, strides, paddings,
         ctx.Attr<bool>("ceil_mode"));
@@ -181,17 +178,14 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         pooling_type, paddle::framework::ToMKLDNNDataType(in_x_grad->type()),
         false, dev_ctx, mkldnn_engine, key);
 
-    // Workspace
     auto workspace = handler.AcquireWorkspaceMemory();
 
-    // diff_dst
     auto diff_dst_md = platform::MKLDNNMemDesc(
         {diff_dst_tz}, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
     auto diff_dst_memory = handler.AcquireDiffDstMemory(
         diff_dst_md, to_void_cast<T>(out_grad_data));
 
-    // PD
     auto diff_src_md =
         platform::MKLDNNMemDesc(diff_src_tz, platform::MKLDNNGetDataType<T>(),
                                 mkldnn::memory::format::any);
@@ -199,11 +193,9 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto bwd_pd = handler.AcquirePoolingBackwardPrimitiveDescriptor(
         diff_dst_md, diff_src_md, ksize, strides, paddings);
 
-    // diff_src
     auto diff_src_memory = handler.AcquireDiffSrcMemoryFromPrimitive(
         reinterpret_cast<void*>(in_x_grad_data));
 
-    // Pool backward
     auto pool_bwd_p = handler.AcquirePoolingBackward(diff_dst_memory, workspace,
                                                      diff_src_memory);
 

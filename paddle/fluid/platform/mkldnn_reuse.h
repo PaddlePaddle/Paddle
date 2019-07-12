@@ -509,8 +509,15 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(workspace_mpd);
-      dev_ctx_.SetBlob(local_key, mem_p);
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
+      mem_p =
+          std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+      if (mem_p == nullptr) {
+        mem_p = std::make_shared<mkldnn::memory>(workspace_mpd);
+        dev_ctx_.SetBlob(local_key, mem_p);
+      }
     }
     return mem_p;
   }
@@ -518,7 +525,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
   std::shared_ptr<mkldnn::pooling_forward> AcquirePooling(
       std::shared_ptr<mkldnn::memory> dst_memory,
       std::shared_ptr<mkldnn::memory> src_memory) {
-    /*Generate key*/
     auto prim_key = key_ + "@pooling_p";
 
     auto pooling_p = std::static_pointer_cast<mkldnn::pooling_forward>(
@@ -537,7 +543,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
       }
       dev_ctx_.SetBlob(prim_key, pooling_p);
     }
-
     return pooling_p;
   }
 
@@ -573,7 +578,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
       const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline) {
     auto diff_dst_pd = bwd_pd_->diff_dst_primitive_desc();
     auto user_pd = user_memory_p->get_primitive_desc();
     return this->AcquireMemory(diff_dst_pd, user_pd, user_memory_p,
@@ -589,7 +594,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
       std::shared_ptr<mkldnn::memory> diff_dst_memory,
       std::shared_ptr<mkldnn::memory> workspace,
       std::shared_ptr<mkldnn::memory> diff_src_memory) {
-    /*Generate key*/
     auto prim_key = key_ + "@pooling_bwd_p";
 
     auto pooling_bwd_p = std::static_pointer_cast<mkldnn::pooling_backward>(
@@ -627,11 +631,12 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
     return (input_size - kernel_size + 2 * padding) / stride + 1;
   }
 
-  static inline void CorrectOutputSize(
-      const std::vector<int>& src_tz, const std::vector<int>& dst_tz,
-      const std::vector<int>& kernel_size, const std::vector<int>& paddings,
-      const std::vector<int>& strides,
-      std::vector<int>& right_bot_padding) {  // NOLINT
+  static inline void CorrectOutputSize(const std::vector<int>& src_tz,
+                                       const std::vector<int>& dst_tz,
+                                       const std::vector<int>& kernel_size,
+                                       const std::vector<int>& paddings,
+                                       const std::vector<int>& strides,
+                                       std::vector<int>& right_bot_padding) {
     for (size_t i = 0; i < right_bot_padding.size(); i++) {
       int desired_size = ComputeCeiledOutput(src_tz[i + 2], kernel_size[i],
                                              paddings[i], strides[i]);
