@@ -109,10 +109,16 @@ int GetCUDAComputeCapability(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   cudaDeviceProp device_prop;
   auto e = cudaGetDeviceProperties(&device_prop, id);
-  int a = 10;
-  char c[] = "helloworld";
-  string str = "helloworld";
-  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id), a, c, str);
+  char ErrorLog[50];
+  snprintf(ErrorLog, sizeof(ErrorLog),
+           "cudaGetDeviceProperties failed in"
+           "paddle::platform::GetCUDAComputeCapability!"
+           "Error Type ID = %d , Detail:"
+           "https://docs.nvidia.com/cuda/cuda-runtime-api/"
+           "group__CUDART__TYPES.html#group__CUDART__TYPES_"
+           "1g3f51e3575c2178246db0a94a430e0038",
+           e);
+  PADDLE_ENFORCE(e, ErrorLog);
   return device_prop.major * 10 + device_prop.minor;
 }
 
