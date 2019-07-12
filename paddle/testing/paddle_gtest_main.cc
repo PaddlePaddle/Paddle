@@ -85,5 +85,12 @@ int main(int argc, char** argv) {
   char** new_argv_address = new_argv.data();
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   paddle::framework::InitDevices(true);
+
+  for (int i = argc; i < new_argv.size(); ++i) {
+    if (new_argv[i]) {
+      free(new_argv[i]);
+    }
+  }
+
   return RUN_ALL_TESTS();
 }
