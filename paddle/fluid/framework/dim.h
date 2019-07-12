@@ -59,6 +59,11 @@ HOSTDEVICE inline int64_t product(const Dim<D>& a) {
   return UnrollProduct<D>::Run(a.Get());
 }
 
+template <>
+HOSTDEVICE inline int64_t product(const Dim<0>& a) {
+  return 0;
+}
+
 /**
  * Helper function to create a Dim
  *
