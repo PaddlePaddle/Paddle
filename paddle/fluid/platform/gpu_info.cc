@@ -109,9 +109,8 @@ int GetCUDAComputeCapability(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   cudaDeviceProp device_prop;
   auto e = cudaGetDeviceProperties(&device_prop, id);
-  PADDLE_ENFORCE(
-      cudaGetDeviceProperties(&device_prop, id),
-      "cudaGetDeviceProperties failedp in cudaGetDeviceProperties failed in");
+  int a = 10;
+  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id), "aaa", a);
   return device_prop.major * 10 + device_prop.minor;
 }
 
