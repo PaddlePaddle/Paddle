@@ -79,6 +79,8 @@ DEFINE_string(selected_gpus, "",
 namespace paddle {
 namespace platform {
 
+inline string ErrorLog(cudaError e) {}
+
 static int GetCUDADeviceCountImpl() {
   const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
   if (cuda_visible_devices != nullptr) {
@@ -106,9 +108,14 @@ int GetCUDADeviceCount() {
 int GetCUDAComputeCapability(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   cudaDeviceProp device_prop;
+  auto e = cudaGetDeviceProperties(&device_prop, id);
   PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id),
                  "cudaGetDeviceProperties failed in "
-                 "paddle::platform::GetCUDAComputeCapability");
+                 "paddle::platform::GetCUDAComputeCapability!"
+                 "Error Type ID ="
+                 "https://docs.nvidia.com/cuda/cuda-runtime-api/"
+                 "group__CUDART__TYPES.html#group__CUDART__TYPES_"
+                 "1g3f51e3575c2178246db0a94a430e0038");
   return device_prop.major * 10 + device_prop.minor;
 }
 
@@ -222,11 +229,13 @@ size_t GpuInitAllocSize() {
 
 size_t GpuReallocSize() {
   if (FLAGS_reallocate_gpu_memory_in_mb > 0ul) {
-    // Additional memory will be allocated by FLAGS_reallocate_gpu_memory_in_mb
+    // Additional memory will be allocated by
+    // FLAGS_reallocate_gpu_memory_in_mb
     return static_cast<size_t>(FLAGS_reallocate_gpu_memory_in_mb << 20);
   }
 
-  // FLAGS_reallocate_gpu_memory_in_mb is 0, additional memory will be allocated
+  // FLAGS_reallocate_gpu_memory_in_mb is 0, additional memory will be
+  // allocated
   // by fraction
   size_t total = 0;
   size_t available = 0;
