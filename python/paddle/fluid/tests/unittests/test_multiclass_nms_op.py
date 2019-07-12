@@ -274,12 +274,14 @@ class TestMulticlassNMSOp(OpTest):
                                                nms_top_k, keep_top_k)
         det_outs = [[-1, 0]] if not det_outs else det_outs
         det_outs = np.array(det_outs)
+        nmsed_outs = det_outs[:, :-1].astype('float32')
+        index_outs = det_outs[:, -1:].astype('int')
 
         self.op_type = 'multiclass_nms'
         self.inputs = {'BBoxes': boxes, 'Scores': scores}
         self.outputs = {
-            'Out': (det_outs[:, :-1], [lod]),
-            'Index': (det_outs[:, -1:].astype('int64'), [lod])
+            'Out': (nmsed_outs, [lod]),
+            'Index': (index_outs, [lod])
         }
         self.attrs = {
             'background_label': 0,
@@ -340,14 +342,16 @@ class TestMulticlassNMSLoDInput(OpTest):
 
         det_outs = [[-1, 0]] if not det_outs else det_outs
         det_outs = np.array(det_outs)
+        nmsed_outs = det_outs[:, :-1].astype('float32')
+        index_outs = det_outs[:, -1:].astype('int')
         self.op_type = 'multiclass_nms'
         self.inputs = {
             'BBoxes': (boxes, box_lod),
             'Scores': (scores, box_lod),
         }
         self.outputs = {
-            'Out': (det_outs[:, :-1], [lod]),
-            'Index': (det_outs[:, -1:], [lod])
+            'Out': (nmsed_outs, [lod]),
+            'Index': (index_outs, [lod])
         }
         self.attrs = {
             'background_label': 0,

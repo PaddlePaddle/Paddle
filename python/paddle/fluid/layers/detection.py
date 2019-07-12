@@ -493,20 +493,26 @@ def detection_output(loc,
         return_index(bool): Whether return selected index. Default: False
 
     Returns:
-        Out: (Variable) The detection outputs is a LoDTensor with shape [No, 6].
-             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
-             `No` is the total number of detections in this mini-batch. For each
-             instance, the offsets in first dimension are called LoD, the offset
-             number is N + 1, N is the batch size. The i-th image has
-             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
-             has no detected results. If all images have not detected results,
-             LoD will be set to {1}, and output tensor only contains one
-             value, which is -1.
-             (After version 1.3, when no boxes detected, the lod is changed
-             from {0} to {1}.)
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, a tuple with one Variable(Out) is returned. 
+
+        Out: The detection outputs is a LoDTensor with shape [No, 6]. Each row 
+        has six values: [label, confidence, xmin, ymin, xmax, ymax]. `No` is 
+        the total number of detections in this mini-batch. For each instance, 
+        the offsets in first dimension are called LoD, the offset number is 
+        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]` 
+        detected results, if it is 0, the i-th image has no detected results. 
+        If all images have not detected results, LoD will be set to {1}, and 
+        output tensor only contains one value, which is -1.
+        (After version 1.3, when no boxes detected, the lod is changed
+        from {0} to {1}.)
          
-        Index: (Variable) A 2-D LoDTensor with shape [No, 1] represents the
-               selected index. The index is the absolute value cross batches.
+        Index: Only return when return_index is True. A 2-D LoDTensor with 
+        shape [No, 1] represents the selected index. The index is the absolute 
+        value cross batches. No is the same number as Out. If the index is 
+        used to gather other attribute such as age, one needs to reshape the 
+        input(N, M, 1) to (N * M, 1) as first. 
+   
 
     Examples:
         .. code-block:: python
@@ -521,10 +527,11 @@ def detection_output(loc,
                           append_batch_size=False, dtype='float32')
             scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
-            nmsed_outs = fluid.layers.detection_output(scores=scores,
+            nmsed_outs, index = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
-                                       prior_box_var=pbv)
+                                       prior_box_var=pbv,
+                                       return_index=True)
     """
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
@@ -2744,19 +2751,24 @@ def multiclass_nms(bboxes,
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
-             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-             or A 2-D LoDTensor with shape [No, 10] represents the detections.
-             Each row has 10 values: 
-             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the 
-             total number of detections. If there is no detected boxes for all
-             images, lod will be set to {1} and Out only contains one value
-             which is -1.
-             (After version 1.3, when no boxes detected, the lod is changed 
-             from {0} to {1}) 
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, a tuple with one Variable(Out) is returned. 
 
-        Index: A 2-D LoDTensor with shape [No, 1] represents the selected index.
-               The index is the absolute value cross batches.  
+        Out: A 2-D LoDTensor with shape [No, 6] represents the detections. 
+        Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax] 
+        or A 2-D LoDTensor with shape [No, 10] represents the detections. 
+        Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3, 
+        x4, y4]. No is the total number of detections. If there is no detected 
+        boxes for all images, lod will be set to {1} and Out only contains one 
+        value which is -1.
+        (After version 1.3, when no boxes detected, the lod is changed 
+        from {0} to {1}) 
+
+        Index: Only return when return_index is True. A 2-D LoDTensor with 
+        shape [No, 1] represents the selected index. The index is the absolute 
+        value cross batches. No is the same number as Out. If the index is 
+        used to gather other attribute such as age, one needs to reshape the 
+        input(N, M, 1) to (N * M, 1) as first. 
 
 
     Examples:
