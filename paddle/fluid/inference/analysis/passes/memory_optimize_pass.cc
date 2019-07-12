@@ -18,6 +18,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -108,11 +109,34 @@ int DataTypeToSpace(framework::proto::VarType_Type type) {
 void MemoryOptimizePass::CollectVarMemorySize(
     space_table_t* space_table) const {
   const int fake_batch_size = 1;
+  auto valid_var = [&](framework::ir::Node* node) -> bool {
+    std::set<std::string> invalid_op = {"while", "conditional_block",
+                                        "tensorrt_engine",
+                                        "conditional_block_infer"};
+    for (auto* tmp : node->inputs) {
+      CHECK(tmp->IsOp());
+      std::string op_type = tmp->Op()->Type();
+      if (std::find(invalid_op.begin(), invalid_op.end(), op_type) !=
+          invalid_op.end()) {
+        return false;
+      }
+    }
+    for (auto* tmp : node->outputs) {
+      CHECK(tmp->IsOp());
+      std::string op_type = tmp->Op()->Type();
+      if (std::find(invalid_op.begin(), invalid_op.end(), op_type) !=
+          invalid_op.end()) {
+        return false;
+      }
+    }
+    return true;
+  };
   // Collect tensors from graph.
   for (auto* node : graph_->Nodes()) {
     if (node->IsVar() &&
         node->Var()->GetType() ==
-            framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
+            framework::proto::VarType::Type::VarType_Type_LOD_TENSOR &&
+        valid_var(node)) {
       // Parameters will not be reused.
       if (node->Var()->Persistable()) continue;
       auto shape = node->Var()->GetShape();
@@ -135,12 +159,9 @@ void MakeSimpleReusePlan(
     std::unordered_map<std::string, int>* cluster_size) {
   std::vector<MemNode> mem_nodes;
   for (auto& data : lifecycles) {
+    if (!space_table.count(data.first)) continue;
     MemNode temp_node;
     temp_node.name = data.first;
-    PADDLE_ENFORCE(
-        space_table.count(data.first),
-        "%s variable should be in the spacetable during memory optimize",
-        data.first);
     temp_node.size = space_table.at(data.first);
     temp_node.cluster = -1;
     temp_node.lifetime = data.second;

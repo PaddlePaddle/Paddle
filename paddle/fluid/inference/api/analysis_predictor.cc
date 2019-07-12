@@ -185,11 +185,39 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::SetMkldnnThreadID(int tid) {
+void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
-  platform::set_cur_thread_id(tid);
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+  VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
+          << platform::get_cur_mkldnn_session_id();
+  // In cache clearing mode.
+  if (config_.mkldnn_cache_capacity_ > 0) {
+    VLOG(2) << "In mkldnn cache clear mode.";
+    platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_CacheClearing);
+    platform::set_cur_input_shape_cache_capacity(
+        config_.mkldnn_cache_capacity_);
+    // Set current_input_shape for caching dynamic shape.
+    std::stringstream ss;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      for (size_t j = 0; j < inputs[i].shape.size(); ++j) {
+        ss << inputs[i].shape[j] << "-";
+      }
+    }
+    VLOG(2) << "Set input shape=" << ss.str();
+    platform::set_cur_input_shape_str(ss.str());
+  }
+#endif
+}
+
+void AnalysisPredictor::MkldnnPostReset() {
+#ifdef PADDLE_WITH_MKLDNN
+  // In cache clearing mode.
+  if (config_.mkldnn_cache_capacity_ > 0) {
+    paddle::platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_Default);
+    platform::set_cur_input_shape_cache_capacity(0);
+    platform::set_cur_input_shape_str("");
+  }
 #endif
 }
 
@@ -197,6 +225,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+#endif
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
@@ -238,7 +269,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
   return true;
 }
 
@@ -368,10 +401,10 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
-  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
   argument_.SetUseAnakin(config_.anakin_engine_enabled());
   argument_.SetPredictorID(predictor_id_);
+  argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -603,7 +636,6 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-
   return true;
 }
 

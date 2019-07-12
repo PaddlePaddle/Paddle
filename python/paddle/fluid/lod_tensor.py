@@ -72,7 +72,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     if isinstance(data, core.LoDTensor):
         return create_lod_tensor(np.array(data), recursive_seq_lens, place)
     elif isinstance(data, list):
-        # dtype and shape is not important here,
+        # dtype and shape are not important here,
         # we only want to reuse code of DataToLoDTensorConverter
         converter = DataToLoDTensorConverter(
             place=place,

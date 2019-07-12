@@ -86,3 +86,21 @@ class Communicator(object):
                 comm.stop()
         """
         self.communicator_.stop()
+
+    def is_running(self):
+        """
+        Get communicator is running or stop.
+
+        Returns:
+            bool
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.Program()
+                comm = fluid.communicator.Communicator(prog)
+                comm.is_running()
+        """
+        self.communicator_.is_running()

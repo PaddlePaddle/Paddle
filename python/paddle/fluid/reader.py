@@ -23,6 +23,7 @@ from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
+import logging
 
 __all__ = ['PyReader']
 
@@ -441,6 +442,7 @@ class PyReader(object):
                 self._queue.close()
             except Exception as ex:
                 self._queue.close()
+                logging.warn('Your decorated reader has raised an exception!')
                 raise ex
 
         self._thread = threading.Thread(target=__thread_main__)
