@@ -113,12 +113,13 @@ int GetCUDAComputeCapability(int id) {
   std::ostringstream ostr;
   ostr << "cudaGetDeviceProperties failed in"
           "paddle::platform::GetCUDAComputeCapability!"
-          "Error Type ID = " << e << " Please see detail in:"
-          "https://docs.nvidia.com/cuda/cuda-runtime-api/"
-          "group__CUDART__TYPES.html#group__CUDART__TYPES_"
-          "1g3f51e3575c2178246db0a94a430e0038");
+          "Error Type ID = "
+       << e << " Please see detail in:"
+               "https://docs.nvidia.com/cuda/cuda-runtime-api/"
+               "group__CUDART__TYPES.html#group__CUDART__TYPES_"
+               "1g3f51e3575c2178246db0a94a430e0038";
   ErrorLog = ostr.str();
-  PADDLE_ENFORCE(e, ErrorLog);
+  PADDLE_ENFORCE(e, "helllo");
   return device_prop.major * 10 + device_prop.minor;
 }
 
