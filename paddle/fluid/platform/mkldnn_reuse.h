@@ -578,7 +578,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
       const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {
+      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
     auto diff_dst_pd = bwd_pd_->diff_dst_primitive_desc();
     auto user_pd = user_memory_p->get_primitive_desc();
     return this->AcquireMemory(diff_dst_pd, user_pd, user_memory_p,
