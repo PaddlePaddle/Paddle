@@ -631,12 +631,11 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
     return (input_size - kernel_size + 2 * padding) / stride + 1;
   }
 
-  static inline void CorrectOutputSize(const std::vector<int>& src_tz,
-                                       const std::vector<int>& dst_tz,
-                                       const std::vector<int>& kernel_size,
-                                       const std::vector<int>& paddings,
-                                       const std::vector<int>& strides,
-                                       std::vector<int>& right_bot_padding) {
+  static inline void CorrectOutputSize(
+      const std::vector<int>& src_tz, const std::vector<int>& dst_tz,
+      const std::vector<int>& kernel_size, const std::vector<int>& paddings,
+      const std::vector<int>& strides,
+      std::vector<int>& right_bot_padding) {  // NOLINT
     for (size_t i = 0; i < right_bot_padding.size(); i++) {
       int desired_size = ComputeCeiledOutput(src_tz[i + 2], kernel_size[i],
                                              paddings[i], strides[i]);
