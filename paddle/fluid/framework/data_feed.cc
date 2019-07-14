@@ -42,7 +42,11 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (name == use_slots_[i]) {
-      feed_vec_[i] = var->GetMutable<LoDTensor>();
+      if (var == nullptr) {
+        feed_vec_[i] = nullptr;
+      } else {
+        feed_vec_[i] = var->GetMutable<LoDTensor>();
+      }
     }
   }
 }
@@ -598,6 +602,9 @@ void MultiSlotDataFeed::PutToFeedVec(
     const std::vector<MultiSlotType>& ins_vec) {
 #ifdef _LINUX
   for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
@@ -859,6 +866,9 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   }
 
   for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
     int total_instance = offset[i].back();
     const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float

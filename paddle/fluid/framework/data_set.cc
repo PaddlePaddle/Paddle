@@ -598,8 +598,7 @@ void MultiSlotDataset::MergeByInsId() {
           std::unique(merge_uint64_feasigns.begin(),
                       merge_uint64_feasigns.end(), unique_eq_uint64),
           merge_uint64_feasigns.end());
-      rec.uint64_feasigns_.insert(
-                                  rec.uint64_feasigns_.end(),
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
                                   merge_uint64_feasigns.begin(),
                                   merge_uint64_feasigns.end());
       rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
@@ -611,7 +610,8 @@ void MultiSlotDataset::MergeByInsId() {
                 sort_cmp_float);
       merge_float_feasigns.erase(
           std::unique(merge_float_feasigns.begin(), merge_float_feasigns.end(),
-                      unique_eq_float), merge_float_feasigns.end());
+                      unique_eq_float),
+          merge_float_feasigns.end());
       rec.float_feasigns_.insert(rec.float_feasigns_.end(),
                                  merge_float_feasigns.begin(),
                                  merge_float_feasigns.end());

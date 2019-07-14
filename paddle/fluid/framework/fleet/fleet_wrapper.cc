@@ -158,7 +158,11 @@ void FleetWrapper::PullSparseVarsSync(
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
     Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
@@ -300,23 +304,26 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
-    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
-    if (g_tensor == NULL) {
-      LOG(ERROR) << "var[" << sparse_key_names[i] << "] not found";
-      exit(-1);
-    }
-    float* g = g_tensor->data<float>();
     Variable* var = scope.FindVar(sparse_key_names[i]);
-    CHECK(var != nullptr) << "var[" << sparse_key_names[i] << "] not found";
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    if (tensor == NULL) {
-      LOG(ERROR) << "var[" << sparse_key_names[i] << "] not found";
+    if (tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
+
+    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
+    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    if (g_tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
+      exit(-1);
+    }
+    float* g = g_tensor->data<float>();
 
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
