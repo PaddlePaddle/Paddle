@@ -47,7 +47,7 @@ find_package(Threads REQUIRED)
 
 include(simd)
 
-################################ Exposed Configurations ########################################
+################################ Exposed Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
