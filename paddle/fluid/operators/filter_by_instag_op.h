@@ -36,7 +36,7 @@ template <typename T>
 using Vector = framework::CPUVector<T>;
 
 template <typename T>
-class FilterInstagKernel : public framework::OpKernel<T> {
+class FilterByInstagKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // X1 is global FC output
@@ -83,69 +83,106 @@ class FilterInstagKernel : public framework::OpKernel<T> {
     // Dim [local fc count, batch size, embedding size]
     LoDTensor* out = context.Output<LoDTensor>("Out");
     LoDTensor* map = context.Output<LoDTensor>("Map");
+    LoDTensor *loss_weight = context.Output<LoDTensor>("LossWeight");
     // expected auto = const T
     auto* x1_data = x1->data<T>();
     // expected auto = T
     size_t x1_embed_size = x1->dims()[1];
-    out->Resize(framework::make_ddim(
-        {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-    map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 3}));
+    if (ins_after_filter.size() > 0) { 
+      out->Resize(framework::make_ddim(
+          {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 3}));
+      loss_weight->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 1}));
+    } else {
+      out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
+      map->Resize(framework::make_ddim({1, 3}));
+      loss_weight->Resize(framework::make_ddim({1, 1}));
+    }
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
-
-    Vector<size_t> map_lods;
-    for (size_t i = 0; i < ins_after_filter.size(); i++) {
-      map_data[i * 3] = (int64_t)out_lods[i];
-      map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
-      map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
-      map_lods.push_back(i);
-    }
-    map_lods.push_back(ins_after_filter.size());
-    std::vector<Vector<size_t>> map_lod_info;
-    map_lod_info.push_back(map_lods);
-
-    map->set_lod(map_lod_info);
-
-    std::vector<Vector<size_t>> out_lod_info;
-    out_lod_info.push_back(out_lods);
-    out->set_lod(out_lod_info);
-    memset(out_data, 0, out->dims()[0] * out->dims()[1] * sizeof(T));
-    for (size_t i = 0; i < ins_after_filter.size(); i++) {
-      size_t pos = out_lods[i];
-      for (size_t k = x1_lods[ins_after_filter[i]];
-           k < x1_lods[ins_after_filter[i] + 1]; k++) {
-        memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
-               x1_embed_size * sizeof(T));
-        ++pos;
+    auto* loss_weight_data = loss_weight->mutable_data<double>(context.GetPlace());
+    if (ins_after_filter.size() > 0) {
+      Vector<size_t> map_lods;
+      for (size_t i = 0; i < ins_after_filter.size(); i++) {
+        map_data[i * 3] = (int64_t)out_lods[i];
+        map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
+        map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
+        map_lods.push_back(i);
       }
+      map_lods.push_back(ins_after_filter.size());
+      std::vector<Vector<size_t>> map_lod_info;
+      map_lod_info.push_back(map_lods);
+
+      map->set_lod(map_lod_info);
+      loss_weight->set_lod(map_lod_info);
+      std::vector<Vector<size_t>> out_lod_info;
+      out_lod_info.push_back(out_lods);
+      out->set_lod(out_lod_info);
+      
+      memset(out_data, 0, out->numel()  * sizeof(T));
+      for (size_t i = 0; i < loss_weight->numel(); i++) {
+          loss_weight_data[i] = 1;
+      }
+      for (size_t i = 0; i < ins_after_filter.size(); i++) {
+        size_t pos = out_lods[i];
+        for (size_t k = x1_lods[ins_after_filter[i]];
+             k < x1_lods[ins_after_filter[i] + 1]; k++) {
+          memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
+                 x1_embed_size * sizeof(T));
+          ++pos;
+        }
+      }
+    } else {
+      Vector<size_t> map_lods;
+      map_data[0] = 0;
+      map_data[1] = 1;
+      map_data[2] = 1;
+      map_lods.push_back(0);
+      map_lods.push_back(1);
+      out_lods.push_back(1);
+      std::vector<Vector<size_t>> map_lod_info;
+      map_lod_info.push_back(map_lods);
+      
+      map->set_lod(map_lod_info);
+      loss_weight->set_lod(map_lod_info);
+      std::vector<Vector<size_t>> out_lod_info;
+      out_lod_info.push_back(out_lods);
+      out->set_lod(out_lod_info);
+      memset(out_data, 0, out->numel() * sizeof(T));
+      loss_weight_data[0] = 0;
     }
   }
 };
 
 template <typename T>
-class FilterInstagGradKernel : public framework::OpKernel<T> {
+class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("X1"));
     auto* x1 = context.Input<LoDTensor>("X1");
+    auto* loss_weight = context.Input<LoDTensor>("LossWeight");
     auto* mmap = context.Input<LoDTensor>("Map");
     x1_grad->set_lod(x1->lod());
     x1_grad->Resize(x1->dims());
     auto mmap_data = mmap->data<int64_t>();
     // expected auto = T
     auto* output_grad_data = output_grad->data<T>();
+
+    auto* loss_weight_data = loss_weight->data<double>();
     // expected auto = T
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
     memset(x1_grad_data, 0, x1->dims()[0] * x1->dims()[1] * sizeof(T));
-    auto output_dims = output_grad->dims();
-    for (size_t i = 0; i < mmap->dims()[0]; i++) {
-      int src_ln = mmap_data[i * 3], dst_ln = mmap_data[i * 3 + 1];
-      int line_cnt = mmap_data[i * 3 + 2];
-      for (size_t l = 0; l < line_cnt; l++) {
-        for (size_t j = 0; j < output_dims[1]; j++) {
-          x1_grad_data[(dst_ln + l) * output_dims[1] + j] =
-              output_grad_data[(src_ln + l) * output_dims[1] + j];
+    if (loss_weight->numel() != 1 || loss_weight_data[0] != 0) {
+      auto output_dims = output_grad->dims();
+      for (size_t i = 0; i < mmap->dims()[0]; i++) {
+        int src_ln = mmap_data[i * 3], dst_ln = mmap_data[i * 3 + 1];
+        int line_cnt = mmap_data[i * 3 + 2];
+        for (size_t l = 0; l < line_cnt; l++) {
+          for (size_t j = 0; j < output_dims[1]; j++) {
+            x1_grad_data[(dst_ln + l) * output_dims[1] + j] =
+                output_grad_data[(src_ln + l) * output_dims[1] + j];
+          }
         }
       }
     }
