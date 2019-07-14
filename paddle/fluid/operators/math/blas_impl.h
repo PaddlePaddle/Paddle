@@ -422,8 +422,12 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VADD(n, x, y, z);
 #else
-  this->template VCOPY<T>(n, y, z);
-  this->template AXPY<T>(n, 1., x, z);
+  if (x == z) {
+    this->template AXPY<T>(n, 1., y, z);
+  } else {
+    this->template VCOPY<T>(n, y, z);
+    this->template AXPY<T>(n, 1., x, z);
+  }
 #endif
 }
 

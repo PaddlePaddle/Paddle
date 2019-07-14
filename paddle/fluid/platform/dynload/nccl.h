@@ -66,6 +66,7 @@ extern void* nccl_dso_handle;
   __macro(ncclGroupStart);              \
   __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
+  __macro(ncclReduceScatter);           \
   __macro(ncclGetErrorString);
 
 NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)

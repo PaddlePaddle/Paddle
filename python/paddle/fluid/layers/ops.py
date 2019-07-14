@@ -114,6 +114,7 @@ def hard_shrink(x, threshold=None):
 hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
 Examples:
 
+    >>> import paddle.fluid as fluid
     >>> data = fluid.layers.data(name="input", shape=[784])
     >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
 """
@@ -135,6 +136,7 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
 cumsum.__doc__ = _cum_sum_.__doc__ + """
 Examples:
 
+    >>> import paddle.fluid as fluid
     >>> data = fluid.layers.data(name="input", shape=[32, 784])
     >>> result = fluid.layers.cumsum(data, axis=0)
 """
@@ -157,6 +159,7 @@ def thresholded_relu(x, threshold=None):
 thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
 Examples:
 
+    >>> import paddle.fluid as fluid
     >>> data = fluid.layers.data(name="input", shape=[1])
     >>> result = fluid.layers.thresholded_relu(data, threshold=0.4)
 """
