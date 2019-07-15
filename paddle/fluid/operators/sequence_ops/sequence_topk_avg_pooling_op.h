@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 
 template <typename T>
-void get_topk_pos(const T* data, int length, int k, int* pos,
-                  bool debug = false) {
+void get_topk_pos(const T* data, int length, int k, int* pos) {
   size_t real_k = k < length ? k : length;
 
   std::vector<T> v(data, data + length);

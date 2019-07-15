@@ -66,10 +66,6 @@ class SequenceTopkAvgPoolingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("pos", "(Tensor<int>) store the topk index ").AsIntermediate();
     AddAttr<std::vector<int>>("topks", "topks");
     AddAttr<int>("channel_num", "channel number");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
     sequecen topk average pooling op
     )DOC");
