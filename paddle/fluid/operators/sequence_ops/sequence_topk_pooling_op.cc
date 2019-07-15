@@ -65,10 +65,6 @@ class SequenceTopkPoolingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("pos", "(Tensor<int>) store the topk index ").AsIntermediate();
     AddAttr<int>("topk", "topk attr");
     AddAttr<int>("channel_num", "channel number");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
     sequecen topk pooling op
     )DOC");
@@ -91,9 +87,6 @@ class SequenceTopkPoolingGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // return framework::OpKernelType(
-    //    framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-    //    ctx.device_context());
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
