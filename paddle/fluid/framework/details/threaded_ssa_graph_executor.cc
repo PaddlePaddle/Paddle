@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -155,7 +154,9 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     FeedFetchList *fetch_data) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
-  for (auto &fetch_var_name : fetch_tensors) {
+  std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
+                                                   fetch_tensors.end());
+  for (auto &fetch_var_name : fetch_tensor_set) {
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {

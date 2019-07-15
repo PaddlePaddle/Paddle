@@ -16,6 +16,7 @@
 #include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -122,7 +123,9 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
     std::vector<OpHandleBase *> *ready_fetch_ops) {
-  for (auto &fetch_var_name : fetch_tensors) {
+  std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
+                                                   fetch_tensors.end());
+  for (auto &fetch_var_name : fetch_tensor_set) {
     for (auto &var_map : graph_->Get<GraphVars>(kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
