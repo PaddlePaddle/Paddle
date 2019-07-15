@@ -508,10 +508,11 @@ def detection_output(loc,
         from {0} to {1}.)
          
         Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index. The index is the absolute 
-        value cross batches. No is the same number as Out. If the index is 
-        used to gather other attribute such as age, one needs to reshape the 
-        input(N, M, 1) to (N * M, 1) as first. 
+        shape [No, 1] represents the selected index which type is Integer. 
+        The index is the absolute value cross batches. No is the same number 
+        as Out. If the index is used to gather other attribute such as age, 
+        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
+        N is the batch size and M is the number of boxes.
    
 
     Examples:
@@ -2765,10 +2766,11 @@ def multiclass_nms(bboxes,
         from {0} to {1}) 
 
         Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index. The index is the absolute 
-        value cross batches. No is the same number as Out. If the index is 
-        used to gather other attribute such as age, one needs to reshape the 
-        input(N, M, 1) to (N * M, 1) as first. 
+        shape [No, 1] represents the selected index which type is Integer. 
+        The index is the absolute value cross batches. No is the same number 
+        as Out. If the index is used to gather other attribute such as age, 
+        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where 
+        N is the batch size and M is the number of boxes.
 
 
     Examples:
