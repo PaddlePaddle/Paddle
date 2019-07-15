@@ -39,6 +39,9 @@ class AutoGrowthBestFitAllocator : public Allocator {
   void FreeImpl(Allocation *allocation) override;
 
  private:
+  template <typename T>
+  using List = std::list<T>;
+
   struct Chunk;
 
   struct Block {
@@ -56,18 +59,18 @@ class AutoGrowthBestFitAllocator : public Allocator {
         : allocation_(std::move(allocation)) {}
 
     AllocationPtr allocation_;
-    std::list<Block> blocks_;
+    List<Block> blocks_;
   };
 
   struct BlockAllocation : public Allocation {
-    explicit BlockAllocation(const std::list<Block>::iterator &it)
+    explicit BlockAllocation(const List<Block>::iterator &it)
         : Allocation(it->ptr_, it->size_, it->chunk_->allocation_->place()),
           block_it_(it) {}
 
-    std::list<Block>::iterator block_it_;
+    List<Block>::iterator block_it_;
   };
 
-  using BlockIt = std::list<Block>::iterator;
+  using BlockIt = List<Block>::iterator;
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::map<std::pair<size_t, void *>, BlockIt> free_blocks_;

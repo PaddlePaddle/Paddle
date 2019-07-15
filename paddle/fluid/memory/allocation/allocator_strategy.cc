@@ -21,7 +21,7 @@ DEFINE_string(allocator_strategy, "auto_growth",
               "The allocation strategy. naive_best_fit means the original best "
               "fit allocator of Fluid. "
               "auto_growth means the experimental auto-growth allocator. "
-              "allocator. Enum in [naive_best_fit, auto_growth].");
+              "Enum in [naive_best_fit, auto_growth].");
 
 namespace paddle {
 namespace memory {

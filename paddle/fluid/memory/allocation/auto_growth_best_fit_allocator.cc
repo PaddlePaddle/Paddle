@@ -35,18 +35,17 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
 
 Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
   size = AlignedSize(size, alignment_);
+
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   BlockIt block_it;
   if (iter != free_blocks_.end()) {
-    VLOG(2) << "Found " << iter->second->size_ << " for " << size;
     block_it = iter->second;
     free_blocks_.erase(iter);
     auto *chunk = block_it->chunk_;
     size_t remaining_size = block_it->size_ - size;
     if (remaining_size == 0) {
       block_it->is_free_ = false;
-      VLOG(2) << "Found and no remaining";
     } else {
       auto remaining_free_block = chunk->blocks_.insert(
           block_it, Block(block_it->ptr_, remaining_size, true, chunk));
@@ -56,41 +55,41 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
           reinterpret_cast<uint8_t *>(block_it->ptr_) + remaining_size;
       block_it->size_ = size;
       block_it->is_free_ = false;
-      VLOG(2) << "Found and remaining " << remaining_size;
     }
   } else {
-    size_t alloc_size = std::max(size, chunk_size_);
+    size_t realloc_size = std::max(size, chunk_size_);
 
     try {
-      chunks_.emplace_back(underlying_allocator_->Allocate(alloc_size));
+      chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     } catch (BadAlloc &ex) {
-      if (size == alloc_size) throw ex;
-      alloc_size = size;
-      chunks_.emplace_back(underlying_allocator_->Allocate(alloc_size));
+      if (size == realloc_size) throw ex;
+      realloc_size = size;
+      chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     }
+
     auto *chunk = &(*chunks_.rbegin());
+    realloc_size = chunk->allocation_->size();
     uint8_t *p = reinterpret_cast<uint8_t *>(chunk->allocation_->ptr());
     auto &blocks = chunk->blocks_;
 
-    size_t remaining_size = alloc_size - size;
+    size_t remaining_size = realloc_size - size;
     if (remaining_size > 0) {
       blocks.emplace_back(p, remaining_size, true, chunk);
       free_blocks_.emplace(std::make_pair(remaining_size, p), --(blocks.end()));
     }
     blocks.emplace_back(p + remaining_size, size, false, chunk);
     block_it = --(blocks.end());
-    VLOG(2) << "Not found and allocate " << alloc_size << ", and remaining "
+    VLOG(2) << "Not found and reallocate " << realloc_size << ", and remaining "
             << remaining_size;
   }
-  VLOG(2) << "After allocate, free blocks " << free_blocks_.size();
   return new BlockAllocation(block_it);
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
+  std::lock_guard<std::mutex> guard(mtx_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
 
-  std::lock_guard<std::mutex> guard(mtx_);
   block_it->is_free_ = true;
 
   if (block_it != blocks.begin()) {
@@ -117,8 +116,6 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
   free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
                        block_it);
 
-  VLOG(2) << "Combine " << block_it->size_ << ", " << blocks.size() << ", "
-          << free_blocks_.size();
   delete allocation;
 }
 
