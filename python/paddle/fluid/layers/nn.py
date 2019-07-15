@@ -9476,7 +9476,7 @@ def filter_by_instag(x1, x2, x3):
         outputs={'Out': out,
                  'LossWeight': loss_weight,
                  'Map': mmap})
-    return out
+    return [out, loss_weight]
 
 
 def unstack(x, axis=0, num=None):

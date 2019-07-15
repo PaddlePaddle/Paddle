@@ -105,7 +105,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     }
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
-    auto* loss_weight_data = loss_weight->mutable_data<double>(context.GetPlace());
+    auto* loss_weight_data = loss_weight->mutable_data<float>(context.GetPlace());
     if (ins_after_filter.size() > 0) {
       Vector<size_t> map_lods;
       for (size_t i = 0; i < ins_after_filter.size(); i++) {
@@ -174,7 +174,7 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
     // expected auto = T
     auto* output_grad_data = output_grad->data<T>();
 
-    auto* loss_weight_data = loss_weight->data<double>();
+    auto* loss_weight_data = loss_weight->data<float>();
     // expected auto = T
     auto* x1_grad_data = x1_grad->mutable_data<T>(context.GetPlace());
     memset(x1_grad_data, 0, x1->dims()[0] * x1->dims()[1] * sizeof(T));
