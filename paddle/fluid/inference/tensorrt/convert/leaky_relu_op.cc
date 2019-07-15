@@ -39,8 +39,7 @@ class LeakyReluOpConverter : public OpConverter {
 
 #if IS_TRT_VERSION_GE(5100)
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Activation, *const_cast<nvinfer1::ITensor*>(input),
-        nvinfer1::ActivationType::kLEAKY_RELU);
+        engine_, Activation, *input, nvinfer1::ActivationType::kLEAKY_RELU);
     layer->setAlpha(alpha);
     output_layer = layer;
 #else
