@@ -363,6 +363,13 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of LeakyRelu operator");
     AddOutput("Out", "Output of LeakyRelu operator");
     AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
@@ -695,6 +702,8 @@ class LeakyReluDoubleGradMaker
     op->SetType("leaky_relu_grad_grad");
     // input1: X
     op->SetInput("X", Input("X"));
+    // input2: Out
+    op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
