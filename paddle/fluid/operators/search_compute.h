@@ -382,9 +382,6 @@ inline void sse_ip(const T* vec1, const T* vec2, size_t len, T* result) {
         _mm256_mul_px(_mm256_load_px(vec1 + jjj), _mm256_load_px(vec2 + jjj)));
   }
 
-//    result = mm_result[0]+mm_result[1]+mm_result[2]+mm_result[3]+
-//      mm_result[4]+mm_result[5]+mm_result[6]+mm_result[7];
-
 #if defined(TYPE_USE_FLOAT)
   __m256x hsum = _mm256_hadd_px(mm_result, mm_result);
 #elif defined(TYPE_USE_DOUBLE)
