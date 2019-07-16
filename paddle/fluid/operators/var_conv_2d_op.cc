@@ -372,7 +372,6 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int kernel_w = ctx.Attr<int>("KernelW");
 
     auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    // auto* d_col = ctx.Input<LoDTensor>(framework::GradVarName("Col"));
     auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
 
@@ -381,7 +380,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     auto* col_diff = col_grad.mutable_data<T>(ctx.GetPlace());
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
     auto* w_diff = d_w->mutable_data<T>(ctx.GetPlace());
-    // auto* col_diff = const_cast<T*>(d_col->data<T>());
+
     memset(dx_data, 0.0, x->dims()[0] * x->dims()[1] * sizeof(T));
     memset(w_diff, 0.0, w->dims()[0] * w->dims()[1] * sizeof(T));
     memset(col_diff, 0.0, col->dims()[0] * col->dims()[1] * sizeof(T));
