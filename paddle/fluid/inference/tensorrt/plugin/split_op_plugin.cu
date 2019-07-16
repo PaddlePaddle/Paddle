@@ -123,17 +123,9 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
             std::min((axis_shape_ - 1) / block.y + 1, 65535u),
             std::min((outer_rows_ - 1) / block.z + 1, 65535u));
 
-  if (this->getDataType() == nvinfer1::DataType::kFLOAT) {
-    split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr,
-        output_ptrs, inner_cols_, axis_shape_, outer_rows);
-  } else {
-    split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets_.size(), d_segment_offsets_ptr,
-        static_cast<__half const*>(input_ptr),
-        static_cast<__half**>(output_ptrs), inner_cols_, axis_shape_,
-        outer_rows);
-  }
+  split_kernel<<<grid, block, 0, stream>>>(
+      d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+      inner_cols_, axis_shape_, outer_rows);
   return cudaGetLastError() != cudaSuccess;
 }
 
