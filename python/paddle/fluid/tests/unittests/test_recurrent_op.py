@@ -463,7 +463,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
         y_ = emb * w1
         h_t = \concat([x, h_{t-1}])
         h_t = h_t * w2
-        h_t = \unsqueeze(h_t, 1)
+        h_t = \\unsqueeze(h_t, 1)
         h_t = \dot_attention(h_t, y_)
         h_t = \squeeze(h_t, 1)
         y = h_t
