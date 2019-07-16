@@ -74,11 +74,15 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    // In place gradient: dX = dO
-    framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
-    dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates = dO[Ids]
-    CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+    if (dX) {
+      // In place gradient: dX = dO
+      framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
+    }
+    if (dUpdates) {
+      dUpdates->mutable_data<T>(ctx.GetPlace());
+      // Gradient by Gather: dUpdates = dO[Ids]
+      CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+    }
   }
 };
 
