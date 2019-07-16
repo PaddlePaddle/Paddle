@@ -65,19 +65,28 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
+template <typename NumpyArrayType>
+static inline framework::DDim GetDimsFromNumpyArray(
+    const NumpyArrayType &array) {
+  std::vector<int64_t> dims;
+  if (array.ndim() == 0) {
+    dims.push_back(array.size());
+  } else {
+    dims.reserve(array.ndim());
+    for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+      dims.push_back(array.shape()[i]);
+    }
+  }
+  return framework::make_ddim(dims);
+}
+
 template <typename T>
 void PyCPUTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
         array,
     paddle::platform::CPUPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(GetDimsFromNumpyArray(array));
   auto *dst = self->mutable_data<T>(place);
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
@@ -91,13 +100,7 @@ inline void PyCPUTensorSetFromArray(
                       pybind11::array::c_style | pybind11::array::forcecast>
         array,
     paddle::platform::CPUPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(GetDimsFromNumpyArray(array));
   auto *dst = self->mutable_data<platform::float16>(place);
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
@@ -356,13 +359,7 @@ void PyCUDATensorSetFromArray(
     pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
         array,
     paddle::platform::CUDAPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(GetDimsFromNumpyArray(array));
   auto *dst = self->mutable_data<T>(place);
   paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
                                   cudaMemcpyHostToDevice);
@@ -377,13 +374,7 @@ inline void PyCUDATensorSetFromArray(
                       pybind11::array::c_style | pybind11::array::forcecast>
         array,
     paddle::platform::CUDAPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(GetDimsFromNumpyArray(array));
   auto *dst = self->mutable_data<platform::float16>(place);
   paddle::platform::GpuMemcpySync(dst, array.data(),
                                   sizeof(uint16_t) * array.size(),
@@ -396,13 +387,7 @@ void PyCUDAPinnedTensorSetFromArray(
     pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
         array,
     const paddle::platform::CUDAPinnedPlace &place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(GetDimsFromNumpyArray(array));
   auto *dst = self->mutable_data<T>(place);
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
@@ -416,13 +401,7 @@ inline void PyCUDAPinnedTensorSetFromArray(
                       pybind11::array::c_style | pybind11::array::forcecast>
         array,
     const paddle::platform::CUDAPinnedPlace &place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(GetDimsFromNumpyArray(array));
   auto *dst = self->mutable_data<platform::float16>(place);
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
@@ -472,7 +451,7 @@ inline std::string TensorDTypeToPyDTypeStr(
 }  // namespace details
 
 inline py::array TensorToPyArray(const framework::Tensor &tensor) {
-  if (!tensor.IsInitialized()) {
+  if (!tensor.IsInitialized() || tensor.dims().size() == 0) {
     return py::array();
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());

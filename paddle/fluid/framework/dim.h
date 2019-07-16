@@ -56,12 +56,7 @@ class Dim : public Array<int64_t, D> {
 // Product of a Dim
 template <int D>
 HOSTDEVICE inline int64_t product(const Dim<D>& a) {
-  return UnrollProduct<D>::Run(a.Get());
-}
-
-template <>
-HOSTDEVICE constexpr inline int64_t product(const Dim<0>& a) {
-  return 0;
+  return D == 0 ? 0 : UnrollProduct<D>::Run(a.Get());
 }
 
 /**
