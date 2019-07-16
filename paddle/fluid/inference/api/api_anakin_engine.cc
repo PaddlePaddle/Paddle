@@ -251,6 +251,10 @@ bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
     LOG(FATAL) << "At least one output should be set with tensors' names.";
   }
   for (auto &output : *output_data) {
+    if (std::find(this->output_names_.begin(), this->output_names_.end(),
+                  output.name) == this->output_names_.end()) {
+      LOG(FATAL) << output.name << " is not in the outputs of the graph.";
+    }
     auto *d_tensor_p = this->executor_p_->get_out(output.name);
     output.shape = d_tensor_p->valid_shape();
     if (output.data.length() < d_tensor_p->valid_size() * sizeof(float)) {
