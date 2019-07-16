@@ -169,7 +169,7 @@ paddle.fluid.layers.relu6 (ArgSpec(args=['x', 'threshold', 'name'], varargs=None
 paddle.fluid.layers.pow (ArgSpec(args=['x', 'factor', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', '35fa2b79b1ae6968d4a69788051c1d27'))
 paddle.fluid.layers.stanh (ArgSpec(args=['x', 'scale_a', 'scale_b', 'name'], varargs=None, keywords=None, defaults=(0.6666666666666666, 1.7159, None)), ('document', '959936a477efc6c1447a9c8bf8ce94bb'))
 paddle.fluid.layers.hard_sigmoid (ArgSpec(args=['x', 'slope', 'offset', 'name'], varargs=None, keywords=None, defaults=(0.2, 0.5, None)), ('document', '607d79ca873bee40eed1c79a96611591'))
-paddle.fluid.layers.swish (ArgSpec(args=['x', 'beta', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', 'ef745e55a48763ee7b46b21a81dc7e84'))
+paddle.fluid.layers.swish (ArgSpec(args=['x', 'beta', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', 'e0dc7bc66cba939033bc028d7a62c5f4'))
 paddle.fluid.layers.prelu (ArgSpec(args=['x', 'mode', 'param_attr', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '2da40e447716338affebfe058d05d9a9'))
 paddle.fluid.layers.brelu (ArgSpec(args=['x', 't_min', 't_max', 'name'], varargs=None, keywords=None, defaults=(0.0, 24.0, None)), ('document', '3db337c195e156e6ef2b8b4a57113600'))
 paddle.fluid.layers.leaky_relu (ArgSpec(args=['x', 'alpha', 'name'], varargs=None, keywords=None, defaults=(0.02, None)), ('document', 'f878486c82b576938151daad0de995a0'))
