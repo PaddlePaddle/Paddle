@@ -75,6 +75,16 @@ RUN tar -xvf Python-$version.tgz
 WORKDIR /home/Python-$version
 RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --with-ssl
 RUN make && make install
+
+RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc
+RUN echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc
+RUN echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc
+RUN echo "export CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH" >> ~/.bashrc
+ENV PATH=/usr/local/python2.7.15/include:${PATH}
+ENV PATH=/usr/local/python2.7.15/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH
+
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip
 RUN apt-get -y install unzip
@@ -195,4 +205,5 @@ RUN mkdir /var/run/sshd
 RUN echo 'root:root' | chpasswd
 RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+CMD source ~/.bashrc
 EXPOSE 22
