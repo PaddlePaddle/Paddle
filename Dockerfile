@@ -67,13 +67,13 @@ RUN apt-get update && \
     net-tools libtool ccache && \
     apt-get clean -y
 
-# Install Python2.7.15
+# Install Python2.7.15 to replace original python
 WORKDIR /home
 ENV version=2.7.15
 RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz
 RUN tar -xvf Python-$version.tgz
 WORKDIR /home/Python-$version
-RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --with-ssl
+RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15
 RUN make && make install
 
 RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc
@@ -84,7 +84,9 @@ ENV PATH=/usr/local/python2.7.15/include:${PATH}
 ENV PATH=/usr/local/python2.7.15/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
 ENV CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH
-
+RUN mv /usr/bin/python /usr/bin/python.bak
+RUN ln -s /usr/local/python2.7.15/bin/python2.7 /usr/local/bin/python
+RUN ln -s /usr/local/python2.7.15/bin/python2.7 /usr/bin/python
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip
 RUN apt-get -y install unzip
