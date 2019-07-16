@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -37,9 +38,8 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     return;
   }
 
-  std::vector<const paddle::framework::SelectedRows *> inputs;
+  std::vector<paddle::framework::SelectedRows *> inputs;
   SelectedRows temp_in0;
-
   if (in_place) {
     auto &in0 = in_vars[0]->Get<SelectedRows>();
     temp_in0.set_height(in0.height());
@@ -50,34 +50,53 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     for (size_t i = 1; i < in_vars.size(); ++i) {
       auto &in = in_vars[i]->Get<SelectedRows>();
       if (in.rows().size() > 0) {
-        inputs.push_back(&in);
+          temp_in0.set_height(in.height());
+          temp_in0.set_rows(in.rows());
+          framework::TensorCopy(in.value(), in.place(), context.device_context(),
+                          temp_in0.mutable_value());
+         // inputs.push_back(const_cast<SelectedRows *>(&in));
+         inputs.push_back(&temp_in0);
       }
     }
   } else {
     for (auto &in_var : in_vars) {
       auto &in = in_var->Get<SelectedRows>();
       if (in.rows().size() > 0) {
-        inputs.push_back(&in_var->Get<SelectedRows>());
+          temp_in0.set_height(in.height());
+          temp_in0.set_rows(in.rows());
+          framework::TensorCopy(in.value(), in.place(), context.device_context(),
+                          temp_in0.mutable_value());
+          inputs.push_back(&temp_in0);
       }
     }
   }
 
-  auto *out = context.Output<SelectedRows>("Out");
+  auto out = context.Output<SelectedRows>("Out");
   out->mutable_rows()->clear();
-
+  std::vector<int64_t> int_lens; 
   bool has_data = false;
-  for (auto &in : inputs) {
-    if (in->rows().size() > 0) {
+  framework::DDim out_dim;
+ 
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
       has_data = true;
-      break;
-    }
+      out_dim = inputs[idx]->value().dims();
+      if (idx == 0) {
+          int_lens.push_back(0);
+      } else {
+          int_lens.push_back(inputs[idx-1]->value().numel());
+      }
   }
   if (has_data) {
-    math::scatter::MergeAdd<DeviceContext, T> merge_add;
-    merge_add(context.template device_context<DeviceContext>(), inputs, out);
-
-    out->SyncIndex();
-
+    int64_t row_num = 0;
+    for (auto &in : inputs) {
+        row_num += in->rows().size();
+    }
+      
+    out_dim[0] = row_num;
+    out->mutable_value()->Resize(out_dim);
+    out->mutable_value()->mutable_data<T>(context.GetPlace());
+    paddle::operators::math::SelectedRowsSumTo<DeviceContext,float>add_functor;
+    add_functor(context.template device_context<DeviceContext>(), inputs, int_lens, out);
   } else {
     // no data, just set a empty out tensor.
     out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
