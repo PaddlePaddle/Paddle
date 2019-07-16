@@ -89,7 +89,17 @@ class FuseOptimizerOpPass : public ir::Pass {
   void InitVars(const std::vector<Scope *> &local_scopes,
                 const std::string &fused_var_name) const;
 
-  std::unordered_map<std::string, Node *> GetVarInfo(const Graph &result) const;
+  std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
+      const Graph &result) const;
+
+  proto::VarType::Type GettypeOfVar(
+      const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
+      const std::string &name) const;
+
+  void GradientsFilter(const std::vector<size_t> &new_grad_idx,
+                       std::vector<Node *> *opt_nodes,
+                       std::unordered_map<std::string, std::vector<std::string>>
+                           *aux_var_set) const;
 };
 
 }  // namespace ir
