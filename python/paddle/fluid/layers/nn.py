@@ -12525,7 +12525,6 @@ def match_matrix_tensor(x,
                         act=None,
                         param_attr=None,
                         dtype='float32',
-                        is_test=False,
                         name=None):
     """
     Calculate the semantic matching matrix of two word sequences with variable length.
@@ -12558,7 +12557,6 @@ def match_matrix_tensor(x,
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
             parameters/weights of this layer.
         dtype ('float32'): The data type of w data.
-        is_test(bool): A flag indicating whether execution is in test phase.
         name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
     Returns:
         Variable: output with LoD specified by this layer.

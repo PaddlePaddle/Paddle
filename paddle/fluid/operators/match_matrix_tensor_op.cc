@@ -34,9 +34,9 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("W"),
                  "W(Input) of MatchMatrix should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "Out(Output) of Fully Connected should not be null.");
+                 "Out(Output) of MatchMatrix should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Tmp"),
-                 "Tmp(Output) of Fully Connected should not be null.");
+                 "Tmp(Output) of MatchMatrix should not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2,
@@ -119,9 +119,6 @@ void MatchMatrixTensorOpGrad::InferShape(
                  "Input(W) of SequencePadGradOp should not be null.");
   PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                  "Input(Out@GRAD) of SequencePadGradOp should not be null.");
-  //   PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Tmp")),
-  //                  "Input(Tmp@GRAD) of SequencePadGradOp should not be
-  //                  null.");
 
   if (ctx->HasOutput(framework::GradVarName("X"))) {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
@@ -164,27 +161,6 @@ void MatchMatrixTensorOpMaker::Make() {
 }
 
 template <typename DeviceContext, typename T>
-void lego_cpu_gemm(const math::BlasT<DeviceContext, T>& blas,
-                   const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
-                   const int M, const int N, const int K, const T alpha,
-                   const T* A, const T* B, const T beta, T* C) {
-  int lda = (TransA == CblasNoTrans) ? K : M;
-  int ldb = (TransB == CblasNoTrans) ? N : K;
-  blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-}
-
-template <typename DeviceContext, typename T>
-void lego_cpu_gemm_with_lda(const math::BlasT<DeviceContext, T>& blas,
-                            const CBLAS_TRANSPOSE TransA,
-                            const CBLAS_TRANSPOSE TransB, const int M,
-                            const int N, const int K, const T alpha, const T* A,
-                            const T* B, const T beta, T* C, int lda) {
-  int ldb = (TransB == CblasNoTrans) ? N : K;
-
-  blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-}
-
-template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -195,7 +171,6 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Output<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
-
     int dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];
@@ -222,10 +197,8 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
 
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
-    // int M = x->dims()[0], N = dim_t * dim_in, K = dim_in;
-    lego_cpu_gemm(blas, CblasNoTrans, CblasNoTrans, x->dims()[0],
-                  dim_t * dim_in, dim_in, 1.0f, bottom_l_data, t_data, 0.0f,
-                  bottom_l_trans_data);
+    call_gemm(blas, CblasNoTrans, CblasNoTrans, x->dims()[0], dim_t * dim_in,
+              dim_in, 1.0f, bottom_l_data, t_data, 0.0f, bottom_l_trans_data);
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
@@ -236,9 +209,9 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
         auto blas_2 = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-        lego_cpu_gemm_with_lda(blas_2, CblasNoTrans, CblasTrans, len_l, len_r,
-                               dim_in, 1.0f, l_t_data, r_data, 0.0f, top_data,
-                               dim_t * dim_in);
+        call_gemm_with_lda(blas_2, CblasNoTrans, CblasTrans, len_l, len_r,
+                           dim_in, 1.0f, l_t_data, r_data, 0.0f, top_data,
+                           dim_t * dim_in);
       }
     }
 
@@ -326,14 +299,14 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* t_diff = d_w->mutable_data<T>(ctx.GetPlace());
     memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
     // bottom_diff
-    lego_cpu_gemm(blas, CblasNoTrans, CblasTrans, x->dims()[0], dim_in,
-                  dim_t * dim_in, 1.0f, bottom_l_trans_diff, t_data, 1.0f,
-                  bottom_l_diff);
+    call_gemm(blas, CblasNoTrans, CblasTrans, x->dims()[0], dim_in,
+              dim_t * dim_in, 1.0f, bottom_l_trans_diff, t_data, 1.0f,
+              bottom_l_diff);
 
     // t_diff
-    lego_cpu_gemm(blas, CblasTrans, CblasNoTrans, dim_in, dim_t * dim_in,
-                  x->dims()[0], 1.0f, bottom_l_data, bottom_l_trans_diff, 1.0f,
-                  t_diff);
+    call_gemm(blas, CblasTrans, CblasNoTrans, dim_in, dim_t * dim_in,
+              x->dims()[0], 1.0f, bottom_l_data, bottom_l_trans_diff, 1.0f,
+              t_diff);
   }
 };
 
