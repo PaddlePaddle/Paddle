@@ -73,24 +73,24 @@ ENV version=2.7.15
 RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz
 RUN tar -xvf Python-$version.tgz
 WORKDIR /home/Python-$version
-RUN ./configure
+RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --with-ssl
 RUN make && make install
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/d3/3e/1d74cdcb393b68ab9ee18d78c11ae6df8447099f55fe86ee842f9c5b166c/setuptools-40.0.0.zip
+RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip
 RUN apt-get -y install unzip
-RUN unzip setuptools-40.0.0.zip
-WORKDIR /home/setuptools-40.0.0
+RUN unzip setuptools-40.6.2.zip
+WORKDIR /home/setuptools-40.6.2
 RUN python setup.py build
 RUN python setup.py install
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/ae/e8/2340d46ecadb1692a1e455f13f75e596d4eab3d11a57446f08259dee8f02/pip-10.0.1.tar.gz
-RUN tar -zxvf pip-10.0.1.tar.gz
-WORKDIR pip-10.0.1
+RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz
+RUN tar -zxvf pip-18.0.tar.gz
+WORKDIR pip-18.0
 RUN python setup.py install
 
 WORKDIR /home
-RUN rm Python-$version.tgz setuptools-40.0.0.zip pip-10.0.1.tar.gz && \
-    rm -r Python-$version setuptools-40.0.0 pip-10.0.1
+RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
+    rm -r Python-$version setuptools-40.6.2 pip-18.0
 
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
