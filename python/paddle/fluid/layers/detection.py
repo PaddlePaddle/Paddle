@@ -225,6 +225,8 @@ def rpn_target_assign(bbox_pred,
                       gt_boxes,
                       is_crowd,
                       im_info,
+                      num_classes=1,
+                      gt_labels=None,
                       rpn_batch_size_per_im=256,
                       rpn_straddle_thresh=0.0,
                       rpn_fg_fraction=0.5,
@@ -331,14 +333,17 @@ def rpn_target_assign(bbox_pred,
         dtype=anchor_box.dtype)
     bbox_inside_weight = helper.create_variable_for_type_inference(
         dtype=anchor_box.dtype)
+    inputs={
+        'Anchor': anchor_box,
+        'GtBoxes': gt_boxes,
+        'IsCrowd': is_crowd,
+        'ImInfo': im_info
+    }
+    if gt_labels:
+        inputs['GtLabels'] = gt_labels
     helper.append_op(
         type="rpn_target_assign",
-        inputs={
-            'Anchor': anchor_box,
-            'GtBoxes': gt_boxes,
-            'IsCrowd': is_crowd,
-            'ImInfo': im_info
-        },
+        inputs=inputs,
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
@@ -361,7 +366,7 @@ def rpn_target_assign(bbox_pred,
     target_bbox.stop_gradient = True
     bbox_inside_weight.stop_gradient = True
 
-    cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
+    cls_logits = nn.reshape(x=cls_logits, shape=(-1, num_classes))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
     predicted_cls_logits = nn.gather(cls_logits, score_index)
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)

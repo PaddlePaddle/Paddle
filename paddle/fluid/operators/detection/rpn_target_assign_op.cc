@@ -148,6 +148,34 @@ Tensor FilterCrowdGt(const platform::CPUDeviceContext& context,
   return ncrowd_gt_boxes;
 }
 
+template <typename T>
+std::vector<Tensor> FilterCrowdGtBoxLabel(
+    const platform::CPUDeviceContext& context, Tensor* gt_boxes,
+    Tensor* gt_labels, Tensor* is_crowd) {
+  int gt_num = gt_boxes->dims()[0];
+  std::vector<int> not_crowd_inds;
+  auto* is_crowd_data = is_crowd->data<int>();
+  for (int i = 0; i < gt_num; ++i) {
+    if (is_crowd_data[i] == 0) {
+      not_crowd_inds.emplace_back(i);
+    }
+  }
+  int ncrowd_num = not_crowd_inds.size();
+  Tensor ncrowd_gt_boxes, ncrowd_gt_labels;
+  T* ncrowd_gt_boxes_data =
+      ncrowd_gt_boxes.mutable_data<T>({ncrowd_num, 4}, context.GetPlace());
+  int* ncrowd_gt_labels_data =
+      ncrowd_gt_labels.mutable_data<int>({ncrowd_num, 1}, context.GetPlace());
+  Gather<T>(gt_boxes->data<T>(), 4, not_crowd_inds.data(), ncrowd_num,
+            ncrowd_gt_boxes_data);
+  Gather<int>(gt_labels->data<int>(), 1, not_crowd_inds.data(), ncrowd_num,
+              ncrowd_gt_labels_data);
+  std::vector<Tensor> res;
+  res.emplace_back(ncrowd_gt_boxes);
+  res.emplace_back(ncrowd_gt_labels);
+  return res;
+}
+
 void ReservoirSampling(const int num, std::vector<int>* inds,
                        std::minstd_rand engine, bool use_random) {
   std::uniform_real_distribution<float> uniform(0, 1);
@@ -265,15 +293,17 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
 template <typename T>
 std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
                                     const Tensor& anchor_by_gt_overlap,
+                                    const Tensor& ncrowd_gt_labels,
                                     const int rpn_batch_size_per_im,
                                     const float rpn_positive_overlap,
                                     const float rpn_negative_overlap,
                                     const float rpn_fg_fraction,
-                                    std::minstd_rand engine, bool use_random) {
+                                    std::minstd_rand engine,
+                                    bool use_random) {
   auto* anchor_by_gt_overlap_data = anchor_by_gt_overlap.data<T>();
   int anchor_num = anchor_by_gt_overlap.dims()[0];
   int gt_num = anchor_by_gt_overlap.dims()[1];
-
+      
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
   std::vector<int> gt_inds;
@@ -308,6 +338,14 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
               rpn_batch_size_per_im, rpn_fg_fraction, rpn_positive_overlap,
               rpn_negative_overlap, &fg_inds, &bg_inds, &tgt_lbl, &fg_fake,
               &bbox_inside_weight, engine, use_random);
+  if (ncrowd_gt_labels.numel() > 0) {
+    auto* ncrowd_gt_labels_data = ncrowd_gt_labels.data<int>();
+    int64_t fg_num = fg_inds.size();
+    for (int64_t i = 0; i < fg_num; ++i) {
+      int gt_idx = argmax[fg_inds[i]];
+      tgt_lbl[i] = ncrowd_gt_labels_data[gt_idx];
+    }
+  }
 
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
@@ -347,6 +385,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<Tensor>("Anchor");  // (H*W*A) * 4
     auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
+    auto* gt_labels = context.Input<LoDTensor>("GtLabels");
     auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
     auto* im_info = context.Input<LoDTensor>("ImInfo");
 
@@ -360,6 +399,10 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                       "RpnTargetAssignOp gt_boxes needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
                       "RpnTargetAssignOp is_crowd needs 1 level of LoD");
+    if (gt_labels) {
+      PADDLE_ENFORCE_EQ(gt_labels->lod().size(), 1UL,
+                        "RetinanetTargetAssignOp gt_boxes needs 1 level of LoD");
+    }
     int64_t anchor_num = static_cast<int64_t>(anchor->dims()[0]);
     int64_t batch_num = static_cast<int64_t>(gt_boxes->lod().back().size() - 1);
 
@@ -396,6 +439,10 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     for (int i = 0; i < batch_num; ++i) {
       Tensor gt_boxes_slice =
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
+      Tensor gt_labels_slice;
+      if (gt_labels)
+        gt_labels_slice =
+            gt_labels->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
       Tensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
       Tensor im_info_slice = im_info->Slice(i, i + 1);
@@ -411,8 +458,17 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       Tensor inside_anchor = filter_output[1];
 
       // Filter crowd gt
-      Tensor ncrowd_gt_boxes =
-          FilterCrowdGt<T>(dev_ctx, &gt_boxes_slice, &is_crowd_slice);
+      Tensor ncrowd_gt_boxes;
+      Tensor ncrowd_gt_labels;
+      if (gt_labels) {
+        std::vector<Tensor> ncrowd_output = 
+            FilterCrowdGtBoxLabel<T>(dev_ctx, &gt_boxes_slice, &gt_labels_slice, &is_crowd_slice);
+        ncrowd_gt_boxes = ncrowd_output[0];
+        ncrowd_gt_labels = ncrowd_output[1];
+      } else {
+        ncrowd_gt_boxes =
+            FilterCrowdGt<T>(dev_ctx, &gt_boxes_slice, &is_crowd_slice);
+      }
       auto ncrowd_gt_boxes_et =
           framework::EigenTensor<T, 2>::From(ncrowd_gt_boxes);
       ncrowd_gt_boxes_et = ncrowd_gt_boxes_et * im_scale;
@@ -423,9 +479,9 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       BboxOverlaps<T>(inside_anchor, ncrowd_gt_boxes, &anchor_by_gt_overlap);
 
       auto loc_score_tgtlbl_gt = SampleRpnFgBgGt<T>(
-          dev_ctx, anchor_by_gt_overlap, rpn_batch_size_per_im,
-          rpn_positive_overlap, rpn_negative_overlap, rpn_fg_fraction, engine,
-          use_random);
+            dev_ctx, anchor_by_gt_overlap, ncrowd_gt_labels, rpn_batch_size_per_im,
+            rpn_positive_overlap, rpn_negative_overlap, rpn_fg_fraction, engine,
+            use_random);
 
       Tensor sampled_loc_index = loc_score_tgtlbl_gt[0];
       Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
@@ -504,6 +560,8 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
              "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+    AddInput("GtLabels",
+             "(LoDTensor) input ground-truth label with shape [K, 1].").AsDispensable();
     AddInput("IsCrowd",
              "(LoDTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
@@ -730,34 +788,6 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
         platform::CPUPlace());
   }
 };
-
-template <typename T>
-std::vector<Tensor> FilterCrowdGtBoxLabel(
-    const platform::CPUDeviceContext& context, Tensor* gt_boxes,
-    Tensor* gt_labels, Tensor* is_crowd) {
-  int gt_num = gt_boxes->dims()[0];
-  std::vector<int> not_crowd_inds;
-  auto* is_crowd_data = is_crowd->data<int>();
-  for (int i = 0; i < gt_num; ++i) {
-    if (is_crowd_data[i] == 0) {
-      not_crowd_inds.emplace_back(i);
-    }
-  }
-  int ncrowd_num = not_crowd_inds.size();
-  Tensor ncrowd_gt_boxes, ncrowd_gt_labels;
-  T* ncrowd_gt_boxes_data =
-      ncrowd_gt_boxes.mutable_data<T>({ncrowd_num, 4}, context.GetPlace());
-  int* ncrowd_gt_labels_data =
-      ncrowd_gt_labels.mutable_data<int>({ncrowd_num, 1}, context.GetPlace());
-  Gather<T>(gt_boxes->data<T>(), 4, not_crowd_inds.data(), ncrowd_num,
-            ncrowd_gt_boxes_data);
-  Gather<int>(gt_labels->data<int>(), 1, not_crowd_inds.data(), ncrowd_num,
-              ncrowd_gt_labels_data);
-  std::vector<Tensor> res;
-  res.emplace_back(ncrowd_gt_boxes);
-  res.emplace_back(ncrowd_gt_labels);
-  return res;
-}
 
 template <typename T>
 std::vector<Tensor> GetAllFgBgGt(const platform::CPUDeviceContext& ctx,
