@@ -33,16 +33,12 @@ Graph* Pass::Apply(Graph* graph) const {
     PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
-  auto* native_graph = graph;
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*graph),
                  "Illegal Pass. Generated graph shouldn't has cycle.");
   PADDLE_ENFORCE(VarDescIsConsistency(*graph),
                  "The VarDescs of persistable variable are not consistency.");
-  PADDLE_ENFORCE(graph == native_graph,
-                 "Pass::Apply() cannot delete the passed graph and shouldn't "
-                 "return a new graph.(For the need of pybind11)");
   applied_ = true;
   return graph;
 }

@@ -55,8 +55,8 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
 
   void GetSpecifiedOpsAndVars(
-      const std::string &op_type, const std::vector<std::string> &aux_vars_name,
-      ir::Node *node, std::vector<ir::Node *> *ops,
+      const std::vector<std::string> &aux_vars_name,
+      const std::vector<ir::Node *> &opt_nodes,
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
@@ -88,6 +88,8 @@ class FuseOptimizerOpPass : public ir::Pass {
 
   void InitVars(const std::vector<Scope *> &local_scopes,
                 const std::string &fused_var_name) const;
+
+  std::unordered_map<std::string, Node *> GetVarInfo(const Graph &result) const;
 };
 
 }  // namespace ir

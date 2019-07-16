@@ -38,7 +38,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 #endif
 
     auto &params_grads =
-        result.Get<details::ParamsAndGrads>(details::kParamsAndGrads);
+        result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     size_t num_of_all_reduce = params_grads.size();
     std::unordered_set<std::string> grads;
     grads.reserve(num_of_all_reduce);

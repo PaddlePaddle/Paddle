@@ -62,7 +62,8 @@ typedef std::vector<std::string> FusedGrads;
 constexpr char kFusedGrads[] = "fused_gradients";
 
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
-constexpr char kParamsAndGrads[] = "params_grads";
+constexpr char kParamsAndDenseGrads[] = "params_and_dense_grads";
+constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;
