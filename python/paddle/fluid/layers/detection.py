@@ -267,7 +267,10 @@ def rpn_target_assign(bbox_pred,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
+        gt_labels (Variable): For class-aware rpn classification, the gt_labels
+            is a 2D LoDTensor with shape [Ng, 1], Ng is the total number of ground
+            truth bboxes of mini-batch input.
+        gt_boxes (Variable): The ground truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
         is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
@@ -333,7 +336,7 @@ def rpn_target_assign(bbox_pred,
         dtype=anchor_box.dtype)
     bbox_inside_weight = helper.create_variable_for_type_inference(
         dtype=anchor_box.dtype)
-    inputs={
+    inputs = {
         'Anchor': anchor_box,
         'GtBoxes': gt_boxes,
         'IsCrowd': is_crowd,

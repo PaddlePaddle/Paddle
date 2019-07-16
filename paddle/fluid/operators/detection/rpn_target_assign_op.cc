@@ -291,19 +291,14 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
 }
 
 template <typename T>
-std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
-                                    const Tensor& anchor_by_gt_overlap,
-                                    const Tensor& ncrowd_gt_labels,
-                                    const int rpn_batch_size_per_im,
-                                    const float rpn_positive_overlap,
-                                    const float rpn_negative_overlap,
-                                    const float rpn_fg_fraction,
-                                    std::minstd_rand engine,
-                                    bool use_random) {
+std::vector<Tensor> SampleRpnFgBgGt(
+    const platform::CPUDeviceContext& ctx, const Tensor& anchor_by_gt_overlap,
+    const Tensor& ncrowd_gt_labels, const int rpn_batch_size_per_im,
+    const float rpn_positive_overlap, const float rpn_negative_overlap,
+    const float rpn_fg_fraction, std::minstd_rand engine, bool use_random) {
   auto* anchor_by_gt_overlap_data = anchor_by_gt_overlap.data<T>();
   int anchor_num = anchor_by_gt_overlap.dims()[0];
   int gt_num = anchor_by_gt_overlap.dims()[1];
-      
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
   std::vector<int> gt_inds;
@@ -338,6 +333,7 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
               rpn_batch_size_per_im, rpn_fg_fraction, rpn_positive_overlap,
               rpn_negative_overlap, &fg_inds, &bg_inds, &tgt_lbl, &fg_fake,
               &bbox_inside_weight, engine, use_random);
+  // Assign class-aware label
   if (ncrowd_gt_labels.numel() > 0) {
     auto* ncrowd_gt_labels_data = ncrowd_gt_labels.data<int>();
     int64_t fg_num = fg_inds.size();
@@ -399,10 +395,6 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                       "RpnTargetAssignOp gt_boxes needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
                       "RpnTargetAssignOp is_crowd needs 1 level of LoD");
-    if (gt_labels) {
-      PADDLE_ENFORCE_EQ(gt_labels->lod().size(), 1UL,
-                        "RetinanetTargetAssignOp gt_boxes needs 1 level of LoD");
-    }
     int64_t anchor_num = static_cast<int64_t>(anchor->dims()[0]);
     int64_t batch_num = static_cast<int64_t>(gt_boxes->lod().back().size() - 1);
 
@@ -461,8 +453,8 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       Tensor ncrowd_gt_boxes;
       Tensor ncrowd_gt_labels;
       if (gt_labels) {
-        std::vector<Tensor> ncrowd_output = 
-            FilterCrowdGtBoxLabel<T>(dev_ctx, &gt_boxes_slice, &gt_labels_slice, &is_crowd_slice);
+        std::vector<Tensor> ncrowd_output = FilterCrowdGtBoxLabel<T>(
+            dev_ctx, &gt_boxes_slice, &gt_labels_slice, &is_crowd_slice);
         ncrowd_gt_boxes = ncrowd_output[0];
         ncrowd_gt_labels = ncrowd_output[1];
       } else {
@@ -479,9 +471,9 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       BboxOverlaps<T>(inside_anchor, ncrowd_gt_boxes, &anchor_by_gt_overlap);
 
       auto loc_score_tgtlbl_gt = SampleRpnFgBgGt<T>(
-            dev_ctx, anchor_by_gt_overlap, ncrowd_gt_labels, rpn_batch_size_per_im,
-            rpn_positive_overlap, rpn_negative_overlap, rpn_fg_fraction, engine,
-            use_random);
+          dev_ctx, anchor_by_gt_overlap, ncrowd_gt_labels,
+          rpn_batch_size_per_im, rpn_positive_overlap, rpn_negative_overlap,
+          rpn_fg_fraction, engine, use_random);
 
       Tensor sampled_loc_index = loc_score_tgtlbl_gt[0];
       Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
@@ -561,7 +553,8 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("GtBoxes",
              "(LoDTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("GtLabels",
-             "(LoDTensor) input ground-truth label with shape [K, 1].").AsDispensable();
+             "(LoDTensor) input ground-truth label with shape [K, 1].")
+        .AsDispensable();
     AddInput("IsCrowd",
              "(LoDTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
