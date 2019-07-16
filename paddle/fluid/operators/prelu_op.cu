@@ -125,8 +125,6 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
     int numel = x->numel();
     auto dim = x->dims();
     std::vector<int> input_shape = framework::vectorize2int(dim);
-
-    framework::DDim input_dim_(framework::make_ddim(input_shape));
     auto stream = context.cuda_device_context().stream();
 
     T* dalpha_tmp_ptr;
@@ -137,17 +135,15 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       dalpha_tmp_ptr = nullptr;
     } else {
       auto& dev_ctx = context.template device_context<DeviceContext>();
-      dalpha_tmp =
-          context.AllocateTmpTensor<T, DeviceContext>(input_dim_, dev_ctx);
+      dalpha_tmp = context.AllocateTmpTensor<T, DeviceContext>(dim, dev_ctx);
       dalpha_tmp_ptr = dalpha_tmp.mutable_data<T>(context.GetPlace());
     }
 
-    if (mode == "element" || dalpha_ptr == nullptr) {
-      PreluGradElementwiseFunctor<T> prelu_element_wise_grad;
-      prelu_element_wise_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                              dalpha_tmp_ptr, input_shape);
-      return;
-    }
+    PreluGradElementwiseFunctor<T> prelu_element_wise_grad;
+    prelu_element_wise_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
+                            dalpha_tmp_ptr, input_shape);
+
+    if (mode == "element" || dalpha_ptr == nullptr) return;
 
     std::vector<int> reduce_dims;
     for (size_t i = 0; i < input_shape.size(); i++) {
