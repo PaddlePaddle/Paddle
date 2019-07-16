@@ -491,12 +491,10 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             self.emb = np.random.uniform(
                 -0.1, 0.1, size=(seq_len, batch_size,
                                  input_dim)).astype("float32")
-            self.h_boot = np.zeros(shape=(batch_size,
-                                          input_dim)).astype("float32")
 
             men_dim = (seq_len, batch_size, input_dim)
             self.mems = np.zeros(shape=men_dim).astype("float32")
-            self.oy = self.emb * self.w1
+            self.oy = np.matmul(self.emb, self.w1)
 
         def step(self, step_id, x):
             def dot_attention(query, memory):
@@ -509,7 +507,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
                 return np.exp(x) / sum(np.exp(x))
 
             if step_id == 0:
-                pre_mem = self.h_boot
+                pre_mem = np.zeros_like(x)
             else:
                 pre_mem = self.mems[step_id - 1]
             concat_in = np.concatenate([x, pre_mem], 1)
@@ -522,14 +520,14 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             self.mems[step_id] = new_mem
             self.y[step_id] = self.mems[step_id]
 
-    input_dim = 1
-    batch_size = 2
-    sent_len = 2
+    input_dim = 2
+    batch_size = 3
+    sent_len = 3
 
     def setUp(self):
         self.setup_program()
 
-        self.data_field = {"x", "emb", "w1", "w2", "h_boot"}
+        self.data_field = {"x", "emb", "w1", "w2"}
 
         self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
@@ -569,12 +567,6 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             name='w2',
             append_batch_size=False)
         w2.stop_gradient = False
-        h_boot = layers.data(
-            shape=[self.batch_size, self.input_dim],
-            dtype='float32',
-            name='h_boot',
-            append_batch_size=False)
-        h_boot.stop_gradient = False
 
         rnn = layers.StaticRNN()
 
@@ -587,7 +579,10 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
         y = layers.matmul(emb, w1)
         with rnn.step():
-            pre_h = rnn.memory(init=h_boot)
+            pre_h = rnn.memory(
+                shape=(self.sent_len, self.input_dim),
+                batch_ref=x,
+                init_value=0.0)
             step_in = rnn.step_input(x)
             concat_in = layers.concat([step_in, pre_h], 1)
             new_h = layers.matmul(concat_in, w2)
