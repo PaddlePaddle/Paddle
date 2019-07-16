@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
+"""HDFS Utils"""
 
 import os
 import sys
@@ -26,7 +26,7 @@ import errno
 import logging
 from paddle.fluid.log_helper import get_logger
 
-__all__ = ["HDFSClient", "multi_download", "multi_upload"]
+__all__ = ["HDFSClient"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -69,8 +69,6 @@ class HDFSClient(object):
     def __run_hdfs_cmd(self, commands, retry_times=5):
         whole_commands = copy.deepcopy(self.pre_commands)
         whole_commands.extend(commands)
-
-        print('Running system command: {0}'.format(' '.join(whole_commands)))
 
         ret_code = 0
         ret_out = None
@@ -159,7 +157,6 @@ class HDFSClient(object):
         _logger.info('Download of %s to %r complete.', hdfs_path, local_path)
 
         if not self.is_exist(hdfs_path):
-            print("HDFS path: {} do not exist".format(hdfs_path))
             return False
         if self.is_dir(hdfs_path):
             _logger.error(
@@ -384,7 +381,7 @@ class HDFSClient(object):
                     ret_lines.append(re_line[7])
             return ret_lines
 
-    def lsr(self, hdfs_path, only_file=True, sort=True):
+    def lsr(self, hdfs_path, only_file=True, sort=True, excludes=[]):
         """
         list directory contents about HDFS hdfs_path recursively
 
@@ -396,11 +393,6 @@ class HDFSClient(object):
         Returns:
             List: a contents list about hdfs_path.
         """
-
-        def sort_by_time(v1, v2):
-            v1_time = datetime.strptime(v1[1], '%Y-%m-%d %H:%M')
-            v2_time = datetime.strptime(v2[1], '%Y-%m-%d %H:%M')
-            return v1_time > v2_time
 
         assert hdfs_path is not None
 
@@ -425,157 +417,159 @@ class HDFSClient(object):
                 if len(re_line) == 8:
                     if only_file and re_line[0][0] == "d":
                         continue
+                    if re_line[7] in excludes:
+                        continue
+                    if "part" not in re_line[7]:
+                        continue
                     else:
-                        lines.append(
-                            (re_line[7], re_line[5] + " " + re_line[6]))
+                        part_id = int(re_line[7].split("-")[-1])
+                        lines.append((re_line[7], re_line[5] + " " + re_line[6],
+                                      part_id))
             if sort:
-                sorted(lines, cmp=sort_by_time)
+                lines = sorted(lines, key=lambda line: line[2])
             ret_lines = [ret[0] for ret in lines]
             return ret_lines
 
+    def multi_download(self,
+                       hdfs_path,
+                       local_path,
+                       trainer_id,
+                       trainers,
+                       multi_processes=5):
+        """
+        Download files from HDFS using multi process.
 
-def multi_download(client,
-                   hdfs_path,
-                   local_path,
-                   trainer_id,
-                   trainers,
-                   multi_processes=5):
-    """
-    Download files from HDFS using multi process.
+        Args:
+            hdfs_path(str): path on hdfs
+            local_path(str): path on local
+            trainer_id(int): current trainer id
+            trainers(int): all trainers number
+            multi_processes(int|5): the download data process at the same time, default=5
 
-    Args:
-        client(HDFSClient): instance of HDFSClient
-        hdfs_path(str): path on hdfs
-        local_path(str): path on local
-        trainer_id(int): current trainer id
-        trainers(int): all trainers number
-        multi_processes(int|5): the download data process at the same time, default=5
+        Returns:
+            List:
+            Download files in local folder.
+        """
 
-    Returns:
-        List:
-        Download files in local folder.
-    """
+        def __subprocess_download(datas):
+            for data in datas:
+                client.download(data, local_path)
 
-    def __subprocess_download(datas):
-        for data in datas:
-            re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
-            if re_path == os.curdir:
-                sub_local_re_path = local_path
-            else:
-                sub_local_re_path = os.path.join(local_path, re_path)
-            client.download(data, sub_local_re_path)
+        def __block(files, trainers, trainer_id):
+            if len(files) < trainers:
+                raise ValueError(
+                    "file number must gather or equal trainer number")
 
-    assert isinstance(client, HDFSClient)
+            remainder = len(files) % trainers
+            blocksize = len(files) / trainers
 
-    client.make_local_dirs(local_path)
-    _logger.info("Make local dir {} successfully".format(local_path))
+            blocks = [blocksize] * trainers
+            for i in range(remainder):
+                blocks[i] += 1
 
-    all_need_download = client.lsr(hdfs_path, sort=True)
-    need_download = all_need_download[trainer_id::trainers]
-    _logger.info("Get {} files From all {} files need to be download from {}".
-                 format(len(need_download), len(all_need_download), hdfs_path))
+            trainer_files = [[]] * trainers
+            begin = 0
+            for i in range(trainers):
+                trainer_files[i] = files[begin:begin + blocks[i]]
+                begin += blocks[i]
 
-    _logger.info("Start {} multi process to download datas".format(
-        multi_processes))
-    procs = []
-    for i in range(multi_processes):
-        process_datas = need_download[i::multi_processes]
-        p = multiprocessing.Process(
-            target=__subprocess_download, args=(process_datas, ))
-        procs.append(p)
-        p.start()
+            return trainer_files[trainer_id]
 
-    # complete the processes
-    for proc in procs:
-        proc.join()
+        self.make_local_dirs(local_path)
+        _logger.info("Make local dir {} successfully".format(local_path))
 
-    _logger.info("Finish {} multi process to download datas".format(
-        multi_processes))
+        all_need_download = client.lsr(hdfs_path, sort=True)
+        need_download = __block(all_need_download, trainers, trainer_id)
 
-    local_downloads = []
-    for data in need_download:
-        data_name = os.path.basename(data)
-        re_path = os.path.relpath(os.path.dirname(data), hdfs_path)
-        if re_path == os.curdir:
+        _logger.info(
+            "Trainer {} Get {} files {} From all {} files need to be download from {}".
+            format(trainer_id,
+                   len(need_download), need_download,
+                   len(all_need_download), hdfs_path))
+
+        _logger.info("Start {} multi process to download datas".format(
+            multi_processes))
+
+        procs = []
+        for i in range(multi_processes):
+            process_datas = need_download[i::multi_processes]
+            p = multiprocessing.Process(
+                target=__subprocess_download, args=(process_datas, ))
+            procs.append(p)
+            p.start()
+
+        # complete the processes
+        for proc in procs:
+            proc.join()
+
+        _logger.info("Finish {} multi process to download datas".format(
+            multi_processes))
+
+        local_downloads = []
+        for data in need_download:
+            data_name = os.path.basename(data)
             local_re_path = os.path.join(local_path, data_name)
-        else:
-            local_re_path = os.path.join(local_path, re_path, data_name)
-        local_downloads.append(local_re_path)
+            local_downloads.append(local_re_path)
 
-    return local_downloads
+        return local_downloads
 
+    def multi_upload(self,
+                     hdfs_path,
+                     local_path,
+                     multi_processes=5,
+                     overwrite=False):
+        """
+        Upload files to HDFS using multi process.
 
-def getfilelist(path):
-    rlist = []
-    for dir, folder, file in os.walk(path):
-        for i in file:
-            t = os.path.join(dir, i)
-            rlist.append(t)
-    for r in rlist:
-        print(r)
+        Args:
+            hdfs_path(str): path on hdfs
+            local_path(str): path on local
+            multi_processes(int|5): the upload data process at the same time, default=5
+            overwrite(bool|False): will overwrite file on HDFS or not
+            sync(bool|True): upload files sync or not.
 
+        Returns:
+            None
+        """
 
-def multi_upload(client,
-                 hdfs_path,
-                 local_path,
-                 multi_processes=5,
-                 overwrite=False,
-                 sync=True):
-    """
-    Upload files to HDFS using multi process.
+        def __subprocess_upload(datas):
+            for data in datas:
+                re_path = os.path.relpath(os.path.dirname(data), local_path)
+                hdfs_re_path = os.path.join(hdfs_path, re_path)
+                self.upload(hdfs_re_path, data, overwrite, retry_times=5)
 
-    Args:
-        client(HDFSClient): instance of HDFSClient
-        hdfs_path(str): path on hdfs
-        local_path(str): path on local
-        multi_processes(int|5): the upload data process at the same time, default=5
-        overwrite(bool|False): will overwrite file on HDFS or not
-        sync(bool|True): upload files sync or not.
+        def get_local_files(path):
+            rlist = []
 
-    Returns:
-        None
-    """
+            if not os.path.isdir(path):
+                return rlist
 
-    def __subprocess_upload(datas):
-        for data in datas:
-            re_path = os.path.relpath(os.path.dirname(data), local_path)
-            hdfs_re_path = os.path.join(hdfs_path, re_path)
-            client.upload(hdfs_re_path, data, overwrite, retry_times=5)
-
-    def get_local_files(path):
-        rlist = []
-
-        if not os.path.isdir(path):
+            for dirname, folder, files in os.walk(path):
+                for i in files:
+                    t = os.path.join(dirname, i)
+                    rlist.append(t)
             return rlist
 
-        for dirname, folder, files in os.walk(path):
-            for i in files:
-                t = os.path.join(dirname, i)
-                rlist.append(t)
-        return rlist
+        all_files = get_local_files(local_path)
+        if not all_files:
+            _logger.info("there are nothing need to upload, exit")
+            return
+        _logger.info("Start {} multi process to upload datas".format(
+            multi_processes))
+        procs = []
+        for i in range(multi_processes):
+            process_datas = all_files[i::multi_processes]
+            p = multiprocessing.Process(
+                target=__subprocess_upload, args=(process_datas, ))
+            procs.append(p)
+            p.start()
 
-    assert isinstance(client, HDFSClient)
+        # complete the processes
+        for proc in procs:
+            proc.join()
 
-    all_files = get_local_files(local_path)
-    if not all_files:
-        _logger.info("there are nothing need to upload, exit")
-        return
-    _logger.info("Start {} multi process to upload datas".format(
-        multi_processes))
-    procs = []
-    for i in range(multi_processes):
-        process_datas = all_files[i::multi_processes]
-        p = multiprocessing.Process(
-            target=__subprocess_upload, args=(process_datas, ))
-        procs.append(p)
-        p.start()
-
-    # complete the processes
-    for proc in procs:
-        proc.join()
-
-    _logger.info("Finish {} multi process to upload datas".format(
-        multi_processes))
+        _logger.info("Finish {} multi process to upload datas".format(
+            multi_processes))
 
 
 if __name__ == "__main__":
