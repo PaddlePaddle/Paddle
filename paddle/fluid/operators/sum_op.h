@@ -54,7 +54,6 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
           temp_in0.set_rows(in.rows());
           framework::TensorCopy(in.value(), in.place(), context.device_context(),
                           temp_in0.mutable_value());
-         // inputs.push_back(const_cast<SelectedRows *>(&in));
          inputs.push_back(&temp_in0);
       }
     }
@@ -73,7 +72,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
 
   auto out = context.Output<SelectedRows>("Out");
   out->mutable_rows()->clear();
-  std::vector<int64_t> int_lens; 
+  std::vector<int64_t> input1_offsize; 
   bool has_data = false;
   framework::DDim out_dim;
  
@@ -81,9 +80,9 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
       has_data = true;
       out_dim = inputs[idx]->value().dims();
       if (idx == 0) {
-          int_lens.push_back(0);
+          input1_offsize.push_back(0);
       } else {
-          int_lens.push_back(inputs[idx-1]->value().numel());
+          input1_offsize.push_back(inputs[idx-1]->value().numel());
       }
   }
   if (has_data) {
@@ -96,7 +95,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     out->mutable_value()->Resize(out_dim);
     out->mutable_value()->mutable_data<T>(context.GetPlace());
     paddle::operators::math::SelectedRowsSumTo<DeviceContext,float>add_functor;
-    add_functor(context.template device_context<DeviceContext>(), inputs, int_lens, out);
+    add_functor(context.template device_context<DeviceContext>(), inputs, input1_offsize, out);
   } else {
     // no data, just set a empty out tensor.
     out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
