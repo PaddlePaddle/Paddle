@@ -28,7 +28,6 @@ add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
-proto_library(async_executor_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
 
@@ -201,7 +200,6 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
