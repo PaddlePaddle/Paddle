@@ -966,7 +966,7 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto tmp = static_cast<T>(threshold);
-    auto temp = ((out > -tmp) * (out < tmp)).template cast<T>().eval();
+    auto temp = ((x > -tmp) * (x < tmp)).template cast<T>().eval();
     dx.device(d) = dout * (static_cast<T>(1) - (-out).exp()) * temp;
   }
 
