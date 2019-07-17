@@ -28,7 +28,6 @@ add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
-proto_library(async_executor_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
 
@@ -190,7 +189,7 @@ else()
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer data_feed_proto)
+  graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
@@ -201,18 +200,6 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(async_executor SRCS async_executor.cc data_feed.cc data_feed_factory.cc
-           executor_thread_worker.cc multi_trainer.cc dist_multi_trainer.cc pipeline_trainer.cc
-           trainer_factory.cc trainer.cc device_worker.cc hogwild_worker.cc
-           downpour_worker.cc pull_dense_worker.cc section_worker.cc 
-           device_worker_factory.cc data_set.cc dataset_factory.cc
-           DEPS op_registry device_context scope framework_proto
-           trainer_desc_proto glog lod_rank_table fleet_wrapper lodtensor_printer
-           feed_fetch_method graph_to_program_pass data_feed_proto
-           variable_helper timer fs shell)
-
-
-cc_test(data_feed_test SRCS data_feed_test.cc DEPS async_executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
