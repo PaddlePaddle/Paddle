@@ -545,23 +545,38 @@ def detection_output(loc,
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
-    index = helper.create_variable_for_type_inference(dtype='int')
-    helper.append_op(
-        type="multiclass_nms",
-        inputs={'Scores': scores,
-                'BBoxes': decoded_box},
-        outputs={'Out': nmsed_outs,
-                 'Index': index},
-        attrs={
-            'background_label': 0,
-            'nms_threshold': nms_threshold,
-            'nms_top_k': nms_top_k,
-            'keep_top_k': keep_top_k,
-            'score_threshold': score_threshold,
-            'nms_eta': 1.0,
-        })
+    if return_index:
+        index = helper.create_variable_for_type_inference(dtype='int')
+        helper.append_op(
+            type="multiclass_nms2",
+            inputs={'Scores': scores,
+                    'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs,
+                     'Index': index},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0,
+            })
+        index.stop_gradient = True
+    else:
+        helper.append_op(
+            type="multiclass_nms",
+            inputs={'Scores': scores,
+                    'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0,
+            })
     nmsed_outs.stop_gradient = True
-    index.stop_gradient = True
     if return_index:
         return nmsed_outs, index
     return nmsed_outs
