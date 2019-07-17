@@ -58,6 +58,9 @@ DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
 DEFINE_bool(warmup, false,
             "Use warmup to calculate elapsed_time more accurately. "
             "To reduce CI time, it sets false in default.");
+#ifdef PADDLE_WITH_NGRAPH
+DEFINE_bool(use_ngraph, false, "Use nGraph to run the inference program.");
+#endif
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);

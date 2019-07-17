@@ -28,6 +28,9 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   cfg->EnableMKLDNN();
+#ifdef PADDLE_WITH_NGRAPH
+  if (FLAGS_use_ngraph) cfg->EnableNgraph();
+#endif
 }
 
 template <typename T>
