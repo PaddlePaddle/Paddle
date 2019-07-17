@@ -14,6 +14,7 @@
 | emailweixu | Wei Xu |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
+| guru4elephant | Daxiang Dong |
 | Guo Sheng | Sheng Guo |
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
