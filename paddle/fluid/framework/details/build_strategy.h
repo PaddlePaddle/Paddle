@@ -108,15 +108,12 @@ struct BuildStrategy {
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
-  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
-  // to open them by default, we need to solve the fetch variable issue
-  // TODO(liuwei1031): memory_optimize depends on kStaleProgramOpDescs,
-  // it is not appropriate, because kStaleProgramOpDescs will be removed in the
-  // near future.
-  bool memory_optimize_{false};
+  bool memory_optimize_{true};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
+
+  bool move_tensor_sharing_to_compute_op_{false};
 
   // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
   bool use_legacy_memory_optimize_strategy_{false};

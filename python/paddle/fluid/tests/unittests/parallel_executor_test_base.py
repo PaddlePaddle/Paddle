@@ -41,7 +41,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  use_ir_memory_optimize=False,
+                                  use_ir_memory_optimize=True,
                                   enable_inplace=True,
                                   fuse_elewise_add_act_ops=False,
                                   fuse_all_optimizer_ops=False,
@@ -86,7 +86,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
         build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
-        build_strategy.memory_optimize = False if memory_opt else use_ir_memory_optimize
+        # build_strategy.memory_optimize = False if memory_opt else use_ir_memory_optimize
+        build_strategy.memory_optimize = True
+        build_strategy._move_tensor_sharing_to_compute_op = False
+
         build_strategy.fuse_all_optimizer_ops = fuse_all_optimizer_ops
         build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops
 

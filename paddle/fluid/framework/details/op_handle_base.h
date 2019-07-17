@@ -92,6 +92,8 @@ class OpHandleBase {
 
   const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
 
+  std::vector<VarHandleBase *> *MutableInputs() { return &inputs_; }
+
   size_t NoDupInputSize() const {
     std::unordered_set<VarHandleBase *> res;
     for (auto *var : inputs_) {
@@ -103,6 +105,8 @@ class OpHandleBase {
   size_t NotReadyInputSize() const;
 
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  std::vector<VarHandleBase *> *MutableOutputs() { return &outputs_; }
 
   size_t NoDummyInputSize() const;
 

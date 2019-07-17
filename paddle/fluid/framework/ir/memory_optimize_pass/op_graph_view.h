@@ -33,6 +33,12 @@ class OpGraphView {
   const std::unordered_set<details::OpHandleBase *> &PendingOps(
       details::OpHandleBase *op) const;
 
+  const std::unordered_set<details::OpHandleBase *> &PrecedingOps(
+      details::OpHandleBase *op) const;
+
+  std::unordered_map<details::OpHandleBase *, size_t> GetPrecedingDepNum()
+      const;
+
   bool HasOp(details::OpHandleBase *op) const;
 
   // Use a visitor to visit all pending ops of op
