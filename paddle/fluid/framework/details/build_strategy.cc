@@ -108,10 +108,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
-    // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
+    // coalesce_grad_tensor_pass should be before of MultiDevPass.
     if (strategy_.fuse_all_reduce_ops_) {
-      VLOG(1) << "Add alloc_continuous_space_for_grad_pass";
-      AppendPass("alloc_continuous_space_for_grad_pass");
+      VLOG(1) << "Add coalesce_grad_tensor_pass";
+      AppendPass("coalesce_grad_tensor_pass");
     }
 
     if (strategy_.fuse_all_optimizer_ops_) {
@@ -301,7 +301,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #endif
-    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
+    } else if (pass->Type() == "coalesce_grad_tensor_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
                pass->Type() == "fuse_sgd_op_pass" ||
                pass->Type() == "fuse_momentum_op_pass" ||
@@ -321,7 +321,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         new bool(use_hierarchical_allreduce_));
 #endif
       }
-    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
+    } else if (pass->Type() == "coalesce_grad_tensor_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -389,7 +389,7 @@ USE_PASS(backward_optimizer_op_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
-USE_PASS(alloc_continuous_space_for_grad_pass);
+USE_PASS(coalesce_grad_tensor_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);

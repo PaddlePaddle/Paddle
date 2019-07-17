@@ -26,7 +26,7 @@ static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
 
 template <typename DeviceContext, typename T>
-class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
+class CoalesceTensorOp : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &in_var_names = context.Inputs("Input");
@@ -176,17 +176,17 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input",
              "(vector<LoDTensor>) The input tensors of"
-             " alloc_continuous_space operator.")
+             " coalesce_tensor operator.")
         .AsDuplicable();
     AddOutput("Output",
               "(vector<LoDTensor>) The output "
-              "tensors of alloc_continuous_space operator. And the address "
+              "tensors of coalesce_tensor operator. And the address "
               "of output tensors are continuous, they are sliced from the "
               "tensor of FusedOutput.")
         .AsDuplicable();
     AddOutput("FusedOutput",
               "(LoDTensor) The output tensor "
-              "of alloc_continuous_space operator. And the tensors of"
+              "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
     AddAttr<bool>("copy_data", "Whether to copy the Input value to Output.")
         .SetDefault(false);
@@ -204,7 +204,7 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 AllocContinuousSpace Operator.
 
-alloc_continuous_space is used to make the address of Output
+coalesce_tensor is used to make the address of Output
 continuous according to the Input. This Op will alloc a big tensor
 according to the tensors of Input, the dtype is the same with those input tensors,
 the size is the sum of those input tensors' numel, and the dim of the big
@@ -213,7 +213,7 @@ The tensors of Output are sliced from the tensor of FusedOutput.
 Note that, the dtype of Input should be the same, and the dim of Input
 and Output should equal.
 The tensors of Input and Output could be the same or different. And
-alloc_continuous_space allows copying the value of Input to Output, or
+coalesce_tensor allows copying the value of Input to Output, or
 setting the Output with a constant value.
 
 )DOC");
@@ -223,27 +223,22 @@ setting the Output with a constant value.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(alloc_continuous_space,
-                  paddle::operators::AllocContinuousSpaceOp,
+REGISTER_OPERATOR(coalesce_tensor, paddle::operators::AllocContinuousSpaceOp,
                   paddle::operators::AllocContinuousSpaceOpMaker);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CPU_KERNEL(
-    alloc_continuous_space,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext,
-                                    plat::float16>,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    coalesce_tensor,
+    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, plat::float16>,
+    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, int>,
+    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, float>,
+    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, double>);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
-    alloc_continuous_space,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext,
-                                    plat::float16>,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext,
-                                    double>);
+    coalesce_tensor,
+    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, int>,
+    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, float>,
+    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, double>);
 #endif

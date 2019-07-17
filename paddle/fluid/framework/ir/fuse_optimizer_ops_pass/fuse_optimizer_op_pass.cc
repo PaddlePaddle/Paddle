@@ -112,7 +112,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     if (new_grad_idx.size() == 0) {
       if (!result.Has(details::kFusedGrads)) {
         PADDLE_THROW(
-            "The alloc_continuous_space_for_grad_pass should "
+            "The coalesce_grad_tensor_pass should "
             "be called before this pass.");
       }
       auto &fused_grad = result.Get<details::FusedGrads>(details::kFusedGrads);
@@ -371,7 +371,7 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
     const std::vector<std::string> &out_args, const std::string &fused_out_arg,
     BlockDesc *global_block, bool copy_data, bool check_name) const {
   auto op_desc = global_block->AppendOp();
-  op_desc->SetType("alloc_continuous_space");
+  op_desc->SetType("coalesce_tensor");
   op_desc->SetInput("Input", in_args);
   op_desc->SetOutput("Output", out_args);
   op_desc->SetOutput("FusedOutput", {fused_out_arg});
