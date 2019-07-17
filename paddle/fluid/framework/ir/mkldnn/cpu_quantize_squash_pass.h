@@ -46,8 +46,13 @@ class CPUQuantizeSquashPass : public FusePassBase {
   /*
    * Squash dequantize-quantize ops pairs into requantize or nothing
    */
-  void Squash(Graph* graph,
+  void DequantQuantSquash(Graph* graph,
               std::unordered_map<const Node*, int>* nodes_keep_counter) const;
+  
+  /*
+   * Squash requantize op into conv with scale_out like requantize scale_out
+   */
+  void ConvRequantSquash(Graph* graph) const;
 
   const std::string name_scope_{"squash"};
 };

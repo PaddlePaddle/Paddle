@@ -796,6 +796,24 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// Conv + Requant
+// named nodes:
+// conv_op, conv_out
+// requant_op, requant_out
+struct ConvRequant : public PatternBase {
+  ConvRequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_requant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+
+  PATTERN_DECL_NODE(requant_op);
+  PATTERN_DECL_NODE(requant_out);
+
+};
+
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image
