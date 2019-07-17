@@ -568,13 +568,12 @@ class EagerDeletionRecurrentOpParallelExecutorTest(
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = True
-        build_strategy.memory_optimize = True
-
+        exec_strategy = fluid.ExecutionStrategy()
         parallel_exe = fluid.ParallelExecutor(
             use_cuda=False,
             main_program=self.main_program,
             build_strategy=build_strategy,
-            exec_strategy=fluid.ExecutionStrategy())
+            exec_strategy=exec_strategy)
         out = parallel_exe.run(feed=self.feed_map, fetch_list=[self.output])
         return out[0]
 
@@ -590,16 +589,94 @@ class EagerDeletionRecurrentOpParallelExecutorTest(
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = True
-        build_strategy.memory_optimize = True
-
+        exec_strategy = fluid.ExecutionStrategy()
         parallel_exe = fluid.ParallelExecutor(
             use_cuda=False,
             main_program=self.main_program,
             build_strategy=build_strategy,
-            exec_strategy=fluid.ExecutionStrategy())
+            exec_strategy=exec_strategy)
         return parallel_exe.run(feed=self.feed_map,
                                 fetch_list=fetch_list,
                                 return_numpy=False)
+
+
+class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
+        EagerDeletionRecurrentOpTest1):
+    '''
+      Test one forward only RNN and one backward RNN in one program
+    '''
+
+    def setUp(self):
+        self.setup_program()
+        self.data_field = {"x", "h_boot"}
+
+        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
+
+        with fluid.program_guard(self.main_program, self.startup_program):
+            x = layers.data(
+                shape=[self.sent_len, self.batch_size, self.input_dim],
+                dtype='float32',
+                name='x',
+                append_batch_size=False)
+            x.stop_gradient = False
+            h_boot = layers.data(
+                shape=[self.input_dim], dtype='float32', name='h_boot')
+            h_boot.stop_gradient = False
+
+            forward_only_rnn = layers.StaticRNN()
+            with forward_only_rnn.step():
+                h_pre = forward_only_rnn.memory(init=h_boot)
+                x_t = forward_only_rnn.step_input(x)
+
+                h = layers.scale(
+                    x=layers.elementwise_add(
+                        x=h_pre, y=x_t),
+                    scale=self.py_rnn.scale)
+
+                forward_only_rnn.update_memory(h_pre, h)
+                forward_only_rnn.output(h)
+            forward_only_output = forward_only_rnn()
+            forward_only_output.stop_gradient = True
+            self.forward_only_output = layers.mean(forward_only_output)
+
+            rnn = layers.StaticRNN()
+            with rnn.step():
+                h_pre = rnn.memory(init=h_boot)
+                x_t = rnn.step_input(x)
+
+                h = layers.scale(
+                    x=layers.elementwise_add(
+                        x=h_pre, y=x_t),
+                    scale=self.py_rnn.scale)
+
+                rnn.update_memory(h_pre, h)
+                rnn.output(h)
+
+            self.output = layers.mean(rnn())
+
+    def forward_two_rnn(self):
+        self.feed_map = {
+            x: create_tensor(getattr(self.py_rnn, x), self.place)
+            for x in self.data_field
+        }
+        exe = Executor(self.place)
+        out = exe.run(self.main_program,
+                      feed=self.feed_map,
+                      fetch_list=[self.forward_only_output, self.output])
+
+        return out[0], out[1]
+
+    def check_forward(self):
+        forward_only_output, pd_output = self.forward_two_rnn()
+        py_output = self.py_rnn.forward()
+        self.assertEqual(forward_only_output.shape, py_output.shape)
+        self.assertEqual(pd_output.shape, py_output.shape)
+        self.assertTrue(
+            np.isclose(
+                forward_only_output, py_output, rtol=0.1).all)
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
 
 
 if __name__ == '__main__':
