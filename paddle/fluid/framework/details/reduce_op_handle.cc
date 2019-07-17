@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+#include <memory>
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -160,10 +161,7 @@ void ReduceOpHandle::RunImpl() {
 
   auto in_0_handle = in_var_handles[0];
 
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
+  auto &var_scopes = local_exec_scopes_;
 
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
@@ -250,9 +248,7 @@ void ReduceOpHandle::RunImpl() {
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
-          auto &reduce_sum_trg = *this->local_scopes_[0]
-                                      ->FindVar(kLocalExecScopeName)
-                                      ->Get<Scope *>()
+          auto &reduce_sum_trg = *this->local_exec_scopes_[0]
                                       ->FindVar(out_var_handle->name())
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
@@ -317,7 +313,7 @@ void ReduceOpHandle::RunImpl() {
 template <typename T>
 std::vector<const T *> ReduceOpHandle::GetInputValues(
     const std::vector<VarHandle *> &in_var_handles,
-    const std::vector<const Scope *> &var_scopes) const {
+    const std::vector<Scope *> &var_scopes) const {
   std::vector<const T *> in_selected_rows;
   for (auto *in_handle : in_var_handles) {
     auto &in_sr = var_scopes.at(in_handle->scope_idx())
