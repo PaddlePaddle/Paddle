@@ -205,7 +205,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   for (auto &var_ops_map : last_live_ops) {
     for (auto &var_ops_pair : var_ops_map) {
       const std::string &var_name = var_ops_pair.first;
-      for (auto *op : var_ops_pair.second) {
+      for (auto *op : var_ops_pair.second.ops()) {
         op_vars_map[op].insert(var_name);
       }
     }

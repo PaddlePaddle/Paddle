@@ -14,7 +14,7 @@
 #pragma once
 
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -32,6 +32,38 @@ class MemOptVarInfo;
 
 namespace details {
 
+class ShareTensorBufferFunctor {
+ public:
+  ShareTensorBufferFunctor(Scope *scope, size_t scope_idx,
+                           const std::string &op_type,
+                           const std::vector<ir::MemOptVarInfo *> &in_var_infos,
+                           const std::vector<std::string> &out_var_names);
+
+  void Add(ir::MemOptVarInfo *in_var_info, const std::string &out_var_name);
+
+  void operator()(Scope *exec_scope);
+
+  std::unordered_map<std::string, std::string> ReusedVars() const;
+
+  size_t GetScopeIdx() const { return scope_idx_; }
+
+  Scope *GetScope() { return scope_; }
+
+ private:
+  void CallOnce();
+
+ private:
+  Scope *scope_;
+  Scope *exec_scope_{nullptr};
+
+  size_t scope_idx_;
+  std::string op_type_;
+  std::vector<ir::MemOptVarInfo *> in_var_infos_;
+  std::vector<std::string> out_var_names_;
+
+  std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
+};
+
 class ShareTensorBufferOpHandle : public OpHandleBase {
  public:
   ShareTensorBufferOpHandle(
@@ -40,13 +72,15 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
       const std::vector<ir::MemOptVarInfo *> &in_vars_infos,
       const std::vector<std::string> &out_var_names);
 
-  std::unordered_set<std::string> ReusedVarSet() const;
+  std::unordered_map<std::string, std::string> ReusedVars() const;
 
   Priority GetPriority() const override { return Priority::kHighest; }
 
-  size_t GetScopeIdx() const { return scope_idx_; }
+  size_t GetScopeIdx() const { return functor_.GetScopeIdx(); }
 
   void Add(ir::MemOptVarInfo *in_var_info, const std::string &ou_var_name);
+
+  const ShareTensorBufferFunctor &Functor() const { return functor_; }
 
  protected:
   std::string Name() const override { return "buffer_share"; }
@@ -55,18 +89,12 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   void InitCUDA() override;
 
-  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
+  std::vector<Scope *> GetLocalScopes() override {
+    return {functor_.GetScope()};
+  }
 
  private:
-  void CallOnce();
-
-  Scope *scope_;
-  size_t scope_idx_;
-  std::string op_type_;
-  std::vector<ir::MemOptVarInfo *> in_var_infos_;
-  std::vector<std::string> out_var_names_;
-
-  std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
+  ShareTensorBufferFunctor functor_;
 };
 
 }  // namespace details

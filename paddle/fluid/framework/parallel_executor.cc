@@ -242,6 +242,11 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   VLOG(10) << "ReferenceCountPass Applied";
 
   if (build_strategy_.enable_inplace_) {
+    VLOG(10) << "Before applying buffer_shared_inplace_pass: op num: "
+             << ir::FilterByNodeWrapper<details::OpHandleBase>(*graph).size()
+             << ", var num: "
+             << ir::FilterByNodeWrapper<details::VarHandleBase>(*graph).size()
+             << ", node num: " << graph->Nodes().size();
     auto inplace_pass =
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
@@ -250,9 +255,45 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
+    VLOG(10) << "After applying buffer_shared_inplace_pass: op num: "
+             << ir::FilterByNodeWrapper<details::OpHandleBase>(*graph).size()
+             << ", var num: "
+             << ir::FilterByNodeWrapper<details::VarHandleBase>(*graph).size()
+             << ", node num: " << graph->Nodes().size();
   }
 
-  // TODO(zjl): refactor MemoryOptimizePass as well!!!
+  if (build_strategy_.memory_optimize_) {
+    // TODO(zjl): refactor MemoryOptimizePass as well!!!
+    auto cross_op_memory_reuse_pass = ir::PassRegistry::Instance().Get(
+        "buffer_shared_cross_op_memory_reuse_pass");
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
+                                            &mem_opt_var_infos_);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
+                                            &last_live_ops_of_vars);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
+    graph = cross_op_memory_reuse_pass->Apply(graph);
+    VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
+  }
+
+  if (build_strategy_.move_tensor_sharing_to_compute_op_) {
+    VLOG(10)
+        << "Before applying move_tensor_sharing_to_compute_op_pass: op num: "
+        << ir::FilterByNodeWrapper<details::OpHandleBase>(*graph).size()
+        << ", var num: "
+        << ir::FilterByNodeWrapper<details::VarHandleBase>(*graph).size()
+        << ", node num: " << graph->Nodes().size();
+    auto move_tensor_sharing_to_compute_op_pass =
+        ir::PassRegistry::Instance().Get(
+            "move_tensor_sharing_to_compute_op_pass");
+    graph = move_tensor_sharing_to_compute_op_pass->Apply(graph);
+    VLOG(10)
+        << "After applying move_tensor_sharing_to_compute_op_pass: op num: "
+        << ir::FilterByNodeWrapper<details::OpHandleBase>(*graph).size()
+        << ", var num: "
+        << ir::FilterByNodeWrapper<details::VarHandleBase>(*graph).size()
+        << ", node num: " << graph->Nodes().size();
+  }
 
   if (GetEagerDeletionThreshold() < 0) {
     return graph;
@@ -780,3 +821,5 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
+USE_PASS(buffer_shared_cross_op_memory_reuse_pass);
+USE_PASS(move_tensor_sharing_to_compute_op_pass);

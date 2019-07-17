@@ -85,7 +85,7 @@ class InplaceTestBase(unittest.TestCase):
         prog3, scope3, _, loss3 = self.build_program_and_scope()
 
         build_strategy2 = fluid.BuildStrategy()
-        build_strategy2.memory_optimize = False
+        build_strategy2.memory_optimize = True
         build_strategy2.enable_inplace = True
 
         compiled_prog2 = fluid.CompiledProgram(prog2).with_data_parallel(
@@ -94,7 +94,7 @@ class InplaceTestBase(unittest.TestCase):
             places=self.place)
 
         build_strategy3 = fluid.BuildStrategy()
-        build_strategy3.memory_optimize = False
+        build_strategy3.memory_optimize = True
         build_strategy3.enable_inplace = False
         compiled_prog3 = fluid.CompiledProgram(prog3).with_data_parallel(
             loss_name=loss2.name,
@@ -133,11 +133,11 @@ class InplaceTestBase(unittest.TestCase):
         prog2, scope2, _, loss2 = self.build_program_and_scope()
 
         build_strategy1 = fluid.BuildStrategy()
-        build_strategy1.memory_optimize = False
+        build_strategy1.memory_optimize = True
         build_strategy1.enable_inplace = True
 
         build_strategy2 = fluid.BuildStrategy()
-        build_strategy2.memory_optimize = False
+        build_strategy2.memory_optimize = True
         build_strategy2.enable_inplace = False
 
         if self.use_cuda:

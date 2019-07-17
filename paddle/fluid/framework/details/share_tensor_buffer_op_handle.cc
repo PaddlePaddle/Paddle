@@ -42,12 +42,11 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
   }
 }
 
-ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
-    ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
+ShareTensorBufferFunctor::ShareTensorBufferFunctor(
+    Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<ir::MemOptVarInfo *> &in_var_infos,
     const std::vector<std::string> &out_var_names)
-    : OpHandleBase(node),
-      scope_(scope),
+    : scope_(scope),
       scope_idx_(scope_idx),
       op_type_(op_type),
       in_var_infos_(in_var_infos),
@@ -58,17 +57,17 @@ ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
   }
 }
 
-std::unordered_set<std::string> ShareTensorBufferOpHandle::ReusedVarSet()
-    const {
-  std::unordered_set<std::string> result;
-  for (auto &in_var_info : in_var_infos_) {
-    result.insert(in_var_info->Name());
+std::unordered_map<std::string, std::string>
+ShareTensorBufferFunctor::ReusedVars() const {
+  std::unordered_map<std::string, std::string> result;
+  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
+    result.insert({in_var_infos_[i]->Name(), out_var_names_[i]});
   }
   return result;
 }
 
-void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
-                                    const std::string &out_var_name) {
+void ShareTensorBufferFunctor::Add(ir::MemOptVarInfo *in_var_info,
+                                   const std::string &out_var_name) {
   PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
   PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
                     "in/out cannot have same name: %s", out_var_name);
@@ -76,20 +75,11 @@ void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
   out_var_names_.emplace_back(out_var_name);
 }
 
-void ShareTensorBufferOpHandle::InitCUDA() {
-#ifdef PADDLE_WITH_CUDA
-  int dev_id =
-      boost::get<platform::CUDAPlace>(dev_ctxes_.begin()->first).device;
-  events_[dev_id] = nullptr;
-#endif
-}
-
-void ShareTensorBufferOpHandle::CallOnce() {
+void ShareTensorBufferFunctor::CallOnce() {
   PADDLE_ENFORCE(in_out_vars_.empty(), "in_out_vars_ must be initialized here");
-  Scope *exec_scope = local_exec_scopes_[0];
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    auto *in_var = exec_scope->FindVar(in_var_infos_[i]->Name());
-    auto *out_var = exec_scope->FindVar(out_var_names_[i]);
+    auto *in_var = exec_scope_->FindVar(in_var_infos_[i]->Name());
+    auto *out_var = exec_scope_->FindVar(out_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(in_var);
     PADDLE_ENFORCE_NOT_NULL(out_var);
     PADDLE_ENFORCE_NE(in_var, out_var);
@@ -97,9 +87,13 @@ void ShareTensorBufferOpHandle::CallOnce() {
   }
 }
 
-void ShareTensorBufferOpHandle::RunImpl() {
-  if (in_var_infos_.size() != in_out_vars_.size()) {
+void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
+  if (!exec_scope_) {
+    PADDLE_ENFORCE_NOT_NULL(exec_scope);
+    exec_scope_ = exec_scope;
     CallOnce();
+  } else {
+    PADDLE_ENFORCE_EQ(exec_scope_, exec_scope, "Scope must be the same");
   }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
@@ -127,6 +121,33 @@ void ShareTensorBufferOpHandle::RunImpl() {
     }
   }
 }
+
+ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
+    ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
+    const std::vector<ir::MemOptVarInfo *> &in_var_infos,
+    const std::vector<std::string> &out_var_names)
+    : OpHandleBase(node),
+      functor_(scope, scope_idx, op_type, in_var_infos, out_var_names) {}
+
+std::unordered_map<std::string, std::string>
+ShareTensorBufferOpHandle::ReusedVars() const {
+  return functor_.ReusedVars();
+}
+
+void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
+                                    const std::string &out_var_name) {
+  functor_.Add(in_var_info, out_var_name);
+}
+
+void ShareTensorBufferOpHandle::InitCUDA() {
+#ifdef PADDLE_WITH_CUDA
+  int dev_id =
+      boost::get<platform::CUDAPlace>(dev_ctxes_.begin()->first).device;
+  events_[dev_id] = nullptr;
+#endif
+}
+
+void ShareTensorBufferOpHandle::RunImpl() { functor_(local_exec_scopes_[0]); }
 
 }  // namespace details
 }  // namespace framework

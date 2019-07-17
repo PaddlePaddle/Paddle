@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -27,6 +28,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
 class ComputationOpHandle : public OpHandleBase {
  public:
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
@@ -46,6 +48,10 @@ class ComputationOpHandle : public OpHandleBase {
 
   size_t GetScopeIdx() const { return scope_idx_; }
 
+  void SetShareTensorBufferFunctor(const ShareTensorBufferFunctor &functor) {
+    functor_.reset(new ShareTensorBufferFunctor(functor));
+  }
+
  protected:
   void RunImpl() override;
 
@@ -59,7 +65,12 @@ class ComputationOpHandle : public OpHandleBase {
   platform::Place place_;
   size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
+  std::unique_ptr<ShareTensorBufferFunctor> functor_;
 };
+
+ComputationOpHandle *GetUniquePendingComputationOpHandle(
+    ShareTensorBufferOpHandle *share_tensor_op);
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

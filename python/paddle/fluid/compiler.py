@@ -208,12 +208,14 @@ class CompiledProgram(object):
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
         # memory_optimize and enable_inplace default are True, but we can disable them on purpose
+        '''
         if self._program:
             if self._program._is_mem_optimized:
                 self._build_strategy.memory_optimize = False
 
             if self._build_strategy.memory_optimize:
                 self._build_strategy._use_legacy_memory_optimize_strategy = True
+        '''
         return self
 
     def with_inference_optimize(self, config):

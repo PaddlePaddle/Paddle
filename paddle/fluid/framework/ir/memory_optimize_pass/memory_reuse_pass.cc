@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
+#include <functional>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -23,37 +24,16 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// Each ShareTensorBufferOpHandle should only have one pending
-// ComputationOpHandle
-static details::ComputationOpHandle *GetUniquePendingComputationOpHandle(
-    details::ShareTensorBufferOpHandle *share_tensor_op) {
-  details::ComputationOpHandle *result_op = nullptr;
-  for (Node *out_var : share_tensor_op->Node()->outputs) {
-    for (Node *pending_op : out_var->outputs) {
-      auto &op = pending_op->Wrapper<details::OpHandleBase>();
-      auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(&op);
-      PADDLE_ENFORCE_NOT_NULL(compute_op);
-
-      if (result_op == nullptr) {
-        result_op = compute_op;
-      } else {
-        PADDLE_ENFORCE_EQ(result_op, compute_op);
-      }
-    }
-  }
-
-  PADDLE_ENFORCE_NOT_NULL(result_op);
-  return result_op;
-}
-
 void MemoryReusePass::ApplyImpl(Graph *graph) const {
   graph_ = graph;
+  use_cuda_ = Get<bool>(kUseCuda);
   all_vars_ = &(graph_->Get<details::GraphVars>(details::kGraphVars));
   var_infos_ = &(Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList));
   last_live_ops_of_vars_ =
       &(Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars));
 
-  reused_var_names_.resize(all_vars_->size());
+  reused_in_var_names_.resize(all_vars_->size());
+  reused_out_var_names_.resize(all_vars_->size());
   var_descs_.resize(all_vars_->size());
 
   // Collect the existing ShareTensorBufferOpHandles.
@@ -82,7 +62,7 @@ bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
   auto *op =
       dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp());
   PADDLE_ENFORCE_NOT_NULL(op);
-  if (IsVarsReusable(in_var, out_var)) {
+  if (IsVarPairReusable(in_var, out_var)) {
     AddReuseVar(op, in_var, out_var);
     return true;
   } else {
@@ -102,18 +82,26 @@ std::unordered_set<Node *> MemoryReusePass::FindNodesByName(
 }
 
 VarDesc *MemoryReusePass::GetVarDesc(details::VarHandle *var) const {
-  auto iter = var_descs_[var->scope_idx()].find(var->Name());
-  if (iter == var_descs_[var->scope_idx()].end()) {
-    PADDLE_ENFORCE((*all_vars_)[var->scope_idx()].count(var->Name()),
-                   "Variable %s not found", var->Name());
-    auto *desc =
-        TryGetLatestVarDesc((*all_vars_)[var->scope_idx()].at(var->Name()));
+  const auto var_name = var->Name();
+  size_t scope_idx = var->scope_idx();
+  auto iter = var_descs_[scope_idx].find(var_name);
+  if (iter == var_descs_[scope_idx].end()) {
+    PADDLE_ENFORCE((*all_vars_)[scope_idx].count(var_name),
+                   "Variable %s not found", var_name);
+    auto *desc = TryGetLatestVarDesc((*all_vars_)[scope_idx].at(var_name));
     PADDLE_ENFORCE_NOT_NULL(desc);
-    var_descs_[var->scope_idx()].emplace(var->Name(), desc);
+    var_descs_[scope_idx].emplace(var_name, desc);
     return desc;
   } else {
     return iter->second;
   }
+}
+
+int64_t MemoryReusePass::GetMemorySize(details::VarHandle *var) const {
+  auto *var_desc = GetVarDesc(var);
+  auto shapes = var_desc->GetShape();
+  return std::accumulate(shapes.begin(), shapes.end(), static_cast<int64_t>(1),
+                         std::multiplies<int64_t>());
 }
 
 void MemoryReusePass::CollectShareTensorBufferOpHandles() const {
@@ -131,14 +119,24 @@ void MemoryReusePass::CollectShareTensorBufferOpHandles() const {
 
 void MemoryReusePass::CollectReusedVars() const {
   for (auto &pair : ops_) {
-    auto reused_vars = pair.second->ReusedVarSet();
-    reused_var_names_[pair.first->GetScopeIdx()].insert(reused_vars.begin(),
-                                                        reused_vars.end());
+    auto reused_vars = pair.second->ReusedVars();
+    for (auto &reused_var_pair : reused_vars) {
+      reused_in_var_names_[pair.first->GetScopeIdx()].insert(
+          reused_var_pair.first);
+      reused_out_var_names_[pair.first->GetScopeIdx()].insert(
+          reused_var_pair.second);
+    }
   }
 }
 
-bool MemoryReusePass::IsVarAlreadyReused(details::VarHandle *var) const {
-  return reused_var_names_[var->scope_idx()].count(var->Name()) > 0;
+bool MemoryReusePass::IsInVarAlreadyReused(details::VarHandle *in_var) const {
+  const auto var_name = in_var->Name();
+  size_t scope_idx = in_var->scope_idx();
+  return reused_in_var_names_[scope_idx].count(var_name) > 0;
+}
+
+bool MemoryReusePass::IsOutVarAlreadyReused(details::VarHandle *out_var) const {
+  return reused_out_var_names_[out_var->scope_idx()].count(out_var->Name()) > 0;
 }
 
 details::ShareTensorBufferOpHandle *
@@ -171,20 +169,33 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
   return buffer_share_op;
 }
 
-bool MemoryReusePass::IsVarsReusable(details::VarHandle *in_var,
-                                     details::VarHandle *out_var) const {
-  const auto in_name = in_var->Name();
+bool MemoryReusePass::IsInVarReusable(details::VarHandle *in_var) const {
+  if (in_var->Name() == kEmptyVarName) {
+    return false;
+  }
+
+  if (IsInVarAlreadyReused(in_var)) {
+    return false;
+  }
+
+  const VarDesc *in_var_desc = GetVarDesc(in_var);
+
+  if (in_var_desc->Persistable()) {
+    return false;
+  }
+
+  if (in_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
+    return false;
+  }
+
+  return true;
+}
+
+bool MemoryReusePass::IsOutVarReusable(details::VarHandle *out_var) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp()));
   const auto out_name = out_var->Name();
-
-  if (in_name == out_name) {
-    return false;
-  }
-
-  if (in_name == kEmptyVarName || out_name == kEmptyVarName) {
-    return false;
-  }
-
-  if (IsVarAlreadyReused(in_var)) {
+  if (out_name == kEmptyVarName) {
     return false;
   }
 
@@ -198,20 +209,16 @@ bool MemoryReusePass::IsVarsReusable(details::VarHandle *in_var,
     return false;
   }
 
-  const VarDesc *in_var_desc = GetVarDesc(in_var);
+  if (IsOutVarAlreadyReused(out_var)) {
+    return false;
+  }
+
   const VarDesc *out_var_desc = GetVarDesc(out_var);
-
-  if (in_var_desc->Persistable() || out_var_desc->Persistable()) {
+  if (out_var_desc->Persistable()) {
     return false;
   }
 
-  if (in_var_desc->GetType() != proto::VarType::LOD_TENSOR ||
-      out_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
-    return false;
-  }
-
-  if (!FindNodesByName(in_name, out_var->GeneratedOp()->Node()->outputs)
-           .empty()) {
+  if (out_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
     return false;
   }
 
@@ -220,8 +227,29 @@ bool MemoryReusePass::IsVarsReusable(details::VarHandle *in_var,
     return false;
   }
 
-  auto all_input_args =
-      out_var->GeneratedOp()->Node()->Op()->InputArgumentNames();
+  return true;
+}
+
+bool MemoryReusePass::IsVarPairReusable(details::VarHandle *in_var,
+                                        details::VarHandle *out_var) const {
+  auto *op =
+      dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp());
+  PADDLE_ENFORCE_NOT_NULL(op);
+
+  const auto in_name = in_var->Name();
+  if (in_name == out_var->Name()) {
+    return false;
+  }
+
+  if (!IsInVarReusable(in_var) || !IsInVarReusable(out_var)) {
+    return false;
+  }
+
+  if (!FindNodesByName(in_name, op->Node()->outputs).empty()) {
+    return false;
+  }
+
+  auto all_input_args = op->Node()->Op()->InputArgumentNames();
   if (std::count(all_input_args.begin(), all_input_args.end(), in_name) > 1) {
     return false;
   }
@@ -252,7 +280,8 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
   share_buffer_op->Add(
       (*var_infos_)[op->GetScopeIdx()].at(in_var->Name()).get(),
       out_var->Name());
-  reused_var_names_[op->GetScopeIdx()].insert(in_var->Name());
+  reused_in_var_names_[op->GetScopeIdx()].insert(in_var->Name());
+  reused_out_var_names_[op->GetScopeIdx()].insert(out_var->Name());
 
   UpdateLastLiveOpOfVar(op, in_var, out_var);
 }
@@ -265,14 +294,21 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
   size_t scope_idx = op->GetScopeIdx();
   auto out_var_op_iter =
       (*last_live_ops_of_vars_)[scope_idx].find(out_var->Name());
-  PADDLE_ENFORCE(out_var_op_iter != (*last_live_ops_of_vars_)[scope_idx].end(),
-                 "Cannot find variable %s", out_var->Name());
-  PADDLE_ENFORCE(!out_var_op_iter->second.empty());
 
-  auto &last_live_ops_of_in_var =
-      (*last_live_ops_of_vars_)[scope_idx][in_var->Name()];
-  last_live_ops_of_in_var.clear();
-  last_live_ops_of_in_var.insert(*(out_var_op_iter->second.begin()));
+  // In Reduce mode, some output variable(gradient of parameter) does not have
+  // last live ops
+  details::ComputationOpHandle *last_live_op_of_in_var = nullptr;
+  if (out_var_op_iter == (*last_live_ops_of_vars_)[scope_idx].end()) {
+    last_live_op_of_in_var = op;
+  } else {
+    PADDLE_ENFORCE(!out_var_op_iter->second.ops().empty());
+    last_live_op_of_in_var = *(out_var_op_iter->second.ops().begin());
+  }
+
+  auto *last_live_ops_of_in_var =
+      (*last_live_ops_of_vars_)[scope_idx][in_var->Name()].mutable_ops();
+  last_live_ops_of_in_var->clear();
+  last_live_ops_of_in_var->insert(last_live_op_of_in_var);
 
   auto in_var_info_iter = (*var_infos_)[scope_idx].find(in_var->Name());
   PADDLE_ENFORCE(in_var_info_iter != (*var_infos_)[scope_idx].end(),
