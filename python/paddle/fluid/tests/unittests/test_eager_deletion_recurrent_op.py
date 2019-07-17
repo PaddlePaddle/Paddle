@@ -14,14 +14,16 @@
 
 from __future__ import print_function
 
-import unittest
+import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.compiler as compiler
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+import unittest
+
 from paddle.fluid.framework import Program, grad_var_name
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
-import numpy as np
-import paddle.fluid.core as core
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
@@ -542,6 +544,62 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
             rnn_1.update_memory(mem_pre, mem)
             rnn_1.output(y)
         return rnn_1()
+
+
+class EagerDeletionRecurrentOpParallelExecutorTest(
+        EagerDeletionRecurrentOpTest1):
+    '''
+    Test RNNOp with ParallelExecutor
+    equation:
+        h_t = ( x_t + h_{t-1} ) / scale
+    vars:
+        - x
+    memories:
+        - h
+    outputs:
+        - h
+    '''
+
+    def forward(self):
+        self.feed_map = {
+            x: create_tensor(getattr(self.py_rnn, x), self.place)
+            for x in self.data_field
+        }
+
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.enable_inplace = True
+        build_strategy.memory_optimize = True
+
+        parallel_exe = fluid.ParallelExecutor(
+            use_cuda=False,
+            main_program=self.main_program,
+            build_strategy=build_strategy,
+            exec_strategy=fluid.ExecutionStrategy())
+        out = parallel_exe.run(feed=self.feed_map, fetch_list=[self.output])
+        return out[0]
+
+    def backward(self):
+        self.feed_map = {
+            x: create_tensor(getattr(self.py_rnn, x), self.place)
+            for x in self.data_field
+        }
+        fetch_list = [
+            self.main_program.global_block().var(grad_var_name(x))
+            for x in self.data_field
+        ]
+
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.enable_inplace = True
+        build_strategy.memory_optimize = True
+
+        parallel_exe = fluid.ParallelExecutor(
+            use_cuda=False,
+            main_program=self.main_program,
+            build_strategy=build_strategy,
+            exec_strategy=fluid.ExecutionStrategy())
+        return parallel_exe.run(feed=self.feed_map,
+                                fetch_list=fetch_list,
+                                return_numpy=False)
 
 
 if __name__ == '__main__':
