@@ -132,10 +132,14 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
   conv_requant_pattern();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   int found_requant_squash_count = 0;
 =======
   int found_requantize_squash_count = 0;
 >>>>>>> 0438cb0... Add requantize squash
+=======
+  int found_requant_squash_count = 0;
+>>>>>>> c321682... Change variables name in cpu_quantize_squash
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "squash conv-requantize ops pair";
@@ -155,6 +159,7 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
    
     
 <<<<<<< HEAD
+<<<<<<< HEAD
     found_requant_squash_count++;
   };
   gpd(graph, handler);
@@ -169,11 +174,14 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
 >>>>>>> c5b341c... Remove duplicated function
 =======
     found_requantize_squash_count++;
-  };
-  gpd(graph, handler);
-  AddStatis(found_requantize_squash_count);
-  PrettyLogDetail("---    squashed %d requantize with convs",
-                  found_requantize_squash_count);
+=======
+    found_requant_squash_count++;
+>>>>>>> c321682... Change variables name in cpu_quantize_squash
+};
+gpd(graph, handler);
+AddStatis(found_requant_squash_count);
+PrettyLogDetail("---    squashed %d requantize with convs",
+                found_requant_squash_count);
 }
 
 >>>>>>> 0438cb0... Add requantize squash

@@ -147,10 +147,13 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 void InitGraph()
 
 >>>>>>> 0438cb0... Add requantize squash
+=======
+>>>>>>> c321682... Change variables name in cpu_quantize_squash
 // check number of nodes
 void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -201,9 +204,12 @@ void EqualScaleTest(const ProgramDesc& prog, float scale) {
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       auto* op = node->Op();
 >>>>>>> 0438cb0... Add requantize squash
+=======
+>>>>>>> c321682... Change variables name in cpu_quantize_squash
       float scale_out = boost::get<float>(node->Op()->GetAttr("Scale_out"));
       EXPECT_EQ(scale_out, scale);
     }
@@ -273,10 +279,15 @@ TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
 
   use_mkldnn = !use_mkldnn;
 <<<<<<< HEAD
+<<<<<<< HEAD
   CountNodeTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
 =======
   MainTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
 >>>>>>> 0438cb0... Add requantize squash
+=======
+  CountNodeTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
+
+>>>>>>> c321682... Change variables name in cpu_quantize_squash
 }
 
 // a->Concat->b
