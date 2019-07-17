@@ -17,6 +17,7 @@ add_subdirectory(more)
 if(WITH_XBYAK)
     add_subdirectory(gen)
 endif()
+add_subdirectory(leaf7_test)
 
 cc_library(jit_kernel_helper SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS test.cc DEPS jit_kernel_helper)
