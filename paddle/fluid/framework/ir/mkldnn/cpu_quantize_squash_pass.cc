@@ -125,13 +125,17 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
                   found_dequant_quant_count);
 }
 
-
 void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::ConvRequant conv_requant_pattern{gpd.mutable_pattern(), "conv_requant"};
+  patterns::ConvRequant conv_requant_pattern{gpd.mutable_pattern(),
+                                             "conv_requant"};
   conv_requant_pattern();
 
+<<<<<<< HEAD
   int found_requant_squash_count = 0;
+=======
+  int found_requantize_squash_count = 0;
+>>>>>>> 0438cb0... Add requantize squash
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "squash conv-requantize ops pair";
@@ -141,13 +145,16 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(requant_op, requant_op, conv_requant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, conv_requant_pattern);
 
-    float requant_scale_out = boost::get<float>(requant_op->Op()->GetAttr("Scale_out"));
+    float requant_scale_out =
+        boost::get<float>(requant_op->Op()->GetAttr("Scale_out"));
     conv_op->Op()->SetAttr("Scale_out", requant_scale_out);
-    conv_op->Op()->SetOutput("Output", std::vector<std::string>({requant_out->Name()}));
+    conv_op->Op()->SetOutput("Output",
+                             std::vector<std::string>({requant_out->Name()}));
     IR_NODE_LINK_TO(conv_op, requant_out);
-    GraphSafeRemoveNodes(graph, {conv_out,requant_op});
+    GraphSafeRemoveNodes(graph, {conv_out, requant_op});
    
     
+<<<<<<< HEAD
     found_requant_squash_count++;
   };
   gpd(graph, handler);
@@ -160,6 +167,16 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
 =======
 
 >>>>>>> c5b341c... Remove duplicated function
+=======
+    found_requantize_squash_count++;
+  };
+  gpd(graph, handler);
+  AddStatis(found_requantize_squash_count);
+  PrettyLogDetail("---    squashed %d requantize with convs",
+                  found_requantize_squash_count);
+}
+
+>>>>>>> 0438cb0... Add requantize squash
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
