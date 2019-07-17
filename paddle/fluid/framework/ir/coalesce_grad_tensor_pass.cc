@@ -62,7 +62,7 @@ void SetFuseParameterMemorySize(double memory_size) {
 
 double GetFuseParameterMemorySize() { return FLAGS_fuse_parameter_memory_size; }
 
-class CoalescedGradTensorPass : public ir::Pass {
+class CoalesceGradTensorPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const {
     ir::Graph &result = *graph;
@@ -123,15 +123,14 @@ class CoalescedGradTensorPass : public ir::Pass {
 
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
       SetGradientPersistable(p_g_dense_grad, vars_info);
-      AllocContinuousAddressSpace(places, local_scopes, vars_info,
-                                  p_g_dense_grad, &result);
+      CoalesceTensors(places, local_scopes, vars_info, p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
         SetGradientPersistable(p_g_dense_grad, vars_info);
         PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
                        "The data type of the same group is not consistent.");
-        AllocContinuousAddressSpace(places, local_scopes, vars_info,
-                                    sub_param_grad, &result);
+        CoalesceTensors(places, local_scopes, vars_info, sub_param_grad,
+                        &result);
       }
     }
   }
@@ -168,7 +167,7 @@ class CoalescedGradTensorPass : public ir::Pass {
     return true;
   }
 
-  void AllocContinuousAddressSpace(
+  void CoalesceTensors(
       const std::vector<platform::Place> &places,
       const std::vector<Scope *> &local_scopes,
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
@@ -497,7 +496,7 @@ class CoalescedGradTensorPass : public ir::Pass {
                                  const std::string &fused_var_name,
                                  BlockDesc *global_block) const {
     auto op_desc = global_block->AppendOp();
-    op_desc->SetType("coalesced_tensor");
+    op_desc->SetType("coalesce_tensor");
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
@@ -508,6 +507,6 @@ class CoalescedGradTensorPass : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(coalesce_grad_tensor_pass,
-              paddle::framework::ir::CoalescedGradTensorPass)
+              paddle::framework::ir::CoalesceGradTensorPass)
     .RequirePassAttr(paddle::framework::details::kPlaces)
     .RequirePassAttr(paddle::framework::details::kLocalScopes);

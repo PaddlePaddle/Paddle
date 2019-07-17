@@ -142,26 +142,5 @@ class TestSpareFuseMomentumOps(TestSpareFuseAdamOps):
             learning_rate=learning_rate, momentum=0.1)
 
 
-# class TestSpareFuseAdamOpsL2(TestSpareFuseAdamOps):
-#     def optimizer(self, learning_rate=1e-3):
-#         return fluid.optimizer.Adam(
-#             learning_rate=learning_rate,
-#             regularization=fluid.regularizer.L2Decay(1e-4))
-#
-#
-# class TestSpareFuseSGDOpsWithL2(TestSpareFuseAdamOps):
-#     def optimizer(self, learning_rate=1e-3):
-#         return fluid.optimizer.SGD(
-#             learning_rate=learning_rate,
-#             regularization=fluid.regularizer.L2Decay(1e-4))
-#
-#
-# class TestSpareFuseMomentumOpsWithL2(TestSpareFuseAdamOps):
-#     def optimizer(self, learning_rate=1e-3):
-#         return fluid.optimizer.Momentum(
-#             learning_rate=learning_rate,
-#             momentum=0.1,
-#             regularization=fluid.regularizer.L2Decay(1e-4))
-
 if __name__ == '__main__':
     unittest.main()
