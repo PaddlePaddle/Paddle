@@ -2795,29 +2795,46 @@ def multiclass_nms(bboxes,
     helper = LayerHelper('multiclass_nms', **locals())
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
-    index = helper.create_variable_for_type_inference(dtype='int')
-    helper.append_op(
-        type="multiclass_nms",
-        inputs={'BBoxes': bboxes,
-                'Scores': scores},
-        attrs={
-            'background_label': background_label,
-            'score_threshold': score_threshold,
-            'nms_top_k': nms_top_k,
-            'nms_threshold': nms_threshold,
-            'nms_eta': nms_eta,
-            'keep_top_k': keep_top_k,
-            'nms_eta': nms_eta,
-            'normalized': normalized
-        },
-        outputs={'Out': output,
-                 'Index': index})
-    output.stop_gradient = True
-    index.stop_gradient = True
-
     if return_index:
+        index = helper.create_variable_for_type_inference(dtype='int')
+        helper.append_op(
+            type="multiclass_nms2",
+            inputs={'BBoxes': bboxes,
+                    'Scores': scores},
+            attrs={
+                'background_label': background_label,
+                'score_threshold': score_threshold,
+                'nms_top_k': nms_top_k,
+                'nms_threshold': nms_threshold,
+                'nms_eta': nms_eta,
+                'keep_top_k': keep_top_k,
+                'nms_eta': nms_eta,
+                'normalized': normalized
+            },
+            outputs={'Out': output,
+                     'Index': index})
+        output.stop_gradient = True
+        index.stop_gradient = True
         return output, index
-    return output
+    else:
+        helper.append_op(
+            type="multiclass_nms",
+            inputs={'BBoxes': bboxes,
+                    'Scores': scores},
+            attrs={
+                'background_label': background_label,
+                'score_threshold': score_threshold,
+                'nms_top_k': nms_top_k,
+                'nms_threshold': nms_threshold,
+                'nms_eta': nms_eta,
+                'keep_top_k': keep_top_k,
+                'nms_eta': nms_eta,
+                'normalized': normalized
+            },
+            outputs={'Out': output,
+                     'Index': index})
+        output.stop_gradient = True
+        return output
 
 
 def distribute_fpn_proposals(fpn_rois,
