@@ -45,25 +45,25 @@ class TestConcatOp(OpTest):
         self.check_grad(['x2'], 'Out')
 
     def init_test_data(self):
-        self.x0 = np.random.random((2, 1, 4, 5)).astype('float32')
-        self.x1 = np.random.random((2, 2, 4, 5)).astype('float32')
-        self.x2 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x0 = np.random.random((2, 1, 4, 5)).astype('float64')
+        self.x1 = np.random.random((2, 2, 4, 5)).astype('float64')
+        self.x2 = np.random.random((2, 3, 4, 5)).astype('float64')
         self.axis = 1
 
 
 class TestConcatOp2(TestConcatOp):
     def init_test_data(self):
-        self.x0 = np.random.random((2, 3, 4, 5)).astype('float32')
-        self.x1 = np.random.random((2, 3, 4, 5)).astype('float32')
-        self.x2 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x0 = np.random.random((2, 3, 4, 5)).astype('float64')
+        self.x1 = np.random.random((2, 3, 4, 5)).astype('float64')
+        self.x2 = np.random.random((2, 3, 4, 5)).astype('float64')
         self.axis = 1
 
 
 class TestConcatOp3(TestConcatOp):
     def init_test_data(self):
-        self.x0 = np.random.random((1, 256, 170, 256)).astype('float32')
-        self.x1 = np.random.random((1, 128, 170, 256)).astype('float32')
-        self.x2 = np.random.random((1, 128, 170, 256)).astype('float32')
+        self.x0 = np.random.random((1, 256, 170, 256)).astype('float64')
+        self.x1 = np.random.random((1, 128, 170, 256)).astype('float64')
+        self.x2 = np.random.random((1, 128, 170, 256)).astype('float64')
         self.axis = 1
 
     def test_check_grad(self):
@@ -72,9 +72,9 @@ class TestConcatOp3(TestConcatOp):
 
 class TestConcatOp4(TestConcatOp):
     def init_test_data(self):
-        self.x0 = np.random.random((2, 3, 4, 5)).astype('float32')
-        self.x1 = np.random.random((2, 3, 4, 5)).astype('float32')
-        self.x2 = np.random.random((0, 3, 4, 5)).astype('float32')
+        self.x0 = np.random.random((2, 3, 4, 5)).astype('float64')
+        self.x1 = np.random.random((2, 3, 4, 5)).astype('float64')
+        self.x2 = np.random.random((0, 3, 4, 5)).astype('float64')
         self.axis = 0
 
     def test_check_grad(self):
@@ -83,9 +83,9 @@ class TestConcatOp4(TestConcatOp):
 
 class TestConcatOp5(TestConcatOp):
     def init_test_data(self):
-        self.x0 = np.random.random((2, 1, 4, 5)).astype('float32')
-        self.x1 = np.random.random((2, 2, 4, 5)).astype('float32')
-        self.x2 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x0 = np.random.random((2, 1, 4, 5)).astype('float64')
+        self.x1 = np.random.random((2, 2, 4, 5)).astype('float64')
+        self.x2 = np.random.random((2, 3, 4, 5)).astype('float64')
         self.axis = -3
 
 

@@ -29,15 +29,15 @@ class TestDetectionMAPOp(OpTest):
         self.class_num = 4
         self.init_test_case()
         self.mAP = [self.calc_map(self.tf_pos, self.tf_pos_lod)]
-        self.label = np.array(self.label).astype('float32')
-        self.detect = np.array(self.detect).astype('float32')
-        self.mAP = np.array(self.mAP).astype('float32')
+        self.label = np.array(self.label).astype('float64')
+        self.detect = np.array(self.detect).astype('float64')
+        self.mAP = np.array(self.mAP).astype('float64')
 
         if len(self.class_pos_count) > 0:
             self.class_pos_count = np.array(self.class_pos_count).astype(
                 'int32')
-            self.true_pos = np.array(self.true_pos).astype('float32')
-            self.false_pos = np.array(self.false_pos).astype('float32')
+            self.true_pos = np.array(self.true_pos).astype('float64')
+            self.false_pos = np.array(self.false_pos).astype('float64')
             self.has_state = np.array([1]).astype('int32')
 
             self.inputs = {
@@ -63,8 +63,8 @@ class TestDetectionMAPOp(OpTest):
 
         self.out_class_pos_count = np.array(self.out_class_pos_count).astype(
             'int')
-        self.out_true_pos = np.array(self.out_true_pos).astype('float32')
-        self.out_false_pos = np.array(self.out_false_pos).astype('float32')
+        self.out_true_pos = np.array(self.out_true_pos).astype('float64')
+        self.out_false_pos = np.array(self.out_false_pos).astype('float64')
 
         self.outputs = {
             'MAP': self.mAP,

@@ -15,4 +15,5 @@ specific language governing permissions and limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     proximal_gd,
-    ops::ProximalGDOpKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::ProximalGDOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ProximalGDOpKernel<paddle::platform::CUDADeviceContext, double>);

@@ -107,4 +107,5 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker, ops::MinusGradMaker);
 REGISTER_OP_CPU_KERNEL(
-    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);
+    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MinusKernel<paddle::platform::CPUDeviceContext, double>);

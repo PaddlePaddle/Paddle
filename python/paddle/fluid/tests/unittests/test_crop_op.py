@@ -49,13 +49,13 @@ class TestCropOp(OpTest):
         self.initTestCase()
         if self.crop_by_input:
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
-                'Y': np.random.random(self.crop_shape).astype("float32")
+                'X': np.random.random(self.x_shape).astype("float64"),
+                'Y': np.random.random(self.crop_shape).astype("float64")
             }
         else:
             self.attrs['shape'] = self.crop_shape
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
             }
         if self.offset_by_input:
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')

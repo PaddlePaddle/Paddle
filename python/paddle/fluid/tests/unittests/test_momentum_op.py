@@ -24,7 +24,7 @@ from op_test import OpTest
 class TestMomentumOp1(OpTest):
     def setUp(self):
         self.op_type = "momentum"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
 
         param = np.random.random((123, 321)).astype(self.dtype)
@@ -74,10 +74,10 @@ class TestMomentumOp2(OpTest):
     def setUp(self):
         self.op_type = "momentum"
 
-        param = np.random.random((123, 321)).astype("float32")
-        grad = np.random.random((123, 321)).astype("float32")
-        velocity = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.001]).astype("float32")
+        param = np.random.random((123, 321)).astype("float64")
+        grad = np.random.random((123, 321)).astype("float64")
+        velocity = np.zeros((123, 321)).astype("float64")
+        learning_rate = np.array([0.001]).astype("float64")
         mu = 0.0001
         use_nesterov = True
 
@@ -107,10 +107,10 @@ class TestLarsMomentumOp(OpTest):
     def setUp(self):
         self.op_type = "lars_momentum"
 
-        param = np.random.random((123, 321)).astype("float32")
-        grad = np.random.random((123, 321)).astype("float32")
-        velocity = np.zeros((123, 321)).astype("float32")
-        learning_rate = np.array([0.001]).astype("float32")
+        param = np.random.random((123, 321)).astype("float64")
+        grad = np.random.random((123, 321)).astype("float64")
+        velocity = np.zeros((123, 321)).astype("float64")
+        learning_rate = np.array([0.001]).astype("float64")
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
@@ -158,32 +158,32 @@ class TestSparseMomentumOp(unittest.TestCase):
 
         # create and initialize Param Variable
         param = scope.var('Param').get_tensor()
-        param_array = np.full((height, row_numel), 5.0).astype("float32")
+        param_array = np.full((height, row_numel), 5.0).astype("float64")
         param.set(param_array, place)
         param_out = scope.var("ParamOut").get_tensor()
-        param_out_array = np.full((height, row_numel), 0.0).astype("float32")
+        param_out_array = np.full((height, row_numel), 0.0).astype("float64")
         param_out.set(param_out_array, place)
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        grad_np_array = np.ones((len(rows), row_numel)).astype("float32")
+        grad_np_array = np.ones((len(rows), row_numel)).astype("float64")
         grad_np_array[0, 0] = 2.0
         grad_np_array[2, 8] = 4.0
         grad_tensor = grad_selected_rows.get_tensor()
         grad_tensor.set(grad_np_array, place)
 
         velocity = scope.var('Velocity').get_tensor()
-        velocity_np_array = np.ones((height, row_numel)).astype("float32")
+        velocity_np_array = np.ones((height, row_numel)).astype("float64")
         velocity.set(velocity_np_array, place)
         velocity_out = scope.var('VelocityOut').get_tensor()
         velocity_out_np_array = np.full((height, row_numel),
-                                        0.0).astype("float32")
+                                        0.0).astype("float64")
         velocity_out.set(velocity_out_np_array, place)
 
         # create and initialize LeraningRate Variable
         lr = scope.var('LearningRate').get_tensor()
-        lr_array = np.full((1), 2.0).astype("float32")
+        lr_array = np.full((1), 2.0).astype("float64")
         lr.set(lr_array, place)
 
         # create and run operator
@@ -205,7 +205,7 @@ class TestSparseMomentumOp(unittest.TestCase):
 
         # TODO(dzh): add a more suitable general numpy interface
         # for sparse update.
-        _grad_np_array = np.full((height, row_numel), 0.0).astype("float32")
+        _grad_np_array = np.full((height, row_numel), 0.0).astype("float64")
         for i in range(len(rows)):
             _grad_np_array[rows[i]] = grad_np_array[i]
         _velocity_out = mu * velocity_np_array + _grad_np_array

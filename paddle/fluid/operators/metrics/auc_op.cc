@@ -110,4 +110,5 @@ There are two types of possible curves:
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(auc, ops::AucOp, ops::AucOpMaker);
-REGISTER_OP_CPU_KERNEL(auc, ops::AucKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(auc, ops::AucKernel<paddle::platform::CPUPlace, float>,
+                       ops::AucKernel<paddle::platform::CPUPlace, double>);

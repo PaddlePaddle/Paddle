@@ -16,4 +16,6 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     split_selected_rows,
-    ops::SplitSelectedRowsOpKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SplitSelectedRowsOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SplitSelectedRowsOpKernel<paddle::platform::CUDADeviceContext,
+                                   double>);

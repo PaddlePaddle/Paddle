@@ -53,7 +53,7 @@ def YoloBox(x, img_size, attrs):
     pred_conf = sigmoid(x[:, :, :, :, 4:5])
     pred_conf[pred_conf < conf_thresh] = 0.
     pred_score = sigmoid(x[:, :, :, :, 5:]) * pred_conf
-    pred_box = pred_box * (pred_conf > 0.).astype('float32')
+    pred_box = pred_box * (pred_conf > 0.).astype('float64')
 
     pred_box = pred_box.reshape((n, -1, 4))
     pred_box[:, :, :2], pred_box[:, :, 2:4] = \
@@ -79,7 +79,7 @@ class TestYoloBoxOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolo_box'
-        x = np.random.random(self.x_shape).astype('float32')
+        x = np.random.random(self.x_shape).astype('float64')
         img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
 
         self.attrs = {

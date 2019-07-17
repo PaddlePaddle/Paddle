@@ -22,9 +22,9 @@ from op_test import OpTest
 class TestUniformRandomBatchSizeLike(OpTest):
     def setUp(self):
         self.op_type = "uniform_random_batch_size_like"
-        self.inputs = {'Input': np.zeros((500, 2000), dtype="float32")}
+        self.inputs = {'Input': np.zeros((500, 2000), dtype="float64")}
         self.attrs = {'min': 1., 'max': 2., 'shape': [-1, 2000]}
-        self.outputs = {'Out': np.zeros((500, 2000), dtype='float32')}
+        self.outputs = {'Out': np.zeros((500, 2000), dtype='float64')}
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -32,7 +32,7 @@ class TestUniformRandomBatchSizeLike(OpTest):
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (500, 2000))
         hist, _ = np.histogram(outs[0], range=(1, 2))
-        hist = hist.astype("float32")
+        hist = hist.astype("float64")
         hist /= float(outs[0].size)
         prob = 0.1 * np.ones((10))
         self.assertTrue(

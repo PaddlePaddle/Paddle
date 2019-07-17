@@ -22,7 +22,7 @@ from op_test import OpTest
 class TestFillZerosLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_zeros_like"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
         self.outputs = {'Out': np.zeros_like(self.inputs["X"])}

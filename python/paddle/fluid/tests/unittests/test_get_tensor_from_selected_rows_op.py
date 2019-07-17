@@ -33,7 +33,7 @@ class TestGetTensorFromSelectedRows(unittest.TestCase):
         height = 20
         row_numel = 2
 
-        np_array = np.ones((len(x_rows), row_numel)).astype("float32")
+        np_array = np.ones((len(x_rows), row_numel)).astype("float64")
         np_array[1, :] = 2.0
         np_array[2, :] = 3.0
         np_array[3, :] = 4.0

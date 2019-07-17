@@ -40,7 +40,7 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
         prog.random_seed = 100
         startup_prog.random_seed = 100
         with program_guard(prog, startup_prog):
-            image = layers.data(name='x', shape=[784], dtype='float32')
+            image = layers.data(name='x', shape=[784], dtype='float64')
 
             label = layers.data(name='y', shape=[1], dtype='int64')
 
@@ -88,7 +88,7 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
             ret = []
             for pass_id in range(PASS_NUM):
                 for data in train_reader():
-                    x_data = np.array([x[0] for x in data]).astype("float32")
+                    x_data = np.array([x[0] for x in data]).astype("float64")
                     y_data = np.array([x[1] for x in data]).astype("int64")
                     y_data = y_data.reshape((y_data.shape[0], 1))
 

@@ -292,7 +292,9 @@ REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
                   ops::RowConvGradOpDescMaker);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
-    row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
+    row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RowConvKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     row_conv_grad,
-    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, double>);

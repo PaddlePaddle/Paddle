@@ -20,7 +20,7 @@ from op_test import OpTest
 class TestInf(OpTest):
     def setUp(self):
         self.op_type = "isinf"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -45,7 +45,7 @@ class TestFP16Inf(TestInf):
 class TestNAN(OpTest):
     def setUp(self):
         self.op_type = "isnan"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -70,7 +70,7 @@ class TestFP16NAN(TestNAN):
 class TestIsfinite(OpTest):
     def setUp(self):
         self.op_type = "isfinite"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)

@@ -172,7 +172,9 @@ REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 REGISTER_OP_CPU_KERNEL(
     im2sequence,
-    ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     im2sequence_grad,
-    ops::Im2SequenceGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::Im2SequenceGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::Im2SequenceGradKernel<paddle::platform::CPUDeviceContext, double>);

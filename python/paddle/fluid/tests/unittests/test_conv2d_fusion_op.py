@@ -28,7 +28,7 @@ class TestConv2dFusionOp(OpTest):
         self.op_type = "conv2d_fusion"
         self.exhaustive_search = False
         self.data_format = "AnyLayout"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.activation = 'relu'
         self.add_bias = True
         self.add_residual_data = True

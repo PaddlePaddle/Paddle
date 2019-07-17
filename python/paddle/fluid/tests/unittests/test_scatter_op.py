@@ -23,9 +23,9 @@ import paddle.fluid.core as core
 class TestScatterOp(OpTest):
     def setUp(self):
         self.op_type = "scatter"
-        ref_np = np.ones((3, 3)).astype("float32")
+        ref_np = np.ones((3, 3)).astype("float64")
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype("float64")
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
@@ -41,9 +41,9 @@ class TestScatterOp(OpTest):
 class TestScatterOp0(OpTest):
     def setUp(self):
         self.op_type = "scatter"
-        ref_np = np.ones((3, 3)).astype("float32")
+        ref_np = np.ones((3, 3)).astype("float64")
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype("float64")
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
@@ -60,10 +60,10 @@ class TestScatterOp0(OpTest):
 class TestScatterOp1(OpTest):
     def setUp(self):
         self.op_type = "scatter"
-        ref_np = np.ones((3, 3)).astype("float32")
-        zeros_np = np.zeros([2, 3]).astype('float32')
+        ref_np = np.ones((3, 3)).astype("float64")
+        zeros_np = np.zeros([2, 3]).astype('float64')
         index_np = np.array([1, 1]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype("float64")
         output_np = np.copy(ref_np)
         output_np[index_np] = zeros_np
         for i in range(0, len(index_np)):
@@ -84,9 +84,9 @@ class TestScatterOp1(OpTest):
 class TestScatterOp2(OpTest):
     def setUp(self):
         self.op_type = "scatter"
-        ref_np = np.ones((3, 3)).astype("float32")
+        ref_np = np.ones((3, 3)).astype("float64")
         index_np = np.array([1, 2]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype("float64")
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
@@ -108,10 +108,10 @@ class TestScatterOp2(OpTest):
 class TestScatterOp3(OpTest):
     def setUp(self):
         self.op_type = "scatter"
-        ref_np = np.ones((3, 3)).astype("float32")
-        zeros_np = np.zeros([2, 3]).astype('float32')
+        ref_np = np.ones((3, 3)).astype("float64")
+        zeros_np = np.zeros([2, 3]).astype('float64')
         index_np = np.array([1, 1]).astype("int32")
-        updates_np = np.random.random((2, 3)).astype("float32")
+        updates_np = np.random.random((2, 3)).astype("float64")
         output_np = np.copy(ref_np)
         output_np[index_np] = zeros_np
         for i in range(0, len(index_np)):

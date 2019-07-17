@@ -157,7 +157,7 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
             if out_dtype == core.VarDesc.VarType.FP64:
                 data = np.ones(out_tensor.shape(), dtype=np.float64)
             elif out_dtype == core.VarDesc.VarType.FP32:
-                data = np.ones(out_tensor.shape(), dtype=np.float32)
+                data = np.ones(out_tensor.shape(), dtype=np.float64)
             else:
                 raise ValueError("Not supported data type " + str(out_dtype))
         grad_tensor.set(data, place)
@@ -171,7 +171,7 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 
 class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.use_mkldnn = False
         self.fuse_with_relu = False
         self.init_kernel_type()
@@ -197,11 +197,11 @@ class TestBatchNormOpInference(unittest.TestCase):
         x_val = np.random.random_sample(x_shape).astype(dtype)
         # generate some negative values to test case with relu fused
         x_val = x_val - 0.5
-        scale_val = np.random.random_sample(scale_shape).astype(np.float32)
-        bias_val = np.random.random_sample(scale_shape).astype(np.float32)
+        scale_val = np.random.random_sample(scale_shape).astype(np.float64)
+        bias_val = np.random.random_sample(scale_shape).astype(np.float64)
 
-        mean = np.zeros(scale_shape).astype(np.float32)
-        variance = np.ones(scale_shape).astype(np.float32)
+        mean = np.zeros(scale_shape).astype(np.float64)
+        variance = np.ones(scale_shape).astype(np.float64)
 
         y_out = _reference_testing(x_val, scale_val, bias_val, mean, variance,
                                    epsilon, data_layout).astype(dtype)
@@ -338,8 +338,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
         return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
 
     def set_mean_variance(self, scale_shape, x, data_layout):
-        mean = np.zeros(scale_shape).astype(np.float32)
-        variance = np.ones(scale_shape).astype(np.float32)
+        mean = np.zeros(scale_shape).astype(np.float64)
+        variance = np.ones(scale_shape).astype(np.float64)
         # computing global mean/variance for one step
         if self.use_global_stats:
             mom = self.momentum
@@ -360,11 +360,11 @@ class TestBatchNormOpTraining(unittest.TestCase):
             scale_shape = [c]
 
             np.random.seed(123)
-            x = np.random.random_sample(shape).astype(np.float32)
-            scale = np.random.random_sample(scale_shape).astype(np.float32)
-            bias = np.random.random_sample(scale_shape).astype(np.float32)
+            x = np.random.random_sample(shape).astype(np.float64)
+            scale = np.random.random_sample(scale_shape).astype(np.float64)
+            bias = np.random.random_sample(scale_shape).astype(np.float64)
             mean, variance = self.set_mean_variance(scale_shape, x, data_layout)
-            y_grad = np.random.random_sample(shape).astype(np.float32)
+            y_grad = np.random.random_sample(shape).astype(np.float64)
 
             y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad = self.ref_forward_backward(
                 x, y_grad, scale, bias, mean, variance, epsilon, momentum,
@@ -388,7 +388,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 for name in ground_truth:
                     block.create_var(
                         name=name,
-                        dtype='float32',
+                        dtype='float64',
                         shape=ground_truth[name].shape)
                 bn_op = block.append_op(
                     type="batch_norm",
@@ -415,7 +415,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                         "fuse_with_relu": self.fuse_with_relu,
                         "use_global_stats": self.use_global_stats
                     })
-                block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
+                block.create_var(name='y@GRAD', dtype='float64', shape=y.shape)
 
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(

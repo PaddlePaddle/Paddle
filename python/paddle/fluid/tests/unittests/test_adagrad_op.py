@@ -29,9 +29,9 @@ class TestAdagradOp1(OpTest):
     def setUp(self):
         self.op_type = "adagrad"
 
-        param = np.random.random((123, 321)).astype("float32")
-        grad = np.random.random((123, 321)).astype("float32")
-        moment = np.zeros((123, 321)).astype("float32")
+        param = np.random.random((123, 321)).astype("float64")
+        grad = np.random.random((123, 321)).astype("float64")
+        moment = np.zeros((123, 321)).astype("float64")
         lr = 0.01
         epsilon = 1e-8
 
@@ -39,7 +39,7 @@ class TestAdagradOp1(OpTest):
             'Param': param,
             'Grad': grad,
             'Moment': moment,
-            'LearningRate': np.array([lr]).astype("float32")
+            'LearningRate': np.array([lr]).astype("float64")
         }
 
         self.attrs = {'epsilon': epsilon}
@@ -60,9 +60,9 @@ class TestAdagradOp2(OpTest):
     def setUp(self):
         self.op_type = "adagrad"
 
-        param = np.random.random((123, 321)).astype("float32")
-        grad = np.random.random((123, 321)).astype("float32")
-        moment = np.zeros((123, 321)).astype("float32")
+        param = np.random.random((123, 321)).astype("float64")
+        grad = np.random.random((123, 321)).astype("float64")
+        moment = np.zeros((123, 321)).astype("float64")
         lr = 0.01
         epsilon = 1e-6
 
@@ -70,7 +70,7 @@ class TestAdagradOp2(OpTest):
             'Param': param,
             'Grad': grad,
             'Moment': moment,
-            'LearningRate': np.array([lr]).astype("float32")
+            'LearningRate': np.array([lr]).astype("float64")
         }
 
         self.attrs = {'epsilon': epsilon}
@@ -96,7 +96,7 @@ class TestSparseAdagradOp(unittest.TestCase):
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        np_array = np.ones((len(rows), row_numel)).astype("float64")
         np_array[0, 0] = 2.0
         np_array[2, 8] = 4.0
 
@@ -105,17 +105,17 @@ class TestSparseAdagradOp(unittest.TestCase):
 
         # create and initialize Param Variable
         param = scope.var('Param').get_tensor()
-        param_array = np.full((height, row_numel), 5.0).astype("float32")
+        param_array = np.full((height, row_numel), 5.0).astype("float64")
         param.set(param_array, place)
 
         # create and initialize LeraningRate Variable
         lr = scope.var('LearningRate').get_tensor()
-        lr_array = np.full((1), 2.0).astype("float32")
+        lr_array = np.full((1), 2.0).astype("float64")
         lr.set(lr_array, place)
 
         # create and initialize moment Variable
         moment = scope.var('Moment').get_tensor()
-        moment_np_array = np.full((height, row_numel), 2.0).astype("float32")
+        moment_np_array = np.full((height, row_numel), 2.0).astype("float64")
         moment.set(moment_np_array, place)
 
         # create and run sgd operator

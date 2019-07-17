@@ -22,11 +22,11 @@ from op_test import OpTest
 class TestFTRLOp(OpTest):
     def setUp(self):
         self.op_type = "ftrl"
-        w = np.random.random((102, 105)).astype("float32")
-        g = np.random.random((102, 105)).astype("float32")
-        sq_accum = np.full((102, 105), 0.1).astype("float32")
-        linear_accum = np.full((102, 105), 0.1).astype("float32")
-        lr = np.array([0.01]).astype("float32")
+        w = np.random.random((102, 105)).astype("float64")
+        g = np.random.random((102, 105)).astype("float64")
+        sq_accum = np.full((102, 105), 0.1).astype("float64")
+        linear_accum = np.full((102, 105), 0.1).astype("float64")
+        lr = np.array([0.01]).astype("float64")
         l1 = 0.1
         l2 = 0.2
         lr_power = -0.5

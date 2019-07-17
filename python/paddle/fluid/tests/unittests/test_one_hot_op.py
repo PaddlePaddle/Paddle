@@ -35,7 +35,7 @@ class TestOneHotOp(OpTest):
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+                              depth)).astype('float64')
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -58,7 +58,7 @@ class TestOneHotOp_attr(OpTest):
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+                              depth)).astype('float64')
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -82,7 +82,7 @@ class TestOneHotOp_default_dtype(OpTest):
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+                              depth)).astype('float64')
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -105,7 +105,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+                              depth)).astype('float64')
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -135,12 +135,12 @@ class TestOneHotOp_exception(OpTest):
         program = Program()
         with program_guard(program):
             x = fluid.layers.data(
-                name='x', shape=[self.dimension], dtype='float32', lod_level=1)
+                name='x', shape=[self.dimension], dtype='float64', lod_level=1)
             block = program.current_block()
             one_hot_out = block.create_var(
                 name="one_hot_out",
                 type=core.VarDesc.VarType.LOD_TENSOR,
-                dtype='float32')
+                dtype='float64')
             block.append_op(
                 type='one_hot',
                 inputs={'X': x},

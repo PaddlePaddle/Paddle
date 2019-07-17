@@ -25,7 +25,7 @@ import paddle.compat as cpt
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(0, 17, 4).astype("int64")
         ids_expand = np.expand_dims(ids, axis=1)
         self.inputs = {'W': table, 'Ids': ids_expand}
@@ -41,7 +41,7 @@ class TestLookupTableOp(OpTest):
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(
             low=0, high=17, size=(2, 4, 5, 1)).astype("int64")
         self.inputs = {'W': table, 'Ids': ids}
@@ -97,7 +97,7 @@ class TestLookupTableWIsSelectedRows(OpTest):
         w_selected_rows = scope.var('W').get_selected_rows()
         w_selected_rows.set_height(len(rows))
         w_selected_rows.set_rows(rows)
-        w_array = np.ones((len(rows), row_numel)).astype("float32")
+        w_array = np.ones((len(rows), row_numel)).astype("float64")
         for i in range(len(rows)):
             w_array[i] *= i
         w_tensor = w_selected_rows.get_tensor()

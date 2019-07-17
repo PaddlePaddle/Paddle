@@ -72,7 +72,7 @@ class TestConv2dOp(OpTest):
         self.use_mkldnn = False
         self.fuse_relu_before_depthwise_conv = False
         self.data_format = "AnyLayout"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()

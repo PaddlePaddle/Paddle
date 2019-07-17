@@ -22,12 +22,12 @@ from op_test import OpTest
 class TestAdadeltaOp1(OpTest):
     def setUp(self):
         self.op_type = "adadelta"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The squared gradient is positive
-        avg_squared_grad = np.random.random((102, 105)).astype("float32")
+        avg_squared_grad = np.random.random((102, 105)).astype("float64")
         # The squared update is positive
-        avg_squared_update = np.random.random((102, 105)).astype("float32")
+        avg_squared_update = np.random.random((102, 105)).astype("float64")
 
         rho = 0.95
         epsilon = 1e-6
@@ -69,12 +69,12 @@ class TestAdadeltaOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adadelta"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The squared gradient is positive
-        avg_squared_grad = np.random.random((102, 105)).astype("float32")
+        avg_squared_grad = np.random.random((102, 105)).astype("float64")
         # The squared update is positive
-        avg_squared_update = np.random.random((102, 105)).astype("float32")
+        avg_squared_update = np.random.random((102, 105)).astype("float64")
 
         rho = 0.95
         epsilon = 1e-6

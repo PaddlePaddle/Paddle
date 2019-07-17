@@ -21,12 +21,12 @@ from op_test import OpTest
 class ElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
         """ Warning
         CPU gradient check error!
-        'X': np.random.random((32,84)).astype("float32"),
-        'Y': np.random.random((32,84)).astype("float32")
+        'X': np.random.random((32,84)).astype("float64"),
+        'Y': np.random.random((32,84)).astype("float64")
         """
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
@@ -56,8 +56,8 @@ class TestElementwiseDivOp_scalar(ElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float32)
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float64),
+            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
 
@@ -66,8 +66,8 @@ class TestElementwiseDivOp_Vector(ElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [32]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [32]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [32]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [32]).astype("float64")
         }
         self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
@@ -76,8 +76,8 @@ class TestElementwiseDivOp_broadcast_0(ElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2]).astype("float64")
         }
 
         self.attrs = {'axis': 0}
@@ -91,8 +91,8 @@ class TestElementwiseDivOp_broadcast_1(ElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [3]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [3]).astype("float64")
         }
 
         self.attrs = {'axis': 1}
@@ -106,8 +106,8 @@ class TestElementwiseDivOp_broadcast_2(ElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [4]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [4]).astype("float64")
         }
 
         self.outputs = {
@@ -120,8 +120,8 @@ class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [3, 4]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [3, 4]).astype("float64")
         }
 
         self.attrs = {'axis': 1}

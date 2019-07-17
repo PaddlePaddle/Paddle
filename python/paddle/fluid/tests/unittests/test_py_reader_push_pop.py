@@ -32,7 +32,7 @@ class TestPyReader(unittest.TestCase):
         self.batch_size_max = 20
         self.shapes = [(-1, 3, 2, 1), (-1, 1)]
         self.lod_levels = [0, 0]
-        self.dtypes = ['float32', 'int64']
+        self.dtypes = ['float64', 'int64']
         self.iterations = 20
 
     def test_single_thread_main(self):

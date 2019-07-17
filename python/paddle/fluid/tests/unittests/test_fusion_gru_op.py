@@ -37,7 +37,7 @@ def fusion_gru(
                h0,
                wh,
                np.zeros(
-                   (1, wh.shape[1]), dtype='float32'),
+                   (1, wh.shape[1]), dtype='float64'),
                is_reverse,
                act_state,
                act_gate)
@@ -62,15 +62,15 @@ class TestFusionGRUOp(OpTest):
         T = sum(self.lod[0])
         N = len(self.lod[0])
 
-        x = np.random.rand(T, self.M).astype('float32')
-        wx = np.random.rand(self.M, 3 * self.D).astype('float32')
-        wh = np.random.rand(self.D, 3 * self.D).astype('float32')
+        x = np.random.rand(T, self.M).astype('float64')
+        wx = np.random.rand(self.M, 3 * self.D).astype('float64')
+        wh = np.random.rand(self.D, 3 * self.D).astype('float64')
         bias = np.random.rand(
-            1, 3 * self.D).astype('float32') if self.with_bias else np.zeros(
-                (1, 3 * self.D), dtype='float32')
+            1, 3 * self.D).astype('float64') if self.with_bias else np.zeros(
+                (1, 3 * self.D), dtype='float64')
         h0 = np.random.rand(
-            N, self.D).astype('float32') if self.with_h0 else np.zeros(
-                (N, self.D), dtype='float32')
+            N, self.D).astype('float64') if self.with_h0 else np.zeros(
+                (N, self.D), dtype='float64')
 
         _, _, _, hidden = fusion_gru(
             x, self.lod, h0, wx, wh, bias, self.is_reverse,

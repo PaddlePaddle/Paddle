@@ -22,7 +22,7 @@ from op_test import OpTest
 class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
         n = 8192
         infer = np.random.random((n, 1)).astype(self.dtype)

@@ -27,7 +27,7 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
     def setUp(self):
         self.op_type = "fused_embedding_seq_pool"
         self.emb_size = 2
-        table = np.random.random((17, self.emb_size)).astype("float32")
+        table = np.random.random((17, self.emb_size)).astype("float64")
         ids = np.array([[[4], [3]], [[4], [3]], [[2], [1]],
                         [[16], [1]]]).astype("int64")
         merged_ids = np.array([4, 2, 16]).astype("int64")

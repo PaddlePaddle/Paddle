@@ -139,7 +139,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(
-                name='x', shape=[1], dtype='float32', stop_gradient=False)
+                name='x', shape=[1], dtype='float64', stop_gradient=False)
             y = layers.data(
                 name='y', shape=[1], dtype='bool', stop_gradient=False)
 
@@ -153,7 +153,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
             append_backward(mean)
 
         tensor = core.LoDTensor()
-        tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
+        tensor.set(np.arange(10).reshape(10, 1).astype('float64'), place)
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')

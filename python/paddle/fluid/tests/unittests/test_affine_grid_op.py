@@ -34,16 +34,16 @@ def AffineGrid(theta, size):
     for i in range(len(theta)):
         ret[i] = np.dot(grid[i].reshape([h * w, 3]), theta[i])
 
-#    print ret.reshape([h * w, 2]).astype("float32")    
-    return ret.reshape([n, h, w, 2]).astype("float32")
+#    print ret.reshape([h * w, 2]).astype("float64")    
+    return ret.reshape([n, h, w, 2]).astype("float64")
 
 
 class TestAffineGridOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = "affine_grid"
-        theta = np.random.randint(1, 3, self.theta_shape).astype("float32")
-        theta = np.ones(self.theta_shape).astype("float32")
+        theta = np.random.randint(1, 3, self.theta_shape).astype("float64")
+        theta = np.ones(self.theta_shape).astype("float64")
         self.inputs = {'Theta': theta}
         self.attrs = {"use_cudnn": True}
         if self.dynamic_shape:

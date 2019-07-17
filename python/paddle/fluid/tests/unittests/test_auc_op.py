@@ -23,7 +23,7 @@ from paddle.fluid import metrics
 class TestAucOp(OpTest):
     def setUp(self):
         self.op_type = "auc"
-        pred = np.random.random((128, 2)).astype("float32")
+        pred = np.random.random((128, 2)).astype("float64")
         labels = np.random.randint(0, 2, (128, 1)).astype("int64")
         num_thresholds = 200
 

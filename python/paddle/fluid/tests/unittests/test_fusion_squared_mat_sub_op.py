@@ -27,8 +27,8 @@ class TestFusionSquaredMatSubOp(OpTest):
         self.k = 4
         self.scalar = 0.5
         self.set_conf()
-        matx = np.random.random((self.m, self.k)).astype("float32")
-        maty = np.random.random((self.k, self.n)).astype("float32")
+        matx = np.random.random((self.m, self.k)).astype("float64")
+        maty = np.random.random((self.k, self.n)).astype("float64")
 
         self.inputs = {'X': matx, 'Y': maty}
         self.outputs = {

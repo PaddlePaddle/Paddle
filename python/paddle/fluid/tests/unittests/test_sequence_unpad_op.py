@@ -22,7 +22,7 @@ class TestSequenceUnpadOp(OpTest):
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 5)
-        self.dtype = "float32"
+        self.dtype = "float64"
 
     def compute(self):
         assert len(self.length) == self.x_shape[0]
@@ -61,7 +61,7 @@ class TestSequenceUnpadOp2(TestSequenceUnpadOp):
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 5, 4, 3)
-        self.dtype = "float32"
+        self.dtype = "float64"
 
 
 class TestSequenceUnpadOp3(TestSequenceUnpadOp):

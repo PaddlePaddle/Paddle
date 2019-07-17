@@ -82,8 +82,8 @@ def attention_lstm(
 
         start_offset += seq_len
 
-    hidden = np.array(hidden).astype('float32').reshape([T, D])
-    cell = np.array(cell).astype('float32').reshape([T, D])
+    hidden = np.array(hidden).astype('float64').reshape([T, D])
+    cell = np.array(cell).astype('float64').reshape([T, D])
     return hidden, cell
 
 
@@ -105,22 +105,22 @@ class TestAttentionLSTMOp(OpTest):
         T = sum(self.lod[0])
         bs = len(self.lod[0])
 
-        x = np.random.normal(size=(T, self.M)).astype('float32')
-        c0 = np.random.normal(size=(bs, self.D)).astype('float32')
+        x = np.random.normal(size=(T, self.M)).astype('float64')
+        c0 = np.random.normal(size=(bs, self.D)).astype('float64')
         if self.has_initial_hidden:
-            h0 = np.random.normal(size=(bs, self.D)).astype('float32')
+            h0 = np.random.normal(size=(bs, self.D)).astype('float64')
         else:
-            h0 = np.zeros((bs, self.D)).astype('float32')
+            h0 = np.zeros((bs, self.D)).astype('float64')
 
-        fcw1 = np.random.normal(size=(self.M + self.D, 1)).astype('float32')
-        fcb1 = np.random.normal(size=(1, 1)).astype('float32')
-        fcw2 = np.random.normal(size=(1, 1)).astype('float32')
-        fcb2 = np.random.normal(size=(1, 1)).astype('float32')
+        fcw1 = np.random.normal(size=(self.M + self.D, 1)).astype('float64')
+        fcb1 = np.random.normal(size=(1, 1)).astype('float64')
+        fcw2 = np.random.normal(size=(1, 1)).astype('float64')
+        fcb2 = np.random.normal(size=(1, 1)).astype('float64')
 
         # lstm weight and bias
         w = np.random.normal(size=(self.M + self.D,
-                                   self.D * 4)).astype('float32')
-        b = np.random.normal(size=(1, self.D * 4)).astype('float32')
+                                   self.D * 4)).astype('float64')
+        b = np.random.normal(size=(1, self.D * 4)).astype('float64')
 
         h, c = attention_lstm(x, self.lod, h0, c0, [fcw1, fcw2], [fcb1, fcb2],
                               w, b, ACTIVATION[self.act_gate],

@@ -179,7 +179,7 @@ def _compute_targets(roi_boxes, gt_boxes, labels, bbox_reg_weights):
         ex_boxes=roi_boxes, gt_boxes=gt_boxes, weights=bbox_reg_weights)
 
     return np.hstack([labels[:, np.newaxis], targets]).astype(
-        np.float32, copy=False)
+        np.float64, copy=False)
 
 
 def _box_to_delta(ex_boxes, gt_boxes, weights):
@@ -277,7 +277,7 @@ class TestGenerateProposalLabelsOp(OpTest):
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
         proposal_nums = 2000 if not self.is_cascade_rcnn else 512  #self.batch_size_per_im - gt_nums
         images_shape = [[64, 64]]
-        self.im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        self.im_info = np.ones((len(images_shape), 3)).astype(np.float64)
         for i in range(len(images_shape)):
             self.im_info[i, 0] = images_shape[i][0]
             self.im_info[i, 1] = images_shape[i][1]
@@ -350,7 +350,7 @@ def _generate_boxes(image_size, box_nums):
     boxes = np.hstack([xy1, xy2])
     boxes[:, [0, 2]] = np.minimum(width - 1., np.maximum(0., boxes[:, [0, 2]]))
     boxes[:, [1, 3]] = np.minimum(height - 1., np.maximum(0., boxes[:, [1, 3]]))
-    return boxes.astype(np.float32)
+    return boxes.astype(np.float64)
 
 
 if __name__ == '__main__':

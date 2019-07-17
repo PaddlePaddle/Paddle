@@ -22,9 +22,9 @@ from op_test import OpTest
 class TestGaussianRandomBatchSizeLike(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random_batch_size_like"
-        self.inputs = {'Input': np.zeros((500, 2000), dtype="float32")}
+        self.inputs = {'Input': np.zeros((500, 2000), dtype="float64")}
         self.attrs = {'mean': 1., 'std': 2., 'shape': [-1, 2000]}
-        self.outputs = {'Out': np.zeros((500, 2000), dtype='float32')}
+        self.outputs = {'Out': np.zeros((500, 2000), dtype='float64')}
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -32,11 +32,11 @@ class TestGaussianRandomBatchSizeLike(OpTest):
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (500, 2000))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
-        hist = hist.astype("float32")
+        hist = hist.astype("float64")
         hist /= float(outs[0].size)
         data = np.random.normal(size=(500, 2000), loc=1, scale=2)
         hist2, _ = np.histogram(data, range=(-3, 5))
-        hist2 = hist2.astype("float32")
+        hist2 = hist2.astype("float64")
         hist2 /= float(outs[0].size)
         self.assertTrue(
             np.allclose(

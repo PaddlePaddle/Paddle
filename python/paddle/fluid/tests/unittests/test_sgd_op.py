@@ -25,9 +25,9 @@ class TestSGDOp(OpTest):
     def setUp(self):
         self.op_type = "sgd"
         self.conf()
-        w = np.random.random((self.h, self.w)).astype("float32")
-        g = np.random.random((self.h, self.w)).astype("float32")
-        lr = np.array([0.1]).astype("float32")
+        w = np.random.random((self.h, self.w)).astype("float64")
+        g = np.random.random((self.h, self.w)).astype("float64")
+        lr = np.array([0.1]).astype("float64")
 
         self.inputs = {'Param': w, 'Grad': g, 'LearningRate': lr}
         self.outputs = {'ParamOut': w - lr * g}
@@ -58,7 +58,7 @@ class TestSparseSGDOp(unittest.TestCase):
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        np_array = np.ones((len(rows), self.row_numel)).astype("float32")
+        np_array = np.ones((len(rows), self.row_numel)).astype("float64")
         np_array[0, 0] = 2.0
         np_array[2, 8] = 4.0
 
@@ -67,12 +67,12 @@ class TestSparseSGDOp(unittest.TestCase):
 
         # create and initialize Param Variable
         param = scope.var('Param').get_tensor()
-        param_array = np.full((height, self.row_numel), 5.0).astype("float32")
+        param_array = np.full((height, self.row_numel), 5.0).astype("float64")
         param.set(param_array, place)
 
         # create and initialize LeraningRate Variable
         lr = scope.var('LearningRate').get_tensor()
-        lr_array = np.full((1), 2.0).astype("float32")
+        lr_array = np.full((1), 2.0).astype("float64")
         lr.set(lr_array, place)
 
         # create and run sgd operator
@@ -130,7 +130,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(grad_height)
         grad_selected_rows.set_rows(grad_rows)
-        grad_array = np.ones((len(grad_rows), row_width)).astype("float32")
+        grad_array = np.ones((len(grad_rows), row_width)).astype("float64")
         grad_array[0, 0] = 2.0
         grad_array[2, 8] = 4.0
 
@@ -146,7 +146,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         w_selected_rows.set_height(len(param_rows))
         w_selected_rows.set_rows(param_rows)
         w_selected_rows.sync_index()
-        w_array = np.ones((len(param_rows), row_width)).astype("float32")
+        w_array = np.ones((len(param_rows), row_width)).astype("float64")
         for i in range(len(param_rows)):
             w_array[i] *= i
         w_tensor = w_selected_rows.get_tensor()
@@ -157,7 +157,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         # create and initialize LeraningRate Variable
         lr_value = 0.1
         lr = scope.var('LearningRate').get_tensor()
-        lr_array = np.full((1), lr_value).astype("float32")
+        lr_array = np.full((1), lr_value).astype("float64")
         lr.set(lr_array, place)
 
         # optimize with Python

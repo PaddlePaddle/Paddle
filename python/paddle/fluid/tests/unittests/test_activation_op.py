@@ -24,7 +24,7 @@ from scipy.special import expit, erf
 class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
         self.init_kernel_type()
 
@@ -43,7 +43,7 @@ class TestActivation(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_kernel_type(self):
         pass
@@ -630,7 +630,7 @@ class TestHardSigmoid(TestActivation):
 
         self.relative_error = 0.002
 
-        X = np.random.uniform(-5, 5, [2, 2]).astype("float32")
+        X = np.random.uniform(-5, 5, [2, 2]).astype("float64")
         slope = 0.2
         offset = 0.5
         lower_threshold = -offset / slope

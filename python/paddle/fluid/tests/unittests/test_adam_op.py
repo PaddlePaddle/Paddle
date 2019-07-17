@@ -26,11 +26,11 @@ class TestAdamOp1(OpTest):
         '''Test Adam Op with supplied attributes
         '''
         self.op_type = "adam"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
+        moment2 = np.random.random((102, 105)).astype("float64")
 
         learning_rate = 0.004
         beta1 = 0.78
@@ -44,9 +44,9 @@ class TestAdamOp1(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float64"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float64"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float64")
         }
 
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
@@ -69,11 +69,11 @@ class TestAdamOp2(OpTest):
         '''Test Adam Op with supplied attributes
         '''
         self.op_type = "adam"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
+        moment2 = np.random.random((102, 105)).astype("float64")
 
         learning_rate = 0.001
         beta1 = 0.9
@@ -87,9 +87,9 @@ class TestAdamOp2(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float64"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float64"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float64")
         }
 
         attributes = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
@@ -114,11 +114,11 @@ class TestAdamOpMultipleSteps(OpTest):
         self.op_type = "adam"
         self.num_steps = 10
 
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
+        moment2 = np.random.random((102, 105)).astype("float64")
 
         learning_rate = 0.001
         beta1 = 0.9
@@ -132,9 +132,9 @@ class TestAdamOpMultipleSteps(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float64"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float64"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float64")
         }
 
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
@@ -164,7 +164,7 @@ class TestAdamOpMultipleSteps(OpTest):
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
-                -1, 1, (102, 105)).astype("float32")
+                -1, 1, (102, 105)).astype("float64")
 
 
 def adam_step(inputs, attributes):
@@ -233,7 +233,7 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
             update_row(row_id, np_grad[idx])
     else:
         for row_id in range(param_out.shape[0]):
-            update_value = np.zeros(np_grad[0].shape).astype("float32")
+            update_value = np.zeros(np_grad[0].shape).astype("float64")
             if row_id in rows:
                 update_value = np_grad[rows.index(row_id)]
             update_row(row_id, update_value)
@@ -253,14 +253,14 @@ class TestSparseAdamOp(unittest.TestCase):
         row_numel = 12
         self.row_numel = row_numel
         self.dense_inputs = {
-            "Param": np.full((height, row_numel), 5.0).astype("float32"),
-            "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
-            "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
-            'Beta1Pow': np.array([beta1**10]).astype("float32"),
-            'Beta2Pow': np.array([beta2**10]).astype("float32"),
-            "LearningRate": np.full((1), 2.0).astype("float32")
+            "Param": np.full((height, row_numel), 5.0).astype("float64"),
+            "Moment1": np.full((height, row_numel), 5.0).astype("float64"),
+            "Moment2": np.full((height, row_numel), 5.0).astype("float64"),
+            'Beta1Pow': np.array([beta1**10]).astype("float64"),
+            'Beta2Pow': np.array([beta2**10]).astype("float64"),
+            "LearningRate": np.full((1), 2.0).astype("float64")
         }
-        self.init_output = np.full((height, row_numel), 0.0).astype("float32")
+        self.init_output = np.full((height, row_numel), 0.0).astype("float64")
         self.attrs = {
             'epsilon': epsilon,
             'beta1': beta1,
@@ -271,7 +271,7 @@ class TestSparseAdamOp(unittest.TestCase):
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        np_array = np.ones((len(rows), row_numel)).astype("float64")
         np_array[0, 0] = 2.0
         np_array[2, 8] = 4.0
 

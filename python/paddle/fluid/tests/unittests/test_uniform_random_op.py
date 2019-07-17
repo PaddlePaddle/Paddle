@@ -23,7 +23,7 @@ from paddle.fluid.op import Operator
 
 def output_hist(out):
     hist, _ = np.histogram(out, range=(-5, 10))
-    hist = hist.astype("float32")
+    hist = hist.astype("float64")
     hist /= float(out.size)
     prob = 0.1 * np.ones((10))
     return hist, prob
@@ -39,7 +39,7 @@ class TestUniformRandomOp(OpTest):
             "max": 10.0,
             "seed": 10
         }
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float64")}
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)

@@ -22,9 +22,9 @@ from op_test import OpTest
 class TestProximalGDOp(OpTest):
     def setUp(self):
         self.op_type = "proximal_gd"
-        w = np.random.random((102, 105)).astype("float32")
-        g = np.random.random((102, 105)).astype("float32")
-        lr = np.array([0.1]).astype("float32")
+        w = np.random.random((102, 105)).astype("float64")
+        g = np.random.random((102, 105)).astype("float64")
+        lr = np.array([0.1]).astype("float64")
         l1 = 0.1
         l2 = 0.2
 

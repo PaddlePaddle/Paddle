@@ -36,9 +36,9 @@ class TestAffineChannelOp(OpTest):
         self.op_type = "affine_channel"
         self.init_test_case()
 
-        x = np.random.random(self.shape).astype("float32")
-        scale = np.random.random(self.C).astype("float32")
-        bias = np.random.random(self.C).astype("float32")
+        x = np.random.random(self.shape).astype("float64")
+        scale = np.random.random(self.C).astype("float64")
+        bias = np.random.random(self.C).astype("float64")
 
         y = affine_channel(x, scale, bias, self.layout)
 

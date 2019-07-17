@@ -112,7 +112,7 @@ def Im2Sequence(inputs, img_real_size, attrs):
         tmp = np.zeros([
             output_height[0, index], output_width[0, index], img_channels,
             attrs['kernels'][0], attrs['kernels'][1]
-        ]).astype("float32")
+        ]).astype("float64")
         out.append(tmp)
     for index in range(len(inputs)):
         im2col(attrs, inputs[index], out[index])
@@ -141,9 +141,9 @@ class TestBlockExpandOp(OpTest):
         self.op_type = "im2sequence"
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
-        ]).astype("float32")
+        ]).astype("float64")
 
-        real_size = np.array([]).astype("float32")
+        real_size = np.array([]).astype("float64")
         out = Im2Sequence(x, real_size, self.attrs)
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -212,8 +212,8 @@ class TestBlockExpandOpCase5(OpTest):
         self.op_type = "im2sequence"
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
-        ]).astype("float32")
-        real_size = np.array([[8, 10], [5, 8]]).astype("float32")
+        ]).astype("float64")
+        real_size = np.array([[8, 10], [5, 8]]).astype("float64")
         out = np.array(Im2Sequence(x, real_size, self.attrs))
         self.inputs = {'X': x, 'Y': real_size}  #l ??
         self.outputs = {'Out': out}
@@ -240,8 +240,8 @@ class TestBlockExpandOpCase6(OpTest):
         self.op_type = "im2sequence"
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
-        ]).astype("float32")
-        real_size = np.array([[8, 10], [5, 8], [5, 8]]).astype("float32")
+        ]).astype("float64")
+        real_size = np.array([[8, 10], [5, 8], [5, 8]]).astype("float64")
         out = np.array(Im2Sequence(x, real_size, self.attrs))
         self.inputs = {'X': x, 'Y': real_size}  #l ??
         self.outputs = {'Out': out}
@@ -268,8 +268,8 @@ class TestBlockExpandOpCase7(OpTest):
         self.op_type = "im2sequence"
         x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
-        ]).astype("float32")
-        real_size = np.array([[6, 6], [4, 4]]).astype("float32")
+        ]).astype("float64")
+        real_size = np.array([[6, 6], [4, 4]]).astype("float64")
         out = np.array(Im2Sequence(x, real_size, self.attrs))
         self.inputs = {'X': x, 'Y': real_size}
         self.outputs = {'Out': out}

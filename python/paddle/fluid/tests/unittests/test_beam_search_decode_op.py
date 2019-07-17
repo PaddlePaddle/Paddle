@@ -44,35 +44,35 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
             self.append_lod_tensor(
                 array, [[0, 1, 2], [0, 1, 2]], np.array(
                     [0, 0], dtype=dtype))
-            for array, dtype in ((ids, "int64"), (scores, "float32"))
+            for array, dtype in ((ids, "int64"), (scores, "float64"))
         ]
         [
             self.append_lod_tensor(
                 array, [[0, 1, 2], [0, 2, 4]],
                 np.array(
                     [2, 3, 4, 5], dtype=dtype))
-            for array, dtype in ((ids, "int64"), (scores, "float32"))
+            for array, dtype in ((ids, "int64"), (scores, "float64"))
         ]
         [
             self.append_lod_tensor(
                 array, [[0, 2, 4], [0, 2, 2, 4, 4]],
                 np.array(
                     [3, 1, 5, 4], dtype=dtype))
-            for array, dtype in ((ids, "int64"), (scores, "float32"))
+            for array, dtype in ((ids, "int64"), (scores, "float64"))
         ]
         [
             self.append_lod_tensor(
                 array, [[0, 2, 4], [0, 1, 2, 3, 4]],
                 np.array(
                     [1, 1, 3, 5], dtype=dtype))
-            for array, dtype in ((ids, "int64"), (scores, "float32"))
+            for array, dtype in ((ids, "int64"), (scores, "float64"))
         ]
         [
             self.append_lod_tensor(
                 array, [[0, 2, 4], [0, 0, 0, 2, 2]],
                 np.array(
                     [5, 1], dtype=dtype))
-            for array, dtype in ((ids, "int64"), (scores, "float32"))
+            for array, dtype in ((ids, "int64"), (scores, "float64"))
         ]
 
         sentence_ids = self.scope.var("sentence_ids").get_tensor()

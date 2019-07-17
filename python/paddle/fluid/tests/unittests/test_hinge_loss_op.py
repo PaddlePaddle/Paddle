@@ -23,8 +23,8 @@ class TestHingeLossOp(OpTest):
     def setUp(self):
         self.op_type = 'hinge_loss'
         samples_num = 64
-        logits = np.random.uniform(-10, 10, (samples_num, 1)).astype('float32')
-        labels = np.random.randint(0, 2, (samples_num, 1)).astype('float32')
+        logits = np.random.uniform(-10, 10, (samples_num, 1)).astype('float64')
+        labels = np.random.randint(0, 2, (samples_num, 1)).astype('float64')
 
         self.inputs = {
             'Logits': logits,

@@ -22,8 +22,8 @@ class TestElementwisePowOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -35,8 +35,8 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype('float32'),
-            'Y': np.random.rand(1).astype('float32')
+            'X': np.random.rand(2, 3, 4).astype('float64'),
+            'Y': np.random.rand(1).astype('float64')
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 

@@ -25,11 +25,11 @@ class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):

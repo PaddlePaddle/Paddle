@@ -71,7 +71,7 @@ def hsigmoid(x, w, label, bias, num_classes):
     code_table = [0 for _ in range(code_length)]
     pre_output = np.zeros((batch_size, code_length))
     pre_sum = np.zeros((batch_size, 1))
-    out = np.zeros((batch_size, 1)).astype("float32")
+    out = np.zeros((batch_size, 1)).astype("float64")
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -110,7 +110,7 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
     # init pre_out with shape [N, code_length]
     pre_output = np.zeros((batch_size, code_length))
     pre_sum = np.zeros((batch_size, 1))
-    out = np.zeros((batch_size, 1)).astype("float32")
+    out = np.zeros((batch_size, 1)).astype("float64")
     if isinstance(bias, np.ndarray):
         for i in range(batch_size):
             code_table = CodeTableWithCustomTree(path_table, path_code, i)
@@ -148,11 +148,11 @@ class TestHSigmoidOp(OpTest):
         num_classes = 6
         feature_size = 8
         batch_size = 4
-        x = np.random.random((batch_size, feature_size)).astype("float32") * 2
+        x = np.random.random((batch_size, feature_size)).astype("float64") * 2
         w = np.random.random(
-            (num_classes - 1, feature_size)).astype("float32") * 2
+            (num_classes - 1, feature_size)).astype("float64") * 2
         label = np.random.randint(0, num_classes, (batch_size, 1))
-        bias = np.random.random((num_classes - 1, 1)).astype("float32")
+        bias = np.random.random((num_classes - 1, 1)).astype("float64")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
         pre_output, out = hsigmoid(x, w, label, bias, num_classes)
@@ -171,8 +171,8 @@ class TestHSigmoidOpSparse(OpTest):
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
-        x = np.random.random((batch_size, feature_size)).astype("float32")
-        w = np.random.random((num_classes - 1, feature_size)).astype("float32")
+        x = np.random.random((batch_size, feature_size)).astype("float64")
+        w = np.random.random((num_classes - 1, feature_size)).astype("float64")
         label = np.array([0, 1, 4, 5])
         path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
@@ -180,7 +180,7 @@ class TestHSigmoidOpSparse(OpTest):
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
-        bias = np.random.random((num_classes - 1, 1)).astype("float32")
+        bias = np.random.random((num_classes - 1, 1)).astype("float64")
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
             'X': x,
@@ -272,9 +272,9 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
-        x = np.random.random((batch_size, feature_size)).astype("float32") * 2
+        x = np.random.random((batch_size, feature_size)).astype("float64") * 2
         w = np.random.random(
-            (num_classes - 1, feature_size)).astype("float32") * 2
+            (num_classes - 1, feature_size)).astype("float64") * 2
         label = np.array([0, 1, 4, 5])
         path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
@@ -282,7 +282,7 @@ class TestHSigmoidOpWithCostumTree(OpTest):
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
-        bias = np.random.random((num_classes - 1, 1)).astype("float32")
+        bias = np.random.random((num_classes - 1, 1)).astype("float64")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
             'X': x,
@@ -309,9 +309,9 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
-        x = np.random.random((batch_size, feature_size)).astype("float32") * 2
+        x = np.random.random((batch_size, feature_size)).astype("float64") * 2
         w = np.random.random(
-            (num_classes - 1, feature_size)).astype("float32") * 2
+            (num_classes - 1, feature_size)).astype("float64") * 2
         label = np.array([0, 1, 4, 5])
         path_table = np.array(
             [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
@@ -319,7 +319,7 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
               -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
         path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
             1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
-        # bias = np.random.random((num_classes - 1, 1)).astype("float32")
+        # bias = np.random.random((num_classes - 1, 1)).astype("float64")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
             'X': x,

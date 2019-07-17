@@ -26,7 +26,7 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
     predictions = {}
     batch_size = label.shape[0]
     if weight is None:
-        weight = np.ones(shape=(batch_size, 1)).astype('float32')
+        weight = np.ones(shape=(batch_size, 1)).astype('float64')
     for s, l, q, w in zip(score, label, query, weight):
         s, l, q, w = s[column], l[0], q[0], w[0]
         if q not in predictions:
@@ -48,8 +48,8 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
             else:
                 neg += w
 
-    return np.array(pos).astype('float32'), np.array(neg).astype(
-        'float32'), np.array(neu).astype('float32')
+    return np.array(pos).astype('float64'), np.array(neg).astype(
+        'float64'), np.array(neu).astype('float64')
 
 
 class TestPositiveNegativePairOp(OpTest):
@@ -57,8 +57,8 @@ class TestPositiveNegativePairOp(OpTest):
         self.op_type = 'positive_negative_pair'
         batch_size = 20
         max_query_id = 5
-        score = np.random.normal(size=(batch_size, 1)).astype('float32')
-        label = np.random.normal(size=(batch_size, 1)).astype('float32')
+        score = np.random.normal(size=(batch_size, 1)).astype('float64')
+        label = np.random.normal(size=(batch_size, 1)).astype('float64')
         query = np.array(
             [np.random.randint(max_query_id) for i in range(batch_size)])
         query = np.reshape(query, newshape=(batch_size, 1)).astype('int64')
@@ -83,18 +83,18 @@ class TestPositiveNegativePairOpAccumulateWeight(OpTest):
         max_query_id = 5
         max_random_num = 2 << 15
         score_dim = 2
-        score = np.random.normal(size=(batch_size, 2)).astype('float32')
-        label = np.random.normal(size=(batch_size, 1)).astype('float32')
-        weight = np.random.normal(size=(batch_size, 1)).astype('float32')
+        score = np.random.normal(size=(batch_size, 2)).astype('float64')
+        label = np.random.normal(size=(batch_size, 1)).astype('float64')
+        weight = np.random.normal(size=(batch_size, 1)).astype('float64')
         query = np.array(
             [np.random.randint(max_query_id) for i in range(batch_size)])
         query = np.reshape(query, newshape=(batch_size, 1)).astype('int64')
         acc_pos = np.reshape(
-            np.random.randint(max_random_num), newshape=(1)).astype('float32')
+            np.random.randint(max_random_num), newshape=(1)).astype('float64')
         acc_neg = np.reshape(
-            np.random.randint(max_random_num), newshape=(1)).astype('float32')
+            np.random.randint(max_random_num), newshape=(1)).astype('float64')
         acc_neu = np.reshape(
-            np.random.randint(max_random_num), newshape=(1)).astype('float32')
+            np.random.randint(max_random_num), newshape=(1)).astype('float64')
         column = np.random.randint(score_dim)
 
         pos, neg, neu = py_pnpair_op(

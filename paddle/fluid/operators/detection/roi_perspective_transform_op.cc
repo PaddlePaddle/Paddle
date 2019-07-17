@@ -648,6 +648,8 @@ REGISTER_OPERATOR(roi_perspective_transform, ops::ROIPerspectiveTransformOp,
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform,
-                       ops::CPUROIPerspectiveTransformOpKernel<float>);
+                       ops::CPUROIPerspectiveTransformOpKernel<float>,
+                       ops::CPUROIPerspectiveTransformOpKernel<double>);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform_grad,
-                       ops::CPUROIPerspectiveTransformGradOpKernel<float>);
+                       ops::CPUROIPerspectiveTransformGradOpKernel<float>,
+                       ops::CPUROIPerspectiveTransformGradOpKernel<double>);

@@ -63,5 +63,7 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>,
+                        ops::ScatterOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>,
+                        ops::ScatterGradOpCUDAKernel<double>);

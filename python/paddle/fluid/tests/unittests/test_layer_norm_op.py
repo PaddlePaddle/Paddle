@@ -87,10 +87,10 @@ class TestLayerNormdOp(unittest.TestCase):
             scale_shape = [D]
 
             np.random.seed(123)
-            x = np.random.random_sample(x_shape).astype(np.float32)
-            scale = np.random.random_sample(scale_shape).astype(np.float32)
-            bias = np.random.random_sample(scale_shape).astype(np.float32)
-            y_grad = np.random.random_sample(x_shape).astype(np.float32)
+            x = np.random.random_sample(x_shape).astype(np.float64)
+            scale = np.random.random_sample(scale_shape).astype(np.float64)
+            bias = np.random.random_sample(scale_shape).astype(np.float64)
+            y_grad = np.random.random_sample(x_shape).astype(np.float64)
 
             # reference forward & backward
             y, mean, variance = _reference_layer_norm_naive(
@@ -111,7 +111,7 @@ class TestLayerNormdOp(unittest.TestCase):
                 for name in ground_truth:
                     block.create_var(
                         name=name,
-                        dtype='float32',
+                        dtype='float64',
                         shape=ground_truth[name].shape)
                 layer_norm_op = block.append_op(
                     type="layer_norm",

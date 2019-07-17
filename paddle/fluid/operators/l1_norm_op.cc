@@ -87,7 +87,9 @@ REGISTER_OPERATOR(l1_norm, ops::L1NormOp, ops::L1NormOpMaker,
                   ops::L1NormGradDescMaker);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);
 REGISTER_OP_CPU_KERNEL(
-    l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>);
+    l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::L1NormKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     l1_norm_grad,
-    ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, double>);

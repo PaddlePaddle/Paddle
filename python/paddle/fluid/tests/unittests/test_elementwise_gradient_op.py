@@ -26,7 +26,7 @@ class TestElementWiseAddOp(unittest.TestCase):
 
     def check_forward_backward(self):
         def test_with_place(place):
-            out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
+            out_grad = np.random.random_sample(self.x.shape).astype(np.float64)
             x_grad = out_grad
             sum_axis = list(range(0, len(self.x.shape)))
             del sum_axis[self.axis]
@@ -49,7 +49,7 @@ class TestElementWiseAddOp(unittest.TestCase):
                 for name in ground_truth:
                     block.create_var(
                         name=name,
-                        dtype='float32',
+                        dtype='float64',
                         shape=ground_truth[name].shape)
                 elementwise_add_op = block.append_op(
                     type="elementwise_add",
@@ -94,8 +94,8 @@ class TestElementWiseAddOp(unittest.TestCase):
 
     def test_check_forward_backward_with_scale_and_bias(self):
         np.random.seed(123)
-        self.x = np.random.random((4, 32, 220, 220)).astype(np.float32)
-        self.y = np.random.random((32)).astype(np.float32)
+        self.x = np.random.random((4, 32, 220, 220)).astype(np.float64)
+        self.y = np.random.random((32)).astype(np.float64)
         self.out = self.x + self.y.reshape(1, 32, 1, 1)
         self.axis = 1
         self.check_forward_backward()

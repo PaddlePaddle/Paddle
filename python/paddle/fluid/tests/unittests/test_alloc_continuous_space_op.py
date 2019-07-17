@@ -25,7 +25,7 @@ alignment = 256
 class TestAllocContinuousSpace(OpTest):
     def setUp(self):
         self.op_type = "alloc_continuous_space"
-        self.dtype = np.float32
+        self.dtype = np.float64
         attrs = self.init_attr()
         self.copy_data = attrs["copy_data"]
         self.constant = attrs["constant"]
@@ -38,7 +38,7 @@ class TestAllocContinuousSpace(OpTest):
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_input(self):
         inputs = []

@@ -38,11 +38,11 @@ class TestSeqConvEltAddRelu(OpTest):
         assert self.context_stride == 1
 
         T = sum(self.lod[0])
-        x = np.random.uniform(-1, 1, [T, self.in_fea_size]).astype('float32')
+        x = np.random.uniform(-1, 1, [T, self.in_fea_size]).astype('float64')
         w = np.random.uniform(
             -1, 1, [self.in_fea_size * self.context_length,
-                    self.out_fea_size]).astype('float32')
-        b = np.random.uniform(-2, 1, [1, self.out_fea_size]).astype('float32')
+                    self.out_fea_size]).astype('float64')
+        b = np.random.uniform(-2, 1, [1, self.out_fea_size]).astype('float64')
         out = seqconv(x, self.lod, w, self.context_length, self.context_start)
         out = np.maximum(out + b, 0)
 

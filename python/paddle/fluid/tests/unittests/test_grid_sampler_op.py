@@ -34,7 +34,7 @@ def AffineGrid(theta, size):
     for i in range(len(theta)):
         ret[i] = np.dot(grid[i].reshape([h * w, 3]), theta[i])
 
-    return ret.reshape([n, h, w, 2]).astype("float32")
+    return ret.reshape([n, h, w, 2]).astype("float64")
 
 
 def getGridPointValue(data, x, y):
@@ -68,8 +68,8 @@ def GridSampler(data, grid):
     y_max = H - 1
     x_max = W - 1
 
-    x = 0.5 * ((x.astype('float32') + 1.0) * x_max)
-    y = 0.5 * ((y.astype('float32') + 1.0) * y_max)
+    x = 0.5 * ((x.astype('float64') + 1.0) * x_max)
+    y = 0.5 * ((y.astype('float64') + 1.0) * y_max)
 
     x0 = np.floor(x).astype('int32')
     x1 = x0 + 1
@@ -86,7 +86,7 @@ def GridSampler(data, grid):
     vc = getGridPointValue(data, x1, y0)
     vd = getGridPointValue(data, x1, y1)
 
-    out = (wa * va + wb * vb + wc * vc + wd * vd).astype('float32')
+    out = (wa * va + wb * vb + wc * vc + wd * vd).astype('float64')
     return out
 
 
@@ -94,9 +94,9 @@ class TestGridSamplerOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'grid_sampler'
-        x = np.random.randint(0, 255, self.x_shape).astype('float32')
+        x = np.random.randint(0, 255, self.x_shape).astype('float64')
 
-        theta = np.zeros(self.theta_shape).astype('float32')
+        theta = np.zeros(self.theta_shape).astype('float64')
         for i in range(self.theta_shape[0]):
             for j in range(2):
                 for k in range(3):

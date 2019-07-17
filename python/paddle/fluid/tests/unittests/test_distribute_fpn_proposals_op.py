@@ -107,7 +107,7 @@ class TestDistributeFPNProposalsOp(OpTest):
                 roi = [bno, xy1[0], xy1[1], xy2[0], xy2[1]]
                 rois.append(roi)
             bno += 1
-        self.rois = np.array(rois).astype("float32")
+        self.rois = np.array(rois).astype("float64")
 
     def setUp(self):
         self.op_type = "distribute_fpn_proposals"

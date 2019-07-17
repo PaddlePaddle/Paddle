@@ -70,7 +70,7 @@ def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
     n = len(lod)
     m = distance.shape[1]
     match_indices = -1 * np.ones((n, m), dtype=np.int)
-    match_dist = np.zeros((n, m), dtype=np.float32)
+    match_dist = np.zeros((n, m), dtype=np.float64)
     cur_offset = 0
     for i in range(n):
         bipartite_match(distance[cur_offset:(cur_offset + lod[i]), :],
@@ -86,7 +86,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
-        dist = np.random.random((23, 217)).astype('float32')
+        dist = np.random.random((23, 217)).astype('float64')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0])
 
         self.inputs = {'DistMat': (dist, lod)}
@@ -103,7 +103,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[8]]
-        dist = np.random.random((8, 17)).astype('float32')
+        dist = np.random.random((8, 17)).astype('float64')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0])
 
         self.inputs = {'DistMat': dist}
@@ -120,7 +120,7 @@ class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[300]]
-        dist = np.random.random((300, 17)).astype('float32')
+        dist = np.random.random((300, 17)).astype('float64')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0])
 
         self.inputs = {'DistMat': dist}
@@ -137,7 +137,7 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
-        dist = np.random.random((23, 237)).astype('float32')
+        dist = np.random.random((23, 237)).astype('float64')
         match_indices, match_dist = batch_bipartite_match(dist, lod[0],
                                                           'per_prediction', 0.5)
 

@@ -40,7 +40,7 @@ def calc_f1_score(precision, recall):
 def get_states(idxs, labels, cls_num, weights=None):
     ins_num = idxs.shape[0]
     # TP FP TN FN
-    states = np.zeros((cls_num, 4)).astype('float32')
+    states = np.zeros((cls_num, 4)).astype('float64')
     for i in range(ins_num):
         w = weights[i] if weights is not None else 1.0
         idx = idxs[i][0]
@@ -83,7 +83,7 @@ def compute_metrics(states, cls_num):
     micro_avg_recall = calc_recall(total_tp_count, total_fn_count)
     metrics.append(micro_avg_recall)
     metrics.append(calc_f1_score(micro_avg_precision, micro_avg_recall))
-    return np.array(metrics).astype('float32')
+    return np.array(metrics).astype('float64')
 
 
 class TestPrecisionRecallOp_0(OpTest):
@@ -91,7 +91,7 @@ class TestPrecisionRecallOp_0(OpTest):
         self.op_type = "precision_recall"
         ins_num = 64
         cls_num = 10
-        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float64')
         idxs = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
         labels = np.random.choice(range(cls_num), ins_num).reshape(
@@ -118,10 +118,10 @@ class TestPrecisionRecallOp_1(OpTest):
         self.op_type = "precision_recall"
         ins_num = 64
         cls_num = 10
-        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float64')
         idxs = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
-        weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float64')
         labels = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
 
@@ -152,13 +152,13 @@ class TestPrecisionRecallOp_2(OpTest):
         self.op_type = "precision_recall"
         ins_num = 64
         cls_num = 10
-        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float64')
         idxs = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
-        weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float64')
         labels = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
-        states = np.random.randint(0, 30, (cls_num, 4)).astype('float32')
+        states = np.random.randint(0, 30, (cls_num, 4)).astype('float64')
 
         accum_states = get_states(idxs, labels, cls_num, weights)
         batch_metrics = compute_metrics(accum_states, cls_num)

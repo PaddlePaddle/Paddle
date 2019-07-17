@@ -83,9 +83,9 @@ class TestCollectFPNProposalstOp(OpTest):
                     rois.append(roi)
                 bno += 1
                 scores_pb.extend(list(np.random.uniform(0.0, 1.0, roi_num)))
-            rois = np.array(rois).astype("float32")
+            rois = np.array(rois).astype("float64")
             self.roi_inputs.append(rois)
-            scores_pb = np.array(scores_pb).astype("float32")
+            scores_pb = np.array(scores_pb).astype("float64")
             self.scores.append(scores_pb)
 
     def setUp(self):

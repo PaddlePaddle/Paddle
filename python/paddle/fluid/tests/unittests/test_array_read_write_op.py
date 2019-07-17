@@ -68,7 +68,7 @@ class TestArrayReadWrite(unittest.TestCase):
 
         exe = Executor(cpu)
 
-        tensor = numpy.random.random(size=(100, 100)).astype('float32')
+        tensor = numpy.random.random(size=(100, 100)).astype('float64')
 
         outs = exe.run(feed={'x0': tensor,
                              'x1': tensor,

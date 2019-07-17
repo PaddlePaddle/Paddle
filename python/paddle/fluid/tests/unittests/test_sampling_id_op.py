@@ -26,7 +26,7 @@ class TestSamplingIdOp(OpTest):
         self.op_type = "sampling_id"
         self.use_mkldnn = False
         self.init_kernel_type()
-        self.X = np.random.random((100, 10)).astype('float32')
+        self.X = np.random.random((100, 10)).astype('float64')
         self.inputs = {"X": self.X}
         self.Y = np.random.random(100).astype('int64')
         self.outputs = {'Out': self.Y}
@@ -60,7 +60,7 @@ class TestSamplingIdOp(OpTest):
 
 class TestSamplingIdShape(unittest.TestCase):
     def test_shape(self):
-        x = fluid.layers.data(name='x', shape=[3], dtype='float32')
+        x = fluid.layers.data(name='x', shape=[3], dtype='float64')
         output = fluid.layers.sampling_id(x)
 
         place = fluid.CPUPlace()
@@ -69,7 +69,7 @@ class TestSamplingIdShape(unittest.TestCase):
 
         feed = {
             'x': np.array(
-                [[0.2, 0.3, 0.5], [0.2, 0.3, 0.4]], dtype='float32')
+                [[0.2, 0.3, 0.5], [0.2, 0.3, 0.4]], dtype='float64')
         }
         output_np = exe.run(feed=feed, fetch_list=[output])[0]
 

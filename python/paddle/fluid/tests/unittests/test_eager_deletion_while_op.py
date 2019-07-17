@@ -59,16 +59,16 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 ))) if self.with_data_parallel else 1
 
         d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
+            "d0", shape=[10], append_batch_size=False, dtype='float64')
         d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
+            "d1", shape=[10], append_batch_size=False, dtype='float64')
         d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+            "d2", shape=[10], append_batch_size=False, dtype='float64')
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
 
-        init = layers.zeros(shape=[10], dtype='float32')
+        init = layers.zeros(shape=[10], dtype='float64')
         mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
 
@@ -135,7 +135,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         for _ in range(5):
             d = []
             for i in range(3):
-                tmp = numpy.random.random(size=[10]).astype('float32')
+                tmp = numpy.random.random(size=[10]).astype('float64')
                 if not self.with_data_parallel:
                     d.append(tmp)
                 else:

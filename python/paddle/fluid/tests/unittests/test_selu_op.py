@@ -24,7 +24,7 @@ class SeluTest(OpTest):
     def setUp(self):
         self.op_type = "selu"
         self.x_shape = [3, 5, 5, 10]
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_x_shape()
         self.init_dtype()
 

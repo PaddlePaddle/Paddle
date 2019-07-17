@@ -39,7 +39,7 @@ class TestTemporalShift(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'temporal_shift'
-        x = np.random.random(self.x_shape).astype('float32')
+        x = np.random.random(self.x_shape).astype('float64')
 
         self.attrs = {
             "seg_num": self.seg_num,

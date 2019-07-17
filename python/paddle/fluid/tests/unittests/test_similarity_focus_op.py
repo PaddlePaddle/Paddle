@@ -38,7 +38,7 @@ class TestSimilarityFocusOp(OpTest):
 
         output = None
         for batch in range(batch_size):
-            res = np.zeros((1, y_dim, z_dim)).astype("float32").reshape(-1)
+            res = np.zeros((1, y_dim, z_dim)).astype("float64").reshape(-1)
             for index in self.attrs['indexes']:
                 channel = self.inputs['X'][batch, index, :, :].reshape(-1).copy(
                 )
@@ -76,7 +76,7 @@ class TestSimilarityFocusOp_axis1(OpTest):
         x_dim, y_dim, z_dim = 4, 5, 6
         self.inputs = {
             'X': np.random.random(
-                (batch_size, x_dim, y_dim, z_dim)).astype("float32"),
+                (batch_size, x_dim, y_dim, z_dim)).astype("float64"),
         }
         self.attrs = {
             'axis': 1,
@@ -85,7 +85,7 @@ class TestSimilarityFocusOp_axis1(OpTest):
 
         output = None
         for batch in range(batch_size):
-            res = np.zeros((1, y_dim, z_dim)).astype("float32").reshape(-1)
+            res = np.zeros((1, y_dim, z_dim)).astype("float64").reshape(-1)
             for index in self.attrs['indexes']:
                 channel = self.inputs['X'][batch, index, :, :].reshape(-1).copy(
                 )
@@ -124,7 +124,7 @@ class TestSimilarityFocusOp_axis2(OpTest):
         x_dim, y_dim, z_dim = 7, 8, 9
         self.inputs = {
             'X': np.random.random(
-                (batch_size, x_dim, y_dim, z_dim)).astype("float32"),
+                (batch_size, x_dim, y_dim, z_dim)).astype("float64"),
         }
         self.attrs = {
             'axis': 2,
@@ -133,7 +133,7 @@ class TestSimilarityFocusOp_axis2(OpTest):
 
         output = None
         for batch in range(batch_size):
-            res = np.zeros((x_dim, 1, z_dim)).astype("float32").reshape(-1)
+            res = np.zeros((x_dim, 1, z_dim)).astype("float64").reshape(-1)
             for index in self.attrs['indexes']:
                 channel = self.inputs['X'][batch, :, index, :].reshape(-1).copy(
                 )
@@ -172,7 +172,7 @@ class TestSimilarityFocusOp_axis3(OpTest):
         x_dim, y_dim, z_dim = 48, 48, 13
         self.inputs = {
             'X': np.random.random(
-                (batch_size, x_dim, y_dim, z_dim)).astype("float32"),
+                (batch_size, x_dim, y_dim, z_dim)).astype("float64"),
         }
         self.attrs = {
             'axis': 3,
@@ -181,7 +181,7 @@ class TestSimilarityFocusOp_axis3(OpTest):
 
         output = None
         for batch in range(batch_size):
-            res = np.zeros((x_dim, y_dim, 1)).astype("float32").reshape(-1)
+            res = np.zeros((x_dim, y_dim, 1)).astype("float64").reshape(-1)
             for index in self.attrs['indexes']:
                 channel = self.inputs['X'][batch, :, :, index].reshape(-1).copy(
                 )

@@ -168,7 +168,10 @@ REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
                   ops::SquaredL2DistanceGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
-    ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(squared_l2_distance_grad,
-                       ops::SquaredL2DistanceGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+    ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    squared_l2_distance_grad,
+    ops::SquaredL2DistanceGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SquaredL2DistanceGradKernel<paddle::platform::CPUDeviceContext,
+                                     double>);

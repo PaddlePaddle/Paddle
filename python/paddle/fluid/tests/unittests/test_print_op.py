@@ -30,12 +30,12 @@ class TestPrintOpCPU(unittest.TestCase):
     def setUp(self):
         self.place = core.CPUPlace()
         self.x_tensor = core.LoDTensor()
-        tensor_np = np.random.random(size=(2, 3)).astype('float32')
+        tensor_np = np.random.random(size=(2, 3)).astype('float64')
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
     def build_network(self, only_forward, **kargs):
-        x = layers.data('x', shape=[3], dtype='float32', lod_level=1)
+        x = layers.data('x', shape=[3], dtype='float64', lod_level=1)
         x.stop_gradient = False
         layers.Print(input=x, **kargs)
         loss = layers.mean(x)
@@ -59,7 +59,7 @@ class TestPrintOpCPU(unittest.TestCase):
                        return_numpy=False)
 
     def test_all_parameters(self):
-        x = layers.data('x', shape=[3], dtype='float32', lod_level=1)
+        x = layers.data('x', shape=[3], dtype='float64', lod_level=1)
         x.stop_gradient = False
 
         for print_tensor_name in [True, False]:
@@ -86,7 +86,7 @@ class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.place = core.CUDAPlace(0)
         self.x_tensor = core.LoDTensor()
-        tensor_np = np.random.random(size=(2, 3)).astype('float32')
+        tensor_np = np.random.random(size=(2, 3)).astype('float64')
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 

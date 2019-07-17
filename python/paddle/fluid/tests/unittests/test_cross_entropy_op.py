@@ -93,7 +93,7 @@ class TestCrossEntropyOp2(TestCrossEntropyOp):
         self.soft_label = True
 
     def init_dtype_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_bs_class_num(self):
         self.batch_size = 5
@@ -123,7 +123,7 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
         self.soft_label = True
 
     def init_dtype_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_bs_class_num(self):
         self.batch_size = 5
@@ -194,7 +194,7 @@ class TestCrossEntropyOp5(TestCrossEntropyOp):
         self.soft_label = True
 
     def init_dtype_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_bs_class_num(self):
         self.class_num = 37
@@ -234,7 +234,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         self.soft_label = True
 
     def init_dtype_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_bs_class_num(self):
         self.class_num = 17

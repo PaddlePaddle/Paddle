@@ -29,13 +29,13 @@ class TestMaxOutOp(OpTest):
     def setUp(self):
         self.op_type = "maxout"
         self.init_test_case()
-        input = np.random.random(self.shape).astype("float32")
-        output = self.MaxOut_forward_naive(input, self.groups).astype("float32")
+        input = np.random.random(self.shape).astype("float64")
+        output = self.MaxOut_forward_naive(input, self.groups).astype("float64")
 
         self.inputs = {'X': input}
         self.attrs = {'groups': self.groups}
 
-        self.outputs = {'Out': output.astype('float32')}
+        self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
         self.check_output()

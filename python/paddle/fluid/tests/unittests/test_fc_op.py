@@ -36,9 +36,9 @@ def fc_refer(matrix, with_bias):
 
 class MatrixGenerate:
     def __init__(self, mb, ic, oc, h, w):
-        self.input = np.random.random((mb, ic, h, w)).astype("float32")
-        self.weights = np.random.random((ic * h * w, oc)).astype("float32")
-        self.bias = np.random.random((1, oc)).astype("float32")
+        self.input = np.random.random((mb, ic, h, w)).astype("float64")
+        self.weights = np.random.random((ic * h * w, oc)).astype("float64")
+        self.bias = np.random.random((1, oc)).astype("float64")
 
 
 class TestFCOp(OpTest):

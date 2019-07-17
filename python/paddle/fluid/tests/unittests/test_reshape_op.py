@@ -24,11 +24,11 @@ class TestReshapeOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
+            'XShape': np.random.random(self.ori_shape).astype("float64")
         }
 
     def init_data(self):
@@ -66,14 +66,14 @@ class TestReshapeOpWithInputShape(OpTest):
 
         self.op_type = "reshape2"
         self.inputs = {
-            "X": np.random.random(ori_shape).astype("float32"),
+            "X": np.random.random(ori_shape).astype("float64"),
             "Shape": np.array(
                 actual_shape, dtype="int32")
         }
         self.attrs = {"shape": new_shape}
         self.outputs = {
             "Out": self.inputs["X"].reshape(actual_shape),
-            'XShape': np.random.random(ori_shape).astype("float32")
+            'XShape': np.random.random(ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -94,13 +94,13 @@ class TestReshapeOp_attr_tensor(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
+            "X": np.random.random(self.ori_shape).astype("float64"),
             'ShapeTensor': shape_tensor
         }
         self.attrs = {}
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
+            'XShape': np.random.random(self.ori_shape).astype("float64")
         }
 
     def init_data(self):

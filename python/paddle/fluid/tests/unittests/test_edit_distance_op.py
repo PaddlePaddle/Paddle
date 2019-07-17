@@ -34,7 +34,7 @@ def Levenshtein(hyp, ref):
     if n == 0:
         return m
 
-    dist = np.zeros((m + 1, n + 1)).astype("float32")
+    dist = np.zeros((m + 1, n + 1)).astype("float64")
     for i in range(0, m + 1):
         dist[i][0] = i
     for j in range(0, n + 1):
@@ -62,7 +62,7 @@ class TestEditDistanceOp(OpTest):
         self.x2_lod = [3, 1]
 
         num_strs = len(self.x1_lod)
-        distance = np.zeros((num_strs, 1)).astype("float32")
+        distance = np.zeros((num_strs, 1)).astype("float64")
         sequence_num = np.array(2).astype("int64")
 
         x1_offset = 0
@@ -105,7 +105,7 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
         self.reset_config()
 
         num_strs = len(self.x1_lod)
-        distance = np.zeros((num_strs, 1)).astype("float32")
+        distance = np.zeros((num_strs, 1)).astype("float64")
         sequence_num = np.array(num_strs).astype("int64")
 
         x1_offset = 0
@@ -159,7 +159,7 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
         self.reset_config()
 
         num_strs = len(self.x1_lod)
-        distance = np.zeros((num_strs, 1)).astype("float32")
+        distance = np.zeros((num_strs, 1)).astype("float64")
         sequence_num = np.array(num_strs).astype("int64")
 
         for i in range(0, num_strs):

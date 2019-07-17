@@ -23,13 +23,13 @@ class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float32"),
+            'XShape': np.random.random(self.shape).astype("float64"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
 

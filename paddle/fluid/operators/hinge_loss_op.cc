@@ -125,8 +125,9 @@ REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
                   ops::HingeLossGradOpDescMaker);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
-    hinge_loss,
-    ops::HingeLossKernel<paddle::platform::CPUDeviceContext, float>);
+    hinge_loss, ops::HingeLossKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::HingeLossKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss_grad,
-    ops::HingeLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::HingeLossGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::HingeLossGradKernel<paddle::platform::CPUDeviceContext, double>);

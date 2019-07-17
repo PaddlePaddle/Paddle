@@ -91,7 +91,7 @@ class TestBilinearInterpOp(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)

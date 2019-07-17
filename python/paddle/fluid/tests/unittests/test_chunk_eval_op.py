@@ -160,11 +160,11 @@ class TestChunkEvalOp(OpTest):
             precision + recall) if self.num_correct_chunks else 0
         self.outputs = {
             'Precision': np.asarray(
-                [precision], dtype='float32'),
+                [precision], dtype='float64'),
             'Recall': np.asarray(
-                [recall], dtype='float32'),
+                [recall], dtype='float64'),
             'F1-Score': np.asarray(
-                [f1], dtype='float32'),
+                [f1], dtype='float64'),
             'NumInferChunks': np.asarray(
                 [self.num_infer_chunks], dtype='int64'),
             'NumLabelChunks': np.asarray(

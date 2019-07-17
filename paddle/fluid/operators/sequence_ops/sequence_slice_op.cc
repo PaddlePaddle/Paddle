@@ -146,7 +146,9 @@ REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
                   ops::SequenceSliceGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, double>);

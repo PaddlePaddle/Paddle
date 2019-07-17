@@ -26,7 +26,7 @@ class ElementwiseMulOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
@@ -68,8 +68,8 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(1).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(1).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 

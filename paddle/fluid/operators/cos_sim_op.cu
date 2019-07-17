@@ -15,7 +15,9 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    cos_sim, ops::CosSimKernel<paddle::platform::CUDADeviceContext, float>);
+    cos_sim, ops::CosSimKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CosSimKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     cos_sim_grad,
-    ops::CosSimGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::CosSimGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CosSimGradKernel<paddle::platform::CUDADeviceContext, double>);

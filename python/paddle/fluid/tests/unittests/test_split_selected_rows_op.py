@@ -45,7 +45,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         x = scope.var('X').get_selected_rows()
         x.set_rows(rows)
         x.set_height(height)
-        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        np_array = np.ones((len(rows), row_numel)).astype("float64")
         np_array[0, 0] = 2.0
         np_array[2, 1] = 4.0
         np_array[4, 1] = 8.0
@@ -103,7 +103,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         out0_grad.set_rows(rows0)
         out0_grad.set_height(height)
         out0_grad_tensor = out0_grad.get_tensor()
-        np_array = np.ones((len(rows0), row_numel)).astype("float32")
+        np_array = np.ones((len(rows0), row_numel)).astype("float64")
         out0_grad_tensor.set(np_array, place)
 
         out1_grad = scope.var("out1@GRAD").get_selected_rows()
@@ -111,7 +111,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         out1_grad.set_rows(rows1)
         out1_grad.set_height(height)
         out1_grad_tensor = out1_grad.get_tensor()
-        np_array = np.ones((len(rows1), row_numel)).astype("float32")
+        np_array = np.ones((len(rows1), row_numel)).astype("float64")
         out1_grad_tensor.set(np_array, place)
 
         x_grad = scope.var("X@GRAD").get_selected_rows()

@@ -76,8 +76,8 @@ class TestConv2dTransposeOp(OpTest):
         self.init_op_type()
         self.init_test_case()
 
-        input_ = np.random.random(self.input_size).astype("float32")
-        filter_ = np.random.random(self.filter_size).astype("float32")
+        input_ = np.random.random(self.input_size).astype("float64")
+        filter_ = np.random.random(self.filter_size).astype("float64")
 
         self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
@@ -94,7 +94,7 @@ class TestConv2dTransposeOp(OpTest):
             self.attrs['output_size'] = self.output_size
 
         output = conv2dtranspose_forward_naive(input_, filter_,
-                                               self.attrs).astype('float32')
+                                               self.attrs).astype('float64')
 
         self.outputs = {'Output': output}
 

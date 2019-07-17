@@ -25,7 +25,7 @@ from paddle.fluid import compiler
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
-        #self.dtype = np.float32
+        #self.dtype = np.float64
         self.dtype = np.float64
         self.N = 32
         self.C = 16

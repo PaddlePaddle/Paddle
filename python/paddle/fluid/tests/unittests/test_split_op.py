@@ -23,7 +23,7 @@ class TestSplitOp(OpTest):
     def setUp(self):
         self._set_op_type()
         axis = 1
-        x = np.random.random((4, 5, 6)).astype('float32')
+        x = np.random.random((4, 5, 6)).astype('float64')
         out = np.split(x, [2, 3], axis)
         self.inputs = {'X': x}
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}

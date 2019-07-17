@@ -135,5 +135,7 @@ REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
                   ops::ScatterGradDescMaker);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
                   ops::ScatterGradNoNeedBufferVarsInference);
-REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>,
+                       ops::ScatterOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>,
+                       ops::ScatterGradientOpKernel<double>);

@@ -225,7 +225,7 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
                     else:
                         out[n][c][out_h][out_w] = 0.0
                         mask[n][0][out_h][out_w] = 0
-    return out.astype("float32"), mask, matrix
+    return out.astype("float64"), mask, matrix
 
 
 class TestROIPoolOp(OpTest):
@@ -262,7 +262,7 @@ class TestROIPoolOp(OpTest):
         self.transformed_height = 2
         self.transformed_width = 3
 
-        self.x = np.random.random(self.x_dim).astype('float32')
+        self.x = np.random.random(self.x_dim).astype('float64')
 
     def make_rois(self):
         rois = []
@@ -297,7 +297,7 @@ class TestROIPoolOp(OpTest):
                 roi = [x1, y1, x2, y2, x3, y3, x4, y4]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("float32")
+        self.rois = np.array(rois).astype("float64")
 
     def setUp(self):
         self.op_type = "roi_perspective_transform"
@@ -310,7 +310,7 @@ class TestROIPoolOp(OpTest):
         self.outputs['Out2InIdx'] = np.zeros(
             [np.product(self.outputs['Out'].shape), 4]).astype("int32")
         self.outputs['Out2InWeights'] = np.zeros(
-            [np.product(self.outputs['Out'].shape), 4]).astype("float32")
+            [np.product(self.outputs['Out'].shape), 4]).astype("float64")
         self.check_grad(['X'], 'Out')
 
 

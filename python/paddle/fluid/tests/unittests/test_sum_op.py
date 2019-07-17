@@ -36,7 +36,7 @@ class TestSumOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def init_kernel_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -53,7 +53,7 @@ class TestSelectedRowsSumOp(OpTest):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 3, 4, 5, 6]
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):

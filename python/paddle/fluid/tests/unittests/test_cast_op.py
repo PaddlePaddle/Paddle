@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 class TestCastOp1(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float32')}
+        self.inputs = {'X': ipt.astype('float64')}
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
@@ -43,7 +43,7 @@ class TestCastOp2(op_test.OpTest):
         ipt = np.random.random(size=[10, 10])
         # numpy float16 is binded to fluid float16 via uint16
         self.inputs = {'X': ipt.astype('float16').view(np.uint16)}
-        self.outputs = {'Out': ipt.astype('float32')}
+        self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP16),
             'out_dtype': int(core.VarDesc.VarType.FP32)
@@ -57,7 +57,7 @@ class TestCastOp2(op_test.OpTest):
 class TestCastOp3(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float32')}
+        self.inputs = {'X': ipt.astype('float64')}
         self.outputs = {'Out': ipt.astype('float16')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),

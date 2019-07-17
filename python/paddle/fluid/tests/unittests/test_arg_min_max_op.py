@@ -23,7 +23,7 @@ class BaseTestCase(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.axis = 0
 
     def setUp(self):
@@ -44,7 +44,7 @@ class TestCase0(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.axis = 0
 
 

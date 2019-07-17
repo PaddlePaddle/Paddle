@@ -14,4 +14,5 @@ specific language governing permissions and limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    ftrl, ops::FTRLOpKernel<paddle::platform::CUDADeviceContext, float>);
+    ftrl, ops::FTRLOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FTRLOpKernel<paddle::platform::CUDADeviceContext, double>);

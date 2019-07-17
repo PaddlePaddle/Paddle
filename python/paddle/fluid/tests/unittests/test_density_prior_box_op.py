@@ -83,16 +83,16 @@ class TestDensityPriorBoxOp(OpTest):
     def init_test_input(self):
         self.image = np.random.random(
             (self.batch_size, self.image_channels, self.image_w,
-             self.image_h)).astype('float32')
+             self.image_h)).astype('float64')
 
         self.input = np.random.random(
             (self.batch_size, self.input_channels, self.layer_w,
-             self.layer_h)).astype('float32')
+             self.layer_h)).astype('float64')
 
     def init_test_output(self):
         out_dim = (self.layer_h, self.layer_w, self.num_priors, 4)
-        out_boxes = np.zeros(out_dim).astype('float32')
-        out_var = np.zeros(out_dim).astype('float32')
+        out_boxes = np.zeros(out_dim).astype('float64')
+        out_var = np.zeros(out_dim).astype('float64')
 
         step_average = int((self.step_w + self.step_h) * 0.5)
         for h in range(self.layer_h):
@@ -127,8 +127,8 @@ class TestDensityPriorBoxOp(OpTest):
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
         out_var = np.tile(self.variances,
                           (self.layer_h, self.layer_w, self.num_priors, 1))
-        self.out_boxes = out_boxes.astype('float32')
-        self.out_var = out_var.astype('float32')
+        self.out_boxes = out_boxes.astype('float64')
+        self.out_var = out_var.astype('float64')
         if self.flatten_to_2d:
             self.out_boxes = self.out_boxes.reshape((-1, 4))
             self.out_var = self.out_var.reshape((-1, 4))

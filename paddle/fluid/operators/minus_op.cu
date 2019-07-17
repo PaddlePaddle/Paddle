@@ -16,4 +16,6 @@ limitations under the License. */
 
 REGISTER_OP_CUDA_KERNEL(
     minus,
-    paddle::operators::MinusKernel<paddle::platform::CUDADeviceContext, float>);
+    paddle::operators::MinusKernel<paddle::platform::CUDADeviceContext, float>,
+    paddle::operators::MinusKernel<paddle::platform::CUDADeviceContext,
+                                   double>);

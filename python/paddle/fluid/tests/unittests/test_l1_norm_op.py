@@ -27,7 +27,7 @@ class TestL1NormOp(OpTest):
         self.op_type = "l1_norm"
         self.max_relative_error = 0.005
 
-        X = np.random.uniform(-1, 1, (13, 19)).astype("float32")
+        X = np.random.uniform(-1, 1, (13, 19)).astype("float64")
         X[np.abs(X) < self.max_relative_error] = 0.1
         self.inputs = {'X': X}
         self.outputs = {'Out': np.sum(np.abs(X))}

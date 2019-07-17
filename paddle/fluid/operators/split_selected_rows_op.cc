@@ -94,4 +94,5 @@ REGISTER_OPERATOR(split_selected_rows, ops::SplitSelectedRowsOp,
                   ops::SplitSelectedRowsOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
     split_selected_rows,
-    ops::SplitSelectedRowsOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SplitSelectedRowsOpKernel<paddle::platform::CPUPlace, float>,
+    ops::SplitSelectedRowsOpKernel<paddle::platform::CPUPlace, double>);

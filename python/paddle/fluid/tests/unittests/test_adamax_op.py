@@ -24,11 +24,11 @@ class TestAdamaxOp1(OpTest):
         '''Test Adamax Operator with supplied attributes
         '''
         self.op_type = "adamax"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        moment = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The infinity norm is positive
-        inf_norm = np.random.random((102, 105)).astype("float32")
+        inf_norm = np.random.random((102, 105)).astype("float64")
 
         learning_rate = 0.002
         beta1 = 0.78
@@ -41,8 +41,8 @@ class TestAdamaxOp1(OpTest):
             'Grad': grad,
             'Moment': moment,
             'InfNorm': inf_norm,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float64"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float64")
         }
 
         self.attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
@@ -66,11 +66,11 @@ class TestAdamaxOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adamax"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        moment = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The infinity norm is positive
-        inf_norm = np.random.random((102, 105)).astype("float32")
+        inf_norm = np.random.random((102, 105)).astype("float64")
 
         learning_rate = 0.002
         beta1 = 0.9
@@ -83,8 +83,8 @@ class TestAdamaxOp2(OpTest):
             'Grad': grad,
             'Moment': moment,
             'InfNorm': inf_norm,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float64"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float64")
         }
 
         attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
@@ -107,11 +107,11 @@ class TestAdamaxOpMultipleSteps(OpTest):
         self.op_type = "adamax"
         self.num_steps = 10
 
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float64")
+        moment = np.random.uniform(-1, 1, (102, 105)).astype("float64")
         # The infinity norm is positive
-        inf_norm = np.random.random((102, 105)).astype("float32")
+        inf_norm = np.random.random((102, 105)).astype("float64")
 
         learning_rate = 0.002
         beta1 = 0.8
@@ -124,8 +124,8 @@ class TestAdamaxOpMultipleSteps(OpTest):
             'Grad': grad,
             'Moment': moment,
             'InfNorm': inf_norm,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float64"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float64")
         }
 
         self.attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
@@ -154,7 +154,7 @@ class TestAdamaxOpMultipleSteps(OpTest):
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
-                -1, 1, (102, 105)).astype("float32")
+                -1, 1, (102, 105)).astype("float64")
 
 
 def adamax_step(inputs, attributes):

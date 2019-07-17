@@ -80,15 +80,15 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         # np.matmul outputs a scalar, we must convert to a Tensor of
         # shape (1, ) instead.
         # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float32")
+        Out = np.array([Out], dtype="float64")
     return Out
 
 
 class Generator(object):
     def setUp(self):
         self.op_type = "matmul"
-        X = np.random.random(self.shape_X).astype("float32")
-        Y = np.random.random(self.shape_Y).astype("float32")
+        X = np.random.random(self.shape_X).astype("float64")
+        Y = np.random.random(self.shape_Y).astype("float64")
         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {

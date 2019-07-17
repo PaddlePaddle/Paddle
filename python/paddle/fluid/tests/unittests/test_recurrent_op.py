@@ -28,8 +28,8 @@ np.random.seed(123)
 
 class PyRNNBase(object):
     def __init__(self, input_shape, output_shape):
-        self.x = np.ones(shape=input_shape).astype("float32")
-        self.y = np.zeros(shape=output_shape).astype("float32")
+        self.x = np.ones(shape=input_shape).astype("float64")
+        self.y = np.zeros(shape=output_shape).astype("float64")
 
     def step(self, step_id, x):
         raise NotImplementedError
@@ -49,11 +49,11 @@ class PySimpleRNN1(PyRNNBase):
 
         seq_len, batch_size, input_dim = input_shape
         self.h_boot = np.random.normal(size=(batch_size,
-                                             input_dim)).astype("float32")
+                                             input_dim)).astype("float64")
 
         self.scale = 1.0 / 2.0
         men_dim = (seq_len, batch_size, input_dim)
-        self.mems = np.zeros(shape=men_dim).astype("float32")
+        self.mems = np.zeros(shape=men_dim).astype("float64")
 
     def step(self, step_id, x):
         if step_id == 0:
@@ -69,20 +69,20 @@ class PySimpleRNN2(PyRNNBase):
         super(PySimpleRNN2, self).__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
-        self.W = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.U = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.h_boot = np.ones(shape=(batch_size, input_dim)).astype("float32")
+        self.W = np.random.normal(size=(input_dim, input_dim)).astype("float64")
+        self.U = np.random.normal(size=(input_dim, input_dim)).astype("float64")
+        self.h_boot = np.ones(shape=(batch_size, input_dim)).astype("float64")
 
         men_dim = (seq_len, batch_size, input_dim)
-        self.mems = np.zeros(shape=men_dim).astype("float32")
+        self.mems = np.zeros(shape=men_dim).astype("float64")
 
     def step(self, step_id, x):
         if step_id > 0:
             pre_mem = self.mems[step_id - 1]
         else:
             pre_mem = self.h_boot
-        xW = np.matmul(x, self.W).astype("float32")
-        hU = np.matmul(pre_mem, self.U).astype("float32")
+        xW = np.matmul(x, self.W).astype("float64")
+        hU = np.matmul(pre_mem, self.U).astype("float64")
 
         def py_sigmoid(x):
             return 1. / (1. + np.exp(-x))
@@ -133,12 +133,12 @@ class RecurrentOpTest1(unittest.TestCase):
     def create_rnn_op(self):
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
-            dtype='float32',
+            dtype='float64',
             name='x',
             append_batch_size=False)
         x.stop_gradient = False
         h_boot = layers.data(
-            shape=[self.input_dim], dtype='float32', name='h_boot')
+            shape=[self.input_dim], dtype='float64', name='h_boot')
         h_boot.stop_gradient = False
 
         rnn = layers.StaticRNN()
@@ -263,12 +263,12 @@ class RecurrentOpTest2(RecurrentOpTest1):
     def create_rnn_op(self):
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
-            dtype='float32',
+            dtype='float64',
             name='x',
             append_batch_size=False)
         x.stop_gradient = False
         h_boot = layers.data(
-            shape=[self.input_dim], dtype='float32', name='h_boot')
+            shape=[self.input_dim], dtype='float64', name='h_boot')
         h_boot.stop_gradient = False
 
         rnn = layers.StaticRNN()
@@ -318,13 +318,13 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
 
             seq_len, batch_size, input_dim = input_shape
             self.h_boot1 = np.random.normal(size=(batch_size,
-                                                  input_dim)).astype("float32")
+                                                  input_dim)).astype("float64")
             self.h_boot2 = np.random.normal(size=(batch_size,
-                                                  input_dim)).astype("float32")
+                                                  input_dim)).astype("float64")
 
             men_dim = (seq_len, batch_size, input_dim)
-            self.mems1 = np.zeros(shape=men_dim).astype("float32")
-            self.mems2 = np.zeros(shape=men_dim).astype("float32")
+            self.mems1 = np.zeros(shape=men_dim).astype("float64")
+            self.mems2 = np.zeros(shape=men_dim).astype("float64")
 
         def step(self, step_id, x):
             if step_id == 0:
@@ -357,19 +357,19 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
     def create_rnn_op(self):
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
-            dtype='float32',
+            dtype='float64',
             name='x',
             append_batch_size=False)
         x.stop_gradient = False
         h_boot1 = layers.data(
             shape=[self.batch_size, self.input_dim],
-            dtype='float32',
+            dtype='float64',
             name='h_boot1',
             append_batch_size=False)
         h_boot1.stop_gradient = False
         h_boot2 = layers.data(
             shape=[self.batch_size, self.input_dim],
-            dtype='float32',
+            dtype='float64',
             name='h_boot2',
             append_batch_size=False)
         h_boot2.stop_gradient = False
@@ -410,7 +410,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             super(RecurrentOpNoMemBootTest.PySimpleRNN4, self).__init__(
                 input_shape, output_shape)
             men_dim = input_shape
-            self.mems = np.zeros(shape=men_dim).astype("float32")
+            self.mems = np.zeros(shape=men_dim).astype("float64")
 
         def step(self, step_id, x):
             if step_id == 0:
@@ -440,7 +440,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
     def create_rnn_op(self):
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
-            dtype='float32',
+            dtype='float64',
             name='x',
             append_batch_size=False)
         x.stop_gradient = False

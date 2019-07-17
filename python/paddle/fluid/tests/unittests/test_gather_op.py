@@ -41,7 +41,7 @@ class TestGatherOp(OpTest):
         For multi-dimension input
         """
         self.x_shape = (10, 20)
-        self.x_type = "float32"
+        self.x_type = "float64"
         self.index = [1, 3, 5]
         self.index_type = "int32"
 
@@ -52,7 +52,7 @@ class TestCase1(TestGatherOp):
         For one dimension input
         """
         self.x_shape = (10)
-        self.x_type = "float32"
+        self.x_type = "float64"
         self.index = [1, 3, 5]
         self.index_type = "int32"
 
@@ -63,7 +63,7 @@ class TestCase2(TestGatherOp):
         For int64_t index type
         """
         self.x_shape = (10)
-        self.x_type = "float32"
+        self.x_type = "float64"
         self.index = [1, 3, 5]
         self.index_type = "int64"
 

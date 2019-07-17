@@ -24,13 +24,13 @@ class TestSequenceSliceOp(OpTest):
     def set_data(self):
         self.init_test_case()
         # only supprot one level LoD
-        x = np.random.random(self.x_dim).astype('float32')
+        x = np.random.random(self.x_dim).astype('float64')
         lod = self.x_lod
         offset = np.array(self.offset).astype("int64")
         length = np.array(self.length).astype("int64")
 
         self.inputs = {'X': (x, lod), 'Offset': offset, 'Length': length}
-        outs = []  #np.zeros((100, 3, 2)).astype('float32')
+        outs = []  #np.zeros((100, 3, 2)).astype('float64')
         out_lod = [[]]
         lod_offset = 0
         for i in range(len(offset)):

@@ -178,7 +178,7 @@ class TestPool2D_Op(OpTest):
         pass
 
     def init_data_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_pool_type(self):
         self.pool_type = "avg"

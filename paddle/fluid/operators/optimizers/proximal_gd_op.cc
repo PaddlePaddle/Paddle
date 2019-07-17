@@ -99,4 +99,5 @@ REGISTER_OP_WITHOUT_GRADIENT(proximal_gd, ops::ProximalGDOp,
                              ops::ProximalGDOpMaker);
 REGISTER_OP_CPU_KERNEL(
     proximal_gd,
-    ops::ProximalGDOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::ProximalGDOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ProximalGDOpKernel<paddle::platform::CPUDeviceContext, double>);

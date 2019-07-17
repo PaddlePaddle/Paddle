@@ -22,10 +22,10 @@ from op_test import OpTest
 class TestFillConstantBatchSizeLikeWhenFirstDimIsBatchSize(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
-        self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
+        self.inputs = {'Input': np.random.random((219, 232)).astype("float64")}
         self.attrs = {'value': 3.5, 'shape': [-1, 132, 7]}
 
-        out = np.random.random((219, 132, 7)).astype("float32")
+        out = np.random.random((219, 132, 7)).astype("float64")
         out.fill(3.5)
         self.outputs = {'Out': out}
 
@@ -36,7 +36,7 @@ class TestFillConstantBatchSizeLikeWhenFirstDimIsBatchSize(OpTest):
 class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
-        self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
+        self.inputs = {'Input': np.random.random((219, 232)).astype("float64")}
         self.attrs = {
             'value': 3.5,
             'shape': [132, -1, 7],
@@ -44,7 +44,7 @@ class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
             'output_dim_idx': 1
         }
 
-        out = np.random.random((132, 219, 7)).astype("float32")
+        out = np.random.random((132, 219, 7)).astype("float64")
         out.fill(3.5)
         self.outputs = {'Out': out}
 
@@ -56,7 +56,7 @@ class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {
-            'Input': (np.random.random((31, 28)).astype("float32"),
+            'Input': (np.random.random((31, 28)).astype("float64"),
                       [[9, 14, 8]])
         }
         self.attrs = {
@@ -66,7 +66,7 @@ class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
             'output_dim_idx': 0
         }
 
-        out = np.random.random((3, 16)).astype("float32")
+        out = np.random.random((3, 16)).astype("float64")
         out.fill(3.5)
         self.outputs = {'Out': out}
 

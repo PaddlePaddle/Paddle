@@ -25,16 +25,16 @@ import numpy
 class TestWhileOp(unittest.TestCase):
     def test_simple_forward(self):
         d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
+            "d0", shape=[10], append_batch_size=False, dtype='float64')
         d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
+            "d1", shape=[10], append_batch_size=False, dtype='float64')
         d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+            "d2", shape=[10], append_batch_size=False, dtype='float64')
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
 
-        init = layers.zeros(shape=[10], dtype='float32')
+        init = layers.zeros(shape=[10], dtype='float64')
         mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
 
@@ -88,7 +88,7 @@ class TestWhileOp(unittest.TestCase):
         d = []
 
         for i in range(3):
-            d.append(numpy.random.random(size=[10]).astype('float32'))
+            d.append(numpy.random.random(size=[10]).astype('float64'))
 
         outs = exe.run(feed={'d0': d[0],
                              'd1': d[1],

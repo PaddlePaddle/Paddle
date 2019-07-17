@@ -53,7 +53,7 @@ def rpn_target_assign(anchor_by_gt_overlap,
 
     labels[disable_inds] = -1
     fg_inds = np.where(labels == 1)[0]
-    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float32)
+    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float64)
 
     num_bg = rpn_batch_size_per_im - np.sum(labels == 1)
     bg_inds = np.where(anchor_to_gt_max < rpn_negative_overlap)[0]
@@ -85,7 +85,7 @@ def rpn_target_assign(anchor_by_gt_overlap,
 
 
 def get_anchor(n, c, h, w):
-    input_feat = np.random.random((n, c, h, w)).astype('float32')
+    input_feat = np.random.random((n, c, h, w)).astype('float64')
     anchors, _ = anchor_generator_in_python(
         input_feat=input_feat,
         anchor_sizes=[32., 64.],
@@ -184,7 +184,7 @@ def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
     labels[anchor_to_gt_max >= positive_overlap] = 1
 
     fg_inds = np.where(labels == 1)[0]
-    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float32)
+    bbox_inside_weight = np.zeros((len(fg_inds), 4), dtype=np.float64)
 
     bg_inds = np.where(anchor_to_gt_max < negative_overlap)[0]
     enable_inds = bg_inds
@@ -280,7 +280,7 @@ class TestRpnTargetAssignOp(OpTest):
         lod = [0, 4, 8]
         #lod = [0, 4]
 
-        im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        im_info = np.ones((len(images_shape), 3)).astype(np.float64)
         for i in range(len(images_shape)):
             im_info[i, 0] = images_shape[i][0]
             im_info[i, 1] = images_shape[i][1]
@@ -288,8 +288,8 @@ class TestRpnTargetAssignOp(OpTest):
         gt_boxes = np.vstack([v['boxes'] for v in groundtruth])
         is_crowd = np.hstack([v['is_crowd'] for v in groundtruth])
 
-        all_anchors = all_anchors.astype('float32')
-        gt_boxes = gt_boxes.astype('float32')
+        all_anchors = all_anchors.astype('float64')
+        gt_boxes = gt_boxes.astype('float64')
 
         rpn_straddle_thresh = 0.0
         rpn_batch_size_per_im = 256
@@ -324,9 +324,9 @@ class TestRpnTargetAssignOp(OpTest):
         self.outputs = {
             'LocationIndex': loc_index.astype('int32'),
             'ScoreIndex': score_index.astype('int32'),
-            'TargetBBox': tgt_bbox.astype('float32'),
+            'TargetBBox': tgt_bbox.astype('float64'),
             'TargetLabel': labels.astype('int32'),
-            'BBoxInsideWeight': bbox_inside_weights.astype('float32')
+            'BBoxInsideWeight': bbox_inside_weights.astype('float64')
         }
 
     def test_check_output(self):
@@ -345,7 +345,7 @@ class TestRetinanetTargetAssignOp(OpTest):
         groundtruth, lod = _generate_groundtruth(images_shape, 3, 4)
         lod = [0, 4, 8]
 
-        im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        im_info = np.ones((len(images_shape), 3)).astype(np.float64)
         for i in range(len(images_shape)):
             im_info[i, 0] = images_shape[i][0]
             im_info[i, 1] = images_shape[i][1]
@@ -357,8 +357,8 @@ class TestRetinanetTargetAssignOp(OpTest):
             for v in groundtruth
         ])
         gt_labels = gt_labels.reshape(len(gt_labels), 1)
-        all_anchors = all_anchors.astype('float32')
-        gt_boxes = gt_boxes.astype('float32')
+        all_anchors = all_anchors.astype('float64')
+        gt_boxes = gt_boxes.astype('float64')
         gt_labels = gt_labels.astype('int32')
 
         positive_overlap = 0.5
@@ -383,9 +383,9 @@ class TestRetinanetTargetAssignOp(OpTest):
         self.outputs = {
             'LocationIndex': loc_index.astype('int32'),
             'ScoreIndex': score_index.astype('int32'),
-            'TargetBBox': tgt_bbox.astype('float32'),
+            'TargetBBox': tgt_bbox.astype('float64'),
             'TargetLabel': labels.astype('int32'),
-            'BBoxInsideWeight': bbox_inside_weights.astype('float32'),
+            'BBoxInsideWeight': bbox_inside_weights.astype('float64'),
             'ForegroundNumber': fg_num.astype('int32')
         }
 

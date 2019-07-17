@@ -36,9 +36,9 @@ class TestFusionSeqPoolConcatOp(OpTest):
         for lod in self.lods:
             assert bs == len(lod[0]), 'All lod size should be equal'
             x = np.random.uniform(0.1, 1,
-                                  [sum(lod[0]), self.w]).astype('float32')
+                                  [sum(lod[0]), self.w]).astype('float64')
             offset = convert_to_offset(lod)
-            out = np.zeros((bs, self.w)).astype('float32')
+            out = np.zeros((bs, self.w)).astype('float64')
             if self.pooltype == "SUM":
                 compute_seqpool_sum(x, offset, out)
             elif self.pooltype == "AVERAGE":

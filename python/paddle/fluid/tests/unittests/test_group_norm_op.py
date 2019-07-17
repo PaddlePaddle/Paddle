@@ -40,7 +40,7 @@ class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
         self.data_format = "NCHW"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.shape = (2, 4, 3, 3)
         self.attrs = {'epsilon': 1e-5, 'groups': 2}
         self.compare_between_place = False

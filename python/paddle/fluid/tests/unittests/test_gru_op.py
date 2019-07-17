@@ -31,7 +31,7 @@ def gru(
         is_reverse,
         act_state,
         act_gate,
-        dtype='float32',
+        dtype='float64',
         origin_mode=False):
     def _seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
@@ -169,20 +169,20 @@ class TestGRUOriginMode(TestGRUOp):
 class TestGRUOp2(TestGRUOp):
     def set_confs(self):
         self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestGRUOp2Len0(TestGRUOp):
     def set_confs(self):
         self.D = 19
         self.lod = [[2, 0, 4]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestGRUOp2OriginMode(TestGRUOp):
     def set_confs(self):
         self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
@@ -190,7 +190,7 @@ class TestGRUOp2OriginModeLen0(TestGRUOp):
     def set_confs(self):
         self.D = 19
         self.lod = [[0, 3, 4]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
@@ -198,7 +198,7 @@ class TestGRUOp2OriginModeLastLen0(TestGRUOp):
     def set_confs(self):
         self.D = 19
         self.lod = [[0, 3, 0]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 

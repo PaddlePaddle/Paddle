@@ -169,7 +169,9 @@ REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);
+    cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CosSimKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     cos_sim_grad,
-    ops::CosSimGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::CosSimGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CosSimGradKernel<paddle::platform::CPUDeviceContext, double>);

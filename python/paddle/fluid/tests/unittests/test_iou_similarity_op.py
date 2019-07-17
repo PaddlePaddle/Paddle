@@ -28,9 +28,9 @@ class TestIOUSimilarityOp(OpTest):
 
     def setUp(self):
         self.op_type = "iou_similarity"
-        self.boxes1 = random.rand(2, 4).astype('float32')
-        self.boxes2 = random.rand(3, 4).astype('float32')
-        self.output = random.rand(2, 3).astype('float32')
+        self.boxes1 = random.rand(2, 4).astype('float64')
+        self.boxes2 = random.rand(3, 4).astype('float64')
+        self.output = random.rand(2, 3).astype('float64')
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]

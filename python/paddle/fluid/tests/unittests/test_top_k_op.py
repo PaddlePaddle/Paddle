@@ -24,7 +24,7 @@ class TestTopkOp(OpTest):
         self.variable_k = False
         self.set_args()
         self.op_type = "top_k"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype()
 
         k = self.top_k
@@ -65,7 +65,7 @@ class TestTopkOp3d(OpTest):
     def setUp(self):
         self.op_type = "top_k"
         k = 1
-        input = np.random.random((32, 2, 84)).astype("float32")
+        input = np.random.random((32, 2, 84)).astype("float64")
         input_flat_2d = input.reshape(64, 84)
         output = np.ndarray((64, k))
         indices = np.ndarray((64, k)).astype("int64")
@@ -92,7 +92,7 @@ class TestTopkOp1(OpTest):
         self.op_type = "top_k"
         k = 2
         m = 2056
-        input = np.random.random(m).astype("float32")
+        input = np.random.random(m).astype("float64")
         output = np.ndarray(k)
         indices = np.ndarray(k).astype("int64")
 
@@ -114,7 +114,7 @@ class TestTopkOp2(OpTest):
         self.op_type = "top_k"
         k = 1
         m = 2056
-        input = np.random.random((m, 84)).astype("float32")
+        input = np.random.random((m, 84)).astype("float64")
         output = np.ndarray((m, k))
         indices = np.ndarray((m, k)).astype("int64")
 

@@ -29,13 +29,13 @@ def create_selected_rows_and_tensor(scope, place, height, row_num,
 
     rows = np.random.random_integers(
         low=0, high=height - 1, size=[row_num, ]).astype('int64')
-    sr_val = np.random.random(size=[row_num, embedding_size]).astype('float32')
+    sr_val = np.random.random(size=[row_num, embedding_size]).astype('float64')
 
     sr.set_height(height)
     sr.set_rows(rows)
     sr.get_tensor().set(sr_val, place)
 
-    tensor_val = np.zeros(shape=[height, embedding_size], dtype='float32')
+    tensor_val = np.zeros(shape=[height, embedding_size], dtype='float64')
     for i in range(row_num):
         row = rows[i]
         tensor_val[row, :] = tensor_val[row, :] + sr_val[i, :]
@@ -58,17 +58,17 @@ class TestBase(unittest.TestCase):
         self.place = place
 
         self.param_name = "param"
-        self.param = np.random.random(size).astype("float32")
+        self.param = np.random.random(size).astype("float64")
 
         self.mean_square_name = "mean_square"
         self.mean_square = np.random.uniform(
-            low=1, high=2, size=size).astype("float32")
+            low=1, high=2, size=size).astype("float64")
 
         self.mean_grad_name = "mean_grad"
-        self.mean_grad = np.random.random(size).astype("float32")
+        self.mean_grad = np.random.random(size).astype("float64")
 
         self.lr_name = "lr"
-        self.learning_rate = np.array([0.01]).astype("float32")
+        self.learning_rate = np.array([0.01]).astype("float64")
 
         self.grad_name = "grad"
 
@@ -78,13 +78,13 @@ class TestBase(unittest.TestCase):
             self.grad, self.grad_sr = create_selected_rows_and_tensor(
                 self.scope, place, size[0], row_num, size[1])
         else:
-            self.grad = np.random.random(size).astype("float32")
+            self.grad = np.random.random(size).astype("float64")
             grad_tensor = self.scope.var(self.grad_name).get_tensor()
             grad_tensor.set(self.grad, place)
 
         self.moment_name = "moment"
         self.moment = np.random.uniform(
-            low=0, high=1, size=size).astype("float32")
+            low=0, high=1, size=size).astype("float64")
 
         self.epsilon = epsilon
         self.decay = 0.9

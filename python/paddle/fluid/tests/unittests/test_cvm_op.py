@@ -23,7 +23,7 @@ def cvm_compute(X, item_width, use_cvm):
     cvm_offset = 0 if use_cvm else 2
     batch_size = X.shape[0]
 
-    Y = np.ones([batch_size, item_width - cvm_offset], np.float32)
+    Y = np.ones([batch_size, item_width - cvm_offset], np.float64)
 
     for idx in range(batch_size):
         if use_cvm:
@@ -38,7 +38,7 @@ def cvm_compute(X, item_width, use_cvm):
 
 def cvm_grad_compute(DY, CVM, item_width, use_cvm):
     batch_size = DY.shape[0]
-    DX = np.ones([batch_size, item_width], np.float32)
+    DX = np.ones([batch_size, item_width], np.float64)
 
     for idx in range(batch_size):
         DX[idx][0] = CVM[idx][0]
@@ -65,8 +65,8 @@ class TestCVMOpWithLodTensor(OpTest):
 
         lod = [[1]]
         self.inputs = {
-            'X': (np.random.uniform(0, 1, [1, dims]).astype("float32"), lod),
-            'CVM': np.array([[0.6, 0.4]]).astype("float32"),
+            'X': (np.random.uniform(0, 1, [1, dims]).astype("float64"), lod),
+            'CVM': np.array([[0.6, 0.4]]).astype("float64"),
         }
         self.attrs = {'use_cvm': False}
         out = []
@@ -91,9 +91,9 @@ class TestCVMOpWithOutLodTensor1(OpTest):
         item_width = 11
 
         input = np.random.uniform(0, 1,
-                                  (batch_size, item_width)).astype('float32')
+                                  (batch_size, item_width)).astype('float64')
         output = cvm_compute(input, item_width, self.use_cvm)
-        cvm = np.array([[0.6, 0.4]]).astype("float32")
+        cvm = np.array([[0.6, 0.4]]).astype("float64")
 
         self.inputs = {'X': input, 'CVM': cvm}
         self.attrs = {'use_cvm': self.use_cvm}
@@ -116,9 +116,9 @@ class TestCVMOpWithOutLodTensor2(OpTest):
         item_width = 11
 
         input = np.random.uniform(0, 1,
-                                  (batch_size, item_width)).astype('float32')
+                                  (batch_size, item_width)).astype('float64')
         output = cvm_compute(input, item_width, self.use_cvm)
-        cvm = np.array([[0.6, 0.4]]).astype("float32")
+        cvm = np.array([[0.6, 0.4]]).astype("float64")
 
         self.inputs = {'X': input, 'CVM': cvm}
         self.attrs = {'use_cvm': self.use_cvm}

@@ -38,7 +38,7 @@ def box_clip(input_box, im_info, output_box):
 def batch_box_clip(input_boxes, im_info, lod):
     n = input_boxes.shape[0]
     m = input_boxes.shape[1]
-    output_boxes = np.zeros((n, m, 4), dtype=np.float32)
+    output_boxes = np.zeros((n, m, 4), dtype=np.float64)
     cur_offset = 0
     for i in range(len(lod)):
         box_clip(input_boxes[cur_offset:(cur_offset + lod[i]), :, :],
@@ -60,8 +60,8 @@ class TestBoxClipOp(OpTest):
         output_boxes = batch_box_clip(input_boxes, im_info, lod[0])
 
         self.inputs = {
-            'Input': (input_boxes.astype('float32'), lod),
-            'ImInfo': im_info.astype('float32'),
+            'Input': (input_boxes.astype('float64'), lod),
+            'ImInfo': im_info.astype('float64'),
         }
         self.outputs = {'Output': output_boxes}
 
