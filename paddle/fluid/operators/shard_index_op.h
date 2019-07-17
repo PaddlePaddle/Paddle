@@ -34,7 +34,7 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(shard_id >= 0 && shard_id < nshards,
                    "shard_id(%d) is not in range [0, %d)", shard_id, nshards);
 
-    int shard_range = context.Attr<int>("shard_range");
+    int shard_range = index_range / nshards;
 
     out->Resize(in->dims());
     out->set_lod(in->lod());
@@ -42,7 +42,7 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     int64_t numel = in->numel();
     for (int64_t i = 0; i < numel; ++i) {
-      PADDLE_ENFORCE(in_data[i] > 0 && in_data[i] < index_range,
+      PADDLE_ENFORCE(in_data[i] >= 0 && in_data[i] < index_range,
                      "Input index(%d) is out of range [0,%d)", in_data[i],
                      index_range);
       if (in_data[i] / shard_range == shard_id) {
