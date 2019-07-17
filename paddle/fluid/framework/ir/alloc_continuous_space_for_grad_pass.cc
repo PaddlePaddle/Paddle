@@ -78,18 +78,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       return;
     }
 
-    std::unordered_map<std::string, ir::Node *> var_name2node;
-    std::unordered_map<std::string, std::unordered_set<ir::Node *>>
-        var_name2node_set;
-    for (ir::Node *node : result.Nodes()) {
-      if (node->IsVar() && node->Var()) {
-        // Note: The graph may have the same name node. For example, parameter
-        // is the input of operator and it also is the output of optimizer;
-        var_name2node.emplace(node->Var()->Name(), node);
-        var_name2node_set[node->Var()->Name()].emplace(node);
-      }
-    }
-
+    auto vars_info = GetVarInfo(result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndDenseGrads,
                                             &result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndSparseGrads,
@@ -102,7 +91,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         result.Get<details::ParamsAndGrads>(details::kParamsAndSparseGrads);
 
     for (auto &param_grad : params_grads) {
-      if (IsSupportedVarType(GettypeOfVar(var_name2node, param_grad.second))) {
+      if (IsSupportedVarType(GetTypeOfVar(vars_info, param_grad.second))) {
         p_g_dense_grad.emplace_back(param_grad);
       } else {
         p_g_sparse_grad.emplace_back(param_grad);
@@ -120,7 +109,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         result.Get<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads);
     // Note: the order of p_g_dense_grad may be changed by
     // SetGroupParamsAndGrads.
-    SetGroupParamsAndGrads(var_name2node, p_g_dense_grad, &group_params_grads);
+    SetGroupParamsAndGrads(vars_info, p_g_dense_grad, &group_params_grads);
 
     p_g_dense_grad.clear();
     p_g_dense_grad.reserve(num_of_p_g_dense_grad);
@@ -132,17 +121,16 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
         p_g_dense_grad.size(), num_of_p_g_dense_grad,
         "The number of p_g_dense_grad is not consistent with before.");
 
-    if (IsUnifiedDtype(p_g_dense_grad, var_name2node)) {
-      SetGradientPersistable(p_g_dense_grad, var_name2node, var_name2node_set);
-      AllocContinuousAddressSpace(places, local_scopes, var_name2node,
+    if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
+      SetGradientPersistable(p_g_dense_grad, vars_info);
+      AllocContinuousAddressSpace(places, local_scopes, vars_info,
                                   p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
-        SetGradientPersistable(p_g_dense_grad, var_name2node,
-                               var_name2node_set);
-        PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, var_name2node),
+        SetGradientPersistable(p_g_dense_grad, vars_info);
+        PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
                        "The data type of the same group is not consistent.");
-        AllocContinuousAddressSpace(places, local_scopes, var_name2node,
+        AllocContinuousAddressSpace(places, local_scopes, vars_info,
                                     sub_param_grad, &result);
       }
     }
@@ -150,31 +138,29 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
   void SetGradientPersistable(
       const std::vector<std::pair<std::string, std::string>> &sub_param_grad,
-      const std::unordered_map<std::string, Node *> &var_name2node,
-      const std::unordered_map<std::string, std::unordered_set<ir::Node *>>
-          &var_name2node_set) const {
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info)
+      const {
     for (auto &p_g : sub_param_grad) {
-      auto iter = var_name2node.find(p_g.second);
-      PADDLE_ENFORCE(iter != var_name2node.end(), "%s is not found.",
-                     p_g.second);
+      auto iter = vars_info.find(p_g.second);
+      PADDLE_ENFORCE(iter != vars_info.end(), "%s is not found.", p_g.second);
+      PADDLE_ENFORCE(!iter->second.empty());
       // Set persistable
-      auto same_nodes = var_name2node_set.find(p_g.second);
-      PADDLE_ENFORCE(same_nodes != var_name2node_set.end(), "%s is not found.",
-                     p_g.second);
-      for (auto it : same_nodes->second) {
+      for (auto it : iter->second) {
+        PADDLE_ENFORCE_NOT_NULL(it->Var());
         it->Var()->SetPersistable(true);
       }
-      PADDLE_ENFORCE(IsSupportedVarType(iter->second->Var()->GetType()));
+      PADDLE_ENFORCE(IsSupportedVarType(GetTypeOfVar(vars_info, p_g.second)));
     }
   }
 
   bool IsUnifiedDtype(
       const details::ParamsAndGrads &params_grads,
-      const std::unordered_map<std::string, Node *> &var_name2node) const {
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info)
+      const {
     if (params_grads.empty()) return true;
-    auto dtype = GetDtypeOfVar(var_name2node, params_grads.front().second);
+    auto dtype = GetDtypeOfVar(vars_info, params_grads.front().second);
     for (auto p_g : params_grads) {
-      auto next_dtype = GetDtypeOfVar(var_name2node, p_g.second);
+      auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
       if (next_dtype != dtype) {
         return false;
       }
@@ -185,7 +171,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   void AllocContinuousAddressSpace(
       const std::vector<platform::Place> &places,
       const std::vector<Scope *> &local_scopes,
-      const std::unordered_map<std::string, Node *> &var_name2node,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const details::ParamsAndGrads &params_grads, Graph *result) const {
     // Create a FusedVarsSet to avoid duplicating names for fused_var in other
     // pass.
@@ -208,7 +194,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     result->Get<details::FusedGrads>(details::kFusedGrads)
         .emplace_back(fused_grad_var_name);
 
-    InitFusedVarsAndAllocSpaceForVars(places, local_scopes, var_name2node,
+    InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars_info,
                                       fused_grad_var_name, params_grads);
   }
 
@@ -222,18 +208,18 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   }
 
   void SetGroupParamsAndGrads(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
-    SetGroupAccordingToLayers(var_nodes, params_grads, group_params_grads);
-    SetGroupAccordingToMemorySize(var_nodes, group_params_grads);
-    if (!IsUnifiedDtype(params_grads, var_nodes)) {
-      ReGroupByDtype(var_nodes, group_params_grads);
+    SetGroupAccordingToLayers(vars_info, params_grads, group_params_grads);
+    SetGroupAccordingToMemorySize(vars_info, group_params_grads);
+    if (!IsUnifiedDtype(params_grads, vars_info)) {
+      ReGroupByDtype(vars_info, group_params_grads);
     }
   }
 
   void SetGroupAccordingToLayers(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
     std::map<std::string, size_t> var_idx;
@@ -264,22 +250,21 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     if (VLOG_IS_ON(10)) {
       VLOG(10) << "SetGroupAccordingToLayers: ";
-      PrintGroupInfo(var_nodes, group_params_grads);
+      PrintGroupInfo(vars_info, group_params_grads);
     }
   }
 
   void PrintGroupInfo(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       details::GroupParamsAndGrads *group_params_grads) const {
     for (size_t i = 0; i < group_params_grads->size(); ++i) {
       VLOG(10) << "group " << i;
       std::stringstream out;
       size_t gps_size = 0;
       for (auto &p_g : group_params_grads->at(i)) {
-        auto iter = var_nodes.find(p_g.first);
-        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", p_g.first);
-        auto shape = iter->second->Var()->GetShape();
-        size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
+        auto var_desc = GetVarDescFromVarsInfo(vars_info, p_g.first);
+        auto shape = var_desc->GetShape();
+        size_t size = framework::SizeOfType(var_desc->GetDataType());
         std::for_each(shape.begin(), shape.end(),
                       [&size](const int64_t &n) { size *= n; });
         gps_size += size;
@@ -287,8 +272,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
 
       auto dtype =
-          GetDtypeOfVar(var_nodes, group_params_grads->at(i).front().first);
-
+          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().first);
       VLOG(10) << out.str()
                << ", group size:" << group_params_grads->at(i).size()
                << ", group memory size:" << static_cast<double>(gps_size) / kMB
@@ -297,7 +281,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   }
 
   void SetGroupAccordingToMemorySize(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       details::GroupParamsAndGrads *group_params_grads) const {
     const double group_memory_size = GetFuseParameterMemorySize();
     if (group_memory_size <= 0.0) {
@@ -312,28 +296,19 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
       size_t local_group_memory_size = 0;
       while (j < group_params_grads->size()) {
-        std::for_each(
-            group_params_grads->at(j).begin(), group_params_grads->at(j).end(),
-            [&local_group_memory_size,
-             &var_nodes](const std::pair<std::string, std::string> &p_g) {
-              auto iter = var_nodes.find(p_g.second);
-              PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.",
-                             p_g.second);
-
-              size_t size =
-                  framework::SizeOfType(iter->second->Var()->GetDataType());
-              auto shape = iter->second->Var()->GetShape();
-              std::for_each(shape.begin(), shape.end(),
-                            [&size](const int64_t &n) { size *= n; });
-
-              local_group_memory_size += size;
-            });
+        for (auto &p_g_iter : group_params_grads->at(j)) {
+          auto var_desc = GetVarDescFromVarsInfo(vars_info, p_g_iter.second);
+          size_t size = framework::SizeOfType(var_desc->GetDataType());
+          auto shape = var_desc->GetShape();
+          std::for_each(shape.begin(), shape.end(),
+                        [&size](const int64_t &n) { size *= n; });
+          local_group_memory_size += size;
+        }
 
         group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
                          group_params_grads->at(j).end());
 
         ++j;
-
         if (j >= group_params_grads->size()) {
           break;
         }
@@ -357,12 +332,12 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       VLOG(10) << string::Sprintf(
           "SetGroupAccordingToMemorySize(memory_size: %f MB):",
           GetFuseParameterMemorySize());
-      PrintGroupInfo(var_nodes, group_params_grads);
+      PrintGroupInfo(vars_info, group_params_grads);
     }
   }
 
   void ReGroupByDtype(
-      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       details::GroupParamsAndGrads *group_params_grads) const {
     details::GroupParamsAndGrads new_group_params_grads;
 
@@ -371,7 +346,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       details::GroupParamsAndGrads local_group_params_grads;
 
       for (auto &p_g : group_p_g) {
-        auto dtype = GetDtypeOfVar(var_nodes, p_g.second);
+        auto dtype = GetDtypeOfVar(vars_info, p_g.second);
 
         size_t idx = 0;
         auto var_idx_iter = type_idx.find(dtype);
@@ -400,32 +375,51 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       VLOG(10) << string::Sprintf("ReGroupByDtype(memory_size: %f MB, %u):",
                                   GetFuseParameterMemorySize(),
                                   GetFuseParameterGroupsSize());
-      PrintGroupInfo(var_nodes, group_params_grads);
+      PrintGroupInfo(vars_info, group_params_grads);
     }
   }
 
   proto::VarType::Type GetDtypeOfVar(
-      const std::unordered_map<std::string, Node *> &var_nodes,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const std::string &name) const {
-    auto grad_iter = var_nodes.find(name);
-    PADDLE_ENFORCE(grad_iter != var_nodes.end());
-    PADDLE_ENFORCE_NOT_NULL(grad_iter->second->Var());
-    return grad_iter->second->Var()->GetDataType();
+    auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
+    return var_desc->GetDataType();
   }
 
-  proto::VarType::Type GettypeOfVar(
-      const std::unordered_map<std::string, Node *> &var_nodes,
+  proto::VarType::Type GetTypeOfVar(
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const std::string &name) const {
-    auto grad_iter = var_nodes.find(name);
-    PADDLE_ENFORCE(grad_iter != var_nodes.end());
-    PADDLE_ENFORCE_NOT_NULL(grad_iter->second->Var());
-    return grad_iter->second->Var()->GetType();
+    auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
+    return var_desc->GetType();
   }
 
  private:
   bool IsSupportedVarType(const proto::VarType::Type &type) const {
     // Current only support LOD_TENSOR.
     return type == proto::VarType::LOD_TENSOR;
+  }
+
+  std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
+      const Graph &result) const {
+    std::unordered_map<std::string, std::vector<Node *>> vars;
+    for (Node *node : result.Nodes()) {
+      if (node->IsVar() && node->Var()) {
+        // Note: The graph may have the same name node. For example, parameter
+        // is the input of operator and it also is the output of optimizer;
+        vars[node->Var()->Name()].emplace_back(node);
+      }
+    }
+    return vars;
+  }
+
+  const VarDesc *GetVarDescFromVarsInfo(
+      const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
+      const std::string &var_name) const {
+    auto grad_iter = vars_info.find(var_name);
+    PADDLE_ENFORCE(grad_iter != vars_info.end(), "%s is not found.", var_name);
+    PADDLE_ENFORCE(!grad_iter->second.empty());
+    PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
+    return grad_iter->second.front()->Var();
   }
 
   void RecordParamsAndGrads(const ir::Graph &graph,
@@ -459,24 +453,20 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   void InitFusedVarsAndAllocSpaceForVars(
       const std::vector<platform::Place> &places,
       const std::vector<Scope *> &local_scopes,
-      const std::unordered_map<std::string, ir::Node *> &vars,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const std::string &fused_var_name,
       const details::ParamsAndGrads &params_grads) const {
     //  Init Gradients and FusedVars
     VLOG(10) << "Init FusedVars and Gradients.";
     for (auto it = local_scopes.rbegin(); it != local_scopes.rend(); ++it) {
       auto &scope = *it;
-
       PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
                      "%s has existed in scope.", fused_var_name);
       scope->Var(fused_var_name)->GetMutable<LoDTensor>();
 
       for (auto &p_g : params_grads) {
-        auto iter = vars.find(p_g.second);
-        PADDLE_ENFORCE(iter != vars.end());
-        PADDLE_ENFORCE_NOT_NULL(iter->second->Var());
-        PADDLE_ENFORCE_EQ(iter->second->Var()->GetType(),
-                          proto::VarType::LOD_TENSOR);
+        auto var_type = GetTypeOfVar(vars_info, p_g.second);
+        PADDLE_ENFORCE_EQ(var_type, proto::VarType::LOD_TENSOR);
         scope->Var(p_g.second)->GetMutable<LoDTensor>();
       }
     }
