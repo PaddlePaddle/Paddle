@@ -24,9 +24,13 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
+namespace ir {
 
-void RecurrentOpEagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
+using paddle::operators::OpVariant;
+using paddle::operators::OpVariantSet;
+using paddle::operators::OpAndGradOpPair;
+
+void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
   // Find all recurrent_op and recurrent_grad_op in graph
   // Note the graph only contains ops and block 0
   std::unordered_map<size_t, OpAndGradOpPair> target_ops =
@@ -44,13 +48,13 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 // grad op pair
 std::unordered_map<size_t, OpAndGradOpPair>
 RecurrentOpEagerDeletionPass::DeviceIdToRecurrentAndRecurrentGradOp(
-    const ir::Graph &graph) const {
+    const Graph &graph) const {
   std::unordered_map<size_t, OpAndGradOpPair> ret;
-  std::vector<OpHandleBase *> all_ops =
-      ir::FilterByNodeWrapper<OpHandleBase>(graph);
+  std::vector<details::OpHandleBase *> all_ops =
+      FilterByNodeWrapper<details::OpHandleBase>(graph);
 
   for (auto *op : all_ops) {
-    auto compute_op = dynamic_cast<ComputationOpHandle *>(op);
+    auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
     if (compute_op == nullptr) continue;
 
     if (compute_op->Name() == "recurrent") {
@@ -64,9 +68,9 @@ RecurrentOpEagerDeletionPass::DeviceIdToRecurrentAndRecurrentGradOp(
   return ret;
 }
 
-}  // namespace details
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(recurrent_op_eager_deletion_pass,
-              paddle::framework::details::RecurrentOpEagerDeletionPass);
+              paddle::framework::ir::RecurrentOpEagerDeletionPass);

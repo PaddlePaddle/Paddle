@@ -1,6 +1,6 @@
 include(operators)
 register_operators(DEPS naive_executor)
-cc_library(op_variant SRCS op_variant.cc DEPS operator)
+cc_library(op_variant SRCS op_variant.cc DEPS operator proto_desc)
 cc_library(recurrent_op_helper SRCS recurrent_op_helper.cc DEPS operator op_variant)
 cc_library(while_op_helper SRCS while_op_helper.cc DEPS operator op_variant) 
 

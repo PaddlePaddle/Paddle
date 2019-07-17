@@ -33,7 +33,7 @@ namespace operators {
 static void SetSkipVars(const OpVariant &op, std::vector<std::string> attr) {
   auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
   VLOG(2) << "Prepare to skip " << attr.size()
-          << " var(s): " << paddle::string::join_strings(attr, ' ');
+          << " var(s): " << string::join_strings(attr, ' ');
   attrs[kSkipEagerDeletionVars] = std::move(attr);
 }
 

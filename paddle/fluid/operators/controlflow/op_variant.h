@@ -26,42 +26,6 @@ namespace operators {
 // OpVariant is a wrapper class of OpDesc and OperatorBase pointer
 // So that API would be the same.
 class OpVariant {
-  struct InputsVisitor
-      : public boost::static_visitor<const framework::VariableNameMap *> {
-    template <typename OpType>
-    const framework::VariableNameMap *operator()(const OpType *op) const {
-      return &(op->Inputs());
-    }
-  };
-
-  struct OutputsVisitor
-      : public boost::static_visitor<const framework::VariableNameMap *> {
-    template <typename OpType>
-    const framework::VariableNameMap *operator()(const OpType *op) const {
-      return &(op->Outputs());
-    }
-  };
-
-  struct AttributeMapVisitor
-      : public boost::static_visitor<const framework::AttributeMap *> {
-    const framework::AttributeMap *operator()(
-        const framework::OpDesc *op) const {
-      return &(op->GetAttrMap());
-    }
-
-    const framework::AttributeMap *operator()(
-        const framework::OperatorBase *op) const {
-      return &(op->Attrs());
-    }
-  };
-
-  struct RawPointerVisitor : public boost::static_visitor<const void *> {
-    template <typename OpType>
-    const void *operator()(const OpType *op) const {
-      return op;
-    }
-  };
-
  public:
   OpVariant(const framework::OperatorBase *op) : op_(op) {}  // NOLINT
 
@@ -73,6 +37,8 @@ class OpVariant {
 
   const framework::AttributeMap &Attrs() const;
 
+  const void *RawPointer() const;
+
   template <typename AttrType>
   const AttrType &Attr(const std::string &name) const {
     auto &attrs = Attrs();
@@ -83,10 +49,6 @@ class OpVariant {
 
   bool operator==(const OpVariant &other) const {
     return RawPointer() == other.RawPointer();
-  }
-
-  const void *RawPointer() const {
-    return boost::apply_visitor(RawPointerVisitor(), op_);
   }
 
   int which() const { return static_cast<int>(op_.which()); }

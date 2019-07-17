@@ -17,16 +17,55 @@
 namespace paddle {
 namespace operators {
 
-const framework::VariableNameMap& OpVariant::Inputs() const {
+struct InputsVisitor
+    : public boost::static_visitor<const framework::VariableNameMap *> {
+  template <typename OpType>
+  const framework::VariableNameMap *operator()(const OpType *op) const {
+    return &(op->Inputs());
+  }
+};
+
+struct OutputsVisitor
+    : public boost::static_visitor<const framework::VariableNameMap *> {
+  template <typename OpType>
+  const framework::VariableNameMap *operator()(const OpType *op) const {
+    return &(op->Outputs());
+  }
+};
+
+struct AttributeMapVisitor
+    : public boost::static_visitor<const framework::AttributeMap *> {
+  const framework::AttributeMap *operator()(const framework::OpDesc *op) const {
+    return &(op->GetAttrMap());
+  }
+
+  const framework::AttributeMap *operator()(
+      const framework::OperatorBase *op) const {
+    return &(op->Attrs());
+  }
+};
+
+struct RawPointerVisitor : public boost::static_visitor<const void *> {
+  template <typename OpType>
+  const void *operator()(const OpType *op) const {
+    return op;
+  }
+};
+
+const framework::VariableNameMap &OpVariant::Inputs() const {
   return *boost::apply_visitor(InputsVisitor(), op_);
 }
 
-const framework::VariableNameMap& OpVariant::Outputs() const {
+const framework::VariableNameMap &OpVariant::Outputs() const {
   return *boost::apply_visitor(OutputsVisitor(), op_);
 }
 
-const framework::AttributeMap& OpVariant::Attrs() const {
+const framework::AttributeMap &OpVariant::Attrs() const {
   return *boost::apply_visitor(AttributeMapVisitor(), op_);
+}
+
+const void *OpVariant::RawPointer() const {
+  return boost::apply_visitor(RawPointerVisitor(), op_);
 }
 
 }  // namespace operators

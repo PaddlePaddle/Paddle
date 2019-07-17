@@ -24,31 +24,20 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
-
-static constexpr char kStepBlock[] = "sub_block";
-static constexpr char kStepScopes[] = "step_scopes";
-static constexpr char kInputs[] = "inputs";
-static constexpr char kInputsGrad[] = "inputs@GRAD";
-static constexpr char kOutputs[] = "outputs";
-static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
-
-using paddle::operators::OpVariant;
-using paddle::operators::OpVariantSet;
-using paddle::operators::OpAndGradOpPair;
+namespace ir {
 
 // Pass class set skip eager deletion vars for recurrent ops
-class RecurrentOpEagerDeletionPass : public ir::Pass {
+class RecurrentOpEagerDeletionPass : public Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(Graph *graph) const override;
 
  private:
   // Returns a std::unordered_map mapping from the device id to recurrent op and
   // grad op pair
-  std::unordered_map<size_t, OpAndGradOpPair>
-  DeviceIdToRecurrentAndRecurrentGradOp(const ir::Graph &graph) const;
+  std::unordered_map<size_t, paddle::operators::OpAndGradOpPair>
+  DeviceIdToRecurrentAndRecurrentGradOp(const Graph &graph) const;
 };
 
-}  // namespace details
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

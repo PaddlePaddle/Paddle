@@ -393,7 +393,7 @@ class EagerDeletionRecurrentOpMultipleMemoryTest(EagerDeletionRecurrentOpTest1):
 
 class EagerDeletionRecurrentOpNoMemBootTest(EagerDeletionRecurrentOpTest1):
     '''
-    Test RNNOp with two memories
+    Test RNNOp without memory boot
     equation:
         mem = x + mem_pre
         y = mem
@@ -454,6 +454,94 @@ class EagerDeletionRecurrentOpNoMemBootTest(EagerDeletionRecurrentOpTest1):
             rnn.output(mem)
 
         return rnn()
+
+
+class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
+    '''
+    Test RNNOp with two recurrent ops
+    equation:
+        first_rnn:
+            mem_inside = x + mem_pre_inside
+            first_inside_out = mem_inside
+        second_rnn:
+            mem = x + reduce_sum(rnn_inside_out)
+            y = mem + mem_pre
+    vars:
+        - x
+    memories:
+        - mem_inside
+        - mem
+    outputs:
+       - y
+    '''
+
+    class PySimpleRNN5(PyRNNBase):
+        def __init__(self, input_shape, output_shape):
+            super(EagerDeletionTwoRecurrentOpsTest.PySimpleRNN5,
+                  self).__init__(input_shape, output_shape)
+            self.mem_0 = np.zeros(shape=input_shape).astype("float32")
+            self.mem_1 = np.zeros(shape=input_shape).astype("float32")
+            self.rnn_0_output = np.zeros(shape=input_shape).astype("float32")
+
+        def step(self, step_id, x):
+            # First Rnn
+            for step in range(self.x.shape[0]):
+                x_t = self.x[step]
+                pre_mem = np.zeros_like(x_t) if step == 0 else self.mem_0[step -
+                                                                          1]
+                self.mem_0[step] = x_t + pre_mem
+                self.rnn_0_output[step] = self.mem_0[step]
+            # Second RNN
+            pre_mem = np.zeros_like(x) if step_id == 0 else self.mem_1[step_id -
+                                                                       1]
+            # print(np.sum(self.rnn_0_output))
+            self.mem_1[step_id] = x + np.sum(self.rnn_0_output)
+            self.y[step_id] = self.mem_1[step_id] + pre_mem
+
+    input_dim = 1
+    batch_size = 1
+    sent_len = 1
+
+    def setUp(self):
+        self.setup_program()
+
+        self.data_field = {"x"}
+
+        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = EagerDeletionTwoRecurrentOpsTest.PySimpleRNN5(
+            self.input_shape, self.output_shape)
+
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.output = layers.mean(self.create_rnn_op())
+
+    def create_rnn_op(self):
+        x = layers.data(
+            shape=[self.sent_len, self.batch_size, self.input_dim],
+            dtype='float32',
+            name='x',
+            append_batch_size=False)
+        x.stop_gradient = False
+
+        rnn_0 = layers.StaticRNN()
+        with rnn_0.step():
+            x_t = rnn_0.step_input(x)
+            mem_pre = rnn_0.memory(shape=[-1, self.input_dim], batch_ref=x)
+            mem = layers.elementwise_add(x=mem_pre, y=x_t)
+            rnn_0.update_memory(mem_pre, mem)
+            rnn_0.output(mem)
+
+        rnn_1 = layers.StaticRNN()
+        with rnn_1.step():
+            mem_pre = rnn_1.memory(shape=[-1, self.input_dim], batch_ref=x)
+            x_t = rnn_1.step_input(x)
+            last_rnn_output = rnn_0()
+            last_rnn_sum = fluid.layers.reduce_sum(last_rnn_output)
+            mem = layers.elementwise_add(x=x_t, y=last_rnn_sum)
+            y = layers.elementwise_add(x=mem_pre, y=mem)
+            rnn_1.update_memory(mem_pre, mem)
+            rnn_1.output(y)
+        return rnn_1()
 
 
 if __name__ == '__main__':

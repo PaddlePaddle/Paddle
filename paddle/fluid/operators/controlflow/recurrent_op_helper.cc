@@ -20,47 +20,54 @@
 #include <utility>
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/recurrent_op.h"
 
 namespace paddle {
 namespace operators {
-
-static constexpr char kStepBlock[] = "sub_block";
-static constexpr char kStepScopes[] = "step_scopes";
-static constexpr char kInputs[] = "inputs";
-static constexpr char kInputsGrad[] = "inputs@GRAD";
-static constexpr char kOutputs[] = "outputs";
-static constexpr char kOutputsGrad[] = "outputs@GRAD";
-static constexpr char kParameters[] = "parameters";
-static constexpr char kHasStates[] = "has_states";
-static constexpr char kExStates[] = "ex_states";
-static constexpr char kStates[] = "states";
-static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
-
+/*
+constexpr char RecurrentBase::kInputs[];
+constexpr char RecurrentBase::kParameters[];
+constexpr char RecurrentBase::kOutputs[];
+constexpr char RecurrentBase::kStepBlock[];
+constexpr char RecurrentBase::kStepScopes[];
+constexpr char RecurrentBase::kHasStates[];
+constexpr char RecurrentBase::kExStates[];
+constexpr char RecurrentBase::kStates[];
+constexpr char RecurrentBase::kSkipEagerDeletionVars[];
+*/
 static bool IsMatchedRecurrentOpAndRecurrentGradOp(const OpVariant &fwd_op,
                                                    const OpVariant &grad_op) {
-  return fwd_op.Inputs().at(kInputs) == grad_op.Inputs().at(kInputs) &&
-         fwd_op.Outputs().at(kOutputs) == grad_op.Inputs().at(kOutputs);
+  return fwd_op.Inputs().at(RecurrentBase::kInputs) ==
+             grad_op.Inputs().at(RecurrentBase::kInputs) &&
+         fwd_op.Outputs().at(RecurrentBase::kOutputs) ==
+             grad_op.Inputs().at(RecurrentBase::kOutputs);
 }
 
 // Returns whether the variable is skippable in forward recurrent op
 // The variable is skippable in recurrent_op when the variable used in
-// recurrent_grad
-// is not from grad_block.
+// recurrent_grad is not from grad_block.
 static bool IsSkippableVar(const std::string &name,
                            framework::BlockDesc *grad_block) {
   return name != framework::kEmptyVarName && !grad_block->HasVar(name);
 }
 
-// Add skip vars into op's attribute
-static void SetSkipVars(const OpVariant &op,
-                        const std::unordered_set<std::string> &skip_vars) {
+static void ClearSkipVars(const OpVariant &op) {
   auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
-  VLOG(2) << "Prepare to skip " << skip_vars.size()
-          << " var(s): " << paddle::string::join_strings(skip_vars, ' ');
-  // attrs[kSkipEagerDeletionVars] =
-  // std::vector<std::string>(skip_vars.cbegin(), skip_vars.cend());
   std::vector<std::string> &attr_skip_vars =
-      boost::get<std::vector<std::string>>(attrs[kSkipEagerDeletionVars]);
+      boost::get<std::vector<std::string>>(
+          attrs[RecurrentBase::kSkipEagerDeletionVars]);
+  attr_skip_vars.clear();
+}
+
+// Add skip vars into op's attribute
+template <class Container>
+static void AddSkipVars(const OpVariant &op, const Container &skip_vars) {
+  auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
+  VLOG(2) << "Prepare to add " << skip_vars.size()
+          << " skip var(s): " << paddle::string::join_strings(skip_vars, ' ');
+  std::vector<std::string> &attr_skip_vars =
+      boost::get<std::vector<std::string>>(
+          attrs[RecurrentBase::kSkipEagerDeletionVars]);
   attr_skip_vars.insert(attr_skip_vars.end(), skip_vars.cbegin(),
                         skip_vars.cend());
 }
@@ -69,7 +76,8 @@ static void SetSkipVars(const OpVariant &op,
 // may locate in different blocks so we should traverse all blocks in the
 // program and find them out
 static void FindAllOpAndGradOp(OpAndGradOpPair *op_and_grad_op,
-                               const std::string &type_name) {
+                               const std::string &type_name,
+                               const std::string &backward_type_name) {
   OpVariantSet &ops = op_and_grad_op->first;
   OpVariantSet &grad_ops = op_and_grad_op->second;
 
@@ -79,14 +87,16 @@ static void FindAllOpAndGradOp(OpAndGradOpPair *op_and_grad_op,
   if (ops.empty()) return;
 
   const auto *program =
-      ops.begin()->Attr<framework::BlockDesc *>(kStepBlock)->Program();
+      ops.begin()
+          ->Attr<framework::BlockDesc *>(RecurrentBase::kStepBlock)
+          ->Program();
   for (size_t i = 1; i < program->Size(); ++i) {
     auto &block = program->Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
       auto *op = block.Op(j);
       if (op->Type() == type_name) {
         ops.emplace(op);
-      } else if (op->Type() == (type_name + "_grad")) {
+      } else if (op->Type() == backward_type_name) {
         grad_ops.emplace(op);
       }
     }
@@ -106,47 +116,47 @@ static std::vector<std::string> GradVarLists(
   return retv;
 }
 
-// Set memory vars in recurrent op as skip vars.
-static void SetOpMemVarsAsSkip(const OpVariant &op, bool set_grad) {
-  bool has_state = op.Attr<bool>(kHasStates);
+// Add memory vars in recurrent op as skip vars.
+static void AddOpMemVarsAsSkip(const OpVariant &op, bool set_grad_mem_vars) {
+  bool has_state = op.Attr<bool>(RecurrentBase::kHasStates);
   if (has_state) {
     std::unordered_set<std::string> skip_vars;
 
-    auto &mem_vars = op.Attr<std::vector<std::string>>(kStates);
+    auto &mem_vars = op.Attr<std::vector<std::string>>(RecurrentBase::kStates);
     skip_vars.insert(mem_vars.begin(), mem_vars.end());
 
-    auto &pre_mem_vars = op.Attr<std::vector<std::string>>(kExStates);
+    auto &pre_mem_vars =
+        op.Attr<std::vector<std::string>>(RecurrentBase::kExStates);
     skip_vars.insert(pre_mem_vars.begin(), pre_mem_vars.end());
 
-    if (set_grad) {
+    if (set_grad_mem_vars) {
       auto mem_grad_vars = GradVarLists(mem_vars);
       skip_vars.insert(mem_grad_vars.begin(), mem_grad_vars.end());
       auto pre_mem_grad_vars = GradVarLists(pre_mem_vars);
       skip_vars.insert(pre_mem_grad_vars.begin(), pre_mem_grad_vars.end());
     }
-    SetSkipVars(op, skip_vars);
+    AddSkipVars(op, skip_vars);
   }
 }
 
 // Set outputs and memory vars of the input forward op as skip vars
 static void SetRecurrentForwardOpOnlySkipVarAttr(const OpVariant &fwd_op) {
-  SetOpMemVarsAsSkip(fwd_op, false);
+  ClearSkipVars(fwd_op);
 
-  std::unordered_set<std::string> fwd_skip_vars;
-  auto &output_vars = fwd_op.Outputs().at(kOutputs);
-  for (const std::string &name : output_vars) {
-    fwd_skip_vars.insert(name);
-  }
-  SetSkipVars(fwd_op, fwd_skip_vars);
+  AddOpMemVarsAsSkip(fwd_op, /* set_grad_mem_vars = */ false);
+  auto &output_vars = fwd_op.Outputs().at(RecurrentBase::kOutputs);
+  AddSkipVars(fwd_op, output_vars);
 }
 
 // Set skip vars of matched recurrent op and recurrent_grad op
 static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
     const OpVariant &fwd_op, const OpVariant &bwd_op) {
   // Find all skippable variables in forward recurrent_op
-  SetOpMemVarsAsSkip(fwd_op, false);
+  ClearSkipVars(fwd_op);
+  AddOpMemVarsAsSkip(fwd_op, /* set_grad_mem_vars = */ false);
 
-  auto *grad_block = bwd_op.Attr<framework::BlockDesc *>(kStepBlock);
+  auto *grad_block =
+      bwd_op.Attr<framework::BlockDesc *>(RecurrentBase::kStepBlock);
   std::unordered_set<std::string> fwd_skip_vars;
   for (auto *op_desc : grad_block->AllOps()) {
     for (auto &in_arg_name : op_desc->InputArgumentNames()) {
@@ -160,17 +170,17 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
       }
     }
   }
-  SetSkipVars(fwd_op, fwd_skip_vars);
+  AddSkipVars(fwd_op, fwd_skip_vars);
 
   // Find all skippable variables in recurrent_grad_op
   // The skippable variables are those which would be used across time steps
-  SetOpMemVarsAsSkip(bwd_op, true);
+  ClearSkipVars(bwd_op);
+  AddOpMemVarsAsSkip(bwd_op, /* set_grad_mem_vars = */ true);
   std::unordered_set<std::string> bwd_skip_vars;
 
-  auto &fwd_input = fwd_op.Inputs().at(kInputs);
-  auto &in_grads = bwd_op.Outputs().at(framework::GradVarName(kInputs));
-  // auto &param_grads =
-  // bwd_op.Outputs().at(framework::GradVarName(kParameters));
+  auto &fwd_input = fwd_op.Inputs().at(RecurrentBase::kInputs);
+  auto &in_grads =
+      bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kInputs));
 
   PADDLE_ENFORCE_EQ(
       fwd_input.size(), in_grads.size(),
@@ -183,8 +193,9 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
     bwd_skip_vars.insert(framework::GradVarName(fwd_input[i]));
   }
 
-  auto &fwd_param = fwd_op.Inputs().at(kParameters);
-  auto &param_grads = bwd_op.Outputs().at(framework::GradVarName(kParameters));
+  auto &fwd_param = fwd_op.Inputs().at(RecurrentBase::kParameters);
+  auto &param_grads =
+      bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kParameters));
   PADDLE_ENFORCE_EQ(fwd_param.size(), param_grads.size(),
                     "Backward parameter gradient number does not match forward "
                     "parameter number.");
@@ -196,20 +207,23 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
     bwd_skip_vars.insert(framework::GradVarName(fwd_param[i]));
   }
 
-  SetSkipVars(bwd_op, bwd_skip_vars);
+  AddSkipVars(bwd_op, bwd_skip_vars);
 }
 
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    int block_id, const std::vector<std::unique_ptr<OperatorBase>> &all_ops) {
+    int block_id,
+    const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
+        &all_ops) {
   // If block_id is not 0, returns
-  // This is because all while_ops and while_grad_ops in the whole program
-  // would be processed when block_id is 0 (i.e. when Executor::Run() or
-  // ParallelExecutor constructs).
+  // This is because all recurrent_ops and recurrent_grad_ops in the whole
+  // program would be processed when block_id is 0 (i.e. when Executor::Run()
+  // or ParallelExecutor constructs).
 
-  // What's more, all while_ops and while_grad_ops must be processed when
-  // block_id is zero. If not, while_op may run first and erase variables
-  // used in while_grad_op, and in this moment, while_grad_ops may be not
-  // constructed yet.
+  // What's more, all recurrent_ops and recurrent_grad_ops must be processed
+  // when block_id is zero. If not, recurrent_op may run first and erase
+  // variables
+  // used in recurrent_grad_op, and in this moment, recurrent_grad_ops may be
+  // not constructed yet.
   if (block_id != 0) return;
 
   OpAndGradOpPair op_pair;
@@ -226,7 +240,7 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     OpAndGradOpPair *op_pair) {
   // Find all ops and grad ops at all blocks
-  FindAllOpAndGradOp(op_pair, "recurrent");
+  FindAllOpAndGradOp(op_pair, "recurrent", "recurrent_grad");
 
   OpVariantSet &recurrent_ops = op_pair->first;
   OpVariantSet &recurrent_grad_ops = op_pair->second;
@@ -235,13 +249,6 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
           << ", recurrent grad op num: " << recurrent_grad_ops.size();
 
   if (recurrent_ops.empty()) {
-    return;
-  }
-
-  if (recurrent_grad_ops.empty()) {
-    for (auto &fwd_op : recurrent_ops) {
-      SetRecurrentForwardOpOnlySkipVarAttr(fwd_op);
-    }
     return;
   }
 
@@ -257,6 +264,10 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     PADDLE_ENFORCE_NOT_NULL(matched_fwd_op, "Cannot find matched forward op");
     SetRecurrentOpAndRecurrentGradOpSkipVarAttr(*matched_fwd_op, bwd_op);
     recurrent_ops.erase(*matched_fwd_op);
+  }
+
+  for (auto &fwd_op : recurrent_ops) {
+    SetRecurrentForwardOpOnlySkipVarAttr(fwd_op);
   }
 }
 

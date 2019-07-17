@@ -266,6 +266,10 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
+
+  auto recurrent_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
+  recurrent_op_eager_deletion_pass->Apply(graph);
 }
 
 }  // namespace ir
@@ -279,3 +283,4 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
     .RequirePassAttr(paddle::framework::ir::kGarbageCollector);
 
 USE_PASS(while_op_eager_deletion_pass);
+USE_PASS(recurrent_op_eager_deletion_pass);
