@@ -42,7 +42,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale", scale);
+<<<<<<< HEAD
   } else if (type == "requantize") {
+=======
+  } else if (type == "requantize") {
+>>>>>>> 56c546c... Add requantize squash
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale_out", scale);
@@ -139,6 +143,10 @@ ProgramDesc BuildProgramDesc4(bool use_mkldnn, float scale1, float scale2) {
   return prog;
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 56c546c... Add requantize squash
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
@@ -148,12 +156,17 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 void InitGraph()
 
 >>>>>>> 0438cb0... Add requantize squash
 =======
 >>>>>>> c321682... Change variables name in cpu_quantize_squash
+=======
+void InitGraph()
+
+>>>>>>> 56c546c... Add requantize squash
 // check number of nodes
 void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -181,8 +194,13 @@ void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
   EXPECT_EQ(original_nodes_num - removed_nodes_num, current_nodes_num);
 }
 
+<<<<<<< HEAD
 // check if scale_out is equal
 void EqualScaleTest(const ProgramDesc& prog, float scale) {
+=======
+// check if scale_out is equal
+void EqualScaleTest(const ProgramDesc& prog, float scale) {
+>>>>>>> 56c546c... Add requantize squash
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   // Init scope, as it is used in pass
@@ -205,11 +223,15 @@ void EqualScaleTest(const ProgramDesc& prog, float scale) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       auto* op = node->Op();
 >>>>>>> 0438cb0... Add requantize squash
 =======
 >>>>>>> c321682... Change variables name in cpu_quantize_squash
+=======
+      auto* op = node->Op();
+>>>>>>> 56c546c... Add requantize squash
       float scale_out = boost::get<float>(node->Op()->GetAttr("Scale_out"));
       EXPECT_EQ(scale_out, scale);
     }
@@ -217,7 +239,11 @@ void EqualScaleTest(const ProgramDesc& prog, float scale) {
 }
 
 // From Conv1->d->Dequant->e->Quant->f->Conv2
+<<<<<<< HEAD
 // To Conv1->d->Conv2
+=======
+// To Conv1->d->Conv2 
+>>>>>>> 56c546c... Add requantize squash
 TEST(CpuQuantizeSquashPass, equal_scales) {
   auto scale = 1.2345f;
   auto use_mkldnn = true;
@@ -231,7 +257,11 @@ TEST(CpuQuantizeSquashPass, equal_scales) {
 
 // From Conv1->d->Dequant->e->Quant->f->Conv2
 // First change to Conv1->d->Requant->f->Conv2
+<<<<<<< HEAD
 // Then Conv1->f->Conv2
+=======
+// Then Conv1->f->Conv2 
+>>>>>>> 56c546c... Add requantize squash
 TEST(CpuQuantizeSquashPass, inequal_scales) {
   auto scale1 = 1.2345f;
   auto scale2 = 21.0f;
@@ -255,25 +285,42 @@ TEST(CpuQuantizeSquashPass, branch_to_equal_inequal_and_fp32) {
   auto use_mkldnn = true;
   // Remove 4 nodes:  Dequant, Quant1, Quant2, g
   auto remove_nodes = 4;
+<<<<<<< HEAD
   CountNodeTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2),
                 remove_nodes);
 
   use_mkldnn = !use_mkldnn;
   CountNodeTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2),
                 remove_nodes);
+=======
+  CountNodeTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2),
+                remove_nodes);
+
+  use_mkldnn = !use_mkldnn;
+  CountNodeTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2),
+                remove_nodes);
+>>>>>>> 56c546c... Add requantize squash
 }
 
 //  a->Conv1->b->Requant->c
 //  d->Conv2->e->Requant->f
 //  {c,f}->Concat
+<<<<<<< HEAD
 TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
   // Delete both requantize op
   auto scale = 1.2345f;
   auto use_mkldnn = true;
+=======
+TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
+  // Delete both requantize op
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+>>>>>>> 56c546c... Add requantize squash
   // Remove 4 nodes: b, Requant1, e, Requant2
   auto remove_nodes = 4;
   CountNodeTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
 
+<<<<<<< HEAD
   // check equal scale conv->scale_out and requant->scale_out
   EqualScaleTest(BuildProgramDesc3(use_mkldnn, scale, scale), scale);
 
@@ -288,17 +335,33 @@ TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
   CountNodeTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
 
 >>>>>>> c321682... Change variables name in cpu_quantize_squash
+=======
+  // check equal scale conv->scale_out and requant->scale_out
+  EqualScaleTest(BuildProgramDesc3(use_mkldnn, scale, scale), scale);
+
+  use_mkldnn = !use_mkldnn;
+  MainTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
+
+>>>>>>> 56c546c... Add requantize squash
 }
 
 // a->Concat->b
 // b->Dequant->c
 // c->Quant->d
 // d->Conv->e
+<<<<<<< HEAD
 TEST(CpuQuantizeSquashPass,
      inequal_scales_squash_dequantize_quantize_into_requantize) {
   auto scale = 1.2345f;
   auto scale2 = 21.0f;
   auto use_mkldnn = true;
+=======
+TEST(CpuQuantizeSquashPass,
+     inequal_scales_squash_dequantize_quantize_into_requantize) {
+  auto scale = 1.2345f;
+  auto scale2 = 21.0f;
+  auto use_mkldnn = true;
+>>>>>>> 56c546c... Add requantize squash
   // Remove 3 nodes: Dequant1, c, Quant
   // Insert 1 node: Requant
   auto remove_nodes = 2;
@@ -306,6 +369,10 @@ TEST(CpuQuantizeSquashPass,
 
   use_mkldnn = !use_mkldnn;
   CountNodeTest(BuildProgramDesc4(use_mkldnn, scale, scale2), remove_nodes);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 56c546c... Add requantize squash
 }
 
 }  // namespace ir
