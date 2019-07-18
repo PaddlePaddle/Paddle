@@ -65,23 +65,22 @@ class StepScopes {
 //    Some common protected functions for RecurrentOp/RecurrentGradOp
 class RecurrentBase : public framework::OperatorBase {
  public:
-  static constexpr char kInputs[] = "inputs";
-  static constexpr char kInitialStates[] = "initial_states";
-  static constexpr char kParameters[] = "parameters";
-  static constexpr char kOutputs[] = "outputs";
-  static constexpr char kStepScopes[] = "step_scopes";
-  static constexpr char kHasStates[] = "has_states";
-  static constexpr char kExStates[] = "ex_states";
-  static constexpr char kStates[] = "states";
-  static constexpr char kStepBlock[] = "sub_block";
-  static constexpr char kReverse[] = "reverse";
-  static constexpr char kIsTrain[] = "is_train";
-  static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
-#define GRAD_SUFFIX "@GRAD"
-  static constexpr char kInputGrads[] = "inputs" GRAD_SUFFIX;
-  static constexpr char kOutputGrads[] = "outputs" GRAD_SUFFIX;
-  static constexpr char kParamGrads[] = "parameters" GRAD_SUFFIX;
-  static constexpr char kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
+  static const char kInputs[];
+  static const char kInitialStates[];
+  static const char kParameters[];
+  static const char kOutputs[];
+  static const char kStepScopes[];
+  static const char kHasStates[];
+  static const char kExStates[];
+  static const char kStates[];
+  static const char kStepBlock[];
+  static const char kReverse[];
+  static const char kIsTrain[];
+  static const char kSkipEagerDeletionVars[];
+  static const char kInputGrads[];
+  static const char kOutputGrads[];
+  static const char kParamGrads[];
+  static const char kInitStateGrads[];
 
   RecurrentBase(const std::string &type,
                 const framework::VariableNameMap &inputs,
