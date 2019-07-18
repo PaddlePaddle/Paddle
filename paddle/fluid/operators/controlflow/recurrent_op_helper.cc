@@ -25,6 +25,16 @@
 namespace paddle {
 namespace operators {
 
+constexpr char RecurrentBase::kInputs[];
+constexpr char RecurrentBase::kParameters[];
+constexpr char RecurrentBase::kOutputs[];
+constexpr char RecurrentBase::kStepBlock[];
+constexpr char RecurrentBase::kStepScopes[];
+constexpr char RecurrentBase::kHasStates[];
+constexpr char RecurrentBase::kExStates[];
+constexpr char RecurrentBase::kStates[];
+constexpr char RecurrentBase::kSkipEagerDeletionVars[];
+
 static bool IsMatchedRecurrentOpAndRecurrentGradOp(const OpVariant &fwd_op,
                                                    const OpVariant &grad_op) {
   return fwd_op.Inputs().at(RecurrentBase::kInputs) ==
