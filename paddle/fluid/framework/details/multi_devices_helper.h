@@ -65,6 +65,9 @@ typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndDenseGrads[] = "params_and_dense_grads";
 constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
 
+typedef std::vector<ProgramDesc> ProgramDescs;
+constexpr char kProgramDescs[] = "program_descs";
+
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;
 constexpr char kGroupParamsAndGrads[] = "group_params_grads";

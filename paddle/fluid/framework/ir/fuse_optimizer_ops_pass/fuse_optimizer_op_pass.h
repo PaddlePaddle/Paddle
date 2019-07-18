@@ -79,20 +79,13 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::vector<std::string> &aux_var_names,
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
-      const std::unordered_map<std::string, std::string> &fused_vars_name)
-      const;
-
-  void RunInitOps(const std::vector<platform::Place> &places,
-                  const std::vector<Scope *> &local_scopes,
-                  const BlockDesc &global_block) const;
-
-  void InitVars(const std::vector<Scope *> &local_scopes,
-                const std::string &fused_var_name) const;
+      const std::unordered_map<std::string, std::string> &fused_vars_name,
+      ir::Graph *result) const;
 
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;
 
-  proto::VarType::Type GettypeOfVar(
+  proto::VarType::Type GetTypeOfVar(
       const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
       const std::string &name) const;
 

@@ -40,7 +40,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     if (node->Op()->Type() == fuse_op_type) {
       auto grad_name = node->Op()->Input(kGrad);
       PADDLE_ENFORCE_EQ(grad_name.size(), static_cast<size_t>(1));
-      if (IsLoDTensorType(GettypeOfVar(vars_info, grad_name[0]))) {
+      if (IsLoDTensorType(GetTypeOfVar(vars_info, grad_name[0]))) {
         opt_nodes.emplace_back(node);
       }
       ++opt_ops_num;
@@ -61,6 +61,9 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   }
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
+  if (!result.Has(details::kProgramDescs)) {
+    result.Set(details::kProgramDescs, new details::ProgramDescs);
+  }
 
   // Step 2: Insert fused_var_name to FusedVars, and the FusedVars need be
   // initialized in scopes before execution.
@@ -153,7 +156,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   }
   aux_var_names.pop_back();
   InitFusedVarsAndAllocSpaceForVars(places, local_scopes, aux_var_names,
-                                    aux_var_set, fused_vars_name);
+                                    aux_var_set, fused_vars_name, &result);
 
   // Step 5: Fuse optimizer Ops and Scale Ops
   FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
@@ -203,37 +206,21 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
     PADDLE_ENFORCE(iter != vars_info.end());
     PADDLE_ENFORCE(!iter->second.empty());
     PADDLE_ENFORCE_NOT_NULL(iter->second.front()->Var());
-    PADDLE_ENFORCE(
-        iter->second.front()->Var()->GetType() == proto::VarType::LOD_TENSOR,
-        "Currently the gradient type only should be LoDTensor when "
-        "fusing optimizer ops.");
+    PADDLE_ENFORCE(IsLoDTensorType(iter->second.front()->Var()->GetType()),
+                   "Currently the gradient type only should be LoDTensor when "
+                   "fusing optimizer ops.");
     for (auto var : iter->second) {
       var->Var()->SetPersistable(true);
     }
   }
 
-  // Init Grads
-  for (auto it = local_scopes.rbegin(); it != local_scopes.rend(); ++it) {
-    auto &scope = *it;
-    VLOG(6) << "Init: " << fused_grad_name;
-    PADDLE_ENFORCE(scope->FindVar(fused_grad_name) == nullptr,
-                   "%s has existed in scope.", fused_grad_name);
-    scope->Var(fused_grad_name)->GetMutable<LoDTensor>();
-    for (auto &grad_var_name : grads) {
-      auto iter = vars_info.find(grad_var_name);
-      PADDLE_ENFORCE(iter != vars_info.end());
-      PADDLE_ENFORCE(!iter->second.empty());
-      PADDLE_ENFORCE_NOT_NULL(iter->second.front()->Var());
-      scope->Var(grad_var_name)->GetMutable<LoDTensor>();
-    }
-  }
   // Define Ops
-  ProgramDesc program_desc;
+  result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
+  ProgramDesc &program_desc =
+      result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
   AppendAllocContinuousSpace(params, grads, fused_grad_name, global_block,
                              false, false);
-  // Run Ops
-  RunInitOps(places, local_scopes, *global_block);
 }
 
 std::unordered_map<std::string, std::vector<Node *>>
@@ -255,7 +242,7 @@ bool FuseOptimizerOpPass::IsLoDTensorType(
   return type == proto::VarType::LOD_TENSOR;
 }
 
-proto::VarType::Type FuseOptimizerOpPass::GettypeOfVar(
+proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
     const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
     const std::string &name) const {
   auto grad_iter = var_nodes.find(name);
@@ -271,46 +258,17 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
     const std::vector<std::string> &aux_var_names,
     const std::unordered_map<std::string, std::vector<std::string>>
         &aux_var_set,
-    const std::unordered_map<std::string, std::string> &fused_vars_name) const {
-  // Init Vars
-  for (auto &var_name : aux_var_names) {
-    auto &fused_var_name = fused_vars_name.at(var_name);
-    InitVars(local_scopes, fused_var_name);
-  }
+    const std::unordered_map<std::string, std::string> &fused_vars_name,
+    ir::Graph *result) const {
   // Define Ops
-  ProgramDesc program_desc;
+  result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
+  ProgramDesc &program_desc =
+      result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
   for (auto &var_name : aux_var_names) {
     AppendAllocContinuousSpace(
         aux_var_set.at(var_name), aux_var_set.at(var_name),
         fused_vars_name.at(var_name), global_block, true);
-  }
-  // Run Ops
-  RunInitOps(places, local_scopes, *global_block);
-}
-
-void FuseOptimizerOpPass::RunInitOps(const std::vector<platform::Place> &places,
-                                     const std::vector<Scope *> &local_scopes,
-                                     const BlockDesc &global_block) const {
-  for (size_t i = 0; i < local_scopes.size(); ++i) {
-    for (auto &op_desc : global_block.AllOps()) {
-      auto op = OpRegistry::CreateOp(*op_desc);
-      op->Run(*local_scopes[i], places[i]);
-    }
-  }
-}
-
-void FuseOptimizerOpPass::InitVars(const std::vector<Scope *> &local_scopes,
-                                   const std::string &fused_var_name) const {
-  // Alloc parameters and auxiliary vars in the respective scope.
-  size_t idx = local_scopes.size();
-  for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
-       ++iter, --idx) {
-    auto &scope = *iter;
-    VLOG(6) << "Init: " << fused_var_name;
-    PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
-                   "%s has exist in scope[%d]", fused_var_name, idx);
-    scope->Var(fused_var_name)->GetMutable<LoDTensor>();
   }
 }
 

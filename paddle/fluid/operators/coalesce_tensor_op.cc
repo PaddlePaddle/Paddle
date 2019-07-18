@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_memory_aligment.h"
 
 namespace paddle {
 namespace operators {
@@ -86,8 +87,8 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
         framework::TensorCopy(*in_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
 
-        offset +=
-            Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
+        offset += platform::Alignment(len * size_of_dtype, context.GetPlace()) /
+                  size_of_dtype;
       }
     } else if (context.Attr<bool>("set_constant")) {
       math::SetConstant<DeviceContext, T> set_constant;
@@ -106,7 +107,8 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
           ->ShareDataWith(fused_tensor->Slice(
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
-      len = Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
+      len = platform::Alignment(len * size_of_dtype, context.GetPlace()) /
+            size_of_dtype;
       offset += len;
       ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
          << " address: " << out_tensors[i]->data<void>() << ", ";
@@ -115,19 +117,6 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
   }
 
  private:
-  // Note(zcd): Addresses should be aligned, otherwise, the results may have
-  // diff.
-  size_t Alignment(size_t size, const platform::Place &place) const {
-    // Allow to allocate the minimum chunk size is 4 KB.
-    size_t alignment = 1 << 12;
-    if (platform::is_gpu_place(place)) {
-      // Allow to allocate the minimum chunk size is 256 B.
-      alignment = 1 << 8;
-    }
-    size_t remaining = size % alignment;
-    return remaining == 0 ? size : size + (alignment - remaining);
-  }
-
   void GetMemSizeAndDtype(
       const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
@@ -156,7 +145,8 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(size, 0);
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
          << "), ";
-      *numel += Alignment(static_cast<size_t>(size) * size_of_dtype, place) /
+      *numel += platform::Alignment(static_cast<size_t>(size) * size_of_dtype,
+                                    place) /
                 size_of_dtype;
     }
 
