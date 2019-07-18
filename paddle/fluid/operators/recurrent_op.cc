@@ -153,80 +153,12 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
       });
 }
 
-// for src_tensor, dst_tensor in zip(map(src_scope.FindVar, src_vars),
-//                                   map(dst_scope.Var, dst_vars)):
-//   callback(src_tensor, &dst_tensor)
-template <typename Callback>
-void RecurrentBase::LinkTensorWithCallback(
-    const framework::Scope &src_scope, const std::vector<std::string> &src_vars,
-    framework::Scope *dst_scope, const std::vector<std::string> &dst_vars,
-    Callback callback, bool is_backward) {
-  PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
-  for (size_t i = 0; i < dst_vars.size(); ++i) {
-    VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
-    AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
-                 is_backward);
-  }
-}
-
-// for src_tensor, dst_tensor in zip(map(src_scope.FindVar, src_vars),
-//                                   map(dst_scope.FindVar, dst_vars)):
-//   callback(src_tensor, &dst_tensor)
-template <typename Callback>
-void RecurrentBase::LinkTensorWithCallback(
-    const framework::Scope &src_scope, const std::vector<std::string> &src_vars,
-    const framework::Scope &dst_scope, const std::vector<std::string> &dst_vars,
-    Callback callback, bool is_backward) {
-  PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
-  for (size_t i = 0; i < dst_vars.size(); ++i) {
-    VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
-    AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
-                 is_backward);
-  }
-}
-
 // (seq_len, shape) -> return [seq_len] + list(shape)
 framework::DDim RecurrentBase::PrependDims(size_t seq_len,
                                            const framework::DDim &src) {
   auto dims = framework::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
   return framework::make_ddim(dims);
-}
-
-template <typename Callback>
-void RecurrentBase::AccessTensor(const framework::Scope &src_scope,
-                                 const std::string &src_var_name,
-                                 framework::Scope *dst_scope,
-                                 const std::string &dst_var_name,
-                                 Callback callback, bool is_backward) {
-  auto *src_var = src_scope.FindVar(src_var_name);
-  if (is_backward && src_var == nullptr) {
-    return;
-  }
-  PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
-  auto &src_tensor = src_var->Get<framework::LoDTensor>();
-
-  auto *dst_var = dst_scope->Var(dst_var_name);
-  auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
-  callback(src_tensor, dst_tensor);
-}
-
-template <typename Callback>
-void RecurrentBase::AccessTensor(const framework::Scope &src_scope,
-                                 const std::string &src_var_name,
-                                 const framework::Scope &dst_scope,
-                                 const std::string &dst_var_name,
-                                 Callback callback, bool is_backward) {
-  auto *dst_var = dst_scope.FindVar(dst_var_name);
-  if (is_backward && dst_var == nullptr) {
-    return;
-  }
-  auto *src_var = src_scope.FindVar(src_var_name);
-  PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
-  auto &src_tensor = src_var->Get<framework::LoDTensor>();
-  PADDLE_ENFORCE(dst_var != nullptr, "%s is not found.", dst_var_name);
-  auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
-  callback(src_tensor, dst_tensor);
 }
 
 RecurrentOp::RecurrentOp(const std::string &type,
@@ -534,38 +466,41 @@ std::vector<std::string> RecurrentGradOp::GradVarLists(
   return retv;
 }
 
-void RecurrentOpProtoMaker::Make() {
-  AddInput(RecurrentBase::kInputs, "rnn inputs").AsDuplicable();
-  AddInput(RecurrentBase::kInitialStates, "rnn initial states").AsDuplicable();
-  AddInput(RecurrentBase::kParameters,
-           "Parameters are used by step block as its input. However, the "
-           "input is not a sequence tensor. Every time step, each operator "
-           "in step block just use the parameter directly.")
-      .AsDuplicable();
-  AddOutput(RecurrentBase::kOutputs,
-            "The output sequence of RNN. The sequence length must be same.")
-      .AsDuplicable();
-  AddOutput(RecurrentBase::kStepScopes,
-            "StepScopes contain all local variables in each time step.");
-  AddAttr<bool>(RecurrentBase::kHasStates, "Whether has states.")
-      .SetDefault(false);
-  AddAttr<std::vector<std::string>>(
-      RecurrentBase::kExStates,
-      string::Sprintf(
-          R"DOC(The ex-state variable names.
+class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput(RecurrentBase::kInputs, "rnn inputs").AsDuplicable();
+    AddInput(RecurrentBase::kInitialStates, "rnn initial states")
+        .AsDuplicable();
+    AddInput(RecurrentBase::kParameters,
+             "Parameters are used by step block as its input. However, the "
+             "input is not a sequence tensor. Every time step, each operator "
+             "in step block just use the parameter directly.")
+        .AsDuplicable();
+    AddOutput(RecurrentBase::kOutputs,
+              "The output sequence of RNN. The sequence length must be same.")
+        .AsDuplicable();
+    AddOutput(RecurrentBase::kStepScopes,
+              "StepScopes contain all local variables in each time step.");
+    AddAttr<bool>(RecurrentBase::kHasStates, "Whether has states.")
+        .SetDefault(false);
+    AddAttr<std::vector<std::string>>(
+        RecurrentBase::kExStates,
+        string::Sprintf(
+            R"DOC(The ex-state variable names.
 The ex-state means the state value in the ex-timestep or the previous time step
 [%s, %s, %s] must be the same order)DOC",
-          RecurrentBase::kExStates, RecurrentBase::kStates,
-          RecurrentBase::kInitStateGrads));
-  AddAttr<std::vector<std::string>>(
-      RecurrentBase::kStates,
-      string::Sprintf(
-          "The state variable names. [%s, %s, %s] must be the same order",
-          RecurrentBase::kExStates, RecurrentBase::kStates,
-          RecurrentBase::kInitStateGrads));
-  AddAttr<framework::BlockDesc *>(RecurrentBase::kStepBlock,
-                                  "The step block inside RNN");
-  AddAttr<bool>(RecurrentBase::kReverse, R"DOC(Calculate RNN reversely or not.
+            RecurrentBase::kExStates, RecurrentBase::kStates,
+            RecurrentBase::kInitStateGrads));
+    AddAttr<std::vector<std::string>>(
+        RecurrentBase::kStates,
+        string::Sprintf(
+            "The state variable names. [%s, %s, %s] must be the same order",
+            RecurrentBase::kExStates, RecurrentBase::kStates,
+            RecurrentBase::kInitStateGrads));
+    AddAttr<framework::BlockDesc *>(RecurrentBase::kStepBlock,
+                                    "The step block inside RNN");
+    AddAttr<bool>(RecurrentBase::kReverse, R"DOC(Calculate RNN reversely or not.
 By default reverse=False
 
 Assume the input data is [A, B, C, D]
@@ -590,98 +525,109 @@ if reverse is True
       v          v          v         v
       o          o          o         o
 )DOC").SetDefault(false);
-  AddAttr<bool>(RecurrentBase::kIsTrain, "").SetDefault(true);
-  AddAttr<std::vector<std::string>>(RecurrentBase::kSkipEagerDeletionVars,
-                                    "Vars that would skip eager deletion."
-                                    "Users should not set this manually.")
-      .SetDefault(std::vector<std::string>());
+    AddAttr<bool>(RecurrentBase::kIsTrain, "").SetDefault(true);
+    AddAttr<std::vector<std::string>>(RecurrentBase::kSkipEagerDeletionVars,
+                                      "Vars that would skip eager deletion."
+                                      "Users should not set this manually.")
+        .SetDefault(std::vector<std::string>());
 
-  AddComment(R"DOC(
+    AddComment(R"DOC(
 Static Length Recurrent Operator.
 
 The static length recurrent operator can only operate on fixed size sequence
 data, i.e. in each mini-batch, the sequence length of all inputs are the same.
 
 )DOC");
-}
-
-std::unique_ptr<framework::OpDesc> RecurrentGradOpDescMaker::Apply() const {
-  auto *grad = new framework::OpDesc();
-  grad->SetType("recurrent_grad");
-  for (auto &input_param : this->InputNames()) {
-    grad->SetInput(input_param, this->Input(input_param));
-    grad->SetOutput(framework::GradVarName(input_param),
-                    this->InputGrad(input_param, false));
   }
+};
 
-  for (auto &output_param : this->OutputNames()) {
-    if (output_param == RecurrentBase::kStepScopes) {
-      grad->SetInput(output_param, this->Output(output_param));
-      grad->SetInput(framework::GradVarName(output_param),
-                     this->Output(output_param));
-    } else {
-      grad->SetInput(output_param, this->Output(output_param));
-      grad->SetInput(framework::GradVarName(output_param),
-                     this->OutputGrad(output_param));
+class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  virtual std::unique_ptr<framework::OpDesc> Apply() const {
+    auto *grad = new framework::OpDesc();
+    grad->SetType("recurrent_grad");
+    for (auto &input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param, false));
+    }
+
+    for (auto &output_param : this->OutputNames()) {
+      if (output_param == RecurrentBase::kStepScopes) {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->Output(output_param));
+      } else {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->OutputGrad(output_param));
+      }
+    }
+    grad->SetAttrMap(this->Attrs());
+    grad->SetBlockAttr(RecurrentBase::kStepBlock, grad_block_[0]);
+
+    return std::unique_ptr<framework::OpDesc>(grad);
+  }
+};
+
+class RecurrentGradOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {
+    std::vector<std::string> output{RecurrentBase::kOutputs};
+
+    // In some case the kInitialStates is empty.
+    // If the kInitialStates is empty, all the states should be empty.
+    if (!ctx->HasInputs(RecurrentBase::kInitialStates)) {
+      PADDLE_ENFORCE_EQ(
+          ctx->Attrs()
+              .Get<std::vector<std::string>>(RecurrentBase::kExStates)
+              .size(),
+          0, "The Attr(%s) should be empty.", RecurrentBase::kExStates);
+      PADDLE_ENFORCE_EQ(
+          ctx->Attrs()
+              .Get<std::vector<std::string>>(RecurrentBase::kStates)
+              .size(),
+          0, "The Attr(%s) should be empty.", RecurrentBase::kStates);
+    }
+
+    PADDLE_ENFORCE(ctx->HasInputs(RecurrentBase::kInputs),
+                   "The input(%s) should not be empty.",
+                   RecurrentBase::kInputs);
+    PADDLE_ENFORCE(ctx->HasInputs(RecurrentBase::kOutputs),
+                   "The input(%s) should not be empty.",
+                   RecurrentBase::kOutputs);
+
+    // In some case the kInitialStates is empty.
+    if (ctx->HasInputs(RecurrentBase::kInitialStates)) {
+      PADDLE_ENFORCE(ctx->HasOutputs(
+                         framework::GradVarName(RecurrentBase::kInitialStates)),
+                     "The output of(%s) should not be empty.",
+                     framework::GradVarName(RecurrentBase::kInitialStates));
+      ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInitialStates),
+                         ctx->GetInputsDim(RecurrentBase::kInitialStates));
+    }
+
+    PADDLE_ENFORCE(
+        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)),
+        "The output of(%s) should not be empty.",
+        framework::GradVarName(RecurrentBase::kInputs));
+    ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInputs),
+                       ctx->GetInputsDim(RecurrentBase::kInputs));
+
+    // In some case the kParameters is empty.
+    if (ctx->HasInputs(RecurrentBase::kParameters)) {
+      PADDLE_ENFORCE(
+          ctx->HasOutputs(framework::GradVarName(RecurrentBase::kParameters)),
+          "The output of(%s) should not be empty.",
+          framework::GradVarName(RecurrentBase::kParameters));
+      ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kParameters),
+                         ctx->GetInputsDim(RecurrentBase::kParameters));
     }
   }
-  grad->SetAttrMap(this->Attrs());
-  grad->SetBlockAttr(RecurrentBase::kStepBlock, grad_block_[0]);
-
-  return std::unique_ptr<framework::OpDesc>(grad);
-}
-
-void RecurrentGradOpShapeInference::operator()(
-    framework::InferShapeContext *ctx) const {
-  std::vector<std::string> output{RecurrentBase::kOutputs};
-
-  // In some case the kInitialStates is empty.
-  // If the kInitialStates is empty, all the states should be empty.
-  if (!ctx->HasInputs(RecurrentBase::kInitialStates)) {
-    PADDLE_ENFORCE_EQ(
-        ctx->Attrs()
-            .Get<std::vector<std::string>>(RecurrentBase::kExStates)
-            .size(),
-        0, "The Attr(%s) should be empty.", RecurrentBase::kExStates);
-    PADDLE_ENFORCE_EQ(ctx->Attrs()
-                          .Get<std::vector<std::string>>(RecurrentBase::kStates)
-                          .size(),
-                      0, "The Attr(%s) should be empty.",
-                      RecurrentBase::kStates);
-  }
-
-  PADDLE_ENFORCE(ctx->HasInputs(RecurrentBase::kInputs),
-                 "The input(%s) should not be empty.", RecurrentBase::kInputs);
-  PADDLE_ENFORCE(ctx->HasInputs(RecurrentBase::kOutputs),
-                 "The input(%s) should not be empty.", RecurrentBase::kOutputs);
-
-  // In some case the kInitialStates is empty.
-  if (ctx->HasInputs(RecurrentBase::kInitialStates)) {
-    PADDLE_ENFORCE(
-        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInitialStates)),
-        "The output of(%s) should not be empty.",
-        framework::GradVarName(RecurrentBase::kInitialStates));
-    ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInitialStates),
-                       ctx->GetInputsDim(RecurrentBase::kInitialStates));
-  }
-
-  PADDLE_ENFORCE(
-      ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)),
-      "The output of(%s) should not be empty.",
-      framework::GradVarName(RecurrentBase::kInputs));
-  ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInputs),
-                     ctx->GetInputsDim(RecurrentBase::kInputs));
-
-  // In some case the kParameters is empty.
-  if (ctx->HasInputs(RecurrentBase::kParameters)) {
-    PADDLE_ENFORCE(
-        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kParameters)),
-        "The output of(%s) should not be empty.",
-        framework::GradVarName(RecurrentBase::kParameters));
-    ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kParameters),
-                       ctx->GetInputsDim(RecurrentBase::kParameters));
-  }
-}
+};
 
 }  // namespace operators
 }  // namespace paddle

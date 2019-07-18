@@ -113,7 +113,14 @@ class RecurrentBase : public framework::OperatorBase {
                                      framework::Scope *dst_scope,
                                      const std::vector<std::string> &dst_vars,
                                      Callback callback,
-                                     bool is_backward = false);
+                                     bool is_backward = false) {
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    for (size_t i = 0; i < dst_vars.size(); ++i) {
+      VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
+      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
+                   is_backward);
+    }
+  }
 
   // for src_tensor, dst_tensor in zip(map(src_scope.FindVar, src_vars),
   //                                   map(dst_scope.FindVar, dst_vars)):
@@ -124,7 +131,14 @@ class RecurrentBase : public framework::OperatorBase {
                                      const framework::Scope &dst_scope,
                                      const std::vector<std::string> &dst_vars,
                                      Callback callback,
-                                     bool is_backward = false);
+                                     bool is_backward = false) {
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    for (size_t i = 0; i < dst_vars.size(); ++i) {
+      VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
+      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
+                   is_backward);
+    }
+  }
 
   // (seq_len, shape) -> return [seq_len] + list(shape)
   static framework::DDim PrependDims(size_t seq_len,
@@ -136,14 +150,36 @@ class RecurrentBase : public framework::OperatorBase {
                            const std::string &src_var_name,
                            framework::Scope *dst_scope,
                            const std::string &dst_var_name, Callback callback,
-                           bool is_backward = false);
+                           bool is_backward = false) {
+    auto *src_var = src_scope.FindVar(src_var_name);
+    if (is_backward && src_var == nullptr) {
+      return;
+    }
+    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+
+    auto *dst_var = dst_scope->Var(dst_var_name);
+    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    callback(src_tensor, dst_tensor);
+  }
 
   template <typename Callback>
   static void AccessTensor(const framework::Scope &src_scope,
                            const std::string &src_var_name,
                            const framework::Scope &dst_scope,
                            const std::string &dst_var_name, Callback callback,
-                           bool is_backward = false);
+                           bool is_backward = false) {
+    auto *dst_var = dst_scope.FindVar(dst_var_name);
+    if (is_backward && dst_var == nullptr) {
+      return;
+    }
+    auto *src_var = src_scope.FindVar(src_var_name);
+    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+    PADDLE_ENFORCE(dst_var != nullptr, "%s is not found.", dst_var_name);
+    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    callback(src_tensor, dst_tensor);
+  }
 };
 
 class RecurrentOp : public RecurrentBase {
@@ -185,24 +221,6 @@ class RecurrentGradOp : public RecurrentBase {
 
   static std::vector<std::string> GradVarLists(
       const std::vector<std::string> &var_names);
-};
-
-class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override;
-};
-
-class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  virtual std::unique_ptr<framework::OpDesc> Apply() const;
-};
-
-class RecurrentGradOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *ctx) const override;
 };
 
 }  // namespace operators
