@@ -511,7 +511,8 @@ class EagerDeletionPaddingRnnTest(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(
                     learning_rate=self.learning_rate)
                 optimizer.minimize(self.loss)
-        self.exe = Executor(fluid.CPUPlace())
+        self.exe = Executor(fluid.CUDAPlace(0)) if fluid.is_compiled_with_cuda(
+        ) else Executor(fluid.CPUPlace())
         self.exe.run(self.startup_program)
 
         self.device_count = 1
