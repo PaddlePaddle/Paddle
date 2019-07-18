@@ -83,8 +83,8 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
         // get the target level of current rois
         T roi_scale = std::sqrt(BBoxArea(rois_data, false));
-        int tgt_lvl =
-            std::floor(std::log2(roi_scale / refer_scale) + refer_level);
+        int tgt_lvl = std::floor(std::log2(roi_scale / refer_scale + (T)1e-6) +
+                                 refer_level);
         tgt_lvl = std::min(max_level, std::max(tgt_lvl, min_level));
         target_level.push_back(tgt_lvl);
         num_rois_level[tgt_lvl - min_level]++;
@@ -107,7 +107,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       num_rois_level_integral[i + 1] =
           num_rois_level_integral[i] + num_rois_level[i];
     }
-    restore_index->mutable_data<int>({1, fpn_rois_num}, context.GetPlace());
+    restore_index->mutable_data<int>({fpn_rois_num, 1}, context.GetPlace());
     int* restore_index_data = restore_index->data<int>();
     std::vector<int> restore_index_inter(fpn_rois_num, -1);
     // distribute the rois into different fpn level by target level

@@ -17,11 +17,11 @@ import unittest
 
 import paddle.fluid as fluid
 import numpy as np
-import decorators
+from decorator_helper import prog_scope
 
 
 class TestRegistry(unittest.TestCase):
-    @decorators.prog_scope()
+    @prog_scope()
     def test_registry_layer(self):
         x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')
         output = fluid.layers.mean(x)

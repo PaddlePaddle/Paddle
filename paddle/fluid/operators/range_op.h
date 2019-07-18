@@ -44,9 +44,10 @@ class CPURangeKernel : public framework::OpKernel<T> {
     GetSize(start, end, step, &size);
     out->Resize(framework::make_ddim({size}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
-    int64_t i = 0;
-    for (T r = start; r < end; r += step, ++i) {
-      out_data[i] = r;
+    T value = start;
+    for (int64_t i = 0; i < size; ++i) {
+      out_data[i] = value;
+      value += step;
     }
   }
 };

@@ -18,11 +18,13 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace imperative {
@@ -44,25 +46,25 @@ void CreateGradOp(const framework::OpDesc& op_desc,
   }
 }
 
-void InitGrad(VarBase* var, platform::DeviceContext* dev_ctx) {
+void CreateNoBuffuerGrad(std::shared_ptr<imperative::VarBase> var,
+                         platform::DeviceContext* dev_ctx) {
   PADDLE_ENFORCE_NOT_NULL(var, "Could not get valid var base");
   PADDLE_ENFORCE_NOT_NULL(dev_ctx,
                           "Could not get valid device from forward op");
 
   if (var->grads_ == nullptr) {
     auto& var_t = var->var_->Get<framework::LoDTensor>();
-    var->grads_ = new VarBase(var->GradName(), framework::proto::VarType::FP32,
-                              framework::vectorize(var_t.dims()),
-                              dev_ctx->GetPlace(), true, false);
-    auto grad_t = var->grads_->var_->GetMutable<framework::LoDTensor>();
-    operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+    var->grads_ = std::shared_ptr<imperative::VarBase>(
+        new VarBase(var->GradName(), framework::proto::VarType::FP32,
+                    framework::vectorize(var_t.dims()), dev_ctx->GetPlace(),
+                    var->IsStopGradient(), false, false));
   }
 }
 
 platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
   platform::Place result = place;
-  for (auto it : inputs) {
-    for (VarBase* var : it.second) {
+  for (const auto& it : inputs) {
+    for (const std::shared_ptr<imperative::VarBase>& var : it.second) {
       platform::Place tmp_place =
           var->var_->Get<framework::LoDTensor>().place();
       if (!platform::is_same_place(tmp_place, result)) {
@@ -96,7 +98,7 @@ framework::VariableNameMap CreateInputVarNameMap(
       auto var_vector = it->second;
       std::vector<std::string> args;
       args.reserve(var_vector.size());
-      for (VarBase* var_base : var_vector) {
+      for (std::shared_ptr<imperative::VarBase> var_base : var_vector) {
         args.emplace_back(var_base->Name());
       }
       result[in.name()] = args;
@@ -124,7 +126,7 @@ framework::VariableNameMap CreateOutputVarNameMap(
       auto var_vector = it->second;
       std::vector<std::string> args;
       args.reserve(var_vector.size());
-      for (VarBase* var_base : var_vector) {
+      for (const std::shared_ptr<imperative::VarBase>& var_base : var_vector) {
         args.emplace_back(var_base->Name());
       }
       result[out.name()] = args;
@@ -135,25 +137,24 @@ framework::VariableNameMap CreateOutputVarNameMap(
 
 Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
 
-std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
-                                    VarBasePtrMap* outputs,
-                                    framework::AttributeMap attrs_map,
-                                    const platform::Place expected_place,
-                                    const bool stop_gradient) {
+void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
+                   VarBasePtrMap* outputs, framework::AttributeMap attrs_map,
+                   const platform::Place expected_place,
+                   const bool stop_gradient) {
+  platform::RecordEvent record_event(op->type_);
   framework::VariableValueMap invars_map;
   framework::VariableValueMap outvars_map;
 
   // Construct input_vars_map and output_vars_map
-  std::map<std::string, VarBase*> current_vars_map;
-  op->input_vars_ = inputs;
-  for (auto it : op->input_vars_) {
+  std::map<std::string, std::shared_ptr<imperative::VarBase>> current_vars_map;
+  for (auto it : inputs) {
     auto& invars = invars_map[it.first];
     invars.reserve(it.second.size());
-    for (VarBase* inp : it.second) {
+    for (std::shared_ptr<imperative::VarBase> inp : it.second) {
       PADDLE_ENFORCE_NOT_NULL(inp->var_, "op %s input %s nullptr", op->Type(),
                               inp->Name());
 
-      invars.emplace_back(inp->var_);
+      invars.emplace_back(inp->var_.get());
       if (!stop_gradient) {
         current_vars_map[inp->Name()] = inp;
       }
@@ -164,20 +165,22 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     op->TrackPreOp(it.first, it.second);
   }
 
-  op->output_vars_ = *outputs;
-  for (auto it : op->output_vars_) {
+  for (const auto& it : *outputs) {
     auto& outvars = outvars_map[it.first];
-    const std::vector<VarBase*>& outputs = it.second;
-    outvars.reserve(outputs.size());
-    for (size_t i = 0U; i < outputs.size(); ++i) {
-      VarBase* out = outputs[i];
-      outvars.emplace_back(out->var_);
+    const std::vector<std::shared_ptr<imperative::VarBase>>& outputs_tmp =
+        it.second;
+    outvars.reserve(outputs_tmp.size());
+    for (size_t i = 0U; i < outputs_tmp.size(); ++i) {
+      // Add weak_ptr to track outputs
+      op->outputs_ref.emplace_back(outputs_tmp[i]);
+      std::shared_ptr<imperative::VarBase> out = outputs_tmp[i];
+      outvars.emplace_back(out->var_.get());
       out->TrackPreOp(op, it.first, i, stop_gradient);
       if (!stop_gradient) {
         current_vars_map[out->Name()] = out;
       }
 
-      VLOG(3) << "input var name: " << out->Name()
+      VLOG(3) << "output var name: " << out->Name()
               << " inited: " << out->var_->IsInitialized()
               << " stop_grad: " << out->IsStopGradient();
     }
@@ -215,14 +218,13 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
   framework::Scope scope;
   op->place_ = GetExpectedPlace(expected_place, inputs);
+
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
   prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
   prepared_op.func(
       framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
                                   prepared_op.ctx, prepared_op.kernel_configs));
 
-  // construct backward op
-  std::set<std::string> vars_saved_for_backward;
   if (!stop_gradient) {
     VLOG(5) << "start construct backward op";
 
@@ -256,13 +258,13 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             // Forward inputs or outputs.
             grad_in_vars.emplace_back(fwd_var_it->second);
           } else {
-            VarBase* var = current_vars_map[var_it->second];
-            InitGrad(var, prepared_op.GetDeviceContext());
+            std::shared_ptr<imperative::VarBase> var =
+                current_vars_map[var_it->second];
+            CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
             // Douts.
+            var->grads_->SetPreOp(var->PreOp());
             grad_in_vars.emplace_back(var->grads_);
           }
-
-          vars_saved_for_backward.insert(it.first);
         }
       }
 
@@ -274,69 +276,17 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                          "Could not found the grad op output var, should this "
                          "operator %s's stop gradient be True",
                          op->Type());
-          VarBase* var = current_vars_map[var_it->second];
-          InitGrad(var, prepared_op.GetDeviceContext());
+
+          std::shared_ptr<imperative::VarBase> var =
+              current_vars_map[var_it->second];
+          CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
+          var->grads_->SetPreOp(var->PreOp());
           grad_out_vars.push_back(var->grads_);
+          VLOG(3) << "grads output var name: " << var->name_;
         }
       }
     }
   }
-
-  return vars_saved_for_backward;
 }
-
-std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
-                                      const std::vector<VarBase*>& inputs,
-                                      bool stop_gradient) {
-  VLOG(3) << "py_trace " << op->Type();
-
-  op->input_vars_[PyLayer::kFwdInp] = inputs;
-
-  std::vector<framework::Variable*> ret_vars =
-      PyLayer::Apply(op->forward_id_, inputs);
-
-  op->TrackPreOp(PyLayer::kFwdInp, inputs);
-
-  std::vector<VarBase*>& outputs = op->output_vars_[PyLayer::kFwdOut];
-  outputs.reserve(ret_vars.size());
-  for (size_t i = 0U; i != ret_vars.size(); ++i) {
-    framework::Variable* v = ret_vars[i];
-    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i), v,
-                               nullptr, stop_gradient);
-    outputs.emplace_back(out);
-    out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
-  }
-
-  if (!stop_gradient) {
-    VLOG(5) << "start construct backward op";
-    op->grad_input_vars_.resize(1);
-    op->grad_output_vars_.resize(1);
-    auto& grad_input_vars =
-        op->grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)];
-    auto& grad_output_vars =
-        op->grad_output_vars_[0][framework::GradVarName(PyLayer::kFwdOut)];
-
-    for (VarBase* inp : inputs) {
-      grad_input_vars.push_back(inp);
-    }
-    for (VarBase* out : outputs) {
-      grad_input_vars.push_back(out);
-    }
-
-    // TODO(minqiyang): Add GPU support for PyLayer, only support CPU now
-    platform::CPUPlace place;
-    for (VarBase* out : outputs) {
-      InitGrad(out, platform::DeviceContextPool::Instance().Get(place));
-      grad_input_vars.push_back(out->grads_);
-    }
-
-    for (VarBase* inp : inputs) {
-      InitGrad(inp, platform::DeviceContextPool::Instance().Get(place));
-      grad_output_vars.push_back(inp->grads_);
-    }
-  }
-  return outputs;
-}
-
 }  // namespace imperative
 }  // namespace paddle

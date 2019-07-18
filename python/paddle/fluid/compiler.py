@@ -17,9 +17,10 @@ import os
 import six
 import sys
 from .. import compat as cpt
+from . import framework
+from .framework import cuda_places, cpu_places
 
 from . import core
-from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -44,21 +45,6 @@ def _is_pserver_mode(main_program):
     return False
 
 
-def get_available_places(use_cuda):
-    if use_cuda:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            gpus = [int(s) for s in gpus_env.split(",")]
-        else:
-            gpus = [i for i in six.moves.range(core.get_cuda_device_count())]
-        places = [core.CUDAPlace(i) for i in gpus]
-    else:
-        cpu_num = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-        places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
-    assert places, "no place for execution"
-    return places
-
-
 class CompiledProgram(object):
     """
     Compiles to Graph for execution.
@@ -71,20 +57,34 @@ class CompiledProgram(object):
     optimizations, for example.
       * Pre-compute some logic once so that each run is faster.
       * Transform the program so that it can run in multiple devices.
-      * TODO: transform the program for optimized inference or distributed
-              training.
+      * Transform the program for optimized inference or distributed
+        training. **Note that: this part is not finished.**
 
     Example:
         .. code-block:: python
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup)
-            compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name)
-            for i in range(5):
-                test_loss, = exe.run(compiled_prog,
-                                     feed=feed_dict,
-                                     fetch_list=[loss.name])
+
+          import paddle.fluid as fluid
+          import paddle.fluid.compiler as compiler
+          import numpy
+          import os
+
+          place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+          exe = fluid.Executor(place)
+
+          data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+          hidden = fluid.layers.fc(input=data, size=10)
+          loss = fluid.layers.mean(hidden)
+          fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+          fluid.default_startup_program().random_seed=1
+          exe.run(fluid.default_startup_program())
+          compiled_prog = compiler.CompiledProgram(
+                   fluid.default_main_program())
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          loss_data, = exe.run(compiled_prog,
+                               feed={"X": x},
+                               fetch_list=[loss.name])
 
     Args:
         program_or_graph (Graph|Program): If it's Program, it will be first
@@ -97,6 +97,7 @@ class CompiledProgram(object):
     def __init__(self, program_or_graph):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
+            # don't not create a new program here.
             self._program = None
         elif isinstance(program_or_graph, framework.Program):
             self._graph = core.Graph(program_or_graph.desc)
@@ -105,7 +106,6 @@ class CompiledProgram(object):
             raise ValueError("Wrong program_to_graph type: %s" %
                              type(program_or_graph))
 
-        self._program_desc = self._graph.origin_program_desc()
         self._scope = None
         self._place = None
         self._executor = None
@@ -117,8 +117,47 @@ class CompiledProgram(object):
                            loss_name=None,
                            build_strategy=None,
                            exec_strategy=None,
-                           share_vars_from=None):
+                           share_vars_from=None,
+                           places=None):
         """Configs the program to run in data parallel way.
+
+        Example:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import paddle.fluid.compiler as compiler
+              import numpy
+              import os
+
+              use_cuda = True
+              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+              # NOTE: If you use CPU to run the program, you need
+              # to specify the CPU_NUM, otherwise, fluid will use
+              # all the number of the logic core as the CPU_NUM,
+              # in that case, the batch size of the input should be
+              # greater than CPU_NUM, if not, the process will be
+              # failed by an exception.
+              if not use_cuda:
+                  os.environ['CPU_NUM'] = str(2)
+
+              exe = fluid.Executor(place)
+
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+              fluid.default_startup_program().random_seed=1
+              exe.run(fluid.default_startup_program())
+              compiled_prog = compiler.CompiledProgram(
+                       fluid.default_main_program()).with_data_parallel(
+                                loss_name=loss.name)
+
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              loss_data, = exe.run(compiled_prog,
+                                   feed={"X": x},
+                                   fetch_list=[loss.name])
 
         Args:
             loss_name (str): The loss name must set in training. Default None.
@@ -132,10 +171,18 @@ class CompiledProgram(object):
                 threads are used, how many iterations to clean up the temp
                 variables. For more information, please refer
                 to fluid.ExecutionStrategy. Default None.
-            share_vars_from(CompiledProgram): If provide, this CompiledProgram
+            share_vars_from(CompiledProgram): If provided, this CompiledProgram
                 will share variables from `share_vars_from`. `share_vars_from`
                 must be run by the executor before this CompiledProgram so that
                 vars are ready.
+            places(list(CUDAPlace)|list(CPUPlace)|None): If provided, only compile
+                program in the given places. Otherwise, the places used when compiled 
+                is determined by the Executor, and the places used are controlled 
+                by environment variables: FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES
+                if using GPU; or CPU_NUM if using CPU. For example, if you want to 
+                run on GPU 0 and 1, set places=[fluid.CUDAPlace(0), fluid.CUDAPlace(1)].
+                If you want to run on 2 CPU cores, set places=[fluid.CPUPlace()]*2.  
+
         Returns:
             self
         """
@@ -150,7 +197,23 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
+        if places is not None:
+            if not isinstance(places, (list, tuple)):
+                places = [places]
+            self._places = places
+        else:
+            self._places = None
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
+        if self._program:
+            if self._program._is_mem_optimized:
+                self._build_strategy.memory_optimize = False
+
+            if self._build_strategy.memory_optimize:
+                self._build_strategy._use_legacy_memory_optimize_strategy = True
         return self
 
     def with_inference_optimize(self, config):
@@ -187,12 +250,22 @@ class CompiledProgram(object):
                     "share_vars_from is not compiled and run, so there is no "
                     "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
+            # drop the local_exe_scopes of the previous parallel_executor
+            self._share_vars_from._executor.drop_local_exe_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
 
         self._exec_strategy.use_cuda = use_cuda
-        self._places = get_available_places(self._exec_strategy.use_cuda)
+        has_set_place = (self._places is not None)
+        if has_set_place:
+            for p in self._places:
+                assert p._type() == self._place._type(), \
+                    "Place type not match. You may set the wrong type of places"
+        else:
+            self._places = cuda_places(
+            ) if self._exec_strategy.use_cuda else cpu_places()
+        assert self._places, "no place for execution"
 
         if self._exec_strategy.num_threads == 0:
             if self._exec_strategy.use_cuda:
@@ -200,21 +273,11 @@ class CompiledProgram(object):
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(self._places) * 4
             else:
-                cpu_num = int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                self._exec_strategy.num_threads = cpu_num * 2
-
-        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
-        # if turn on python memory optimize, turn off the inplace_pass.
-        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.memory_optimize = False
-
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.enable_inplace = False
+                self._exec_strategy.num_threads = len(self._places) * 2
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
+        # TODO(gongwb): let user to set them once.
         if self._program and self._build_strategy.num_trainers > 1 and \
                 self._program._trainers_endpoints:
             tps = self._program._trainers_endpoints
@@ -222,6 +285,11 @@ class CompiledProgram(object):
             assert self._build_strategy.num_trainers == len(
                 tps), "num_trainers == len(end_points)"
             self._build_strategy.trainers_endpoints = tps
+
+        if self._program:
+            self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
+            self._build_strategy.use_hierarchical_allreduce = self._program._use_hierarchical_allreduce
+            self._build_strategy.hierarchical_allreduce_inter_nranks = self._program._hierarchical_allreduce_inter_nranks
 
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True

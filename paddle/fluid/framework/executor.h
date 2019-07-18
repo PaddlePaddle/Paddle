@@ -19,6 +19,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -30,22 +32,20 @@ namespace paddle {
 namespace framework {
 
 struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id,
-                         const std::vector<std::string>& skip_ref_cnt_vars =
-                             std::vector<std::string>(),
-                         bool force_disable_gc = false);
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
 
   ~ExecutorPrepareContext();
 
-  void ResetReferenceCount() { runtime_ref_cnts_ = global_ref_cnts_; }
+  void PrepareUnusedVars(const std::vector<std::string>& keep_vars,
+                         bool force_disable_gc = false);
 
   const framework::ProgramDesc& prog_;
-  size_t block_id_;
-  bool force_disable_gc_;
+  const size_t block_id_;
+
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
-  std::unordered_map<std::string, size_t> global_ref_cnts_;
-  std::unordered_map<std::string, size_t> runtime_ref_cnts_;
+  std::unordered_map<OperatorBase*, std::vector<std::string>> unused_vars_;
+  bool force_disable_gc_{false};
 };
 
 class Executor {
@@ -83,6 +83,21 @@ class Executor {
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
 
+  // This API is very slow.
+  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                          std::map<std::string, const LoDTensor*>* feed_targets,
+                          std::map<std::string, LoDTensor*>* fetch_targets,
+                          bool create_local_scope = true,
+                          bool create_vars = true,
+                          const std::string& feed_holder_name = "feed",
+                          const std::string& fetch_holder_name = "fetch");
+
+  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
+      const ProgramDesc& program, int block_id,
+      const std::vector<std::string>& skip_ref_cnt_vars =
+          std::vector<std::string>(),
+      bool force_disable_gc = false);
+
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
@@ -101,16 +116,10 @@ class Executor {
                           bool create_local_scope = true,
                           bool create_vars = true, bool keep_kids = false);
 
-  // This API is very slow.
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                          std::map<std::string, const LoDTensor*>* feed_targets,
-                          std::map<std::string, LoDTensor*>* fetch_targets,
-                          bool create_local_scope = true,
-                          bool create_vars = true,
-                          const std::string& feed_holder_name = "feed",
-                          const std::string& fetch_holder_name = "fetch");
-
   void EnableMKLDNN(const ProgramDesc& program);
+
+  void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
+                      Dataset* dataset, const std::string& trainer_desc_str);
 
  private:
   const platform::Place place_;

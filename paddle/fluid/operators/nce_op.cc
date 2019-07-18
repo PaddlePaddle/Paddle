@@ -36,7 +36,9 @@ class NCEOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+    if (ctx->IsRuntime() || (x_dims[0] > 0 && label_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+    }
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Weight")[0],
@@ -60,7 +62,8 @@ class NCEOp : public framework::OperatorWithKernel {
     // set dims of output(SampleOut)
     std::vector<int64_t> sample_out_dims;
     sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(num_neg_samples + num_true_classes);
+    sample_out_dims.push_back(
+        (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
     ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
     ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
   }
@@ -156,9 +159,9 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<int>>("height_sections",
-                              "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
@@ -185,14 +188,6 @@ statistical models
 By default this operator uses a uniform distribution for sampling.
 )DOC");
   }
-};
-
-class NCEOpGradDescMaker : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
-
- protected:
-  virtual std::string GradOpType() const { return "nce_grad"; }
 };
 
 class NCEOpGrad : public framework::OperatorWithKernel {
@@ -259,7 +254,9 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpGradDescMaker, ops::NCEOpMaker);
+REGISTER_OPERATOR(nce, ops::NCEOp,
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::NCEOpMaker);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);

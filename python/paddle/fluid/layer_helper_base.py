@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, _in_imperative_mode, _current_expected_place
+from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -54,8 +54,8 @@ class LayerHelperBase(object):
         Return Variable construct from value
         """
         if isinstance(value, np.ndarray):
-            assert _in_imperative_mode(
-            ), "to_variable could only be called in imperative mode"
+            assert in_dygraph_mode(
+            ), "to_variable could only be called in dygraph mode"
 
             if not block:
                 block = default_main_program().current_block()
@@ -85,19 +85,19 @@ class LayerHelperBase(object):
                       block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_norm'])),
                     dtype=dtype,
                     persistable=False)
             abs_out = block.create_var(
-                name=unique_name.generate(".".join(
+                name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_abs'])),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
                 type='abs', inputs={'X': x}, outputs={'Out': abs_out})
             pow_out = block.create_var(
-                name=unique_name.generate(".".join(
+                name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_pow'])),
                 dtype=dtype,
                 persistable=False)
@@ -107,7 +107,7 @@ class LayerHelperBase(object):
                 outputs={'Out': pow_out},
                 attrs={'factor': float(p)})
             sum_out = block.create_var(
-                name=unique_name.generate(".".join(
+                name=unique_name.generate_with_ignorable_key(".".join(
                     [self.name, 'weight_norm_sum'])),
                 dtype=dtype,
                 persistable=False)
@@ -133,7 +133,7 @@ class LayerHelperBase(object):
                          block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_reshape'])),
                     dtype=dtype,
                     persistable=False)
@@ -150,7 +150,7 @@ class LayerHelperBase(object):
                            block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_transpose'])),
                     dtype=dtype,
                     persistable=False)
@@ -168,7 +168,7 @@ class LayerHelperBase(object):
             """Computes the norm over all dimensions except dim"""
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate(".".join(
+                    name=unique_name.generate_with_ignorable_key(".".join(
                         [self.name, 'weight_norm_norm'])),
                     dtype=dtype,
                     persistable=False)
@@ -268,11 +268,9 @@ class LayerHelperBase(object):
         """
         # Deepcopy the attr so that parameters can be shared in program
         attr = copy.deepcopy(attr)
-        if attr is None:
-            attr = ParamAttr._to_attr(attr)
+        attr = ParamAttr._to_attr(attr)
         if not attr:
             return None
-
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:
@@ -304,8 +302,8 @@ class LayerHelperBase(object):
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if _in_imperative_mode():
-            # In imperative mode, we want the returned parameter to be
+        if in_dygraph_mode():
+            # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
@@ -329,7 +327,8 @@ class LayerHelperBase(object):
             infer_var_type.
         """
         return self.main_program.current_block().create_var(
-            name=unique_name.generate(".".join([self.name, 'tmp'])),
+            name=unique_name.generate_with_ignorable_key(".".join(
+                [self.name, 'tmp'])),
             dtype=dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
@@ -372,7 +371,7 @@ class LayerHelperBase(object):
                initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if _in_imperative_mode():
+        if in_dygraph_mode():
             initializer(var, var.block)
         else:
             self.startup_program.global_block().create_var(

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -160,6 +161,11 @@ class OperatorBase {
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
+  const OpInfo& Info() const {
+    PADDLE_ENFORCE_NOT_NULL(info_, "OpInfo of %s is not found", type_);
+    return *info_;
+  }
+
   bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
@@ -194,6 +200,10 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+
+  // OpInfo
+  const OpInfo* info_;
+
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
@@ -356,9 +366,6 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
@@ -370,11 +377,12 @@ class ExecutionContext {
   }
 
   template <typename T>
-  T& GetKernelConfig(int idx) const {
-    PADDLE_ENFORCE(kernel_configs_ && kernel_configs_->size() > idx,
-                   "%s selected kernel doesn't have kernel config %lu <= %d",
-                   op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+  T& GetKernelConfig(size_t idx) const {
+    PADDLE_ENFORCE(
+        kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
+        "%s selected kernel doesn't have kernel config %lu <= %lu",
+        op_.Type().c_str(), kernel_configs_->size(), idx);
+    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
  private:
@@ -444,7 +452,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   virtual void InferShape(InferShapeContext* ctx) const {
-    OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
+    Info().infer_shape_(ctx);
   }
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
@@ -482,10 +490,19 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
+  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
+                    const platform::Place& place) const;
+
  protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
+  mutable std::unique_ptr<OpKernelType> kernel_type_;
+  mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
+  mutable bool enable_cache_runtime_context_ = false;
+  mutable bool all_kernels_must_compute_runtime_shape_ = false;
+  mutable std::mutex cache_update_mutex_;
+  mutable bool enable_cache_transfer_scope_ = false;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

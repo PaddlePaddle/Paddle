@@ -31,9 +31,6 @@ static constexpr char kCUDNNFwdAlgoCache[] = "kCUDNNFwdAlgoCache";
 static constexpr char kCUDNNBwdDataAlgoCache[] = "kCUDNNBwdDataAlgoCache";
 static constexpr char kCUDNNBwdFilterAlgoCache[] = "kCUDNNBwdFilterAlgoCache";
 
-static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
-    static_cast<size_t>(1024) * 1024 * 1024;
-
 #if CUDNN_VERSION_MIN(6, 0, 5)
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =

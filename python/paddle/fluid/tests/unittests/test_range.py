@@ -54,5 +54,17 @@ class TestInt32RangeOpCase0(TestRangeOp):
         self.case = (0, 5, 2)
 
 
+class TestInt32RangeOpCase1(TestRangeOp):
+    def init_config(self):
+        self.dtype = np.int32
+        self.case = (10, 1, -2)
+
+
+class TestInt32RangeOpCase2(TestRangeOp):
+    def init_config(self):
+        self.dtype = np.int32
+        self.case = (-1, -10, -2)
+
+
 if __name__ == "__main__":
     unittest.main()

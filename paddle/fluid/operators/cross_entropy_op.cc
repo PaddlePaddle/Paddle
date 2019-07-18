@@ -35,11 +35,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(rank, label_dims.size(),
                       "Input(X) and Input(Label) shall have the same rank.");
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
-      check = false;
-    }
+    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
+                               framework::contain_unknown_dim(label_dims);
+    bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                         framework::slice_ddim(label_dims, 0, rank - 1),
@@ -238,6 +236,23 @@ class CrossEntropyGradientOp : public CrossEntropyGradientOpBase {
   }
 };
 
+class CrossEntropyGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("cross_entropy_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 class CrossEntropyOp2 : public CrossEntropyOpBase {
  public:
   using CrossEntropyOpBase::CrossEntropyOpBase;
@@ -354,7 +369,7 @@ using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOpBase,
                   ops::CrossEntropyOpMaker, ops::CrossEntropyOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::CrossEntropyGradOpDescMaker);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,
                        ops::CrossEntropyOpKernel<CPUCtx, double>);

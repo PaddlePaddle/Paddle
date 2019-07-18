@@ -16,8 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
 from op_test import OpTest
+from paddle.fluid import core
+
+alignment = 256
 
 
 class TestAllocContinuousSpace(OpTest):
@@ -29,11 +31,11 @@ class TestAllocContinuousSpace(OpTest):
         self.constant = attrs["constant"]
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
-        self.FusedOutput = self.init_output(self.Inputs, self.set_constant,
-                                            self.constant)
+        self.Outputs, self.FusedOutput = self.init_output(
+            self.Inputs, self.set_constant, self.constant)
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
-        self.outputs = {'Output': self.Inputs, 'FusedOutput': self.FusedOutput}
+        self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -52,14 +54,31 @@ class TestAllocContinuousSpace(OpTest):
         return {"copy_data": True, "set_constant": False, "constant": 0.0}
 
     def init_output(self, input_list, set_constant, constant):
-        inputs = [input[1].flatten() for input in input_list]
-        output = np.concatenate(inputs)
+        inputs = []
+        outputs = input_list
+
+        for input in input_list:
+            length = len(input[1].flatten())
+            aligned_len = (length + alignment) / alignment * alignment
+            out = np.zeros(int(aligned_len))
+            out[0:length] = input[1].flatten()
+            inputs.append(out)
+
+        alloc_continuous_space_var = np.concatenate([input for input in inputs])
         if set_constant:
-            output = np.ones((len(output))) * constant
-        return output
+            alloc_continuous_space_var = np.ones(
+                (len(alloc_continuous_space_var))) * constant
+            outputs = [(out[0],
+                        np.ones(out[1].shape).astype(self.dtype) * constant)
+                       for out in outputs]
+        return outputs, alloc_continuous_space_var
 
     def test_check_output(self):
-        self.check_output()
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                place=core.CUDAPlace(0),
+                no_check_set=["FusedOutput"],
+                atol=1e-5)
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
@@ -67,7 +86,11 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         return {"copy_data": False, "set_constant": True, "constant": 0.5}
 
     def test_check_output(self):
-        self.check_output(no_check_set=["Output"])
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                place=core.CUDAPlace(0),
+                no_check_set=["FusedOutput"],
+                atol=1e-5)
 
 
 if __name__ == '__main__':

@@ -34,6 +34,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kVAddRelu);
     ONE_CASE(kVSub);
     ONE_CASE(kVScal);
+    ONE_CASE(kStrideScal);
     ONE_CASE(kVAddBias);
     ONE_CASE(kVRelu);
     ONE_CASE(kVBroadcast);
@@ -55,6 +56,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kMatMul);
     ONE_CASE(kHMax);
     ONE_CASE(kHSum);
+    ONE_CASE(kStrideASum);
     ONE_CASE(kSoftmax);
     ONE_CASE(kEmbSeqPool);
     ONE_CASE(kSgd);

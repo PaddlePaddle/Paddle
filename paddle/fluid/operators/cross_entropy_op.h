@@ -39,9 +39,10 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     Tensor labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
     Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
 
+    int axis_dim = x->dims()[rank - 1];
     math::CrossEntropyFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &y_2d, &x_2d, &labels_2d,
-        ctx.Attr<bool>("soft_label"), ctx.Attr<int>("ignore_index"));
+        ctx.Attr<bool>("soft_label"), ctx.Attr<int>("ignore_index"), axis_dim);
   }
 };
 
@@ -154,6 +155,8 @@ struct HardLabelCrossEntropyForwardFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     auto label = label_[idx];
     if (label != ignore_index_) {
+      PADDLE_ASSERT_MSG(label >= 0 && label < feature_size_,
+                        "The label is out of the range.", label);
       auto match_x = x_[idx * feature_size_ + label];
       y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
       match_x_[idx] = match_x;

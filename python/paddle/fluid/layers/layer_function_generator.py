@@ -249,7 +249,14 @@ def generate_activation_fn(op_type):
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(op_proto)
+    func.__doc__ = func.__doc__ + """
+Examples:
+    .. code-block:: python
 
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[32, 784])
+        result = fluid.layers.%s(data)
+""" % op_type
     return func
 
 

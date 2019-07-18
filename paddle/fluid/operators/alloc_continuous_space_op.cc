@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -65,7 +66,8 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     // Get numel and dtype
     size_t numel = 0;
     auto dtype = kDefaultDtype;
-    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, &dtype);
+    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, &dtype,
+                       context.GetPlace());
 
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
@@ -74,14 +76,18 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
 
     // Init the continuous space
     auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
-    int64_t offset = 0;
+    size_t offset = 0;
+    size_t size_of_dtype = framework::SizeOfType(dtype);
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
-        int64_t len = out_tensors[i]->numel();
-        auto sub_tensor = fused_tensor->Slice(offset, offset + len);
-        offset += len;
-        framework::TensorCopy(*out_tensors[i], context.GetPlace(), dev_ctx,
+        size_t len = static_cast<size_t>(in_tensors[i]->numel());
+        auto sub_tensor = fused_tensor->Slice(
+            static_cast<int64_t>(offset), static_cast<int64_t>(offset + len));
+        framework::TensorCopy(*in_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
+
+        offset +=
+            Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
       }
     } else if (context.Attr<bool>("set_constant")) {
       math::SetConstant<DeviceContext, T> set_constant;
@@ -91,25 +97,48 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
 
     // Make the outputs point to the continuous space.
     offset = 0;
+    std::stringstream ss;
+    ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < out_tensors.size(); ++i) {
-      int64_t len = out_tensors[i]->numel();
+      size_t len = static_cast<size_t>(out_tensors[i]->numel());
       auto dim = out_tensors[i]->dims();
       out_tensors[i]
-          ->ShareDataWith(fused_tensor->Slice(offset, offset + len))
+          ->ShareDataWith(fused_tensor->Slice(
+              static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
+      len = Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
       offset += len;
-      VLOG(10) << "alloc_space_for_vars: output(" << out_var_names[i]
-               << ") ,dim:(" << dim << ")"
-               << " Address: " << out_tensors[i]->data<void>();
+      ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
+         << " address: " << out_tensors[i]->data<void>() << ", ";
     }
+    VLOG(10) << ss.str();
+  }
+
+ private:
+  // Note(zcd): Addresses should be aligned, otherwise, the results may have
+  // diff.
+  size_t Alignment(size_t size, const platform::Place &place) const {
+    // Allow to allocate the minimum chunk size is 4 KB.
+    size_t alignment = 1 << 12;
+    if (platform::is_gpu_place(place)) {
+      // Allow to allocate the minimum chunk size is 256 B.
+      alignment = 1 << 8;
+    }
+    size_t remaining = size % alignment;
+    return remaining == 0 ? size : size + (alignment - remaining);
   }
 
   void GetMemSizeAndDtype(
       const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
-      framework::proto::VarType::Type *dtype) const {
+      framework::proto::VarType::Type *dtype,
+      const platform::Place &place) const {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *numel = 0;
+    size_t size_of_dtype = 0;
+
+    std::stringstream ss;
+    ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
       PADDLE_ENFORCE(lod_tensors[i]->IsInitialized(), "%s is not initialized.",
                      var_names[i]);
@@ -119,15 +148,19 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s's type should not be %s.",
                           var_names[i], kDefaultDtype);
         *dtype = p_dtype;
+        size_of_dtype = framework::SizeOfType(p_dtype);
       }
       PADDLE_ENFORCE_EQ(p_dtype, *dtype, "Input vars is not equal.");
 
       auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(size, 0);
-      VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
-               << lod_tensors[i]->dims() << ")";
-      *numel += size;
+      ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
+         << "), ";
+      *numel += Alignment(static_cast<size_t>(size) * size_of_dtype, place) /
+                size_of_dtype;
     }
+
+    VLOG(10) << ss.str();
   }
 };
 
@@ -194,8 +227,11 @@ REGISTER_OPERATOR(alloc_continuous_space,
                   paddle::operators::AllocContinuousSpaceOp,
                   paddle::operators::AllocContinuousSpaceOpMaker);
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CPU_KERNEL(
     alloc_continuous_space,
+    ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext,
+                                    plat::float16>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CPUDeviceContext,
@@ -204,6 +240,8 @@ REGISTER_OP_CPU_KERNEL(
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     alloc_continuous_space,
+    ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext,
+                                    plat::float16>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext, int>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AllocContinuousSpaceKernel<paddle::platform::CUDADeviceContext,

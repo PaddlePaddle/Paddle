@@ -18,6 +18,7 @@ limitations under the License. */
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
@@ -34,6 +35,9 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(fast_check_nan_inf, false,
+            "Fast checking NAN/INF after each operation. It will be a little"
+            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -55,8 +59,8 @@ proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
   }
 }
 
-static DDim GetDims(const Scope& scope, const std::string& name,
-                    bool get_actual_dim = false) {
+static DDim GetDimsDebug(const Scope& scope, const std::string& name,
+                         bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
@@ -122,7 +126,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoD(const Scope& scope, const std::string& name) {
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -273,8 +277,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           }
           std::string dtype = GetDtype(*scope, var_name);
           ss << ":" << dtype;
-          ss << "[" << GetDims(*scope, var_name, true) << "]";
-          ss << "(" << GetLoD(*scope, var_name) << ")";
+          ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+          ss << "(" << GetLoDDebug(*scope, var_name) << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -304,8 +308,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           }
           std::string dtype = GetDtype(*scope, output.second[i]);
           ss << ":" << dtype;
-          ss << "[" << GetDims(*scope, var_name, true) << "]";
-          ss << "(" << GetLoD(*scope, var_name) << ")";
+          ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+          ss << "(" << GetLoDDebug(*scope, var_name) << ")";
         }
       }
       if (i != output.second.size() - 1) {
@@ -326,7 +330,12 @@ OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,
                            const AttributeMap& attrs)
-    : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
+    : type_(type),
+      inputs_(inputs),
+      outputs_(outputs),
+      attrs_(attrs),
+      // NOTE(zjl): why op_info may be nullptr?
+      info_(OpInfoMap::Instance().GetNullable(type)) {
   GenerateTemporaryNames();
   CheckAllInputOutputSet();
 }
@@ -350,7 +359,7 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto& info = OpInfoMap::Instance().Get(Type());
+  auto& info = Info();
 
   // get all OpProto::Var for outputs
   for (auto& o : info.Proto().outputs()) {
@@ -366,18 +375,16 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
 }
 
 void OperatorBase::CheckAllInputOutputSet() const {
-  auto& info_map = OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(Type());
-  if (op_info == nullptr || op_info->proto_ == nullptr) return;
+  if (info_ == nullptr || info_->proto_ == nullptr) return;
 
-  for (auto& in : op_info->Proto().inputs()) {
+  for (auto& in : info_->Proto().inputs()) {
     if (!in.dispensable()) {
       PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
                      "Operator %s's input, %s, is not set", Type(), in.name());
     }
   }
 
-  for (auto& out : op_info->Proto().outputs()) {
+  for (auto& out : info_->Proto().outputs()) {
     if (!out.dispensable()) {
       PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
                      "Operator %s's output, %s, is not set", Type(),
@@ -876,14 +883,24 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  if (!HasAttr(kEnableCacheRuntimeContext)) {
+  // To reduce the elapsed time of HasAttr, we use bool variable to record the
+  // result of HasAttr.
+  if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
+    enable_cache_runtime_context_ = true;
+  if (!all_kernels_must_compute_runtime_shape_ &&
+      HasAttr(kAllKernelsMustComputeRuntimeShape))
+    all_kernels_must_compute_runtime_shape_ = true;
+  if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
   } else {
     const Scope* cur_scope = &scope;
-    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
-      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-      pre_scope_ = cur_scope;
+    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+      std::lock_guard<std::mutex> lock(cache_update_mutex_);
+      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        pre_scope_ = cur_scope;
+      }
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -892,6 +909,90 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+
+  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+    ChooseKernel(*runtime_ctx, scope, place);
+  }
+
+  std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
+
+  // do data transformScope &transfer_scope;
+  std::vector<std::string> transfered_inplace_vars;
+  auto* transfer_scope =
+      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
+
+  // exec scope is the scope that kernel actually executed on.
+  const Scope& exec_scope =
+      (transfer_scope == nullptr ? scope : *transfer_scope);
+
+  if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(kernel_type_->place_);
+  }
+
+  if (!all_kernels_must_compute_runtime_shape_) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
+  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+  // not Scope. Imperative mode only pass inputs and get outputs.
+  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                   kernel_configs));
+
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transfered.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+  }
+
+  if (FLAGS_fast_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      // only check inserted vars,
+      // please see executor.py for details of fast_check_nan_inf
+      if (vname.rfind("debug_var") == 0) {
+        VLOG(3) << "debugging nan/inf in var " << vname;
+
+        auto* var = exec_scope.FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+        } else if (var->IsType<framework::SelectedRows>()) {
+          CheckTensorNANOrInf(type_, vname,
+                              var->Get<framework::SelectedRows>().value());
+        }
+      }
+    }
+  }
+
+  if (FLAGS_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
+      }
+    }
+  }
+
+  // To solve issue #15032, have a discussion with @Luotao for cpu inference,
+  // do not cache transfer scope, hence in this case delete transfer scope
+  // after run to avoid memory leak
+  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
+    scope.DeleteScope(transfer_scope);
+  }
+}
+
+void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
+                                      const Scope& scope,
+                                      const platform::Place& place) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -906,7 +1007,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx, nullptr));
+      ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -925,52 +1026,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  std::vector<KernelConfig>* kernel_configs =
-      GetKernelConfig(expected_kernel_key);
-
-  // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope = PrepareData(scope, expected_kernel_key,
-                                     &transfered_inplace_vars, runtime_ctx);
-
-  // exec scope is the scope that kernel actually executed on.
-  const Scope& exec_scope =
-      (transfer_scope == nullptr ? scope : *transfer_scope);
-
-  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(expected_kernel_key.place_);
-  }
-
-  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
-    this->InferShape(&infer_shape_ctx);
-  }
-  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
-  // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx,
-                                       *runtime_ctx, kernel_configs));
-
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
-  }
-
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-  }
-
-  if (FLAGS_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-      } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(type_, vname,
-                            var->Get<framework::SelectedRows>().value());
-      }
-    }
+  std::lock_guard<std::mutex> lock(cache_update_mutex_);
+  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+    kernel_type_.reset(new OpKernelType(expected_kernel_key));
+    kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
   }
 }
 
@@ -997,7 +1056,27 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+
+  std::unordered_set<std::string> no_buffer_ins;
+  if (info_) {
+    auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
+    // Some op may not register NoNeedBufferVarsInferer
+    if (no_buffer_inferer) {
+      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+    }
+  }
+
   for (auto& var_name_item : Inputs()) {
+    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
+    // is empty. At least STL implemented on my mac does calculate hash code
+    // of search key even though the set is empty.
+    if (!no_buffer_ins.empty() &&
+        no_buffer_ins.count(var_name_item.first) > 0) {
+      VLOG(7) << "Skip scanning input " << var_name_item.first
+              << " in Operator " << type_;
+      continue;
+    }
+
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -1042,12 +1121,32 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
-      if (!run_by_executor_) {
+      //
+      // To solve issue #15032, have a discussion with @Luotao for cpu
+      // inference, for all cpu kernels cases without GPU participation, here
+      // not do transfer scope caching, and cpu inference performance is not
+      // impacted by test.
+      enable_cache_transfer_scope_ = false;
+      if (!run_by_executor_ &&
+          (platform::is_gpu_place(kernel_type_for_var.place_) ||
+           platform::is_gpu_place(expected_kernel_key.place_))) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
+        enable_cache_transfer_scope_ = true;
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
+      }
+      // For inference, if a gpu model has an op which could only run on CPU,
+      // each result of different input will be the same with the first one.
+      // The reason is that if a gpu tensor is the input of a cpu kernel,
+      // we will create a new cpu tensor in new scope.
+      // However, if enable_cache_runtime_context_, we get the cpu tensor each
+      // time, not the gpu tensor.
+      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
+      // RunImpl().
+      if (enable_cache_runtime_context_) {
+        pre_scope_ = nullptr;
       }
 
       auto* trans_var = new_scope->Var(var_name);
@@ -1081,13 +1180,14 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
                          input.first, i);
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
               tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
-              Type(), DataTypeToString(data_type), DataTypeToString(tmp));
+              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
+              Type(), input.first, DataTypeToString(data_type),
+              DataTypeToString(tmp));
           data_type = tmp;
         }
       }

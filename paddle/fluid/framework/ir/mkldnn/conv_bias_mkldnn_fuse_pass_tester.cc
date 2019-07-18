@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+#include <gtest/gtest.h>
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/platform/place.h"
 
-#include <gtest/gtest.h>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -81,8 +81,7 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32,
-                       ::paddle::memory::Allocator::kDefault, 1);
+  tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
 void MainTest(bool convWithExistingBias) {
@@ -97,13 +96,13 @@ void MainTest(bool convWithExistingBias) {
     InitTensorHolder(&scope, place, "conv_bias");
     InitTensorHolder(&scope, place, "eltwise_bias");
   }
-  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
+  graph->SetNotOwned(kParamScopeAttr, &scope);
 
   auto pass = PassRegistry::Instance().Get("conv_bias_mkldnn_fuse_pass");
 
   int original_nodes_num = graph->Nodes().size();
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
 
@@ -141,7 +140,12 @@ TEST(ConvBiasFusePass, conv_with_existing_bias) { MainTest(true); }
 
 TEST(ConvBiasFusePass, conv3d) {
   Conv3DBiasFusePass pass;
-  ASSERT_TRUE(pass.is_conv3d());
+  ASSERT_EQ(pass.type(), std::string("conv3d"));
+}
+
+TEST(ConvBiasFusePass, conv2d_transpose) {
+  Conv2DTransposeBiasFusePass pass;
+  ASSERT_EQ(pass.type(), std::string("conv2d_transpose"));
 }
 
 }  // namespace ir

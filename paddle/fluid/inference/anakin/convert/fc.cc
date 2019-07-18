@@ -14,60 +14,109 @@
 
 #include "paddle/fluid/inference/anakin/convert/fc.h"
 #include <algorithm>
-
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
-using anakin::PTuple;
+#include <string>
+#include <vector>
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void FcOpConverter::operator()(const framework::proto::OpDesc &op,
-                               const framework::Scope &scope, bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+  auto input_names = op_desc.InputNames();
+  bool with_bias = input_names.size() >= 3;
 
-  auto x_name = op_desc.Input("X").front();
+  std::string w_name = "Y";
+  std::string i_name = "X";
+  if (with_bias) {
+    w_name = "W";
+    i_name = "Input";
+  }
+
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  auto *y_v = scope.FindVar(op_desc.Input("Y").front());
-  PADDLE_ENFORCE_NOT_NULL(y_v);
-  auto *y_t = y_v->GetMutable<framework::LoDTensor>();
 
-  auto input_name = op_desc.Input("X").front();
+  // get weights
+  auto *y_v = scope.FindVar(op_desc.Input(w_name).front());
+  PADDLE_ENFORCE_NOT_NULL(y_v);
+  auto weight_tensor = tensor_from_var(*y_v, platform::CPUPlace());
+  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+
+  int out_dim = weight_shape[1];
+  const int w_m = weight_shape[0];
+  const int w_k = weight_shape[1];
+
+  auto input_name = op_desc.Input(i_name).front();
   auto output_name = op_desc.Output("Out").front();
 
-  auto weight_shape = framework::vectorize2int(y_t->dims());
-  engine_->AddOp(op_name, "Dense", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "bias_term", false);
-  engine_->AddOpAttr(op_name, "axis", 1);
-  int out_dim = weight_shape[1];
-  engine_->AddOpAttr(op_name, "out_dim", out_dim);
+  this->engine_->AddOp(op_name, "Dense", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "bias_term", with_bias);
+  this->engine_->AddOpAttr(op_name, "axis", 1);
+  this->engine_->AddOpAttr(op_name, "out_dim", out_dim);
 
-  weight_shape.push_back(1);
-  weight_shape.push_back(1);
-  Shape anakin_shape(weight_shape);
+  auto *weight_data = weight_tensor->data<float>();
+  PADDLE_ENFORCE(w_m * w_k == weight_tensor->numel());
 
-  framework::LoDTensor weight_tensor;
-  weight_tensor.Resize(y_t->dims());
-  TensorCopySync((*y_t), platform::CPUPlace(), &weight_tensor);
+  std::vector<float> trans_weight_data(weight_tensor->numel());
+  for (int i = 0; i < w_m; i++) {
+    for (int j = 0; j < w_k; j++) {
+      trans_weight_data[i + j * w_m] = weight_data[i * w_k + j];
+    }
+  }
 
-  auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
-  float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(weight_tensor.data<float>(), weight_tensor.numel(), cpu_data);
-  weight1->d_tensor().set_shape(anakin_shape);
-  weight1->d_tensor().copy_from(weight1->h_tensor());
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  int weight_num = weight_tensor->numel();
+  bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+  if (enable_int8) {
+    if (weight_shape.size() < 4UL) {
+      weight_shape.insert(weight_shape.begin(), 4UL - weight_shape.size(), 1);
+    }
+    ::anakin::saber::Shape anakin_shape(weight_shape);
+    const float int8_range = 127.;
+    float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+    auto weight_scale =
+        boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+    PBlock<TargetT> *weight1 =
+        new PBlock<TargetT>(anakin_shape, ::anakin::AK_INT8);
+    this->engine_->RegistBlock(weight1);
+    std::vector<char> weight_int8;
+    for (int i = 0; i < weight_num; i++) {
+      bool is_valid_int8 =
+          ((trans_weight_data[i] >= -128) && (trans_weight_data[i] <= 127));
+      PADDLE_ENFORCE(is_valid_int8,
+                     "We are in anakin subgraph int8 mode, the weight of fc "
+                     "should be in range [-128, 127]");
+      weight_int8.push_back(static_cast<char>(trans_weight_data[i]));
+    }
+    memcpy(static_cast<void *>(weight1->h_tensor().mutable_data()),
+           static_cast<void *>(weight_int8.data()), sizeof(char) * weight_num);
+    weight1->d_tensor().set_shape(anakin_shape);
+    weight1->d_tensor().copy_from(weight1->h_tensor());
+    this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+    this->engine_->Graph()->SetOpPrec(op_name, ::anakin::AK_INT8);
+    this->engine_->Graph()->SetWeightsScale(
+        op_name, {weight_scale[0] / int8_range}, false);
+    this->engine_->AddTensorScale(input_name, in_scale / int8_range);
+  } else {
+    auto *weight1 = pblock_from_vector<TargetT, PrecisionT>(trans_weight_data,
+                                                            this->engine_);
+    this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  }
+
+  // get bias
+  if (with_bias) {
+    auto *b_v = scope.FindVar(op_desc.Input("Bias").front());
+    PADDLE_ENFORCE_NOT_NULL(b_v);
+    auto weight2 = pblock_from_var<TargetT, PrecisionT>(*b_v, this->engine_);
+    this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
+  }
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_ANAKIN_OP_CONVERTER(mul, MulOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);

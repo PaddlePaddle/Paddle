@@ -89,7 +89,12 @@ class Node {
   // Return a reference to the `wrapper`.
   template <typename T>
   T& Wrapper() {
-    return *boost::any_cast<T*>(wrapper_);
+    try {
+      return *boost::any_cast<T*>(wrapper_);
+    } catch (boost::bad_any_cast&) {
+      PADDLE_THROW("Invalid wrapper type error, expected %s, actual %s",
+                   typeid(T).name(), wrapper_type_.name());
+    }
   }
 
   // Test if the Node is wrapped by type T.
@@ -108,11 +113,18 @@ class Node {
            Name().find(ir::Node::kControlDepVarName) != std::string::npos;
   }
 
+  void RenameVar(const std::string& new_name) {
+    PADDLE_ENFORCE(type_ == Type::kVariable && var_desc_,
+                   "Must be type of variable");
+    name_ = new_name;
+    var_desc_->SetName(new_name);
+  }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
  protected:
-  const std::string name_;
+  std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;

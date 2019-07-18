@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-
 #include "ThreadPool.h"
+#include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
@@ -30,11 +30,14 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
+                           const std::vector<Scope *> &local_exec_scopes,
                            const std::vector<platform::Place> &places,
                            ir::Graph *graph);
   ~ParallelSSAGraphExecutor() final = default;
 
   const ir::Graph &Graph() const override { return *graphs_[0]; }
+
+  std::vector<ir::Graph *> Graphs();
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
@@ -48,7 +51,8 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<platform::Place> places_;
   std::vector<std::unique_ptr<ir::Graph>> graphs_;
 
-  std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
+  std::vector<std::unique_ptr<details::FastThreadedSSAGraphExecutor>>
+      executors_;
   ExceptionHolder exception_holder_;
 };
 

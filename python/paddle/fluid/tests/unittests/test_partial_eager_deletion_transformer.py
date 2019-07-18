@@ -14,10 +14,11 @@
 
 import os
 import unittest
-os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
-os.environ['FLAGS_memory_fraction_of_eager_deletion'] = "0.55"
+import paddle.fluid as fluid
 
 os.environ['RECORDIO_FILENAME'] = './p_gc_transformer.wmt16.recordio'
+
+fluid.core._set_eager_deletion_mode(0.0, 0.55, True)
 
 from test_parallel_executor_transformer import TestTransformer
 

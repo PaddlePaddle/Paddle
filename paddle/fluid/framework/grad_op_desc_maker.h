@@ -147,7 +147,7 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDesc>> operator()() const {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(this->Apply());
     return retv;
@@ -158,14 +158,14 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
 };
 
 template <bool DropEmptyIG = true>
-class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
+class DefaultGradOpDescMaker final : public SingleGradOpDescMaker {
  public:
   using SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<OpDesc> Apply() const {
+  std::unique_ptr<OpDesc> Apply() const final {
     auto* grad = new OpDesc();
-    grad->SetType(this->GradOpType());
+    grad->SetType(this->ForwardOpType() + "_grad");
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
@@ -182,18 +182,12 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
     return std::unique_ptr<OpDesc>(grad);
   }
-
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
-  }
 };
 
-class EmptyGradOpMaker : public GradOpDescMakerBase {
+class EmptyGradOpMaker final : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
-  std::vector<std::unique_ptr<OpDesc>> operator()() const override {
-    return {};
-  }
+  std::vector<std::unique_ptr<OpDesc>> operator()() const final { return {}; }
 };
 
 }  // namespace framework

@@ -35,7 +35,6 @@ size_t Tensor::memory_size() const {
 }
 
 void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
-                           memory::Allocator::Attr attr,
                            size_t requested_size) {
   type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
@@ -50,18 +49,17 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
-    holder_ = memory::AllocShared(place, size, attr);
+    holder_ = memory::AllocShared(place, size);
     offset_ = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
 
-void* Tensor::mutable_data(platform::Place place, memory::Allocator::Attr attr,
-                           size_t requested_size) {
+void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing.");
-  return mutable_data(place, type_, attr, requested_size);
+  return mutable_data(place, type_, requested_size);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -70,7 +68,7 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
-Tensor Tensor::Slice(int begin_idx, int end_idx) const {
+Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");

@@ -149,14 +149,18 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   }
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
+    cfg->pass_builder()->AppendPass("fc_mkldnn_pass");
   }
+  // Enable seqpool_concat_fuse_pass, disabled by default since it takes much
+  // time
+  cfg->pass_builder()->InsertPass(2, "seqpool_concat_fuse_pass");
 }
 
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg, use_mkldnn);
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
@@ -211,11 +215,15 @@ TEST(Analyzer_seq_pool1, compare_zero_copy) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
+  AnalysisConfig cfg1;
+  SetConfig(&cfg1);
+
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   std::vector<std::string> outputs_name;
   outputs_name.emplace_back(out_var_name);
   CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
                              input_slots_all, outputs_name);
 }
 

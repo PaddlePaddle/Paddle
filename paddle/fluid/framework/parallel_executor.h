@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -58,6 +59,11 @@ class ParallelExecutor {
 
   std::vector<Scope *> &GetLocalScopes();
 
+  void DropLocalExeScopes();
+
+  // This API is used to check whether DropLocalExeScopes work.
+  bool NeedCreateLocalExeScope();
+
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
    * size of local scopes.
@@ -81,10 +87,7 @@ class ParallelExecutor {
                                     const BuildStrategy &build_strategy) const;
 
   ParallelExecutorPrivate *member_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ncclUniqueId> local_nccl_id_;
-#endif
+  std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
 };
-
 }  // namespace framework
 }  // namespace paddle

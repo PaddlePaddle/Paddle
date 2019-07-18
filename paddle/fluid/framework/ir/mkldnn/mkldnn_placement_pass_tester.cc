@@ -97,7 +97,7 @@ void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
   pass->Set("mkldnn_enabled_op_types",
             new std::unordered_set<std::string>(mkldnn_enabled_op_types));
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   unsigned use_mkldnn_true_count = 0;
 

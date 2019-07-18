@@ -44,10 +44,13 @@ add_subdirectory(dynload)
 cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
 cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
 
+set(dgc_deps "")
+IF(WITH_DGC)
+    set(dgc_deps dgc)
+ENDIF()
+
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
-ELSE()
-    set(GPU_CTX_DEPS)
 ENDIF()
 
 IF(WITH_MKLDNN)
@@ -68,7 +71,12 @@ ENDIF()
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}  temp_allocator)
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    temp_allocator ${dgc_deps})
+
+if (WITH_DISTRIBUTE)
+  cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
+endif()
 
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)
@@ -88,9 +96,12 @@ nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 cc_library(timer SRCS timer.cc)
 cc_test(timer_test SRCS timer_test.cc DEPS timer)
 
+cc_library(lodtensor_printer SRCS lodtensor_printer.cc DEPS ddim place tensor scope lod_tensor variable_helper framework_proto)
+cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_printer)
+
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
-    nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
+  nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
 else()
     cc_library(profiler SRCS profiler.cc DEPS device_tracer enforce)
 endif()

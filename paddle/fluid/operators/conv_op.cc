@@ -25,6 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -68,9 +69,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                          dilations[i], paddings[i],
-                                          strides[i]));
+    if ((!ctx->IsRuntime()) &&
+        (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
+                                            dilations[i], paddings[i],
+                                            strides[i]));
+    }
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   ctx->ShareLoD("Input", "Output");
@@ -97,8 +103,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
             ? kConvMKLDNNINT8
             : kConvMKLDNNFP32;
   }
@@ -203,6 +209,12 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("fuse_brelu",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<float>("fuse_brelu_threshold",
+                 "(float, default false 6.0) Only used in mkldnn kernel")
+      .SetDefault(6.0f);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
@@ -243,11 +255,11 @@ void Conv2DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(4096);
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, defalut is False.")
+                "for cuDNN convolution or not, default is False.")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.
@@ -362,11 +374,11 @@ void Conv3DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(4096);
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, defalut is False.")
+                "for cuDNN convolution or not, default is False.")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution3D Operator.
@@ -455,13 +467,13 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   return type;
 }
 
-class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
+class Conv2DGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* op = new framework::OpDesc();
-    op->SetType(GradOpType());
+    op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", Input("Input"));
     op->SetInput("Filter", Input("Filter"));
     op->SetInput("Bias", Input("Bias"));
@@ -470,33 +482,145 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
+class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+
+    if (ForwardOp().Inputs().count("ResidualData") != 0) {
+      op->SetInput("ResidualData", Input("ResidualData"));
+    }
 
     op->SetAttrMap(Attrs());
 
     return std::unique_ptr<framework::OpDesc>(op);
   }
+};
 
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
+/*
+ * Inputs:  I, W, dO, ddI, ddW
+ * Outputs: ddO, dW, dI
+ */
+class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    // I, W, dO, ddI, ddW
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("DOutput", Input(framework::GradVarName("Output")));
+    op->SetInput("DDInput", OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("DDFilter", OutputGrad(framework::GradVarName("Filter")));
+
+    // ddO, dI, dW
+    // Unlike grad op, double grad op does not use name@GRAD@GRAD
+    // as key of ops' inputs and outputs.
+    auto ddx = OutputGrad(framework::GradVarName("Input"));
+    auto ddw = OutputGrad(framework::GradVarName("Filter"));
+    std::vector<std::string> empty_str = {};
+
+    op->SetOutput(
+        "DDOutput",
+        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
+
+void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
+  auto x_dims = ctx->GetInputDim("Input");
+  auto w_dims = ctx->GetInputDim("Filter");
+  auto do_dims = ctx->GetInputDim("DOutput");
+
+  if (ctx->HasOutput("DDOutput") && ctx->HasInput("DDInput")) {
+    ctx->SetOutputDim("DDOutput", do_dims);
+  }
+  if (ctx->HasOutput("DFilter") && ctx->HasInput("DDInput")) {
+    ctx->SetOutputDim("DFilter", w_dims);
+  }
+  if (ctx->HasOutput("DInput") && ctx->HasInput("DDFilter")) {
+    ctx->SetOutputDim("DInput", x_dims);
+  }
+}
+
+framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  int customized_type_value =
+      framework::OpKernelType::kDefaultCustomizedTypeValue;
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
+#ifdef PADDLE_WITH_CUDA
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    PADDLE_THROW("Now ConvDoubleGrad only supports cuDNN.");
+  }
+#endif
+  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                      ctx.GetPlace(), layout_, library_,
+                                      customized_type_value);
+#ifdef PADDLE_WITH_CUDA
+  if (library_ == framework::LibraryType::kCUDNN) {
+    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
+    if (configs.empty()) {
+      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
+          new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
+      configs.push_back(p0);
+
+      std::shared_ptr<
+          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
+          p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+      configs.push_back(p1);
+
+      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
+          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+      configs.push_back(p2);
+    }
+  }
+#endif
+  return type;
+}
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
-REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
+                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
+REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad, ops::Conv2DDoubleGradMaker);
+REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
+                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
-                  ops::ConvOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv3DGradMaker);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 
 // depthwise conv kernel

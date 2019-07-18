@@ -13,7 +13,7 @@
 # limitations under the License.
 
 __all__ = [
-    'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
+    'cache', 'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
     'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader',
     'multiprocess_reader', 'Fake'
 ]
@@ -31,6 +31,30 @@ import itertools
 import random
 import zlib
 import paddle.compat as cpt
+
+
+def cache(reader):
+    """
+    Cache the reader data into memory. 
+
+    Be careful that this method may take long time to process, 
+    and consume lots of memory. :code:`reader()` would only 
+    call once. 
+
+    Args:
+        reader (generator): a reader object which yields 
+            data each time.
+
+    Returns:
+        generator: a decorated reader object which yields data from cached memory.
+    """
+    all_data = tuple(reader())
+
+    def __impl__():
+        for item in all_data:
+            yield item
+
+    return __impl__
 
 
 def map_readers(func, *readers):

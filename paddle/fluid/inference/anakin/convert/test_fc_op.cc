@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/fc.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
@@ -21,18 +20,16 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(fc_op, test) {
-  auto fc_converter = OpRegister::instance()->Get("fc");
-  ASSERT_TRUE(fc_converter != nullptr);
-  // Registrar<FcOpConverter> register_fc("fc");
-  // auto fc = std::make_shared<FcOpConverter>();
-
+template <typename TargetT>
+void test_mul_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("mul_x", {1, 1, 1, 1});
-  validator.DeclParamVar("mul_y", {1, 2});
-  validator.DeclOutputVar("mul_out", {1, 1, 1, 2});
+
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
+  validator.DeclInputVar("mul_x", {1, 1, 2, 2});
+  validator.DeclParamVar("mul_y", {4, 2});
+  validator.DeclOutputVar("mul_out", {1, 2});
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -40,15 +37,28 @@ TEST(fc_op, test) {
   desc.SetInput("X", {"mul_x"});
   desc.SetInput("Y", {"mul_y"});
   desc.SetOutput("Out", {"mul_out"});
-  int num_flatten_dims = 3;
-  desc.SetAttr("x_num_col_dims", num_flatten_dims);
   validator.SetOp(*desc.Proto());
 
   validator.Execute(10);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(mul_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_mul_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+#ifdef ANAKIN_X86_PLACE
+TEST(mul_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_mul_op<::anakin::saber::X86>(ctx, false);
+}
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(mul);
+USE_ANAKIN_CONVERTER(fc);

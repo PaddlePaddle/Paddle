@@ -17,16 +17,11 @@ limitations under the License. */
 
 #include <map>
 
-#include "framework/core/net/net.h"
-#include "framework/graph/graph.h"
-#include "framework/graph/graph_global_mem.h"
 #include "paddle/fluid/inference/anakin/engine.h"
 
-using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
-using anakin::saber::X86;
 using anakin::saber::Shape;
 using anakin::PBlock;
 using anakin::PTuple;
@@ -55,11 +50,9 @@ TEST_F(TestAnakinEngine, Execute) {
   engine_->AddOpAttr("op1", "axis", 1);
   std::vector<int> shape = {1, 1, 1, 2};
   Shape tmp_shape(shape);
-  // PBlock<NV> weight1(tmp_shape);
-  auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(tmp_shape);
-  // auto *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
 
+  PBlock<NV> *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
+  engine_->RegistBlock(weight1);
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
   cpu_data[0] = 2.;
   weight1->d_tensor().set_shape(tmp_shape);
@@ -71,7 +64,7 @@ TEST_F(TestAnakinEngine, Execute) {
   // engine_->AddOpAttr("x", "input_shape", input_shape);
   engine_->SetInputShape("x", {1, 1, 1, 1});
   engine_->Optimize();
-  engine_->InitGraph();
+  engine_->InitNet();
   framework::LoDTensor x;
   framework::LoDTensor y;
   x.Resize({1, 1, 1, 1});
@@ -84,7 +77,9 @@ TEST_F(TestAnakinEngine, Execute) {
   auto *y_data = y.mutable_data<float>(platform::CUDAPlace());
   std::map<std::string, framework::LoDTensor *> outputs = {{"y", &y}};
 
-  engine_->Execute(inputs, outputs);
+  cudaStream_t stream;
+
+  engine_->Execute(inputs, outputs, stream);
   auto *y_data_gpu = y_data;
   float y_data_cpu[2];
   cudaMemcpy(y_data_cpu, y_data_gpu, sizeof(float) * 2, cudaMemcpyDeviceToHost);

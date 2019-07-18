@@ -48,6 +48,29 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+inline std::vector<int> get_expand_times(
+    const framework::ExecutionContext& ctx) {
+  auto list_expand_times_tensor =
+      ctx.MultiInput<framework::Tensor>("expand_times_tensor");
+  if (list_expand_times_tensor.size() > 0) {
+    // get tensor from
+    std::vector<int> vec_epxand_times;
+    for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
+      auto tensor = list_expand_times_tensor[i];
+      if (platform::is_gpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_times.push_back(*temp.data<int32_t>());
+      } else {
+        vec_epxand_times.push_back(*tensor->data<int32_t>());
+      }
+    }
+
+    return vec_epxand_times;
+  } else {
+    return ctx.Attr<std::vector<int>>("expand_times");
+  }
+}
 
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -74,12 +97,21 @@ class ExpandKernel : public framework::OpKernel<T> {
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<Tensor>("X");
-    auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+
+    auto in_dims = in0->dims();
+    auto expand_times = get_expand_times(context);
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     for (size_t i = 0; i < expand_times.size(); ++i) {
       bcast_dims[i] = expand_times[i];
     }
+
+    framework::DDim out_dims(in_dims);
+    for (size_t i = 0; i < expand_times.size(); ++i) {
+      out_dims[i] *= expand_times[i];
+    }
+
+    out0->Resize(out_dims);
     auto x = EigenTensor<T, Rank>::From(*in0);
     out0->mutable_data<T>(context.GetPlace());
     auto y = EigenTensor<T, Rank>::From(*out0);
@@ -94,7 +126,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
-    auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+    // auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+    auto expand_times = get_expand_times(context);
     auto x_dims = in0->dims();
     // 1. reshape_dims_vec is the broadcast parameter. For each dimension i,
     //    if expand_times[i] > 1 and x_dims[i] > 1, i will be splitted to two

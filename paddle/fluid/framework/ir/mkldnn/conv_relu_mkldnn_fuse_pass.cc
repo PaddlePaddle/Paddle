@@ -21,10 +21,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("conv_relu_mkldnn_fuse", graph.get());
+void ConvReLUFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init("conv_relu_mkldnn_fuse", graph);
 
   GraphPatternDetector gpd;
   auto* conv_input = gpd.mutable_pattern()
@@ -56,7 +55,7 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
     OpDesc* desc = conv->Op();
     desc->SetOutput("Output", std::vector<std::string>({relu_out->Name()}));
     desc->SetAttr("fuse_relu", true);
-    GraphSafeRemoveNodes(graph.get(), {relu, conv_out});
+    GraphSafeRemoveNodes(graph, {relu, conv_out});
 
     PADDLE_ENFORCE(subgraph.count(conv_input));
     IR_NODE_LINK_TO(conv, relu_out);
@@ -64,10 +63,9 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
     found_conv_relu_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_conv_relu_count);
-  return graph;
 }
 
 }  // namespace ir

@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lookup_table_op.h"
+
+#include <memory>
+
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -33,7 +37,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     int ids_rank = ids_dims.size();
-
+    VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(table_dims.size(), 2);
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
                       "The last dimension of the 'Ids' tensor must be 1.");
@@ -91,9 +95,9 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<int>>("height_sections",
-                              "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
@@ -119,13 +123,27 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class LookupTableOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LookupTableGradOpNoBuffer, "W");
+
+class LookupTableGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::string GradOpType() const { return "lookup_table_grad"; }
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("lookup_table_grad");
+
+    op->SetInput("W", Input("W"));
+    op->SetInput("Ids", Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+
+    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+
+    op->SetAttrMap(Attrs());
+    return op;
+  }
 };
 
 class LookupTableOpGrad : public framework::OperatorWithKernel {
@@ -140,7 +158,8 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Out"));
+    auto data_type = framework::GetDataTypeOfVar(
+        ctx.InputVar(framework::GradVarName("Out")));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -168,9 +187,11 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table, ops::LookupTableOp,
-                  ops::LookupTableOpGradDescMaker, ops::LookupTableOpMaker);
+REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
+                  ops::LookupTableGradOpDescMaker);
+
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
+                  ops::LookupTableGradOpNoBuffer,
                   ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,

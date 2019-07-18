@@ -106,12 +106,12 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           memory::desc(dst_tz, memory::data_type::f32, memory::format::any);
 
       auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_mpd);
-      auto dst_mem_pd = sum_pd.dst_primitive_desc();
+
       std::shared_ptr<memory> dst_mem;
       if (in_place) {
-        dst_mem.reset(new memory(dst_mem_pd));
+        dst_mem.reset(new memory(sum_pd.dst_primitive_desc()));
       } else {
-        dst_mem.reset(new memory(dst_mem_pd, output_data));
+        dst_mem.reset(new memory(sum_pd.dst_primitive_desc(), output_data));
       }
       std::vector<mkldnn::primitive::at> inputs;
       for (size_t i = 0; i < srcs_mem.size(); ++i) {
@@ -136,7 +136,8 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       if (in_place) pipeline.push_back(reorder_prim);
       stream(stream::kind::eager).submit(pipeline).wait();
 
-      output->set_mkldnn_prim_desc(dst_mem_pd);
+      output->set_layout(DataLayout::kMKLDNN);
+      output->set_format(output_format);
     } else {  // Fallback to naive version
       // TODO(@mozga-intel) Add MKLDNN SelectedRows & LoDTensorArray support
       SumKernel<CPUDeviceContext, T> reference_kernel;

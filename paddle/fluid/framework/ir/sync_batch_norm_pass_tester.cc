@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/sync_batch_norm_pass.h"
 #include <gtest/gtest.h>
-
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/program_desc.h"
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -60,7 +60,7 @@ TEST(IsTestPass, basic) {
 
   auto pass = PassRegistry::Instance().Get("sync_batch_norm_pass");
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {

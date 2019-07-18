@@ -20,7 +20,7 @@ class Strategy(object):
     Base class for all strategies.
     """
 
-    def __init__(self, start_epoch=0, end_epoch=10):
+    def __init__(self, start_epoch=0, end_epoch=0):
         """
         Args:
             start_epoch: The first epoch to apply the strategy.
@@ -29,7 +29,7 @@ class Strategy(object):
         self.start_epoch = start_epoch
         self.end_epoch = end_epoch
 
-    def on_compress_begin(self, context):
+    def on_compression_begin(self, context):
         pass
 
     def on_epoch_begin(self, context):
@@ -44,5 +44,8 @@ class Strategy(object):
     def on_batch_end(self, context):
         pass
 
-    def on_compress_end(self, context):
+    def on_compression_end(self, context):
+        pass
+
+    def restore_from_checkpoint(self, context):
         pass

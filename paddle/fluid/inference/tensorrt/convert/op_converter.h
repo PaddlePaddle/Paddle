@@ -86,7 +86,7 @@ class OpConverter {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
-        it = Registry<OpConverter>::Lookup("fc");
+        it = Registry<OpConverter>::Global().Lookup("fc");
       }
     }
     if (op_desc.Type().find("elementwise") != std::string::npos) {
@@ -103,28 +103,28 @@ class OpConverter {
       if (parameters.count(Y)) {
         PADDLE_ENFORCE(add_weight_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
-        it =
-            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_weight");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_weight");
         PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                                 op_desc.Type());
       } else {
         PADDLE_ENFORCE(add_tensor_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
-        it =
-            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_tensor");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_tensor");
       }
       PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                               op_desc.Type());
     }
 
     if (op_desc.Type() == "depthwise_conv2d") {
-      it = Registry<OpConverter>::Lookup("conv2d");
+      it = Registry<OpConverter>::Global().Lookup("conv2d");
       PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                               op_desc.Type());
     }
 
     if (!it) {
-      it = Registry<OpConverter>::Lookup(op_desc.Type());
+      it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
@@ -170,8 +170,24 @@ class OpConverter {
       engine->DeclareOutput(output);
     }
     engine->FreezeNetwork();
+    engine->ClearWeights();
   }
 
+  void RreplenishLayerAndOutput(
+      nvinfer1::ILayer* layer, const std::string& layer_type,
+      const std::vector<std::string>& output_tensor_names,
+      bool test_mode = false) {
+    size_t num_out = output_tensor_names.size();
+    for (size_t i = 0; i < num_out; i++) {
+      layer->getOutput(i)->setName(output_tensor_names[i].c_str());
+      engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
+      if (test_mode) {
+        engine_->DeclareOutput(output_tensor_names[i]);
+      }
+    }
+    layer->setName(
+        (layer_type + " (Output: " + output_tensor_names[0] + ")").c_str());
+  }
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
 
   virtual ~OpConverter() {}
@@ -198,9 +214,9 @@ class OpConverter {
 #define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)                      \
   struct trt_##op_type__##_converter : public ::paddle::framework::Registrar { \
     trt_##op_type__##_converter() {                                            \
-      ::paddle::inference::                                                    \
-          Registry<paddle::inference::tensorrt::OpConverter>::Register<        \
-              ::paddle::inference::tensorrt::Converter__>(#op_type__);         \
+      ::paddle::inference::Registry<                                           \
+          paddle::inference::tensorrt::OpConverter>::Global()                  \
+          .Register<::paddle::inference::tensorrt::Converter__>(#op_type__);   \
     }                                                                          \
   };                                                                           \
   trt_##op_type__##_converter trt_##op_type__##_converter__;                   \

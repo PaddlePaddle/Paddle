@@ -60,17 +60,20 @@ void BuildPool2dNode(
   ngraph::Strides ng_strides{static_cast<size_t>(strides.at(0)),
                              static_cast<size_t>(strides.at(1))};
 
-  auto ComputeCeiledOutput = [](size_t in, size_t k, size_t p, size_t s) {
+  auto ComputeFlooredOutput = [](size_t in, size_t k, size_t p, size_t s) {
     return (in - k + 2 * p) / s + 1;
+  };
+  auto ComputeCeiledOutput = [](size_t in, size_t k, size_t p, size_t s) {
+    return ceil(static_cast<float>(in - k + 2 * p) / s) + 1;
   };
 
   if (op_attrs.Get<bool>("ceil_mode")) {
-    auto dummy_out = paddle::platform::GetOutputNode(op, "Out", ngb_node_map);
-    auto dummpy_shape = dummy_out->get_shape();
     for (size_t i = 0; i < ng_padding_above.size(); ++i) {
-      auto desired_size = ComputeCeiledOutput(x_shape[i + 2], ksize[i],
-                                              paddings[i], strides[i]);
-      if (desired_size != dummpy_shape[i + 2]) {
+      auto ceiled_size = ComputeCeiledOutput(x_shape[i + 2], ksize[i],
+                                             paddings[i], strides[i]);
+      auto floored_size = ComputeFlooredOutput(x_shape[i + 2], ksize[i],
+                                               paddings[i], strides[i]);
+      if (ceiled_size != floored_size) {
         ng_padding_above[i] += strides[i];
       }
     }
@@ -96,6 +99,10 @@ void BuildPool2dNode(
       pool2d =
           std::make_shared<ngraph::op::AvgPool>(x, ng_ksize_shape, ng_strides);
     } else {
+      if ((ng_padding_below[0] == 0) && (ng_padding_below[1] == 0) &&
+          (ng_padding_above[0] == 0) && (ng_padding_above[1] == 0)) {
+        padding_exclusive = false;
+      }
       pool2d = std::make_shared<ngraph::op::AvgPool>(
           x, ng_ksize_shape, ng_strides, ng_padding_below, ng_padding_above,
           !padding_exclusive);
@@ -163,6 +170,10 @@ void BuildPool2dGradNode(
           x->get_shape(), dout, ng_ksize_shape, ng_strides, ng_padding_below,
           ng_padding_above, !padding_exclusive);
     } else {
+      if ((ng_padding_below[0] == 0) && (ng_padding_below[1] == 0) &&
+          (ng_padding_above[0] == 0) && (ng_padding_above[1] == 0)) {
+        padding_exclusive = false;
+      }
       pool2d_grad = std::make_shared<ngraph::op::AvgPoolBackprop>(
           x->get_shape(), dout, ng_ksize_shape, ng_strides, ng_padding_below,
           ng_padding_above, !padding_exclusive);

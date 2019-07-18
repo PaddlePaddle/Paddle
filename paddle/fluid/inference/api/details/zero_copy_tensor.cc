@@ -74,6 +74,21 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   return res;
 }
 
+PaddleDType ZeroCopyTensor::type() const {
+  EAGER_GET_TENSOR;
+  auto type = tensor->type();
+  if (type == framework::proto::VarType::FP32) {
+    return PaddleDType::FLOAT32;
+  } else if (type == framework::proto::VarType::INT64) {
+    return PaddleDType::INT64;
+  } else if (type == framework::proto::VarType::INT32) {
+    return PaddleDType::INT32;
+  } else {
+    LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+  }
+  return PaddleDType::FLOAT32;
+}
+
 template <typename T>
 void ZeroCopyTensor::copy_from_cpu(const T *data) {
   EAGER_GET_TENSOR;
@@ -119,6 +134,7 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
+    cudaDeviceSynchronize();
 #else
     PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif

@@ -89,7 +89,8 @@ class LinearChainCrfForward(object):
         for i in range(self.seq_num):
             start = self.seq_start_positions[i]
             end = self.seq_start_positions[i + 1]
-
+            if start >= end:
+                continue
             self.log_likelihood[i] = self._forward_a_sequence(
                 self.x[start:end, :], self.x_row_max[start:end, :],
                 self.x_exps[start:end, :], self.labels[start:end, :],
@@ -110,7 +111,7 @@ class TestLinearChainCrfOp(OpTest):
         lod = [[]]
         seq_start_pos = [0]
         for i in range(SEQ_NUM):
-            lod[-1].append(random.randint(1, MAX_SEQ_LEN))
+            lod[-1].append(random.randint(0, MAX_SEQ_LEN))
             seq_start_pos.append(seq_start_pos[-1] + lod[-1][-1])
         emission = np.random.uniform(
             -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")

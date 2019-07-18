@@ -52,6 +52,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   for (auto &var_name : all_vars) {
     if (std::count(repetitive_params.begin(), repetitive_params.end(),
                    var_name)) {
+      scope->EraseVars({var_name});
       continue;
     }
     auto *var = scope->FindLocalVar(var_name);
@@ -68,7 +69,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       // Copy the parameter data to a tmp tensor.
       TensorCopySync(*t, cpu_place, &temp_tensor);
       // Reallocation the space on GPU
-      t->mutable_data<float>(place);
+      t->clear();
 
       // Copy parameter data to newly allocated GPU space.
       TensorCopySync(temp_tensor, place, t);

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -51,19 +52,6 @@ void Split(const std::string &line, char sep, std::vector<T> *v) {
     ss.str({});
     ss.clear();
   }
-}
-
-template <typename T>
-constexpr paddle::PaddleDType GetPaddleDType();
-
-template <>
-constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
-  return paddle::PaddleDType::INT64;
-}
-
-template <>
-constexpr paddle::PaddleDType GetPaddleDType<float>() {
-  return paddle::PaddleDType::FLOAT32;
 }
 
 // Parse tensor from string
@@ -159,15 +147,20 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
 
 void SetConfig(AnalysisConfig *config) { config->SetModel(FLAGS_infer_model); }
 
-void profile(bool use_mkldnn = false) {
+void profile(bool use_mkldnn = false, bool use_ngraph = false) {
   AnalysisConfig config;
   SetConfig(&config);
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
+    config.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
-  std::vector<PaddleTensor> outputs;
+  if (use_ngraph) {
+    config.EnableNgraph();
+  }
+
+  std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
@@ -176,7 +169,11 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_bert, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_bert, profile_mkldnn) { profile(true); }
+TEST(Analyzer_bert, profile_mkldnn) { profile(true, false); }
+#endif
+
+#ifdef PADDLE_WITH_NGRAPH
+TEST(Analyzer_bert, profile_ngraph) { profile(false, true); }
 #endif
 
 // Check the fuse status
@@ -191,11 +188,16 @@ TEST(Analyzer_bert, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_mkldnn = false, bool use_ngraph = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+  }
+
+  if (use_ngraph) {
+    cfg.EnableNgraph();
   }
 
   std::vector<std::vector<PaddleTensor>> inputs;
@@ -206,7 +208,15 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_bert, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_bert, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_bert, compare_mkldnn) {
+  compare(true, false /* use_mkldnn, no use_ngraph */);
+}
+#endif
+
+#ifdef PADDLE_WITH_NGRAPH
+TEST(Analyzer_bert, compare_ngraph) {
+  compare(false, true /* no use_mkldnn, use_ngraph */);
+}
 #endif
 
 // Compare Deterministic result
@@ -219,5 +229,68 @@ TEST(Analyzer_bert, compare_determine) {
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        inputs);
 }
+
+void verify_transfer_scope_cache(bool is_static = false) {
+  AnalysisConfig config;
+  SetConfig(&config);
+
+  std::vector<PaddleTensor> input, output;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+  int threads_num = 10;
+  std::vector<std::thread> threads;
+  std::unordered_set<std::unordered_set<paddle::framework::Scope *> *>
+      global_transfer_scope_cache;
+  std::unordered_set<std::unordered_map<size_t, paddle::framework::Scope *> *>
+      global_transfer_data_cache;
+
+  std::ifstream fin(FLAGS_infer_data);
+  std::string line;
+
+  for (int i = 0; i < threads_num; i++) {
+    threads.emplace_back([&, i]() {
+      std::getline(fin, line);
+      ParseLine(line, &input);
+#ifdef PADDLE_WITH_MKLDNN
+      // Use static method to handle transfer_scope_cache()
+      // TODO(intel) explicit session id setting will be deprecated.
+      if (is_static) platform::set_cur_mkldnn_session_id(1);
+#endif
+      predictor->Run(input, &output, FLAGS_batch_size);
+      global_transfer_scope_cache.insert(
+          &paddle::framework::global_transfer_scope_cache());
+      global_transfer_data_cache.insert(
+          &paddle::framework::global_transfer_data_cache());
+    });
+    threads[0].join();
+    threads.clear();
+    std::vector<PaddleTensor>().swap(input);
+  }
+#ifdef PADDLE_WITH_MKLDNN
+  if (is_static) {
+    // Use static method to do transfer_scope_cache() instead of thread_local
+    // so paddle::framework::global_transfer_data_cache() should be 1
+    PADDLE_ENFORCE(global_transfer_scope_cache.size(), 1);
+    PADDLE_ENFORCE(global_transfer_data_cache.size(), 1);
+  } else {
+#endif
+    // Since paddle::framework::global_transfer_scope_cache() and
+    // paddle::framework::global_transfer_data_cache() are thread_local,
+    // their pointer should be different among different thread id.
+    PADDLE_ENFORCE(global_transfer_scope_cache.size(), threads_num);
+    PADDLE_ENFORCE(global_transfer_data_cache.size(), threads_num);
+#ifdef PADDLE_WITH_MKLDNN
+  }
+#endif
+}
+
+TEST(Analyzer_bert, threadlocal_transfer_scope_cache) {
+  verify_transfer_scope_cache();
+}
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_bert, static_transfer_scope_cache) {
+  verify_transfer_scope_cache(true);
+}
+#endif
 }  // namespace inference
 }  // namespace paddle

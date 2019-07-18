@@ -22,12 +22,12 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 
 
-class Discriminator(fluid.imperative.Layer):
+class Discriminator(fluid.Layer):
     def __init__(self, name_scope):
         super(Discriminator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=32, act='elu')
@@ -38,7 +38,7 @@ class Discriminator(fluid.imperative.Layer):
         return self._fc2(x)
 
 
-class Generator(fluid.imperative.Layer):
+class Generator(fluid.Layer):
     def __init__(self, name_scope):
         super(Generator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=64, act='elu')
@@ -51,7 +51,7 @@ class Generator(fluid.imperative.Layer):
         return self._fc3(x)
 
 
-class TestImperativeMnist(unittest.TestCase):
+class TestDygraphGAN(unittest.TestCase):
     def test_gan_float32(self):
         seed = 90
 
@@ -130,7 +130,7 @@ class TestImperativeMnist(unittest.TestCase):
                     scope.find_var(param.name).get_tensor())
 
         dy_params = dict()
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
@@ -150,7 +150,7 @@ class TestImperativeMnist(unittest.TestCase):
                     x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))))
 
             d_loss = d_loss_real + d_loss_fake
-            d_loss._backward()
+            d_loss.backward()
             sgd.minimize(d_loss)
             discriminator.clear_gradients()
             generator.clear_gradients()
@@ -160,19 +160,67 @@ class TestImperativeMnist(unittest.TestCase):
             g_loss = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
-            g_loss._backward()
+            g_loss.backward()
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
             for p in generator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
 
-            dy_g_loss = g_loss._numpy()
-            dy_d_loss = d_loss._numpy()
+            dy_g_loss = g_loss.numpy()
+            dy_d_loss = d_loss.numpy()
+
+        dy_params2 = dict()
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            backward_strategy.sort_sum_gradient = True
+            discriminator2 = Discriminator("d")
+            generator2 = Generator("g")
+            sgd2 = SGDOptimizer(learning_rate=1e-3)
+
+            d_real2 = discriminator2(to_variable(np.ones([2, 1], np.float32)))
+            d_loss_real2 = fluid.layers.reduce_mean(
+                fluid.layers.sigmoid_cross_entropy_with_logits(
+                    x=d_real2, label=to_variable(np.ones([2, 1], np.float32))))
+
+            d_fake2 = discriminator2(
+                generator2(to_variable(np.ones([2, 2], np.float32))))
+            d_loss_fake2 = fluid.layers.reduce_mean(
+                fluid.layers.sigmoid_cross_entropy_with_logits(
+                    x=d_fake2, label=to_variable(np.zeros([2, 1], np.float32))))
+
+            d_loss2 = d_loss_real2 + d_loss_fake2
+            d_loss2.backward(backward_strategy)
+            sgd2.minimize(d_loss2)
+            discriminator2.clear_gradients()
+            generator2.clear_gradients()
+
+            d_fake2 = discriminator2(
+                generator2(to_variable(np.ones([2, 2], np.float32))))
+            g_loss2 = fluid.layers.reduce_mean(
+                fluid.layers.sigmoid_cross_entropy_with_logits(
+                    x=d_fake2, label=to_variable(np.ones([2, 1], np.float32))))
+            g_loss2.backward(backward_strategy)
+            sgd2.minimize(g_loss2)
+            for p in discriminator2.parameters():
+                dy_params2[p.name] = p.numpy()
+            for p in generator.parameters():
+                dy_params2[p.name] = p.numpy()
+
+            dy_g_loss2 = g_loss2.numpy()
+            dy_d_loss2 = d_loss2.numpy()
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)
         for k, v in six.iteritems(dy_params):
+            self.assertTrue(np.allclose(v, static_params[k]))
+
+        self.assertEqual(dy_g_loss2, static_g_loss)
+        self.assertEqual(dy_d_loss2, static_d_loss)
+        for k, v in six.iteritems(dy_params2):
             self.assertTrue(np.allclose(v, static_params[k]))
 
 

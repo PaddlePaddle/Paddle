@@ -186,9 +186,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -219,6 +220,7 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

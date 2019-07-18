@@ -14,6 +14,8 @@
 
 #pragma once
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
@@ -71,6 +73,8 @@ class MemoryOptimizePass : public AnalysisPass {
   void CollectLifeCycle(
       std::unordered_map<std::string, lifecycle_t> *lifecycles,
       int sort_kind) const;
+
+  void CollectVarMemorySize(space_table_t *space_table) const;
 
   void CollectVarMemorySize(
       const std::unordered_map<std::string, size_t> &batch_var_ave_dim,

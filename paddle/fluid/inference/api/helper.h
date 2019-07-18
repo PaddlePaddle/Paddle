@@ -21,17 +21,25 @@
 #endif
 #include <algorithm>
 #include <chrono>  // NOLINT
+#include <functional>
 #include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
+extern std::string paddle::framework::DataTypeToString(
+    const framework::proto::VarType::Type type);
+
 namespace paddle {
 namespace inference {
+
+using paddle::framework::DataTypeToString;
 
 // Timer for timer
 class Timer {
@@ -56,9 +64,12 @@ static int GetUniqueId() {
 }
 
 static void split(const std::string &str, char sep,
-                  std::vector<std::string> *pieces) {
+                  std::vector<std::string> *pieces, bool ignore_null = true) {
   pieces->clear();
   if (str.empty()) {
+    if (!ignore_null) {
+      pieces->push_back(str);
+    }
     return;
   }
   size_t pos = 0;
@@ -72,26 +83,63 @@ static void split(const std::string &str, char sep,
     pieces->push_back(str.substr(pos));
   }
 }
+
+template <typename T>
+static T convert(const std::string &item,
+                 std::function<T(const std::string &item)> func) {
+  T res;
+  try {
+    res = func(item);
+  } catch (std::invalid_argument &e) {
+    std::string message =
+        "invalid_argument exception when try to convert : " + item;
+    LOG(ERROR) << message;
+    PADDLE_THROW(message);
+  } catch (std::out_of_range &e) {
+    std::string message =
+        "out_of_range exception when try to convert : " + item;
+    LOG(ERROR) << message;
+    PADDLE_THROW(message);
+  } catch (...) {
+    std::string message = "unexpected exception when try to convert " + item;
+    LOG(ERROR) << message;
+    PADDLE_THROW(message);
+  }
+  return res;
+}
+
 static void split_to_float(const std::string &str, char sep,
                            std::vector<float> *fs) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*fs),
-                 [](const std::string &v) { return std::stof(v); });
+                 [](const std::string &v) {
+                   return convert<float>(v, [](const std::string &item) {
+                     return std::stof(item);
+                   });
+                 });
 }
 static void split_to_int64(const std::string &str, char sep,
                            std::vector<int64_t> *is) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
-                 [](const std::string &v) { return std::stoi(v); });
+                 [](const std::string &v) {
+                   return convert<int64_t>(v, [](const std::string &item) {
+                     return std::stoll(item);
+                   });
+                 });
 }
 static void split_to_int(const std::string &str, char sep,
                          std::vector<int> *is) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
-                 [](const std::string &v) { return std::stoi(v); });
+                 [](const std::string &v) {
+                   return convert<int>(v, [](const std::string &item) {
+                     return std::stoi(item);
+                   });
+                 });
 }
 template <typename T>
 std::string to_string(const std::vector<T> &vec) {
@@ -266,17 +314,20 @@ static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
 }
 
 static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-                      double latency, int epoch = 1) {
-  LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
-            << ", threads: " << num_threads << ", thread id: " << tid
-            << ", latency: " << latency << "ms, fps: " << 1 / (latency / 1000.f)
+                      double batch_latency, int epoch = 1,
+                      const framework::proto::VarType::Type data_type =
+                          framework::proto::VarType::FP32) {
+  PADDLE_ENFORCE(batch_size > 0, "Non-positive batch size.");
+  double sample_latency = batch_latency / batch_size;
+  LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";
-  if (epoch > 1) {
-    int samples = batch_size * epoch;
-    LOG(INFO) << "====== sample number: " << samples
-              << ", average latency of each sample: " << latency / samples
-              << "ms ======";
-  }
+  LOG(INFO) << "====== batch size: " << batch_size << ", iterations: " << epoch
+            << ", repetitions: " << repeat << " ======";
+  LOG(INFO) << "====== batch latency: " << batch_latency
+            << "ms, number of samples: " << batch_size * epoch
+            << ", sample latency: " << sample_latency
+            << "ms, fps: " << 1000.f / sample_latency
+            << ", data type: " << DataTypeToString(data_type) << " ======";
 }
 
 static bool IsFileExists(const std::string &path) {
