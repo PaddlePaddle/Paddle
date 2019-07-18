@@ -23,6 +23,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
+from paddle.fluid.incubate.fleet.util.hdfs import HDFSClient
 
 
 class Mode:
@@ -32,6 +33,9 @@ class Mode:
     TRANSPILER = 1
     PSLIB = 2
     COLLECTIVE = 3
+
+
+HDFS_PREFIX = 'hdfs:'
 
 
 class Fleet(object):
@@ -52,6 +56,7 @@ class Fleet(object):
         self._optimizer = None
         self._role_maker = None
         self._executor = None
+        self._hdfs_client = None
 
     def is_first_worker(self):
         """
@@ -178,7 +183,7 @@ class Fleet(object):
 
         return trainer_files[trainer_id]
 
-    def init(self, role_maker=None):
+    def init(self, role_maker=None, hdfs_client=None):
         """
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
@@ -195,9 +200,31 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
+        if hdfs_client and not isinstance(hdfs_client, HDFSClient):
+            raise ValueError("hdfs_client must be an instance of HDFSClient")
+
+        self._hdfs_client = hdfs_client
         self._role_maker = role_maker
         self._role_maker.generate_role()
         self._is_initialized = True
+
+    def hdfs_path_check(self, dirname):
+        rets = dirname
+        if dirname.startswith(HDFS_PREFIX):
+            if not self._hdfs_client:
+                raise ValueError(
+                    "if you want to use hadoop path, please init hadoop client firstly"
+                )
+            while True:
+                rets = '/tmp/paddle_hadoop_tmp_%s' % uuid.uuid4().hex()
+                if not os.path.exists(rets):
+                    break
+            os.sys("mkdir -p " + rets)
+        elif self._hdfs_client:
+            warnings.warn(
+                "you have init hadoop client, if you want to use hdfs path, please make sure your path starts with \"%s\""
+                % HDFS_PREFIX)
+        return rets
 
     @abc.abstractmethod
     def init_worker(self):
