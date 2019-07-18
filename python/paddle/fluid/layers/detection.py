@@ -267,6 +267,7 @@ def rpn_target_assign(bbox_pred,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
+        num_classes(int): The number of classes.
         gt_labels (Variable): For class-aware rpn classification, the gt_labels
             is a 2D LoDTensor with shape [Ng, 1], Ng is the total number of ground
             truth bboxes of mini-batch input.
