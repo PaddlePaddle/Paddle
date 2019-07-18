@@ -88,10 +88,23 @@ class DistributedTranspiler(Fleet):
         self._executor.run(self.startup_program)
 
         if model_dir:
-            if not os.path.isdir(model_dir):
-                raise ValueError("There is no directory named '%s'", model_dir)
+            origin_model_dir = model_dir
+            if model_dir.startswith(HDFS_PREFIX):
+                if not self._hdfs_client.is_dir(model_dir[len(HDFS_PREFIX):]):
+                    raise ValueError("There is no directory named '%s'",
+                                     model_dir[len(HDFS_PREFIX)])
+                local_model_dir = self.hdfs_path_check(model_dir)
+                self._hdfs_client.download(model_dir[len(HDFS_PREFIX):],
+                                           local_model_dir)
+                model_dir = local_model_dir
+            else:
+                if not os.path.isdir(model_dir):
+                    raise ValueError("There is no directory named '%s'",
+                                     model_dir)
 
             io.load_persistables(self._executor, model_dir, self.main_program)
+            if origin_model_dir.startswith(HDFS_PREFIX):
+                os.sys('rm -irf ' + model_dir)
 
     def run_server(self):
         """
@@ -156,6 +169,8 @@ class DistributedTranspiler(Fleet):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
+        origin_dirname = dirname
+        dirname = self.hdfs_path_check(dirname)
         if main_program is not None:
             io.save_inference_model(dirname, feeded_var_names, target_vars,
                                     executor, main_program, None, None,
@@ -174,6 +189,9 @@ class DistributedTranspiler(Fleet):
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(self.main_program)
             self.save_persistables(executor, dirname, program)
+        if origin_dirname.startswith(HDFS_PREFIX):
+            self._hdfs_client.upload(origin_dirname[len(HDFS_PREFIX):], dirname)
+            os.sys("rm -irf " + dirname)
 
     def save_persistables(self, executor, dirname, main_program=None):
         """
@@ -186,7 +204,8 @@ class DistributedTranspiler(Fleet):
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
         """
-
+        origin_dirname = dirname
+        dirname = self.hdfs_path_check(dirname)
         if main_program is None:
             main_program = self.main_program
 
@@ -195,6 +214,9 @@ class DistributedTranspiler(Fleet):
                 "main_program is for local, may not use fleet.save_persistables")
 
         io.save_persistables(executor, dirname, main_program, None)
+        if origin_dirname.startswith(HDFS_PREFIX):
+            self._hdfs_client.upload(origin_dirname[len(HDFS_PREFIX):], dirname)
+            os.sys("rm -irf " + dirname)
 
     def _transpile(self, config):
         if not isinstance(config, DistributeTranspilerConfig):
