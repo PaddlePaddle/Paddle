@@ -22,23 +22,22 @@ namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 
-const char RecurrentBase::kInputs[] = "inputs";
-const char RecurrentBase::kInitialStates[] = "initial_states";
-const char RecurrentBase::kParameters[] = "parameters";
-const char RecurrentBase::kOutputs[] = "outputs";
-const char RecurrentBase::kStepScopes[] = "step_scopes";
-const char RecurrentBase::kHasStates[] = "has_states";
-const char RecurrentBase::kExStates[] = "ex_states";
-const char RecurrentBase::kStates[] = "states";
-const char RecurrentBase::kStepBlock[] = "sub_block";
-const char RecurrentBase::kReverse[] = "reverse";
-const char RecurrentBase::kIsTrain[] = "is_train";
-const char RecurrentBase::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
-#define GRAD_SUFFIX "@GRAD"
-const char RecurrentBase::kInputGrads[] = "inputs" GRAD_SUFFIX;
-const char RecurrentBase::kOutputGrads[] = "outputs" GRAD_SUFFIX;
-const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;
-const char RecurrentBase::kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
+constexpr char RecurrentBase::kInputs[];
+constexpr char RecurrentBase::kInitialStates[];
+constexpr char RecurrentBase::kParameters[];
+constexpr char RecurrentBase::kOutputs[];
+constexpr char RecurrentBase::kStepScopes[];
+constexpr char RecurrentBase::kHasStates[];
+constexpr char RecurrentBase::kExStates[];
+constexpr char RecurrentBase::kStates[];
+constexpr char RecurrentBase::kStepBlock[];
+constexpr char RecurrentBase::kReverse[];
+constexpr char RecurrentBase::kIsTrain[];
+constexpr char RecurrentBase::kSkipEagerDeletionVars[];
+constexpr char RecurrentBase::kInitStateGrads[];
+constexpr char RecurrentBase::kInputGrads[];
+constexpr char RecurrentBase::kOutputGrads[];
+constexpr char RecurrentBase::kParamGrads[];
 
 static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
                             framework::Scope *parent_scope,
