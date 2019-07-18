@@ -337,7 +337,7 @@ def lm_model(hidden_size,
 
         return real_res, last_hidden, last_cell
 
-    batch_size_each = batch_size // core.get_cuda_device_count()
+    batch_size_each = batch_size
     if use_py_reader:
         feed_shapes = [[batch_size_each, num_steps, 1],
                        [batch_size_each * num_steps, 1]]
