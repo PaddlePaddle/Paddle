@@ -100,7 +100,7 @@ class FleetWrapper {
       const std::vector<std::string>& sparse_grad_names, const int emb_dim,
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      const int batch_size, const bool use_cvm);
+      const int batch_size, const bool use_cvm, const bool dump_slot);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names

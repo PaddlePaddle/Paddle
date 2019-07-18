@@ -41,6 +41,7 @@ message TrainerDesc {
   optional SectionWorkerParameter section_param = 104;
   // datafeed desc
   optional DataFeedDesc data_desc = 201;
+  optional bool dump_slot = 202 [ default = false ];
 }
 
 message HogwildWorkerParameter { repeated string skip_ops = 1; }

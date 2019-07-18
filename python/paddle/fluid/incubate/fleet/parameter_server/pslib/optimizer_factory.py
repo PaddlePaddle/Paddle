@@ -162,7 +162,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
-
+        opt_info["dump_slot"] = True
         for loss in losses:
             loss.block.program._fleet_opt = opt_info
 
