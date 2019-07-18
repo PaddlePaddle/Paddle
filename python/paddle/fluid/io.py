@@ -179,9 +179,6 @@ def save_vars(executor,
     """
     save_dirname = os.path.normpath(dirname)
 
-    if not isinstance(executor, Executor):
-        raise TypeError("executor should be as Executor")
-
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -432,9 +429,6 @@ def _save_distributed_persistables(executor, dirname, main_program):
     if not isinstance(main_program, Program):
         raise TypeError("'main_program' should be an instance of Program.")
 
-    if not isinstance(executor, Executor):
-        raise TypeError("executor should be as Executor")
-
     if not main_program._is_distributed:
         raise ValueError(
             "'_save_distributed_persistables' just be designed for distributed training."
@@ -603,9 +597,6 @@ def load_vars(executor,
     """
     load_dirname = os.path.normpath(dirname)
 
-    if not isinstance(executor, Executor):
-        raise TypeError("executor should be as Executor")
-
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -624,6 +615,7 @@ def load_vars(executor,
 
         if main_program is None:
             main_program = default_main_program()
+
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
@@ -858,9 +850,6 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
 
     if not isinstance(main_program, Program):
         raise TypeError("'main_program' should be an instance of Program.")
-
-    if not isinstance(executor, Executor):
-        raise TypeError("executor should be as Executor")
 
     if not main_program._is_distributed:
         raise ValueError(
