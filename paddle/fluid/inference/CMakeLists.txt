@@ -2,7 +2,7 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api

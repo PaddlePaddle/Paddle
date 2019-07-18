@@ -99,10 +99,9 @@ void AllReduceOpHandle::RunImpl() {
 
   std::vector<const LoDTensor *> lod_tensors;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    auto *s = local_scopes_[i];
-    auto &local_scope = *s->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto &local_scope = local_exec_scopes_[i];
     auto &lod_tensor =
-        local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
+        local_scope->FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
     VLOG(10) << "place:" << i << ", input_name:" << in_var_handles[i]->name()
              << ", out_name:" << out_var_handles[i]->name();
@@ -140,9 +139,7 @@ void AllReduceOpHandle::RunImpl() {
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   } else {  // Special handle CPU only Operator's gradient. Like CRF
-    auto &trg = *this->local_scopes_[0]
-                     ->FindVar(kLocalExecScopeName)
-                     ->Get<Scope *>()
+    auto &trg = *this->local_exec_scopes_[0]
                      ->FindVar(out_var_handles[0]->name())
                      ->GetMutable<framework::LoDTensor>();
 
@@ -151,10 +148,9 @@ void AllReduceOpHandle::RunImpl() {
     VisitDataType(lod_tensors[0]->type(), func);
 
     for (size_t i = 1; i < local_scopes_.size(); ++i) {
-      auto &scope =
-          *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+      auto &scope = local_exec_scopes_[i];
       auto &p = places_[i];
-      auto *var = scope.FindVar(out_var_handles[i]->name());
+      auto *var = scope->FindVar(out_var_handles[i]->name());
       auto *dev_ctx = dev_ctxes_.at(p);
 
       RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
