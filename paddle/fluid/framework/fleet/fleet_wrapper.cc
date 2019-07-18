@@ -287,12 +287,16 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   int offset = 2;
   int slot_offset = 0;
   int grad_dim = emb_dim;
+  int show_index = 0;
+  int click_index = 1;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
   }
   if (dump_slot) {
     slot_offset = 1;
+    show_index = 1;
+    click_index = 2;
   }
   CHECK_GE(grad_dim, 0);
   uint64_t fea_idx = 0u;
@@ -336,17 +340,18 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
+
       if (use_cvm) {
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
       } else {
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
-        (*push_values)[fea_idx][0] = 1.0f;
-        (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
+        (*push_values)[fea_idx][show_index] = 1.0f;
+        (*push_values)[fea_idx][click_index] = static_cast<float>(fea_labels[fea_idx]);
       }
       if (dump_slot) {
-        (*push_values)[fea_idx][2] = static_cast<float>(slot);
+        (*push_values)[fea_idx][0] = static_cast<float>(slot);
       }
       g += emb_dim;
       fea_idx++;
