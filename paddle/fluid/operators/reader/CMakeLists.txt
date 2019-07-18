@@ -30,12 +30,6 @@ reader_library(create_multi_pass_reader_op SRCS create_multi_pass_reader_op.cc)
 reader_library(create_custom_reader_op SRCS create_custom_reader_op.cc)
 reader_library(create_py_reader_op SRCS create_py_reader_op.cc DEPS py_reader)
 
-if (NOT WIN32 AND NOT ON_INFER)
-    cc_library(ctr_reader SRCS ctr_reader.cc DEPS gzstream reader zlib)
-    cc_test(ctr_reader_test SRCS ctr_reader_test.cc DEPS ctr_reader)
-    reader_library(create_ctr_reader_op SRCS create_ctr_reader_op.cc DEPS ctr_reader)
-endif ()
-
 cc_test(reader_blocking_queue_test SRCS reader_blocking_queue_test.cc)
 # Export local libraries to parent
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)

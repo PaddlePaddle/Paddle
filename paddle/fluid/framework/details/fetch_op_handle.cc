@@ -22,11 +22,13 @@ namespace framework {
 namespace details {
 
 FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
-                             std::vector<Scope *> *local_scopes)
+                             std::vector<Scope *> *local_scopes,
+                             std::vector<Scope *> *local_exec_scopes)
     : OpHandleBase(node),
       data_(data),
       offset_(offset),
-      local_scopes_(local_scopes) {}
+      local_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes) {}
 
 FetchOpHandle::~FetchOpHandle() {}
 
@@ -49,14 +51,12 @@ void FetchOpHandle::RunImpl() {
 
   tensors_.resize(inputs_.size());
   platform::CPUPlace cpu;
-  auto &scopes = *local_scopes_;
+  auto &scopes = *local_exec_scopes_;
 
   for (size_t i = 0; i < inputs_.size(); ++i) {
     auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
     auto &scope = scopes.at(var_handle->scope_idx());
-    auto *var = scope->FindVar(kLocalExecScopeName)
-                    ->Get<Scope *>()
-                    ->FindVar(var_handle->name());
+    auto *var = scope->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
                             var_handle->name());
 

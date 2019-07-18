@@ -148,6 +148,8 @@ struct Argument {
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
+  // The cache capacity of different input shapes for mkldnn.
+  DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
   // A set of op types to enable their quantized kernels

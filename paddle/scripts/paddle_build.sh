@@ -554,7 +554,7 @@ function assert_api_spec_approvals() {
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the api change! ${API_FILE} for the avoidance of the bad C++ code habits."
+            echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the usage (either add or delete) of const_cast."
             exit 1
         fi
     fi
@@ -978,6 +978,18 @@ function build_document_preview() {
 }
 
 
+function example() {
+    pip install /paddle/build/python/dist/*.whl
+    paddle version
+    cd ${PADDLE_ROOT}/python/paddle/fluid
+    python sampcd_processor.py 
+    if [ "$?" != "0" ];then
+      echo "Code instance execution failed"
+      exit 1
+    fi
+}
+
+
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -992,6 +1004,7 @@ function main() {
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
+        example
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1083,6 +1096,9 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         build_document_preview
+        ;;
+      api_example)
+        example
         ;;
       *)
         print_usage

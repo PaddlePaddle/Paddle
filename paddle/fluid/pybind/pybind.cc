@@ -51,7 +51,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -1414,26 +1413,19 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int nccl_comm_num) {
             self.nccl_comm_num_ = nccl_comm_num;
           })
-      .def_property("use_hierarchical_allreduce_",
+      .def_property("use_hierarchical_allreduce",
                     [](const BuildStrategy &self) {
                       return self.use_hierarchical_allreduce_;
                     },
                     [](BuildStrategy &self, bool use) {
                       self.use_hierarchical_allreduce_ = use;
                     })
-      .def_property("hierarchical_allreduce_inter_nranks_",
+      .def_property("hierarchical_allreduce_inter_nranks",
                     [](const BuildStrategy &self) {
                       return self.hierarchical_allreduce_inter_nranks_;
                     },
                     [](BuildStrategy &self, int nranks) {
                       self.hierarchical_allreduce_inter_nranks_ = nranks;
-                    })
-      .def_property("hierarchical_allreduce_exter_nranks_",
-                    [](const BuildStrategy &self) {
-                      return self.hierarchical_allreduce_exter_nranks_;
-                    },
-                    [](BuildStrategy &self, int nranks) {
-                      self.hierarchical_allreduce_exter_nranks_ = nranks;
                     })
 
       .def_property(
@@ -1555,6 +1547,13 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property("_use_legacy_memory_optimize_strategy",
+                    [](const BuildStrategy &self) {
+                      return self.use_legacy_memory_optimize_strategy_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.use_legacy_memory_optimize_strategy_ = b;
+                    })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
@@ -1615,7 +1614,6 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);

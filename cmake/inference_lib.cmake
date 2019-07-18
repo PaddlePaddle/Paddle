@@ -192,10 +192,11 @@ set(module "framework")
 if (NOT WIN32)
     set(framework_lib_deps framework_py_proto)
 endif (NOT WIN32)
+
 copy(framework_lib DEPS ${framework_lib_deps}
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-        ${src_dir}/${module}/ir/*.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}/ir
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
+        ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h 
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet
         )
 
 set(module "memory")
