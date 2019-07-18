@@ -73,8 +73,9 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
                          : static_cast<int>(ratio_h * k);
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float d_n =
-        align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
+    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
+    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
+    float d_n = align_flag ? idx_src_y - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
     {
       vy_n[k] = y_n;
@@ -99,8 +100,9 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
                   : static_cast<int>(ratio_w * l);
     x_w = (x_w > 0) ? x_w : 0;
     int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-    float d_w =
-        align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
+    float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
+    float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;
     float d_e = 1.f - d_w;
     {
       vx_w[l] = x_w;
@@ -170,8 +172,9 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
                          : static_cast<int>(ratio_h * k);
     y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float d_n =
-        align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
+    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
+    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
+    float d_n = align_flag ? idx_src_y - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
 
     for (int l = 0; l < out_w; l++) {
@@ -179,8 +182,9 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
                            : static_cast<int>(ratio_w * l);
       x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float d_w =
-          align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
+      float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+      idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
+      float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;
       float d_e = 1.f - d_w;
 
       for (int i = 0; i < n; i++) {    // loop for batches

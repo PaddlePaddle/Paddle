@@ -28,6 +28,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+import logging
 
 __all__ = [
     'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
@@ -84,6 +85,7 @@ def data(name,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='x', shape=[784], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
@@ -147,6 +149,7 @@ class ListenAndServ(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             with fluid.program_guard(main):
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
@@ -449,6 +452,7 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             reader = fluid.layers.random_data_generator(
                                              low=0.0,
                                              high=1.0,
@@ -590,6 +594,7 @@ def _py_reader(capacity,
                 feed_queue.close()
             except Exception as ex:
                 feed_queue.close()
+                logging.warn('Your decorated reader has raised an exception!')
                 raise ex
 
         reader.thread = threading.Thread(target=__provider_thread__)
@@ -828,12 +833,16 @@ def create_py_reader_by_data(capacity,
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
+         import paddle.fluid.compiler as compiler
 
          def network(img, label):
              # User defined network. Here a simple regression as example
              predict = fluid.layers.fc(input=img, size=10, act='softmax')
              loss = fluid.layers.cross_entropy(input=predict, label=label)
              return fluid.layers.mean(loss)
+
+         MEMORY_OPT = False
+         USE_CUDA = False
 
          image = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -846,14 +855,23 @@ def create_py_reader_by_data(capacity,
          img, label = fluid.layers.read_file(reader)
          loss = network(img, label)  # some network definition
 
-         fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+         place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
+         exe = fluid.Executor(place)
+         exe.run(fluid.default_startup_program())
 
-         exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-         for epoch_id in range(10):
+         build_strategy = fluid.BuildStrategy()
+         build_strategy.memory_optimize = True if MEMORY_OPT else False
+         compiled_prog = compiler.CompiledProgram(
+             fluid.default_main_program()).with_data_parallel(
+                 loss_name=loss.name,
+                 build_strategy=build_strategy,
+                 exec_strategy=exec_strategy)
+
+         for epoch_id in range(2):
              reader.start()
              try:
                  while True:
-                     exe.run(fetch_list=[loss.name])
+                     exe.run(compiled_prog, fetch_list=[loss.name])
              except fluid.core.EOFException:
                  reader.reset()
     """
@@ -902,7 +920,7 @@ def open_files(filenames,
     Examples:
        .. code-block:: python
 
-         import paddle.fluid. as fluid
+         import paddle.fluid as fluid
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1,)],
@@ -1004,6 +1022,7 @@ def shuffle(reader, buffer_size):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
                                                     shapes=[(3,224,224), (1,)],
@@ -1035,6 +1054,7 @@ def batch(reader, batch_size):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
                                                     shapes=[(3,224,224), (1,)],
@@ -1079,6 +1099,7 @@ def double_buffer(reader, place=None, name=None):
         >>> import paddle.fluid as fluid
         >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
         >>>                                  shapes=[[-1, 784], [-1, 1]],
+        >>>                                  lod_levels=[0, 0],
         >>>                                  dtypes=['float32', 'int64'])
         >>> reader = fluid.layers.double_buffer(reader)
         >>> img, label = fluid.layers.read_file(reader)
@@ -1267,4 +1288,4 @@ def load(out, file_path, load_as_fp16=None):
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)
+    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)

@@ -115,10 +115,6 @@ function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
-
-  if (WITH_JEMALLOC)
-    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
-  endif()
 endfunction()
 
 
@@ -726,12 +722,23 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    add_test(NAME ${TARGET_NAME}
-             COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-             FLAGS_cpu_deterministic=true FLAGS_limit_of_tmp_allocation=4294967296  # 4G
-             PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true FLAGS_limit_of_tmp_allocation=4294967296  # 4G
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true FLAGS_limit_of_tmp_allocation=4294967296  # 4G
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
     # No unit test should exceed 10 minutes.
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()

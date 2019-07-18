@@ -14,6 +14,23 @@
 
 from __future__ import print_function
 import os
+import sys
+
+# The legacy core need to be removed before "import core",
+# in case of users installing paddlepadde without -U option
+core_suffix = 'so'
+if os.name == 'nt':
+    core_suffix = 'pyd'
+
+legacy_core = os.path.abspath(os.path.dirname(
+    __file__)) + os.sep + 'core.' + core_suffix
+if os.path.exists(legacy_core):
+    sys.stderr.write('Deleting legacy file ' + legacy_core + '\n')
+    try:
+        os.remove(legacy_core)
+    except Exception as e:
+        raise e
+
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
@@ -135,15 +152,15 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'benchmark', 'eager_delete_scope',
-        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
-        'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
-        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
-        'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
-        'enable_parallel_graph', 'fuse_parameter_groups_size',
-        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname', 'dygraph_debug'
+        'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
+        'eager_delete_scope', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
+        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
+        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
+        'memory_fraction_of_eager_deletion', 'allocator_strategy',
+        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
+        'pe_profile_fname', 'inner_op_parallelism', 'enable_parallel_graph',
+        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
+        'fuse_parameter_memory_size', 'tracer_profile_fname', 'dygraph_debug'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -175,6 +192,7 @@ def __bootstrap__():
         read_env_flags.append('communicator_max_merge_var_num')
         read_env_flags.append('communicator_fake_rpc')
         read_env_flags.append('communicator_send_wait_times')
+        read_env_flags.append('communicator_merge_sparse_grad')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+from os import path
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 
@@ -23,6 +25,11 @@ class TrainerDesc(object):
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         '''
+        # Workaround for relative import in protobuf under python3
+        # TODO: should be fixed
+        cur_path = path.dirname(__file__)
+        sys.path.append(cur_path)
+        sys.path.append(cur_path + "/proto")
         from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
@@ -67,6 +74,9 @@ class TrainerDesc(object):
     def _desc(self):
         from google.protobuf import text_format
         return self.proto_desc.SerializeToString()
+
+    def __str__(self):
+        return str(self.proto_desc)
 
 
 class MultiTrainer(TrainerDesc):
