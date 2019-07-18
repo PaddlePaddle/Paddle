@@ -88,7 +88,7 @@ class RnnConfig(object):
 
         if rnn_model not in ('static', 'padding', 'cudnn', 'basic_lstm'):
             raise ValueError('Unsupported rnn_model.')
-        self.batch_size = 3
+        self.batch_size = 12
         self.max_epoch = 3
         self.random_seed = 123
 
@@ -337,8 +337,7 @@ def lm_model(hidden_size,
 
         return real_res, last_hidden, last_cell
 
-    batch_size_each = core.get_cuda_device_count(
-    ) if fluid.is_compiled_with_cuda() else 1
+    batch_size_each = batch_size
     if use_py_reader:
         feed_shapes = [[batch_size_each, num_steps, 1],
                        [batch_size_each * num_steps, 1]]
@@ -511,8 +510,7 @@ class EagerDeletionPaddingRnnTest(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(
                     learning_rate=self.learning_rate)
                 optimizer.minimize(self.loss)
-        self.exe = Executor(fluid.CUDAPlace(0)) if fluid.is_compiled_with_cuda(
-        ) else Executor(fluid.CPUPlace())
+        self.exe = Executor(fluid.CPUPlace())
         self.exe.run(self.startup_program)
 
         self.device_count = 1
