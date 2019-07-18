@@ -100,6 +100,8 @@ class FuseOptimizerOpPass : public ir::Pass {
                        std::vector<Node *> *opt_nodes,
                        std::unordered_map<std::string, std::vector<std::string>>
                            *aux_var_set) const;
+
+  bool IsLoDTensorType(const proto::VarType::Type &type) const;
 };
 
 }  // namespace ir

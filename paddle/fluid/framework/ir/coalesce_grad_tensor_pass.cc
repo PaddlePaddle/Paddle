@@ -91,7 +91,7 @@ class CoalesceGradTensorPass : public ir::Pass {
         result.Get<details::ParamsAndGrads>(details::kParamsAndSparseGrads);
 
     for (auto &param_grad : params_grads) {
-      if (IsSupportedVarType(GetTypeOfVar(vars_info, param_grad.second))) {
+      if (IsLoDTensorType(GetTypeOfVar(vars_info, param_grad.second))) {
         p_g_dense_grad.emplace_back(param_grad);
       } else {
         p_g_sparse_grad.emplace_back(param_grad);
@@ -148,7 +148,7 @@ class CoalesceGradTensorPass : public ir::Pass {
         PADDLE_ENFORCE_NOT_NULL(it->Var());
         it->Var()->SetPersistable(true);
       }
-      PADDLE_ENFORCE(IsSupportedVarType(GetTypeOfVar(vars_info, p_g.second)));
+      PADDLE_ENFORCE(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)));
     }
   }
 
@@ -393,7 +393,7 @@ class CoalesceGradTensorPass : public ir::Pass {
   }
 
  private:
-  bool IsSupportedVarType(const proto::VarType::Type &type) const {
+  bool IsLoDTensorType(const proto::VarType::Type &type) const {
     // Current only support LOD_TENSOR.
     return type == proto::VarType::LOD_TENSOR;
   }

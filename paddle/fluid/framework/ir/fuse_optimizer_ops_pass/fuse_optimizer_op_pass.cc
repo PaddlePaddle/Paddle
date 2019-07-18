@@ -40,7 +40,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     if (node->Op()->Type() == fuse_op_type) {
       auto grad_name = node->Op()->Input(kGrad);
       PADDLE_ENFORCE_EQ(grad_name.size(), static_cast<size_t>(1));
-      if (GettypeOfVar(vars_info, grad_name[0]) == proto::VarType::LOD_TENSOR) {
+      if (IsLoDTensorType(GettypeOfVar(vars_info, grad_name[0]))) {
         opt_nodes.emplace_back(node);
       }
       ++opt_ops_num;
@@ -247,6 +247,12 @@ FuseOptimizerOpPass::GetVarInfo(const Graph &result) const {
     }
   }
   return vars;
+}
+
+bool FuseOptimizerOpPass::IsLoDTensorType(
+    const proto::VarType::Type &type) const {
+  // Current only support LOD_TENSOR.
+  return type == proto::VarType::LOD_TENSOR;
 }
 
 proto::VarType::Type FuseOptimizerOpPass::GettypeOfVar(
