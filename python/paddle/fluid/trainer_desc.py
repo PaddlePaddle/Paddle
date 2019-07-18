@@ -70,6 +70,9 @@ class TrainerDesc(object):
 
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm
+    
+    def _set_dump_slot(self, dump_slot):
+        self.proto_desc.dump_slot = dump_slot
 
     def _desc(self):
         from google.protobuf import text_format
