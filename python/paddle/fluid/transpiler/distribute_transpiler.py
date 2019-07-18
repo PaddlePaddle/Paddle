@@ -1686,6 +1686,11 @@ class DistributeTranspiler(object):
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
+        pserver_program.global_block().create_var(
+            name="remote_hdfs_path",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+
         checkpoint_save_block = pserver_program._create_block(pre_block_idx)
         # this 'file_path' do not be used in save lookup table variable
         checkpoint_save_block.append_op(
@@ -1694,6 +1699,13 @@ class DistributeTranspiler(object):
             outputs={},
             attrs={'file_path': "none"})
 
+        cmd_prefix = " ".join(self._hdfs_client.pre_commands)
+        checkpoint_save_block.append_op(
+            type='hadoop_shell',
+            inputs={},
+            outputs={},
+            attrs={'cmd_prefix': cmd_prefix,
+                   'cmd_type': 'put'})
         return checkpoint_save_block.idx
 
     def _create_vars_from_blocklist(self,
