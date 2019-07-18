@@ -337,7 +337,8 @@ def lm_model(hidden_size,
 
         return real_res, last_hidden, last_cell
 
-    batch_size_each = batch_size
+    batch_size_each = core.get_cuda_device_count(
+    ) if fluid.is_compiled_with_cuda() else 1
     if use_py_reader:
         feed_shapes = [[batch_size_each, num_steps, 1],
                        [batch_size_each * num_steps, 1]]
