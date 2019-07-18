@@ -18,6 +18,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
 
