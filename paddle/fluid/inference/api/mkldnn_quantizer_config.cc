@@ -39,7 +39,7 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
   
   rules_["fc"]["Input"] = ScaleAlgo::KL;
-  rules_["fc"]["W"] = ScaleAlgo::MAX_CH;
+  rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
   rules_["fc"]["Bias"] = ScaleAlgo::NONE;
   rules_["fc"]["Out"] = ScaleAlgo::KL;
 }
