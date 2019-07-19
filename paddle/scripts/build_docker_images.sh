@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -xe
 
 REPO="${REPO:-paddlepaddle}"
