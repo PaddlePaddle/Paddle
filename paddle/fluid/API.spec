@@ -229,7 +229,7 @@ paddle.fluid.layers.logical_or (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=
 paddle.fluid.layers.logical_xor (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '1840f54c5bd5338bdf854980d47bf771'))
 paddle.fluid.layers.logical_not (ArgSpec(args=['x', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'd8fc1c5a5535736d4cd44c893a9701c9'))
 paddle.fluid.layers.clip (ArgSpec(args=['x', 'min', 'max', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '0ce33756573c572da67302499455dbcd'))
-paddle.fluid.layers.clip_by_norm (ArgSpec(args=['x', 'max_norm', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '5302d0494071e43f270c45acd50b03fd'))
+paddle.fluid.layers.clip_by_norm (ArgSpec(args=['x', 'max_norm', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '99a1b9012d9c4495efc89d69958c3be7'))
 paddle.fluid.layers.mean (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '597257fb94d0597c404a6a5c91ab5258'))
 paddle.fluid.layers.mul (ArgSpec(args=['x', 'y', 'x_num_col_dims', 'y_num_col_dims', 'name'], varargs=None, keywords=None, defaults=(1, 1, None)), ('document', '784b7e36cea88493f9e37a41b10fbf4d'))
 paddle.fluid.layers.sigmoid_cross_entropy_with_logits (ArgSpec(args=['x', 'label', 'ignore_index', 'name', 'normalize'], varargs=None, keywords=None, defaults=(-100, None, False)), ('document', '7637c974f2d749d359acae9062c4d96f'))
