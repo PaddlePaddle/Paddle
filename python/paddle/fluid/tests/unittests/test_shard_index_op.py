@@ -31,7 +31,7 @@ def common_setup(self, index_range, nshards, shard_id, ignore_value):
     x = [np.random.randint(0, index_range - 1) for i in range(N)]
     x = np.array(x).astype('int32').reshape([N, 1])
 
-    shard_range = index_range / nshards
+    shard_range = index_range // nshards
     out = np.zeros(shape=x.shape).astype('int32')
     for i in range(N):
         if x[i] // shard_range == shard_id:
