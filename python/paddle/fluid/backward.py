@@ -247,7 +247,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     return op_descs
 
 
-def __find_not_need_ops(grad_op_descs, ops):
+def __find_not_need_ops(grad_op_descs, ops, input_grad_names_set):
     class Var(object):
         def __init__(self, var_name):
             self.var_name = var_name
@@ -304,7 +304,8 @@ def __find_not_need_ops(grad_op_descs, ops):
         return op_node
 
     # Record the forward vars
-    forward_vars_set = set()
+    forward_vars_set = set() if input_grad_names_set is None else set(
+        input_grad_names_set)
     for op in ops:
         forward_vars_set.update(op.desc.input_arg_names())
         forward_vars_set.update(op.desc.output_arg_names())
@@ -439,7 +440,7 @@ def _append_backward_ops_(block,
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
 
-    not_need_ops = __find_not_need_ops(grad_op_descs, ops)
+    not_need_ops = __find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
     grad_op_descs = [
         op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
     ]
