@@ -20,8 +20,9 @@ __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 # can be initialized from train_desc,
 class TrainerDesc(object):
     '''
-    set proto from python to c++
+    Set proto from python to c++.
     '''
+    
     def __init__(self):
         '''
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -76,7 +77,7 @@ class TrainerDesc(object):
     
     def _set_dump_slot(self, dump_slot):
         self.proto_desc.dump_slot = dump_slot
-
+    
     def _desc(self):
         from google.protobuf import text_format
         return self.proto_desc.SerializeToString()
@@ -87,8 +88,9 @@ class TrainerDesc(object):
 
 class MultiTrainer(TrainerDesc):
     '''
-    implement of MultiTrainer
+    Implement of MultiTrainer.
     '''
+    
     def __init__(self):
         super(MultiTrainer, self).__init__()
         pass
