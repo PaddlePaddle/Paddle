@@ -363,6 +363,13 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of LeakyRelu operator");
     AddOutput("Out", "Output of LeakyRelu operator");
     AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
@@ -695,6 +702,8 @@ class LeakyReluDoubleGradMaker
     op->SetType("leaky_relu_grad_grad");
     // input1: X
     op->SetInput("X", Input("X"));
+    // input2: Out
+    op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
@@ -751,6 +760,14 @@ class SquareDoubleGradMaker
   }
 };
 
+class ActivationGradOpInplaceInference : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -765,11 +782,8 @@ namespace plat = paddle::platform;
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
                        ::paddle::framework::SingleOpInplaceInToOut,         \
                        void>::type);                                        \
-  REGISTER_OPERATOR(                                                        \
-      KERNEL_TYPE##_grad, ops::ActivationOpGrad,                            \
-      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
-                       ::paddle::framework::SingleOpInplaceInToOut,         \
-                       void>::type)
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
+                    ops::ActivationGradOpInplaceInference);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,        \
                                        grad_functor)                      \
@@ -794,7 +808,7 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpDescMaker<ops::ReluGradFunctor<float>::FwdDeps()>,
     paddle::framework::SingleOpInplaceInToOut);
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
-                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::ActivationGradOpInplaceInference,
                   ops::ReluDoubleGradMaker);
 REGISTER_OPERATOR(
     relu_grad_grad,
@@ -819,7 +833,7 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpDescMaker<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
     paddle::framework::SingleOpInplaceInToOut);
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
-                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::ActivationGradOpInplaceInference,
                   ops::LeakyReluDoubleGradMaker);
 REGISTER_OPERATOR(
     leaky_relu_grad_grad,
@@ -843,7 +857,7 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpDescMaker<ops::SqrtGradFunctor<float>::FwdDeps()>,
     paddle::framework::SingleOpInplaceInToOut);
 REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
-                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::ActivationGradOpInplaceInference,
                   ops::SqrtDoubleGradMaker);
 REGISTER_OPERATOR(
     sqrt_grad_grad,
@@ -865,7 +879,7 @@ REGISTER_OPERATOR(
     ops::ActivationGradOpDescMaker<ops::SquareGradFunctor<float>::FwdDeps()>,
     paddle::framework::SingleOpInplaceInToOut);
 REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad,
-                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::ActivationGradOpInplaceInference,
                   ops::SquareDoubleGradMaker);
 REGISTER_OPERATOR(
     square_grad_grad,

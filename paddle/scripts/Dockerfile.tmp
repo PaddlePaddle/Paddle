@@ -138,6 +138,12 @@ RUN pip --no-cache-dir install requests==2.9.2 numpy protobuf \
     recordio matplotlib==2.2.3 rarfile scipy Pillow \
     nltk graphviz six funcsigs pyyaml decorator prettytable
 
+# for coverage
+RUN pip3 --no-cache-dir install coverage
+RUN pip3.6 --no-cache-dir install coverage
+RUN pip3.7 --no-cache-dir install coverage
+RUN pip --no-cache-dir install coverage
+
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y
