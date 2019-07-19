@@ -1776,21 +1776,30 @@ class TestBook(LayerTest):
             return (output)
 
     def test_lod_reset(self):
-        # TODO(minqiyang): dygraph do not support lod now
+        # todo(minqiyang): dygraph do not support lod now
         with self.static_graph():
             # case 1
             x = layers.data(name='x', shape=[10], dtype='float32')
             y = layers.data(
                 name='y', shape=[10, 20], dtype='float32', lod_level=2)
             z = layers.lod_reset(x=x, y=y)
-            self.assertTrue(z.lod_level == 2)
+            self.asserttrue(z.lod_level == 2)
             # case 2
             lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int64')
             z = layers.lod_reset(x=x, y=lod_tensor_in)
-            self.assertTrue(z.lod_level == 1)
+            self.asserttrue(z.lod_level == 1)
             # case 3
             z = layers.lod_reset(x=x, target_lod=[1, 2, 3])
-            self.assertTrue(z.lod_level == 1)
+            self.asserttrue(z.lod_level == 1)
+            return z
+
+    def test_lod_reset(self):
+        # todo(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            y = layers.data(
+                name='y', shape=[6, 10], dtype='float32', lod_level=1)
+            z = layers.lod_append(x, [1, 1, 1, 1, 1, 1])
+            self.asserttrue(z.lod_level == 2)
             return z
 
     def test_affine_grid(self):
