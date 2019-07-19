@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <limits>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
@@ -118,9 +117,8 @@ class CenterLossKernel : public framework::OpKernel<T> {
         acc_index = centers_diffacc_data + i * deep_feat_dim;
         center_index = centers_out_data + i * deep_feat_dim;
         T scale = alpha / center_update_count[i];
-        blas.SCAL(deep_feat_dim, scale, acc_index);  // scale accumulate
-        blas.VADD(deep_feat_dim, acc_index, center_index,
-                  center_index);  // add accumulate to centers
+        blas.SCAL(deep_feat_dim, scale, acc_index);
+        blas.VADD(deep_feat_dim, acc_index, center_index, center_index);
       }
     }
   }

@@ -50,7 +50,6 @@ class CenterLossOp : public framework::OperatorWithKernel {
         ctx->HasOutput("CentersOut"),
         "Output(CentersOut) of CenterLoss shared data with Centers.");
 
-    // ctx->SetOutputDim("CentersDiff", ctx->GetInputDim("X"));
     ctx->SetOutputDim("CentersDiff", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("CentersOut", ctx->GetInputDim("Centers"));
     ctx->SetOutputDim("Loss", {x_dims[0], 1});
@@ -78,10 +77,13 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("CentersDiff", "(Tensor) output tensor of center_loss operator.");
     AddOutput("Loss", "(Tensor) Output tensor of center_loss operator.");
 
-    AddAttr<int>("cluster_num", "The cluster_num of the center_loss operator.");
-    AddAttr<bool>("need_update", "The learning rate of center.");
+    AddAttr<int>("cluster_num",
+                 "The output cluster num of the center_loss operator.");
+    AddAttr<bool>("need_update", "whether need to update center info.");
     AddComment(R"DOC(
 **CenterLoss operator**
+implemention of the algorithm in the papper A Discriminative 
+Feature Learning Approach for Deep Face Recognition
 )DOC");
   }
 };
@@ -98,7 +100,6 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X) should not be null");
 
-    // auto x_dims = ctx->GetInputDim("CentersDiff");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
 

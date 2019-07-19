@@ -84,9 +84,7 @@ extern void *cublas_dso_handle;
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
-  __macro(cublasDgetriBatched);           \
-  __macro(cublasSscal);                   \
-  __macro(cublasSdot);
+  __macro(cublasDgetriBatched);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 

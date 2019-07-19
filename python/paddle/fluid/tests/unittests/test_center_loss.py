@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,25 +25,31 @@ class TestCenterLossOp(OpTest):
         self.op_type = "center_loss"
         self.dtype = np.float32
         self.init_dtype_type()
+        batch_size = 6
+        feet_dim = 10
+        cluster_num = 8
         self.attrs = {}
-        self.attrs['cluster_num'] = 3
+        self.attrs['cluster_num'] = cluster_num
         self.attrs['lambda'] = 0.1
         self.attrs['need_update'] = True
-        labels = np.array([[0], [2], [0]]).astype(np.int64)
-
-        feat = np.array([[1.0, 2.0, 3.0, 4.0], [9.0, 10.0, 11.0, 12.0],
-                         [1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        centers = np.array([[2.0, 3.0, 4.0, 5.0], [5.0, 6.0, 7.0, 8.0],
-                            [7.0, 8.0, 9.0, 10.0],
-                            [13.0, 14.0, 15.0, 16.0]]).astype(np.float32)
-
-        result = np.array([[1.93333, 2.93333, 3.93333, 4.93333],
-                           [5.0, 6.0, 7.0, 8.0], [7.1, 8.1, 9.1, 10.1],
-                           [13.0, 14.0, 15.0, 16.0]]).astype(np.float32)
-
-        output = np.array([[-1.0, -1.0, -1.0, -1.0], [2.0, 2.0, 2.0, 2.0],
-                           [-1.0, -1.0, -1.0, -1.0]]).astype(np.float32)
-        loss = np.array([[2.0], [8.0], [2.0]]).astype(np.float32)
+        labels = np.random.randint(cluster_num, size=batch_size, dtype='int64')
+        feat = np.random.random((batch_size, feet_dim)).astype(np.float32)
+        centers = np.random.random((cluster_num, feet_dim)).astype(np.float32)
+        var_sum = np.zeros((cluster_num, feet_dim), dtype=np.float32)
+        centers_select = centers[labels]
+        output = feat - centers_select
+        diff_square = np.square(output).reshape(batch_size, feet_dim)
+        loss = 0.5 * np.sum(diff_square, axis=1).reshape(batch_size, 1)
+        cout = []
+        for i in range(cluster_num):
+            cout.append(0)
+        for i in range(batch_size):
+            cout[labels[i]] += 1
+            var_sum[labels[i]] += output[i]
+        for i in range(cluster_num):
+            var_sum[i] /= (1 + cout[i])
+        var_sum *= 0.1
+        result = centers + var_sum
         rate = np.array([0.1]).astype(np.float32)
 
         self.inputs = {

@@ -22,38 +22,37 @@ namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__global__ void ComputeDistance(int64_t total_num, const int K, const T *X,
-                                const int64_t *label, const T *centers_data,
-                                T *distance) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < total_num;
+__global__ void ComputeDistance(int64_t elements_num, const T *X,
+                                const int x_width, const int64_t *label,
+                                const T *centers_data, T *diff_xc) {
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < elements_num;
        index += blockDim.x * gridDim.x) {
-    int m = index / K;
-    int k = index % K;
-    int64_t label_value = label[m];
-    distance[index] = X[index] - centers_data[label_value * K + k];
+    int row = index / x_width;
+    int col = index % x_width;
+    int64_t center_idx = label[row];
+    diff_xc[index] = X[index] - centers_data[center_idx * x_width + col];
   }
 }
 
 template <typename T>
-__global__ void ComputeCenterDiffGpu(int num, const int M, const int K,
-                                     const int64_t *label, const T *distance,
-                                     T *variation_sum, const T *alpha,
-                                     T *centers_out) {
-  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x; index < num;
-       index += blockDim.x * gridDim.x) {
+__global__ void UpdateCenters(int cluster_num, const int samples_num,
+                              const int x_width, const int64_t *label,
+                              const T *diff_xc, T *acc_sum, const T *alpha,
+                              T *centers_out) {
+  for (int64_t cidx = blockIdx.x * blockDim.x + threadIdx.x; cidx < cluster_num;
+       cidx += blockDim.x * gridDim.x) {
     int count = 0;
-    for (int m = 0; m < M; m++) {
-      int64_t label_value = label[m];
-      if (label_value == index) {
+    for (int sidx = 0; sidx < samples_num; sidx++) {
+      if (label[sidx] == cidx) {
         count++;
-        for (int k = 0; k < K; k++) {
-          variation_sum[index * K + k] += distance[m * K + k];
+        for (int col = 0; col < x_width; col++) {
+          acc_sum[cidx * x_width + col] += diff_xc[sidx * x_width + col];
         }
       }
     }
-    for (int k = 0; k < K; k++) {
-      centers_out[index * K + k] +=
-          alpha[0] * variation_sum[index * K + k] / (count + (T)1.);
+    for (int col = 0; col < x_width; col++) {
+      centers_out[cidx * x_width + col] +=
+          alpha[0] * acc_sum[cidx * x_width + col] / (count + 1);
     }
   }
 }
@@ -90,17 +89,19 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
     auto *centers_out = ctx.Output<Tensor>("CentersOut");
     auto *centers_out_data = centers_out->mutable_data<T>(ctx.GetPlace());
 
-    if (centers_out_data != centers_data) {
-      int size = centers_out->numel() * sizeof(T);
-      cudaMemcpyAsync(centers_out_data, centers_data, size,
-                      cudaMemcpyDeviceToDevice, stream);
+    auto ctx_place = ctx.GetPlace();
+    if (centers != centers_out) {
+      framework::TensorCopy(
+          *static_cast<const framework::Tensor *>(centers), ctx_place,
+          *platform::DeviceContextPool::Instance().Get(ctx_place),
+          static_cast<framework::Tensor *>(centers_out));
     }
 
     int64_t numel = X->numel();
 
     ComputeDistance<
         T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(numel, deep_feat_dim, x_data,
+             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(numel, x_data, deep_feat_dim,
                                                    label_data, centers_data,
                                                    centers_diff_data);
     auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
@@ -114,9 +115,9 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
           centers_diffacc.mutable_data<T>(centers_dim, ctx.GetPlace());
       numel = centers_diffacc.numel();
       cudaMemsetAsync(centers_diffacc_data, 0, sizeof(T) * numel, stream);
-      ComputeCenterDiffGpu<T><<<(cluster_num + PADDLE_CUDA_NUM_THREADS - 1) /
-                                    PADDLE_CUDA_NUM_THREADS,
-                                PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+      UpdateCenters<T><<<(cluster_num + PADDLE_CUDA_NUM_THREADS - 1) /
+                             PADDLE_CUDA_NUM_THREADS,
+                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           cluster_num, batch_size, deep_feat_dim, label_data, centers_diff_data,
           centers_diffacc_data, lr_center, centers_out_data);
     }
@@ -127,7 +128,9 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 using GPUCtx = paddle::platform::CUDADeviceContext;
-REGISTER_OP_CUDA_KERNEL(center_loss, ops::CenterLossCUDAKernel<GPUCtx, float>);
+REGISTER_OP_CUDA_KERNEL(center_loss, ops::CenterLossCUDAKernel<GPUCtx, float>,
+                        ops::CenterLossCUDAKernel<GPUCtx, double>);
 
 REGISTER_OP_CUDA_KERNEL(center_loss_grad,
-                        ops::CenterLossGradKernel<GPUCtx, float>);
+                        ops::CenterLossGradKernel<GPUCtx, float>,
+                        ops::CenterLossGradKernel<GPUCtx, double>);
