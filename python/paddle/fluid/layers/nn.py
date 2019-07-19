@@ -6971,76 +6971,76 @@ def unsqueeze(input, axes, name=None):
 
 def lod_reset(x, y=None, target_lod=None):
     """
-    set lod of :attr:`x` to a new one specified by :attr:`y` or
-    :attr:`target_lod`. when :attr:`y` provided, :attr:`y.lod` would be
-    considered as target lod first, otherwise :attr:`y.data` would be
-    considered as target lod. if :attr:`y` is not provided, target lod should
-    be specified by :attr:`target_lod`. if target lod is specified by
-    :attr:`y.data` or :attr:`target_lod`, only one level lod is supported.
+    Set LoD of :attr:`x` to a new one specified by :attr:`y` or
+    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be
+    considered as target LoD first, otherwise :attr:`y.data` would be
+    considered as target LoD. If :attr:`y` is not provided, target LoD should
+    be specified by :attr:`target_lod`. If target LoD is specified by
+    :attr:`y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
-        * example 1:
+        * Example 1:
 
-            given a 1-level lodtensor x:
+            Given a 1-level LoDTensor x:
                 x.lod =  [[ 2,           3,                   1 ]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             target_lod: [4, 2]
 
-            then we get a 1-level lodtensor:
+            then we get a 1-level LoDTensor:
                 out.lod =  [[4,                          2]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
-        * example 2:
+        * Example 2:
 
-            given a 1-level lodtensor x:
+            Given a 1-level LoDTensor x:
                 x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
-            y is a tensor:
+            y is a Tensor:
                 y.data = [[2, 4]]
                 y.dims = [1, 3]
 
-            then we get a 1-level lodtensor:
+            then we get a 1-level LoDTensor:
                 out.lod =  [[2,            4]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
-        * example 3:
+        * Example 3:
 
-            given a 1-level lodtensor x:
+            Given a 1-level LoDTensor x:
                 x.lod =  [[2,            3,                   1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
-            y is a 2-level lodtensor:
+            y is a 2-level LoDTensor:
                 y.lod =  [[2, 2], [2, 2, 1, 1]]
                 y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
                 y.dims = [6, 1]
 
-            then we get a 2-level lodtensor:
+            then we get a 2-level LoDTensor:
                 out.lod =  [[2, 2], [2, 2, 1, 1]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 out.dims = [6, 1]
 
-    args:
-        x (variable): input variable which could be a tensor or lodtensor.
-        y (variable|none): if provided, output's lod would be derived
+    Args:
+        x (Variable): Input variable which could be a Tensor or LoDTensor.
+        y (Variable|None): If provided, output's LoD would be derived
                            from :attr:`y`.
-        target_lod (list|tuple|none): one level lod which should be considered
-                                      as target lod when :attr:`y` not provided.
+        target_lod (list|tuple|None): One level LoD which should be considered
+                                      as target LoD when :attr:`y` not provided.
 
-    returns:
-        variable: output variable with lod specified by this layer.
+    Returns:
+        Variable: Output variable with LoD specified by this layer.
 
-    raises:
-        valueerror: if :attr:`y` and :attr:`target_lod` are both none.
+    Raises:
+        ValueError: If :attr:`y` and :attr:`target_lod` are both None.
 
-    examples:
+    Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
@@ -7048,55 +7048,54 @@ def lod_reset(x, y=None, target_lod=None):
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)
     """
-    helper = layerhelper("lod_reset", **locals())
+    helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
         helper.append_op(
-            type="lod_reset", inputs={'x': x,
-                                      'y': y}, outputs={'out': out})
+            type="lod_reset", inputs={'X': x,
+                                      'Y': y}, outputs={'Out': out})
     elif target_lod is not None:
         helper.append_op(
             type="lod_reset",
-            inputs={'x': x},
+            inputs={'X': x},
             attrs={'target_lod': target_lod},
-            outputs={'out': out})
+            outputs={'Out': out})
     else:
-        raise valueerror("y and target_lod should not be both none.")
-
+        raise ValueError("y and target_lod should not be both none.")
     return out
 
 
 def lod_append(x, level):
     """
-    Append level to lod of :attr:`x`.
+    Append level to LoD of :attr:`x`.
 
     .. code-block:: text
 
-        * example 1:
+        * Example 1:
 
-            given a 1-level lodtensor x:
+            given a 1-level LoDTensor x:
                 x.lod =  [[ 2,           3,                   1 ]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
             level: [1, 1, 1, 1, 1, 1, 1]
 
-            then we get a 2-level lodtensor:
+            then we get a 2-level LoDTensor:
                 x.lod =  [[ 2, 3, 1 ], [1, 1, 1, 1, 1, 1]]
                 x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
                 x.dims = [6, 1]
 
-    args:
-        x (variable): input variable which could be a tensor or lodtensor.
-        level (list | tuple): the lod level to be appended into lod of x..
+    Args:
+        x (Variable): Input variable which could be a tensor or LoDTensor.
+        level (list|tuple): The LoD level to be appended into LoD of x..
 
-    returns:
-        variable: output variable with new lod.
+    Returns:
+        Variable: Output variable with new LoD.
 
-    raises:
-        valueerror: if :attr:`y` is none or and :attr:`level` is not Iterator.
+    Raises:
+        ValueError: If :attr:`y` is None or and :attr:`level` is not Iterator.
 
-    examples:
+    Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
@@ -7105,17 +7104,17 @@ def lod_append(x, level):
     """
     from collections import Iterator
     if x is None:
-        raise valueerror("Input(x) can't be None.")
+        raise ValueError("Input(x) can't be None.")
     if not isinstance(level, Iterator):
-        raise valueerror("Input(level) must be list or tuple.")
+        raise ValueError("Input(level) must be list or tuple.")
     helper = layerhelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="lod_reset",
-        inputs={'x': x},
+        inputs={'X': x},
         attrs={'target_lod': level,
                'append': True},
-        outputs={'out': out})
+        outputs={'Out': out})
     return out
 
 
