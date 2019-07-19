@@ -141,7 +141,7 @@ paddle.fluid.layers.autoincreased_step_counter (ArgSpec(args=['counter_name', 'b
 paddle.fluid.layers.reshape (ArgSpec(args=['x', 'shape', 'actual_shape', 'act', 'inplace', 'name'], varargs=None, keywords=None, defaults=(None, None, False, None)), ('document', '323c019f257e55ddea4a824a362de62f'))
 paddle.fluid.layers.squeeze (ArgSpec(args=['input', 'axes', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '06588973f613e9dcd592724322864589'))
 paddle.fluid.layers.unsqueeze (ArgSpec(args=['input', 'axes', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'b9bd3129d36a70e7c4385df51ff71c62'))
-paddle.fluid.layers.lod_reset (ArgSpec(args=['x', 'y', 'target_lod'], varargs=None, keywords=None, defaults=(None, None)), ('document', '395e6ba041ccfacfe1d534c3e107fd66'))
+paddle.fluid.layers.lod_reset (ArgSpec(args=['x', 'y', 'target_lod', 'append'], varargs=None, keywords=None, defaults=(None, None, False)), ('document', '28d003a7a4eec693162ebd5c51da66e5'))
 paddle.fluid.layers.lrn (ArgSpec(args=['input', 'n', 'k', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(5, 1.0, 0.0001, 0.75, None)), ('document', '330241f0bc57e9d16973ec322a6aef71'))
 paddle.fluid.layers.pad (ArgSpec(args=['x', 'paddings', 'pad_value', 'name'], varargs=None, keywords=None, defaults=(0.0, None)), ('document', '2f189f8ef61f1c23779e1593b78755c0'))
 paddle.fluid.layers.pad_constant_like (ArgSpec(args=['x', 'y', 'pad_value', 'name'], varargs=None, keywords=None, defaults=(0.0, None)), ('document', '95aa1972983f30fe9b5a3713e523e20f'))

@@ -38,6 +38,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -84,6 +85,7 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("target_lod",
                               "The target level 0 LoD from Attr().")
         .SetDefault(std::vector<int>{});
+    AddAttr<bool>("append", "Append data to lod vector.").SetDefault(false);
     AddComment(R"DOC(LoDReset operator
 
 Set LoD of `X` to a new one specified by `Y` or attribute `target_lod`. When `Y`
