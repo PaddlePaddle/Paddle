@@ -88,6 +88,7 @@ class RnnConfig(object):
 
         if rnn_model not in ('static', 'padding', 'cudnn', 'basic_lstm'):
             raise ValueError('Unsupported rnn_model.')
+
         self.batch_size = 12
         self.max_epoch = 3
         self.random_seed = 123
