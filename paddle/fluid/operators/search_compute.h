@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/mklml.h"
-//#include "naive_gemm.h"
 
 namespace paddle {
 namespace operators {
@@ -36,14 +35,9 @@ void call_gemm(const math::BlasT<DeviceContext, T>& blas,
                const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
                const int M, const int N, const int K, const T alpha, const T* A,
                const T* B, const T beta, T* C) {
-#ifndef __NAIVE_GEMM__
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-#else
-  naive::gemm((TransA == CblasTrans), (TransB == CblasTrans), M, N, K, alpha, A,
-              B, beta, C);
-#endif  // !__NAIVE_GEMM__
 }
 
 template <typename T>
@@ -51,15 +45,10 @@ void call_gemm(const framework::ExecutionContext& ctx,
                const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
                const int M, const int N, const int K, const T alpha, const T* A,
                const T* B, const T beta, T* C) {
-#ifndef __NAIVE_GEMM__
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
   auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-#else
-  naive::gemm((TransA == CblasTrans), (TransB == CblasTrans), M, N, K, alpha, A,
-              B, beta, C);
-#endif  // !__NAIVE_GEMM__
 }
 
 template <typename T>
@@ -74,15 +63,14 @@ void call_gemm_batched(const framework::ExecutionContext& ctx,
   }
 }
 
-// To align with Lego
-#ifndef LEGO_USE_FLOAT
-#define LEGO_USE_FLOAT
+#ifndef TYPE_USE_FLOAT
+#define TYPE_USE_FLOAT
 #endif
-#ifndef LEGO_SSE
-#define LEGO_SSE
+#ifndef USE_SSE
+#define USE_SSE
 #endif
 
-#if defined(LEGO_USE_FLOAT)
+#if defined(TYPE_USE_FLOAT)
 
 #define __m256x __m256
 #define __m128x __m128
@@ -120,7 +108,7 @@ static const unsigned int SSE_CUT_LEN_MASK = 3U;
 #define _mm_sqrt_px _mm_sqrt_ps
 #define _mm_div_px _mm_div_ps
 
-#elif defined(LEGO_USE_DOUBLE)
+#elif defined(TYPE_USE_DOUBLE)
 
 #define __m256x __m256d
 #define __m128x __m128d
@@ -159,12 +147,12 @@ static const unsigned int SSE_CUT_LEN_MASK = 1U;
 #define _mm_div_px _mm_div_pd
 #endif
 
-#if defined(LEGO_USE_FLOAT)
+#if defined(TYPE_USE_FLOAT)
 
 #define X_MIN FLT_MIN
 #define X_MAX FLT_MAX
 
-#elif defined(LEGO_USE_DOUBLE)
+#elif defined(TYPE_USE_DOUBLE)
 
 #define X_MIN DBL_MIN
 #define X_MAX DBL_MAX
@@ -176,13 +164,13 @@ inline void sse_eltadd(const T* x, const T* y, T* z, size_t len) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
     _mm256_store_px(z + jjj, _mm256_add_px(_mm256_load_px(x + jjj),
                                            _mm256_load_px(y + jjj)));
   }
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
 
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -200,7 +188,7 @@ inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
@@ -210,7 +198,7 @@ inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
                       _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj))));
   }
 
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -230,14 +218,14 @@ inline void sse_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
     _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
   }
 
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -255,13 +243,13 @@ inline void sse_eltmul(const T* x, const T* y, T* z, size_t len) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
     _mm256_store_px(z + jjj, _mm256_mul_px(_mm256_load_px(x + jjj),
                                            _mm256_load_px(y + jjj)));
   }
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
 
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -279,14 +267,14 @@ inline void sse_add_scalar(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
     _mm256_store_px(y + jjj, _mm256_add_px(mm_alpha, _mm256_load_px(x + jjj)));
   }
 
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -305,7 +293,7 @@ inline void sse_sum(const T* x, T& y, size_t len) {
   jjj = lll = 0;
   y = 0.;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
 
   __m256x mm_result = _mm256_setzero_px();
@@ -313,16 +301,16 @@ inline void sse_sum(const T* x, T& y, size_t len) {
     mm_result = _mm256_add_px(mm_result, _mm256_load_px(x + jjj));
   }
 
-#if defined(LEGO_USE_FLOAT)
+#if defined(TYPE_USE_FLOAT)
   __m256x hsum = _mm256_hadd_px(mm_result, mm_result);
-#elif defined(LEGO_USE_DOUBLE)
+#elif defined(TYPE_USE_DOUBLE)
   __m256x hsum = mm_result;
 #endif
   hsum = _mm256_add_px(hsum, _mm256_permute2f128_px(hsum, hsum, 0x1));
   _mm_store_sx(&y, _mm_hadd_px(_mm256_castpx256_px128(hsum),
                                _mm256_castpx256_px128(hsum)));
 
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
 
   __m128x mm_result = _mm_setzero_px();
@@ -331,9 +319,9 @@ inline void sse_sum(const T* x, T& y, size_t len) {
   }
   __m128x mm_tmp = _mm_hadd_px(mm_result, mm_result);
 
-#if defined(LEGO_USE_FLOAT)
+#if defined(TYPE_USE_FLOAT)
   _mm_store_sx(&y, _mm_hadd_px(mm_tmp, mm_tmp));
-#elif defined(LEGO_USE_DOUBLE)
+#elif defined(TYPE_USE_DOUBLE)
   _mm_store_sx(&y, mm_tmp);
 #endif
 
@@ -348,7 +336,7 @@ inline void sse_scale(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
 
@@ -356,7 +344,7 @@ inline void sse_scale(const T* x, T* y, size_t len, const T alpha) {
     _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
   }
 
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -374,7 +362,7 @@ inline void sse_ip(const T* vec1, const T* vec2, size_t len, T& result) {
   jjj = lll = 0;
   result = 0.;
 
-#if defined(LEGO_AVX)
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
 
   __m256x mm_result = _mm256_setzero_px();
@@ -384,12 +372,9 @@ inline void sse_ip(const T* vec1, const T* vec2, size_t len, T& result) {
         _mm256_mul_px(_mm256_load_px(vec1 + jjj), _mm256_load_px(vec2 + jjj)));
   }
 
-  //    result = mm_result[0]+mm_result[1]+mm_result[2]+mm_result[3]+
-  //      mm_result[4]+mm_result[5]+mm_result[6]+mm_result[7];
-
-#if defined(LEGO_USE_FLOAT)
+#if defined(TYPE_USE_FLOAT)
   __m256x hsum = _mm256_hadd_px(mm_result, mm_result);
-#elif defined(LEGO_USE_DOUBLE)
+#elif defined(TYPE_USE_DOUBLE)
   __m256x hsum = mm_result;
 #endif
 
@@ -398,7 +383,7 @@ inline void sse_ip(const T* vec1, const T* vec2, size_t len, T& result) {
   _mm_store_sx(&result, _mm_hadd_px(_mm256_castpx256_px128(hsum),
                                     _mm256_castpx256_px128(hsum)));
 
-#elif defined(LEGO_SSE)
+#elif defined(USE_SSE)
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_result = _mm_setzero_px();
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
@@ -406,9 +391,9 @@ inline void sse_ip(const T* vec1, const T* vec2, size_t len, T& result) {
                                                  _mm_load_px(vec2 + jjj)));
   }
   __m128x mm_tmp = _mm_hadd_px(mm_result, mm_result);
-#if defined(LEGO_USE_FLOAT)
+#if defined(TYPE_USE_FLOAT)
   _mm_store_sx(&result, _mm_hadd_px(mm_tmp, mm_tmp));
-#elif defined(LEGO_USE_DOUBLE)
+#elif defined(TYPE_USE_DOUBLE)
   _mm_store_sx(&result, mm_tmp);
 #endif
 
