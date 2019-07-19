@@ -19,6 +19,9 @@ __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 # can be initialized from train_desc,
 class TrainerDesc(object):
+    '''
+    set proto from python to c++
+    '''
     def __init__(self):
         '''
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -83,6 +86,9 @@ class TrainerDesc(object):
 
 
 class MultiTrainer(TrainerDesc):
+    '''
+    implement of MultiTrainer
+    '''
     def __init__(self):
         super(MultiTrainer, self).__init__()
         pass

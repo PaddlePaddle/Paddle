@@ -348,7 +348,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
         (*push_values)[fea_idx][show_index] = 1.0f;
-        (*push_values)[fea_idx][click_index] = static_cast<float>(fea_labels[fea_idx]);
+        (*push_values)[fea_idx][click_index] =
+            static_cast<float>(fea_labels[fea_idx]);
       }
       if (dump_slot) {
         (*push_values)[fea_idx][0] = static_cast<float>(slot);
