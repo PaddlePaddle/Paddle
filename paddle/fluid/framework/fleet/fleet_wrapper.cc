@@ -324,7 +324,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     int slot = 0;
     if (dump_slot) {
-        slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      slot = boost::lexical_cast<int>(sparse_key_names[i]);
     }
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
