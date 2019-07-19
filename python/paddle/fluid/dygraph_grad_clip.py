@@ -22,6 +22,7 @@ import functools
 from . import layers
 from . import framework
 from . import core
+from .dygraph import base as imperative_base
 
 __all__ = [
     'GradClipByValue',
@@ -37,6 +38,7 @@ class GradClipBase(object):
     def _clip(self, para_and_grad):
         raise NotImplementedError
 
+    @imperative_base.no_grad
     def __call__(self, para_and_grad):
         return self._clip(para_and_grad)
 
@@ -86,6 +88,7 @@ class GradClipByValue(GradClipBase):
             
     """
 
+    @imperative_base.no_grad
     def __init__(self, min_value, max_value=None):
 
         if min_value is None:
@@ -164,6 +167,7 @@ class GradClipByNorm(GradClipBase):
 
     """
 
+    @imperative_base.no_grad
     def __init__(self, clip_norm):
         self.clip_norm = clip_norm
 
@@ -243,6 +247,7 @@ class GradClipByGlobalNorm(GradClipBase):
 
     """
 
+    @imperative_base.no_grad
     def __init__(self, max_global_norm):
         self.max_global_norm = layers.fill_constant(
             shape=[1], dtype='float32', value=max_global_norm)

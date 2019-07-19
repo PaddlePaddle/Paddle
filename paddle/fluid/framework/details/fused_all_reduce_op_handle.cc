@@ -44,7 +44,7 @@ typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
-    const platform::MultiNCCLContextMap *ctxs)
+    const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs),
       local_scopes_(local_scopes),
       num_of_all_reduce_(num_of_all_reduce) {
@@ -166,6 +166,8 @@ void FusedAllReduceOpHandle::RunImpl() {
       });
     }
 
+    VLOG(10) << "fusedallreduce size:" << numel * SizeOfType(dtype);
+
     this->RunAndRecordEvent([&] {
       if (all_reduce_calls.size() == 1UL) {
         // Do not use NCCLGroup when manage NCCL by per thread per device
@@ -183,9 +185,7 @@ void FusedAllReduceOpHandle::RunImpl() {
   } else {
     // Special handle CPU only Operator's gradient. Like CRF
     auto grad_name = grads_tensor.at(0).at(0).first;
-    auto &trg = *this->local_scopes_[0]
-                     ->FindVar(kLocalExecScopeName)
-                     ->Get<Scope *>()
+    auto &trg = *this->local_exec_scopes_[0]
                      ->FindVar(grad_name)
                      ->GetMutable<framework::LoDTensor>();
 
@@ -193,9 +193,8 @@ void FusedAllReduceOpHandle::RunImpl() {
     ReduceBufferData func(lod_tensor_data, trg.data<void>(), numel);
     VisitDataType(trg.type(), func);
 
-    for (size_t i = 1; i < local_scopes_.size(); ++i) {
-      auto &scope =
-          *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    for (size_t i = 1; i < local_exec_scopes_.size(); ++i) {
+      auto &scope = *local_exec_scopes_[i];
       auto &p = places_[i];
       auto *var = scope.FindVar(grad_name);
       auto *dev_ctx = dev_ctxes_.at(p);
@@ -213,8 +212,7 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     const size_t &scope_idx, const std::vector<VarHandle *> &in_var_handles,
     const std::vector<VarHandle *> &out_var_handles,
     std::vector<std::pair<std::string, const LoDTensor *>> *grad_tensor) const {
-  auto *local_scope =
-      local_scopes_.at(scope_idx)->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto *local_scope = local_exec_scopes_[scope_idx];
   size_t place_num = places_.size();
 
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {

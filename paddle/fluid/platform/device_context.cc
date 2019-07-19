@@ -167,8 +167,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
     }
-    auto buf = paddle::memory::Alloc(place_, num_bytes,
-                                     memory::Allocator::kScratchpad);
+    auto buf = paddle::memory::Alloc(place_, num_bytes);
     void* retv = buf->ptr();
     {
       std::lock_guard<std::mutex> lock(mtx_);
@@ -232,8 +231,7 @@ void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
     PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
     workspace_.reset();
   }
-  workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
-                                     paddle::memory::Allocator::kScratchpad);
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
@@ -268,12 +266,14 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
-                          << (cudnn_dso_ver % 100) / 10 << ".";
+                          << (cudnn_dso_ver % 1000) / 100 << ".";
 
   {
     // Check CUDA/CUDNN version compatiblity
-    auto local_cuda_version = runtime_version_ / 100;
-    auto compile_cuda_version = CUDA_VERSION / 100;
+    auto local_cuda_version =
+        (driver_version_ / 1000) * 10 + (driver_version_ % 100) / 10;
+    auto compile_cuda_version =
+        (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
           << "WARNING: device: " << place_.device
@@ -316,7 +316,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
 #if !defined(_WIN32)
-  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  if (nccl_comm_) {
+    PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  }
 #endif
 }
 
@@ -399,42 +401,89 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
 }
 
 namespace {
-// Current thread's id.
-thread_local int cur_thread_id = 0;
+// Current mkldnn session id.
+thread_local size_t cur_mkldnn_session_id = kMKLDNNSessionID_Default;
+// Current data input shape string.
+// - For fixed-shape, it's a null string in default.
+// - For dynamic-shape, it's user specific.
+thread_local std::string cur_input_shape_str = "";
+// the cache capacity of different input shapes for MKLDNN.
+// Default 1 means fixed input shape, not dynamic shape.
+thread_local int cur_input_shape_cache_capacity = 1;
+}  // namespace
+
+void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
+size_t get_cur_mkldnn_session_id(void) { return cur_mkldnn_session_id; }
+void set_cur_input_shape_str(std::string input_shape_str) {
+  cur_input_shape_str = input_shape_str;
+}
+void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity) {
+  cur_input_shape_cache_capacity = input_shape_cache_capacity;
 }
 
-void set_cur_thread_id(int tid) { cur_thread_id = tid; }
-int get_cur_thread_id(void) { return cur_thread_id; }
+void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
+
+size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
+  std::lock_guard<std::mutex> lock(*p_mutex_);
+  BlobMap* pMap = p_blobmap_.get();
+  auto map_it = pMap->find(cur_mkldnn_session_id);
+  if (map_it == pMap->end()) {
+    LOG(FATAL) << "MKLDNNDeviceContext don't find cur_mkldnn_session_id : "
+               << cur_mkldnn_session_id;
+  }
+  return map_it->second->size();
+}
 
 void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   std::shared_ptr<void> data) const {
   BlobMap* pMap = p_blobmap_.get();
+  std::shared_ptr<ShapeBlob> sBlob = nullptr;
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  int sid = platform::get_cur_mkldnn_session_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
-  // Find KeyBlob for current thread
-  auto map_it = pMap->find(tid);
+  // Find ShapeBlob for current mkldnn session id.
+  auto map_it = pMap->find(sid);
 
   if (map_it == pMap->end()) {
     // 1st time to set blob in current thread
+    sBlob = std::shared_ptr<ShapeBlob>(new ShapeBlob());
+    (*pMap)[sid] = sBlob;
+    VLOG(2) << "SetBlob: sid=" << sid << ", add new sid\n";
+  } else {
+    sBlob = map_it->second;
+  }
+
+  // Find KeyBlob for current input shape
+  auto key_it = sBlob->find(cur_input_shape_str);
+
+  if (key_it == sBlob->end()) {
+    // In cache clearing mode, cur_input_shape_cache_capacity defines
+    // max pblob capacity
+    if ((static_cast<size_t>(sid) == kMKLDNNSessionID_CacheClearing) &&
+        sBlob->size() &&
+        (sBlob->size() >=
+         static_cast<size_t>(cur_input_shape_cache_capacity))) {
+      VLOG(2) << "sid=" << sid
+              << ", remove all blobs of shape: " << sBlob->begin()->first;
+      sBlob->erase(sBlob->begin()->first);
+    }
     pBlob = std::shared_ptr<KeyBlob>(new KeyBlob());
-    (*pMap)[tid] = pBlob;
+    (*sBlob)[cur_input_shape_str] = pBlob;
   } else {
-    pBlob = map_it->second;
+    pBlob = key_it->second;
   }
 
-  // Find Key in found (or newly created) KeyBlob
-  auto key_it = pBlob->find(name);
-
-  if (key_it == pBlob->end()) {
-    (*pBlob)[name] = data;  // create new blob
+  // Find Blob via name
+  auto blob_it = pBlob->find(name);
+  if (blob_it == pBlob->end()) {
+    (*pBlob)[name] = data;
   } else {
-    key_it->second = data;  // set data to existing blob
+    blob_it->second = data;  // set data to existing blob
   }
-
+  VLOG(2) << "SetBlob: sid=" << sid << ", add blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return;
 }
@@ -442,22 +491,39 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
+  std::shared_ptr<ShapeBlob> sBlob = nullptr;
   std::shared_ptr<KeyBlob> pBlob = nullptr;
 
-  int tid = platform::get_cur_thread_id();
+  int sid = platform::get_cur_mkldnn_session_id();
 
   std::lock_guard<std::mutex> lock(*p_mutex_);
 
-  // Find KeyBlob for current thread firstly
-  auto map_it = pMap->find(tid);
-  if (map_it == pMap->end()) return nullptr;
-  pBlob = map_it->second;
+  // Find ShapeBlob for current mkldnn session id firstly
+  auto map_it = pMap->find(sid);
+  if (map_it == pMap->end()) {
+    VLOG(2) << "GetBlob: sid=" << sid << ", miss sid\n";
+    return nullptr;
+  }
+  sBlob = map_it->second;
+
+  // Find KeyBlob for current input shape secondly
+  auto sBlob_it = sBlob->find(cur_input_shape_str);
+  if (sBlob_it == sBlob->end()) {
+    VLOG(2) << "GetBlob: sid=" << cur_input_shape_str
+            << ", miss input_shape_str\n";
+    return nullptr;
+  }
+  pBlob = sBlob_it->second;
 
   // Find Blob via name
   auto key_it = pBlob->find(name);
 
-  if (key_it == pBlob->end()) return nullptr;
+  if (key_it == pBlob->end()) {
+    VLOG(2) << "GetBlob sid=" << sid << ", miss blob=" << name << "\n";
+    return nullptr;
+  }
 
+  VLOG(2) << "GetBlob sid=" << sid << ", get blob=" << name << "\n";
   // lock will be automatically released when out of scope
   return key_it->second;
 }

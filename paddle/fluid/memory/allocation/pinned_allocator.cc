@@ -24,8 +24,7 @@ void CPUPinnedAllocator::FreeImpl(Allocation *allocation) {
   PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
   delete allocation;
 }
-Allocation *CPUPinnedAllocator::AllocateImpl(size_t size,
-                                             Allocator::Attr attr) {
+Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
   PADDLE_ENFORCE(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());

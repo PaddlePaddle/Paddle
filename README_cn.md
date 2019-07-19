@@ -16,20 +16,21 @@ PaddlePaddle (PArallel Distributed Deep LEarning) 是一个简单易用、高效
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
-### PaddlePaddle最新版本: [Fluid 1.4.1](https://github.com/PaddlePaddle/Paddle/tree/release/1.4)
+### PaddlePaddle最新版本: [Fluid 1.5.1](https://github.com/PaddlePaddle/Paddle/tree/release/1.5)
 ### 安装最新稳定版本:
 ```
 # Linux CPU
 pip install paddlepaddle
 # Linux GPU cuda9cudnn7
 pip install paddlepaddle-gpu
+# Linux GPU cuda10cudnn7
+pip install paddlepaddle-gpu==1.5.1.post107
 # Linux GPU cuda8cudnn7
-pip install paddlepaddle-gpu==1.4.1.post87
-# Linux GPU cuda8cudnn5
-pip install paddlepaddle-gpu==1.4.1.post85
+pip install paddlepaddle-gpu==1.5.1.post87
 
 # 其他平台上的安装指引请参考 http://paddlepaddle.org/
 ```
+PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送12小时**，**连续五天运行再加送48小时**，[前往使用免费算力](https://ai.baidu.com/support/news?action=detail&id=981)。
 
 ## 特性
 
@@ -80,9 +81,11 @@ pip install paddlepaddle-gpu==1.4.1.post85
 
    欢迎您的贡献!
 
-## 答疑
+## 交流与反馈
 
-欢迎您将问题和bug报告以[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)的形式提交
+- 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
+- QQ群: 432676488 (PaddlePaddle)
+- [论坛](http://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
 
 ## 版权和许可证
 PaddlePaddle由[Apache-2.0 license](LICENSE)提供

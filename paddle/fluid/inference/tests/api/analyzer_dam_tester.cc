@@ -252,6 +252,7 @@ void compare(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
                                                "relu"};
     cfg.SetMKLDNNOp(op_list);
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

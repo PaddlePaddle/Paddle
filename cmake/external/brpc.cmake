@@ -39,9 +39,8 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 ExternalProject_Add(
     extern_brpc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    # TODO(gongwb): change to de newst repo when they changed.
-    GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
-    GIT_TAG         "e9b67ec1b7458f2af5fae76451afe1e27e01b4b4"
+    GIT_REPOSITORY  "https://github.com/apache/incubator-brpc"
+    GIT_TAG         "ad00fe940b4f05225b214131959293bbed8744a0" #rdma branch's head now.
     PREFIX          ${BRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 
-#include <functional>
-
 namespace paddle {
 namespace memory {
 namespace allocation {

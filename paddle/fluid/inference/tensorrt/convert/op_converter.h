@@ -170,6 +170,7 @@ class OpConverter {
       engine->DeclareOutput(output);
     }
     engine->FreezeNetwork();
+    engine->ClearWeights();
   }
 
   void RreplenishLayerAndOutput(

@@ -36,7 +36,7 @@ inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
 
 TEST(buffered_allocator, thread_safety) {
   std::unique_ptr<CPUAllocator> allocator(new CPUAllocator());
-  auto chunk = allocator->Allocate(1 << 20, allocator->kDefault);
+  auto chunk = allocator->Allocate(1 << 20);
   {
     auto buf_allocator = GetBufferedAllocator(chunk.get(), true);
     ASSERT_EQ(buf_allocator->IsAllocThreadSafe(), true);
@@ -72,7 +72,7 @@ class StubAllocator : public Allocator {
     ++destruct_count_;
     delete allocation;
   }
-  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override {
+  Allocation *AllocateImpl(size_t size) override {
     ++construct_count_;
     if (size == 0) {
       return new StubAllocation(nullptr, 0, platform::CPUPlace());
@@ -98,7 +98,7 @@ TEST(buffered_allocator, lazy_free) {
 
   {
     underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(1025, allocator->kDefault);
+    auto x = allocator->Allocate(1025);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
     x = nullptr;
@@ -107,10 +107,10 @@ TEST(buffered_allocator, lazy_free) {
 
   {
     underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(900, allocator->kDefault);
+    auto x = allocator->Allocate(900);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    auto y = allocator->Allocate(2048, allocator->kDefault);
+    auto y = allocator->Allocate(2048);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
     x = nullptr;
@@ -129,13 +129,13 @@ TEST(buffered_allocator, lazy_free) {
 
 TEST(buffered_allocator, garbage_collection) {
   std::unique_ptr<CPUAllocator> cpu_allocator(new CPUAllocator());
-  auto chunk = cpu_allocator->Allocate(2048, cpu_allocator->kDefault);
+  auto chunk = cpu_allocator->Allocate(2048);
   auto allocator = GetBufferedAllocator(chunk.get(), false);
-  auto x1 = allocator->Allocate(1600, allocator->kDefault);
-  auto x2 = allocator->Allocate(400, allocator->kDefault);
+  auto x1 = allocator->Allocate(1600);
+  auto x2 = allocator->Allocate(400);
   x1 = nullptr;
   x2 = nullptr;
-  auto x3 = allocator->Allocate(1600, allocator->kDefault);
+  auto x3 = allocator->Allocate(1600);
   ASSERT_NE(x3, nullptr);
   ASSERT_NE(x3->ptr(), nullptr);
 }

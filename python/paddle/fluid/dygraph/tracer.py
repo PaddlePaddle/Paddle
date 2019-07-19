@@ -24,9 +24,7 @@ __all__ = ['Tracer']
 
 
 def release_op(op):
-    del framework._dygraph_tracer()._ops[op._trace_id].inputs
-    del framework._dygraph_tracer()._ops[op._trace_id].outputs
-    del framework._dygraph_tracer()._ops[op._trace_id].backward_refs
+    del framework._dygraph_tracer()._ops[op._trace_id]
 
 
 class Tracer(core.Tracer):
@@ -54,50 +52,18 @@ class Tracer(core.Tracer):
         self._trace_id = 0
 
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
-        # TODO(hy): previous version will cause memory failed
-        op.inputs = inputs
-        inps = defaultdict(list)
-        for k, vars in six.iteritems(inputs):
-            if isinstance(vars, framework.Variable):
-                inps[k].append(vars._ivar)
-            elif isinstance(vars, list) or isinstance(vars, tuple):
-                for var in vars:
-                    inps[k].append(var._ivar)
-
-        op.outputs = outputs
-        outs = defaultdict(list)
-        for k, vars in six.iteritems(outputs):
-            if isinstance(vars, framework.Variable):
-                outs[k].append(vars._ivar)
-            elif isinstance(vars, list) or isinstance(vars, tuple):
-                for var in vars:
-                    outs[k].append(var._ivar)
-
         # record op's trace id
         op.iop._trace_id = self._trace_id
 
-        backward_refs = self.trace(op.iop, inps, outs, op.attrs,
-                                   framework._current_expected_place(),
-                                   stop_gradient)
+        self.trace(op.iop, inputs, outputs, op.attrs,
+                   framework._current_expected_place(), stop_gradient)
 
         if not stop_gradient and self._train_mode:
             self._trace_id += 1
             self._ops[op.iop._trace_id] = op
 
             # register backward hooks and variables if needed
-            if len(backward_refs) > 0:
-                op.iop.register_backward_hooks(release_op)
-
-                # TODO(minqiyang): remove all inputs and outputs after separate
-                # var and grad
-                op.backward_refs = defaultdict(list)
-                for k, v in six.iteritems(inputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = inputs[k]
-
-                for k, v in six.iteritems(outputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = outputs[k]
+            op.iop.register_backward_hooks(release_op)
 
     def train_mode(self):
         self._train_mode = True

@@ -377,12 +377,12 @@ class ExecutionContext {
   }
 
   template <typename T>
-  T& GetKernelConfig(int idx) const {
+  T& GetKernelConfig(size_t idx) const {
     PADDLE_ENFORCE(
         kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
-        "%s selected kernel doesn't have kernel config %lu <= %d",
+        "%s selected kernel doesn't have kernel config %lu <= %lu",
         op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
  private:
@@ -499,9 +499,10 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
-  mutable bool enable_cache_runtime_context = false;
-  mutable bool all_kernels_must_compute_runtime_shape = false;
+  mutable bool enable_cache_runtime_context_ = false;
+  mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
+  mutable bool enable_cache_transfer_scope_ = false;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

@@ -260,7 +260,7 @@ class MkldnnQuantizerTest : public testing::Test {
     predictor.reset(new AnalysisPredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
-    auto qconfig = std::make_shared<MkldnnQuantizerConfig>();
+    auto qconfig = new MkldnnQuantizerConfig();
 
     mkldnn_quantizer.reset(
         new AnalysisPredictor::MkldnnQuantizer(*predictor_p, qconfig));

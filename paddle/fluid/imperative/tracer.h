@@ -36,9 +36,6 @@ void CreateGradOp(const framework::OpDesc& op_desc,
                   framework::OpDesc** grad_op_desc,
                   std::unordered_map<std::string, std::string>* grad_to_var);
 
-void InitVar(const VarBase* var, framework::Variable* grad_var,
-             platform::DeviceContext* dev_ctx);
-
 platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
 
 class Tracer {
@@ -47,11 +44,11 @@ class Tracer {
 
   virtual ~Tracer() {}
 
-  std::set<std::string> Trace(OpBase* op, const VarBasePtrMap& inputs,
-                              VarBasePtrMap* outputs,  // NOLINT
-                              framework::AttributeMap attrs_map,
-                              const platform::Place expected_place,
-                              const bool stop_gradient = false);
+  void Trace(OpBase* op, const VarBasePtrMap& inputs,
+             VarBasePtrMap* outputs,  // NOLINT
+             framework::AttributeMap attrs_map,
+             const platform::Place expected_place,
+             const bool stop_gradient = false);
 
  private:
   platform::Place GetPlace(const VarBasePtrMap& inputs);

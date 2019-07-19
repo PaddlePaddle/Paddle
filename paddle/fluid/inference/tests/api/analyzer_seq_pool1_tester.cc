@@ -215,11 +215,15 @@ TEST(Analyzer_seq_pool1, compare_zero_copy) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
+  AnalysisConfig cfg1;
+  SetConfig(&cfg1);
+
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   std::vector<std::string> outputs_name;
   outputs_name.emplace_back(out_var_name);
   CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
                              input_slots_all, outputs_name);
 }
 
