@@ -177,6 +177,9 @@ class DistributeTranspilerConfig(object):
     # supported modes: sgd, local_sgd
     collective_mode = None
 
+    # support save(load) params to hadoop in pserver mode
+    pserver_hadoop_configs = None
+
 
 class DistributeTranspiler(object):
     """
@@ -1056,7 +1059,7 @@ class DistributeTranspiler(object):
             lookup_table_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(
-                pserver_program, table_opt_block.idx)
+                pserver_program, table_opt_block.idx, endpoint)
 
             pserver_program._distributed_lookup_table = self.table_name
             prefetch_var_name_to_block_id.extend(
@@ -1676,7 +1679,10 @@ class DistributeTranspiler(object):
 
         return table_opt_block
 
-    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
+    def _create_checkpoint_save_block(self,
+                                      pserver_program,
+                                      pre_block_idx,
+                                      endpoint=None):
         """
         create a new block to handle save checkpoint.
         """
@@ -1687,7 +1693,7 @@ class DistributeTranspiler(object):
             type=core.VarDesc.VarType.RAW)
 
         pserver_program.global_block().create_var(
-            name="remote_hdfs_path",
+            name="kLookupTableTmpPath",
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
@@ -1699,13 +1705,36 @@ class DistributeTranspiler(object):
             outputs={},
             attrs={'file_path': "none"})
 
-        cmd_prefix = " ".join(self._hdfs_client.pre_commands)
+        hadoop_config = self.config.pserver_hadoop_configs
+        if endpoint:
+            enpoint = endpoint.split(":")[0]
+        if hadoop_config and endpoint and endpoint in hadoop_config:
+            hadoop_commands = []
+            if 'HADOOP_HOME' in hadoop_config[endpoint]:
+                hadoop_bin = '%s/bin/hadoop' % hadoop_config[endpoint][
+                    'HADOOP_HOME']
+            else:
+                hadoop_bin = 'hadoop'
+            hadoop_commands.append(hadoop_bin)
+            dfs = 'fs'
+            hadoop_commands.append(dfs)
+            for k, v in hadoop_config[endpoint]['configs']:
+                config_command = '-D%s=%s' % (k, v)
+                hadoop_commands.append(config_command)
+            hadoop_commands.append('-put')
+            hadoop_commands.append('{}')
+            hadoop_commands.append('{}')
+            cmd_format = " ".join(hadoop_commands)
+        else:
+            cmd_format = "hadoop fs -put {} {}"
         checkpoint_save_block.append_op(
-            type='hadoop_shell',
+            type='shell',
             inputs={},
             outputs={},
-            attrs={'cmd_prefix': cmd_prefix,
-                   'cmd_type': 'put'})
+            attrs={
+                'cmd_format': cmd_format,
+                'cmd_params': ["kLookupTablePath", "kLookupTableTmpPath"]
+            })
         return checkpoint_save_block.idx
 
     def _create_vars_from_blocklist(self,

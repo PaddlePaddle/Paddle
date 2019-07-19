@@ -56,7 +56,8 @@ class Fleet(object):
         self._optimizer = None
         self._role_maker = None
         self._executor = None
-        self._hdfs_client = None
+        self._hdfs_client_trainer = None
+        self._hdfs_server_config = None
 
     def is_first_worker(self):
         """
@@ -183,7 +184,10 @@ class Fleet(object):
 
         return trainer_files[trainer_id]
 
-    def init(self, role_maker=None, hdfs_client=None):
+    def init(self,
+             role_maker=None,
+             hdfs_client_trainer=None,
+             hdfs_server_config=None):
         """
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
@@ -200,30 +204,35 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
-        if hdfs_client and not isinstance(hdfs_client, HDFSClient):
-            raise ValueError("hdfs_client must be an instance of HDFSClient")
+        if hdfs_client_trainer and not isinstance(hdfs_client_trainer,
+                                                  HDFSClient):
+            raise ValueError(
+                "hdfs_client_trainer must be an instance of HDFSClient")
 
-        self._hdfs_client = hdfs_client
+        if hdfs_server_config and not isinstance(hdfs_client_server, dict()):
+            raise ValueError("hdfs_server_config must be an instance of dict")
+
+        self._hdfs_client_trainer = hdfs_client_trainer
+        self._hdfs_server_config = hdfs_server_config
         self._role_maker = role_maker
         self._role_maker.generate_role()
         self._is_initialized = True
 
-    def hdfs_path_check(self, dirname):
+    def generate_random_path(self, dirname):
         rets = dirname
         if dirname.startswith(HDFS_PREFIX):
-            if not self._hdfs_client:
-                raise ValueError(
-                    "if you want to use hadoop path, please init hadoop client firstly"
-                )
+            #if not self._hdfs_client_trainer or not self._hdfs_client_server:
+            #    raise ValueError(
+            #        "if you want to use hadoop path, please init hadoop client firstly"
+            #    )
             while True:
                 rets = '/tmp/paddle_hadoop_tmp_%s' % uuid.uuid4().hex()
                 if not os.path.exists(rets):
                     break
-            os.sys("mkdir -p " + rets)
-        elif self._hdfs_client:
-            warnings.warn(
-                "you have init hadoop client, if you want to use hdfs path, please make sure your path starts with \"%s\""
-                % HDFS_PREFIX)
+        #elif self._hdfs_client_trainer or self._hdfs_client_server:
+        #    warnings.warn(
+        #        "you have init hadoop client, if you want to use hdfs path, please make sure your path starts with \"%s\""
+        #        % HDFS_PREFIX)
         return rets
 
     @abc.abstractmethod
