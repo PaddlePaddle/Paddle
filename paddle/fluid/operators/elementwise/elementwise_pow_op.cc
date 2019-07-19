@@ -18,6 +18,24 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+class ElementwisePowOpGradDescMaker : public framework::SingleGradOpDescMaker {
+public:
+    using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+protected:
+    std::unique_ptr<framework::OpDesc> Apply() const override {
+        std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+        op->SetType("elementwise_pow_grad");
+        op->SetInput("X", Input("X"));
+        op->SetInput("Y", Input("Y"));
+        op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+        op->SetAttrMap(Attrs());
+        op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+        op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+        return op;
+    }
+};
 class ElementwisePowOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Pow"; }
@@ -27,9 +45,25 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(elementwise_pow, ops::ElementwiseOp,
-                             ops::ElementwisePowOpMaker);
+REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
+        ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
+        ops::ElementwisePowOpGradDescMaker);
+//REGISTER_OP_WITHOUT_GRADIENT(elementwise_pow, ops::ElementwiseOp,
+//                             ops::ElementwisePowOpMaker);
+//REGISTER_OP_CPU_KERNEL(
+//    elementwise_pow,
+//   :q ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,
+//    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    elementwise_pow,
-    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, double>);
+        elementwise_pow,
+        ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,
+        ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, double>,
+        ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, int>,
+        ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+        elementwise_pow_grad,
+        ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, float>,
+        ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, double>,
+        ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int>,
+        ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+

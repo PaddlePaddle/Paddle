@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cmath>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
@@ -41,5 +42,34 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+struct PowGradDX {
+    HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y * std::pow(x, y - 1); }
+};
+
+template <typename T>
+struct PowGradDY {
+    HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * out * log(x); }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
+public:
+    void Compute(const framework::ExecutionContext& ctx) const override {
+        ElemwiseGradKernel<T>::Compute(ctx);
+        using Tensor = framework::Tensor;
+
+        auto* x = ctx.Input<Tensor>("X");
+        auto* y = ctx.Input<Tensor>("Y");
+        auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+        auto* out = dout;
+        auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+        auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+        int axis = ctx.Attr<int>("axis");
+        ElemwiseGradCompute<DeviceContext, T, PowGradDX<T>, PowGradDY<T>>(
+                ctx, *x, *y, *out, *dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
+    }
+};
 }  // namespace operators
 }  // namespace paddle
+
