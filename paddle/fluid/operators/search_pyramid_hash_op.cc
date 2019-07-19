@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "search_compute.h"
 #include "xxhash.h"
-//#include "debug.h"
 
 extern "C" {
 #include "math/bloomfilter.h"
@@ -148,8 +147,6 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
   bool should_use_term(math::bloomfilter* _filter,
                        math::bloomfilter* _black_filter, const T* word_repr,
                        int len) const {
-    //LOG(ERROR) << "math::bloomfilter_get(_filter, word_repr, len * sizeof(T))"
-    //           << math::bloomfilter_get(_filter, word_repr, len * sizeof(T));
     return (!_filter ||
             1 == math::bloomfilter_get(_filter, word_repr, len * sizeof(T))) &&
            (!_black_filter ||
@@ -162,17 +159,6 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      /* DEBUG */
-      /*
-      for (int i = 0; i != _pyramid_layer; ++i) {
-          printf("%u ", static_cast<unsigned int>(hash_id[i]));
-      }
-      printf("ff hash %u --> %u\n", static_cast<unsigned
-      int>(hash_id[_pyramid_layer]), pos); printf("ff-hash %u %u %u\n",
-      static_cast<unsigned int>(hash_id[0]), static_cast<unsigned
-      int>(hash_id[_pyramid_layer]), pos);
-      */
-      // top_pos[j] = weights[pos];
       memcpy(top_pos + j, weights + pos, _rand_len * sizeof(T));
     }
   }
@@ -217,13 +203,11 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
     if (use_filter) {
       if (white_list_len != 0) {
         _filter = (math::bloomfilter*)_blobs_1->data<T>();
-        //LOG(ERROR) << "_filter: " << _filter;
         PADDLE_ENFORCE_EQ(math::bloomfilter_check(_filter), 1,
                           "white filter not load");
       }
       if (black_list_len != 0) {
         _black_filter = (math::bloomfilter*)_blobs_2->data<T>();
-        //LOG(ERROR) << "_black_filter: " << _black_filter;
         PADDLE_ENFORCE_EQ(math::bloomfilter_check(_black_filter), 1,
                           "black filter not load");
       }
@@ -241,32 +225,18 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
       int w = offset[i + 1] - offset[i];
       int nsentense_with_pyramid = 0;
       if (w < 2) {
-        //LOG(ERROR) << "zero len sequence " << i << "/" << top_offset.size() - 1;
         nsentense_with_pyramid = 0;
       } else {
-        //LOG(ERROR) << "_pyramid_layer: " << _pyramid_layer;
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
-            //LOG(ERROR) << "l: " << l << ", i: " << i << ", offset[i]"
-            //           << offset[i];
-            //LOG(ERROR) << "*(bottom_data + offset[i] + l): "
-            //           << *(bottom_data + offset[i] + l);
-            //LOG(ERROR) << "*(_filter)" << *((int*)_filter);
             if (should_use_term(_filter, _black_filter,
                                 (const T*)(bottom_data + offset[i] + l),
                                 ilayer + 1)) {
-              //LOG(ERROR) << "should_use_term";
-              if (_is_training != 0) {  // training
-                // T rand_val = static_cast<T>(rand_r(&_seed));
+              if (_is_training != 0) {
                 unsigned int rand_val = rand_r(&_seed);
-                //LOG(ERROR) << "rand_val: " << rand_val;
                 T rate = static_cast<T>(rand_val) / (RAND_MAX);
-//LOG(ERROR) << "rate: " << rate;
-//LOG(ERROR) << "iter: " << iter << ", iter_end: " << iter_end;
                 *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
-//LOG(ERROR) << "iter: " << iter << ", iter_end: " << iter_end << ", *iter_end: " << *iter_end;
-//LOG(ERROR) << "*(iter_end-1): " << *(iter_end-1);
-              } else {  // predict
+              } else {
                 *(iter_end++) = 1;
               }
             } else {
@@ -274,24 +244,16 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
             }
           }
         }
-        
-//int len = iter_end - iter;
-//LOG(ERROR) << "[before] iter: " << iter << ", iter_end: " << iter_end << ", len: " << len;
         nsentense_with_pyramid = std::count(iter, iter_end, 1);
-//LOG(ERROR) << "[after ] iter: " << iter << ", iter_end: " << iter_end << ", len: " << len;
-
-        //LOG(ERROR) << "_drop_pos.size: " << (iter_end - drop_pos->mutable_data<int>(ctx.GetPlace()));
         iter = iter_end;
       }
       drop_pos_offset[i + 1] = drop_pos_offset[i] + nsentense_with_pyramid;
       top_offset[i + 1] =
           top_offset[i] +
           (nsentense_with_pyramid == 0 ? 1 : nsentense_with_pyramid);
-      //LOG(ERROR) << "w: nsentense " << w << ":" << nsentense_with_pyramid;
     }
 
     int top_l = top_offset[top_offset.size() - 1];
-    //LOG(ERROR) << "top_total size " << top_l;
 
     framework::LoD top_lod;
     top_lod.push_back(top_offset);
@@ -309,7 +271,6 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
       int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       int w = offset[i + 1] - offset[i];
       if (w_drop == 0) {
-//LOG(ERROR) << "w_drop == 0, i = " << i;
         if (w >= 2) {
           for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
             for (int l = 0; l < w - ilayer; ++l) {
@@ -327,9 +288,7 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
             if (*(iter++) == 0) {
               // do nothing
             } else {
-//LOG(ERROR) << "top_counter: " << top_counter;
               auto* top_pos = top_data + top_counter++ * _num_emb;
-//LOG(ERROR) << "hash_embedding_ff: " << *(const T*)(bottom_data + offset[i] + l) << ", " << ilayer + 1;
               hash_embedding_ff((const T*)(bottom_data + offset[i] + l),
                                 ilayer + 1, top_pos, weights, _num_emb,
                                 _rand_len, _space_len);
@@ -338,12 +297,7 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
         }
       }
     }
-
-
-//LOG(ERROR) << "[end] iter: " << iter << ", iter_end: " << iter_end;
-    //PADDLE_ENFORCE_EQ(iter, iter_end, "drop pos error in ff");
     if (iter != iter_end) {
-//LOG(ERROR) << "!!! iter != iter_end, exit.";
       exit(1);
     }
     if (_is_training == 0) {
@@ -413,13 +367,11 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     auto* top = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
 
     int _num_emb = ctx.Attr<int>("num_emb");
-    // const auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     float _lr = ctx.Attr<float>("lr");
     int _rand_len = ctx.Attr<int>("rand_len");
     int _space_len = ctx.Attr<int>("space_len");
     int _pyramid_layer = ctx.Attr<int>("pyramid_layer");
 
-    //const auto* bottom_data = bottom->data<int32_t>();
     const auto* bottom_data_ori = bottom->data<int32_t>();
     Tensor buff;
     buff.Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
@@ -429,16 +381,12 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     }
 
     int _slot_len = bottom->dims()[0];
-    // special treat when length is zero
     if (_slot_len == bottom->lod()[0].size() - 1 &&
         std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
-      //LOG(ERROR) << "bp a zero length input in embedding layer";
       return;
     }
-    // end of special treat when length is zero
 
     auto& offset = bottom->lod()[0];
-    //auto& top_offset = top->lod()[0];
     auto& drop_pos_offset = drop_pos->lod()[0];
 
     const auto* top_diff = top->data<T>();
@@ -446,12 +394,10 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     T mlr = -1.0 * _lr;
 
     const int* iter = drop_pos->data<int>();
-    // int* iter_end = iter;
     int top_counter = 0;
     for (int i = 0; i < offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
-      //if (w == 1 && bottom_data[offset[i]] == -1) {
       if (w_drop == 0) {
         top_counter++;
       }
@@ -462,8 +408,6 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
               // do nothing
             } else {
               const T* top_pos = top_diff + top_counter++ * _num_emb;
-//LOG(ERROR) << "*top_pos=" << *top_pos << ", *(bottom_data + offset[i] + l)=" << *(bottom_data + offset[i] + l) << ", ilayer+1=" << ilayer+1 <<  ", *weights=" << *weights << ", top_counter=" << top_counter;
-//fprintf(stdout, "*top_pos=%f, *(bottom_data + offset[i] + l)=%f, ilayer+1=%d, *weights=%f, mlr=%f\n", *top_pos, *(bottom_data + offset[i] + l), ilayer+1, *weights, mlr);
               hash_embedding_bp((const T*)(bottom_data + offset[i] + l),
                                 ilayer + 1, top_pos, weights, mlr, _num_emb,
                                 _rand_len, _space_len);
@@ -471,12 +415,9 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
           }
         }
       } else {
-        //LOG(ERROR) << "zero len sequence " << i << " / "
-        //           << top_offset.size() - 1;
+        // do nothing
       }
     }
-    // ASSERT(iter == _drop_pos.end(), "drop pos error in bp");
-    //LOG(ERROR) << "_drop_pos size = " << iter - drop_pos->data<int>();
   }
 };
 
