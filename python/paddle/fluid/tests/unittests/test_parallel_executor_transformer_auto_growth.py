@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
+os.environ['RECORDIO_FILENAME'] = './auto_growth_pe_transformer.wmt16.recordio'
 
-from .distributed_reader import *
+import unittest
+from test_parallel_executor_transformer import *
 
-__all__ = []
-__all__ += distributed_reader.__all__
+if __name__ == '__main__':
+    unittest.main()

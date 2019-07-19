@@ -38,14 +38,8 @@ namespace operators {
 
 static ngraph::Shape Ddim2Shape(const framework::DDim& dims) {
   ngraph::Shape sp;
-  if (dims.size() == 1 && dims[0] == 0) {
-    sp.emplace_back(0);
-    return sp;
-  }
   for (int i = 0; i < dims.size(); ++i) {
-    int k = dims[i];
-    k = k == 0 ? 1 : k;
-    sp.emplace_back(k);
+    sp.emplace_back(dims[i]);
   }
   return sp;
 }
@@ -639,17 +633,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
 
   for (auto& op : fused_ops_) {
     framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
-    if (op->Type() == "reshape2_grad") {
-      auto xshape_name = op->Inputs().at("XShape").at(0);
-      auto* xshape_var = scope_.FindVar(xshape_name);
-      auto* xshape_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*xshape_var);
-      auto& xshape_ddim = xshape_tensor->dims();
-      auto xgrad_name = op->Outputs().at(framework::GradVarName("X")).at(0);
-      auto* xgrad_var = scope_.FindVar(xgrad_name);
-      xgrad_var->GetMutable<framework::LoDTensor>()->Resize(xshape_ddim);
-    } else {
-      op->RuntimeInferShape(scope_, place_, ctx);
-    }
+    op->RuntimeInferShape(scope_, place_, ctx);
   }
 
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out = {};
