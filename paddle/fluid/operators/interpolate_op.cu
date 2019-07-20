@@ -502,8 +502,8 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     int out_w = ctx.Attr<int>("out_w");
 
     auto& device_ctx =
-        ctx.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+        ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> zero;
 
     auto input_dims = input->dims();
     if (input_dims.size() == 4) {  // 2D interpolation

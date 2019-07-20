@@ -39,7 +39,7 @@ def trilinear_interp_np(input,
         out_w = actual_shape[2]
     batch_size, channel, in_d, in_h, in_w = input.shape
 
-    ratio_d, ratio_h = ratio_w = 0.0
+    ratio_d = ratio_h = ratio_w = 0.0
     if out_d > 1:
         if (align_corners):
             ratio_d = (in_d - 1.0) / (out_d - 1.0)
@@ -103,15 +103,15 @@ def trilinear_interp_np(input,
                 w2lambda = 1.0 - w1lambda
 
                 out[:, :, i, j, k] = \
-                    d2lambda *
-                    (h2lambda * (w2lambda * input[:, :, d, h, w] +
-                              w1lambda * input[:, :, d, h, w+wid]) +
-                    h1lambda * (w2lambda * input[:, :, d, h+hid, w] +
-                              w1lambda * input[:, :, d, h+hid, w+wid])) +
-                    d1lambda *
-                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] +
-                              w1lambda * input[:, :, d+did, h, w+wid]) +
-                    h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] +
+                    d2lambda * \
+                    (h2lambda * (w2lambda * input[:, :, d, h, w] + \
+                              w1lambda * input[:, :, d, h, w+wid]) + \
+                    h1lambda * (w2lambda * input[:, :, d, h+hid, w] + \
+                              w1lambda * input[:, :, d, h+hid, w+wid])) + \
+                    d1lambda * \
+                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] + \
+                              w1lambda * input[:, :, d+did, h, w+wid]) + \
+                    h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] + \
                               w1lambda * input[:, :, d+did, h+hid, w+wid]))
     return out.astype(input.dtype)
 
@@ -174,7 +174,7 @@ class TestTrilinearInterpOp(OpTest):
 class TestTrilinearInterpCase1(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
-        self.input_shape = [4, 1, 7, 8, 9]
+        self.input_shape = [2, 1, 7, 8, 9]
         self.out_d = 1
         self.out_h = 1
         self.out_w = 1
@@ -186,7 +186,7 @@ class TestTrilinearInterpCase1(TestTrilinearInterpOp):
 class TestTrilinearInterpCase2(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
-        self.input_shape = [3, 3, 9, 6, 8]
+        self.input_shape = [2, 3, 9, 6, 8]
         self.out_d = 12
         self.out_h = 12
         self.out_w = 12
@@ -198,10 +198,10 @@ class TestTrilinearInterpCase2(TestTrilinearInterpOp):
 class TestTrilinearInterpCase3(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
-        self.input_shape = [1, 1, 128, 64, 32]
+        self.input_shape = [3, 2, 16, 8, 4]
         self.out_d = 32
-        self.out_h = 64
-        self.out_w = 128
+        self.out_h = 16
+        self.out_w = 8
         self.scale = 0.
         self.align_corners = True
         self.align_mode = 1
@@ -236,12 +236,12 @@ class TestTrilinearInterpCase5(TestTrilinearInterpOp):
 class TestTrilinearInterpCase6(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
-        self.input_shape = [1, 1, 128, 64, 32]
-        self.out_d = 32
-        self.out_h = 64
-        self.out_w = 128
+        self.input_shape = [1, 1, 16, 8, 4]
+        self.out_d = 8
+        self.out_h = 32
+        self.out_w = 16
         self.scale = 0.
-        self.out_size = np.array([33, 65, 129]).astype("int32")
+        self.out_size = np.array([17, 9, 5]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
 
@@ -249,12 +249,12 @@ class TestTrilinearInterpCase6(TestTrilinearInterpOp):
 class TestTrilinearInterpActualShape(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
-        self.input_shape = [3, 2, 32, 16, 8]
+        self.input_shape = [3, 2, 16, 8, 4]
         self.out_d = 64
         self.out_h = 32
         self.out_w = 16
         self.scale = 0.
-        self.out_size = np.array([66, 40, 18]).astype("int32")
+        self.out_size = np.array([33, 19, 7]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
 
@@ -312,10 +312,10 @@ class TestTrilinearInterpOpUint8(OpTest):
 class TestTrilinearInterpCase1Uint8(TestTrilinearInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 128, 64, 32]
-        self.out_d = 120
-        self.out_h = 50
-        self.out_w = 20
+        self.input_shape = [2, 3, 16, 8, 4]
+        self.out_d = 13
+        self.out_h = 7
+        self.out_w = 2
         self.scale = 0.
         self.align_corners = True
         self.align_mode = 1
@@ -325,7 +325,7 @@ class TestTrilinearInterpCase2Uint8(TestTrilinearInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [4, 1, 7, 8, 9]
-        self.out_h = 3
+        self.out_d = 3
         self.out_h = 5
         self.out_w = 13
         self.scale = 0.

@@ -152,14 +152,14 @@ static void TrilinearInterpolation(const Tensor& input, Tensor* output,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int j = 0; j < out_h; j++) {
+  for (int j = 0; j < out_d; j++) {
     int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
                          : static_cast<int>(ratio_d * j);
     t_f = (t_f > 0) ? t_f : 0;
-    int t_b = (t_f + 1) < (in_h - 1) ? (t_f + 1) : (in_h - 1);
+    int t_b = (t_f + 1) < (in_d - 1) ? (t_f + 1) : (in_d - 1);
     float idx_src_t = ratio_d * (j + 0.5) - 0.5;
     idx_src_t = (idx_src_t > 0) ? idx_src_t : 0;
-    float d_f = align_flag ? idx_src_t - t_f : ratio_h * j - t_f;
+    float d_f = align_flag ? idx_src_t - t_f : ratio_d * j - t_f;
     float d_b = 1.f - d_f;
     {
       vt_f[j] = t_f;
@@ -231,14 +231,14 @@ static void TrilinearInterpolation(const Tensor& input, Tensor* output,
         for (int k = 0; k < out_h; k++) {
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
-            T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[i] * vd_s[j] * vd_e[l] +
-                      input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[i] * vd_s[j] * vd_w[l] +
-                      input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[i] * vd_n[j] * vd_e[l] +
-                      input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[i] * vd_n[j] * vd_w[l] +
-                      input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[i] * vd_s[j] * vd_e[l] +
-                      input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[i] * vd_s[j] * vd_w[l] +
-                      input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[i] * vd_n[j] * vd_e[l] +
-                      input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[i] * vd_n[j] * vd_w[l];
+            T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[j] * vd_s[k] * vd_e[l] +
+                      input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[j] * vd_s[k] * vd_w[l] +
+                      input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[j] * vd_n[k] * vd_e[l] +
+                      input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[j] * vd_n[k] * vd_w[l] +
+                      input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[j] * vd_s[k] * vd_e[l] +
+                      input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[j] * vd_s[k] * vd_w[l] +
+                      input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[j] * vd_n[k] * vd_e[l] +
+                      input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[j] * vd_n[k] * vd_w[l];
             output_t(b, i, j, k, l) = out_t;
           }
         }
@@ -334,7 +334,7 @@ static void TrilinearInterpolationGrad(const Tensor& output_grad,
                          : static_cast<int>(ratio_d * j);
     t_f = (t_f > 0) ? t_f : 0;
     int t_b = (t_f + 1) < (in_d - 1) ? (t_f + 1) : (in_d - 1);
-    float idx_src_t = ratio_h * (j + 0.5) - 0.5;
+    float idx_src_t = ratio_d * (j + 0.5) - 0.5;
     idx_src_t = (idx_src_t > 0) ? idx_src_t : 0;
     float d_f = align_flag ? idx_src_t - t_f : ratio_d * j - t_f;
     float d_b = 1.f - d_f;
