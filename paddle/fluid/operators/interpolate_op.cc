@@ -33,39 +33,80 @@ class InterpolateOp : public framework::OperatorWithKernel {
 
     auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
     PADDLE_ENFORCE(
-        "bilinear" == interp_method || "nearest" == interp_method,
-        "Interpolation method can only be \"bilinear\" or \"nearest\".");
+        "bilinear" == interp_method || "nearest" == interp_method
+        || "trilinear" == interp_method,
+        "Interpolation method can only be \"bilinear\", \"trilinear\" "
+        "or \"nearest\".");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
 
-    int out_h, out_w;
-    float scale = ctx->Attrs().Get<float>("scale");
-    if (scale > 0) {
-      // round down
-      out_h = static_cast<int>(dim_x[2] * scale);
-      out_w = static_cast<int>(dim_x[3] * scale);
-      // protect when input shape is -1
-      out_h = out_h > 0 ? out_h : -1;
-      out_w = out_w > 0 ? out_w : -1;
+    if ("bilinear" == interp_method || "nearest" == interp_method) {
+      // shape check for 2D interpolate for input tensor shape NCHW
+      PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
+
+      int out_h, out_w;
+      float scale = ctx->Attrs().Get<float>("scale");
+      if (scale > 0) {
+        // round down
+        out_h = static_cast<int>(dim_x[2] * scale);
+        out_w = static_cast<int>(dim_x[3] * scale);
+        // protect when input shape is -1
+        out_h = out_h > 0 ? out_h : -1;
+        out_w = out_w > 0 ? out_w : -1;
+      } else {
+        out_h = ctx->Attrs().Get<int>("out_h");
+        out_w = ctx->Attrs().Get<int>("out_w");
+        PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
+        PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
+      }
+
+      if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
+        auto out_size_dim = ctx->GetInputDim("OutSize");
+        PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
+                          "OutSize's dimension size must be 1");
+        PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
+        ctx->ShareLoD("X", "Out");
+        return;
+      }
+
+      std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
+      ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
     } else {
-      out_h = ctx->Attrs().Get<int>("out_h");
-      out_w = ctx->Attrs().Get<int>("out_w");
-      PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
-      PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
-    }
+      // shape check for 3D interpolate for input tensor shape NCDHW
+      PADDLE_ENFORCE_EQ(dim_x.size(), 5, "X's dimension must be 5");
 
-    if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
-      auto out_size_dim = ctx->GetInputDim("OutSize");
-      PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                        "OutSize's dimension size must be 1");
-      PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
-      ctx->ShareLoD("X", "Out");
-      return;
-    }
+      int out_d, out_h, out_w;
+      float scale = ctx->Attrs().Get<float>("scale");
+      if (scale > 0) {
+        // round down
+        out_d = static_cast<int>(dim_x[2] * scale);
+        out_h = static_cast<int>(dim_x[3] * scale);
+        out_w = static_cast<int>(dim_x[4] * scale);
+        // protect when input shape is -1
+        out_d = out_d > 0 ? out_d : -1;
+        out_h = out_h > 0 ? out_h : -1;
+        out_w = out_w > 0 ? out_w : -1;
+      } else {
+        out_d = ctx->Attrs().Get<int>("out_d");
+        out_h = ctx->Attrs().Get<int>("out_h");
+        out_w = ctx->Attrs().Get<int>("out_w");
+        PADDLE_ENFORCE_GT(out_d, 0, "out_d should be greater than 0.");
+        PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
+        PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
+      }
 
-    std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+      if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
+        auto out_size_dim = ctx->GetInputDim("OutSize");
+        PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
+                          "OutSize's dimension size must be 1");
+        PADDLE_ENFORCE_EQ(out_size_dim[0], 3, "OutSize's dim[0] must be 3");
+        ctx->ShareLoD("X", "Out");
+        return;
+      }
+
+      std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
+      ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    }
   }
 
  protected:
@@ -81,22 +122,27 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input tensor of interpolate operator, "
-             "This is a 4-D tensor with shape of [N,  C, H, w].");
+             "This is a 4-D tensor with shape of [N, C, H, W] or a "
+             "5-D tensor with shape of [N, C, D, H, W].");
     AddInput("OutSize",
              "This is a 1-D tensor with two numbers to specify output size. "
-             "The first number is height and the second number is width.")
+             "It should be [output_height, output_width] when input is a 4-D "
+             "tensor and should be [output_depth, output_height, output_width] "
+             "when input is a 5-D tensor.")
         .AsDispensable();
     AddOutput("Out",
               "The output tensor of interpolate operator, "
-              "This is a 4-D tensor with shape of [N, C, H, W].");
+              "This is a tensor in same rank with Input(X).");
 
+    AddAttr<int>("out_d", "output depth of interpolate op.");
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
     AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
     AddAttr<std::string>("interp_method",
                          "(string, default \"bilinear\"), interpolation "
                          "method, can be \"bilinear\" for "
-                         "bilinear interpolation and \"nearest\" for nearest "
+                         "bilinear interpolation, \"trilinear\" for trilinear "
+                         "interpolation and \"nearest\" for nearest "
                          "neighbor interpolation.")
         .SetDefault("bilinear");
     AddAttr<bool>(
@@ -126,6 +172,11 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           W-direction in this op) on a rectilinear 2D grid. The key idea is 
           to perform linear interpolation first in one direction, and then 
           again in the other direction.
+
+          Trilinear interpolation is an extension of linear interpolation for 
+          interpolating functions of three variables (e.g. D-direction, 
+          H-direction and W-direction in this op) on a rectilinear 3D grid. 
+          The linear interpolation is performed on three directions.
 
           Align_corners and align_mode are optinal parameters,the calculation method 
           of interpolation can be selected by them.
@@ -183,6 +234,27 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
+          Trilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+           
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
           
 
           For details of nearest neighbor interpolation, please refer to Wikipedia: 
@@ -190,6 +262,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
           For details of bilinear interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Bilinear_interpolation
+
+          For details of bilinear interpolation, please refer to Wikipedia: 
+          https://en.wikipedia.org/wiki/Trilinear_interpolation
          )DOC");
   }
 };
@@ -251,6 +326,10 @@ REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradDescMaker);
 REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
+REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
+                  ops::InterpolateGradDescMaker);
+REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
@@ -260,4 +339,9 @@ REGISTER_OP_CPU_KERNEL(nearest_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(nearest_interp_grad, ops::InterpolateGradKernel<float>,
+                       ops::InterpolateGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(trilinear_interp, ops::InterpolateKernel<float>,
+                       ops::InterpolateKernel<double>,
+                       ops::InterpolateKernel<uint8_t>);
+REGISTER_OP_CPU_KERNEL(trilinear_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);
