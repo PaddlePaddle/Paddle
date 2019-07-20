@@ -172,6 +172,11 @@ RUN pip3.6 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.7 --no-cache-dir install pylint pytest astroid isort
 RUN pip --no-cache-dir install pylint pytest astroid isort LinkChecker
 
+RUN pip3 --no-cache-dir install coverage                
+RUN pip3.6 --no-cache-dir install coverage             
+RUN pip3.7 --no-cache-dir install coverage            
+RUN pip --no-cache-dir install coverage
+
 COPY ./python/requirements.txt /root/
 RUN pip3 --no-cache-dir install -r /root/requirements.txt
 RUN pip3.6 --no-cache-dir install -r /root/requirements.txt
