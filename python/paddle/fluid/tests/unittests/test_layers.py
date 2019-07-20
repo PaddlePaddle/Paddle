@@ -626,6 +626,37 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
+    def test_interpolate(self):
+        with self.static_graph():
+            images = layers.data(
+                name='image', shape=[3, 6, 6], dtype='float32')
+            ret = layers.resize_bilinear(input=images, out_shape=(9, 9))
+            static_ret = self.get_static_graph_result(
+                feed={'image': np.ones(
+                    [2, 3, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
+        with self.static_graph():
+            images = layers.data(
+                name='image', shape=[3, 6, 6], dtype='float32')
+            ret = layers.resize_nearest(input=images, out_shape=(9, 9))
+            static_ret = self.get_static_graph_result(
+                feed={'image': np.ones(
+                    [2, 3, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
+        with self.static_graph():
+            images = layers.data(
+                name='image', shape=[3, 6, 6, 6], dtype='float32')
+            ret = layers.resize_bilinear(input=images, out_shape=(9, 9, 9))
+            static_ret = self.get_static_graph_result(
+                feed={'image': np.ones(
+                    [2, 3, 6, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
     def test_row_conv(self):
         input = np.arange(15).reshape([3, 5]).astype('float32')
         if core.is_compiled_with_cuda():

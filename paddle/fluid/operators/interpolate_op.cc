@@ -134,9 +134,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output tensor of interpolate operator, "
               "This is a tensor in same rank with Input(X).");
 
-    AddAttr<int>("out_d", "output depth of interpolate op.");
-    AddAttr<int>("out_h", "output height of interpolate op.");
-    AddAttr<int>("out_w", "output width of interpolate op.");
+    AddAttr<int>("out_d", "output depth of interpolate op.").SetDefault(0);
+    AddAttr<int>("out_h", "output height of interpolate op.").SetDefault(0);
+    AddAttr<int>("out_w", "output width of interpolate op.").SetDefault(0);
     AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
     AddAttr<std::string>("interp_method",
                          "(string, default \"bilinear\"), interpolation "
@@ -263,7 +263,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           For details of bilinear interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Bilinear_interpolation
 
-          For details of bilinear interpolation, please refer to Wikipedia: 
+          For details of trilinear interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Trilinear_interpolation
          )DOC");
   }
