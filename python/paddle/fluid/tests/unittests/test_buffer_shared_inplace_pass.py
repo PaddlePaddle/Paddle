@@ -32,7 +32,6 @@ feed_dict = {
 class InplaceTestBase(unittest.TestCase):
     def initParameter(self):
         self.use_cuda = True
-        self.fuse_all_optimizer_ops = True
 
     def setUp(self):
         self.initParameter()
@@ -40,6 +39,7 @@ class InplaceTestBase(unittest.TestCase):
             self.device_count = fluid.core.get_cuda_device_count()
         else:
             self.device_count = 4
+
         assert batch_size % self.device_count == 0
 
     def build_program_and_scope(self):
@@ -87,7 +87,6 @@ class InplaceTestBase(unittest.TestCase):
         build_strategy2 = fluid.BuildStrategy()
         build_strategy2.memory_optimize = False
         build_strategy2.enable_inplace = True
-        build_strategy2.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
 
         compiled_prog2 = fluid.CompiledProgram(prog2).with_data_parallel(
             loss_name=loss2.name,
@@ -97,7 +96,6 @@ class InplaceTestBase(unittest.TestCase):
         build_strategy3 = fluid.BuildStrategy()
         build_strategy3.memory_optimize = False
         build_strategy3.enable_inplace = False
-        build_strategy3.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
         compiled_prog3 = fluid.CompiledProgram(prog3).with_data_parallel(
             loss_name=loss2.name,
             build_strategy=build_strategy3,
@@ -137,12 +135,10 @@ class InplaceTestBase(unittest.TestCase):
         build_strategy1 = fluid.BuildStrategy()
         build_strategy1.memory_optimize = False
         build_strategy1.enable_inplace = True
-        build_strategy1.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
 
         build_strategy2 = fluid.BuildStrategy()
         build_strategy2.memory_optimize = False
         build_strategy2.enable_inplace = False
-        build_strategy2.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
 
         if self.use_cuda:
             places = fluid.cuda_places()
@@ -175,7 +171,6 @@ class InplaceTestBase(unittest.TestCase):
 class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
-        self.fuse_all_optimizer_ops = False
 
 
 if __name__ == '__main__':

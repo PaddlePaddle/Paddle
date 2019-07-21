@@ -171,7 +171,6 @@ class TestDistRunnerBase(object):
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
-        build_stra.fuse_all_optimizer_ops = False
 
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
