@@ -7702,7 +7702,7 @@ def image_resize(input,
 
     if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
         raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
-    if resample == 'TRILINEAR'  and len(input.shape) != 5:
+    if resample == 'TRILINEAR' and len(input.shape) != 5:
         raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
@@ -7750,8 +7750,9 @@ def image_resize(input,
                     raise ValueError("out_shape length should be 3 for "
                                      "input 5-D tensor.")
                 out_shape = list(map(int, out_shape))
-                attrs['out_h'] = out_shape[0]
-                attrs['out_w'] = out_shape[1]
+                attrs['out_d'] = out_shape[0]
+                attrs['out_h'] = out_shape[1]
+                attrs['out_w'] = out_shape[2]
 
     else:
         if scale <= 0:

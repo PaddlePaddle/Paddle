@@ -1295,7 +1295,12 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
             output = layers.resize_bilinear(x, out_shape=[12, 12])
             return (output)
-            output = layers.resize_bilinear(x, scale=3)
+
+    def make_resize_bilinear_by_scale(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_bilinear(x, scale=1.5)
             return (output)
 
     def make_resize_nearest(self):
@@ -1304,7 +1309,26 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
             output = layers.resize_nearest(x, out_shape=[12, 12])
             return (output)
-            output = layers.resize_nearest(x, scale=3)
+
+    def make_resize_nearest_by_scale(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_nearest(x, scale=1.8)
+            return (output)
+
+    def make_resize_trilinear(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
+            output = layers.resize_trilinear(x, out_shape=[12, 12, 12])
+            return (output)
+
+    def make_resize_trilinear_by_scale(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
+            output = layers.resize_trilinear(x, scale=2.1)
             return (output)
 
     def make_polygon_box_transform(self):
