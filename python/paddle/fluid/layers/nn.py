@@ -12523,7 +12523,7 @@ def deformable_roi_pooling(input,
     return output
 
 
-def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
+def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     This layer creates the sharded index for input. This layers is used in
     model- and data- parallel mixed training generally, in which the index
@@ -12532,11 +12532,11 @@ def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
 
     .. math::
         
-        assert index_range % nshards == 0
+        assert index_num % nshards == 0
 
-        shard_range = index_range / nshards
+        shard_size = index_num / nshards
 
-        y = x % shard_range if x / shard_range == shard_id else ignore_value
+        y = x % shard_size if x / shard_size == shard_id else ignore_value
 
     We take the distributed one-hot representation to show what this layer is
     used for. The distributed one-hot representation is seperated into multiple
@@ -12550,7 +12550,7 @@ def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
           X.shape = [4, 1]
           X.data = [[1], [6], [12], [19]]
         
-        suppose index_range = 20 and nshards = 2, then we get shard_range = 10
+        suppose index_num = 20 and nshards = 2, then we get shard_size = 10
         
         if shard_id == 0, we get the Out:
           Out.shape = [4, 1]
@@ -12564,7 +12564,7 @@ def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
     
     Args:
         input(Variable): Input indices, last dimension must be 1.
-        index_range(scalar): An interger defining the range of the index.
+        index_num(scalar): An interger defining the range of the index.
         nshards(scalar): The number of shards
         shard_id(scalar): The index of the current shard
         ignore_value(scalar): An ingeter value out of sharded index range
@@ -12578,16 +12578,16 @@ def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
             import paddle.fluid as fluid
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             shard_label = fluid.layers.shard_index(input=label,
-                                                   index_range=20,
+                                                   index_num=20,
                                                    nshards=2,
                                                    shard_id=0)
     """
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
-    if index_range % nshards != 0:
+    if index_num % nshards != 0:
         raise ValueError(
-            'The index_range(%d) cannot be evenly divided by nshards(%d)' %
-            (index_range, nshards))
+            'The index_num(%d) cannot be evenly divided by nshards(%d)' %
+            (index_num, nshards))
     if shard_id < 0 or shard_id >= nshards:
         raise ValueError('The shard_id(%d) should be in [0, %d)' %
                          (shard_id, nshards))
@@ -12598,7 +12598,7 @@ def shard_index(input, index_range, nshards, shard_id, ignore_value=-1):
         inputs={'X': [input]},
         outputs={'Out': out},
         attrs={
-            'index_range': index_range,
+            'index_num': index_num,
             'nshards': nshards,
             'shard_id': shard_id,
             'ignore_value': ignore_value

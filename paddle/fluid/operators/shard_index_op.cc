@@ -56,7 +56,7 @@ class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "Out",
         "(Tensor, Tensor<int|int64>) Output tensor with same shape as X. "
         "The tensor consists of sharding representations of values in X.");
-    AddAttr<int>("index_range",
+    AddAttr<int>("index_num",
                  "A positive integer to specify the range of the input X.");
 
     AddAttr<int>("nshards",
@@ -72,11 +72,11 @@ to
 
 .. math::
     
-    assert index_range % nshards == 0
+    assert index_num % nshards == 0
 
-    shard_range = index_range / nshards
+    shard_size = index_num / nshards
 
-    y = x % shard_range if x / shard_range == shard_id else ignore_value
+    y = x % shard_size if x / shard_size == shard_id else ignore_value
 
 We take the distributed one-hot representation to show what this layer is
 used for. The distributed one-hot representation is seperated into multiple
@@ -90,7 +90,7 @@ Examples:
       X.shape = [4, 1]
       X.data = [[1], [6], [12], [19]]
     
-    suppose index_range = 20 and nshards = 2, then we get shard_range = 10
+    suppose index_num = 20 and nshards = 2, then we get shard_size = 10
     
     if shard_id == 0, we get the Out:
       Out.shape = [4, 1]

@@ -25,16 +25,16 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    int index_range = context.Attr<int>("index_range");
+    int index_num = context.Attr<int>("index_num");
     int nshards = context.Attr<int>("nshards");
     int shard_id = context.Attr<int>("shard_id");
     int ignore_value = context.Attr<int>("ignore_value");
-    PADDLE_ENFORCE_GT(index_range, 0);
+    PADDLE_ENFORCE_GT(index_num, 0);
     PADDLE_ENFORCE_GT(nshards, 0);
     PADDLE_ENFORCE(shard_id >= 0 && shard_id < nshards,
                    "shard_id(%d) is not in range [0, %d)", shard_id, nshards);
 
-    int shard_range = index_range / nshards;
+    int shard_size = index_num / nshards;
 
     out->Resize(in->dims());
     out->set_lod(in->lod());
@@ -42,11 +42,11 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     int64_t numel = in->numel();
     for (int64_t i = 0; i < numel; ++i) {
-      PADDLE_ENFORCE(in_data[i] >= 0 && in_data[i] < index_range,
+      PADDLE_ENFORCE(in_data[i] >= 0 && in_data[i] < index_num,
                      "Input index(%d) is out of range [0,%d)", in_data[i],
-                     index_range);
-      if (in_data[i] / shard_range == shard_id) {
-        out_data[i] = in_data[i] % shard_range;
+                     index_num);
+      if (in_data[i] / shard_size == shard_id) {
+        out_data[i] = in_data[i] % shard_size;
       } else {
         out_data[i] = ignore_value;
       }
