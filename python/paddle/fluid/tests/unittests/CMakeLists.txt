@@ -79,7 +79,7 @@ function(py_test_modules TARGET_NAME)
       add_test(NAME ${TARGET_NAME}
           COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-          ${PYTHON_EXECUTABLE} -m coverage run -a --branch ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
       add_test(NAME ${TARGET_NAME}
@@ -122,12 +122,14 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_dgc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_nccl)
 list(REMOVE_ITEM TEST_OPS test_dist_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
@@ -212,10 +214,10 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
-        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 300)
-        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 300)
-        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 300)
-        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 350)
+        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 350)
+        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 350)
+        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 350)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
         bash_test_modules(test_launch MODULES test_launch.sh)
@@ -227,10 +229,12 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+py_test_modules(test_parallel_executor_crf_auto_growth MODULES test_parallel_executor_crf_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
+py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
@@ -256,4 +260,5 @@ endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
-        PROPERTIES LABELS "RUN_TYPE=DIST")
+        test_parallel_executor_crf_auto_growth
+        test_buffer_shared_inplace_pass PROPERTIES LABELS "RUN_TYPE=DIST")
