@@ -193,11 +193,11 @@ __global__ void KeBilinearInterpBw(
 template <typename T>
 __global__ void KeTrilinearInterpFw(
     const T* in, const size_t in_img_d, const size_t in_img_h,
-    const size_t in_img_w, const size_t input_h, const size_t input_w,
-    T* out, const size_t out_img_d, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_d, const float ratio_h,
-    const float ratio_w, const bool align_corners, const int align_mode) {
+    const size_t in_img_w, const size_t input_h, const size_t input_w, T* out,
+    const size_t out_img_d, const size_t out_img_h, const size_t out_img_w,
+    const size_t output_h, const size_t output_w, const size_t num_channels,
+    const float ratio_d, const float ratio_h, const float ratio_w,
+    const bool align_corners, const int align_mode) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -246,31 +246,33 @@ __global__ void KeTrilinearInterpFw(
     T w2lambda = 1.f - w1lambda;
 
     int in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
-                  (in_img_idt * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+                      (in_img_idt * in_img_h + in_img_idy) * in_img_w +
+                      in_img_idx;
     const T* in_pos1 = &in[in_pos1_idx];
     int in_pos2_idx = in_pos1_idx + d_id * in_img_h * in_img_w;
     const T* in_pos2 = &in[in_pos2_idx];
 
     // trilinear interpolation
-    out[out_id_h * output_w + out_id_w] = 
-        d2lambda * 
-        (h2lambda * (w2lambda * in_pos1[0] + w1lambda * in_pos1[w_id]) +
-        h1lambda * (w2lambda * in_pos1[h_id * in_img_w] +
-                    w1lambda * in_pos1[h_id * in_img_w + w_id])) +
-        d1lambda * 
-        (h2lambda * (w2lambda * in_pos2[0] + w1lambda * in_pos2[w_id]) +
-        h1lambda * (w2lambda * in_pos2[h_id * in_img_w] +
-                    w1lambda * in_pos2[h_id * in_img_w + w_id]));
+    out[out_id_h * output_w + out_id_w] =
+        d2lambda *
+            (h2lambda * (w2lambda * in_pos1[0] + w1lambda * in_pos1[w_id]) +
+             h1lambda * (w2lambda * in_pos1[h_id * in_img_w] +
+                         w1lambda * in_pos1[h_id * in_img_w + w_id])) +
+        d1lambda *
+            (h2lambda * (w2lambda * in_pos2[0] + w1lambda * in_pos2[w_id]) +
+             h1lambda * (w2lambda * in_pos2[h_id * in_img_w] +
+                         w1lambda * in_pos2[h_id * in_img_w + w_id]));
   }
 }
 
 template <typename T>
 __global__ void KeTrilinearInterpBw(
-    T* in, const size_t in_img_d, const size_t in_img_h, const size_t in_img_w, 
-    const size_t input_h, const size_t input_w, const T* out, const size_t out_img_d, 
-    const size_t out_img_h, const size_t out_img_w, const size_t output_h, 
-    const size_t output_w, const size_t num_channels, const T ratio_d, const T ratio_h, 
-    const T ratio_w, const bool align_corners, const int align_mode) {
+    T* in, const size_t in_img_d, const size_t in_img_h, const size_t in_img_w,
+    const size_t input_h, const size_t input_w, const T* out,
+    const size_t out_img_d, const size_t out_img_h, const size_t out_img_w,
+    const size_t output_h, const size_t output_w, const size_t num_channels,
+    const T ratio_d, const T ratio_h, const T ratio_w, const bool align_corners,
+    const int align_mode) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -319,7 +321,8 @@ __global__ void KeTrilinearInterpBw(
     T w2lambda = 1.f - w1lambda;
 
     int in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
-                  (in_img_idt * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+                      (in_img_idt * in_img_h + in_img_idy) * in_img_w +
+                      in_img_idx;
     T* in_pos1 = &in[in_pos1_idx];
     int in_pos2_idx = in_pos1_idx + d_id * in_img_h * in_img_w;
     T* in_pos2 = &in[in_pos2_idx];
@@ -327,14 +330,18 @@ __global__ void KeTrilinearInterpBw(
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
     // trilinear interpolation grad
-    platform::CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
-    platform::CudaAtomicAdd(&in_pos1[w_id], d2lambda * h2lambda * w1lambda * out_pos[0]);
+    platform::CudaAtomicAdd(&in_pos1[0],
+                            d2lambda * h2lambda * w2lambda * out_pos[0]);
+    platform::CudaAtomicAdd(&in_pos1[w_id],
+                            d2lambda * h2lambda * w1lambda * out_pos[0]);
     platform::CudaAtomicAdd(&in_pos1[h_id * in_img_w],
                             d2lambda * h1lambda * w2lambda * out_pos[0]);
     platform::CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
                             d2lambda * h1lambda * w1lambda * out_pos[0]);
-    platform::CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
-    platform::CudaAtomicAdd(&in_pos2[w_id], d1lambda * h2lambda * w1lambda * out_pos[0]);
+    platform::CudaAtomicAdd(&in_pos2[0],
+                            d1lambda * h2lambda * w2lambda * out_pos[0]);
+    platform::CudaAtomicAdd(&in_pos2[w_id],
+                            d1lambda * h2lambda * w1lambda * out_pos[0]);
     platform::CudaAtomicAdd(&in_pos2[h_id * in_img_w],
                             d1lambda * h1lambda * w2lambda * out_pos[0]);
     platform::CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
@@ -381,7 +388,8 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
         out_w = size_data[1];
       }
 
-      auto* output_data = output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+      auto* output_data =
+          output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
 
       if (in_h == out_h && in_w == out_w) {
         framework::TensorCopy(*input, ctx.GetPlace(), output);
@@ -442,7 +450,8 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
         out_w = size_data[2];
       }
 
-      auto* output_data = output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
+      auto* output_data =
+          output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
 
       if (in_h == out_h && in_w == out_w) {
         framework::TensorCopy(*input, ctx.GetPlace(), output);
@@ -477,8 +486,9 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
       if ("trilinear" == interp_method) {
         KeTrilinearInterpFw<
             T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_data, in_d, in_h, in_w, n, in_cdhw, output_data, out_d, out_h, 
-            out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners, align_mode);
+            input_data, in_d, in_h, in_w, n, in_cdhw, output_data, out_d, out_h,
+            out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
+            align_mode);
       }
     }
   }
@@ -526,7 +536,8 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
         out_w = size_data[1];
       }
 
-      auto* input_grad_data = input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
+      auto* input_grad_data =
+          input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
       zero(device_ctx, input_grad, static_cast<T>(0.0));
 
       if (in_h == out_h && in_w == out_w) {
@@ -588,7 +599,8 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
         out_w = size_data[2];
       }
 
-      auto* input_grad_data = input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
+      auto* input_grad_data =
+          input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
       zero(device_ctx, input_grad, static_cast<T>(0.0));
 
       if (in_d == out_d && in_h == out_h && in_w == out_w) {
@@ -624,9 +636,9 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
       if ("trilinear" == interp_method) {
         KeTrilinearInterpBw<
             T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data, out_d, 
-            out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners, 
-            align_mode);
+            input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data,
+            out_d, out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w,
+            align_corners, align_mode);
       }
     }
   }

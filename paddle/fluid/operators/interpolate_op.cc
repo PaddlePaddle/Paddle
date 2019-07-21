@@ -33,8 +33,8 @@ class InterpolateOp : public framework::OperatorWithKernel {
 
     auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
     PADDLE_ENFORCE(
-        "bilinear" == interp_method || "nearest" == interp_method
-        || "trilinear" == interp_method,
+        "bilinear" == interp_method || "nearest" == interp_method ||
+            "trilinear" == interp_method,
         "Interpolation method can only be \"bilinear\", \"trilinear\" "
         "or \"nearest\".");
 

@@ -132,13 +132,11 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
 }
 
 template <typename T>
-static void TrilinearInterpolation(const Tensor& input, Tensor* output,
-                                   const float ratio_d, const float ratio_h, 
-                                   const float ratio_w, const int in_d, 
-                                   const int in_h, const int in_w, const int n,
-                                   const int c, const int out_d, const int out_h, 
-                                   const int out_w, const bool align_corners,
-                                   const bool align_mode) {
+static void TrilinearInterpolation(
+    const Tensor& input, Tensor* output, const float ratio_d,
+    const float ratio_h, const float ratio_w, const int in_d, const int in_h,
+    const int in_w, const int n, const int c, const int out_d, const int out_h,
+    const int out_w, const bool align_corners, const bool align_mode) {
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -231,14 +229,22 @@ static void TrilinearInterpolation(const Tensor& input, Tensor* output,
         for (int k = 0; k < out_h; k++) {
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
-            T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[j] * vd_s[k] * vd_e[l] +
-                      input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[j] * vd_s[k] * vd_w[l] +
-                      input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[j] * vd_n[k] * vd_e[l] +
-                      input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[j] * vd_n[k] * vd_w[l] +
-                      input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[j] * vd_s[k] * vd_e[l] +
-                      input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[j] * vd_s[k] * vd_w[l] +
-                      input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[j] * vd_n[k] * vd_e[l] +
-                      input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[j] * vd_n[k] * vd_w[l];
+            T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[j] *
+                          vd_s[k] * vd_e[l] +
+                      input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[j] *
+                          vd_s[k] * vd_w[l] +
+                      input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[j] *
+                          vd_n[k] * vd_e[l] +
+                      input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[j] *
+                          vd_n[k] * vd_w[l] +
+                      input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[j] *
+                          vd_s[k] * vd_e[l] +
+                      input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[j] *
+                          vd_s[k] * vd_w[l] +
+                      input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[j] *
+                          vd_n[k] * vd_e[l] +
+                      input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[j] *
+                          vd_n[k] * vd_w[l];
             output_t(b, i, j, k, l) = out_t;
           }
         }
@@ -318,18 +324,15 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
 }
 
 template <typename T>
-static void TrilinearInterpolationGrad(const Tensor& output_grad,
-                                       Tensor* input_grad, const float ratio_d,
-                                       const float ratio_h, const float ratio_w, 
-                                       const int in_d, const int in_h,
-                                       const int in_w, const int n, const int c,
-                                       const int out_d, const int out_h, 
-                                       const int out_w, const bool align_corners,
-                                       const int align_mode) {
+static void TrilinearInterpolationGrad(
+    const Tensor& output_grad, Tensor* input_grad, const float ratio_d,
+    const float ratio_h, const float ratio_w, const int in_d, const int in_h,
+    const int in_w, const int n, const int c, const int out_d, const int out_h,
+    const int out_w, const bool align_corners, const int align_mode) {
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
-  for (int j = 0; j < out_d; j++) {  //loop for D
+  for (int j = 0; j < out_d; j++) {  // loop for D
     int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
                          : static_cast<int>(ratio_d * j);
     t_f = (t_f > 0) ? t_f : 0;
@@ -363,14 +366,22 @@ static void TrilinearInterpolationGrad(const Tensor& output_grad,
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
             const T grad = output_grad_t(b, i, j, k, l);
-            input_grad_t(b, i, t_f, y_n, x_w) += static_cast<T>(grad * d_b * d_s * d_e);
-            input_grad_t(b, i, t_f, y_n, x_e) += static_cast<T>(grad * d_b * d_s * d_w);
-            input_grad_t(b, i, t_f, y_s, x_w) += static_cast<T>(grad * d_b * d_n * d_e);
-            input_grad_t(b, i, t_f, y_s, x_e) += static_cast<T>(grad * d_b * d_n * d_w);
-            input_grad_t(b, i, t_b, y_n, x_w) += static_cast<T>(grad * d_f * d_s * d_e);
-            input_grad_t(b, i, t_b, y_n, x_e) += static_cast<T>(grad * d_f * d_s * d_w);
-            input_grad_t(b, i, t_b, y_s, x_w) += static_cast<T>(grad * d_f * d_n * d_e);
-            input_grad_t(b, i, t_b, y_s, x_e) += static_cast<T>(grad * d_f * d_n * d_w);
+            input_grad_t(b, i, t_f, y_n, x_w) +=
+                static_cast<T>(grad * d_b * d_s * d_e);
+            input_grad_t(b, i, t_f, y_n, x_e) +=
+                static_cast<T>(grad * d_b * d_s * d_w);
+            input_grad_t(b, i, t_f, y_s, x_w) +=
+                static_cast<T>(grad * d_b * d_n * d_e);
+            input_grad_t(b, i, t_f, y_s, x_e) +=
+                static_cast<T>(grad * d_b * d_n * d_w);
+            input_grad_t(b, i, t_b, y_n, x_w) +=
+                static_cast<T>(grad * d_f * d_s * d_e);
+            input_grad_t(b, i, t_b, y_n, x_e) +=
+                static_cast<T>(grad * d_f * d_s * d_w);
+            input_grad_t(b, i, t_b, y_s, x_w) +=
+                static_cast<T>(grad * d_f * d_n * d_e);
+            input_grad_t(b, i, t_b, y_s, x_e) +=
+                static_cast<T>(grad * d_f * d_n * d_w);
           }
         }
       }
@@ -431,8 +442,8 @@ class InterpolateKernel : public framework::OpKernel<T> {
       }
 
       if ("bilinear" == interp_method) {
-        BilinearInterpolation<T>(*input, output, ratio_h, ratio_w, in_h, in_w, n,
-                                 c, out_h, out_w, align_corners, align_mode);
+        BilinearInterpolation<T>(*input, output, ratio_h, ratio_w, in_h, in_w,
+                                 n, c, out_h, out_w, align_corners, align_mode);
       } else if ("nearest" == interp_method) {
         NearestNeighborInterpolate<T>(*input, output, ratio_h, ratio_w, n, c,
                                       out_h, out_w, align_corners);
@@ -603,9 +614,9 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
       }
 
       if ("trilinear" == interp_method) {
-        TrilinearInterpolationGrad<T>(*output_grad, input_grad, ratio_d, ratio_h, 
-                                      ratio_w, in_d, in_h, in_w, n, c, out_d, out_h, 
-                                      out_w, align_corners, align_mode);
+        TrilinearInterpolationGrad<T>(
+            *output_grad, input_grad, ratio_d, ratio_h, ratio_w, in_d, in_h,
+            in_w, n, c, out_d, out_h, out_w, align_corners, align_mode);
       }
     }
   }

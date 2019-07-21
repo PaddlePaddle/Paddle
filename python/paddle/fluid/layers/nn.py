@@ -7506,8 +7506,9 @@ def image_resize(input,
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w),
-    and the resizing only applies on the last two dimensions(hight and width).
+    The input must be a tensor of the shape (num_batches, channels, in_h, in_w)
+    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies 
+    on the last two/three dimensions(depth, hight and width).
 
     Supporting resample methods:
 
@@ -7672,6 +7673,8 @@ def image_resize(input,
         TypeError: actual_shape should either be Variable or None.
         ValueError: The 'resample' of image_resize can only be 'BILINEAR',
                     'TRILINEAR' or 'NEAREST' currently.
+        ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
+        ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2 for input 4-D tensor.
         ValueError: out_shape length should be 3 for input 5-D tensor.
@@ -7693,10 +7696,14 @@ def image_resize(input,
     }
     if resample not in resample_methods:
         raise ValueError(
-                "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
-                "or 'NEAREST' currently."
-        )
+            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
+            "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
+
+    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+        raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
+    if resample == 'TRILINEAR'  and len(input.shape) != 5:
+        raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
@@ -7872,12 +7879,12 @@ def resize_bilinear(input,
 
 @templatedoc(op_type="trilinear_interp")
 def resize_trilinear(input,
-                    out_shape=None,
-                    scale=None,
-                    name=None,
-                    actual_shape=None,
-                    align_corners=True,
-                    align_mode=1):
+                     out_shape=None,
+                     scale=None,
+                     name=None,
+                     actual_shape=None,
+                     align_corners=True,
+                     align_mode=1):
     """
     Resize input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -7972,8 +7979,8 @@ def resize_trilinear(input,
             out = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
     """
 
-    return image_resize(input, out_shape, scale, name, 'TRILINEAR', actual_shape,
-                        align_corners, align_mode)
+    return image_resize(input, out_shape, scale, name, 'TRILINEAR',
+                        actual_shape, align_corners, align_mode)
 
 
 @templatedoc(op_type="nearest_interp")
