@@ -476,8 +476,7 @@ class RecurrentGradOp : public RecurrentBase {
                 cur_scope.FindLocalVar(pg_names[param_id])
                     ->Get<framework::LoDTensor>();
             auto &pre_var = const_cast<framework::LoDTensor &>(
-                scope.FindLocalVar(inside_grad_name)
-                    ->Get<framework::LoDTensor>());
+                scope.FindVar(inside_grad_name)->Get<framework::LoDTensor>());
             pre_var.ShareDataWith(cur_var);
 
             auto sum_op = framework::OpRegistry::CreateOp(
