@@ -106,4 +106,4 @@ We provide [English](http://www.paddlepaddle.org/documentation/docs/en/1.4/begin
 - [Forums](http://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
 
 ## Copyright and License
-PaddlePaddle is provided under the [Apache-2.0 license](LICENSE). just test.
+PaddlePaddle is provided under the [Apache-2.0 license](LICENSE). just a test.
