@@ -640,7 +640,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
       int desired_size = ComputeCeiledOutput(src_tz[i + 2], kernel_size[i],
                                              paddings[i], strides[i]);
       if (desired_size != dst_tz[i + 2]) {
-        right_bot_padding[i] += strides[i];
+        right_bot_padding[i] += strides[i] - 1;
       }
     }
   }
