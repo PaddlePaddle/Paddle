@@ -156,6 +156,10 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
                   found_requant_squash_count);
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> c5b341c... Remove duplicated function
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
