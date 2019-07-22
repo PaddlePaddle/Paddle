@@ -124,7 +124,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
           filename = random_path_name;
           auto *tmp_path_var = ctx.scope()
                                    .FindVar(LOOKUP_TABLE_TMP_PATH)
-                                   .GetMutable<std::string>();
+                                   ->GetMutable<std::string>();
           tmp_path_var->clear();
           tmp_path_var->append(random_path_name);
         }
