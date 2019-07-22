@@ -83,6 +83,7 @@ class ActivationGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
+    op->SetAttr("forward_input_X", Input("X").back());
 
     if (static_cast<int>(kDepValue) &
         static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
@@ -702,8 +703,6 @@ class LeakyReluDoubleGradMaker
     op->SetType("leaky_relu_grad_grad");
     // input1: X
     op->SetInput("X", Input("X"));
-    // input2: Out
-    op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
