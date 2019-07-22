@@ -350,7 +350,8 @@ __global__ void KeTrilinearInterpBw(
 }
 
 template <typename T>
-static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx, const Tensor& input, Tensor* output) {
+static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
+                                 const Tensor& input, Tensor* output) {
   auto* input_data = input.data<T>();
 
   const int n = input.dims()[0];
@@ -379,7 +380,8 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx, const T
     out_w = size_data[1];
   }
 
-  auto output_data = output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+  auto output_data =
+      output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
 
   if (in_h == out_h && in_w == out_w) {
     framework::TensorCopy(input, ctx.GetPlace(), output);
@@ -420,7 +422,8 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx, const T
 }
 
 template <typename T>
-static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx, const Tensor& input, Tensor* output) {
+static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
+                                 const Tensor& input, Tensor* output) {
   auto* input_data = input.data<T>();
 
   const int n = input.dims()[0];
@@ -453,7 +456,8 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx, const T
     out_w = size_data[2];
   }
 
-  auto output_data = output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
+  auto output_data =
+      output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
     framework::TensorCopy(input, ctx.GetPlace(), output);
@@ -495,7 +499,8 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx, const T
 }
 
 template <typename T>
-static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx, Tensor* input_grad, const Tensor output_grad) {
+static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
+                                 Tensor* input_grad, const Tensor output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const int n = input->dims()[0];
   const int c = input->dims()[1];
@@ -524,9 +529,9 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx, Tensor*
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  auto* input_grad_data = input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
-  auto& device_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+  auto* input_grad_data =
+      input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
+  auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
   math::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
@@ -558,18 +563,20 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx, Tensor*
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpBw<
         T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-        out_w, n, out_chw, c, ratio_h, ratio_w, align_corners);
+        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
+        n, out_chw, c, ratio_h, ratio_w, align_corners);
   } else if ("bilinear" == interp_method) {
     KeBilinearInterpBw<
         T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-        out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode);
+        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
+        n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode);
   }
 }
 
 template <typename T>
-static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx, Tensor* input_grad, const Tensor& output_grad) {
+static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
+                                 Tensor* input_grad,
+                                 const Tensor& output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const int n = input->dims()[0];
   const int c = input->dims()[1];
@@ -602,9 +609,9 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx, Tensor*
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  auto* input_grad_data = input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
-  auto& device_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+  auto* input_grad_data =
+      input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
+  auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
   math::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
@@ -641,9 +648,9 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx, Tensor*
   if ("trilinear" == interp_method) {
     KeTrilinearInterpBw<
         T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data,
-        out_d, out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w,
-        align_corners, align_mode);
+        input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data, out_d,
+        out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
+        align_mode);
   }
 }
 

@@ -24,7 +24,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE("bilinear" == interp_method || "nearest" == interp_method,
+  PADDLE_ENFORCE(
+      "bilinear" == interp_method || "nearest" == interp_method,
       "Interpolation method can only be \"bilinear\" or \"nearest\" when "
       "Input(X) dimension is 4");
 
@@ -62,8 +63,8 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
   PADDLE_ENFORCE("trilinear" == interp_method,
-      "Interpolation method can only be \"trilinear\" when Input(X) "
-      "dimension is 5");
+                 "Interpolation method can only be \"trilinear\" when Input(X) "
+                 "dimension is 5");
 
   int out_d, out_h, out_w;
   float scale = ctx->Attrs().Get<float>("scale");
@@ -116,7 +117,7 @@ class InterpolateOp : public framework::OperatorWithKernel {
     if (dim_x.size() == 4) {
       // shape check for 2D interpolate for input tensor shape NCHW
       Interpolate2DInferShapeCheck(ctx);
-    } else { // dim_x.size() == 5
+    } else {  // dim_x.size() == 5
       // shape check for 3D interpolate for input tensor shape NCDHW
       Interpolate3DInferShapeCheck(ctx);
     }

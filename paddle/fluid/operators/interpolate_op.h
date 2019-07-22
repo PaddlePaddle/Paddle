@@ -390,7 +390,8 @@ static void TrilinearInterpolationGrad(
 }
 
 template <typename T>
-static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx, const Tensor& input, Tensor* output) {
+static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
+                                const Tensor& input, Tensor* output) {
   const int n = input.dims()[0];
   const int c = input.dims()[1];
   const int in_h = input.dims()[2];
@@ -434,16 +435,17 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx, const Te
   }
 
   if ("bilinear" == interp_method) {
-    BilinearInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w,
-                             n, c, out_h, out_w, align_corners, align_mode);
+    BilinearInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w, n, c,
+                             out_h, out_w, align_corners, align_mode);
   } else if ("nearest" == interp_method) {
-    NearestNeighborInterpolate<T>(input, output, ratio_h, ratio_w, n, c,
-                                  out_h, out_w, align_corners);
+    NearestNeighborInterpolate<T>(input, output, ratio_h, ratio_w, n, c, out_h,
+                                  out_w, align_corners);
   }
 }
 
 template <typename T>
-static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx, const Tensor& input, Tensor* output) {
+static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
+                                const Tensor& input, Tensor* output) {
   const int n = input.dims()[0];
   const int c = input.dims()[1];
   const int in_d = input.dims()[2];
@@ -496,14 +498,15 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx, const Te
   }
 
   if ("trilinear" == interp_method) {
-    TrilinearInterpolation<T>(input, output, ratio_d, ratio_h, ratio_w,
-                              in_d, in_h, in_w, n, c, out_d, out_h, out_w,
+    TrilinearInterpolation<T>(input, output, ratio_d, ratio_h, ratio_w, in_d,
+                              in_h, in_w, n, c, out_d, out_h, out_w,
                               align_corners, align_mode);
   }
 }
 
 template <typename T>
-static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx, Tensor* input_grad, const Tensor& output_grad) {
+static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
+                                Tensor* input_grad, const Tensor& output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const int n = input->dims()[0];
   const int c = input->dims()[1];
@@ -530,8 +533,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx, Tensor* 
   }
 
   input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
-  auto& device_ctx =
-      ctx.template device_context<platform::CPUDeviceContext>();
+  auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
   math::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
@@ -553,17 +555,17 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx, Tensor* 
 
   if ("bilinear" == interp_method) {
     BilinearInterpolationGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
-                                 in_h, in_w, n, c, out_h, out_w,
-                                 align_corners, align_mode);
+                                 in_h, in_w, n, c, out_h, out_w, align_corners,
+                                 align_mode);
   } else if ("nearest" == interp_method) {
-    NearestNeighborInterpolateGrad<T>(output_grad, input_grad, ratio_h,
-                                      ratio_w, n, c, out_h, out_w,
-                                      align_corners);
+    NearestNeighborInterpolateGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
+                                      n, c, out_h, out_w, align_corners);
   }
 }
 
 template <typename T>
-static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx, Tensor* input_grad, const Tensor output_grad) {
+static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
+                                Tensor* input_grad, const Tensor output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const int n = input->dims()[0];
   const int c = input->dims()[1];
@@ -594,8 +596,7 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx, Tensor* 
   }
 
   input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
-  auto& device_ctx =
-      ctx.template device_context<platform::CPUDeviceContext>();
+  auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
   math::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
@@ -621,9 +622,9 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx, Tensor* 
   }
 
   if ("trilinear" == interp_method) {
-    TrilinearInterpolationGrad<T>(
-        output_grad, input_grad, ratio_d, ratio_h, ratio_w, in_d, in_h,
-        in_w, n, c, out_d, out_h, out_w, align_corners, align_mode);
+    TrilinearInterpolationGrad<T>(output_grad, input_grad, ratio_d, ratio_h,
+                                  ratio_w, in_d, in_h, in_w, n, c, out_d, out_h,
+                                  out_w, align_corners, align_mode);
   }
 }
 
@@ -633,7 +634,7 @@ class InterpolateKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
-    
+
     auto input_dims = input->dims();
     if (input_dims.size() == 4) {  // 2D interpolation
       Interpolate2DCPUFwd<T>(ctx, *input, output);
