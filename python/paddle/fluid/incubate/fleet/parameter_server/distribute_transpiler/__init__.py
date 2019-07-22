@@ -145,7 +145,8 @@ class DistributedTranspiler(Fleet):
         self._optimizer = TranspilerOptimizer(optimizer, strategy)
         return self._optimizer
 
-    def _save_distributed_persistables(executor,
+    def _save_distributed_persistables(self,
+                                       executor,
                                        dirname,
                                        main_program,
                                        hdfs_dirname=None):
