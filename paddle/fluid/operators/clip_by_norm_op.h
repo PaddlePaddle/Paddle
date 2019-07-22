@@ -125,14 +125,6 @@ $$
 
 where $norm(X)$ represents the L2 norm of $X$.
 
-Examples:
-        .. code-block:: python
-
-            data = fluid.layer.data(
-                name='data', shape=[2, 4, 6], dtype='float32')
-            reshaped = fluid.layers.clip_by_norm(
-                x=data, max_norm=0.5)
-
 )DOC");
   }
 };
