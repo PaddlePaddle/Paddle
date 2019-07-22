@@ -463,7 +463,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "Input BBoxes should be the second case with shape [M, C, 4].");
     AddAttr<int>(
         "background_label",
-        "(int, defalut: 0) "
+        "(int, default: 0) "
         "The index of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(0);
@@ -477,7 +477,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                  "confidences aftern the filtering detections based on "
                  "score_threshold");
     AddAttr<float>("nms_threshold",
-                   "(float, defalut: 0.3) "
+                   "(float, default: 0.3) "
                    "The threshold to be used in NMS.")
         .SetDefault(0.3);
     AddAttr<float>("nms_eta",

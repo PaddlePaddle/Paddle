@@ -28,9 +28,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
 
   SetDataset(dataset);
   // get filelist from trainer_desc here
-  dataset->CreateReaders();
-  VLOG(3) << "readers created";
-  const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
+  const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
 
@@ -259,7 +257,6 @@ void PipelineTrainer::Finalize() {
         pipeline_scopes_[0]->FindVar(var)->Get<LoDTensor>();
     TensorCopySync(thread_tensor, platform::CPUPlace(), root_tensor);
   }
-  dataset_ptr_->DestroyReaders();
   root_scope_->DropKids();
 }
 

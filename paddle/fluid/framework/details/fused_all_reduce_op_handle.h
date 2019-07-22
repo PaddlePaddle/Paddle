@@ -35,7 +35,7 @@ struct FusedAllReduceOpHandle : public NCCLOpHandleBase {
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,
                          const size_t num_of_all_reduce,
-                         const platform::MultiNCCLContextMap *ctxs);
+                         const platform::NCCLCommunicator *ctxs);
 #else
 struct FusedAllReduceOpHandle : public OpHandleBase {
   FusedAllReduceOpHandle(ir::Node *node,
@@ -51,6 +51,8 @@ struct FusedAllReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
 
  private:
   std::vector<Scope *> local_scopes_;

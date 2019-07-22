@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -87,13 +88,6 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
-
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  // used for compatible with syncbatch norm op
-  std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs_;
-  platform::NCCLContextMap *GetNCCLContextForSyncbatchNomrOp(
-      framework::Scope *scope);
-#endif
 };
 }  // namespace framework
 }  // namespace paddle

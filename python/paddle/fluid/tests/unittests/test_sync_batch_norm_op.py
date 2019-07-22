@@ -98,6 +98,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
         #####################################################################
         # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
+        assert core.get_cuda_device_count() > 1
         main, startup, outs = self.build_program(place, layout, seed, True,
                                                  only_forward)
         exe = fluid.Executor(place)
