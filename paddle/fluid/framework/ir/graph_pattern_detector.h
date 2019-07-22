@@ -796,6 +796,7 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+<<<<<<< HEAD
 // Conv + Requant
 // named nodes:
 // conv_op, conv_out
@@ -813,6 +814,8 @@ struct ConvRequant : public PatternBase {
   PATTERN_DECL_NODE(requant_out);
 };
 
+=======
+>>>>>>> parent of 0438cb0... Add requantize squash
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image

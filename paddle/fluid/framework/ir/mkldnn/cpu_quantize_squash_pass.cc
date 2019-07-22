@@ -49,7 +49,7 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
   AddStatis(found_count);
 }
 
-void CPUQuantizeSquashPass::DequantQuantSquash(
+void CPUQuantizeSquashPass::Squash(
     Graph* graph,
     std::unordered_map<const Node*, int>* nodes_keep_counter) const {
   GraphPatternDetector gpd;
@@ -125,6 +125,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
                   found_dequant_quant_count);
 }
 
+<<<<<<< HEAD
 void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::ConvRequant conv_requant_pattern{gpd.mutable_pattern(),
@@ -157,14 +158,15 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
                   found_requant_squash_count);
 }
 
+=======
+>>>>>>> parent of 0438cb0... Add requantize squash
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
 
   std::unordered_map<const Node*, int> nodes_keep_counter;
   FindNodesToKeep(graph, &nodes_keep_counter);
-  DequantQuantSquash(graph, &nodes_keep_counter);
-  ConvRequantSquash(graph);
+  Squash(graph, &nodes_keep_counter);
 }
 
 }  // namespace ir

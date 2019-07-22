@@ -1275,6 +1275,7 @@ PDNode *patterns::ConvConcatReLU::operator()() {
   return relu_out;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::ConvRequant::operator()() {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1348,6 +1349,8 @@ PDNode *patterns::ConvRequant::operator()() {
   return requant_out;
 }
 
+=======
+>>>>>>> parent of 0438cb0... Add requantize squash
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
