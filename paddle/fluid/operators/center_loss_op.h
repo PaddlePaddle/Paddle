@@ -61,7 +61,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     int batch_size = x_dims[0];
     int deep_feat_dim = x_dims[1];
 
-    auto centers_diff = ctx.Output<Tensor>("CentersDiff");
+    auto centers_diff = ctx.Output<Tensor>("SampleCenterDiff");
     auto centers_diff_data = centers_diff->mutable_data<T>(ctx.GetPlace());
     auto *out_loss = ctx.Output<Tensor>("Loss");
 
@@ -128,7 +128,7 @@ template <typename DeviceContext, typename T>
 class CenterLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in0 = context.Input<Tensor>("CentersDiff");
+    auto *in0 = context.Input<Tensor>("SampleCenterDiff");
     auto *in1 = context.Input<Tensor>(framework::GradVarName("Loss"));
     auto *x_g = context.Output<Tensor>(framework::GradVarName("X"));
     auto sub_result = EigenMatrix<T>::From(*in0);

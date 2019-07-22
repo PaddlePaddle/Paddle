@@ -356,16 +356,65 @@ def fc(input,
 
 
 def center_loss(input,
-                labels,
+                label,
                 num_classes,
                 alpha,
                 param_attr,
                 update_center=True):
+    """
+    **Center loss Cost layer**
+    
+    This layer accepts input (deep features,the output of the last hidden layer)
+    and target label and return the center loss cost
+    
+    For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
+    
+    ..math::
+
+        Out =1/2 x (X - Y)^2
+
+    Args:
+        input(Variable): a 2-D tensor with shape[N]
+        label(Variable): the groud truth which is a 2-D tensor 
+                         with shape[N x 1],where N is the batch size
+        num_classes(int): the number of classification categories
+        alpha(float|Variable): learning rate of centers
+        param_attr(ParamAttr): Attribute initializer of centers 
+        update_center(bool): whether to update value of center
+
+    Returns:
+        Variable:A 2-D tensor with shape [N * 1] 
+    Examples:
+        .. code-block:: python
+          input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
+          label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
+          num_classes = 1000
+          alpha = 0.01
+          param_attr = fluid.initializer.Xavier(uniform=False)
+          center_loss=fluid.layers.center_loss(input=input,
+                 label=label,
+                 num_classes=1000,
+                 alpha=alpha,
+                 param_attr=fluid.initializer.Xavier(uniform=False),
+                 update_center=True)
+    """
     helper = LayerHelper('center_loss', **locals())
     dtype = helper.input_dtype()
     centers_shape = [num_classes, input.shape[1]]
     centers_param = helper.create_parameter(
-        attr=helper.param_attr, shape=centers_shape, dtype=dtype)
+        attr=param_attr, shape=centers_shape, dtype=dtype)
+    if isinstance(alpha, Variable):
+        alpha_param = alpha
+    else:
+        assert isinstance(alpha, float)
+        alpha_param = helper.create_variable(
+            name="centerloss_alpha",
+            shape=[1],
+            dtype="float32",
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=True,
+            stop_gradient=True,
+            initializer=Constant(alpha))
 
     centersdiff = helper.create_variable_for_type_inference(dtype=input.dtype)
     loss = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -373,12 +422,12 @@ def center_loss(input,
         type='center_loss',
         inputs={
             'X': [input],
-            'Label': [labels],
+            'Label': [label],
             'Centers': [centers_param],
-            'CenterUpdateRate': [alpha]
+            'CenterUpdateRate': [alpha_param]
         },
         outputs={
-            'CentersDiff': [centersdiff],
+            'SampleCenterDiff': [centersdiff],
             'Loss': [loss],
             'CentersOut': [centers_param]
         },

@@ -31,7 +31,8 @@ class TestCenterLossOp(OpTest):
         self.attrs = {}
         self.attrs['cluster_num'] = cluster_num
         self.attrs['lambda'] = 0.1
-        self.attrs['need_update'] = True
+        self.config()
+        self.attrs['need_update'] = self.need_update
         labels = np.random.randint(cluster_num, size=batch_size, dtype='int64')
         feat = np.random.random((batch_size, feet_dim)).astype(np.float32)
         centers = np.random.random((cluster_num, feet_dim)).astype(np.float32)
@@ -58,11 +59,22 @@ class TestCenterLossOp(OpTest):
             'Centers': centers,
             'CenterUpdateRate': rate
         }
-        self.outputs = {
-            'CentersDiff': output,
-            'Loss': loss,
-            'CentersOut': result
-        }
+
+        if self.need_update == True:
+            self.outputs = {
+                'SampleCenterDiff': output,
+                'Loss': loss,
+                'CentersOut': result
+            }
+        else:
+            self.outputs = {
+                'SampleCenterDiff': output,
+                'Loss': loss,
+                'CentersOut': centers
+            }
+
+    def config(self):
+        self.need_update = True
 
     def init_dtype_type(self):
         pass
@@ -70,8 +82,10 @@ class TestCenterLossOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Loss')
 
-    def test_check_output(self):
-        self.check_output()
+
+class TestCenterLossOpNoUpdateFlase(TestCenterLossOp):
+    def config(self):
+        self.need_update = False
 
 
 if __name__ == "__main__":

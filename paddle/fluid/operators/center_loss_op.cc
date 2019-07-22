@@ -40,8 +40,9 @@ class CenterLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Centers"),
                    "Input(Centers) of CenterLoss should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("CentersDiff"),
-                   "Output(CentersDiff) of CenterLoss should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("SampleCenterDiff"),
+        "Output(SampleCenterDiff) of CenterLoss should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
                    "Output(Loss) of CenterLoss should not be null.");
@@ -50,7 +51,8 @@ class CenterLossOp : public framework::OperatorWithKernel {
         ctx->HasOutput("CentersOut"),
         "Output(CentersOut) of CenterLoss shared data with Centers.");
 
-    ctx->SetOutputDim("CentersDiff", {x_dims[0], product(x_dims) / x_dims[0]});
+    ctx->SetOutputDim("SampleCenterDiff",
+                      {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("CentersOut", ctx->GetInputDim("Centers"));
     ctx->SetOutputDim("Loss", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Loss");
@@ -74,7 +76,8 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Input tensor of center_loss operator.");
 
     AddOutput("CentersOut", "(Tensor) Input tensor of center_loss operator.");
-    AddOutput("CentersDiff", "(Tensor) output tensor of center_loss operator.");
+    AddOutput("SampleCenterDiff",
+              "(Tensor) output tensor of center_loss operator.");
     AddOutput("Loss", "(Tensor) Output tensor of center_loss operator.");
 
     AddAttr<int>("cluster_num",
@@ -82,8 +85,10 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("need_update", "whether need to update center info.");
     AddComment(R"DOC(
 **CenterLoss operator**
-implemention of the algorithm in the papper A Discriminative 
-Feature Learning Approach for Deep Face Recognition
+implemention of the center loss function in the papper<<A Discriminative 
+Feature Learning Approach for Deep Face Recognition>>, equations in this  implement
+is:loss = 1/2 * (x-y)^2 ,where x(X) means the deep feature(output of last hidden layer )
+and y(Label) the target label 
 )DOC");
   }
 };
@@ -93,8 +98,8 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("CentersDiff"),
-                   "Input(CentersDiff) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("SampleCenterDiff"),
+                   "Input(SampleCenterDiff) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
                    "Input(Loss) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
@@ -111,8 +116,8 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("CentersDiff")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        ctx.Input<Tensor>("SampleCenterDiff")->type(), ctx.device_context());
   }
 };
 
@@ -125,7 +130,7 @@ class CenterLossOpGradMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
     retv->SetType("center_loss_grad");
     retv->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    retv->SetInput("CentersDiff", Output("CentersDiff"));
+    retv->SetInput("SampleCenterDiff", Output("SampleCenterDiff"));
     retv->SetInput("X", Input("X"));
     retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
 

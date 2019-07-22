@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <iostream>
 #include "paddle/fluid/operators/center_loss_op.h"
+#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
 namespace paddle {
@@ -21,39 +22,51 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-template <typename T>
-__global__ void ComputeDistance(int64_t elements_num, const T *X,
-                                const int x_width, const int64_t *label,
-                                const T *centers_data, T *diff_xc) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < elements_num;
-       index += blockDim.x * gridDim.x) {
-    int row = index / x_width;
-    int col = index % x_width;
-    int64_t center_idx = label[row];
-    diff_xc[index] = X[index] - centers_data[center_idx * x_width + col];
+template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+__global__ void ComputeDifferent(T *centers_diff, const T *X, const T *centers,
+                                 const int64_t *ids, const int64_t N,
+                                 const int64_t K, const int64_t D) {
+  int idx = threadIdx.x;
+  int idy = blockIdx.x + threadIdx.y * GridDimX;
+
+  while (idy < K) {
+    int64_t id = ids[idy];
+    PADDLE_ASSERT_MSG(id >= 0, "received id:", id);
+    PADDLE_ASSERT_MSG(id < N, "received id:", id);
+    T *out = centers_diff + idy * D;
+    const T *x = X + idy * D;
+    const T *cent = centers + id * D;
+    for (int i = idx; i < D; i += BlockDimX) {
+      out[i] = x[i] - cent[i];
+    }
+    idy += BlockDimY * GridDimX;
   }
 }
 
-template <typename T>
-__global__ void UpdateCenters(int cluster_num, const int samples_num,
-                              const int x_width, const int64_t *label,
-                              const T *diff_xc, T *acc_sum, const T *alpha,
-                              T *centers_out) {
-  for (int64_t cidx = blockIdx.x * blockDim.x + threadIdx.x; cidx < cluster_num;
-       cidx += blockDim.x * gridDim.x) {
-    int count = 0;
-    for (int sidx = 0; sidx < samples_num; sidx++) {
-      if (label[sidx] == cidx) {
+template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
+__global__ void UpdateCenters(T *centers, T *centers_diff, const int64_t *ids,
+                              const int64_t N, const int64_t K, const int64_t D,
+                              const T *alpha) {
+  int idx = threadIdx.x;
+  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int count;
+  while (idy < K) {
+    int count = 1;
+    int64_t id = ids[idy];
+    PADDLE_ASSERT_MSG(id >= 0, "received id:", id);
+    PADDLE_ASSERT_MSG(id < N, "received id:", id);
+
+    for (int i = 0; i < K; i++) {
+      if (ids[i] == id) {
         count++;
-        for (int col = 0; col < x_width; col++) {
-          acc_sum[cidx * x_width + col] += diff_xc[sidx * x_width + col];
-        }
       }
     }
-    for (int col = 0; col < x_width; col++) {
-      centers_out[cidx * x_width + col] +=
-          alpha[0] * acc_sum[cidx * x_width + col] / (count + 1);
+    const T *diff = centers_diff + idy * D;
+    T *cent = centers + id * D;
+    for (int i = idx; i < D; i += BlockDimX) {
+      paddle::platform::CudaAtomicAdd(&cent[i], alpha[0] * diff[i] / count);
     }
+    idy += BlockDimY * GridDimX;
   }
 }
 
@@ -78,7 +91,7 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
     int batch_size = x_dims[0];
     const int deep_feat_dim = x_dims[1];
 
-    auto *centers_diff = ctx.Output<Tensor>("CentersDiff");
+    auto *centers_diff = ctx.Output<Tensor>("SampleCenterDiff");
     auto centers_diff_data = centers_diff->mutable_data<T>(ctx.GetPlace());
 
     auto centers_data = centers->data<T>();
@@ -99,27 +112,25 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
 
     int64_t numel = X->numel();
 
-    ComputeDistance<
-        T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(numel, x_data, deep_feat_dim,
-                                                   label_data, centers_data,
-                                                   centers_diff_data);
+    size_t N = centers->dims()[0];
+    size_t D = centers->dims()[1];
+    size_t K = labels->numel();
+
+    dim3 threads(128, 8);
+    dim3 grids(8, 1);
+
+    ComputeDifferent<T, 128, 8, 8><<<grids, threads, 0, stream>>>(
+        centers_diff_data, x_data, centers_data, label_data, N, K, D);
+
     auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto sub_result = EigenMatrix<T>::From(*centers_diff);
+
     auto sub_res_pow2 = (sub_result * sub_result) / T(2.0);
     auto z = EigenVector<T>::Flatten(*out_loss);
     z.device(place) = sub_res_pow2.sum(Eigen::array<int, 1>({{1}}));
     if (need_update) {
-      Tensor centers_diffacc;  // used to accumulate all diff of center and x
-      auto *centers_diffacc_data =
-          centers_diffacc.mutable_data<T>(centers_dim, ctx.GetPlace());
-      numel = centers_diffacc.numel();
-      cudaMemsetAsync(centers_diffacc_data, 0, sizeof(T) * numel, stream);
-      UpdateCenters<T><<<(cluster_num + PADDLE_CUDA_NUM_THREADS - 1) /
-                             PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          cluster_num, batch_size, deep_feat_dim, label_data, centers_diff_data,
-          centers_diffacc_data, lr_center, centers_out_data);
+      UpdateCenters<T, 128, 8, 8><<<grids, threads, 0, stream>>>(
+          centers_out_data, centers_diff_data, label_data, N, K, D, lr_center);
     }
   }
 };
