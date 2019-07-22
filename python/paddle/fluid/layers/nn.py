@@ -7102,12 +7102,12 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    from collections import Iterator
+    from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
-    if not isinstance(level, Iterator):
+    if not isinstance(level, Iterable):
         raise ValueError("Input(level) must be list or tuple.")
-    helper = layerhelper("lod_append", **locals())
+    helper = LayerHelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="lod_reset",
