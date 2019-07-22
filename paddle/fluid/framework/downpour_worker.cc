@@ -272,7 +272,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_, 
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
@@ -425,7 +425,7 @@ void DownpourWorker::TrainFiles() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_, 
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_);
       }
     }
