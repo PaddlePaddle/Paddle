@@ -13,45 +13,27 @@
 // limitations under the License.
 
 #pragma once
-#include <functional>
-#include <memory>
+#include <algorithm>
+#include <mutex>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
-
+#include "paddle/fluid/platform/place.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-// A composite allocator who will dispatch the allocation request by registered
-// condition.
-//
-// For example:
-//
-// auto* cond_allocator = new ConditionalAllocator();
-// cond_allocator->AddAllocator([](size_t size){
-//   // if size > 10
-//   return size > 10;
-// }, allocator_b).AddAllocator([](size_t size){
-//   // else
-//   return true;
-// }, allocator_c);
-class ConditionalAllocator : public Allocator {
+class NaiveBestFitAllocator : public Allocator {
  public:
-  ConditionalAllocator() = default;
-
-  ConditionalAllocator& AddAllocator(std::function<bool(size_t)> func,
-                                     std::shared_ptr<Allocator> allocator);
-
-  bool IsAllocThreadSafe() const override;
+  explicit NaiveBestFitAllocator(const platform::Place &p) : place_(p) {}
 
  protected:
-  Allocation* AllocateImpl(size_t size) override;
+  Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(Allocation *allocation) override;
 
  private:
-  using AllocatorWithCond =
-      std::pair<std::function<bool(size_t)>, std::shared_ptr<Allocator>>;
-  std::vector<AllocatorWithCond> underlying_allocators_;
+  platform::Place place_;
 };
 
 }  // namespace allocation

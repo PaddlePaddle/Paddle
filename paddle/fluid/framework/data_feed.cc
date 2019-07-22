@@ -101,8 +101,7 @@ template <typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   PADDLE_ENFORCE(queue_size > 0, "Illegal queue size: %d.", queue_size);
   queue_size_ = queue_size;
-  queue_ = std::unique_ptr<paddle::operators::reader::BlockingQueue<T>>(
-      new paddle::operators::reader::BlockingQueue<T>(queue_size_));
+  queue_ = paddle::framework::MakeChannel<T>();
 }
 
 template <typename T>
@@ -125,7 +124,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     T instance;
     while (ParseOneInstanceFromPipe(&instance)) {
-      queue_->Send(instance);
+      queue_->Put(instance);
     }
   }
   queue_->Close();
@@ -137,10 +136,10 @@ int PrivateQueueDataFeed<T>::Next() {
 #ifdef _LINUX
   CheckStart();
   int index = 0;
-  T instance;
   T ins_vec;
   while (index < default_batch_size_) {
-    if (!queue_->Receive(&instance)) {
+    T instance;
+    if (!queue_->Get(instance)) {
       break;
     }
     AddInstanceToInsVec(&ins_vec, instance, index++);
@@ -345,7 +344,7 @@ void MultiSlotDataFeed::ReadThread() {
     int ins_num = 0;
     while (ParseOneInstanceFromPipe(&instance)) {
       ins_num++;
-      queue_->Send(instance);
+      queue_->Put(instance);
     }
     VLOG(3) << "filename: " << filename << " inst num: " << ins_num;
   }

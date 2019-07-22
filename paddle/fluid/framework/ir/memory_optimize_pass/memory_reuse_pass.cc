@@ -241,7 +241,7 @@ bool MemoryReusePass::IsVarPairReusable(details::VarHandle *in_var,
     return false;
   }
 
-  if (!IsInVarReusable(in_var) || !IsInVarReusable(out_var)) {
+  if (!IsInVarReusable(in_var) || !IsOutVarReusable(out_var)) {
     return false;
   }
 
