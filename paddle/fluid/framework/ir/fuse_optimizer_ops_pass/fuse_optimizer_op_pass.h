@@ -67,15 +67,11 @@ class FuseOptimizerOpPass : public ir::Pass {
                                   bool check_name = true) const;
 
   void InitFusedGradsAndAllocSpaceForGrads(
-      const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
       const std::vector<std::string> &params,
       const std::vector<std::string> &grads, const std::string &fused_grad_name,
       ir::Graph *result) const;
 
   void InitFusedVarsAndAllocSpaceForVars(
-      const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
       const std::vector<std::string> &aux_var_names,
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,

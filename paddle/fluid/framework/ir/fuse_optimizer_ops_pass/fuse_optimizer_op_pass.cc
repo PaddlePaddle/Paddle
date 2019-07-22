@@ -93,9 +93,9 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     // alloc_continue_space_for_grad_pass
     auto &params_and_dense_grads =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_LE(
         params_and_dense_grads.size(), aux_var_set.at(kGrad).size(),
-        "The number of gradients and optimizer ops is not equal.");
+        "The number of dense gradients should be little than optimizer ops.");
     std::unordered_set<std::string> opt_grad_set(aux_var_set.at(kGrad).size());
     for (auto &p_g : params_and_dense_grads) {
       opt_grad_set.insert(p_g.second);
@@ -137,6 +137,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                                &opt_nodes);
       grad_fused = true;
     } else {
+      VLOG(10) << "The number of new gradients is " << new_grad_idx.size();
       if (new_grad_idx.size() == 1) return;
       // NOTE(zcd): If the gradients of backward stage and optimization stage
       // have diff, Only take care of the the gradient of optimization stage.
@@ -147,16 +148,14 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   // Step 4: Alloc continuous space for Parameters and AuxiliaryVar(e.g.
   // Moment1, Moment2, Beta1Pow, Beta2Pow) of all the optimizer ops
   // separately.
-  auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
-  auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
   if (!grad_fused) {
-    InitFusedGradsAndAllocSpaceForGrads(
-        places, local_scopes, aux_var_set.at(kParam), aux_var_set.at(kGrad),
-        fused_vars_name.at(kGrad), &result);
+    InitFusedGradsAndAllocSpaceForGrads(aux_var_set.at(kParam),
+                                        aux_var_set.at(kGrad),
+                                        fused_vars_name.at(kGrad), &result);
   }
   aux_var_names.pop_back();
-  InitFusedVarsAndAllocSpaceForVars(places, local_scopes, aux_var_names,
-                                    aux_var_set, fused_vars_name, &result);
+  InitFusedVarsAndAllocSpaceForVars(aux_var_names, aux_var_set, fused_vars_name,
+                                    &result);
 
   // Step 5: Fuse optimizer Ops and Scale Ops
   FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
@@ -194,8 +193,6 @@ void FuseOptimizerOpPass::GradientsFilter(
 }
 
 void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
-    const std::vector<platform::Place> &places,
-    const std::vector<Scope *> &local_scopes,
     const std::vector<std::string> &params,
     const std::vector<std::string> &grads, const std::string &fused_grad_name,
     ir::Graph *result) const {
@@ -253,8 +250,6 @@ proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
 }
 
 void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
-    const std::vector<platform::Place> &places,
-    const std::vector<Scope *> &local_scopes,
     const std::vector<std::string> &aux_var_names,
     const std::unordered_map<std::string, std::vector<std::string>>
         &aux_var_set,

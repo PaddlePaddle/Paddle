@@ -67,9 +67,6 @@ class CoalesceGradTensorPass : public ir::Pass {
   void ApplyImpl(ir::Graph *graph) const {
     ir::Graph &result = *graph;
 
-    auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
-    auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
-
     details::ParamsAndGrads params_grads;
     RecordParamsAndGrads(result, &params_grads);
 
@@ -83,8 +80,8 @@ class CoalesceGradTensorPass : public ir::Pass {
                                             &result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndSparseGrads,
                                             &result);
-    ResetAttribute<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads,
-                                                 &result);
+    ResetAttribute<details::GroupParamsAndGrads>(
+        details::kGroupParamsAndDenseGrads, &result);
     auto &p_g_dense_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     auto &p_g_sparse_grad =
@@ -105,8 +102,8 @@ class CoalesceGradTensorPass : public ir::Pass {
     }
 
     auto num_of_p_g_dense_grad = p_g_dense_grad.size();
-    auto &group_params_grads =
-        result.Get<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads);
+    auto &group_params_grads = result.Get<details::GroupParamsAndGrads>(
+        details::kGroupParamsAndDenseGrads);
     // Note: the order of p_g_dense_grad may be changed by
     // SetGroupParamsAndGrads.
     SetGroupParamsAndGrads(vars_info, p_g_dense_grad, &group_params_grads);
@@ -123,14 +120,13 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
       SetGradientPersistable(p_g_dense_grad, vars_info);
-      CoalesceTensors(places, local_scopes, vars_info, p_g_dense_grad, &result);
+      CoalesceTensors(vars_info, p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
         SetGradientPersistable(p_g_dense_grad, vars_info);
         PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
                        "The data type of the same group is not consistent.");
-        CoalesceTensors(places, local_scopes, vars_info, sub_param_grad,
-                        &result);
+        CoalesceTensors(vars_info, sub_param_grad, &result);
       }
     }
   }
@@ -168,8 +164,6 @@ class CoalesceGradTensorPass : public ir::Pass {
   }
 
   void CoalesceTensors(
-      const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const details::ParamsAndGrads &params_grads, Graph *result) const {
     // Create a FusedVarsSet to avoid duplicating names for fused_var in other
@@ -181,7 +175,9 @@ class CoalesceGradTensorPass : public ir::Pass {
     if (!result->Has(details::kFusedGrads)) {
       result->Set(details::kFusedGrads, new details::FusedGrads);
     }
-
+    if (!result->Has(details::kProgramDescs)) {
+      result->Set(details::kProgramDescs, new details::ProgramDescs);
+    }
     // the fused_var_name should be unique, so it appends
     // params_grads.begin()->second.
     auto fused_grad_var_name = std::string(details::kFusedVarNamePrefix) +
@@ -193,8 +189,8 @@ class CoalesceGradTensorPass : public ir::Pass {
     result->Get<details::FusedGrads>(details::kFusedGrads)
         .emplace_back(fused_grad_var_name);
 
-    InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars_info,
-                                      fused_grad_var_name, params_grads);
+    InitFusedVarsAndAllocSpaceForVars(vars_info, fused_grad_var_name,
+                                      params_grads, result);
   }
 
   template <typename AttrType>
@@ -450,26 +446,9 @@ class CoalesceGradTensorPass : public ir::Pass {
   }
 
   void InitFusedVarsAndAllocSpaceForVars(
-      const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const std::string &fused_var_name,
-      const details::ParamsAndGrads &params_grads) const {
-    //  Init Gradients and FusedVars
-    VLOG(10) << "Init FusedVars and Gradients.";
-    for (auto it = local_scopes.rbegin(); it != local_scopes.rend(); ++it) {
-      auto &scope = *it;
-      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
-                     "%s has existed in scope.", fused_var_name);
-      scope->Var(fused_var_name)->GetMutable<LoDTensor>();
-
-      for (auto &p_g : params_grads) {
-        auto var_type = GetTypeOfVar(vars_info, p_g.second);
-        PADDLE_ENFORCE_EQ(var_type, proto::VarType::LOD_TENSOR);
-        scope->Var(p_g.second)->GetMutable<LoDTensor>();
-      }
-    }
-
+      const details::ParamsAndGrads &params_grads, ir::Graph *result) const {
     // Alloc continuous space for vars.
     std::vector<std::string> grads_name;
     std::vector<std::string> params_name;
@@ -479,16 +458,13 @@ class CoalesceGradTensorPass : public ir::Pass {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
     }
-    framework::ProgramDesc program_desc;
-    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
-                              program_desc.MutableBlock(0));
 
-    for (size_t i = 0; i < local_scopes.size(); ++i) {
-      for (auto &op_desc : program_desc.Block(0).AllOps()) {
-        auto op = OpRegistry::CreateOp(*op_desc);
-        op->Run(*local_scopes[i], places[i]);
-      }
-    }
+    result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
+    ProgramDesc &program_desc =
+        result->Get<details::ProgramDescs>(details::kProgramDescs).back();
+    auto *global_block = program_desc.MutableBlock(0);
+    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
+                              global_block);
   }
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,

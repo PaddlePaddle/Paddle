@@ -60,8 +60,8 @@ class FuseAllReduceOpPass : public ir::Pass {
                       "it is not supported currently.");
     VLOG(10) << "Insert fused_all_reduce";
 
-    auto &group_params_grads =
-        graph->Get<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads);
+    auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
+        details::kGroupParamsAndDenseGrads);
 
     for (auto &group_p_g : group_params_grads) {
       size_t group_size = group_p_g.size();

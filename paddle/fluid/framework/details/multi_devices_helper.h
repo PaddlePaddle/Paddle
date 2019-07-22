@@ -70,7 +70,7 @@ constexpr char kProgramDescs[] = "program_descs";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;
-constexpr char kGroupParamsAndGrads[] = "group_params_grads";
+constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
 
 }  // namespace details
 }  // namespace framework
