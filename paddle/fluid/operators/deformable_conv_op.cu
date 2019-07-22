@@ -11,6 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Part of the following code in this file refs to
+// https://github.com/msracver/Deformable-ConvNets/blob/master/DCNv2_op/nn/modulated_deformable_im2col.cuh
+//
+// Copyright (c) 2018 Microsoft
+// Licensed under The MIT License [see LICENSE for details]
+// \file modulated_deformable_im2col.cuh
+// \brief
+// \author Yuwen Xiong, Haozhi Qi, Jifeng Dai, Xizhou Zhu, Han Hu
 
 #include <algorithm>
 #include <vector>
