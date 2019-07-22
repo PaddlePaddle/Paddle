@@ -46,6 +46,7 @@
 | reyoung | Yang Yu |
 | Sand3r- | Michal Gallus |
 | sfraczek | Sylwester Fraczek |
+| sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
