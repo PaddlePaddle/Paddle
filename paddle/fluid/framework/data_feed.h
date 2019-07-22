@@ -33,11 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -198,7 +196,7 @@ class PrivateQueueDataFeed : public DataFeed {
   size_t queue_size_;
   string::LineFileReader reader_;
   // The queue for store parsed data
-  std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
+  std::shared_ptr<paddle::framework::ChannelObject<T>> queue_;
 };
 
 template <typename T>

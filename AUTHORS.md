@@ -14,6 +14,7 @@
 | emailweixu | Wei Xu |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
+| guru4elephant | Daxiang Dong |
 | Guo Sheng | Sheng Guo |
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
@@ -45,6 +46,7 @@
 | reyoung | Yang Yu |
 | Sand3r- | Michal Gallus |
 | sfraczek | Sylwester Fraczek |
+| sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
