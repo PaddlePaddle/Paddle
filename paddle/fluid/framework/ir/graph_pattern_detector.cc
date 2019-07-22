@@ -1281,6 +1281,9 @@ PDNode *patterns::ConvRequant::operator()() {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> edfcc91... Change format second try
   auto requant_op =
       pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
 =======
@@ -1302,6 +1305,7 @@ PDNode *patterns::ConvRequant::operator()() {
                       ->assert_is_op_output("conv2d", "Output");
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   auto requant_out = pattern
                          ->NewNode(requant_out_repr())
 <<<<<<< HEAD
@@ -1321,6 +1325,11 @@ PDNode *patterns::ConvRequant::operator()() {
                          ->AsOutput()
                          ->assert_is_op_output("requantize", "Output");
 >>>>>>> 7b3f369... Change format
+=======
+  auto requant_out = pattern->NewNode(requant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("requantize", "Output");
+>>>>>>> edfcc91... Change format second try
                         
 >>>>>>> 56c546c... Add requantize squash
 
