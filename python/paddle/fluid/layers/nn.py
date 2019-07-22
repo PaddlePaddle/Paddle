@@ -205,6 +205,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'search_pyramid_hash',
 ]
 
 kIgnoreIndex = -100
@@ -12314,3 +12315,64 @@ def deformable_roi_pooling(input,
             "trans_std": trans_std
         })
     return output
+
+
+def search_pyramid_hash(
+        input,
+        num_emb,
+        space_len,
+        pyramid_layer,
+        rand_len,
+        drop_out_percent,
+        is_training,
+        use_filter,
+        white_list_len,
+        black_list_len,
+        seed,
+        lr,
+        param_attr=None,
+        param_attr_wl=None,
+        param_attr_bl=None,
+        name=None,
+        dtype='float32'):
+    helper = LayerHelper('search_pyramid_hash', **locals())
+
+    w_shape = [space_len + rand_len, 1]
+    w = helper.create_parameter(attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    w.stop_gradient = True
+
+    input_vars = {'X': input, 'W': w}
+    if white_list_len > 0:
+        wl_shape = [white_list_len, 1]
+        white_list = helper.create_parameter(attr=param_attr_wl, shape=wl_shape, dtype=dtype, is_bias=False)
+        white_list.stop_gradient = True
+        input_vars['WhiteList'] = white_list
+
+    if black_list_len >= 0:
+        bl_shape = [black_list_len, 1]
+        black_list = helper.create_parameter(attr=param_attr_bl, shape=bl_shape, dtype=dtype, is_bias=False)
+        black_list.stop_gradient = True
+        input_vars['BlackList'] = black_list
+
+    res = helper.create_variable_for_type_inference(dtype)
+    drop_pos = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_pyramid_hash',
+        inputs=input_vars,
+        outputs={"Out": res, 'DropPos': drop_pos},
+        attrs={
+            'num_emb': num_emb,
+            'space_len': space_len,
+            'pyramid_layer': pyramid_layer,
+            'rand_len': rand_len,
+            'drop_out_percent': drop_out_percent,
+            'is_training': is_training,
+            'use_filter': use_filter,
+            'white_list_len': white_list_len,
+            'black_list_len': black_list_len,
+            'seed': seed,
+            'lr': lr,
+        }
+    )
+
+    return res
