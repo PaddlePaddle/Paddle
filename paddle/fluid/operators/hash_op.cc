@@ -52,7 +52,7 @@ class HashOpMaker : public framework::OpProtoAndCheckerMaker {
         Execute `num_hash` times xxHash algorithm on all elements on second dimension of input. 
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
-    AddAttr<int>("mod_by", "").SetDefault(100000);
+    AddAttr<int64_t>("mod_by", "").SetDefault(100000);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);

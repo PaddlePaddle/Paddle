@@ -2844,7 +2844,6 @@ class Program(object):
         self._nccl_comm_num = 1
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0
-        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler

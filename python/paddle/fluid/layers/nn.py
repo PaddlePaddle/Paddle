@@ -370,7 +370,7 @@ def embedding(input,
     constructor.
 
     Args:
-        input(Variable): The tensor variable containing the IDs.
+        input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
         size(tuple|list): The shape of the look up table parameter. It should
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
