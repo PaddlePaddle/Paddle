@@ -163,7 +163,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["dump_slot"] = False
-        if server._server.downpour_server_param.downpour_table_param[0].accessor.accessor_class == "DownpourCtrAccessor":
+        if server._server.downpour_server_param.downpour_table_param[
+                0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True
 
         for loss in losses:
