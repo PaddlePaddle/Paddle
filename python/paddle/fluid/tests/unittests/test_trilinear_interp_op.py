@@ -246,6 +246,30 @@ class TestTrilinearInterpCase6(TestTrilinearInterpOp):
         self.align_mode = 1
 
 
+class TestTrilinearInterpSame(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [1, 1, 16, 8, 4]
+        self.out_d = 16
+        self.out_h = 8
+        self.out_w = 4
+        self.scale = 0.
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestTrilinearInterpSameHW(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [1, 1, 16, 8, 4]
+        self.out_d = 8
+        self.out_h = 8
+        self.out_w = 4
+        self.scale = 0.
+        self.align_corners = True
+        self.align_mode = 1
+
+
 class TestTrilinearInterpActualShape(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'

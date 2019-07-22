@@ -20,6 +20,84 @@ namespace operators {
 
 using framework::Tensor;
 
+static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
+  auto dim_x = ctx->GetInputDim("X");
+  auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
+
+  PADDLE_ENFORCE("bilinear" == interp_method || "nearest" == interp_method,
+      "Interpolation method can only be \"bilinear\" or \"nearest\" when "
+      "Input(X) dimension is 4");
+
+  int out_h, out_w;
+  float scale = ctx->Attrs().Get<float>("scale");
+  if (scale > 0) {
+    // round down
+    out_h = static_cast<int>(dim_x[2] * scale);
+    out_w = static_cast<int>(dim_x[3] * scale);
+    // protect when input shape is -1
+    out_h = out_h > 0 ? out_h : -1;
+    out_w = out_w > 0 ? out_w : -1;
+  } else {
+    out_h = ctx->Attrs().Get<int>("out_h");
+    out_w = ctx->Attrs().Get<int>("out_w");
+    PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
+    PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
+  }
+
+  if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
+    auto out_size_dim = ctx->GetInputDim("OutSize");
+    PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
+                      "OutSize's dimension size must be 1");
+    PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
+    ctx->ShareLoD("X", "Out");
+    return;
+  }
+
+  std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
+  ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+}
+
+static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
+  auto dim_x = ctx->GetInputDim("X");
+  auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
+
+  PADDLE_ENFORCE("trilinear" == interp_method,
+      "Interpolation method can only be \"trilinear\" when Input(X) "
+      "dimension is 5");
+
+  int out_d, out_h, out_w;
+  float scale = ctx->Attrs().Get<float>("scale");
+  if (scale > 0) {
+    // round down
+    out_d = static_cast<int>(dim_x[2] * scale);
+    out_h = static_cast<int>(dim_x[3] * scale);
+    out_w = static_cast<int>(dim_x[4] * scale);
+    // protect when input shape is -1
+    out_d = out_d > 0 ? out_d : -1;
+    out_h = out_h > 0 ? out_h : -1;
+    out_w = out_w > 0 ? out_w : -1;
+  } else {
+    out_d = ctx->Attrs().Get<int>("out_d");
+    out_h = ctx->Attrs().Get<int>("out_h");
+    out_w = ctx->Attrs().Get<int>("out_w");
+    PADDLE_ENFORCE_GT(out_d, 0, "out_d should be greater than 0.");
+    PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
+    PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
+  }
+
+  if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
+    auto out_size_dim = ctx->GetInputDim("OutSize");
+    PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
+                      "OutSize's dimension size must be 1");
+    PADDLE_ENFORCE_EQ(out_size_dim[0], 3, "OutSize's dim[0] must be 3");
+    ctx->ShareLoD("X", "Out");
+    return;
+  }
+
+  std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
+  ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+}
+
 class InterpolateOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -31,81 +109,16 @@ class InterpolateOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of InterpolationOp should not be null.");
 
-    auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
-    PADDLE_ENFORCE(
-        "bilinear" == interp_method || "nearest" == interp_method ||
-            "trilinear" == interp_method,
-        "Interpolation method can only be \"bilinear\", \"trilinear\" "
-        "or \"nearest\".");
-
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
+    PADDLE_ENFORCE(dim_x.size() == 4 || dim_x.size() == 5,
+                   "Input(X) dimension must be 4 or 5");
 
-    if ("bilinear" == interp_method || "nearest" == interp_method) {
+    if (dim_x.size() == 4) {
       // shape check for 2D interpolate for input tensor shape NCHW
-      PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
-
-      int out_h, out_w;
-      float scale = ctx->Attrs().Get<float>("scale");
-      if (scale > 0) {
-        // round down
-        out_h = static_cast<int>(dim_x[2] * scale);
-        out_w = static_cast<int>(dim_x[3] * scale);
-        // protect when input shape is -1
-        out_h = out_h > 0 ? out_h : -1;
-        out_w = out_w > 0 ? out_w : -1;
-      } else {
-        out_h = ctx->Attrs().Get<int>("out_h");
-        out_w = ctx->Attrs().Get<int>("out_w");
-        PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
-        PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
-      }
-
-      if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
-        auto out_size_dim = ctx->GetInputDim("OutSize");
-        PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                          "OutSize's dimension size must be 1");
-        PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
-        ctx->ShareLoD("X", "Out");
-        return;
-      }
-
-      std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-      ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
-    } else {
+      Interpolate2DInferShapeCheck(ctx);
+    } else { // dim_x.size() == 5
       // shape check for 3D interpolate for input tensor shape NCDHW
-      PADDLE_ENFORCE_EQ(dim_x.size(), 5, "X's dimension must be 5");
-
-      int out_d, out_h, out_w;
-      float scale = ctx->Attrs().Get<float>("scale");
-      if (scale > 0) {
-        // round down
-        out_d = static_cast<int>(dim_x[2] * scale);
-        out_h = static_cast<int>(dim_x[3] * scale);
-        out_w = static_cast<int>(dim_x[4] * scale);
-        // protect when input shape is -1
-        out_d = out_d > 0 ? out_d : -1;
-        out_h = out_h > 0 ? out_h : -1;
-        out_w = out_w > 0 ? out_w : -1;
-      } else {
-        out_d = ctx->Attrs().Get<int>("out_d");
-        out_h = ctx->Attrs().Get<int>("out_h");
-        out_w = ctx->Attrs().Get<int>("out_w");
-        PADDLE_ENFORCE_GT(out_d, 0, "out_d should be greater than 0.");
-        PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
-        PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
-      }
-
-      if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
-        auto out_size_dim = ctx->GetInputDim("OutSize");
-        PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                          "OutSize's dimension size must be 1");
-        PADDLE_ENFORCE_EQ(out_size_dim[0], 3, "OutSize's dim[0] must be 3");
-        ctx->ShareLoD("X", "Out");
-        return;
-      }
-
-      std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
-      ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+      Interpolate3DInferShapeCheck(ctx);
     }
   }
 

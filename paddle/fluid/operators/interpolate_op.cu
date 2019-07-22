@@ -350,6 +350,304 @@ __global__ void KeTrilinearInterpBw(
 }
 
 template <typename T>
+static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx, const Tensor& input, Tensor* output) {
+  auto* input_data = input.data<T>();
+
+  const int n = input.dims()[0];
+  const int c = input.dims()[1];
+  const int in_h = input.dims()[2];
+  const int in_w = input.dims()[3];
+
+  auto interp_method = ctx.Attr<std::string>("interp_method");
+  bool align_corners = ctx.Attr<bool>("align_corners");
+  int align_mode = ctx.Attr<int>("align_mode");
+
+  int out_h = ctx.Attr<int>("out_h");
+  int out_w = ctx.Attr<int>("out_w");
+  float scale = ctx.Attr<float>("scale");
+  if (scale > 0) {
+    out_h = static_cast<int>(in_h * scale);
+    out_w = static_cast<int>(in_w * scale);
+  }
+
+  auto out_size = ctx.Input<Tensor>("OutSize");
+  if (out_size != nullptr) {
+    Tensor sizes;
+    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
+    auto size_data = sizes.data<int>();
+    out_h = size_data[0];
+    out_w = size_data[1];
+  }
+
+  auto output_data = output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+
+  if (in_h == out_h && in_w == out_w) {
+    framework::TensorCopy(input, ctx.GetPlace(), output);
+    return;
+  }
+
+  float ratio_h = 0.f;
+  float ratio_w = 0.f;
+  if (out_h > 1) {
+    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                              : static_cast<float>(in_h) / out_h;
+  }
+  if (out_w > 1) {
+    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                              : static_cast<float>(in_w) / out_w;
+  }
+
+  int in_hw = in_h * in_w;
+  int out_hw = out_h * out_w;
+  int in_chw = c * in_hw;
+  int out_chw = c * out_hw;
+
+  int pixelNum = n * out_chw;
+  int grid_dim = (pixelNum + 512 - 1) / 512;
+  grid_dim = grid_dim > 8 ? 8 : grid_dim;
+
+  if ("nearest" == interp_method) {
+    KeNearestNeighborInterpFw<
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
+        out_chw, c, ratio_h, ratio_w, align_corners);
+  } else if ("bilinear" == interp_method) {
+    KeBilinearInterpFw<
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
+        out_chw, c, ratio_h, ratio_w, align_corners, align_mode);
+  }
+}
+
+template <typename T>
+static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx, const Tensor& input, Tensor* output) {
+  auto* input_data = input.data<T>();
+
+  const int n = input.dims()[0];
+  const int c = input.dims()[1];
+  const int in_d = input.dims()[2];
+  const int in_h = input.dims()[3];
+  const int in_w = input.dims()[4];
+
+  auto interp_method = ctx.Attr<std::string>("interp_method");
+  bool align_corners = ctx.Attr<bool>("align_corners");
+  int align_mode = ctx.Attr<int>("align_mode");
+
+  int out_d = ctx.Attr<int>("out_d");
+  int out_h = ctx.Attr<int>("out_h");
+  int out_w = ctx.Attr<int>("out_w");
+  float scale = ctx.Attr<float>("scale");
+  if (scale > 0) {
+    out_d = static_cast<int>(in_d * scale);
+    out_h = static_cast<int>(in_h * scale);
+    out_w = static_cast<int>(in_w * scale);
+  }
+
+  auto out_size = ctx.Input<Tensor>("OutSize");
+  if (out_size != nullptr) {
+    Tensor sizes;
+    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
+    auto size_data = sizes.data<int>();
+    out_d = size_data[0];
+    out_h = size_data[1];
+    out_w = size_data[2];
+  }
+
+  auto output_data = output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
+
+  if (in_d == out_d && in_h == out_h && in_w == out_w) {
+    framework::TensorCopy(input, ctx.GetPlace(), output);
+    return;
+  }
+
+  float ratio_d = 0.f;
+  float ratio_h = 0.f;
+  float ratio_w = 0.f;
+  if (out_d > 1) {
+    ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
+                              : static_cast<float>(in_d) / out_d;
+  }
+  if (out_h > 1) {
+    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                              : static_cast<float>(in_h) / out_h;
+  }
+  if (out_w > 1) {
+    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                              : static_cast<float>(in_w) / out_w;
+  }
+
+  int in_dhw = in_d * in_h * in_w;
+  int out_dhw = out_d * out_h * out_w;
+  int in_cdhw = c * in_dhw;
+  int out_cdhw = c * out_dhw;
+
+  int pixelNum = n * out_cdhw;
+  int grid_dim = (pixelNum + 512 - 1) / 512;
+  grid_dim = grid_dim > 8 ? 8 : grid_dim;
+
+  if ("trilinear" == interp_method) {
+    KeTrilinearInterpFw<
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_data, in_d, in_h, in_w, n, in_cdhw, output_data, out_d, out_h,
+        out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
+        align_mode);
+  }
+}
+
+template <typename T>
+static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx, Tensor* input_grad, const Tensor output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
+  const int n = input->dims()[0];
+  const int c = input->dims()[1];
+  const int in_h = input->dims()[2];
+  const int in_w = input->dims()[3];
+
+  auto interp_method = ctx.Attr<std::string>("interp_method");
+  bool align_corners = ctx.Attr<bool>("align_corners");
+  int align_mode = ctx.Attr<int>("align_mode");
+
+  int out_h = ctx.Attr<int>("out_h");
+  int out_w = ctx.Attr<int>("out_w");
+  float scale = ctx.Attr<float>("scale");
+  if (scale > 0) {
+    out_h = static_cast<int>(in_h * scale);
+    out_w = static_cast<int>(in_w * scale);
+  }
+
+  auto out_size = ctx.Input<Tensor>("OutSize");
+  if (out_size != nullptr) {
+    Tensor sizes;
+    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
+    auto size_data = sizes.data<int>();
+    out_h = size_data[0];
+    out_w = size_data[1];
+  }
+
+  auto* output_grad_data = output_grad.data<T>();
+  auto* input_grad_data = input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
+  auto& device_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  math::SetConstant<platform::CUDADeviceContext, T> zero;
+  zero(device_ctx, input_grad, static_cast<T>(0.0));
+
+  if (in_h == out_h && in_w == out_w) {
+    framework::TensorCopy(output_grad, ctx.GetPlace(), input_grad);
+    return;
+  }
+
+  float ratio_h = 0.f;
+  float ratio_w = 0.f;
+  if (out_h > 1) {
+    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                              : static_cast<float>(in_h) / out_h;
+  }
+  if (out_w > 1) {
+    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                              : static_cast<float>(in_w) / out_w;
+  }
+
+  int in_hw = in_h * in_w;
+  int out_hw = out_h * out_w;
+  int in_chw = c * in_hw;
+  int out_chw = c * out_hw;
+
+  int pixelNum = n * out_chw;
+  int grid_dim = (pixelNum + 512 - 1) / 512;
+  grid_dim = grid_dim > 8 ? 8 : grid_dim;
+
+  if ("nearest" == interp_method) {
+    KeNearestNeighborInterpBw<
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
+        out_w, n, out_chw, c, ratio_h, ratio_w, align_corners);
+  } else if ("bilinear" == interp_method) {
+    KeBilinearInterpBw<
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
+        out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode);
+  }
+}
+
+template <typename T>
+static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx, Tensor* input_grad, const Tensor& output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
+  const int n = input->dims()[0];
+  const int c = input->dims()[1];
+  const int in_d = input->dims()[2];
+  const int in_h = input->dims()[3];
+  const int in_w = input->dims()[4];
+
+  auto interp_method = ctx.Attr<std::string>("interp_method");
+  bool align_corners = ctx.Attr<bool>("align_corners");
+  int align_mode = ctx.Attr<int>("align_mode");
+
+  int out_d = ctx.Attr<int>("out_d");
+  int out_h = ctx.Attr<int>("out_h");
+  int out_w = ctx.Attr<int>("out_w");
+  float scale = ctx.Attr<float>("scale");
+  if (scale > 0) {
+    out_d = static_cast<int>(in_d * scale);
+    out_h = static_cast<int>(in_h * scale);
+    out_w = static_cast<int>(in_w * scale);
+  }
+
+  auto out_size = ctx.Input<Tensor>("OutSize");
+  if (out_size != nullptr) {
+    Tensor sizes;
+    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
+    auto size_data = sizes.data<int>();
+    out_d = size_data[0];
+    out_h = size_data[1];
+    out_w = size_data[2];
+  }
+
+  auto* output_grad_data = output_grad.data<T>();
+  auto* input_grad_data = input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
+  auto& device_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  math::SetConstant<platform::CUDADeviceContext, T> zero;
+  zero(device_ctx, input_grad, static_cast<T>(0.0));
+
+  if (in_d == out_d && in_h == out_h && in_w == out_w) {
+    framework::TensorCopy(output_grad, ctx.GetPlace(), input_grad);
+    return;
+  }
+
+  float ratio_d = 0.f;
+  float ratio_h = 0.f;
+  float ratio_w = 0.f;
+  if (out_d > 1) {
+    ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
+                              : static_cast<float>(in_d) / out_d;
+  }
+  if (out_h > 1) {
+    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                              : static_cast<float>(in_h) / out_h;
+  }
+  if (out_w > 1) {
+    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                              : static_cast<float>(in_w) / out_w;
+  }
+
+  int in_dhw = in_d * in_h * in_w;
+  int out_dhw = out_d * out_h * out_w;
+  int in_cdhw = c * in_dhw;
+  int out_cdhw = c * out_dhw;
+
+  int pixelNum = n * out_cdhw;
+  int grid_dim = (pixelNum + 512 - 1) / 512;
+  grid_dim = grid_dim > 8 ? 8 : grid_dim;
+
+  if ("trilinear" == interp_method) {
+    KeTrilinearInterpBw<
+        T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+        input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data,
+        out_d, out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w,
+        align_corners, align_mode);
+  }
+}
+
+template <typename T>
 class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -357,139 +655,12 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
                    "This kernel only runs on GPU device.");
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
-    auto* input_data = input->data<T>();
-
-    auto out_size = ctx.Input<Tensor>("OutSize");
-    std::string interp_method = ctx.Attr<std::string>("interp_method");
-    bool align_corners = ctx.Attr<bool>("align_corners");
-    int align_mode = ctx.Attr<int>("align_mode");
-    int out_d = ctx.Attr<int>("out_d");
-    int out_h = ctx.Attr<int>("out_h");
-    int out_w = ctx.Attr<int>("out_w");
 
     auto input_dims = input->dims();
     if (input_dims.size() == 4) {  // 2D interpolation
-      const int n = input_dims[0];
-      const int c = input_dims[1];
-      const int in_h = input_dims[2];
-      const int in_w = input_dims[3];
-
-      float scale = ctx.Attr<float>("scale");
-      if (scale > 0) {
-        out_h = static_cast<int>(in_h * scale);
-        out_w = static_cast<int>(in_w * scale);
-      }
-
-      if (out_size != nullptr) {
-        Tensor sizes;
-        framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
-        auto size_data = sizes.data<int>();
-        out_h = size_data[0];
-        out_w = size_data[1];
-      }
-
-      auto* output_data =
-          output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
-
-      if (in_h == out_h && in_w == out_w) {
-        framework::TensorCopy(*input, ctx.GetPlace(), output);
-        return;
-      }
-
-      float ratio_h = 0.f;
-      float ratio_w = 0.f;
-      if (out_h > 1) {
-        ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                                  : static_cast<float>(in_h) / out_h;
-      }
-      if (out_w > 1) {
-        ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                                  : static_cast<float>(in_w) / out_w;
-      }
-
-      int in_hw = in_h * in_w;
-      int out_hw = out_h * out_w;
-      int in_chw = c * in_hw;
-      int out_chw = c * out_hw;
-
-      int pixelNum = n * out_chw;
-      int grid_dim = (pixelNum + 512 - 1) / 512;
-      grid_dim = grid_dim > 8 ? 8 : grid_dim;
-
-      if ("nearest" == interp_method) {
-        KeNearestNeighborInterpFw<
-            T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-            out_chw, c, ratio_h, ratio_w, align_corners);
-      } else if ("bilinear" == interp_method) {
-        KeBilinearInterpFw<
-            T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-            out_chw, c, ratio_h, ratio_w, align_corners, align_mode);
-      }
+      Interpolate2DCUDAFwd<T>(ctx, *input, output);
     } else if (input_dims.size() == 5) {  // 3D interpolation
-      const int n = input_dims[0];
-      const int c = input_dims[1];
-      const int in_d = input_dims[2];
-      const int in_h = input_dims[3];
-      const int in_w = input_dims[4];
-
-      float scale = ctx.Attr<float>("scale");
-      if (scale > 0) {
-        out_d = static_cast<int>(in_d * scale);
-        out_h = static_cast<int>(in_h * scale);
-        out_w = static_cast<int>(in_w * scale);
-      }
-
-      if (out_size != nullptr) {
-        Tensor sizes;
-        framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
-        auto size_data = sizes.data<int>();
-        out_d = size_data[0];
-        out_h = size_data[1];
-        out_w = size_data[2];
-      }
-
-      auto* output_data =
-          output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
-
-      if (in_h == out_h && in_w == out_w) {
-        framework::TensorCopy(*input, ctx.GetPlace(), output);
-        return;
-      }
-
-      float ratio_d = 0.f;
-      float ratio_h = 0.f;
-      float ratio_w = 0.f;
-      if (out_d > 1) {
-        ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                                  : static_cast<float>(in_d) / out_d;
-      }
-      if (out_h > 1) {
-        ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                                  : static_cast<float>(in_h) / out_h;
-      }
-      if (out_w > 1) {
-        ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                                  : static_cast<float>(in_w) / out_w;
-      }
-
-      int in_dhw = in_d * in_h * in_w;
-      int out_dhw = out_d * out_h * out_w;
-      int in_cdhw = c * in_dhw;
-      int out_cdhw = c * out_dhw;
-
-      int pixelNum = n * out_cdhw;
-      int grid_dim = (pixelNum + 512 - 1) / 512;
-      grid_dim = grid_dim > 8 ? 8 : grid_dim;
-
-      if ("trilinear" == interp_method) {
-        KeTrilinearInterpFw<
-            T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_data, in_d, in_h, in_w, n, in_cdhw, output_data, out_d, out_h,
-            out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
-            align_mode);
-      }
+      Interpolate3DCUDAFwd<T>(ctx, *input, output);
     }
   }
 };
@@ -498,148 +669,16 @@ template <typename T>
 class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                   "This kernel only runs on GPU device.");
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* output_grad_data = output_grad->data<T>();
 
-    auto out_size = ctx.Input<Tensor>("OutSize");
-    std::string interp_method = ctx.Attr<std::string>("interp_method");
-    bool align_corners = ctx.Attr<bool>("align_corners");
-    int align_mode = ctx.Attr<int>("align_mode");
-    int out_d = ctx.Attr<int>("out_d");
-    int out_h = ctx.Attr<int>("out_h");
-    int out_w = ctx.Attr<int>("out_w");
-
-    auto& device_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, T> zero;
-
-    auto input_dims = input->dims();
-    if (input_dims.size() == 4) {  // 2D interpolation
-      const int n = input_dims[0];
-      const int c = input_dims[1];
-      const int in_h = input_dims[2];
-      const int in_w = input_dims[3];
-
-      float scale = ctx.Attr<float>("scale");
-      if (scale > 0) {
-        out_h = static_cast<int>(in_h * scale);
-        out_w = static_cast<int>(in_w * scale);
-      }
-
-      if (out_size != nullptr) {
-        Tensor sizes;
-        framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
-        auto size_data = sizes.data<int>();
-        out_h = size_data[0];
-        out_w = size_data[1];
-      }
-
-      auto* input_grad_data =
-          input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
-      zero(device_ctx, input_grad, static_cast<T>(0.0));
-
-      if (in_h == out_h && in_w == out_w) {
-        framework::TensorCopy(*output_grad, ctx.GetPlace(), input_grad);
-        return;
-      }
-
-      float ratio_h = 0.f;
-      float ratio_w = 0.f;
-      if (out_h > 1) {
-        ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                                  : static_cast<float>(in_h) / out_h;
-      }
-      if (out_w > 1) {
-        ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                                  : static_cast<float>(in_w) / out_w;
-      }
-
-      int in_hw = in_h * in_w;
-      int out_hw = out_h * out_w;
-      int in_chw = c * in_hw;
-      int out_chw = c * out_hw;
-
-      int pixelNum = n * out_chw;
-      int grid_dim = (pixelNum + 512 - 1) / 512;
-      grid_dim = grid_dim > 8 ? 8 : grid_dim;
-
-      if ("nearest" == interp_method) {
-        KeNearestNeighborInterpBw<
-            T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-            out_w, n, out_chw, c, ratio_h, ratio_w, align_corners);
-      } else if ("bilinear" == interp_method) {
-        KeBilinearInterpBw<
-            T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-            out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode);
-      }
-    } else if (input_dims.size() == 5) {  // 3D interpolation
-      const int n = input_dims[0];
-      const int c = input_dims[1];
-      const int in_d = input_dims[2];
-      const int in_h = input_dims[3];
-      const int in_w = input_dims[4];
-
-      float scale = ctx.Attr<float>("scale");
-      if (scale > 0) {
-        out_d = static_cast<int>(in_d * scale);
-        out_h = static_cast<int>(in_h * scale);
-        out_w = static_cast<int>(in_w * scale);
-      }
-
-      if (out_size != nullptr) {
-        Tensor sizes;
-        framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
-        auto size_data = sizes.data<int>();
-        out_d = size_data[0];
-        out_h = size_data[1];
-        out_w = size_data[2];
-      }
-
-      auto* input_grad_data =
-          input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
-      zero(device_ctx, input_grad, static_cast<T>(0.0));
-
-      if (in_d == out_d && in_h == out_h && in_w == out_w) {
-        framework::TensorCopy(*output_grad, ctx.GetPlace(), input_grad);
-        return;
-      }
-
-      float ratio_d = 0.f;
-      float ratio_h = 0.f;
-      float ratio_w = 0.f;
-      if (out_d > 1) {
-        ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                                  : static_cast<float>(in_d) / out_d;
-      }
-      if (out_h > 1) {
-        ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                                  : static_cast<float>(in_h) / out_h;
-      }
-      if (out_w > 1) {
-        ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                                  : static_cast<float>(in_w) / out_w;
-      }
-
-      int in_dhw = in_d * in_h * in_w;
-      int out_dhw = out_d * out_h * out_w;
-      int in_cdhw = c * in_dhw;
-      int out_cdhw = c * out_dhw;
-
-      int pixelNum = n * out_cdhw;
-      int grid_dim = (pixelNum + 512 - 1) / 512;
-      grid_dim = grid_dim > 8 ? 8 : grid_dim;
-
-      if ("trilinear" == interp_method) {
-        KeTrilinearInterpBw<
-            T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data,
-            out_d, out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w,
-            align_corners, align_mode);
-      }
+    auto output_grad_dims = output_grad->dims();
+    if (output_grad_dims.size() == 4) {  // 2D interpolation
+      Interpolate2DCUDABwd<T>(ctx, input_grad, *output_grad);
+    } else if (output_grad_dims.size() == 5) {  // 3D interpolation
+      Interpolate3DCUDABwd<T>(ctx, input_grad, *output_grad);
     }
   }
 };
