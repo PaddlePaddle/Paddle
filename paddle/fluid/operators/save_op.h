@@ -117,15 +117,16 @@ class SaveOpKernel : public framework::OpKernel<T> {
         filename = *lt_var;
         std::string hdfs_prefix(HADOOP_PATH_PREFIX);
         if (filename.find(hdfs_prefix) == 0) {
-           lt_var->clear();
-           lt_var->append(filename.substr(HADOOP_PATH_PREFIX.length()))
-           std::string random_path_name =
-                                "/tmp/paddle_hadoop_random/__LOOKUP_TABLE__";
-           filename = random_path_name;
-           auto* tmp_path_var = ctx.scope().FindVar(LOOKUP_TABLE_TMP_PATH)
-                                           .GetMutable<std::string>();
-           tmp_path_var->clear();
-           tmp_path_var->append(random_path_name);
+          lt_var->clear();
+          lt_var->append(filename.substr(hdfs_prefix.length()));
+          std::string random_path_name =
+              "/tmp/paddle_hadoop_random/__LOOKUP_TABLE__";
+          filename = random_path_name;
+          auto *tmp_path_var = ctx.scope()
+                                   .FindVar(LOOKUP_TABLE_TMP_PATH)
+                                   .GetMutable<std::string>();
+          tmp_path_var->clear();
+          tmp_path_var->append(random_path_name);
         }
         VLOG(4) << "SaveSelectedRows output var name: " << filename;
       }
