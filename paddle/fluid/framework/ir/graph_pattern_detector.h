@@ -811,7 +811,6 @@ struct ConvRequant : public PatternBase {
 
   PATTERN_DECL_NODE(requant_op);
   PATTERN_DECL_NODE(requant_out);
-
 };
 
 // PriorBox operator

@@ -1277,6 +1277,7 @@ PDNode *patterns::ConvConcatReLU::operator()() {
 
 PDNode *patterns::ConvRequant::operator()() {
 <<<<<<< HEAD
+<<<<<<< HEAD
   // Create Operators
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
 <<<<<<< HEAD
@@ -1284,6 +1285,11 @@ PDNode *patterns::ConvRequant::operator()() {
 <<<<<<< HEAD
 =======
 >>>>>>> edfcc91... Change format second try
+=======
+  // Create Operators
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+
+>>>>>>> 13d070c... Change format third try
   auto requant_op =
       pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
 =======
@@ -1329,9 +1335,12 @@ PDNode *patterns::ConvRequant::operator()() {
   auto requant_out = pattern->NewNode(requant_out_repr())
                          ->AsOutput()
                          ->assert_is_op_output("requantize", "Output");
+<<<<<<< HEAD
 >>>>>>> edfcc91... Change format second try
                         
 >>>>>>> 56c546c... Add requantize squash
+=======
+>>>>>>> 13d070c... Change format third try
 
   conv_op->LinksTo({conv_out});
   requant_op->LinksFrom({conv_out}).LinksTo({requant_out});
