@@ -29,7 +29,7 @@ protected:
         op->SetType("elementwise_pow_grad");
         op->SetInput("X", Input("X"));
         op->SetInput("Y", Input("Y"));
-        op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+        op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));：q
         op->SetAttrMap(Attrs());
         op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
         op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
@@ -48,6 +48,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
         ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
         ops::ElementwisePowOpGradDescMaker);
+REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
         elementwise_pow,
         ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,
