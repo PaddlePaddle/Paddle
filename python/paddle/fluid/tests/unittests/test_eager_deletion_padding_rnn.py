@@ -22,11 +22,14 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import time
+import os
 
 from paddle.fluid import ParamAttr
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
+
+os.environ["CPU_NUM"] = "1"
 
 
 class RnnConfig(object):
