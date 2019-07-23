@@ -60,7 +60,6 @@ template <typename DeviceContext, typename T>
 class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
 public:
     void Compute(const framework::ExecutionContext& ctx) const override {
-        VLOG(3) << "starting....ElementwisePowGradKernel .....Compute().....";
         ElemwiseGradKernel<T>::Compute(ctx);
         using Tensor = framework::Tensor;
         auto* x = ctx.Input<Tensor>("X");
@@ -70,7 +69,6 @@ public:
         auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
         auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
         int axis = ctx.Attr<int>("axis");
-        VLOG(3) << "starting....ElementwisePowGradKernel .....ElementwiseComputeEx().....";
         ElemwiseGradCompute<DeviceContext, T, PowGradDX<T>, PowGradDY<T>>(
                 ctx, *x, *y, *out, *dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
     }
