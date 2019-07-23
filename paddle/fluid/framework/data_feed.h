@@ -102,6 +102,8 @@ class DataFeed {
   virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
   virtual void SetThreadNum(int thread_num) {}
+  // This function will do nothing at default
+  virtual void SetParseInsId(bool parse_ins_id) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -212,6 +214,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetConsumeChannel(void* channel);
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
+  virtual void SetParseInsId(bool parse_ins_id);
   virtual void LoadIntoMemory();
 
  protected:
@@ -221,6 +224,7 @@ class InMemoryDataFeed : public DataFeed {
 
   int thread_id_;
   int thread_num_;
+  bool parse_ins_id_;
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;
