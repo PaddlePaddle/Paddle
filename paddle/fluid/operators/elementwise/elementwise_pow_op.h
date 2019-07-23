@@ -70,7 +70,6 @@ public:
         auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
         auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
         int axis = ctx.Attr<int>("axis");
-        VLOG(3) << "starting....ElementwisePowGradKernel .....ElementwiseComputeEx().....";
         ElemwiseGradCompute<DeviceContext, T, PowGradDX<T>, PowGradDY<T>>(
                 ctx, *x, *y, *out, *dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
     }
