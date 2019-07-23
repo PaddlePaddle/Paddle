@@ -41,7 +41,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -51,7 +50,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -189,13 +187,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
-
-  m.def("get_mem_usage", [](int device) {
-    return memory::allocation::GPUMemMonitor.GetMemUsage(device);
-  });
-
-  m.def("print_mem_usage",
-        []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   BindImperative(&m);
 
@@ -1616,7 +1607,6 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);

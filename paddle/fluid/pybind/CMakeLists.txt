@@ -1,4 +1,4 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper nccl_wrapper prune
+set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper nccl_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
   tracer analysis_predictor imperative_profiler nccl_context)
 
@@ -17,7 +17,6 @@ set(PYBIND_SRCS
   const_value.cc
   recordio.cc
   reader_py.cc
-  async_executor_py.cc
   fleet_wrapper_py.cc
   nccl_wrapper_py.cc
   data_set_py.cc
