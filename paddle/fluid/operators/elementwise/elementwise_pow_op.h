@@ -30,13 +30,17 @@ template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-
+    VLOG(3) << "starting....ElementwisePowKernel .....Compute().....";
+    using Tensor = framework::LoDTensor;
     auto* x = ctx.Input<Tensor>("X");
+    PADDLE_ENFORCE(x != nullptr,
+                   "Cannot get input Variable X, variable name = %s",
+                   ctx.op().Input("X"));
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
+    VLOG(3) << "starting....ElementwisePowKernel .....ElementwiseComputeEx().....";
     ElementwiseComputeEx<PowFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           PowFunctor<T>(), z);
   }
@@ -49,16 +53,16 @@ struct PowGradDX {
 
 template <typename T>
 struct PowGradDY {
-    HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * out * log(x); }
+    HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * std::log(x) * out; }
 };
 
 template <typename DeviceContext, typename T>
 class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
 public:
     void Compute(const framework::ExecutionContext& ctx) const override {
+        VLOG(3) << "starting....ElementwisePowGradKernel .....Compute().....";
         ElemwiseGradKernel<T>::Compute(ctx);
         using Tensor = framework::Tensor;
-
         auto* x = ctx.Input<Tensor>("X");
         auto* y = ctx.Input<Tensor>("Y");
         auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -66,6 +70,7 @@ public:
         auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
         auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
         int axis = ctx.Attr<int>("axis");
+        VLOG(3) << "starting....ElementwisePowGradKernel .....ElementwiseComputeEx().....";
         ElemwiseGradCompute<DeviceContext, T, PowGradDX<T>, PowGradDY<T>>(
                 ctx, *x, *y, *out, *dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
     }
