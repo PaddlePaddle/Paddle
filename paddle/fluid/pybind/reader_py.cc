@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/reader_py.h"
+#include <unistd.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -146,6 +147,26 @@ class MultiDeviceFeedReader {
 
 namespace py = pybind11;
 
+static std::vector<int> CreatePipe() {
+  int pipe_fd[2];
+  PADDLE_ENFORCE(::pipe(pipe_fd) != -1, "Pipe creation error");
+  return std::vector<int>(pipe_fd, pipe_fd + 2);
+}
+
+static framework::LoDTensor ReadTensorFromPipe(int fd, size_t count) {
+  framework::LoDTensor tensor;
+  tensor.Resize({static_cast<int64_t>(count)});
+  auto *buf = tensor.mutable_data<uint8_t>(platform::CPUPlace());
+  while (count > 0) {
+    auto ret_bytes = ::read(fd, buf, count);
+    PADDLE_ENFORCE(ret_bytes != -1, "Pipe read error");
+    PADDLE_ENFORCE_GE(count, ret_bytes, "Bytes count not matched");
+    count -= ret_bytes;
+    buf += ret_bytes;
+  }
+  return tensor;
+}
+
 void BindReader(py::module *module) {
   auto &m = *module;
 
@@ -173,6 +194,9 @@ void BindReader(py::module *module) {
                                            use_double_buffer);
         },
         py::return_value_policy::take_ownership);
+
+  m.def("create_pipe", &CreatePipe);
+  m.def("read_tensor_from_pipe", &ReadTensorFromPipe);
 }
 
 }  // namespace pybind
