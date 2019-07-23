@@ -235,6 +235,21 @@ PYBIND11_MODULE(core_noavx, m) {
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_mutable_data",
+           [](Tensor &self, paddle::platform::CPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
+      .def("_mutable_data",
+           [](Tensor &self, paddle::platform::CUDAPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
+      .def("_mutable_data",
+           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
       .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
