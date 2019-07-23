@@ -170,23 +170,26 @@ void Communicator::SendThread() {
             send_threadpool_->enqueue(std::move(send_task)));
       }
 
-      std::for_each(task_futures.begin(), task_futures.end(),
-                    [](auto &task) { task.wait(); });
+      for (auto &task_f : task_futures) {
+        task_f.wait();
+      }
 
       if (!FLAGS_communicator_independent_recv_thread) {
         RecvAll();
       }
 
-      std::for_each(unmerged_vars.begin(), unmerged_vars.end(),
-                    [](auto &iter) { iter.second.clear(); });
+      for (auto &unmerged_var : unmerged_vars) {
+        unmerged_var.second.clear();
+      }
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       VLOG(3) << "0 vars in send queue, wait";
     }
   }
 
-  std::for_each(unmerged_vars.begin(), unmerged_vars.end(),
-                [](auto &iter) { iter.second.clear(); });
+  for (auto &unmerged_var : unmerged_vars) {
+    unmerged_var.second.clear();
+  }
 
   VLOG(0) << "communicator stopped, send thread exit";
 }
