@@ -48,12 +48,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
         ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
         ops::ElementwisePowOpGradDescMaker);
-//REGISTER_OP_WITHOUT_GRADIENT(elementwise_pow, ops::ElementwiseOp,
-//                             ops::ElementwisePowOpMaker);
-//REGISTER_OP_CPU_KERNEL(
-//    elementwise_pow,
-//   :q ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,
-//    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
         elementwise_pow,
         ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,

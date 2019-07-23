@@ -55,18 +55,6 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
-class TestElementwisePowOp_inttensor(TestElementwisePowOp):
-    def setUp(self):
-        self.op_type = "elementwise_pow"
-        self.inputs = {
-            'X': np.random.randn(17,18,2).astype("float64"),
-            'Y': np.random.randn(17,18,2).astype("float64"),
-        }
-        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
-        print("output:\t",self.outputs)
-
-
-
 if __name__ == '__main__':
     unittest.main()
 
