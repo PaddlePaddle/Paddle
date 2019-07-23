@@ -25,6 +25,7 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
+from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
@@ -54,6 +55,7 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             param = fluid.default_main_program().global_block().var('fc.w')
             res = fluid.io.is_parameter(param)
     """
@@ -74,6 +76,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
@@ -86,13 +89,21 @@ def is_persistable(var):
 
 def _clone_var_in_block_(block, var):
     assert isinstance(var, Variable)
-    return block.create_var(
-        name=var.name,
-        shape=var.shape,
-        dtype=var.dtype,
-        type=var.type,
-        lod_level=var.lod_level,
-        persistable=True)
+    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True)
+    else:
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            persistable=True)
 
 
 def save_vars(executor,
@@ -177,6 +188,7 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -264,6 +276,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -301,6 +315,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -425,7 +440,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
         return is_valid
 
     if not isinstance(main_program, Program):
-        raise ValueError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' should be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -486,6 +501,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
@@ -594,6 +611,7 @@ def load_vars(executor,
             # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -612,6 +630,7 @@ def load_vars(executor,
 
         if main_program is None:
             main_program = default_main_program()
+
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
@@ -681,6 +700,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -723,6 +743,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -760,6 +781,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -845,7 +867,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
         executor.run(load_prog)
 
     if not isinstance(main_program, Program):
-        raise ValueError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' should be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -1008,6 +1030,9 @@ def save_inference_model(dirname,
                                             is not suitable for saving inference model \
                                             we save the original program as inference model.",
                 RuntimeWarning)
+
+    elif not isinstance(main_program, Program):
+        raise TypeError("program should be as Program type or None")
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
@@ -1230,6 +1255,7 @@ def get_parameter_value(para, executor):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param = fluid.default_main_program().global_block().var('fc.w')
             p = fluid.io.get_parameter_value(param, exe)
@@ -1267,6 +1293,7 @@ def get_parameter_value_by_name(name, executor, program=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             p = fluid.io.get_parameter_value('fc.w', exe)
     """

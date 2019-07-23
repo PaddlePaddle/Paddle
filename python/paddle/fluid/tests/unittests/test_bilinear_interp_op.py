@@ -59,7 +59,8 @@ def bilinear_interp_np(input,
         h = max(0, h)
         hid = 1 if h < in_h - 1 else 0
         if (align_mode == 0 and not align_corners):
-            h1lambda = ratio_h * (i + 0.5) - 0.5 - h
+            idx_src_h = max(ratio_h * (i + 0.5) - 0.5, 0)
+            h1lambda = idx_src_h - h
         else:
             h1lambda = ratio_h * i - h
         h2lambda = 1.0 - h1lambda
@@ -71,7 +72,8 @@ def bilinear_interp_np(input,
             w = max(0, w)
             wid = 1 if w < in_w - 1 else 0
             if (align_mode == 0 and not align_corners):
-                w1lambda = ratio_w * (j + 0.5) - 0.5 - w
+                idx_src_w = max(ratio_w * (j + 0.5) - 0.5, 0)
+                w1lambda = idx_src_w - w
             else:
                 w1lambda = ratio_w * j - w
             w2lambda = 1.0 - w1lambda
@@ -333,6 +335,17 @@ class TestBilinearInterpScale3(TestBilinearInterpOp):
         self.scale = 1.5
         self.align_corners = True
         self.align_mode = 1
+
+
+class TestBilinearInterpZero(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 7]
+        self.out_h = 60
+        self.out_w = 25
+        self.scale = 0.2
+        self.align_corners = False
+        self.align_mode = 0
 
 
 if __name__ == "__main__":

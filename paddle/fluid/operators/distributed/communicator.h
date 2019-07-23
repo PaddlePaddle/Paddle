@@ -167,6 +167,8 @@ class Communicator {
   void Start();
   void Stop();
 
+  bool IsRunning() { return running_; }
+
   // send grad
   void Send(const std::string& var_name, const framework::Scope& scope);
 
