@@ -155,8 +155,11 @@ struct HardLabelCrossEntropyForwardFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     auto label = label_[idx];
     if (label != ignore_index_) {
-      PADDLE_ASSERT_MSG(label >= 0 && label < feature_size_,
-                        "The label is out of the range.", label);
+      PADDLE_ASSERT_MSG(
+          label >= 0 && label < feature_size_,
+          "Received label(%ld) must be greater than or equal to zero, "
+          "and less than feature size(%ld)",
+          label, feature_size_);
       auto match_x = x_[idx * feature_size_ + label];
       y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
       match_x_[idx] = match_x;

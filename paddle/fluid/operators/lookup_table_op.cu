@@ -32,8 +32,12 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT_MSG(id >= 0, "received id:", id);
-    PADDLE_ASSERT_MSG(id < N, "received id:", id);
+    PADDLE_ASSERT_MSG(id >= 0, "Received id(%ld) must be greater than zero.",
+                      id);
+    PADDLE_ASSERT_MSG(id < N,
+                      "Received id(%ld) must be less than the first "
+                      "dimension size(%ld) of table.",
+                      id, N);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -59,9 +63,13 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT_MSG(id >= 0, "received id:", id);
-    PADDLE_ASSERT_MSG(id < N, "received id:", id);
     const T *out = output + idy * D;
+    PADDLE_ASSERT_MSG(id >= 0, "Received id(%ld) must be greater than zero.",
+                      id);
+    PADDLE_ASSERT_MSG(id < N,
+                      "Received id(%ld) must be less than the first "
+                      "dimension size(%ld) of table.",
+                      id, N);
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
       paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
