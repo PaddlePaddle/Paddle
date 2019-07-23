@@ -421,7 +421,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
 
-      // find batch_size
+      // show_batch_sum += N * log(decay)
       std::string size_name = name;
       size_name.replace(size_name.find("batch_sum"),
                        size_name.length(), "batch_size");
