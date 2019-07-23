@@ -171,16 +171,16 @@ void Communicator::SendThread() {
       }
 
       std::for_each(task_futures.begin(), task_futures.end(),
-                    [](auto &task) { task.wait(); })
+                    [](auto &task) { task.wait(); });
 
-          if (!FLAGS_communicator_independent_recv_thread) {
+      if (!FLAGS_communicator_independent_recv_thread) {
         RecvAll();
       }
 
       std::for_each(unmerged_vars.begin(), unmerged_vars.end(),
                     [](auto &iter) { iter.second.clear(); });
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
       VLOG(3) << "0 vars in send queue, wait";
     }
   }
