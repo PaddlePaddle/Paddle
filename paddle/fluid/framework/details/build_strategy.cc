@@ -92,16 +92,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
-    // NOTE(dzhwinter): A note for automatical inplace.
-    // 1. modify program desc passes should put
-    // before inplace pass.
-    // 2. manually configured inplace should put
-    // before inplace_pass
-
-    // Add automatically inplace.
-    if (strategy_.enable_inplace_) {
-      VLOG(1) << "Add inplace_pass";
-      AppendPass("inplace_pass");
+    // TODO(zjl): refactor MemoryOptimizePass to fit
+    // new strategy, which does not need to set
+    // var.persistable = True
+    if (strategy_.use_legacy_memory_optimize_strategy_) {
+      if (strategy_.enable_inplace_) {
+        VLOG(5) << "Add inplace_pass";
+        AppendPass("inplace_pass");
+      }
     }
 
     if (strategy_.fuse_elewise_add_act_ops_) {
@@ -160,9 +158,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // the de-fact IR, any reuse on Graph is meaningless.
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy_.memory_optimize_) {
-      VLOG(1) << "Add memory_optimize_pass";
-      AppendPass("memory_optimize_pass");
+    if (strategy_.use_legacy_memory_optimize_strategy_) {
+      if (strategy_.memory_optimize_) {
+        VLOG(5) << "Add memory_optimize_pass";
+        AppendPass("memory_optimize_pass");
+      }
     }
 
     // runtime_context_cache pass should be the last pass to enable the attr of
@@ -204,7 +204,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("all_reduce_deps_pass");
     }
 
-    if (strategy_.enable_backward_optimizer_op_deps_) {
+    if (strategy_.num_trainers_ > 1 && !strategy_.async_mode_ &&
+        !strategy_.is_distribution_ &&
+        strategy_.enable_backward_optimizer_op_deps_) {
       VLOG(1) << "Add backward_op_deps_pass";
       AppendPass("backward_optimizer_op_deps_pass");
     }
@@ -351,6 +353,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
+    } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
+      if (!use_cuda) {
+        VLOG(1) << "backward_optimizer_op_deps_pass is only supported on "
+                   "GPU, skipped.";
+        continue;
+      }
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);

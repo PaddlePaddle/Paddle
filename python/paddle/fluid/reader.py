@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from . import core, dygraph
+import sys
 import six
 import warnings
 import numpy as np
@@ -443,7 +444,7 @@ class PyReader(object):
             except Exception as ex:
                 self._queue.close()
                 logging.warn('Your decorated reader has raised an exception!')
-                raise ex
+                six.reraise(*sys.exc_info())
 
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True

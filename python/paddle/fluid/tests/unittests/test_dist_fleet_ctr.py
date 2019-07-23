@@ -46,7 +46,7 @@ class TestDistMnist2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
 if __name__ == "__main__":

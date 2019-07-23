@@ -50,6 +50,34 @@ class TestFillConstantOp2(OpTest):
         self.check_output()
 
 
+class TestFillConstantOp3(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified int64 value
+        '''
+        self.op_type = "fill_constant"
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'value': 10000000000}
+        self.outputs = {'Out': np.full((123, 92), 10000000000)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestFillConstantOp4(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified int value
+        '''
+        self.op_type = "fill_constant"
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'value': 3}
+        self.outputs = {'Out': np.full((123, 92), 3)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestFillConstantOpWithSelectedRows(OpTest):
     def check_with_place(self, place):
         scope = core.Scope()

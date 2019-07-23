@@ -102,6 +102,11 @@ class RoleMakerBase(object):
         """
         return self._server_endpoints
 
+    def to_string(self):
+        return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
+            self._role, self._current_id, self._worker_endpoints,
+            self._server_endpoints)
+
 
 class MPIRoleMaker(RoleMakerBase):
     """
