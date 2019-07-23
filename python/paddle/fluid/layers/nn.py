@@ -7087,10 +7087,10 @@ def lod_append(x, level):
 
     Args:
         x (Variable): Input variable which could be a tensor or LoDTensor.
-        level (list|tuple): The LoD level to be appended into LoD of x..
+        level (list|tuple): The LoD level to be appended into LoD of x.
 
     Returns:
-        Variable: Output variable with new LoD.
+        Variable: Output variable with new LoD level.
 
     Raises:
         ValueError: If :attr:`y` is None or and :attr:`level` is not Iterator.
