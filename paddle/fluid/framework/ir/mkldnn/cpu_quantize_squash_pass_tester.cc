@@ -42,6 +42,13 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale", scale);
+  } else if (type == "requantize") {
+    op->SetInput("Input", {inputs[0]});
+    op->SetOutput("Output", {outputs[0]});
+    op->SetAttr("Scale_out", scale);
+  } else if (type == "concat") {
+    op->SetInput("X", inputs);
+    op->SetOutput("Out", outputs);
   }
 }
 
@@ -98,6 +105,43 @@ ProgramDesc BuildProgramDesc2(bool use_mkldnn, float scale1, float scale2,
   return prog;
 }
 
+//  a->Conv1->b->Requant->c
+//  d->Conv2->e->Requant->f
+//  {c,f}->Concat
+ProgramDesc BuildProgramDesc3(bool use_mkldnn, float scale1, float scale2) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn);
+  SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn, scale1);
+
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn);
+  SetOp(&prog, "requantize", "Requant2", {"e"}, {"f"}, use_mkldnn, scale2);
+
+  SetOp(&prog, "concat", "Concat", {"c"}, {"f"}, use_mkldnn);
+
+  return prog;
+}
+
+// a->Concat->b
+// b->Dequant->c
+// c->Quant->d
+// d->Conv->e
+ProgramDesc BuildProgramDesc4(bool use_mkldnn, float scale1, float scale2) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "concat", "Concat", {"a"}, {"b"}, use_mkldnn);
+  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, scale1);
+  SetOp(&prog, "quantize", "Quant", {"c"}, {"d"}, use_mkldnn, scale2);
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn);
+  return prog;
+}
+
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
@@ -105,7 +149,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
   tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
-void MainTest(const ProgramDesc& prog, int removed_nodes_num) {
+// check number of nodes
+void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
   // Init scope, as it is used in pass
@@ -119,29 +164,55 @@ void MainTest(const ProgramDesc& prog, int removed_nodes_num) {
   }
 
   graph->SetNotOwned(kParamScopeAttr, &scope);
-
   auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
-
-  int original_nodes_num = graph->Nodes().size();
-
   graph.reset(pass->Apply(graph.release()));
 
+  int original_nodes_num = graph->Nodes().size();
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_EQ(original_nodes_num - removed_nodes_num, current_nodes_num);
 }
 
+// check if scale_out is equal
+void EqualScaleTest(const ProgramDesc& prog, float scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  // Init scope, as it is used in pass
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  exe.CreateVariables(prog, 0, true, &scope);
+
+  for (auto& v : variable_names) {
+    InitTensorHolder(&scope, place, v.c_str());
+  }
+
+  graph->SetNotOwned(kParamScopeAttr, &scope);
+  auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
+  graph.reset(pass->Apply(graph.release()));
+
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == "conv2d") {
+      auto* op = node->Op();
+      float scale_out = boost::get<float>(node->Op()->GetAttr("Scale_out"));
+      EXPECT_EQ(scale_out, scale);
+    }
+  }
+}
+
+// From Conv1->d->Dequant->e->Quant->f->Conv2
+// To Conv1->d->Conv2
 TEST(CpuQuantizeSquashPass, equal_scales) {
   auto scale = 1.2345f;
   auto use_mkldnn = true;
   // Remove 4 nodes: Dequant, Quant, e, f
   auto remove_nodes = 4;
-  MainTest(BuildProgramDesc(use_mkldnn, scale, scale), remove_nodes);
-
-  use_mkldnn = !use_mkldnn;
-  MainTest(BuildProgramDesc(use_mkldnn, scale, scale), remove_nodes);
+  CountNodeTest(BuildProgramDesc(use_mkldnn, scale, scale), remove_nodes);
 }
 
+// From Conv1->d->Dequant->e->Quant->f->Conv2
+// First change to Conv1->d->Requant->f->Conv2
+// Then Conv1->f->Conv2
 TEST(CpuQuantizeSquashPass, inequal_scales) {
   auto scale1 = 1.2345f;
   auto scale2 = 21.0f;
@@ -149,10 +220,7 @@ TEST(CpuQuantizeSquashPass, inequal_scales) {
   // Remove 3 nodes: Dequant, Quant, e
   // Insert 1 node: requantize
   auto remove_nodes = 2;
-  MainTest(BuildProgramDesc(use_mkldnn, scale1, scale2), remove_nodes);
-
-  use_mkldnn = !use_mkldnn;
-  MainTest(BuildProgramDesc(use_mkldnn, scale1, scale2), remove_nodes);
+  CountNodeTest(BuildProgramDesc(use_mkldnn, scale1, scale2), remove_nodes);
 }
 
 TEST(CpuQuantizeSquashPass, branch_to_equal_inequal_and_fp32) {
@@ -162,13 +230,40 @@ TEST(CpuQuantizeSquashPass, branch_to_equal_inequal_and_fp32) {
   auto scale = 1.2345f;
   auto scale2 = 21.0f;
   auto use_mkldnn = true;
-  // Remove 3 nodes: Quant1, Quant2, g
-  // Insert 1 node: requantize
-  auto remove_nodes = 2;
-  MainTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2), remove_nodes);
+  // Remove 4 nodes:  Dequant, Quant1, Quant2, g
+  auto remove_nodes = 4;
+  CountNodeTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2),
+                remove_nodes);
+}
 
-  use_mkldnn = !use_mkldnn;
-  MainTest(BuildProgramDesc2(use_mkldnn, scale, scale, scale2), remove_nodes);
+//  a->Conv1->b->Requant->c
+//  d->Conv2->e->Requant->f
+//  {c,f}->Concat
+TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
+  // Delete both requantize op
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // Remove 4 nodes: b, Requant1, e, Requant2
+  auto remove_nodes = 4;
+  CountNodeTest(BuildProgramDesc3(use_mkldnn, scale, scale), remove_nodes);
+
+  // check equal scale conv->scale_out and requant->scale_out
+  EqualScaleTest(BuildProgramDesc3(use_mkldnn, scale, scale), scale);
+}
+
+// a->Concat->b
+// b->Dequant->c
+// c->Quant->d
+// d->Conv->e
+TEST(CpuQuantizeSquashPass,
+     inequal_scales_squash_dequantize_quantize_into_requantize) {
+  auto scale = 1.2345f;
+  auto scale2 = 21.0f;
+  auto use_mkldnn = true;
+  // Remove 3 nodes: Dequant1, c, Quant
+  // Insert 1 node: Requant
+  auto remove_nodes = 2;
+  CountNodeTest(BuildProgramDesc4(use_mkldnn, scale, scale2), remove_nodes);
 }
 
 }  // namespace ir
