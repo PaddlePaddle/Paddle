@@ -72,7 +72,7 @@ struct BuildStrategy {
   // Add dependency between backward ops and optimization ops, make sure that
   // all the backward ops are finished before running the optimization ops.
   // It might make the training speed of data parallelism faster.
-  bool enable_backward_optimizer_op_deps_{false};
+  bool enable_backward_optimizer_op_deps_{true};
   // TODO(dev-paddle): enable_sequential_execution depends on
   // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
   // will be removed in the near future.
@@ -114,7 +114,12 @@ struct BuildStrategy {
   // it is not appropriate, because kStaleProgramOpDescs will be removed in the
   // near future.
   bool memory_optimize_{false};
-  bool enable_inplace_{false};
+
+  // Turn on inplace by default.
+  bool enable_inplace_{true};
+
+  // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
+  bool use_legacy_memory_optimize_strategy_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

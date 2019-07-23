@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/ir/alloc_continuous_space_for_grad_pass.h"
+#include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -41,7 +41,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -51,7 +50,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -189,13 +187,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
-
-  m.def("get_mem_usage", [](int device) {
-    return memory::allocation::GPUMemMonitor.GetMemUsage(device);
-  });
-
-  m.def("print_mem_usage",
-        []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   BindImperative(&m);
 
@@ -1408,26 +1399,19 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int nccl_comm_num) {
             self.nccl_comm_num_ = nccl_comm_num;
           })
-      .def_property("use_hierarchical_allreduce_",
+      .def_property("use_hierarchical_allreduce",
                     [](const BuildStrategy &self) {
                       return self.use_hierarchical_allreduce_;
                     },
                     [](BuildStrategy &self, bool use) {
                       self.use_hierarchical_allreduce_ = use;
                     })
-      .def_property("hierarchical_allreduce_inter_nranks_",
+      .def_property("hierarchical_allreduce_inter_nranks",
                     [](const BuildStrategy &self) {
                       return self.hierarchical_allreduce_inter_nranks_;
                     },
                     [](BuildStrategy &self, int nranks) {
                       self.hierarchical_allreduce_inter_nranks_ = nranks;
-                    })
-      .def_property("hierarchical_allreduce_exter_nranks_",
-                    [](const BuildStrategy &self) {
-                      return self.hierarchical_allreduce_exter_nranks_;
-                    },
-                    [](BuildStrategy &self, int nranks) {
-                      self.hierarchical_allreduce_exter_nranks_ = nranks;
                     })
 
       .def_property(
@@ -1549,6 +1533,13 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property("_use_legacy_memory_optimize_strategy",
+                    [](const BuildStrategy &self) {
+                      return self.use_legacy_memory_optimize_strategy_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.use_legacy_memory_optimize_strategy_ = b;
+                    })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
@@ -1609,7 +1600,6 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindRecordIOWriter(&m);
-  BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);

@@ -42,10 +42,7 @@ void GatherOpHandle::RunImpl() {
     out_var_handle = out_var_handles.front();
   }
 
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
+  auto &var_scopes = local_exec_scopes_;
 
   auto in_0_handle = in_var_handles[0];
   auto pre_in_var =

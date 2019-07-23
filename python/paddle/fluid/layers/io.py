@@ -17,6 +17,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
+import sys
 import threading
 
 from ..data_feeder import DataFeeder
@@ -595,7 +596,7 @@ def _py_reader(capacity,
             except Exception as ex:
                 feed_queue.close()
                 logging.warn('Your decorated reader has raised an exception!')
-                raise ex
+                six.reraise(*sys.exc_info())
 
         reader.thread = threading.Thread(target=__provider_thread__)
         reader.thread.daemon = True
