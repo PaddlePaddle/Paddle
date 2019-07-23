@@ -108,12 +108,10 @@ struct BuildStrategy {
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
-  bool memory_optimize_{true};
+  bool memory_optimize_{false};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
-
-  bool move_tensor_sharing_to_compute_op_{false};
 
   // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
   bool use_legacy_memory_optimize_strategy_{false};

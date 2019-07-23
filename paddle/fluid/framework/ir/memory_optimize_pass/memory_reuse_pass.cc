@@ -110,7 +110,8 @@ void MemoryReusePass::CollectShareTensorBufferOpHandles() const {
     auto *share_buffer_op =
         dynamic_cast<details::ShareTensorBufferOpHandle *>(op);
     if (share_buffer_op != nullptr) {
-      auto *compute_op = GetUniquePendingComputationOpHandle(share_buffer_op);
+      auto *compute_op =
+          details::GetUniquePendingComputationOpHandle(share_buffer_op);
       PADDLE_ENFORCE(ops_.count(compute_op) == 0);
       ops_.emplace(compute_op, share_buffer_op);
     }

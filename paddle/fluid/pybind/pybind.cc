@@ -1540,13 +1540,6 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, bool b) {
                       self.use_legacy_memory_optimize_strategy_ = b;
                     })
-      .def_property("_move_tensor_sharing_to_compute_op",
-                    [](const BuildStrategy &self) {
-                      return self.move_tensor_sharing_to_compute_op_;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      self.move_tensor_sharing_to_compute_op_ = b;
-                    })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },

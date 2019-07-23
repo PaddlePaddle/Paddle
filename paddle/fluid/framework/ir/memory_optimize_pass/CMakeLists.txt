@@ -23,4 +23,3 @@ cc_library(memory_reuse_pass SRCS memory_reuse_pass.cc DEPS computation_op_handl
 
 cc_library(buffer_shared_inplace_op_pass SRCS buffer_shared_inplace_op_pass.cc DEPS memory_reuse_pass)
 cc_library(buffer_shared_cross_op_memory_reuse_pass SRCS buffer_shared_cross_op_memory_reuse_pass.cc DEPS memory_reuse_pass) 
-cc_library(move_tensor_sharing_to_compute_op_pass SRCS move_tensor_sharing_to_compute_op_pass.cc DEPS computation_op_handle share_tensor_buffer_op_handle pass graph graph_helper)

@@ -13,33 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+
 #include <string>
 
 namespace paddle {
 namespace framework {
 namespace details {
-
-ComputationOpHandle *GetUniquePendingComputationOpHandle(
-    ShareTensorBufferOpHandle *share_tensor_op) {
-  ComputationOpHandle *result_op = nullptr;
-  for (ir::Node *out_var : share_tensor_op->Node()->outputs) {
-    for (ir::Node *pending_op : out_var->outputs) {
-      auto &op = pending_op->Wrapper<OpHandleBase>();
-      auto *compute_op = dynamic_cast<ComputationOpHandle *>(&op);
-      PADDLE_ENFORCE_NOT_NULL(compute_op);
-
-      if (result_op == nullptr) {
-        result_op = compute_op;
-      } else {
-        PADDLE_ENFORCE_EQ(result_op, compute_op);
-      }
-    }
-  }
-
-  PADDLE_ENFORCE_NOT_NULL(result_op);
-  return result_op;
-}
-
 ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
                                          platform::Place place,
                                          size_t scope_idx)
@@ -51,10 +30,6 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
 
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
-
-  if (functor_) {
-    (*functor_)(local_exec_scopes_[0]);
-  }
 
   auto run_func = [this]() { op_->Run(*local_exec_scopes_[0], place_); };
 

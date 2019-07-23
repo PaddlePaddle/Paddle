@@ -65,8 +65,10 @@ class TestParallelExecutorBase(unittest.TestCase):
                 main.random_seed = seed
 
             loss = method(use_feed=feed_dict is not None)
-            if memory_opt or use_ir_memory_optimize:
+            if memory_opt:
                 loss.persistable = True
+            else:
+                loss.persistable = False
 
             if optimizer:
                 optimizer().minimize(loss)
@@ -86,9 +88,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
         build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
-        # build_strategy.memory_optimize = False if memory_opt else use_ir_memory_optimize
-        build_strategy.memory_optimize = True
-        build_strategy._move_tensor_sharing_to_compute_op = False
+        build_strategy.memory_optimize = use_ir_memory_optimize
 
         build_strategy.fuse_all_optimizer_ops = fuse_all_optimizer_ops
         build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops

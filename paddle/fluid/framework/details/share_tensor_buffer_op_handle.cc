@@ -25,101 +25,25 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// TODO(zjl): support SelectedRows
-static inline const Tensor &GetTensorFromVar(const Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
-  } else {
-    PADDLE_THROW("Variable must be type of LoDTensor");
-  }
-}
+ComputationOpHandle *GetUniquePendingComputationOpHandle(
+    ShareTensorBufferOpHandle *share_tensor_op) {
+  ComputationOpHandle *result_op = nullptr;
+  for (ir::Node *out_var : share_tensor_op->Node()->outputs) {
+    for (ir::Node *pending_op : out_var->outputs) {
+      auto &op = pending_op->Wrapper<OpHandleBase>();
+      auto *compute_op = dynamic_cast<ComputationOpHandle *>(&op);
+      PADDLE_ENFORCE_NOT_NULL(compute_op);
 
-static inline Tensor *GetMutableTensorFromVar(Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  } else {
-    PADDLE_THROW("Variable must be type of LoDTensor");
-  }
-}
-
-ShareTensorBufferFunctor::ShareTensorBufferFunctor(
-    Scope *scope, size_t scope_idx, const std::string &op_type,
-    const std::vector<ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names)
-    : scope_(scope),
-      scope_idx_(scope_idx),
-      op_type_(op_type),
-      in_var_infos_(in_var_infos),
-      out_var_names_(out_var_names) {
-  PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size());
-  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    Add(in_var_infos_[i], out_var_names_[i]);
-  }
-}
-
-std::unordered_map<std::string, std::string>
-ShareTensorBufferFunctor::ReusedVars() const {
-  std::unordered_map<std::string, std::string> result;
-  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    result.insert({in_var_infos_[i]->Name(), out_var_names_[i]});
-  }
-  return result;
-}
-
-void ShareTensorBufferFunctor::Add(ir::MemOptVarInfo *in_var_info,
-                                   const std::string &out_var_name) {
-  PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
-  PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
-                    "in/out cannot have same name: %s", out_var_name);
-  in_var_infos_.emplace_back(in_var_info);
-  out_var_names_.emplace_back(out_var_name);
-}
-
-void ShareTensorBufferFunctor::CallOnce() {
-  PADDLE_ENFORCE(in_out_vars_.empty(), "in_out_vars_ must be initialized here");
-  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    auto *in_var = exec_scope_->FindVar(in_var_infos_[i]->Name());
-    auto *out_var = exec_scope_->FindVar(out_var_names_[i]);
-    PADDLE_ENFORCE_NOT_NULL(in_var);
-    PADDLE_ENFORCE_NOT_NULL(out_var);
-    PADDLE_ENFORCE_NE(in_var, out_var);
-    in_out_vars_.emplace_back(in_var, out_var);
-  }
-}
-
-void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
-  if (!exec_scope_) {
-    PADDLE_ENFORCE_NOT_NULL(exec_scope);
-    exec_scope_ = exec_scope;
-    CallOnce();
-  } else {
-    PADDLE_ENFORCE_EQ(exec_scope_, exec_scope, "Scope must be the same");
-  }
-
-  for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    const auto &in_tensor = GetTensorFromVar(in_out_vars_[i].first);
-    auto *out_tensor = GetMutableTensorFromVar(in_out_vars_[i].second);
-    auto *in_var_info = in_var_infos_[i];
-
-    if (UNLIKELY(in_var_info->IsSkipped())) {
-      // If in_var is inplaced in the previous batch and we want to fetch
-      // in_var in the current batch, we have to reset memory of out_var
-      // to avoid wrong calculation result.
-      if (in_tensor.Holder() == out_tensor->Holder()) {
-        VLOG(1) << "Clear " << out_var_names_[i]
-                << " because you may want to fetch an inplaced variable "
-                << in_var_info->Name()
-                << " in previous batch: " << in_var_info->Name() << " -> "
-                << out_var_names_[i];
-        out_tensor->clear();
+      if (result_op == nullptr) {
+        result_op = compute_op;
+      } else {
+        PADDLE_ENFORCE_EQ(result_op, compute_op);
       }
-    } else {
-      out_tensor->ShareBufferWith(in_tensor);
-
-      VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
-              << in_var_info->Name() << " -> " << out_var_names_[i];
     }
   }
+
+  PADDLE_ENFORCE_NOT_NULL(result_op);
+  return result_op;
 }
 
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
