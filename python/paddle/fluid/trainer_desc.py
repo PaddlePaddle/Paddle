@@ -83,7 +83,8 @@ class TrainerDesc(object):
         return self.proto_desc.SerializeToString()
 
     def __str__(self):
-        return str(self.proto_desc)
+        from google.protobuf import text_format
+        return text_format.MessageToString(self.proto_desc)
 
 
 class MultiTrainer(TrainerDesc):

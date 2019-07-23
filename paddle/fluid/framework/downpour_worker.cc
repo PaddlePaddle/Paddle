@@ -90,7 +90,12 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     VLOG(3) << "sparse_key_names_[" << i
             << "]: " << sparse_key_names_[table_id][i];
     Variable* fea_var = thread_scope_->FindVar(sparse_key_names_[table_id][i]);
+    if (fea_var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var "
+                             << sparse_key_names_[table_id][i] << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
@@ -129,7 +134,11 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
     Variable* var = thread_scope_->FindVar(slot_name);
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
@@ -199,6 +208,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
+  double op_sum_time = 0;
+  std::unordered_map<std::string, double> op_to_time;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -348,7 +359,27 @@ void DownpourWorker::TrainFilesWithProfiler() {
         for (size_t i = 0; i < op_total_time.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          if (op_to_time.find(op_name[i]) == op_to_time.end()) {
+            op_to_time[op_name[i]] = 0.0;
+          }
+          op_to_time[op_name[i]] += op_total_time[i];
+          op_sum_time += op_total_time[i];
         }
+        for (auto& i : op_to_time) {
+          fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+                  i.second / batch_cnt);
+        }
+        fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
+        fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
+        fprintf(stderr, "pull sparse time: %fs\n",
+                pull_sparse_time / batch_cnt);
+        fprintf(stderr, "fill sparse time: %fs\n",
+                fill_sparse_time / batch_cnt);
+        fprintf(stderr, "push sparse time: %fs\n",
+                push_sparse_time / batch_cnt);
+        fprintf(stderr, "push dense time: %fs\n", push_dense_time / batch_cnt);
+        fprintf(stderr, "collect label time: %fs\n",
+                collect_label_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
