@@ -46,7 +46,7 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   size_t GetScopeIdx() const { return scope_idx_; }
 
-  void Add(ir::MemOptVarInfo *in_var_info, const std::string &ou_var_name);
+  void Add(ir::MemOptVarInfo *in_var_info, const std::string &out_var_name);
 
  protected:
   std::string Name() const override { return "buffer_share"; }
