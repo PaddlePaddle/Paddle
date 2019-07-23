@@ -36,6 +36,7 @@ def simple_net2():
     feature = fluid.layers.fc(input=x, size=10, act=None)
     label = fluid.layers.cast(label, dtype="float32")
     label = fluid.layers.cast(label, dtype='int64')
+    # Note that the label is not persistable in fluid.layers.cross_entropy.
     loss = fluid.layers.cross_entropy(input=feature, label=label)
     loss = fluid.layers.mean(loss)
     return loss
