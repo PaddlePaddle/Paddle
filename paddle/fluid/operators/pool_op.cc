@@ -78,12 +78,16 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
   } else {
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(PoolOutputSize(
-          in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+      if ((!ctx->IsRuntime()) && (in_x_dims[i + 2] < 0)) {
+        output_shape.push_back(in_x_dims[i + 2]);
+      } else {
+        output_shape.push_back(PoolOutputSize(
+            in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+      }
     }
+    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->ShareLoD("X", "Out");
   }
-  ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-  ctx->ShareLoD("X", "Out");
 }
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(
@@ -194,7 +198,8 @@ void Pool2dOpMaker::Make() {
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
-      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "(bool, default False) When true, will perform adaptive pooling "
+      "instead, "
       "output shape in H and W dimensions will be same as ksize, input data "
       "will be divided into grids specify by ksize averagely and perform "
       "pooling in each grid area to get output pooling value.")
@@ -364,7 +369,8 @@ void Pool3dOpMaker::Make() {
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
-      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "(bool, default False) When true, will perform adaptive pooling "
+      "instead, "
       "output shape in H and W dimensions will be same as ksize, input data "
       "will be divided into grids specify by ksize averagely and perform "
       "pooling in each grid area to get output pooling value.")
