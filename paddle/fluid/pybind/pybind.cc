@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/ir/alloc_continuous_space_for_grad_pass.h"
+#include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -41,7 +41,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -188,13 +187,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
-
-  m.def("get_mem_usage", [](int device) {
-    return memory::allocation::GPUMemMonitor.GetMemUsage(device);
-  });
-
-  m.def("print_mem_usage",
-        []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
   BindImperative(&m);
 
