@@ -258,7 +258,9 @@ void FleetWrapper::PushDenseVarsSync(
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* push_sparse_status) {
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    float scale_datanorm,
+    int batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
@@ -266,6 +268,20 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
+    if (scale_datanorm >= 0) {
+        if (t.find(".batch_size@GRAD") != std::string::npos 
+            || t.find(".batch_sum@GRAD") != std::string::npos) { 
+            Eigen::Map<Eigen::MatrixXf> mat(g, 1, count);
+            float scale = 1.0 / batch_size;
+            mat *= scale;
+        } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
+            //VLOG(0) << "epsilon: " << epsilon;
+            for (int i = 0; i < count; ++i) {
+                g[i] = (g[i] - batch_size * scale_datanorm) / batch_size 
+                       + batch_size * scale_datanorm;
+            }    
+        }   
+    }
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
@@ -393,18 +409,31 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 
 void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
                                     std::vector<std::string> var_list,
-                                    float decay) {
+                                    float decay,
+                                    int emb_dim) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (std::string& name : var_list) {
     if (name.find("batch_sum") != std::string::npos) {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      VLOG(3) << "prepare shrink dense batch_sum";
+      VLOG(0) << "prepare shrink dense batch_sum";
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
-      Eigen::Map<Eigen::MatrixXf> mat(g, 1, tensor->numel());
-      mat *= decay;
+
+      // find batch_size
+      std::string size_name = name;
+      size_name.replace(size_name.find("batch_sum"), size_name.length(), "batch_size");
+      Variable* var_size = scope->FindVar(size_name);
+      CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
+      VLOG(0) << "prepare shrink dense batch_sum: " << name << ", " << size_name;
+      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+
+      //Eigen::Map<Eigen::MatrixXf> mat(g, 1, tensor->numel());
+      //mat *= decay;
+      for (int k = 0; k < tensor->numel(); k += emb_dim) {
+          g[k] = g[k] + g_size[k] * log(decay);
+      }
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     } else {

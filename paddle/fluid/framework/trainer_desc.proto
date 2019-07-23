@@ -33,6 +33,7 @@ message TrainerDesc {
   optional bool debug = 6 [ default = false ];
   optional FetchConfig fetch_config = 7;
   optional bool use_cvm = 8 [ default = false ];
+  optional float scale_datanorm = 9 [ default = -1 ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
