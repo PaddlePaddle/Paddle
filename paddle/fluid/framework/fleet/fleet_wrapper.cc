@@ -269,18 +269,18 @@ void FleetWrapper::PushDenseVarsAsync(
     int count = tensor->numel();
     float* g = tensor->data<float>();
     if (scale_datanorm >= 0) {
-        if (t.find(".batch_size@GRAD") != std::string::npos 
-            || t.find(".batch_sum@GRAD") != std::string::npos) { 
+        if (t.find(".batch_size@GRAD") != std::string::npos
+            || t.find(".batch_sum@GRAD") != std::string::npos) {
             Eigen::Map<Eigen::MatrixXf> mat(g, 1, count);
             float scale = 1.0 / batch_size;
             mat *= scale;
         } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
-            //VLOG(0) << "epsilon: " << epsilon;
+            VLOG(3) << "epsilon: " << scale_datanorm;
             for (int i = 0; i < count; ++i) {
-                g[i] = (g[i] - batch_size * scale_datanorm) / batch_size 
+                g[i] = (g[i] - batch_size * scale_datanorm) / batch_size
                        + batch_size * scale_datanorm;
-            }    
-        }   
+            }
+        }
     }
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
@@ -423,14 +423,13 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 
       // find batch_size
       std::string size_name = name;
-      size_name.replace(size_name.find("batch_sum"), size_name.length(), "batch_size");
+      size_name.replace(size_name.find("batch_sum"),
+                       size_name.length(), "batch_size");
       Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
-      VLOG(0) << "prepare shrink dense batch_sum: " << name << ", " << size_name;
+      VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
       float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
 
-      //Eigen::Map<Eigen::MatrixXf> mat(g, 1, tensor->numel());
-      //mat *= decay;
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
           g[k] = g[k] + g_size[k] * log(decay);
       }
