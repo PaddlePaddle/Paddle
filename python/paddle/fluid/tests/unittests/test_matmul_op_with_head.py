@@ -81,9 +81,7 @@ def matmul_head(X, Y, head_number=1):
 
 
 def transpose_mat(X):
-    if X.ndim == 1:
-        X = X.reshape((X.size, 1))
-    else:
+    if X.ndim >= 2:
         dim = np.arange(X.ndim)
         dim[[-1, -2]] = dim[[-2, -1]]
         X = np.transpose(X, tuple(dim))
