@@ -137,7 +137,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
 def Print(input,
           first_n=-1,
           message=None,
-          summarize=-1,
+          summarize=20,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -179,11 +179,17 @@ def Print(input,
            
            import paddle.fluid as fluid
            
-           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           input = fluid.layers.Print(input, message = "The content of input layer:")
-           # value = some_layer(...)
-           # Print(value, summarize=10,
-           #    message="The content of some_layer: ")
+           input = fluid.layers.data(name="input", shape=[1, 28, 28], dtype='float32')
+           input = fluid.layers.Print(input, message="The content of input layer:")
+    
+    Output at runtime:
+        .. code-block:: console 
+           
+           1564546375  The content of input layer:     The place is:CPUPlace
+           Tensor[input]
+               shape: [64,1,28,28]
+               dtype: f
+               data: -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
 
     '''
     helper = LayerHelper('print' + "_" + input.name, **locals())
