@@ -523,6 +523,7 @@ class DistributeTranspiler(object):
                 splited_grad_varname = splited_vars[0].name
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
+
                 if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
                     sparse_param_name = self.grad_name_to_param_name[
                         grad_varname]
@@ -530,10 +531,20 @@ class DistributeTranspiler(object):
                             sparse_param_name):
                         self.sparse_param_to_height_sections[
                             sparse_param_name] = [splited_vars[0].shape[0]]
+
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
+
+                if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
+                    sparse_param_name = self.grad_name_to_param_name[
+                        grad_varname]
+                    if self._is_input_of_remote_sparse_update_op(
+                            sparse_param_name):
+                        self.sparse_param_to_height_sections[
+                            sparse_param_name] = [splited_vars[0].shape[0]]
+
                 if not self.config.runtime_split_send_recv:
                     self._insert_split_op(program, orig_var, index,
                                           splited_vars)

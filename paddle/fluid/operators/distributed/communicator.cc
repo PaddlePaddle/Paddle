@@ -103,73 +103,91 @@ Communicator::~Communicator() {
 
 void Communicator::SendThread() {
   VLOG(3) << "SendThread start!";
-  while (running_) {
-    std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(3) << "run send graph";
-    auto before_run_send_graph = GetCurrentUS();
-    for (auto &iter : send_varname_to_queue_) {
-      auto &var_name = iter.first;
-      auto &var_queue = iter.second;
-      if (var_queue->Size() > 0) {
-        auto send_task = [this, &var_name, &var_queue] {
-          VLOG(3) << var_name << " merge and send";
-          std::vector<std::shared_ptr<Variable>> vars;
-          size_t merged_var_num = 0;
-          size_t wait_times = 0;
-          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
-            if (var_queue->Size() == 0) {
-              VLOG(3) << "wait_times -> " << wait_times;
-              if (wait_times >= FLAGS_communicator_send_wait_times) {
-                break;
-              }
-              std::this_thread::sleep_for(std::chrono::milliseconds(10));
-              wait_times++;
-              continue;
-            } else {
-              wait_times = 0;
 
-              vars.push_back(var_queue->Pop());
-              // only count the send number of the first var
-              if (var_name == send_varname_to_queue_.begin()->first) {
-                grad_num_.fetch_add(1, std::memory_order_relaxed);
-              }
-              merged_var_num++;
-            }
-          }
+  std::unordered_map<std::string, std::vector<std::shared_ptr<Variable>>>
+      unmerged_vars;
+
+  for (auto &iter : send_varname_to_ctx_) {
+    std::vector<std::shared_ptr<Variable>> vars;
+    vars.reserve(FLAGS_communicator_max_merge_var_num);
+    unmerged_vars[iter.first] = vars;
+  }
+
+  auto &first_var_q = send_varname_to_queue_.begin()->second;
+  auto &first_var_v = unmerged_vars.begin()->second;
+  auto wait_times = 0;
+
+  while (running_) {
+    while (first_var_v.size() < FLAGS_communicator_max_merge_var_num) {
+      if (first_var_q->Size() == 0) {
+        VLOG(3) << "wait_times -> " << wait_times;
+        if (wait_times >= FLAGS_communicator_send_wait_times) {
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        wait_times++;
+        continue;
+      } else {
+        wait_times = 0;
+
+        for (auto &iter : send_varname_to_queue_) {
+          auto &var_name = iter.first;
+          auto &var_queue = iter.second;
+          auto &var_vec = unmerged_vars.at(var_name);
+
+          var_vec.push_back(var_queue->Pop());
+        }
+        grad_num_.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
+
+    if (first_var_v.size() > 0) {
+      std::vector<std::future<void>> task_futures;
+      task_futures.reserve(send_varname_to_ctx_.size());
+      VLOG(3) << "run merge and send graph";
+
+      for (auto &iter : unmerged_vars) {
+        auto &var_name = iter.first;
+        auto &vars = iter.second;
+
+        auto send_task = [this, &var_name, &vars] {
           auto before_merge = GetCurrentUS();
           MergeVars(var_name, vars, send_scope_.get());
           auto after_merge = GetCurrentUS();
-          VLOG(3) << "merge " << merged_var_num << " " << var_name
-                  << " use time " << after_merge - before_merge;
+
           auto send_functor = distributed::ParameterSend<float>();
           auto &ctx = send_varname_to_ctx_.at(var_name);
           if (!FLAGS_communicator_fake_rpc) {
             send_functor(ctx, *send_scope_, true);
           }
           auto after_send = GetCurrentUS();
-          VLOG(3) << "send " << var_name << " use time "
+
+          VLOG(3) << var_name << " merge use time "
+                  << after_merge - before_merge << " send use time "
                   << after_send - after_merge;
         };
         task_futures.emplace_back(
             send_threadpool_->enqueue(std::move(send_task)));
-      } else {
-        VLOG(4) << var_name << " queue empty";
       }
-    }
-    for (auto &task_f : task_futures) {
-      task_f.wait();
-    }
-    auto after_run_send_graph = GetCurrentUS();
-    auto send_graph_use_time = after_run_send_graph - before_run_send_graph;
-    if (send_graph_use_time > 100) {
-      VLOG(1) << "run send graph use time "
-              << after_run_send_graph - before_run_send_graph;
-    }
-    if (!FLAGS_communicator_independent_recv_thread) {
-      RecvAll();
+
+      std::for_each(task_futures.begin(), task_futures.end(),
+                    [](auto &task) { task.wait(); })
+
+          if (!FLAGS_communicator_independent_recv_thread) {
+        RecvAll();
+      }
+
+      std::for_each(unmerged_vars.begin(), unmerged_vars.end(),
+                    [](auto &iter) { iter.second.clear(); });
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      VLOG(3) << "0 vars in send queue, wait";
     }
   }
+
+  std::for_each(unmerged_vars.begin(), unmerged_vars.end(),
+                [](auto &iter) { iter.second.clear(); });
+
   VLOG(0) << "communicator stopped, send thread exit";
 }
 
