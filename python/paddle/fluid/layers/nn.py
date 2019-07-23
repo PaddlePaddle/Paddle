@@ -1826,6 +1826,7 @@ def sequence_conv(input,
                   filter_size=3,
                   filter_stride=1,
                   padding=None,
+                  padding_start=None,
                   bias_attr=None,
                   param_attr=None,
                   act=None,
@@ -1840,7 +1841,13 @@ def sequence_conv(input,
         num_filters (int): number of filters.
         filter_size (int): the filter size (H and W).
         filter_stride (int): stride of the filter.
-        padding (bool): if True, add paddings.
+        padding (bool): if True, it will generate non-zero padding data by param_attr, which also will
+             be update while training. If False, it will generate zero padding data, and these data
+             will not be trainable. 
+        padding_start (int|None): the start index of padding operation represents the beginning of the
+             convolution of the number of rows of sequence, which can be negative. The negative number
+             means to pad contextStart time-steps of zeros or learnable parameters at the beginning of
+             each instance. The positive number means to skip contextStart time-steps of each instance."
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -1874,18 +1881,33 @@ def sequence_conv(input,
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_variable_for_type_inference(dtype)
+    if padding_start is None:
+        padding_start = -int(filter_size // 2)
+    elif not isinstance(padding_start, int):
+        raise ("Param(padding_start) must be type of int.")
+
+    if padding_start == 0 and filter_size == 1:
+        padding = False
+    if padding:
+        pad_size = max(0, -padding_start) + max(0, padding_start + filter_size -
+                                                1)
+        padding_shape = [pad_size, input.shape[1]]
+        padding_param = helper.create_parameter(
+            attr=helper.param_attr, shape=padding_shape, dtype=dtype)
 
     helper.append_op(
         type='sequence_conv',
         inputs={
             'X': [input],
             'Filter': [filter_param],
+            'PaddingData': padding_param if padding else None
         },
         outputs={"Out": pre_bias},
         attrs={
             'contextStride': filter_stride,
-            'contextStart': -int(filter_size // 2),
-            'contextLength': filter_size
+            'contextStart': padding_start,
+            'contextLength': filter_size,
+            'paddingTrainable': padding
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
