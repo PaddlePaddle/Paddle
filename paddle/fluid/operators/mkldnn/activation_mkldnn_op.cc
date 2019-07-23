@@ -77,8 +77,7 @@ class MKLDNNActivationGradKernel
 
 template <typename T>
 void eltwise_forward(const framework::ExecutionContext &ctx,
-                     mkldnn::algorithm algorithm, const T alpha = 0,
-                     const T beta = 0) {
+                     mkldnn::algorithm algorithm) {
   PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                  "It must use CPUPlace.");
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
@@ -89,6 +88,9 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   const T *x_data = x->data<T>();
   T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+  const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   PADDLE_ENFORCE(
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
@@ -152,8 +154,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
 template <typename T>
 void eltwise_grad(const framework::ExecutionContext &ctx,
-                  mkldnn::algorithm algorithm, const T alpha = 0,
-                  const T beta = 0) {
+                  mkldnn::algorithm algorithm) {
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto &mkldnn_engine = dev_ctx.GetEngine();
 
@@ -162,6 +163,9 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   const T *diff_y_data = diff_y->data<T>();
   T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
+
+  const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
 
@@ -274,10 +278,11 @@ namespace ops = paddle::operators;
       act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,               \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)            \
-  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor); \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor); \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor); \
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                  \
+  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);       \
+  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor); \
+  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);       \
+  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);       \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
