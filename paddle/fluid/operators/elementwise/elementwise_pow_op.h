@@ -60,7 +60,6 @@ template <typename DeviceContext, typename T>
 class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
 public:
     void Compute(const framework::ExecutionContext& ctx) const override {
-        VLOG(3) << "starting....ElementwisePowGradKernel .....Compute().....";
         ElemwiseGradKernel<T>::Compute(ctx);
         using Tensor = framework::Tensor;
         auto* x = ctx.Input<Tensor>("X");
