@@ -27,8 +27,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 
-  dataset->CreateReaders();
-  const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
+  const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
 
   thread_num_ = readers.size();
@@ -72,7 +71,6 @@ void DistMultiTrainer::Finalize() {
     th.join();
   }
   pull_dense_worker_->Stop();
-  dataset_ptr_->DestroyReaders();
   root_scope_->DropKids();
 }
 

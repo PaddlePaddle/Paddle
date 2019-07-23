@@ -29,6 +29,11 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
 
   rules_["concat"]["X"] = ScaleAlgo::KL;
   rules_["concat"]["Out"] = ScaleAlgo::KL;
+
+  rules_["prior_box"]["Input"] = ScaleAlgo::KL;
+  rules_["prior_box"]["Image"] = ScaleAlgo::NONE;
+  rules_["prior_box"]["Boxes"] = ScaleAlgo::NONE;
+  rules_["prior_box"]["Variances"] = ScaleAlgo::NONE;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

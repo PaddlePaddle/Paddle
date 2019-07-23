@@ -58,15 +58,19 @@ constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 typedef std::string FusedOptType;
 constexpr char kFusedOptType[] = "fused_opt_type";
 
-typedef std::string FusedGrads;
+typedef std::vector<std::string> FusedGrads;
 constexpr char kFusedGrads[] = "fused_gradients";
 
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
-constexpr char kParamsAndGrads[] = "params_grads";
+constexpr char kParamsAndDenseGrads[] = "params_and_dense_grads";
+constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
+
+typedef std::vector<ProgramDesc> ProgramDescs;
+constexpr char kProgramDescs[] = "program_descs";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
-    GroupGradsAndParams;
-constexpr char kGroupGradsAndParams[] = "group_grads_params";
+    GroupParamsAndGrads;
+constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
 
 }  // namespace details
 }  // namespace framework
