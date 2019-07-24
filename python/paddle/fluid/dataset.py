@@ -71,6 +71,7 @@ class DatasetBase(object):
         self.proto_desc.pipe_command = "cat"
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 0
+        self.filelist = []
 
     def set_pipe_command(self, pipe_command):
         """
@@ -139,6 +140,7 @@ class DatasetBase(object):
             filelist(list): file list
         """
         self.dataset.set_filelist(filelist)
+        self.filelist = filelist
 
     def set_use_var(self, var_list):
         """
@@ -193,7 +195,14 @@ class DatasetBase(object):
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
+        if self.thread_num > len(self.filelist):
+            self.thread_num = len(self.filelist)
+        self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self.desc())
+        self.dataset.create_readers()
+
+    def _finish_to_run(self):
+        self.dataset.destroy_readers()
 
     def desc(self):
         """
@@ -226,6 +235,92 @@ class InMemoryDataset(DatasetBase):
         """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
+        self.fleet_send_batch_size = 80000
+        self.queue_num = None
+        self.merge_by_lineid = False
+
+    def _prepare_to_run(self):
+        """
+        Set data_feed_desc before load or shuffle,
+        user no need to call this function.
+        """
+        if self.thread_num > len(self.filelist):
+            self.thread_num = len(self.filelist)
+        self.dataset.set_thread_num(self.thread_num)
+        if self.queue_num is None:
+            self.queue_num = self.thread_num
+        self.dataset.set_queue_num(self.queue_num)
+        self.dataset.set_data_feed_desc(self.desc())
+        self.dataset.create_channel()
+        self.dataset.create_readers()
+
+    def set_queue_num(self, queue_num):
+        """
+        Set Dataset output queue num, training threads get data from queues
+
+        Args:
+            queue_num(int): dataset output queue num
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_queue_num(12)
+
+        """
+        self.queue_num = queue_num
+
+    def set_fleet_send_batch_size(self, fleet_send_batch_size):
+        """
+        Set fleet send batch size, default is 80000
+
+        Args:
+            fleet_send_batch_size(int): fleet send batch size
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_fleet_send_batch_size(800)
+
+        """
+        self.fleet_send_batch_size = fleet_send_batch_size
+
+    def set_merge_by_lineid(self,
+                            var_list,
+                            erase_duplicate_feas=True,
+                            min_merge_size=2,
+                            keep_unmerged_ins=True):
+        """
+        Set merge by line id, instances of same line id will be merged after
+        shuffle, you should parse line id in data generator.
+
+        Args:
+            var_list(list): slots that can be merge. each element in var_list
+                            is Variable. some slots such as show and click, we
+                            usually don't merge them for same line id, so user
+                            should specify which slot can be merged.
+            erase_duplicate_feas(bool): whether erase duplicate feasigns when
+                                        merge. default is True.
+            min_merge_size(int): minimal size to merge. default is 2.
+            keep_unmerged_ins(bool): whether to keep unmerged ins, such as
+                                     ins with unique id or the num of ins with
+                                     same id is less than min_merge_size.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_merge_by_lineid()
+
+        """
+        var_name_list = [i.name for i in var_list]
+        self.dataset.set_merge_by_lineid(var_name_list, erase_duplicate_feas,
+                                         min_merge_size, keep_unmerged_ins)
+        self.merge_by_lineid = True
 
     def load_into_memory(self):
         """
@@ -242,6 +337,39 @@ class InMemoryDataset(DatasetBase):
         """
         self._prepare_to_run()
         self.dataset.load_into_memory()
+
+    def preload_into_memory(self):
+        """
+        Load data into memory in async mode
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.preload_into_memory()
+              dataset.wait_preload_done()
+        """
+        self._prepare_to_run()
+        self.dataset.preload_into_memory()
+
+    def wait_preload_done(self):
+        """
+        Wait preload_into_memory done
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.preload_into_memory()
+              dataset.wait_preload_done()
+        """
+        self.dataset.wait_preload_done()
 
     def local_shuffle(self):
         """
@@ -282,16 +410,19 @@ class InMemoryDataset(DatasetBase):
 
         """
         trainer_num = 1
-        fleet_send_batch_size = 80000
         if fleet is not None:
             fleet._role_maker._barrier_worker()
             trainer_num = fleet.worker_num()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
-        self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
+        self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         if fleet is not None:
             fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle()
+        if fleet is not None:
+            fleet._role_maker._barrier_worker()
+        if self.merge_by_lineid:
+            self.dataset.merge_by_lineid()
         if fleet is not None:
             fleet._role_maker._barrier_worker()
 
@@ -438,6 +569,9 @@ class QueueDataset(DatasetBase):
         Global shuffle is not supported in QueueDataset
         NotImplementedError will be raised
 
+        Args:
+            fleet(Fleet): fleet singleton. Default None.
+
         Examples:
             .. code-block:: python
 
@@ -455,9 +589,12 @@ class QueueDataset(DatasetBase):
 class FileInstantDataset(DatasetBase):
     """
     FileInstantDataset, it will process data streamly.
-    Example:
-        import paddle.fluid as fluid
-        dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
     """
 
     def __init__(self):
@@ -469,8 +606,7 @@ class FileInstantDataset(DatasetBase):
 
     def local_shuffle(self):
         """
-        Local shuffle
-        FileInstantDataset does not support local shuffle
+        Local shuffle, FileInstantDataset does not support local shuffle
         """
         raise NotImplementedError(
             "FileInstantDataset does not support local shuffle, "
