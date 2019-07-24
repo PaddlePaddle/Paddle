@@ -408,8 +408,7 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 
 void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
                                     std::vector<std::string> var_list,
-                                    float decay,
-                                    int emb_dim) {
+                                    float decay, int emb_dim) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (std::string& name : var_list) {
@@ -424,10 +423,10 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       std::string size_name = name;
       size_name.replace(size_name.find("batch_sum"), size_name.length(),
                         "batch_size");
-      Variable *var_size = scope->FindVar(size_name);
+      Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
-      float *g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
@@ -435,10 +434,10 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     } else {
-      Variable *var = scope->FindVar(name);
+      Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      float *g = tensor->data<float>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      float* g = tensor->data<float>();
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     }
