@@ -68,11 +68,25 @@ struct UniqueOpFunctor {
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
-      for (auto i = 0; i < in_->numel(); ++i) {
-        const IndexT& index = index_data[i];
-        if (typeid(IndexT) == typeid(int32_t)) {
+      const auto& index_type = index_->type();
+      bool index_type_match = index_type == framework::proto::VarType::INT32 ||
+                              index_type == framework::proto::VarType::INT64;
+      PADDLE_ENFORCE(
+          index_type_match,
+          "Index holds the wrong type, it holds %s, but desires to be %s or %s",
+          paddle::framework::DataTypeToString(index_type),
+          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
+          paddle::framework::DataTypeToString(
+              framework::proto::VarType::INT64));
+
+      if (index_type == framework::proto::VarType::INT32) {
+        for (auto i = 0; i < in_->numel(); ++i) {
+          const IndexT& index = index_data[i];
           count_data[static_cast<int32_t>(index)] += static_cast<IndexT>(1);
-        } else if (typeid(IndexT) == typeid(int64_t)) {
+        }
+      } else {
+        for (auto i = 0; i < in_->numel(); ++i) {
+          const IndexT& index = index_data[i];
           count_data[static_cast<int64_t>(index)] += static_cast<IndexT>(1);
         }
       }
