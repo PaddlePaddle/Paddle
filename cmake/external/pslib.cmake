@@ -59,9 +59,8 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${PSLIB_SOURCE_DIR}
     DOWNLOAD_DIR          ${PSLIB_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      cp /home/disk6/xujiaqi/mycode/pslib/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz . && tar zxvf ${PSLIB_NAME}.tar.gz
-    #wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
-    #&& tar zxvf ${PSLIB_NAME}.tar.gz
+    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
+                          && tar zxvf ${PSLIB_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}
