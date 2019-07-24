@@ -175,6 +175,7 @@ class InplaceTestBase(unittest.TestCase):
 class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
+        self.fuse_all_optimizer_ops = False
 
 
 class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):

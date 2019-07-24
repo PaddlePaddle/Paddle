@@ -65,53 +65,25 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           << "Currently, fuse_all_optimizer_ops only works under AllReduce "
              "mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
 
-    // Append pass
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
-
     // Note(zcd): record_skip_memory_opt_vars_pass should be the first pass.
     AppendPass("record_skip_memory_opt_vars_pass");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (FLAGS_use_mkldnn) {
-      AppendPass("mkldnn_placement_pass");
-    } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
-      LOG(WARNING)
-          << "mkldnn_enabled_op_types specify the operator type list to "
-             "use MKLDNN acceleration. It is null in default, means "
-             "that all the operators supported by MKLDNN will be "
-             "accelerated. And it should not be set when "
-             "FLAGS_use_mkldnn=false.";
-    }
-#else
-    PADDLE_ENFORCE(!FLAGS_use_mkldnn,
-                   "Please compile with MKLDNN first to use MKLDNN");
-#endif
-
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
+    AppendPassToSetMkldnn("mkldnn_placement_pass");
 
-    // Add op fusion.
+    // Add op fusion pass.
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
-
-    // Add op fusion.
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
-
-    // TODO(zjl): refactor MemoryOptimizePass to fit
-    // new strategy, which does not need to set
-    // var.persistable = True
-    if (strategy_.use_legacy_memory_optimize_strategy_) {
-      AppendPassWithCheck(strategy_.enable_inplace_, "inplace_pass");
-    }
-
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
-
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // coalesce_grad_tensor_pass should be before of MultiDevPass.
     AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
@@ -129,17 +101,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
-    CollectiveContext *context = CollectiveContext::GetInstance();
-    context->endpoints_ = strategy_.trainers_endpoints_;
-    context->trainer_id_ = strategy_.trainer_id_;
-    PADDLE_ENFORCE(strategy_.trainer_id_ >= 0, "trainer_id_ >= 0");
-    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
-      PADDLE_ENFORCE((unsigned)(strategy_.trainer_id_) <
-                         strategy_.trainers_endpoints_.size(),
-                     "trainer_id_ < endpoints_ size");
+    // Append Memory Optimize Pass
+    // TODO(zjl): refactor MemoryOptimizePass to fit
+    // new strategy, which does not need to set
+    // var.persistable = True
+    if (strategy_.use_legacy_memory_optimize_strategy_) {
+      AppendPassWithCheck(strategy_.enable_inplace_, "inplace_pass");
     }
-    VLOG(1) << "CollectiveContext:" << context->String();
-
     // NOTE(dzh): memory optimize should be a runtime pass.
     // However, after multi_devices_pass, VarHandle, OpHandle is
     // the de-fact IR, any reuse on Graph is meaningless.
@@ -170,7 +138,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         !strategy_.enable_parallel_graph_ &&
         (SeqOnlyAllReduceOps(strategy_) ||
          strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce);
-    AppendPassWithCheck(append_all_reduce_deps_pass, "fuse_all_reduce_op_pass");
+    AppendPassWithCheck(append_all_reduce_deps_pass, "all_reduce_deps_pass");
 
     bool append_backward_optimizer_op_deps_pass =
         strategy_.num_trainers_ > 1 && !strategy_.async_mode_ &&
@@ -182,8 +150,23 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
                         "modify_op_lock_and_record_event_pass");
 
-    // Verify that the graph is correct for multi-device executor.
+    // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
+
+    SetCollectiveContext();
+  }
+
+  void SetCollectiveContext() const {
+    CollectiveContext *context = CollectiveContext::GetInstance();
+    context->endpoints_ = strategy_.trainers_endpoints_;
+    context->trainer_id_ = strategy_.trainer_id_;
+    PADDLE_ENFORCE_GE(strategy_.trainer_id_, 0, "trainer_id_ >= 0");
+    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
+      PADDLE_ENFORCE_LT(static_cast<size_t>(strategy_.trainer_id_),
+                        strategy_.trainers_endpoints_.size(),
+                        "trainer_id_ < endpoints_ size");
+    }
+    VLOG(1) << "CollectiveContext:" << context->String();
   }
 
   // Convert graph to run on multi-devices.
@@ -226,6 +209,24 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (append_pass) {
       AppendPass(pass_name);
     }
+  }
+
+  void AppendPassToSetMkldnn(const std::string &pass_name) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) {
+      AppendPass(pass_name);
+    } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
+      LOG(WARNING)
+          << "mkldnn_enabled_op_types specify the operator type list to "
+             "use MKLDNN acceleration. It is null in default, means "
+             "that all the operators supported by MKLDNN will be "
+             "accelerated. And it should not be set when "
+             "FLAGS_use_mkldnn=false.";
+    }
+#else
+    PADDLE_ENFORCE(!FLAGS_use_mkldnn,
+                   "Please compile with MKLDNN first to use MKLDNN");
+#endif
   }
 
  private:
