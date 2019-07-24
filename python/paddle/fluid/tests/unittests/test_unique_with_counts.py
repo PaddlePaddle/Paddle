@@ -58,7 +58,7 @@ class TestOne(TestUniqueWithCountsOp):
 
 class TestRandom(TestUniqueWithCountsOp):
     def init_config(self):
-        input_data = np.random.randint(0, 100, (150, ), dtype='int64')
+        input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
         self.inputs = {'X': input_data}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
         np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
