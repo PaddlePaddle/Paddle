@@ -42,7 +42,11 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (name == use_slots_[i]) {
-      feed_vec_[i] = var->GetMutable<LoDTensor>();
+      if (var == nullptr) {
+        feed_vec_[i] = nullptr;
+      } else {
+        feed_vec_[i] = var->GetMutable<LoDTensor>();
+      }
     }
   }
 }
@@ -164,6 +168,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->fp_ = nullptr;
   this->thread_id_ = 0;
   this->thread_num_ = 1;
+  this->parse_ins_id_ = false;
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -245,6 +250,11 @@ void InMemoryDataFeed<T>::SetThreadId(int thread_id) {
 template <typename T>
 void InMemoryDataFeed<T>::SetThreadNum(int thread_num) {
   thread_num_ = thread_num;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
+  parse_ins_id_ = parse_ins_id;
 }
 
 template <typename T>
@@ -591,6 +601,9 @@ void MultiSlotDataFeed::PutToFeedVec(
     const std::vector<MultiSlotType>& ins_vec) {
 #ifdef _LINUX
   for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
@@ -684,6 +697,18 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     // VLOG(3) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
+    if (parse_ins_id_) {
+      int num = strtol(&str[pos], &endptr, 10);
+      CHECK(num == 1);  // NOLINT
+      pos = endptr - str + 1;
+      size_t len = 0;
+      while (str[pos + len] != ' ') {
+        ++len;
+      }
+      instance->ins_id_ = std::string(str + pos, len);
+      pos += len + 1;
+      VLOG(3) << "ins_id " << instance->ins_id_;
+    }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
@@ -699,7 +724,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
             // if float feasign is equal to zero, ignore it
-            if (fabs(feasign) < 1e-6) {
+            // except when slot is dense
+            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
               continue;
             }
             FeatureKey f;
@@ -710,7 +736,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
             // if uint64 feasign is equal to zero, ignore it
-            if (feasign == 0) {
+            // except when slot is dense
+            if (feasign == 0 && !use_slots_is_dense_[i]) {
               continue;
             }
             FeatureKey f;
@@ -838,6 +865,9 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   }
 
   for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
     int total_instance = offset[i].back();
     const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float

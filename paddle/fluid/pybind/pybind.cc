@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/ir/alloc_continuous_space_for_grad_pass.h"
+#include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"

@@ -38,7 +38,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 #endif
 
     auto &params_grads =
-        result.Get<details::ParamsAndGrads>(details::kParamsAndGrads);
+        result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     size_t num_of_all_reduce = params_grads.size();
     std::unordered_set<std::string> grads;
     grads.reserve(num_of_all_reduce);
@@ -60,8 +60,8 @@ class FuseAllReduceOpPass : public ir::Pass {
                       "it is not supported currently.");
     VLOG(10) << "Insert fused_all_reduce";
 
-    auto &group_params_grads =
-        graph->Get<details::GroupParamsAndGrads>(details::kGroupParamsAndGrads);
+    auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
+        details::kGroupParamsAndDenseGrads);
 
     for (auto &group_p_g : group_params_grads) {
       size_t group_size = group_p_g.size();
