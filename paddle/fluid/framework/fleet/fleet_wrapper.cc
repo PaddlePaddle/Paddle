@@ -27,8 +27,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include <algorithm>
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -156,7 +158,11 @@ void FleetWrapper::PullSparseVarsSync(
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
     Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
@@ -291,29 +297,34 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     grad_dim = emb_dim - 2;
   }
   CHECK_GE(grad_dim, 0);
+
+  push_values->resize(fea_keys.size() + 1);
+  for (auto& t : *push_values) {
+    t.resize(emb_dim + offset);
+  }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
-    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
-    if (g_tensor == NULL) {
-      LOG(ERROR) << "var[" << sparse_key_names[i] << "] not found";
-      exit(-1);
-    }
-    float* g = g_tensor->data<float>();
     Variable* var = scope.FindVar(sparse_key_names[i]);
-    CHECK(var != nullptr) << "var[" << sparse_key_names[i] << "] not found";
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    if (tensor == NULL) {
-      LOG(ERROR) << "var[" << sparse_key_names[i] << "] not found";
+    if (tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
-    push_values->resize(fea_keys.size() + 1);
-    for (auto& t : *push_values) {
-      t.resize(emb_dim + offset);
+
+    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
+    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    if (g_tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
+      exit(-1);
     }
+    float* g = g_tensor->data<float>();
+
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
       Eigen::Map<
@@ -355,6 +366,79 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
+void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
+                                       std::vector<std::string> var_list,
+                                       std::string model_path,
+                                       std::string model_proto_file,
+                                       bool load_combine) {
+  // load ProgramDesc from model file
+  auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
+    std::string contents;
+    std::ifstream fin(filename, std::ios::in | std::ios::binary);
+    fin.seekg(0, std::ios::end);
+    contents.resize(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    fin.read(&contents[0], contents.size());
+    fin.close();
+    ProgramDesc program_desc(contents);
+    return program_desc;
+  };
+  const ProgramDesc old_program = read_proto_func(model_proto_file);
+  Scope* old_scope = new Scope();
+  auto& old_block = old_program.Block(0);
+  auto place = platform::CPUPlace();
+  std::vector<std::string> old_param_list;
+
+  for (auto& t : var_list) {
+    VarDesc* old_var_desc = old_block.FindVar(t);
+    if (old_var_desc == nullptr) {
+      continue;
+    }
+    // init variable in scope
+    Variable* old_var = old_scope->Var(old_var_desc->Name());
+    InitializeVariable(old_var, old_var_desc->GetType());
+    old_param_list.push_back(t);
+    if (load_combine) {
+      continue;
+    }
+    // load variable from model
+    paddle::framework::AttributeMap attrs;
+    attrs.insert({"file_path", model_path + "/" + old_var_desc->Name()});
+    auto load_op = paddle::framework::OpRegistry::CreateOp(
+        "load", {}, {{"Out", {old_var_desc->Name()}}}, attrs);
+    load_op->Run(*old_scope, place);
+  }
+
+  if (load_combine) {
+    std::sort(old_param_list.begin(), old_param_list.end());
+    paddle::framework::AttributeMap attrs;
+    attrs.insert({"file_path", model_path});
+    auto load_op = paddle::framework::OpRegistry::CreateOp(
+        "load_combine", {}, {{"Out", old_param_list}}, attrs);
+    load_op->Run(*old_scope, place);
+  }
+
+  for (auto& t : old_param_list) {
+    Variable* old_var = old_scope->Var(t);
+    // old model data, here we assume data type is float
+    LoDTensor* old_tensor = old_var->GetMutable<LoDTensor>();
+    float* old_data = old_tensor->data<float>();
+    // new model data, here we assume data type is float
+    Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    float* data = tensor->data<float>();
+    // copy from old data to new data
+    if (old_tensor->numel() > tensor->numel()) {
+      memcpy(data, old_data, tensor->numel() * sizeof(float));
+    } else {
+      memcpy(data, old_data, old_tensor->numel() * sizeof(float));
+    }
+  }
+  delete old_scope;
+  PushDenseParamSync(scope, table_id, old_param_list);
+}
+
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->load(path, std::to_string(mode));
@@ -362,6 +446,21 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
     exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
+                                     const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "load model of table id: " << table_id
+               << ", from path: " << path << " failed";
   }
 #else
   VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
