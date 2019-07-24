@@ -76,6 +76,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     PADDLE_ENFORCE(!FLAGS_use_mkldnn,
                    "Please compile with MKLDNN first to use MKLDNN");
 #endif
+
     if (strategy_.enable_sequential_execution_) {
       VLOG(1) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
@@ -108,30 +109,34 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
-    // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
+    // coalesce_grad_tensor_pass should be before of MultiDevPass.
     if (strategy_.fuse_all_reduce_ops_) {
-      VLOG(1) << "Add alloc_continuous_space_for_grad_pass";
-      AppendPass("alloc_continuous_space_for_grad_pass");
+      VLOG(1) << "Add coalesce_grad_tensor_pass";
+      AppendPass("coalesce_grad_tensor_pass");
     }
 
+    // Fuse all the optimization operators.
+    if (strategy_.is_distribution_) {
+      VLOG(3) << "Currently, fuse_all_optimizer_ops only works under "
+                 "Non-distributed mode.";
+      strategy_.fuse_all_optimizer_ops_ = false;
+    }
+    if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce ||
+        strategy_.is_distribution_) {
+      VLOG(3) << "Currently, fuse_all_optimizer_ops only works under AllReduce "
+                 "mode.";
+      strategy_.fuse_all_optimizer_ops_ = false;
+    }
     if (strategy_.fuse_all_optimizer_ops_) {
-      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce ||
-          strategy_.is_distribution_) {
-        VLOG(3)
-            << "Currently, fuse_all_optimizer_ops only works under AllReduce "
-               "mode.";
-        strategy_.fuse_all_optimizer_ops_ = false;
-      } else {
-        // NOTE: fuse_all_xx_ops will count the number of xx operator first,
-        // if the number is zero, fuse_all_reduce_ops will do nothing.
-        // Currently, only one type of optimization algorithm can be fused.
-        VLOG(1) << "Add fuse_adam_op_pass";
-        AppendPass("fuse_adam_op_pass");
-        VLOG(1) << "Add fuse_sgd_op_pass";
-        AppendPass("fuse_sgd_op_pass");
-        VLOG(1) << "Add fuse_momentum_op_pass";
-        AppendPass("fuse_momentum_op_pass");
-      }
+      // NOTE: fuse_all_xx_ops will count the number of xx operator first,
+      // if the number is zero, fuse_all_reduce_ops will do nothing.
+      // Currently, only one type of optimization algorithm can be fused.
+      VLOG(1) << "Add fuse_adam_op_pass";
+      AppendPass("fuse_adam_op_pass");
+      VLOG(1) << "Add fuse_sgd_op_pass";
+      AppendPass("fuse_sgd_op_pass");
+      VLOG(1) << "Add fuse_momentum_op_pass";
+      AppendPass("fuse_momentum_op_pass");
     }
 
     // Add a graph viz pass to record a graph.
@@ -301,7 +306,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #endif
-    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
+    } else if (pass->Type() == "coalesce_grad_tensor_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
                pass->Type() == "fuse_sgd_op_pass" ||
                pass->Type() == "fuse_momentum_op_pass" ||
@@ -321,7 +326,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         new bool(use_hierarchical_allreduce_));
 #endif
       }
-    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
+    } else if (pass->Type() == "coalesce_grad_tensor_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -389,7 +394,7 @@ USE_PASS(backward_optimizer_op_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
-USE_PASS(alloc_continuous_space_for_grad_pass);
+USE_PASS(coalesce_grad_tensor_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
