@@ -1839,15 +1839,15 @@ def sequence_conv(input,
     Args:
         input (Variable): ${x_comment}
         num_filters (int): number of filters.
-        filter_size (int): the height(time-steps) of filter and the width is hidden size by default.
-        filter_stride (int): stride of the filter. Currently only supports stride=1.
+        filter_size (int): the height(time-steps) of filter, the width is hidden size by default.
+        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
         padding (bool): if True, it will generate non-zero padding data by param_attr, which also will
-             be updated while training. If False, it will generate all-zero padding data, and these data
-             will not be trainable. 
+            be updated while training. If False, it will generate all-zero padding data, and these data
+            will not be trainable. 
         padding_start (int|None): the start index of padding operation represents the beginning of the
-             convolution of the number of rows of sequence, which can be negative. The negative number
-             means to pad contextStart time-steps of zeros or learnable parameters at the beginning of
-             each instance. The positive number means to skip contextStart time-steps of each instance."
+            convolution of the number of rows of sequence, which can be negative. The negative number
+            means to pad :attr:`padding_start` time-steps of zeros or learnable parameters at the beginning of
+            each instance. The positive number means to skip :attr:`padding_start` time-steps of each instance.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -1870,7 +1870,7 @@ def sequence_conv(input,
 
              import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
-             x_conved = fluid.layers.sequence_conv(x,2)
+             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding=True, padding_start=-1)
     """
 
     assert not in_dygraph_mode(), (
