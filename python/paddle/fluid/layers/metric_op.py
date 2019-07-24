@@ -117,7 +117,7 @@ def auc(input,
     Returns:
         Variable: A tuple representing the current AUC.
         The return tuple is auc_out, batch_auc_out, [
-        batch_stat_pos, batch_stat_neg, stat_pos, stat_neg
+        batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
 
     Examples:
         .. code-block:: python
