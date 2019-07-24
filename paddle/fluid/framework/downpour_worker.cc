@@ -286,7 +286,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_, 
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
       timeline.Pause();
