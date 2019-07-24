@@ -22,27 +22,34 @@ class TestElementwisePowOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float32")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+        print("===TestElementwisePowOp===")
+        print("!!!!input x:\t",self.inputs['X'])
+        print("!!!!input y:\t",self.inputs['Y'])
+        print("=====output:\t",self.outputs)
+            
 
     def test_check_output(self):
         print("====test_check_output====")
         self.check_output()
     def test_check_grad_normal(self):
         print("====test_check_grad_normal====")
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype('float32'),
+            'X': np.random.rand(3, 3, 4).astype('float32'),
             'Y': np.random.rand(1).astype('float32')
         }
-        print("!!!!input:\t",self.inputs['X'])
+        print("===TestElementwisePowOp_scalar===")
+        print("!!!!input x:\t",self.inputs['X'])
+        print("!!!!input y:\t",self.inputs['Y'])
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
         print("=====output:\t",self.outputs)
 
@@ -54,6 +61,26 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
             'Y': np.random.random((32, )).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+        print("===TestElementwisePowOp_tensor===")
+        print("!!!!input x:\t",self.inputs['X'])
+        print("!!!!input y:\t",self.inputs['Y'])
+        print("=====output:\t",self.outputs)    
+
+
+# class TestElementwisePowOp_inttensor(TestElementwisePowOp):
+#     def setUp(self):
+#         self.op_type = "elementwise_pow"
+#         self.inputs = {
+#             'X': np.random.randn(17,18,2).astype("float64"),
+#             'Y': np.random.randn(17,18,2).astype("float64"),
+#         }
+#         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+#         print("===TestElementwisePowOp_inttensor===")
+#         print("!!!!input x:\t",self.inputs['X'])
+#         print("!!!!input y:\t",self.inputs['Y'])
+#         print("=====output:\t",self.outputs)    
+
+
 
 if __name__ == '__main__':
     unittest.main()

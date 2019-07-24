@@ -29,7 +29,7 @@ protected:
         op->SetType("elementwise_pow_grad");
         op->SetInput("X", Input("X"));
         op->SetInput("Y", Input("Y"));
-        op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));：q
+        op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
         op->SetAttrMap(Attrs());
         op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
         op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
