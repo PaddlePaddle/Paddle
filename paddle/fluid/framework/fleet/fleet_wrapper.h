@@ -83,8 +83,7 @@ class FleetWrapper {
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      float scale_datanorm,
-      int batch_size);
+      float scale_datanorm, int batch_size);
 
   void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -151,7 +150,8 @@ class FleetWrapper {
 
   void ShrinkSparseTable(int table_id);
   void ShrinkDenseTable(int table_id, Scope* scope,
-                        std::vector<std::string> var_list, float decay, int emb_dim);
+                        std::vector<std::string> var_list, float decay,
+                        int emb_dim);
 
   // register client to client communication
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
