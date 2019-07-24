@@ -20,6 +20,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "framework/core/net/net.h"
@@ -51,10 +52,18 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
            int batch_size = -1) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
-  virtual bool ResetConfig(const AnakinConfig& config);
-  virtual anakin::Net<T, P, R>& ResetExecuter(
-      std::shared_ptr<anakin::graph::Graph<T, P>> graph_p);
+  bool Reset(PaddleInferenceAnakinPredictor<T, P, R>* predictor);
   void InitPredictor();
+  std::shared_ptr<anakin::graph::Graph<T, P>> GetGraph() {
+    return this->graph_p_;
+  }
+  std::vector<std::string> GetInputNames() override {
+    return this->input_names_;
+  }
+  std::vector<std::string> GetOutputNames() override {
+    return this->output_names_;
+  }
+  const AnakinConfig& GetConfig() const { return this->config_; }
 
   ~PaddleInferenceAnakinPredictor() override;
 
@@ -65,11 +74,14 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   virtual void InitNet();
   virtual void SetContext();
   virtual void Predict();
+  virtual std::unique_ptr<PaddlePredictor> New();
   static std::mutex mutex_;
   AnakinConfig config_;
   std::shared_ptr<anakin::Context<T>> ctx_p_;
   std::shared_ptr<anakin::graph::Graph<T, P>> graph_p_;
   anakin::Net<T, P, R>* executor_p_{nullptr};
+  std::vector<std::string> input_names_;
+  std::vector<std::string> output_names_;
 
  private:
   bool RunImpl(const std::vector<PaddleTensor>& inputs,
@@ -82,10 +94,12 @@ template <Precision P, OpRunType R>
 class PaddleInferenceAnakinMLUPredictor final
     : public PaddleInferenceAnakinPredictor<anakin::MLU, P, R> {
  public:
+  PaddleInferenceAnakinMLUPredictor() = default;
   explicit PaddleInferenceAnakinMLUPredictor(const AnakinConfig& config) {
-    this->ResetConfig(config);
+    this->config_ = config;
     this->InitPredictor();
   }
+  std::unique_ptr<PaddlePredictor> New() override;
   void SetContext() override;
   void OptimizeGraph() override;
   void InitNet() override;
@@ -98,10 +112,12 @@ template <Precision P, OpRunType R>
 class PaddleInferenceAnakinBMPredictor final
     : public PaddleInferenceAnakinPredictor<anakin::BM, P, R> {
  public:
+  PaddleInferenceAnakinBMPredictor() = default;
   explicit PaddleInferenceAnakinBMPredictor(const AnakinConfig& config) {
-    this->ResetConfig(config);
+    this->config_ = config;
     this->InitPredictor();
   }
+  std::unique_ptr<PaddlePredictor> New() override;
   void OptimizeGraph() override;
   void InitNet() override;
   void Predict() override;

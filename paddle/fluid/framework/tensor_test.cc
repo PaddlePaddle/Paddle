@@ -116,7 +116,7 @@ TEST(Tensor, MutableData) {
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
+    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 1024}),
                                         platform::CUDAPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1, p2);
