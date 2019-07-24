@@ -293,8 +293,6 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
-  double op_sum_time = 0;
-  std::unordered_map<std::string, double> op_to_time;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -451,6 +449,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
     if (thread_id_ == 0) {
       // should be configured here
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+        double op_sum_time = 0;
+        std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
@@ -479,6 +479,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
                 adjust_ins_weight_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+        fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
         fprintf(stderr, "adjust ins weight time percent: %f\n",
