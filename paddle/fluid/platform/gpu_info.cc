@@ -32,12 +32,14 @@ constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
-DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
-              "Allocate a trunk of gpu memory that is this fraction of the "
-              "total gpu memory size. Future memory usage will be allocated "
-              "from the trunk. If the trunk doesn't have enough gpu memory, "
-              "additional trunks of the same size will be requested from gpu "
-              "until the gpu has no memory left for another trunk.");
+DEFINE_double(
+    fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
+    "Allocate a trunk of gpu memory that is this fraction of the "
+    "available gpu memory size. Future memory usage will be allocated "
+    "from the trunk. If the trunk doesn't have enough gpu memory, "
+    "additional trunks of the same fraction of the available gpu size "
+    "will be requested from gpu until the gpu has no memory left for "
+    "another trunk.");
 
 DEFINE_uint64(
     initial_gpu_memory_in_mb, 0ul,
@@ -56,6 +58,12 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "If this flag is set, Paddle will reallocate the gpu memory with "
               "size specified by this flag. Else Paddle will reallocate by "
               "FLAGS_fraction_of_gpu_memory_to_use");
+
+DEFINE_uint64(gpu_max_chunk_size_in_mb, 4096ul,
+              "PaddlePaddle uses a memory pool to pre-load the CPU/GPU memory "
+              "to speed up memory allocation. But for large memory chunk whose"
+              " size is greater than this flag value, PaddlePaddle doesn't keep"
+              " the large chunk in the pool in order to save user's memory");
 
 DEFINE_bool(
     enable_cublas_tensor_op_math, false,
@@ -245,7 +253,7 @@ size_t GpuInitAllocSize() {
   GpuMemoryUsage(&available, &total);
   size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
 
-  return static_cast<size_t>((total - reserving) *
+  return static_cast<size_t>((available - reserving) *
                              FLAGS_fraction_of_gpu_memory_to_use);
 }
 
@@ -265,7 +273,7 @@ size_t GpuReallocSize() {
   GpuMemoryUsage(&available, &total);
   size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
 
-  return static_cast<size_t>((total - reserving) *
+  return static_cast<size_t>((available - reserving) *
                              FLAGS_fraction_of_gpu_memory_to_use);
 }
 
@@ -279,20 +287,14 @@ size_t GpuMaxChunkSize() {
   size_t available = 0;
 
   GpuMemoryUsage(&available, &total);
-  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
-           << total / 1024 / 1024 << "M";
+  VLOG(10) << "GPU Usage " << (available >> 20) << "M/" << (total >> 20) << "M";
   size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   // If available less than minimum chunk size, no usable memory exists.
   available =
       std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
                total - reserving);
 
-  size_t allocating = GpuMaxAllocSize();
-
-  PADDLE_ENFORCE_LE(allocating, available,
-                    "Insufficient GPU memory to allocation.");
-
-  return allocating;
+  return FLAGS_gpu_max_chunk_size_in_mb << 20;
 }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,

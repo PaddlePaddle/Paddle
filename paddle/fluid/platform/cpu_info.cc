@@ -37,6 +37,11 @@ DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "reserve the rest for page tables, etc");
 DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
               "Initial CPU memory for PaddlePaddle, in MD unit.");
+DEFINE_uint64(cpu_max_chunk_size_in_mb, 4096ul,
+              "PaddlePaddle uses a memory pool to pre-load the CPU/GPU memory "
+              "to speed up memory allocation. But for large memory chunk whose"
+              " size is greater than this flag value, PaddlePaddle doesn't keep"
+              " the large chunk in the pool in order to save user's memory");
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
