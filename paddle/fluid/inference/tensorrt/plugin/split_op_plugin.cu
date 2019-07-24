@@ -15,11 +15,17 @@
 #include <cuda_fp16.h>
 #include <algorithm>
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+SplitPlugin* CreateSplitPluginDeserialize(const void* buffer, size_t length) {
+  return new SplitPlugin(buffer, length);
+}
+REGISTER_TRT_PLUGIN("split_plugin", CreateSplitPluginDeserialize);
 
 // copied from operators::math::SplitFunctor
 template <typename T>

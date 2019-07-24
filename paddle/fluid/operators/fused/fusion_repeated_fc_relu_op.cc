@@ -82,9 +82,11 @@ template <typename T>
 static void fc_relu(const T* x, const T* w, const T* b, T* y,
                     const jit::matmul_attr_t& attr) {
   auto matmul =
-      jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(attr);
+      jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
+          attr);
   auto addbias_relu =
-      jit::Get<jit::kVAddRelu, jit::XYZNTuples<T>, platform::CPUPlace>(attr.n);
+      jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
+          attr.n);
   matmul(x, w, y, &attr);
   T* dst = y;
   for (int i = 0; i < attr.m; ++i) {

@@ -32,14 +32,14 @@ TEST(RetryAllocator, RetryAllocator) {
   CPUAllocator cpu_allocator;
 
   size_t size = (1 << 20);
-  auto cpu_allocation = cpu_allocator.Allocate(size, cpu_allocator.kDefault);
+  auto cpu_allocation = cpu_allocator.Allocate(size);
 
   std::unique_ptr<BestFitAllocator> best_fit_allocator(
       new BestFitAllocator(cpu_allocation.get()));
   std::unique_ptr<LockedAllocator> locked_allocator(
       new LockedAllocator(std::move(best_fit_allocator)));
 
-  size_t thread_num = 32;
+  size_t thread_num = 8;
   size_t sleep_time = 40;
   size_t extra_time = 10;
 

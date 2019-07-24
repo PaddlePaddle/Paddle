@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
@@ -57,7 +58,10 @@ class LoDTensorBlockingQueue {
 
   inline void ReOpen() { queue_.ReOpen(); }
 
-  inline void Close() { queue_.Close(); }
+  inline void Close() {
+    VLOG(1) << "LoDTensorBlockingQueue close";
+    queue_.Close();
+  }
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 

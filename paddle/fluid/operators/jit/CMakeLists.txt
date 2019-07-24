@@ -5,7 +5,7 @@ file(APPEND ${jit_file} "\#pragma once\n")
 file(APPEND ${jit_file} "\#include \"paddle/fluid/operators/jit/helper.h\"\n")
 file(APPEND ${jit_file} "\#include \"paddle/fluid/operators/jit/registry.h\"\n\n")
 
-set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place)
+set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place xxhash)
 
 file(GLOB jit_kernel_cc_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cc")
 list(REMOVE_ITEM jit_kernel_cc_srcs test.cc benchmark.cc)

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
+#include <memory>
 #include <string>
+#include <utility>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -39,7 +41,7 @@ void BuildCircleGraph(Graph* g) {
 
 class TestPass : public Pass {
  protected:
-  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+  void ApplyImpl(ir::Graph* graph) const {
     graph->Set<int>("copy_test_pass_attr", new int);
     graph->Set<int>("copy_test_graph_attr", new int);
 
@@ -48,7 +50,6 @@ class TestPass : public Pass {
 
     int test_graph_attr = graph->Get<int>("test_graph_attr");
     graph->Get<int>("copy_test_graph_attr") = test_graph_attr + 1;
-    return graph;
   }
 };
 
@@ -58,7 +59,7 @@ TEST(PassTest, TestPassAttrCheck) {
   std::unique_ptr<Graph> graph(new Graph(prog));
   std::string exception;
   try {
-    graph = pass->Apply(std::move(graph));
+    graph.reset(pass->Apply(graph.release()));
   } catch (paddle::platform::EnforceNotMet e) {
     exception = std::string(e.what());
   }
@@ -69,7 +70,7 @@ TEST(PassTest, TestPassAttrCheck) {
   pass->SetNotOwned<int>("test_pass_attr", &val);
 
   try {
-    graph = pass->Apply(std::move(graph));
+    graph.reset(pass->Apply(graph.release()));
   } catch (paddle::platform::EnforceNotMet e) {
     exception = std::string(e.what());
   }
@@ -78,14 +79,14 @@ TEST(PassTest, TestPassAttrCheck) {
   graph.reset(new Graph(prog));
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 1;
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
   ASSERT_EQ(graph->Get<int>("copy_test_pass_attr"), 2);
   ASSERT_EQ(graph->Get<int>("copy_test_graph_attr"), 2);
 
   // Allow apply more than once.
   graph.reset(new Graph(prog));
   graph->Set<int>("test_graph_attr", new int);
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->SetNotOwned<int>("test_pass_attr", &val);
@@ -94,7 +95,7 @@ TEST(PassTest, TestPassAttrCheck) {
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 2;
   try {
-    auto tmp = pass->Apply(std::move(graph));
+    pass->Apply(graph.release());
   } catch (paddle::platform::EnforceNotMet e) {
     exception = std::string(e.what());
   }

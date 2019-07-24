@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -30,3 +31,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_add_grad_grad,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int64_t>);

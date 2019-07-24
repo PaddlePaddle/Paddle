@@ -14,8 +14,11 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include <algorithm>
 #include <limits>
+#include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -135,16 +138,19 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:GPU->CPU");
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:CPU->GPU");
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:GPU->GPU");
     if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
       VLOG(3) << "Skip copy the same data from " << src_place << " to "
               << dst_place;
@@ -155,6 +161,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cuda_pinned_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:CUDAPinned->GPU");
     auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
@@ -482,6 +489,52 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       is.read(static_cast<char*>(buf), size);
     }
   }
+}
+
+template <typename T>
+std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
+  auto inspect = tensor.data<T>();
+  auto element_num = tensor.numel();
+
+  os << "\tdata: [";
+  if (element_num > 0) {
+    os << inspect[0];
+    for (int j = 1; j < element_num; ++j) {
+      os << " " << inspect[j];
+    }
+  }
+  os << "]";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Tensor& t) {
+  os << "\tdim: " << t.dims() << "\n";
+  os << "\tlayout: " << DataLayoutToString(t.layout()) << "\n";
+
+  Tensor tensor;
+  tensor.Resize(t.dims());
+  if (platform::is_cpu_place(t.place())) {
+    tensor.ShareDataWith(t);
+  } else {
+    platform::CPUPlace place;
+    framework::TensorCopy(t, place, &tensor);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(t.place());
+    dev_ctx.Wait();
+  }
+
+#define PrintTensorCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (tensor.type() == proto_type) {            \
+      os << "\tdtype: " << proto_type << "\n";    \
+      print_tensor<cpp_type>(os, tensor);         \
+      return os;                                  \
+    }                                             \
+  } while (0)
+
+  _ForEachDataType_(PrintTensorCallback);
+  VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
+  return os;
 }
 
 }  // namespace framework

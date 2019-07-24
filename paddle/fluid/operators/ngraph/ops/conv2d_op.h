@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
@@ -237,3 +239,4 @@ void BuildConv2dGradNode(
 
 REGISTER_NG_OP(conv2d, BuildConv2dNode);
 REGISTER_NG_OP(conv2d_grad, BuildConv2dGradNode);
+REGISTER_NG_OP(depthwise_conv2d, BuildConv2dNode);

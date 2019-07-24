@@ -39,13 +39,9 @@ struct bn_type_traits {
 
 class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
  public:
-  BatchNormMKLDNNHandler(
-      std::shared_ptr<batch_norm_fwd::primitive_desc> batch_norm_pd,
-      const platform::MKLDNNDeviceContext &dev_ctx, mkldnn::engine engine,
-      const std::string &base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {
-    batch_norm_pd_ = batch_norm_pd;
-  }
+  BatchNormMKLDNNHandler(const platform::MKLDNNDeviceContext &dev_ctx,
+                         mkldnn::engine engine, const std::string &base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
   std::shared_ptr<memory> AcquireScaleshiftMemoryFromPrimitive(void *ptr) {
     return this->AcquireMemoryFromPrimitive(
@@ -62,6 +58,31 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
         batch_norm_pd_->variance_primitive_desc(), ptr, "@variance_mem_p");
   }
 
+  std::shared_ptr<batch_norm_fwd::primitive_desc>
+  AcquireBatchNormPrimitiveDescriptor(const batch_norm_fwd::desc &bn_fwd_desc,
+                                      const mkldnn::engine &engine) {
+    // BatchNorm PD has to be passed to Grad op that
+    // may be executed by diffrent thread, hence
+    // for that one we use key that does not contain TID
+    const std::string key_batch_norm_fwd_pd = key_common_ + "@bn_fwd_pd";
+    batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
+        dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
+
+    if (batch_norm_pd_ == nullptr) {
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
+      batch_norm_pd_ = std::static_pointer_cast<batch_norm_fwd::primitive_desc>(
+          dev_ctx_.GetBlob(key_batch_norm_fwd_pd));
+      if (batch_norm_pd_ == nullptr) {
+        batch_norm_pd_.reset(
+            new batch_norm_fwd::primitive_desc(bn_fwd_desc, engine));
+        dev_ctx_.SetBlob(key_batch_norm_fwd_pd, batch_norm_pd_);
+      }
+    }
+    return batch_norm_pd_;
+  }
+
   std::shared_ptr<batch_norm_fwd> AcquireTestTrainingBatchNormFwd(
       std::shared_ptr<memory> src_memory,
       std::shared_ptr<memory> scaleshift_memory,
@@ -70,9 +91,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     auto prim_key = key_ + "@batch_norm_p";
     auto batch_norm_p =
         std::static_pointer_cast<batch_norm_fwd>(dev_ctx_.GetBlob(prim_key));
-
-    PADDLE_ENFORCE((batch_norm_p != nullptr) || !is_reusing_,
-                   "Fail to find batch norm primitive in device context");
 
     if (batch_norm_p == nullptr) {
       if (is_test) {
@@ -88,8 +106,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       }
 
       dev_ctx_.SetBlob(prim_key, batch_norm_p);
-    } else {
-      is_reusing_ = true;
     }
 
     return batch_norm_p;
@@ -213,7 +229,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key = BatchNormMKLDNNHandler::GetHash(
         src_tz, epsilon, flags, global_stats, input_format,
         ctx.op().Output("SavedMean"));
-    const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
+    BatchNormMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
     auto user_src_md = platform::MKLDNNMemDesc(
         {src_tz}, platform::MKLDNNGetDataType<T>(), input_format);
@@ -222,13 +238,9 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     using bn_fwd_types = bn_type_traits<mkldnn::batch_normalization_forward>;
     auto batch_norm_fwd_desc =
         bn_fwd_types::op_desc{propagation, user_src_md, epsilon, flags};
-    auto batch_norm_fwd_pd = std::make_shared<batch_norm_fwd::primitive_desc>(
-        batch_norm_fwd_desc, mkldnn_engine);
-    // Save conv_pd/src_memory/weights_memory for backward pass
-    dev_ctx.SetBlob(key_batch_norm_fwd_pd, batch_norm_fwd_pd);
 
-    BatchNormMKLDNNHandler handler(batch_norm_fwd_pd, dev_ctx, mkldnn_engine,
-                                   key);
+    auto batch_norm_fwd_pd = handler.AcquireBatchNormPrimitiveDescriptor(
+        batch_norm_fwd_desc, mkldnn_engine);
 
     auto src_memory =
         handler.AcquireSrcMemory(user_src_md, to_void_cast(x_data));

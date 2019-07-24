@@ -86,6 +86,8 @@ extern void* mklml_dso_handle;
   __macro(vdPowx);                  \
   __macro(vsInv);                   \
   __macro(vdInv);                   \
+  __macro(vmsErf);                  \
+  __macro(vmdErf);                  \
   __macro(MKL_Set_Num_Threads)
 
 MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);

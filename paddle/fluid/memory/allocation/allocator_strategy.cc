@@ -14,20 +14,29 @@
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "gflags/gflags.h"
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
-DEFINE_string(
-    allocator_strategy, "legacy",
-    "The allocation strategy. Legacy means the original allocator of Fluid."
-    "New means the experimental allocators of Fluid. in [legacy, new]");
+DEFINE_string(allocator_strategy, "naive_best_fit",
+              "The allocation strategy. naive_best_fit means the original best "
+              "fit allocator of Fluid. "
+              "auto_growth means the experimental auto-growth allocator. "
+              "Enum in [naive_best_fit, auto_growth].");
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
-  return FLAGS_allocator_strategy == "legacy"
-             ? AllocatorStrategy::kLegacy
-             : AllocatorStrategy::kNaiveBestFit;
+  if (FLAGS_allocator_strategy == "naive_best_fit") {
+    return AllocatorStrategy::kNaiveBestFit;
+  }
+
+  if (FLAGS_allocator_strategy == "auto_growth") {
+    return AllocatorStrategy::kAutoGrowth;
+  }
+
+  PADDLE_THROW("Unsupported allocator strategy: %s", FLAGS_allocator_strategy);
 }
 
 AllocatorStrategy GetAllocatorStrategy() {

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
-
 #include <algorithm>
 #include <cstdlib>
 #include <string>
@@ -31,12 +30,32 @@ constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
 constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 #endif
 
+constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
 DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
               "from the trunk. If the trunk doesn't have enough gpu memory, "
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
+
+DEFINE_uint64(
+    initial_gpu_memory_in_mb, 0ul,
+    "Allocate a trunk of gpu memory whose byte size is specified by "
+    "the flag. Future memory usage will be allocated from the "
+    "trunk. If the trunk doesn't have enough gpu memory, additional "
+    "trunks of the gpu memory will be requested from gpu with size "
+    "specified by FLAGS_reallocate_gpu_memory_in_mb until the gpu has "
+    "no memory left for the additional trunk. Note: if you set this "
+    "flag, the memory size set by "
+    "FLAGS_fraction_of_gpu_memory_to_use will be overrided by this "
+    "flag. If you don't set this flag, PaddlePaddle will use "
+    "FLAGS_fraction_of_gpu_memory_to_use to allocate gpu memory");
+
+DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
+              "If this flag is set, Paddle will reallocate the gpu memory with "
+              "size specified by this flag. Else Paddle will reallocate by "
+              "FLAGS_fraction_of_gpu_memory_to_use");
 
 DEFINE_bool(
     enable_cublas_tensor_op_math, false,
@@ -60,6 +79,12 @@ DEFINE_string(selected_gpus, "",
 namespace paddle {
 namespace platform {
 
+inline std::string CudaErrorWebsite() {
+  return "Please see detail in https://docs.nvidia.com/cuda/cuda-runtime-api"
+         "/group__CUDART__TYPES.html#group__CUDART__TYPES_1g3f51e3575c217824"
+         "6db0a94a430e0038";
+}
+
 static int GetCUDADeviceCountImpl() {
   const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
   if (cuda_visible_devices != nullptr) {
@@ -73,9 +98,12 @@ static int GetCUDADeviceCountImpl() {
   }
 
   int count;
+  auto error_code = cudaGetDeviceCount(&count);
   PADDLE_ENFORCE(
-      cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
+      error_code,
+      "cudaGetDeviceCount failed in "
+      "paddle::platform::GetCUDADeviceCountImpl, error code : %d, %s",
+      error_code, CudaErrorWebsite());
   return count;
 }
 
@@ -87,27 +115,34 @@ int GetCUDADeviceCount() {
 int GetCUDAComputeCapability(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   cudaDeviceProp device_prop;
-  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id),
-                 "cudaGetDeviceProperties failed in "
-                 "paddle::platform::GetCUDAComputeCapability");
+  auto error_code = cudaGetDeviceProperties(&device_prop, id);
+  PADDLE_ENFORCE(
+      error_code,
+      "cudaGetDeviceProperties failed in "
+      "paddle::platform::GetCUDAComputeCapability, error code : %d, %s",
+      error_code, CudaErrorWebsite());
   return device_prop.major * 10 + device_prop.minor;
 }
 
 int GetCUDARuntimeVersion(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int runtime_version = 0;
-  PADDLE_ENFORCE(cudaRuntimeGetVersion(&runtime_version),
+  auto error_code = cudaRuntimeGetVersion(&runtime_version);
+  PADDLE_ENFORCE(error_code,
                  "cudaRuntimeGetVersion failed in "
-                 "paddle::platform::cudaRuntimeGetVersion");
+                 "paddle::platform::GetCUDARuntimeVersion, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
   return runtime_version;
 }
 
 int GetCUDADriverVersion(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int driver_version = 0;
-  PADDLE_ENFORCE(cudaDriverGetVersion(&driver_version),
+  auto error_code = cudaDriverGetVersion(&driver_version);
+  PADDLE_ENFORCE(error_code,
                  "cudaDriverGetVersion failed in "
-                 "paddle::platform::GetCUDADriverVersion");
+                 "paddle::platform::GetCUDADriverVersion, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
   return driver_version;
 }
 
@@ -124,28 +159,35 @@ bool TensorCoreAvailable() {
 int GetCUDAMultiProcessors(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
-  PADDLE_ENFORCE(
-      cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id),
-      "cudaDeviceGetAttribute failed in "
-      "paddle::platform::GetCUDAMultiProcessors");
+  auto error_code =
+      cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id);
+  PADDLE_ENFORCE(error_code,
+                 "cudaDeviceGetAttribute failed in "
+                 "paddle::platform::GetCUDAMultiProcess, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
   return count;
 }
 
 int GetCUDAMaxThreadsPerMultiProcessor(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
-  PADDLE_ENFORCE(cudaDeviceGetAttribute(
-                     &count, cudaDevAttrMaxThreadsPerMultiProcessor, id),
-                 "cudaDeviceGetAttribute failed in "
-                 "paddle::platform::GetCUDAMaxThreadsPerMultiProcessor");
+  auto error_code = cudaDeviceGetAttribute(
+      &count, cudaDevAttrMaxThreadsPerMultiProcessor, id);
+  PADDLE_ENFORCE(
+      error_code,
+      "cudaDeviceGetAttribute failed in paddle::"
+      "platform::GetCUDAMaxThreadsPerMultiProcessor, error code : %d, %s",
+      error_code, CudaErrorWebsite());
   return count;
 }
 
 int GetCurrentDeviceId() {
   int device_id;
-  PADDLE_ENFORCE(
-      cudaGetDevice(&device_id),
-      "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
+  auto error_code = cudaGetDevice(&device_id);
+  PADDLE_ENFORCE(error_code,
+                 "cudaGetDevice failed in "
+                 "paddle::platform::GetCurrentDeviceId, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
   return device_id;
 }
 
@@ -170,23 +212,61 @@ std::vector<int> GetSelectedDevices() {
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
-  PADDLE_ENFORCE(cudaSetDevice(id),
-                 "cudaSetDevice failed in paddle::platform::SetDeviceId");
+  auto error_code = cudaSetDevice(id);
+  PADDLE_ENFORCE(error_code,
+                 "cudaSetDevice failed in "
+                 "paddle::platform::SetDeviced, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
 }
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
-  PADDLE_ENFORCE(cudaMemGetInfo(available, total),
-                 "cudaMemGetInfo failed in paddle::platform::GetMemoryUsage");
+  auto error_code = cudaMemGetInfo(available, total);
+  PADDLE_ENFORCE(error_code,
+                 "cudaMemGetInfo failed in "
+                 "paddle::platform::GetMemoryUsage, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
 }
 
 size_t GpuMaxAllocSize() {
+  return std::max(GpuInitAllocSize(), GpuReallocSize());
+}
+
+size_t GpuInitAllocSize() {
+  if (FLAGS_initial_gpu_memory_in_mb > 0ul) {
+    // Initial memory will be allocated by FLAGS_initial_gpu_memory_in_mb
+    return static_cast<size_t>(FLAGS_initial_gpu_memory_in_mb << 20);
+  }
+
+  // FLAGS_initial_gpu_memory_in_mb is 0, initial memory will be allocated by
+  // fraction
   size_t total = 0;
   size_t available = 0;
 
   GpuMemoryUsage(&available, &total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
 
-  // Reserve the rest for page tables, etc.
-  return static_cast<size_t>(total * FLAGS_fraction_of_gpu_memory_to_use);
+  return static_cast<size_t>((total - reserving) *
+                             FLAGS_fraction_of_gpu_memory_to_use);
+}
+
+size_t GpuReallocSize() {
+  if (FLAGS_reallocate_gpu_memory_in_mb > 0ul) {
+    // Additional memory will be allocated by
+    // FLAGS_reallocate_gpu_memory_in_mb
+    return static_cast<size_t>(FLAGS_reallocate_gpu_memory_in_mb << 20);
+  }
+
+  // FLAGS_reallocate_gpu_memory_in_mb is 0, additional memory will be
+  // allocated
+  // by fraction
+  size_t total = 0;
+  size_t available = 0;
+
+  GpuMemoryUsage(&available, &total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
+
+  return static_cast<size_t>((total - reserving) *
+                             FLAGS_fraction_of_gpu_memory_to_use);
 }
 
 size_t GpuMinChunkSize() {
@@ -201,16 +281,13 @@ size_t GpuMaxChunkSize() {
   GpuMemoryUsage(&available, &total);
   VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
            << total / 1024 / 1024 << "M";
-  size_t reserving = static_cast<size_t>(0.05 * total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   // If available less than minimum chunk size, no usable memory exists.
   available =
       std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
                total - reserving);
 
-  // Reserving the rest memory for page tables, etc.
-
-  size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
-                                          (total - reserving));
+  size_t allocating = GpuMaxAllocSize();
 
   PADDLE_ENFORCE_LE(allocating, available,
                     "Insufficient GPU memory to allocation.");
@@ -220,37 +297,50 @@ size_t GpuMaxChunkSize() {
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
-  PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
+  auto error_code = cudaMemcpyAsync(dst, src, count, kind, stream);
+  PADDLE_ENFORCE(error_code,
                  "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync "
-                 "(%p -> %p, length: %d)",
-                 src, dst, static_cast<int>(count));
+                 "(%p -> %p, length: %d) error code : %d, %s",
+                 src, dst, static_cast<int>(count), error_code,
+                 CudaErrorWebsite());
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
-  PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
-                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync (%p -> "
-                 "%p, length: %d)",
-                 src, dst, static_cast<int>(count));
+  auto error_code = cudaMemcpy(dst, src, count, kind);
+  PADDLE_ENFORCE(error_code,
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync "
+                 "(%p -> %p, length: %d) error code : %d, %s",
+                 src, dst, static_cast<int>(count), error_code,
+                 CudaErrorWebsite());
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
                         int src_device, size_t count, cudaStream_t stream) {
+  auto error_code =
+      cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream);
   PADDLE_ENFORCE(
-      cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
-      "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeerAsync");
+      error_code,
+      "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeerAsync "
+      "error code : %d, %s",
+      error_code, CudaErrorWebsite());
 }
 
 void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
                        int src_device, size_t count) {
-  PADDLE_ENFORCE(
-      cudaMemcpyPeer(dst, dst_device, src, src_device, count),
-      "cudaMemcpyPeer failed in paddle::platform::GpuMemcpyPeerSync");
+  auto error_code = cudaMemcpyPeer(dst, dst_device, src, src_device, count);
+  PADDLE_ENFORCE(error_code,
+                 "cudaMemcpyPeer failed in paddle::platform::GpuMemcpyPeerSync "
+                 "error code : %d, %s",
+                 error_code, CudaErrorWebsite());
 }
 
 void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
-  PADDLE_ENFORCE(cudaMemsetAsync(dst, value, count, stream),
-                 "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync");
+  auto error_code = cudaMemsetAsync(dst, value, count, stream);
+  PADDLE_ENFORCE(error_code,
+                 "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync "
+                 "error code : %d, %s",
+                 error_code, CudaErrorWebsite());
 }
 }  // namespace platform
 }  // namespace paddle

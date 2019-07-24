@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -56,6 +57,9 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE")
         .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
+    AddAttr<float>("pad_value",
+                   "(float, default 0.0) The value to pad for empty sequence.")
+        .SetDefault(0.0);
     AddComment(R"DOC(
 Sequence Pool Operator.
 
@@ -67,6 +71,8 @@ It supports six pooling types:
 4. LAST:    Out[i] = last instance in i-th sequence X[i]
 5. FIRST:   Out[i] = first instance in i-th sequence X[i]
 6. MAX:     $$Out[i] = max(X_i)$$
+
+and for the empty sequence Out[i] = attr(pad_value).
 
 The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
@@ -114,8 +120,9 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.device_context());
   }
 };
 
@@ -138,13 +145,17 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    SequencePoolGradOpNoNeedBufferVarsInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker);
-REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp);
+REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
+                  ops::SequencePoolGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
     ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);

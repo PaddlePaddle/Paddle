@@ -14,9 +14,11 @@
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 /*! \file */
@@ -25,10 +27,14 @@
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
+#endif
 
 namespace paddle {
 
 class AnalysisPredictor;
+struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -55,6 +61,11 @@ struct AnalysisConfig {
   /** Set parameter composed file path.
    */
   void SetParamsFile(const std::string& x) { params_file_ = x; }
+  /** Set opt cache dir.
+   */
+  void SetOptimCacheDir(const std::string& opt_cache_dir) {
+    opt_cache_dir_ = opt_cache_dir;
+  }
   /** Get the model directory path.
    */
   const std::string& model_dir() const { return model_dir_; }
@@ -135,10 +146,26 @@ struct AnalysisConfig {
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
-                            Precision precision = Precision::kFloat32);
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = false,
+                            bool use_calib_mode = true);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  /**
+   *  \brief Turn on the usage of Anakin sub-graph engine.
+   */
+  void EnableAnakinEngine(
+      int max_batch_size = 1,
+      std::map<std::string, std::vector<int>> max_input_shape = {},
+      int min_subgraph_size = 6, Precision precision = Precision::kFloat32,
+      bool auto_config_layout = false,
+      std::vector<std::string> passes_filter = {},
+      std::vector<std::string> ops_filter = {});
+
+  /** A boolean state indicating whether the Anakin sub-graph engine is used.
+  */
+  bool anakin_engine_enabled() const { return use_anakin_; }
 
   /** \brief Control whether to debug IR graph analysis phase.
    *
@@ -147,9 +174,20 @@ struct AnalysisConfig {
    */
   void SwitchIrDebug(int x = true);
 
+  /** Turn on NGRAPH.
+   */
+  void EnableNgraph();
+  /** A boolean state telling whether to use the NGRAPH.
+   */
+  bool ngraph_enabled() const { return use_ngraph_; }
+
   /** Turn on MKLDNN.
    */
   void EnableMKLDNN();
+  /** set the cache capacity of different input shapes for MKLDNN.
+   *  Default 0 means don't cache any shape.
+   */
+  void SetMkldnnCacheCapacity(int capacity);
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
@@ -173,6 +211,16 @@ struct AnalysisConfig {
     mkldnn_enabled_op_types_ = op_list;
   }
 
+  /** Turn on quantization.
+   */
+  void EnableMkldnnQuantizer();
+
+  /** A boolean state telling whether the quantization is enabled.
+  */
+  bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
+
+  MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
+
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.
    * @param prog_buffer_size the size of the data.
@@ -192,6 +240,8 @@ struct AnalysisConfig {
                          bool force_update_static_cache = false);
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
+  void SetInValid() const { is_valid_ = false; }
+  bool is_valid() const { return is_valid_; }
 
   friend class ::paddle::AnalysisPredictor;
 
@@ -199,6 +249,7 @@ struct AnalysisConfig {
    * Get a pass builder for customize the passes in IR analysis phase.
    */
   PassStrategy* pass_builder() const;
+  void PartiallyRelease();
 
  protected:
   // Update the config.
@@ -209,8 +260,8 @@ struct AnalysisConfig {
  protected:
   // Model pathes.
   std::string model_dir_;
-  std::string prog_file_;
-  std::string params_file_;
+  mutable std::string prog_file_;
+  mutable std::string params_file_;
 
   // GPU related.
   bool use_gpu_{false};
@@ -233,12 +284,15 @@ struct AnalysisConfig {
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_;
+  bool trt_use_static_engine_;
+  bool trt_use_calib_mode_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool static_memory_optim_{false};
   bool static_memory_optim_force_update_{false};
 
+  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
@@ -256,6 +310,27 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+
+  bool use_anakin_{false};
+  int anakin_max_batchsize_;
+  int anakin_min_subgraph_size_{6};
+  std::map<std::string, std::vector<int>> anakin_max_input_shape_;
+  Precision anakin_precision_mode_;
+  bool anakin_auto_config_layout_{false};
+  std::vector<std::string> anakin_passes_filter_;
+  std::vector<std::string> anakin_ops_filter_;
+
+  // mkldnn related.
+  int mkldnn_cache_capacity_{0};
+  bool use_mkldnn_quantizer_{false};
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+
+  // If the config is already used on a predictor, it becomes invalid.
+  // Any config can only be used with one predictor.
+  // Variables held by config can take up a lot of memory in some cases.
+  // So we release the memory when the predictor is set up.
+  mutable bool is_valid_{true};
+  std::string opt_cache_dir_;
 };
 
 }  // namespace paddle

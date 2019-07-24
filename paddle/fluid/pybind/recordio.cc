@@ -31,7 +31,7 @@ class RecordIOWriter {
   RecordIOWriter(const std::string& filename, recordio::Compressor compressor,
                  size_t max_num_record)
       : closed_(false),
-        stream_(filename),
+        stream_(filename, std::ios::binary),
         writer_(&stream_, compressor, max_num_record) {}
 
   void AppendTensor(const framework::LoDTensor& tensor) {

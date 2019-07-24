@@ -18,8 +18,11 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <memory>
 #include <numeric>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
@@ -127,6 +130,9 @@ struct PDNode {
   PDNode* assert_is_ops_nth_output(
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
+
+  PDNode* assert_has_n_inputs(size_t n);
+  PDNode* assert_has_n_outputs(size_t n);
 
   template <typename T>
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
@@ -302,6 +308,9 @@ bool VarLinksFromOp(Node* node, const std::string& op_type);
 // Check whether a var node is a op node's nth input.
 bool IsNthInput(Node* var, Node* op, const std::string& argument, size_t nth);
 
+// Check whether the op node has input of given name.
+bool HasInput(Node* op, const std::string& argument);
+
 // Tell whether a var node is a op node's nth output.
 bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 
@@ -443,6 +452,27 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// CONV with ReLU6
+// op: conv + relu6
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// relu6_out, relu6
+struct ConvBReLU : public PatternBase {
+  ConvBReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bounded_relu") {}
+
+  PDNode* operator()(PDNode* conv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(brelu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(brelu_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -488,6 +518,25 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(Out);
+};
+
+// MKL-DNN's FC with bias
+// op: fc
+// named node:
+// fc
+// w, bias, output
+struct FCMKLDNN : public PatternBase {
+  FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_mkldnn") {}
+
+  PDNode* operator()(PDNode* x, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  // declare variable node's name
+  PATTERN_DECL_NODE(weights);
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(output);
 };
 
 // Embedding
@@ -623,7 +672,7 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
 struct ConvBias : public PatternBase {
   ConvBias(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bias") {}
-  PDNode* operator()(PDNode* conv_input, bool is_conv3d = false);
+  PDNode* operator()(PDNode* conv_input, std::string conv_type = "conv2d");
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(eltwise);
@@ -656,6 +705,35 @@ struct Conv : public PatternBase {
   PATTERN_DECL_NODE(conv_output);
 };
 
+// Convolution op with residual data
+struct ConvResidual : public PatternBase {
+  ConvResidual(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_residual") {}
+
+  PDNode* operator()(bool with_residual_data);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_input);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_residual_data);
+  PATTERN_DECL_NODE(conv_output);
+};
+
+// Pool op
+// Forward pass for pooling.
+// pool_input is the input.
+// pool_output is a result of the operator.
+struct Pool : public PatternBase {
+  Pool(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "pooling") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(pool_op);
+  PATTERN_DECL_NODE(pool_input);
+  PATTERN_DECL_NODE(pool_output);
+};
+
 // ElementwiseAdd used in residual connections.
 // y_var is used and convolution output.
 // The operator is removed, when residual
@@ -670,6 +748,69 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_x);
   PATTERN_DECL_NODE(elementwise_add_y);
   PATTERN_DECL_NODE(elementwise_add_out);
+};
+
+// Concat op
+// Forward pass for concat.
+// concat_out is a result of the operator.
+struct Concat : public PatternBase {
+  Concat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "concat") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+};
+
+// Concat + ReLU
+// named nodes:
+// concat_op, concat_out, relu_op, relu_out
+struct ConcatReLU : public PatternBase {
+  ConcatReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "concat_relu") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+  PATTERN_DECL_NODE(relu_op);
+  PATTERN_DECL_NODE(relu_out);
+};
+
+// Conv + Concat + ReLU
+// named nodes:
+// conv_op, conv_out
+// concat_op, concat_out, relu_op, relu_out
+struct ConvConcatReLU : public PatternBase {
+  ConvConcatReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_concat_relu") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+  PATTERN_DECL_NODE(relu_op);
+  PATTERN_DECL_NODE(relu_out);
+};
+
+// PriorBox operator
+// operator: prior_box_op
+// inputs: prior_box_input, prior_box_image
+// outputs: prior_box_boxes, prior_box_variances
+struct PriorBox : public PatternBase {
+  PriorBox(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "PriorBox") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prior_box_op);
+  PATTERN_DECL_NODE(prior_box_input);
+  PATTERN_DECL_NODE(prior_box_image);
+  PATTERN_DECL_NODE(prior_box_boxes);
+  PATTERN_DECL_NODE(prior_box_variances);
 };
 
 // Conv + ElementwiseAdd + an activation
@@ -766,6 +907,34 @@ struct ConvAffineChannel : public PatternBase {
   PATTERN_DECL_NODE(ac_out);  // Out
 };
 
+// Dequantize + Quantize + anyOP
+// This pattern is used for squashing the dequantize-quantize pairs.
+struct DequantQuantAny : public PatternBase {
+  DequantQuantAny(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_quant_any") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(dequant_in);
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
+// Dequantize + anyOP
+// This quantize is used for getting number of ops the Dequantize's
+// output is an input to.
+struct DequantAny : public PatternBase {
+  DequantAny(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_any") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 struct TransposeFlattenConcat : public PatternBase {
   TransposeFlattenConcat(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "transpose_flatten_concat") {}
@@ -779,6 +948,84 @@ struct TransposeFlattenConcat : public PatternBase {
   PDNode* GetPDNode(const std::string& op_type) {
     return pattern->RetrieveNode(GetNodeName(op_type));
   }
+};
+
+struct AnakinDetectionPattern : public PatternBase {
+  AnakinDetectionPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "anakin_detect_pattern") {}
+
+  PDNode* operator()(std::vector<PDNode*> conv_inputs, int times,
+                     std::string priorbox_type, bool is_reshape);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
+};
+
+struct FillConstantElementWiseMulFuse : public PatternBase {
+  FillConstantElementWiseMulFuse(PDPattern* pattern,
+                                 const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "anakin_fillconstant_elementwisemul_fuse") {}
+
+  PDNode* operator()(PDNode* elementwise_op_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fill_constant);
+  PATTERN_DECL_NODE(fill_constant_out);
+  PATTERN_DECL_NODE(elementwise_mul);
+  PATTERN_DECL_NODE(elementwise_mul_out);
+};
+
+struct QuantDequantOpFuse : public PatternBase {
+  QuantDequantOpFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_dequant_fuse") {}
+
+  void operator()(PDNode* quant_op_input, const std::string& op_name,
+                  const std::string& weight_name, int times,
+                  const std::string& quant_type,
+                  const std::string& dequant_type);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
+};
+
+struct ShuffleChannelPattern : public PatternBase {
+  ShuffleChannelPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "shufflechannel_pattern") {}
+
+  void operator()(PDNode* reshape1_in);
+
+  PATTERN_DECL_NODE(reshape1_op);
+  PATTERN_DECL_NODE(reshape1_out);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
+};
+
+struct DeleteQuantDequantOpPattern : public PatternBase {
+  DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(any_op_out);
+  PATTERN_DECL_NODE(quant_dequant_op_inscale);
+  PATTERN_DECL_NODE(quant_dequant_op);
+  PATTERN_DECL_NODE(quant_dequant_op_outscale);
+  PATTERN_DECL_NODE(quant_dequant_op_out);
+  PATTERN_DECL_NODE(any_op2);
 };
 
 }  // namespace patterns

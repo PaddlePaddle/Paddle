@@ -26,6 +26,7 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.dtype = np.float32
         self.init_dtype()
+        self.init_kernel_type()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
@@ -43,6 +44,9 @@ class TestActivation(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_kernel_type(self):
+        pass
 
 
 class TestSigmoid(TestActivation):
@@ -86,6 +90,23 @@ class TestTanh(TestActivation):
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAtan(TestActivation):
+    def setUp(self):
+        self.op_type = "atan"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.arctan(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -171,6 +192,23 @@ class TestSqrt(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestRsqrt(TestActivation):
+    def setUp(self):
+        self.op_type = "rsqrt"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [2, 3]).astype(self.dtype)
+        out = 1.0 / np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+
+
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
@@ -244,6 +282,23 @@ class TestCos(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestAcos(TestActivation):
+    def setUp(self):
+        self.op_type = "acos"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arccos(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 class TestSin(TestActivation):
     def setUp(self):
         self.op_type = "sin"
@@ -251,6 +306,23 @@ class TestSin(TestActivation):
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.sin(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAsin(TestActivation):
+    def setUp(self):
+        self.op_type = "asin"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arcsin(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -601,6 +673,25 @@ class TestSwish(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
+#------------------ Test Cudnn Activation----------------------
+def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActCudnn(parent):
+        def init_kernel_type(self):
+            self.attrs = {"use_cudnn": True}
+
+    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    TestActCudnn.__name__ = cls_name
+    globals()[cls_name] = TestActCudnn
+
+
+create_test_act_cudnn_class(TestRelu)
+create_test_act_cudnn_class(TestRelu6)
+create_test_act_cudnn_class(TestSigmoid)
+create_test_act_cudnn_class(TestTanh)
+
+
 #------------------ Test Fp16 ----------------------
 def create_test_act_fp16_class(parent,
                                atol=1e-3,
@@ -642,7 +733,10 @@ create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
+create_test_act_fp16_class(TestAcos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestAsin)
+create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)

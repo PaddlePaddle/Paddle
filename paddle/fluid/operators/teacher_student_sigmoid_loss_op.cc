@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/teacher_student_sigmoid_loss_op.h"
+
+#include <memory>
+
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -34,12 +37,14 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
                       "Input(Label)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
-                      "The 1st dimension of Input(X) and Input(Label) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
-                      "The 2nd dimension of "
-                      "Input(Label) should be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
+                        "The 1st dimension of Input(X) and Input(Label) should "
+                        "be equal.");
+      PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
+                        "The 2nd dimension of "
+                        "Input(Label) should be 1.");
+    }
     ctx->SetOutputDim("Y", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Y");
   }
@@ -52,6 +57,28 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
                                    ctx.device_context());
+  }
+};
+
+class TeacherStudentSigmoidLossGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("teacher_student_sigmoid_loss_grad");
+
+    op->SetInput("X", Input("X"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -74,17 +101,20 @@ class TeacherStudentSigmoidLossGradientOp
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(dy_dims.size(), 2, "Input(Y@Grad)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
-                      "The 1st dimension of Input(X) and Input(Label) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(x_dims[0], dy_dims[0],
-                      "The 1st dimension of Input(X) and Input(Y@Grad) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(dy_dims[1], 1,
-                      "The 2nd dimension of Input(Y@Grad) should be 1.");
-    PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                      "When Attr(soft_label) == false, the 2nd dimension of "
-                      "Input(Label) should be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
+                        "The 1st dimension of Input(X) and Input(Label) should "
+                        "be equal.");
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], dy_dims[0],
+          "The 1st dimension of Input(X) and Input(Y@Grad) should "
+          "be equal.");
+      PADDLE_ENFORCE_EQ(dy_dims[1], 1,
+                        "The 2nd dimension of Input(Y@Grad) should be 1.");
+      PADDLE_ENFORCE_EQ(label_dims[1], 1,
+                        "When Attr(soft_label) == false, the 2nd dimension of "
+                        "Input(Label) should be 1.");
+    }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
@@ -117,11 +147,11 @@ class TeacherStudentSigmoidLossOpMaker
               "[N x 1]. The teacher student sigmoid loss.");
     AddAttr<float>(
         "soft_max_up_bound",
-        "fp32, if input > soft_max_up_bound, will be bound, default 15.0")
+        "fp32, if input > soft_max_up_bound, input will be bound, default 15.0")
         .SetDefault(15.0);
-    AddAttr<float>(
-        "soft_max_lower_bound",
-        "fp32, if input < soft_max_lower_bound, will be bound, default -15.0")
+    AddAttr<float>("soft_max_lower_bound",
+                   "fp32, if input < soft_max_lower_bound, input will be "
+                   "bound, default -15.0")
         .SetDefault(-15.0);
     AddComment(R"DOC(
 TeacherStudentSigmoidLoss Operator.
@@ -134,7 +164,7 @@ we add another label(z') to original.
         label = {-2, -1, [0, 2]}
         when z' is not exist, clk = 0 : label = -2;
         when z' is not exist, clk = 1 : label = -1;
-        when z' is exist    , clk = 0 : label = 0 + z';
+        when z' is exist , clk = 0 : label = 0 + z';
         when z' is exist    , clk = 1 : label = 1 + z';
 
 )DOC");
@@ -148,7 +178,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(teacher_student_sigmoid_loss,
                   ops::TeacherStudentSigmoidLossOp,
                   ops::TeacherStudentSigmoidLossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TeacherStudentSigmoidLossGradOpDescMaker);
 
 REGISTER_OPERATOR(teacher_student_sigmoid_loss_grad,
                   ops::TeacherStudentSigmoidLossGradientOp);

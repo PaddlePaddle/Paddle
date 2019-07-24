@@ -45,13 +45,13 @@ struct Registry {
   }
 
   template <typename ItemChild>
-  static void Register(const std::string& name) {
+  void Register(const std::string& name) {
     PADDLE_ENFORCE_EQ(items_.count(name), 0);
     items_[name] = new ItemChild;
   }
 
-  static ItemParent* Lookup(const std::string& name,
-                            const std::string& default_name = "") {
+  ItemParent* Lookup(const std::string& name,
+                     const std::string& default_name = "") {
     auto it = items_.find(name);
     if (it == items_.end()) {
       if (default_name == "")
@@ -70,11 +70,8 @@ struct Registry {
 
  private:
   Registry() = default;
-  static std::unordered_map<std::string, ItemParent*> items_;
+  std::unordered_map<std::string, ItemParent*> items_;
 };
-
-template <typename ItemParent>
-std::unordered_map<std::string, ItemParent*> Registry<ItemParent>::items_;
 
 }  // namespace inference
 }  // namespace paddle

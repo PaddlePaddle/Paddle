@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/string/printf.h"
@@ -38,8 +38,7 @@ std::string FormatName(const Node* node) {
 }
 }  // namespace
 
-std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
@@ -82,7 +81,7 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
       {Dot::Attr("style", "filled,rounded"), Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
 
-  auto marked_nodes = ConsumeMarkedNodes(graph.get());
+  auto marked_nodes = ConsumeMarkedNodes(graph);
   // Create nodes
   for (const Node* n : graph->Nodes()) {
     std::string node_id = FormatName(n) + "(" + std::to_string(n->id()) + ")";
@@ -115,8 +114,6 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
   }
 
   sout << dot.Build();
-
-  return graph;
 }
 
 GraphVizPass::marked_nodes_t GraphVizPass::ConsumeMarkedNodes(

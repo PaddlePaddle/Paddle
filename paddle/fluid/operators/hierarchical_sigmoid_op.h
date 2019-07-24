@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
@@ -65,12 +68,13 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     // for remote prefetch
 
+    auto remote_prefetch = ctx.Attr<bool>("remote_prefetch");
     auto epmap = ctx.Attr<std::vector<std::string>>("epmap");
-    if (!epmap.empty()) {
+    if (remote_prefetch && !epmap.empty()) {
       // if epmap is not empty, then the parameter will be fetched from remote
       // parameter
       // server
-      auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
+      auto height_sections = ctx.Attr<std::vector<int64_t>>("height_sections");
       auto table_names = ctx.Attr<std::vector<std::string>>("table_names");
       std::vector<int64_t> real_rows = PathToRows(*path);
       framework::Scope& local_scope = ctx.scope().NewScope();
@@ -234,6 +238,8 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       zero(dev_ctx, w_grad, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     } else {
+      PADDLE_ENFORCE(path != nullptr,
+                     "Sparse mode should not be used without custom tree!");
       framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
@@ -242,8 +248,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       w_grad->set_height(w.dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
       framework::DDim temp_dim(w.dims());
-      set(temp_dim, 0, real_rows.size());
-
+      temp_dim[0] = real_rows.size();
       w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
       zero(dev_ctx, w_grad_value, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);

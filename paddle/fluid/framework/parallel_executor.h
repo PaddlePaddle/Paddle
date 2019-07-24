@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -45,16 +48,21 @@ class ParallelExecutor {
 
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
+                            const std::vector<std::string> &bcast_vars,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy);
+                            const BuildStrategy &build_strategy,
+                            ir::Graph *graph);
 
   ~ParallelExecutor();
 
   std::vector<Scope *> &GetLocalScopes();
+
+  void DropLocalExeScopes();
+
+  // This API is used to check whether DropLocalExeScopes work.
+  bool NeedCreateLocalExeScope();
 
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
@@ -70,16 +78,16 @@ class ParallelExecutor {
            const std::string &fetched_var_name);
 
  private:
-  void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
-  bool EnableParallelGraphExecution(const ProgramDesc &main_program,
+  // broadcast the parameters from the 0th device.
+  // trainer_id the trainer index in nccl distributed training.
+  void BCastParamsToDevices(const std::vector<std::string> &vars,
+                            int trainer_id = 0) const;
+  bool EnableParallelGraphExecution(const ir::Graph &graph,
                                     const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
   ParallelExecutorPrivate *member_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ncclUniqueId> local_nccl_id_;
-#endif
+  std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
 };
-
 }  // namespace framework
 }  // namespace paddle

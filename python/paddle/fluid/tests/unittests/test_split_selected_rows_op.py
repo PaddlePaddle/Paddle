@@ -38,7 +38,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         rows = [0, 5, 7, 4, 20]
-        height = 20
+        height = 21
         row_numel = 2
 
         # initialize input variable X

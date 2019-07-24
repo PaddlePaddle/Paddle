@@ -55,11 +55,8 @@ class DropoutOpConverter : public OpConverter {
     engine_->weight_map[op_desc.Output("Out").front() + "_dropout"] =
         std::move(weight_tensor);
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName(("dropout (Output: " + output_name + ")").c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
+
+    RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
   }
 };
 
