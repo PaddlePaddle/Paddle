@@ -53,13 +53,14 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
  private:
   void RunOnScopeIdx(size_t idx) const;
 
+  // Toposort ops. Different strategies can be used in the future.
   std::vector<OpHandleBase *> SortOp(const OpGraphView &graph_view) const;
 
   // Build the initial dependency matrix, and initializing all fields,
   // including `ops_`, `op_to_idx_`, `deps_`
   void BuildOpDependencyMap() const;
 
-  // Get op index inside `ops_`
+  // Get op index inside `ops_`, used to find dependency inside `deps_`
   size_t OpIndex(ComputationOpHandle *op) const;
 
   size_t ResolveDependencyBetween(
@@ -80,7 +81,8 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
   // All ops in the graph, grouped by scope index
   mutable std::vector<std::vector<ComputationOpHandle *>> ops_;
 
-  // Index of each op in `ops_`, grouped by scope index
+  // Index of each op in `ops_`, grouped by scope index.
+  // Index of each op is the index inside `deps_`.
   mutable std::vector<std::unordered_map<ComputationOpHandle *, size_t>>
       op_to_idx_;
 
@@ -159,7 +161,7 @@ std::vector<OpHandleBase *> BufferSharedCrossOpMemoryReusePass::SortOp(
 /**
  * Try to reuse unlived vars.
  *
- * What we do is: tranverse all outputs of each op, and find a suitable
+ * What we do is: transverse all outputs of each op, and find a suitable
  * unused var, and then reuse its memory as output.
  *
  * How to determine unused vars?
@@ -186,6 +188,8 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
   auto &last_live_ops_of_vars =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars)[idx];
 
+  // Build a reverse map of `last_live_ops_of_vars`,
+  // i.e., VarHandle -> last lived ops of VarHandle
   std::unordered_map<VarHandle *, std::unordered_set<ComputationOpHandle *>>
       var_to_ops;
   for (auto &pair : last_live_ops_of_vars) {
@@ -194,12 +198,17 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
     }
   }
 
+  // Deep copy of `var_to_ops`, used to analysis unlived vars after one op runs
+  // in the following codes.
   auto original_var_to_ops = var_to_ops;
 
+  // Memory size of VarHandle -> list<VarHandle>
   std::map<int64_t, std::list<VarHandle *>> unlived_var_pool;
   size_t reuse_num = 0;
 
   for (auto *op : ops) {
+    // Transverse all output args of op, find whether there is unlived var
+    // can be reused.
     auto out_args = op->Node()->Op()->OutputArgumentNames();
     for (auto &out_arg : out_args) {
       auto out_nodes = this->FindNodesByName(out_arg, op->Node()->outputs);
@@ -212,45 +221,66 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
           dynamic_cast<VarHandle *>(&(out_node->Wrapper<VarHandleBase>()));
       PADDLE_ENFORCE_NOT_NULL(out_var);
 
+      // If out_arg is not reusable, skip it
       if (!IsOutVarReusable(out_var)) {
         continue;
       }
 
       auto mem_size = GetMemorySize(out_var);
+      // Special case: if memory size of out_var is 0, skip it
       if (mem_size == 0) {
         continue;
       }
 
+      // Find a suitable unlived var from `unlived_var_pool`
+      // Here, we use `find`, but we can perform `lower_bound` if
+      // it is better in the future.
       auto iter = unlived_var_pool.find(std::abs(mem_size));
       if (iter == unlived_var_pool.end()) {
         continue;
       }
 
+      // Obtain candidate_vars that can be reused.
       auto &candidate_vars = iter->second;
       for (auto var_iter = candidate_vars.begin();
            var_iter != candidate_vars.end(); ++var_iter) {
         bool success = this->TryReuseVar(*var_iter, out_var);
         if (!success) continue;
-        ++reuse_num;
 
+        // If memory reuse is successful, we should do some post-processing.
+        ++reuse_num;
         auto &prev_ops = original_var_to_ops.at(*var_iter);
+
+        // Add extra dependencies between `op` and last lived ops of reused var
+        // (i.e. prev_ops) if needed.
+        // All `prev_ops` must be preceding ops of op to avoid data hazard.
         size_t new_added_dep_num = ResolveDependencyBetween(op, prev_ops);
         VLOG(3) << "Variable can be reused between: " << (*var_iter)->Name()
                 << " -> " << out_var->Name() << " when running op "
                 << op->Name() << ", add extra dependency " << new_added_dep_num
                 << "/" << prev_ops.size();
+
+        // erase reused var from ``original_var_to_ops`
         original_var_to_ops.erase(*var_iter);
+
+        // erase reused var from `candidate_vars`
         candidate_vars.erase(var_iter);
         if (candidate_vars.empty()) {
+          // erase reused var from `unlived_var_pool` if there is no other vars
+          // which has same size with reused var.
           unlived_var_pool.erase(iter);
         }
         break;
       }
     }
 
+    // After all output args have been transversed, we should check whether
+    // there is new unlived var after `op` runs.
     for (auto op_iter = var_to_ops.begin(); op_iter != var_to_ops.end();) {
+      // erase op from `var_to_ops` first
       op_iter->second.erase(op);
       if (op_iter->second.empty()) {
+        // there is a unlived var, since all lived ops have run
         VarHandle *unlived_var = op_iter->first;
         var_to_ops.erase(op_iter++);
         if (IsInVarReusable(unlived_var)) {
@@ -276,7 +306,8 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
   for (auto *prev_op : prev_ops) {
     auto op_dep = GetOpDep(prev_op, op);
     if (op_dep == NodeDependency::kBefore) continue;
-    PADDLE_ENFORCE_EQ(op_dep, NodeDependency::kNoDep);
+    PADDLE_ENFORCE_EQ(op_dep, NodeDependency::kNoDep,
+                      "The graph has circle, this may be a bug");
 
     auto iter =
         std::find_if(prev_op->Outputs().begin(), prev_op->Outputs().end(),
@@ -294,6 +325,7 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
       op->AddInput(dep_var);
     }
 
+    // All preceding ops of `prev_op` should be preceding ops of `op`
     size_t prev_op_idx = OpIndex(prev_op);
     for (size_t i = 0; i < deps[prev_op_idx].size(); ++i) {
       if (deps[prev_op_idx][i] != NodeDependency::kAfter) {
@@ -304,6 +336,7 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
       deps[op_idx][i] = NodeDependency::kAfter;
     }
 
+    // All pending ops of `op` should be pending ops of `prev_op`.
     for (size_t i = 0; i < deps[op_idx].size(); ++i) {
       if (deps[op_idx][i] != NodeDependency::kBefore) {
         continue;
@@ -313,6 +346,7 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
       deps[prev_op_idx][i] = NodeDependency::kBefore;
     }
 
+    // `prev_op` is one of preceding op of `op`
     SetOpDep(prev_op, op, NodeDependency::kBefore);
     ++new_added_dep_num;
   }
@@ -320,20 +354,22 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
 }
 
 void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
-  // Step 1: clear all fields, preparing for re-initialization
   PADDLE_ENFORCE(ops_.empty(), "ops_ must be initialized here");
   PADDLE_ENFORCE(op_to_idx_.empty(), "op_to_idx_ must be initialized here");
   PADDLE_ENFORCE(deps_.empty(), "deps_ must be initialized here");
 
+  // Toposort ops
   OpGraphView graph_view(ir::FilterByNodeWrapper<OpHandleBase>(*graph_));
   auto ops = SortOp(graph_view);
 
   size_t scope_num = this->ScopeNum();
   size_t op_num = ops.size();
 
+  // A map to record all preceding ops of each op
   std::unordered_map<OpHandleBase *, std::unordered_set<OpHandleBase *>>
       preceding_ops;
   {
+    // BFS to fill `preceding_ops`
     auto op_deps = graph_view.GetPrecedingDepNum();
     std::queue<OpHandleBase *> ready_ops;
     std::unordered_set<OpHandleBase *> is_visited;
@@ -353,6 +389,9 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
       auto *cur_op = ready_ops.front();
       ready_ops.pop();
 
+      // All preceding ops of cur_op should be:
+      //  - preceding ops of cur_op, that is connected to cur_op directely
+      //  - all preceding ops of `direct preceding ops of cur_op`
       auto &all_preceding_ops_of_cur_op = preceding_ops[cur_op];
       for (auto &preceding_op : graph_view.PrecedingOps(cur_op)) {
         all_preceding_ops_of_cur_op.insert(preceding_op);
@@ -380,6 +419,7 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
   }
 
   {
+    // Find out ComputationOpHandles only
     ops_.resize(scope_num);
     op_to_idx_.resize(scope_num);
     for (auto *op : ops) {
@@ -392,6 +432,7 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
   }
 
   {
+    // Fill deps_ according to `preceding_ops`
     deps_.resize(scope_num);
     for (size_t i = 0; i < deps_.size(); ++i) {
       deps_[i].resize(ops_[i].size());

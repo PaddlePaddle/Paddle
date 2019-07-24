@@ -253,7 +253,6 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   }
 
   if (build_strategy_.memory_optimize_) {
-    // TODO(zjl): refactor MemoryOptimizePass as well!!!
     auto cross_op_memory_reuse_pass = ir::PassRegistry::Instance().Get(
         "buffer_shared_cross_op_memory_reuse_pass");
     cross_op_memory_reuse_pass->SetNotOwned(ir::kMemOptVarInfoMapList,

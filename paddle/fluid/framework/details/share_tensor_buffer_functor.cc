@@ -94,7 +94,7 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
     exec_scope_ = exec_scope;
     CallOnce();
   } else {
-    PADDLE_ENFORCE_EQ(exec_scope_, exec_scope, "Scope must be the same");
+    PADDLE_ENFORCE(exec_scope_ == exec_scope, "Scope must be the same");
   }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {

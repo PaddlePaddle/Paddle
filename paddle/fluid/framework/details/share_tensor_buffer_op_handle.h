@@ -48,7 +48,7 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   size_t GetScopeIdx() const { return functor_.GetScopeIdx(); }
 
-  void Add(ir::MemOptVarInfo *in_var_info, const std::string &ou_var_name);
+  void Add(ir::MemOptVarInfo *in_var_info, const std::string &out_var_name);
 
   const ShareTensorBufferFunctor &Functor() const { return functor_; }
 

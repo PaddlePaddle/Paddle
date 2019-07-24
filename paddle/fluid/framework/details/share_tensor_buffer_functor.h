@@ -34,6 +34,13 @@ class MemOptVarInfo;
 
 namespace details {
 
+// NOTE(paddle-dev): ShareTensorBufferFunctor is responsible for
+// performing memory reuse in run-time. ShareTensorBufferOpHandle
+// is only a wrapper of ShareTensorBufferFunctor.
+// Once we find the run-time memory reuse strategy is time-consuming in
+// scheduling, we should need a pass to move ShareTensorBufferFunctor into
+// each ComputationOpHandle. ShareTensorBufferFunctor is preserved for
+// this probable movement.
 class ShareTensorBufferFunctor {
  public:
   ShareTensorBufferFunctor(Scope *scope, size_t scope_idx,
