@@ -128,7 +128,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         #table_name = find_distributed_lookup_table(losses[0].block.program)
         table_name = self._find_multi_distributed_lookup_table(losses)
-        print(table_name)
         prefetch_slots = find_distributed_lookup_table_inputs(
             losses[0].block.program, table_name[0])
         inputs_dict = self._find_distributed_lookup_table_inputs(
@@ -224,8 +223,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if len(ps_param.trainer_param.skip_op) == 0:
             ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
-        with open("proto_test.txt", "w") as wf:
-            wf.write(str(ps_param))
         opt_info = {}
         opt_info["program_configs"] = program_configs
         opt_info["trainer"] = "DistMultiTrainer"
