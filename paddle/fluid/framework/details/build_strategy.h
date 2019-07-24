@@ -108,7 +108,7 @@ struct BuildStrategy {
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
-  bool memory_optimize_{true};
+  bool memory_optimize_{false};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
