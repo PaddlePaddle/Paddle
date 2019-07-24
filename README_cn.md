@@ -21,12 +21,13 @@ PaddlePaddle (PArallel Distributed Deep LEarning) 是一个简单易用、高效
 ```
 # Linux CPU
 pip install paddlepaddle
-# Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu
 # Linux GPU cuda10cudnn7
-pip install paddlepaddle-gpu==1.5.1.post107
+pip install paddlepaddle-gpu
 # Linux GPU cuda8cudnn7
 pip install paddlepaddle-gpu==1.5.1.post87
+# Linux GPU cuda9cudnn7
+pip install paddlepaddle-gpu==1.5.1.post97
+
 
 # 其他平台上的安装指引请参考 http://paddlepaddle.org/
 ```
