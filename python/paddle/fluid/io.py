@@ -25,6 +25,7 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
+from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
@@ -187,6 +188,7 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -438,7 +440,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
         return is_valid
 
     if not isinstance(main_program, Program):
-        raise ValueError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' should be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -609,6 +611,7 @@ def load_vars(executor,
             # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -627,6 +630,7 @@ def load_vars(executor,
 
         if main_program is None:
             main_program = default_main_program()
+
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
@@ -863,7 +867,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
         executor.run(load_prog)
 
     if not isinstance(main_program, Program):
-        raise ValueError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' should be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -1026,6 +1030,9 @@ def save_inference_model(dirname,
                                             is not suitable for saving inference model \
                                             we save the original program as inference model.",
                 RuntimeWarning)
+
+    elif not isinstance(main_program, Program):
+        raise TypeError("program should be as Program type or None")
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
