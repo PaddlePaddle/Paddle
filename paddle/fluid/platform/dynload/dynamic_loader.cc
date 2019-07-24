@@ -221,9 +221,9 @@ void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(warpctc_dir, "warpctc.dll");
+  return GetDsoHandleFromDefaultPath("warpctc.dll", 0);
 #else
-  return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.so");
+  return GetDsoHandleFromDefaultPath("libwarpctc.so", RTLD_LAZY | RTLD_LOCAL);
 #endif
 }
 

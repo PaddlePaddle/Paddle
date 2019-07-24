@@ -34,8 +34,8 @@ if os.path.exists(current_path + os.sep + 'core_noavx.' + core_suffix):
 try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
+        os.environ['path'] = third_lib_path + ';' + os.environ['path']
+        sys.path.insert(0, third_lib_path)
 
 except ImportError as e:
     from .. import compat as cpt
