@@ -30,6 +30,18 @@ def simple_net1():
     return loss
 
 
+def simple_net2():
+    x = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    feature = fluid.layers.fc(input=x, size=10, act=None)
+    label = fluid.layers.cast(label, dtype="float32")
+    label = fluid.layers.cast(label, dtype='int64')
+    # Note that the label is not persistable in fluid.layers.cross_entropy.
+    loss = fluid.layers.cross_entropy(input=feature, label=label)
+    loss = fluid.layers.mean(loss)
+    return loss
+
+
 class TestBackward(unittest.TestCase):
     def check_backward(self, model):
         place = fluid.CPUPlace()
@@ -51,6 +63,7 @@ class TestBackward(unittest.TestCase):
 
     def test_backward(self):
         self.check_backward(simple_net1)
+        self.check_backward(simple_net2)
 
 
 if __name__ == '__main__':

@@ -74,6 +74,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
   "infer_clean_graph_pass",                        //
       "conv_affine_channel_fuse_pass",             //
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
+      "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
       // "fc_fuse_pass",                                 //
