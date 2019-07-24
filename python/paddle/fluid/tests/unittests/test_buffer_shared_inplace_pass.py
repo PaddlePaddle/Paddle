@@ -175,12 +175,14 @@ class InplaceTestBase(unittest.TestCase):
 class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
-        self.fuse_all_optimizer_ops = False
 
 
 class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = True
+        # FIXME(zcd): if training is in CPU, fuse_all_optimizer_ops
+        # may cause some diff with the origin model, the difference is
+        # about 1e-8. This may be related to byte alignment.
         self.fuse_all_optimizer_ops = True
 
 

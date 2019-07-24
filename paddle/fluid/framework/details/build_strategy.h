@@ -97,7 +97,7 @@ struct BuildStrategy {
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
-  bool fuse_broadcast_ops_{true};
+  bool fuse_broadcast_ops_{false};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
 
