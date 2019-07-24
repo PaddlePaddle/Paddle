@@ -543,7 +543,10 @@ class DistributeTranspiler(object):
                     if self._is_input_of_remote_sparse_update_op(
                             sparse_param_name):
                         self.sparse_param_to_height_sections[
-                            sparse_param_name] = [splited_vars[0].shape[0]]
+                            sparse_param_name] = [
+                                splited_var.shape[0]
+                                for splited_var in splited_vars
+                            ]
 
                 if not self.config.runtime_split_send_recv:
                     self._insert_split_op(program, orig_var, index,
