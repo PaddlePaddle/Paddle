@@ -171,6 +171,7 @@ class TestDistRunnerBase(object):
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
+        build_stra.fuse_all_optimizer_ops = False
 
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
@@ -185,7 +186,6 @@ class TestDistRunnerBase(object):
             pass_builder = build_stra._finalize_strategy_and_create_passes()
             mypass = pass_builder.insert_pass(0, "multi_batch_merge_pass")
             mypass.set("num_repeats", args.batch_merge_repeat)
-
         if args.update_method == "nccl2" or args.update_method == "nccl2_reduce_layer":
             build_stra.num_trainers = len(args.endpoints.split(","))
             build_stra.trainer_id = args.trainer_id
