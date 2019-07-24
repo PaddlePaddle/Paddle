@@ -30,6 +30,7 @@ __all__ = ["FleetUtil"]
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
+
 class FleetUtil(object):
     """
     FleetUtil provides some common functions for users' convenience.
@@ -42,6 +43,7 @@ class FleetUtil(object):
           fleet_util.rank0_print("my log")
 
     """
+
     def rank0_print(self, s):
         """
         Worker of rank 0 print some log.
@@ -320,7 +322,7 @@ class FleetUtil(object):
         start_pos = instance_id.find(job_id_with_host)
         end_pos = instance_id.find("--")
         if start_pos != -1 and end_pos != -1:
-            job_id_with_host = instance_id[start_pos : end_pos]
+            job_id_with_host = instance_id[start_pos:end_pos]
         xbox_dict["job_id"] = job_id_with_host
         # currently hard code here, set monitor_data empty string
         xbox_dict["monitor_data"] = ""
@@ -393,8 +395,11 @@ class FleetUtil(object):
                     with open(donefile_name, "w") as f:
                         f.write(pre_content + "\n")
                         f.write(content + "\n")
-                    client.upload(donefile_path, donefile_name,
-                                  multi_processes=1, overwrite=True)
+                    client.upload(
+                        donefile_path,
+                        donefile_name,
+                        multi_processes=1,
+                        overwrite=True)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -403,8 +408,11 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
-                client.upload(donefile_path, donefile_name, multi_processes=1,
-                              overwrite=True)
+                client.upload(
+                    donefile_path,
+                    donefile_name,
+                    multi_processes=1,
+                    overwrite=True)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -418,7 +426,7 @@ class FleetUtil(object):
                             data_path,
                             hadoop_fs_name,
                             hadoop_fs_ugi,
-                            monitor_data = {},
+                            monitor_data={},
                             hadoop_home="$HADOOP_HOME",
                             donefile_name="xbox_patch_done.txt"):
         """
@@ -483,8 +491,11 @@ class FleetUtil(object):
                     with open(donefile_name, "w") as f:
                         f.write(pre_content + "\n")
                         f.write(xbox_str + "\n")
-                    client.upload(donefile_path, donefile_name,
-                                  multi_processes=1, overwrite=True)
+                    client.upload(
+                        donefile_path,
+                        donefile_name,
+                        multi_processes=1,
+                        overwrite=True)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -493,8 +504,11 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
-                client.upload(donefile_path, donefile_name, multi_processes=1,
-                              overwrite=True)
+                client.upload(
+                    donefile_path,
+                    donefile_name,
+                    multi_processes=1,
+                    overwrite=True)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -669,12 +683,8 @@ class FleetUtil(object):
         last_path = content[2]
         return [last_save_day, last_save_pass, last_path]
 
-    def get_online_pass_interval(self,
-                                 days,
-                                 hours,
-                                 split_interval,
-                                 split_per_pass,
-                                 is_data_hourly_placed):
+    def get_online_pass_interval(self, days, hours, split_interval,
+                                 split_per_pass, is_data_hourly_placed):
         """
         get online pass interval
 
@@ -851,51 +861,53 @@ class FleetUtil(object):
             copc = actual_ctr / predicted_ctr
 
         # calculate bucket error
-	last_ctr = -1.0
-	impression_sum = 0.0
-	ctr_sum = 0.0
-	click_sum = 0.0
-	error_sum = 0.0
-	error_count = 0.0
-	click = 0.0
-	show = 0.0
-	ctr = 0.0
-	adjust_ctr = 0.0
-	relative_error = 0.0
-	actual_ctr = 0.0
-	relative_ctr_error = 0.0
-	k_max_span = 0.01
-	k_relative_error_bound = 0.05
-	for i in xrange(num_bucket):
-	    click = global_pos[0][i]
-	    show = global_pos[0][i] + global_neg[0][i]
-	    ctr = float(i) / num_bucket
-	    if abs(ctr - last_ctr) > k_max_span:
-		last_ctr = ctr
-		impression_sum = 0.0
-		ctr_sum = 0.0
-		click_sum = 0.0
-	    impression_sum += show
-	    ctr_sum += ctr * show
-	    click_sum += click
-	    if impression_sum == 0:
-		continue
-	    adjust_ctr = ctr_sum / impression_sum
-	    if adjust_ctr == 0:
-		continue
-	    relative_error = \
-                    math.sqrt((1 - adjust_ctr) / (adjust_ctr * impression_sum))
-	    if relative_error < k_relative_error_bound:
-		actual_ctr = click_sum / impression_sum
-		relative_ctr_error = abs(actual_ctr / adjust_ctr - 1)
-		error_sum += relative_ctr_error * impression_sum
-		error_count += impression_sum
-		last_ctr = -1
+        last_ctr = -1.0
+        impression_sum = 0.0
+        ctr_sum = 0.0
+        click_sum = 0.0
+        error_sum = 0.0
+        error_count = 0.0
+        click = 0.0
+        show = 0.0
+        ctr = 0.0
+        adjust_ctr = 0.0
+        relative_error = 0.0
+        actual_ctr = 0.0
+        relative_ctr_error = 0.0
+        k_max_span = 0.01
+        k_relative_error_bound = 0.05
+        for i in xrange(num_bucket):
+            click = global_pos[0][i]
+            show = global_pos[0][i] + global_neg[0][i]
+            ctr = float(i) / num_bucket
+            if abs(ctr - last_ctr) > k_max_span:
+                last_ctr = ctr
+                impression_sum = 0.0
+                ctr_sum = 0.0
+                click_sum = 0.0
+            impression_sum += show
+            ctr_sum += ctr * show
+            click_sum += click
+            if impression_sum == 0:
+                continue
+            adjust_ctr = ctr_sum / impression_sum
+            if adjust_ctr == 0:
+                continue
+            relative_error = \
+                           math.sqrt((1 - adjust_ctr) / (adjust_ctr * impression_sum))
+            if relative_error < k_relative_error_bound:
+                actual_ctr = click_sum / impression_sum
+                relative_ctr_error = abs(actual_ctr / adjust_ctr - 1)
+                error_sum += relative_ctr_error * impression_sum
+                error_count += impression_sum
+                last_ctr = -1
 
-	bucket_error = error_sum / error_count if error_count > 0 else 0.0
+        bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
-        return [auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,
-                mean_predict_qvalue, total_ins_num]
+        return [
+            auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,
+            mean_predict_qvalue, total_ins_num
+        ]
 
     def print_global_metrics(self,
                              scope=fluid.global_scope(),
@@ -955,6 +967,7 @@ class FleetUtil(object):
             prob_name, q_name)
         self.rank0_print("global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f RMSE=%.6f "
                          "Actural_CTR=%.6f Predicted_CTR=%.6f COPC=%.6f  "
-                         "MEAN Q_VALUE=%.6f Ins number=%s" %(auc, bucket_error,
-                         mae, rmse, actual_ctr, predicted_ctr, copc,
-                         mean_predict_qvalue, total_ins_num))
+                         "MEAN Q_VALUE=%.6f Ins number=%s" %
+                         (auc, bucket_error, mae, rmse, actual_ctr,
+                          predicted_ctr, copc, mean_predict_qvalue,
+                          total_ins_num))
