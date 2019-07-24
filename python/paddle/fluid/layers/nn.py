@@ -1839,10 +1839,10 @@ def sequence_conv(input,
     Args:
         input (Variable): ${x_comment}
         num_filters (int): number of filters.
-        filter_size (int): the filter size (H and W).
-        filter_stride (int): stride of the filter.
+        filter_size (int): the height(time-steps) of filter and the width is hidden size by default.
+        filter_stride (int): stride of the filter. Currently only supports stride=1.
         padding (bool): if True, it will generate non-zero padding data by param_attr, which also will
-             be update while training. If False, it will generate zero padding data, and these data
+             be updated while training. If False, it will generate all-zero padding data, and these data
              will not be trainable. 
         padding_start (int|None): the start index of padding operation represents the beginning of the
              convolution of the number of rows of sequence, which can be negative. The negative number
@@ -1884,10 +1884,12 @@ def sequence_conv(input,
     if padding_start is None:
         padding_start = -int(filter_size // 2)
     elif not isinstance(padding_start, int):
-        raise ("Param(padding_start) must be type of int.")
+        raise TypeError("Parameter(padding_start) must be int.")
 
     if padding_start == 0 and filter_size == 1:
         padding = False
+
+    padding_param = None
     if padding:
         pad_size = max(0, -padding_start) + max(0, padding_start + filter_size -
                                                 1)
@@ -1900,7 +1902,7 @@ def sequence_conv(input,
         inputs={
             'X': [input],
             'Filter': [filter_param],
-            'PaddingData': padding_param if padding else None
+            'PaddingData': padding_param
         },
         outputs={"Out": pre_bias},
         attrs={
