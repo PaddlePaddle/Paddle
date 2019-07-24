@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace operators {
 
@@ -83,10 +85,11 @@ class ActivationGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
-    op->SetAttr("forward_input_X", Input("X").back());
 
-    if (static_cast<int>(kDepValue) &
-        static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+    if ((static_cast<int>(kDepValue) &
+         static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
+        FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
+                             boost::get<bool>(op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", Input("X"));
     }
 
