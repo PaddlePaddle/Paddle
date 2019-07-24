@@ -308,7 +308,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 
   push_values->resize(fea_keys.size() + 1);
   for (auto& t : *push_values) {
-    t.resize(emb_dim + offset);
+    t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
@@ -323,10 +323,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
-    push_values->resize(fea_keys.size() + 1);
-    for (auto& t : *push_values) {
-      t.resize(emb_dim + offset + slot_offset);
-    }
     int slot = 0;
     if (dump_slot) {
       slot = boost::lexical_cast<int>(sparse_key_names[i]);
