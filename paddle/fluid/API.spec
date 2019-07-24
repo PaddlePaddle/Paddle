@@ -1012,7 +1012,7 @@ paddle.fluid.dygraph_grad_clip.GradClipByNorm ('paddle.fluid.dygraph_grad_clip.G
 paddle.fluid.dygraph_grad_clip.GradClipByNorm.__init__ (ArgSpec(args=['self', 'clip_norm'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph_grad_clip.GradClipByGlobalNorm ('paddle.fluid.dygraph_grad_clip.GradClipByGlobalNorm', ('document', 'd1872377e7d7a5fe0dd2e8c42e4c9656'))
 paddle.fluid.dygraph_grad_clip.GradClipByGlobalNorm.__init__ (ArgSpec(args=['self', 'max_global_norm'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.profiler.cuda_profiler (ArgSpec(args=['output_file', 'output_mode', 'config'], varargs=None, keywords=None, defaults=(None, None)), ('document', '4053b45953807a24e28027dc86830d6c'))
+paddle.fluid.profiler.cuda_profiler (ArgSpec(args=['output_file', 'output_mode', 'config'], varargs=None, keywords=None, defaults=(None, None)), ('document', '4053b45953807a24e28027dc86829d6c'))
 paddle.fluid.profiler.reset_profiler (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', 'fd1f25a7a06516ca9a1f4ab0783a4d70'))
 paddle.fluid.profiler.profiler (ArgSpec(args=['state', 'sorted_key', 'profile_path'], varargs=None, keywords=None, defaults=(None, '/tmp/profile')), ('document', 'a2be24e028dffa06ab28cc55a27c59e4'))
 paddle.fluid.profiler.start_profiler (ArgSpec(args=['state'], varargs=None, keywords=None, defaults=None), ('document', '4c192ea399e6e80b1ab47a8265b022a5'))
