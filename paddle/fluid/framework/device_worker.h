@@ -208,6 +208,7 @@ class DownpourWorker : public HogwildWorker {
 
   // adjust ins weight
   AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
