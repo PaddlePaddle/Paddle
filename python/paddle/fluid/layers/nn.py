@@ -369,23 +369,25 @@ def center_loss(input,
     
     For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
     
-    ..math::
+    .. math::
 
-        Out =1/2 x (X - Y)^2
+        Out = \\frac{1}{2}(X - Y)^2
 
     Args:
-        input(Variable): a 2-D tensor with shape[N]
-        label(Variable): the groud truth which is a 2-D tensor 
-                         with shape[N x 1],where N is the batch size
-        num_classes(int): the number of classification categories
-        alpha(float|Variable): learning rate of centers
-        param_attr(ParamAttr): Attribute initializer of centers 
-        update_center(bool): whether to update value of center
+        input (Variable): a 2-D tensor with shape[N].
+        label (Variable): the groud truth which is a 2-D tensor
+                         with shape[N x 1],where N is the batch size.
+        num_classes (int): the number of classification categories.
+        alpha (float|Variable): learning rate of centers.
+        param_attr (ParamAttr): Attribute initializer of centers. 
+        update_center (bool): whether to update value of center.
 
     Returns:
-        Variable:A 2-D tensor with shape [N * 1] 
+        Variable: 2-D tensor with shape [N * 1] 
+
     Examples:
         .. code-block:: python
+
           input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
           label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
           num_classes = 1000
@@ -402,7 +404,7 @@ def center_loss(input,
     dtype = helper.input_dtype()
     centers_shape = [num_classes, input.shape[1]]
     centers_param = helper.create_parameter(
-        attr=param_attr, shape=centers_shape, dtype=dtype)
+        attr=param_attr, shape=centers_shape, dtype=dtype, stop_gradient=True)
     if isinstance(alpha, Variable):
         alpha_param = alpha
     else:

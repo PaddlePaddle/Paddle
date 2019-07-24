@@ -79,11 +79,19 @@ class TestCenterLossOp(OpTest):
     def init_dtype_type(self):
         pass
 
+    def test_check_output(self):
+        self.check_output()
+
     def test_check_grad(self):
         self.check_grad(['X'], 'Loss')
 
 
 class TestCenterLossOpNoUpdateFlase(TestCenterLossOp):
+    def config(self):
+        self.need_update = False
+
+
+class TestCenterLossOpNoUpdate(TestCenterLossOp):
     def config(self):
         self.need_update = False
 
