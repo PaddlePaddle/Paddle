@@ -98,8 +98,7 @@ class HDFSClient(object):
             returncode, output, errors = self.__run_hdfs_cmd(
                 exist_cmd, retry_times=1)
             if returncode != 0:
-                _logger.error("HDFS cat HDFS path: {} failed".format(
-                    hdfs_path))
+                _logger.error("HDFS cat HDFS path: {} failed".format(hdfs_path))
                 return ""
             else:
                 _logger.error("HDFS cat HDFS path: {} succeed".format(
