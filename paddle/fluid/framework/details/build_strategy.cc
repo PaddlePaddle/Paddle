@@ -47,8 +47,40 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
+    ResolveOptionConfliction();
+
+    AppendPrintGraphPass("graph_viz_pass", "_original_graph");
+    // Note(zcd): record_skip_memory_opt_vars_pass should
+    // be the first pass.
+    AppendPass("record_skip_memory_opt_vars_pass");
+    AppendPassWithCheck(strategy_.enable_sequential_execution_,
+                        "sequential_execution_pass");
+
+    AppendOpFusePasses();
+    AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
+    // TODO(dev-paddle): memory optimize pass should be placed last.
+    AppendMemoryOptimizePasses();
+    AppendMultiDevPass();
+    AppendMultiGraphOptPasses();
+
+    AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
+    AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
+    // runtime_context_cache pass should be the last pass to enable the attr of
+    // all original and fused operators. But no operators can be enabled this
+    // attr if putting it after MultiDevPass.
+    AppendPassWithCheck(strategy_.cache_runtime_context_,
+                        "runtime_context_cache_pass");
+    AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
+                        "modify_op_lock_and_record_event_pass");
+    // Note: This pass is used to check whether the multi_device_graph is right.
+    AppendPass("multi_devices_check_pass");
+
+    SetCollectiveContext();
+  }
+
+  void ResolveOptionConfliction() {
     // Specifies the restrictions between different pass.
-    if (strategy.enable_parallel_graph_) {
+    if (strategy_.enable_parallel_graph_) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
           << "Currently, fuse_all_optimizer_ops doesn't works under "
              "parallel_graph.";
@@ -69,17 +101,32 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
+  }
 
-    AppendPrintGraphPass("graph_viz_pass", "_original_graph");
-    // Note(zcd): record_skip_memory_opt_vars_pass should be the first pass.
-    AppendPass("record_skip_memory_opt_vars_pass");
+  void AppendMultiGraphOptPasses() {
+    // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
+    // first, if the number is zero, fuse_all_reduce_ops will do nothing.
+    AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
+                        "fuse_all_reduce_op_pass");
+    AppendPrintGraphPass("multi_devices_print_pass", "_multi_devices_graph");
 
-    AppendPassWithCheck(strategy_.enable_sequential_execution_,
-                        "sequential_execution_pass");
-    AppendPassToSetMkldnn("mkldnn_placement_pass");
+    // experimental shows that the program will be faster if append
+    // all_reduce_deps_pass here.
+    bool append_all_reduce_deps_pass =
+        !strategy_.enable_parallel_graph_ &&
+        (SeqOnlyAllReduceOps(strategy_) ||
+         strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce);
+    AppendPassWithCheck(append_all_reduce_deps_pass, "all_reduce_deps_pass");
 
-    // Add op fusion pass.
-    AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
+    bool append_backward_optimizer_op_deps_pass =
+        strategy_.num_trainers_ > 1 && !strategy_.async_mode_ &&
+        !strategy_.is_distribution_ &&
+        strategy_.enable_backward_optimizer_op_deps_;
+    AppendPassWithCheck(append_backward_optimizer_op_deps_pass,
+                        "backward_optimizer_op_deps_pass");
+  }
+
+  void AppendOpFusePasses() {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
@@ -88,7 +135,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // coalesce_grad_tensor_pass should be before of MultiDevPass.
     AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
                         "coalesce_grad_tensor_pass");
-
     // Fuse all the optimization operators.
     // NOTE: fuse_all_xx_ops will count the number of xx operator first,
     // if the number is zero, fuse_all_reduce_ops will do nothing.
@@ -98,10 +144,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
     }
+  }
 
-    AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
-
-    // Append Memory Optimize Pass
+  void AppendMemoryOptimizePasses() {  // Append Memory Optimize Pass
     // TODO(zjl): refactor MemoryOptimizePass to fit
     // new strategy, which does not need to set
     // var.persistable = True
@@ -116,44 +161,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.use_legacy_memory_optimize_strategy_) {
       AppendPassWithCheck(strategy_.memory_optimize_, "memory_optimize_pass");
     }
-
-    // runtime_context_cache pass should be the last pass to enable the attr of
-    // all original and fused operators. But no operators can be enabled this
-    // attr if putting it after MultiDevPass.
-    AppendPassWithCheck(strategy_.cache_runtime_context_,
-                        "runtime_context_cache_pass");
-
-    AppendMultiDevPass();
-
-    // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
-    // first, if the number is zero, fuse_all_reduce_ops will do nothing.
-    AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
-                        "fuse_all_reduce_op_pass");
-
-    AppendPrintGraphPass("multi_devices_print_pass", "_multi_devices_graph");
-
-    // experimental shows that the program will be faster if append
-    // all_reduce_deps_pass here.
-    bool append_all_reduce_deps_pass =
-        !strategy_.enable_parallel_graph_ &&
-        (SeqOnlyAllReduceOps(strategy_) ||
-         strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce);
-    AppendPassWithCheck(append_all_reduce_deps_pass, "all_reduce_deps_pass");
-
-    bool append_backward_optimizer_op_deps_pass =
-        strategy_.num_trainers_ > 1 && !strategy_.async_mode_ &&
-        !strategy_.is_distribution_ &&
-        strategy_.enable_backward_optimizer_op_deps_;
-    AppendPassWithCheck(append_backward_optimizer_op_deps_pass,
-                        "backward_optimizer_op_deps_pass");
-
-    AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
-                        "modify_op_lock_and_record_event_pass");
-
-    // Note: This pass is used to check whether the multi_device_graph is right.
-    AppendPass("multi_devices_check_pass");
-
-    SetCollectiveContext();
   }
 
   void SetCollectiveContext() const {
@@ -211,7 +218,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
-  void AppendPassToSetMkldnn(const std::string &pass_name) {
+  void AppendPassToSetMkldnnAttr(const std::string &pass_name) {
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) {
       AppendPass(pass_name);
