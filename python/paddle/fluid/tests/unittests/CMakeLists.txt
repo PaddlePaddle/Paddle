@@ -31,7 +31,6 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
 endif()
 
-
 LIST(REMOVE_ITEM TEST_OPS test_launch)
 
 if (NOT ${WITH_GPU})
@@ -70,6 +69,11 @@ endif()
 if(NOT WITH_MKLML)
     # this op is not support on openblas
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
+endif()
+
+if(WITH_GPU OR NOT WITH_MKLML)
+    # matmul with multiple heads need MKL support
+    LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
 endif()
 
 function(py_test_modules TARGET_NAME)
