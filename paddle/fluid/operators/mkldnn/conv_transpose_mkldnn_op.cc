@@ -143,6 +143,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto chosen_memory_format =
         platform::data_format_to_memory_format(data_format);
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    bool fuse_leaky_relu = ctx.Attr<bool>("fuse_leaky_relu");
+    float fuse_leaky_relu_alpha = ctx.Attr<float>("fuse_leaky_relu_alpha");
 
     auto src_md = platform::MKLDNNMemDesc(
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
@@ -166,11 +168,11 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           bias_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, false, false, 0.0, fwd_prop_kind);
+          fuse_relu, fuse_leaky_relu, fuse_leaky_relu_alpha, false, false, 0.0, fwd_prop_kind);
     } else {
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, boost::none, dst_md, strides, paddings,
-          mkldnn_engine, fuse_relu, false, false, 0.0, fwd_prop_kind);
+          mkldnn_engine, fuse_relu, fuse_leaky_relu, fuse_leaky_relu_alpha, false, false, 0.0, fwd_prop_kind);
     }
 
     // create mkldnn memory from input tensors (data/weights)

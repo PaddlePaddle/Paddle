@@ -57,6 +57,8 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.fuse_bias = False
         self.bias_size = None
         self.fuse_relu = False
+        self.fuse_leaky_relu = False
+        self.fuse_leaky_relu_alpha = 0.02
         self.fuse_brelu = False
         self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
@@ -86,6 +88,9 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         if self.fuse_relu:
             output = np.maximum(output, 0).astype(self.dsttype)
 
+        if self.fuse_leaky_relu:
+            output = np.maximum(output, self.fuse_leaky_relu_alpha * output).astype(self.dsttype)
+
         if self.fuse_brelu:
             output = np.minimum(
                 np.maximum(output, 0),
@@ -94,6 +99,8 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
 
         self.attrs['fuse_bias'] = self.fuse_bias
         self.attrs['fuse_relu'] = self.fuse_relu
+        self.attrs['fuse_leaky_relu'] = self.fuse_leaky_relu
+        self.attrs['fuse_leaky_relu_alpha'] = self.fuse_leaky_relu_alpha
         self.attrs['fuse_brelu'] = self.fuse_brelu
         self.attrs['fuse_brelu_threshold'] = self.fuse_brelu_threshold
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
@@ -106,6 +113,23 @@ class TestWithbreluFusion(TestConv2dMKLDNNOp):
         TestConv2dMKLDNNOp.init_test_case(self)
         self.fuse_brelu = True
         self.fuse_brelu_threshold = 6.0
+        self.dsttype = np.float32
+
+    def test_check_grad(self):
+        pass
+
+    def test_check_grad_no_filter(self):
+        pass
+
+    def test_check_grad_no_input(self):
+        pass
+
+
+class TestWithLeakyReLUFusion(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.fuse_leaky_relu = True
+        self.fuse_leaky_relu_alpha = 0.02
         self.dsttype = np.float32
 
     def test_check_grad(self):

@@ -215,7 +215,7 @@ class MKLDNNHandler {
       const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::vector<int>& dilations,
       const int& groups, const mkldnn::memory::data_type& srcdt,
-      const mkldnn::memory::format& format, const bool& relu,
+      const mkldnn::memory::format& format, const bool& relu, const bool& leaky_relu,
       const bool& residual, const bool& brelu, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
 
@@ -231,6 +231,7 @@ class MKLDNNHandler {
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
     AppendKey(key, std::to_string(relu));
+    AppendKey(key, std::to_string(leaky_relu));
     AppendKey(key, std::to_string(residual));
     AppendKey(key, std::to_string(brelu));
     AppendKey(key, suffix);
@@ -1007,7 +1008,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                scale_data, mask);
   }
 
-  mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_leaky_relu, float fuse_leaky_relu_alpha, bool fuse_residual_conn,
                                        bool fuse_brelu,
                                        float fuse_brelu_threshold) const {
     mkldnn::primitive_attr conv_attr;
@@ -1030,6 +1031,13 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                      negative_slope, placeholder);
     }
 
+    if (fuse_leaky_relu) {
+      constexpr float scale = 1.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                     fuse_leaky_relu_alpha, placeholder);
+    }
+
     if (fuse_brelu) {
       constexpr float scale = 1.0f;
       constexpr float placeholder = 0.0f;
@@ -1047,7 +1055,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       boost::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int>& strides,
       const std::vector<int>& paddings, const mkldnn::engine& engine,
-      const bool fuse_relu, const bool fuse_residual_conn,
+      const bool fuse_relu, const bool fuse_leaky_relu, const float fuse_leaky_relu_alpha, const bool fuse_residual_conn,
       const bool fuse_brelu, const float fuse_brelu_threshold,
       mkldnn::prop_kind fwd_prop_kind) {
     // Conv PD has to be passed to Grad op that
@@ -1080,7 +1088,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                        padding_dims, mkldnn::padding_kind::zero);
 
         mkldnn::primitive_attr conv_attr = CreatePostOps(
-            fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
+            fuse_relu, fuse_leaky_relu, fuse_leaky_relu_alpha, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
 
         conv_pd_.reset(new typename forward_t::primitive_desc(
             conv_desc, conv_attr, engine));
@@ -1164,13 +1172,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
   static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
                              mkldnn::memory::dims& weights_dims,  // NOLINT
                              const bool& fuse_relu,               // NOLINT
+                             const bool& fuse_leaky_relu,         // NOLINT
                              const bool& fuse_brelu,              // NOLINT
                              std::vector<int>& strides,           // NOLINT
                              std::vector<int>& paddings,          // NOLINT
                              std::vector<int>& dilations,         // NOLINT
                              int groups, const std::string& suffix) {
     return dims2str(input_dims) + dims2str(weights_dims) +
-           std::to_string(fuse_relu) + std::to_string(fuse_brelu) +
+           std::to_string(fuse_relu) + std::to_string(fuse_leaky_relu) + std::to_string(fuse_brelu) +
            dims2str(strides) + dims2str(paddings) + dims2str(dilations) +
            std::to_string(groups) + suffix;
   }

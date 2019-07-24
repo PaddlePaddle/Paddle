@@ -452,6 +452,27 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// CONV with LeakyReLU
+// op: conv + leaky_relu
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// leaky_relu_out, leaky_relu
+struct ConvLeakyReLU : public PatternBase {
+  ConvLeakyReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_leaky_relu") {}
+
+  PDNode* operator()(PDNode* conv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(leaky_relu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(leaky_relu_out);
+};
+
 // CONV with ReLU6
 // op: conv + relu6
 // named nodes:

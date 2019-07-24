@@ -798,6 +798,33 @@ PDNode *patterns::ConvReLU::operator()(
   return relu_out_var;
 }
 
+PDNode *patterns::ConvLeakyReLU::operator()(
+    paddle::framework::ir::PDNode *conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *leaky_relu_op = pattern->NewNode(leaky_relu_repr())->assert_is_op("leaky_relu");
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("leaky_relu");
+  // output
+  auto *leaky_relu_out_var = pattern->NewNode(leaky_relu_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("leaky_relu");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  leaky_relu_op->LinksFrom({conv_out_var}).LinksTo({leaky_relu_out_var});
+  return leaky_relu_out_var;
+}
+
 PDNode *patterns::ConvBReLU::operator()(
     paddle::framework::ir::PDNode *conv_input) {
   // Create Operators

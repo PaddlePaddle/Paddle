@@ -209,6 +209,11 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("fuse_leaky_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<float>("fuse_leaky_relu_alpha",
+                 "(float, default 0.02) Only used in mkldnn kernel")
+      .SetDefault(0.02f);
   AddAttr<bool>("fuse_brelu",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
