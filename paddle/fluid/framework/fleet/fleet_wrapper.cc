@@ -288,19 +288,27 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    const int batch_size, const bool use_cvm) {
+    const int batch_size, const bool use_cvm, const bool dump_slot) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
+  int slot_offset = 0;
   int grad_dim = emb_dim;
+  int show_index = 0;
+  int click_index = 1;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
+  }
+  if (dump_slot) {
+    slot_offset = 1;
+    show_index = 1;
+    click_index = 2;
   }
   CHECK_GE(grad_dim, 0);
 
   push_values->resize(fea_keys.size() + 1);
   for (auto& t : *push_values) {
-    t.resize(emb_dim + offset);
+    t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
@@ -315,7 +323,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
-
+    int slot = 0;
+    if (dump_slot) {
+      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+    }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
@@ -339,14 +350,19 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
+
       if (use_cvm) {
-        memcpy((*push_values)[fea_idx].data() + offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
       } else {
-        memcpy((*push_values)[fea_idx].data() + offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
-        (*push_values)[fea_idx][0] = 1.0f;
-        (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
+        (*push_values)[fea_idx][show_index] = 1.0f;
+        (*push_values)[fea_idx][click_index] =
+            static_cast<float>(fea_labels[fea_idx]);
+      }
+      if (dump_slot) {
+        (*push_values)[fea_idx][0] = static_cast<float>(slot);
       }
       g += emb_dim;
       fea_idx++;

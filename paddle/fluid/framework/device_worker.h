@@ -179,6 +179,7 @@ class DownpourWorker : public HogwildWorker {
 
  private:
   bool need_to_push_dense_;
+  bool dump_slot_;
   bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
   // just save the value in param_ for easy access
@@ -285,7 +286,6 @@ class SectionWorker : public DeviceWorker {
   int section_num_;
   int pipeline_num_;
   int thread_id_;
-
   // This worker will consume scope from in_scope_queue_
   // and produce scope to out_scope_queue_
   ScopeQueue* in_scope_queue_ = nullptr;
