@@ -23,12 +23,12 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 ```
 # Linux CPU
 pip install paddlepaddle
+# Linux GPU cuda10cudnn7
+pip install paddlepaddle-gpu
 # Linux GPU cuda8cudnn7
 pip install paddlepaddle-gpu==1.5.1.post87
 # Linux GPU cuda9cudnn7
 pip install paddlepaddle-gpu==1.5.1.post97
-# Linux GPU cuda10cudnn7
-pip install paddlepaddle-gpu==1.5.1.post107
 
 
 # For installation on other platform, refer to http://paddlepaddle.org/
