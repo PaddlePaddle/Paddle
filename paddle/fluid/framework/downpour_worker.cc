@@ -65,6 +65,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
   dump_slot_ = desc.dump_slot();
+  adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -173,6 +174,91 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
   }
 }
 
+void DownpourWorker::AdjustInsWeight() {
+  // check var and tensor not null
+  if (!adjust_ins_weight_config_.need_adjust()) {
+    VLOG(3) << "need_adjust=false, skip adjust ins weight";
+    return;
+  }
+  Variable* nid_var = thread_scope_->FindVar(
+      adjust_ins_weight_config_.nid_slot());
+  if (nid_var == nullptr) {
+    VLOG(3) << "nid slot var " << adjust_ins_weight_config_.nid_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  LoDTensor* nid_tensor = nid_var->GetMutable<LoDTensor>();
+  if (nid_tensor == nullptr) {
+    VLOG(3) << "tensor of nid slot var " << adjust_ins_weight_config_.nid_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  Variable* ins_weight_var = thread_scope_->FindVar(
+      adjust_ins_weight_config_.ins_weight_slot());
+  if (ins_weight_var == nullptr) {
+    VLOG(3) << "ins weight var " 
+            << adjust_ins_weight_config_.ins_weight_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
+  if (ins_weight_tensor == nullptr) {
+    VLOG(3) << "tensor of ins weight tensor "
+            << adjust_ins_weight_config_.ins_weight_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+
+  // get emb dim of nid slot
+  size_t fea_dim = 11;
+  for (auto i : param_.sparse_table()) {
+    uint64_t table_id = i.table_id();
+    bool found = false;
+    for (size_t j = 0; j < sparse_key_names_[table_id].size(); ++j) {
+      if (adjust_ins_weight_config_.nid_slot() ==
+          sparse_key_names_[table_id][j]) {
+        fea_dim = i.fea_dim();
+        VLOG(3) << "nid slot embedding dim: " << fea_dim;
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      break;   
+    }
+  }
+
+  float* nid_emb = nid_tensor->data<float>();
+  float* ins_weights = ins_weight_tensor->data<float>();
+  size_t len = ins_weight_tensor->numel(); // len = batch size
+  float nid_adjw_threshold = adjust_ins_weight_config_.nid_adjw_threshold();
+  float nid_adjw_ratio = adjust_ins_weight_config_.nid_adjw_ratio();
+  int64_t nid_adjw_num = 0;
+  double nid_adjw_weight = 0.0;
+  size_t ins_index = 0;
+  for (auto lod_idx = 0u; lod_idx < nid_tensor->lod()[0].size() - 1;
+      ++lod_idx) {
+    float nid_show = *(nid_emb + lod_idx * fea_dim);
+    float ins_weight = 1.0;
+    if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
+      ins_weight = log(M_E + (nid_adjw_threshold - nid_show) /
+          nid_adjw_threshold * nid_adjw_ratio);
+      //count nid adjw insnum and weight
+      ++nid_adjw_num;
+      nid_adjw_weight += ins_weight;
+      //choose large ins weight
+      if (ins_weight > ins_weights[ins_index]) {
+        VLOG(3) << "ins " << ins_index << " weight changes to " << ins_weight;
+        ins_weights[ins_index] = ins_weight;
+      }
+      ++ins_index;
+    }
+  }
+  CHECK(ins_index == len);
+  VLOG(3) << "nid adjw info: total_adjw_num: " << nid_adjw_num
+          << ", avg_adjw_weight: " << nid_adjw_weight;
+}
+
 void DownpourWorker::TrainFilesWithProfiler() {
   VLOG(3) << "Begin to train files with profiler";
   platform::SetNumThreads(1);
@@ -201,6 +287,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double total_time = 0.0;
   double read_time = 0.0;
   double pull_sparse_time = 0.0;
+  double adjust_ins_weight_time = 0.0;
   double collect_label_time = 0.0;
   double fill_sparse_time = 0.0;
   double push_sparse_time = 0.0;
@@ -233,6 +320,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
                                      &feature_values_[tid], table.fea_dim());
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
+      timeline.Start();
+      auto nid_iter = std::find(sparse_key_names_[tid].begin(),
+                                sparse_key_names_[tid].end(),
+                                adjust_ins_weight_config_.nid_slot());
+      if (nid_iter != sparse_key_names_[tid].end()) {
+        AdjustInsWeight();
+      }
+      timeline.Pause();
+      adjust_ins_weight_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
       timeline.Start();
       CollectLabelInfo(i);
@@ -373,6 +470,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
         fprintf(stderr, "pull sparse time: %fs\n",
                 pull_sparse_time / batch_cnt);
+        fprintf(stderr, "adjust ins weight time: %fs\n",
+                adjust_ins_weight_time / batch_cnt);
         fprintf(stderr, "fill sparse time: %fs\n",
                 fill_sparse_time / batch_cnt);
         fprintf(stderr, "push sparse time: %fs\n",
@@ -384,6 +483,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
+        fprintf(stderr, "adjust ins weight time percent: %f\n",
+                adjust_ins_weight_time / total_time * 100);
         fprintf(stderr, "collect label time percent: %f\n",
                 collect_label_time / total_time * 100);
         fprintf(stderr, "fill sparse time percent: %f\n",
@@ -421,6 +522,12 @@ void DownpourWorker::TrainFiles() {
       fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
                                      sparse_key_names_[tid], &features_[tid],
                                      &feature_values_[tid], table.fea_dim());
+      auto nid_iter = std::find(sparse_key_names_[tid].begin(),
+                                sparse_key_names_[tid].end(),
+                                adjust_ins_weight_config_.nid_slot());
+      if (nid_iter != sparse_key_names_[tid].end()) {
+        AdjustInsWeight();
+      }
       CollectLabelInfo(i);
       FillSparseValue(i);
     }
