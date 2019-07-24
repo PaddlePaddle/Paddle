@@ -47,26 +47,18 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     framework::TensorCopy(in0.value(), in0.place(), context.device_context(),
                           temp_in0.mutable_value());
     inputs.push_back(&temp_in0);
-    SelectedRows temp_in1;
+
     for (size_t i = 1; i < in_vars.size(); ++i) {
       auto &in = in_vars[i]->Get<SelectedRows>();
       if (in.rows().size() > 0) {
-        temp_in1.set_height(in.height());
-        temp_in1.set_rows(in.rows());
-        framework::TensorCopy(in.value(), in.place(), context.device_context(),
-                              temp_in1.mutable_value());
-        inputs.push_back(&temp_in1);
+        inputs.push_back(&in);
       }
     }
   } else {
     for (auto &in_var : in_vars) {
       auto &in = in_var->Get<SelectedRows>();
       if (in.rows().size() > 0) {
-        temp_in0.set_height(in.height());
-        temp_in0.set_rows(in.rows());
-        framework::TensorCopy(in.value(), in.place(), context.device_context(),
-                              temp_in0.mutable_value());
-        inputs.push_back(&temp_in0);
+        inputs.push_back(&in);
       }
     }
   }
