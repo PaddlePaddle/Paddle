@@ -51,14 +51,14 @@ paddle.fluid.CompiledProgram ('paddle.fluid.compiler.CompiledProgram', ('documen
 paddle.fluid.CompiledProgram.__init__ (ArgSpec(args=['self', 'program_or_graph'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.CompiledProgram.with_data_parallel (ArgSpec(args=['self', 'loss_name', 'build_strategy', 'exec_strategy', 'share_vars_from', 'places'], varargs=None, keywords=None, defaults=(None, None, None, None, None)), ('document', '0e17773521634ef798fddd7d2ea3ef96'))
 paddle.fluid.CompiledProgram.with_inference_optimize (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=None), ('document', '9e5b009d850191a010e859189c127fd8'))
-paddle.fluid.ExecutionStrategy ('paddle.fluid.core_avx.ExecutionStrategy', ('document', '535ce28c4671176386e3cd283a764084'))
-paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.ExecutionStrategy) -> None
-paddle.fluid.BuildStrategy ('paddle.fluid.core_avx.BuildStrategy', ('document', 'eec64b9b7cba58b0a63687b4c34ffe56'))
-paddle.fluid.BuildStrategy.GradientScaleStrategy ('paddle.fluid.core_avx.GradientScaleStrategy', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
-paddle.fluid.BuildStrategy.ReduceStrategy ('paddle.fluid.core_avx.ReduceStrategy', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.ReduceStrategy, arg0: int) -> None
-paddle.fluid.BuildStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy) -> None
+paddle.fluid.ExecutionStrategy ('paddle.fluid.core_noavx.ExecutionStrategy', ('document', '535ce28c4671176386e3cd283a764084'))
+paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core_noavx.ParallelExecutor.ExecutionStrategy) -> None
+paddle.fluid.BuildStrategy ('paddle.fluid.core_noavx.BuildStrategy', ('document', 'eec64b9b7cba58b0a63687b4c34ffe56'))
+paddle.fluid.BuildStrategy.GradientScaleStrategy ('paddle.fluid.core_noavx.GradientScaleStrategy', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core_noavx.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
+paddle.fluid.BuildStrategy.ReduceStrategy ('paddle.fluid.core_noavx.ReduceStrategy', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core_noavx.ParallelExecutor.BuildStrategy.ReduceStrategy, arg0: int) -> None
+paddle.fluid.BuildStrategy.__init__ __init__(self: paddle.fluid.core_noavx.ParallelExecutor.BuildStrategy) -> None
 paddle.fluid.gradients (ArgSpec(args=['targets', 'inputs', 'target_gradients', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'e2097e1e0ed84ae44951437bfe269a1b'))
 paddle.fluid.io.save_vars (ArgSpec(args=['executor', 'dirname', 'main_program', 'vars', 'predicate', 'filename'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '869104f47e6fd21d897c3fcc426aa942'))
 paddle.fluid.io.save_params (ArgSpec(args=['executor', 'dirname', 'main_program', 'filename'], varargs=None, keywords=None, defaults=(None, None)), ('document', '046d7c43d67e08c2660bb3bd7e081015'))
@@ -141,7 +141,7 @@ paddle.fluid.layers.split (ArgSpec(args=['input', 'num_or_sections', 'dim', 'nam
 paddle.fluid.layers.ctc_greedy_decoder (ArgSpec(args=['input', 'blank', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '2bc3a59efa9d52b628a6255422d9f0e8'))
 paddle.fluid.layers.edit_distance (ArgSpec(args=['input', 'label', 'normalized', 'ignored_tokens', 'input_length', 'label_length'], varargs=None, keywords=None, defaults=(True, None, None, None)), ('document', '77cbfb28cd2fc589f589c7013c5086cd'))
 paddle.fluid.layers.l2_normalize (ArgSpec(args=['x', 'axis', 'epsilon', 'name'], varargs=None, keywords=None, defaults=(1e-12, None)), ('document', 'c1df110ea65998984f564c5c10abc54a'))
-paddle.fluid.layers.matmul (ArgSpec(args=['x', 'y', 'transpose_x', 'transpose_y', 'alpha', 'name'], varargs=None, keywords=None, defaults=(False, False, 1.0, None)), ('document', 'fa2081f6e731bb9de7cd535ca07f523a'))
+paddle.fluid.layers.matmul (ArgSpec(args=['x', 'y', 'transpose_x', 'transpose_y', 'alpha', 'name'], varargs=None, keywords=None, defaults=(False, False, 1.0, None)), ('document', '3720b4a386585094435993deb028b592'))
 paddle.fluid.layers.topk (ArgSpec(args=['input', 'k', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e50940f3ce5a08cc477b72f517491bf3'))
 paddle.fluid.layers.warpctc (ArgSpec(args=['input', 'label', 'blank', 'norm_by_times', 'use_cudnn'], varargs=None, keywords=None, defaults=(0, False, False)), ('document', '4aa9df890b47eb67d5442f04aaf9eeec'))
 paddle.fluid.layers.sequence_reshape (ArgSpec(args=['input', 'new_dim'], varargs=None, keywords=None, defaults=None), ('document', 'f568714a876425004aca4ea2d4a27701'))
@@ -225,10 +225,10 @@ paddle.fluid.layers.slice (ArgSpec(args=['input', 'axes', 'starts', 'ends'], var
 paddle.fluid.layers.shape (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', 'bf61c8f79d795a8371bdb3b5468aa82b'))
 paddle.fluid.layers.rank (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', '096df0e0273145ab80ed119a4c294db3'))
 paddle.fluid.layers.size (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', 'cf2e156beae36378722666c4c33bebfe'))
-paddle.fluid.layers.logical_and (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '1d6777f61831c54bea3a0029e2118448'))
-paddle.fluid.layers.logical_or (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '4d51a5a453755e0eb8c5ff6910a00dca'))
-paddle.fluid.layers.logical_xor (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '1840f54c5bd5338bdf854980d47bf771'))
-paddle.fluid.layers.logical_not (ArgSpec(args=['x', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'd8fc1c5a5535736d4cd44c893a9701c9'))
+paddle.fluid.layers.logical_and (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '12db97c6c459c0f240ec7006737174f2'))
+paddle.fluid.layers.logical_or (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '15adbc561618b7db69671e02009bea67'))
+paddle.fluid.layers.logical_xor (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '77ccf37b710c507dd97e03f08ce8bb29'))
+paddle.fluid.layers.logical_not (ArgSpec(args=['x', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '6e2fe8a322ec69811f6507d22acf8f9f'))
 paddle.fluid.layers.clip (ArgSpec(args=['x', 'min', 'max', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '0ce33756573c572da67302499455dbcd'))
 paddle.fluid.layers.clip_by_norm (ArgSpec(args=['x', 'max_norm', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '99a1b9012d9c4495efc89d69958c3be7'))
 paddle.fluid.layers.mean (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '597257fb94d0597c404a6a5c91ab5258'))
@@ -299,7 +299,7 @@ paddle.fluid.layers.zeros (ArgSpec(args=['shape', 'dtype', 'force_cpu'], varargs
 paddle.fluid.layers.reverse (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=None), ('document', '628135603692137d52bcf5a8d8d6816d'))
 paddle.fluid.layers.has_inf (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', '51a0fa1cfaf2507c00a215adacdb8a63'))
 paddle.fluid.layers.has_nan (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', '129cf426e71452fe8276d616a6dc21ae'))
-paddle.fluid.layers.isfinite (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', '23c66e5918040fcc11c8fa8c5da1b38e'))
+paddle.fluid.layers.isfinite (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', 'b9fff4ffc8d11934cde099f4c39bf841'))
 paddle.fluid.layers.range (ArgSpec(args=['start', 'end', 'step', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', 'a45b42f21bc5a4e84b60981a3d629ab3'))
 paddle.fluid.layers.linspace (ArgSpec(args=['start', 'stop', 'num', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '3663d1148946eed4c1c34c81be586b9e'))
 paddle.fluid.layers.zeros_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', 'd88a23bcdc443719b3953593f7cef14a'))
@@ -792,7 +792,7 @@ paddle.fluid.dygraph.Tracer ('paddle.fluid.dygraph.tracer.Tracer', ('document', 
 paddle.fluid.dygraph.Tracer.__init__ (ArgSpec(args=['self', 'block'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.all_parameters (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.eval_mode (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.Tracer.trace 1. trace(self: paddle.fluid.core_avx.Tracer, arg0: paddle.fluid.core_avx.OpBase, arg1: Dict[unicode, handle], arg2: Dict[unicode, handle], arg3: Dict[unicode, Variant], arg4: paddle::platform::CPUPlace, arg5: bool) -> None  2. trace(self: paddle.fluid.core_avx.Tracer, arg0: paddle.fluid.core_avx.OpBase, arg1: Dict[unicode, handle], arg2: Dict[unicode, handle], arg3: Dict[unicode, Variant], arg4: paddle::platform::CUDAPlace, arg5: bool) -> None
+paddle.fluid.dygraph.Tracer.trace 1. trace(self: paddle.fluid.core_noavx.Tracer, arg0: paddle.fluid.core_noavx.OpBase, arg1: Dict[unicode, handle], arg2: Dict[unicode, handle], arg3: Dict[unicode, Variant], arg4: paddle::platform::CPUPlace, arg5: bool) -> None  2. trace(self: paddle.fluid.core_noavx.Tracer, arg0: paddle.fluid.core_noavx.OpBase, arg1: Dict[unicode, handle], arg2: Dict[unicode, handle], arg3: Dict[unicode, Variant], arg4: paddle::platform::CUDAPlace, arg5: bool) -> None
 paddle.fluid.dygraph.Tracer.trace_op (ArgSpec(args=['self', 'op', 'inputs', 'outputs', 'stop_gradient'], varargs=None, keywords=None, defaults=(False,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.trace_var (ArgSpec(args=['self', 'name', 'var'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.train_mode (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
@@ -827,8 +827,8 @@ paddle.fluid.dygraph.CosineDecay ('paddle.fluid.dygraph.learning_rate_scheduler.
 paddle.fluid.dygraph.CosineDecay.__init__ (ArgSpec(args=['self', 'learning_rate', 'step_each_epoch', 'epochs', 'begin', 'step', 'dtype'], varargs=None, keywords=None, defaults=(0, 1, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.CosineDecay.create_lr_var (ArgSpec(args=['self', 'lr'], varargs=None, keywords=None, defaults=None), ('document', '013bc233558149d0757b3df57845b866'))
 paddle.fluid.dygraph.CosineDecay.step (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_avx.BackwardStrategy', ('document', '5d9496052ec793810c9f12ffad5c73ce'))
-paddle.fluid.dygraph.BackwardStrategy.__init__ __init__(self: paddle.fluid.core_avx.BackwardStrategy) -> None
+paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_noavx.BackwardStrategy', ('document', '5d9496052ec793810c9f12ffad5c73ce'))
+paddle.fluid.dygraph.BackwardStrategy.__init__ __init__(self: paddle.fluid.core_noavx.BackwardStrategy) -> None
 paddle.fluid.transpiler.DistributeTranspiler ('paddle.fluid.transpiler.distribute_transpiler.DistributeTranspiler', ('document', 'b2b19821c5dffcd11473d6a4eef089af'))
 paddle.fluid.transpiler.DistributeTranspiler.__init__ (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.transpiler.DistributeTranspiler.get_pserver_program (ArgSpec(args=['self', 'endpoint'], varargs=None, keywords=None, defaults=None), ('document', 'b1951949c6d21698290aa8ac69afee32'))
@@ -973,23 +973,23 @@ paddle.fluid.regularizer.L1DecayRegularizer ('paddle.fluid.regularizer.L1DecayRe
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.regularizer.L2DecayRegularizer ('paddle.fluid.regularizer.L2DecayRegularizer', ('document', 'b94371c3434d7f695bc5b2d6fb5531fd'))
 paddle.fluid.regularizer.L2DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.LoDTensor ('paddle.fluid.core_avx.LoDTensor', ('document', '25e8432ed1b9a375868bc8911359aa0d'))
-paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core_avx.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core_avx.LoDTensor) -> None
-paddle.fluid.LoDTensor.has_valid_recursive_sequence_lengths has_valid_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> bool
-paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
-paddle.fluid.LoDTensor.recursive_sequence_lengths recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
-paddle.fluid.LoDTensor.set_lod set_lod(self: paddle.fluid.core_avx.LoDTensor, lod: List[List[int]]) -> None
-paddle.fluid.LoDTensor.set_recursive_sequence_lengths set_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor, recursive_sequence_lengths: List[List[int]]) -> None
-paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core_avx.Tensor) -> List[int]
-paddle.fluid.LoDTensorArray ('paddle.fluid.core_avx.LoDTensorArray', ('document', 'e9895b67ba54438b9c0f7053e18966f5'))
-paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_avx.LoDTensorArray) -> None
-paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_avx.LoDTensorArray, tensor: paddle.fluid.core_avx.LoDTensor) -> None
-paddle.fluid.CPUPlace ('paddle.fluid.core_avx.CPUPlace', ('document', '6014005ef2649045b77d502aeb6cd7f9'))
-paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core_avx.CPUPlace) -> None
-paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', '6a6cd8ed607beb951692c4b066d08c94'))
-paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPlace, arg0: int) -> None
-paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('document', 'afd58ea5d390b5ea06ca70291a266d45'))
-paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
+paddle.fluid.LoDTensor ('paddle.fluid.core_noavx.LoDTensor', ('document', '25e8432ed1b9a375868bc8911359aa0d'))
+paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core_noavx.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core_noavx.LoDTensor) -> None
+paddle.fluid.LoDTensor.has_valid_recursive_sequence_lengths has_valid_recursive_sequence_lengths(self: paddle.fluid.core_noavx.LoDTensor) -> bool
+paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core_noavx.LoDTensor) -> List[List[int]]
+paddle.fluid.LoDTensor.recursive_sequence_lengths recursive_sequence_lengths(self: paddle.fluid.core_noavx.LoDTensor) -> List[List[int]]
+paddle.fluid.LoDTensor.set_lod set_lod(self: paddle.fluid.core_noavx.LoDTensor, lod: List[List[int]]) -> None
+paddle.fluid.LoDTensor.set_recursive_sequence_lengths set_recursive_sequence_lengths(self: paddle.fluid.core_noavx.LoDTensor, recursive_sequence_lengths: List[List[int]]) -> None
+paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core_noavx.Tensor) -> List[int]
+paddle.fluid.LoDTensorArray ('paddle.fluid.core_noavx.LoDTensorArray', ('document', 'e9895b67ba54438b9c0f7053e18966f5'))
+paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_noavx.LoDTensorArray) -> None
+paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_noavx.LoDTensorArray, tensor: paddle.fluid.core_noavx.LoDTensor) -> None
+paddle.fluid.CPUPlace ('paddle.fluid.core_noavx.CPUPlace', ('document', '6014005ef2649045b77d502aeb6cd7f9'))
+paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core_noavx.CPUPlace) -> None
+paddle.fluid.CUDAPlace ('paddle.fluid.core_noavx.CUDAPlace', ('document', '6a6cd8ed607beb951692c4b066d08c94'))
+paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_noavx.CUDAPlace, arg0: int) -> None
+paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_noavx.CUDAPinnedPlace', ('document', 'afd58ea5d390b5ea06ca70291a266d45'))
+paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_noavx.CUDAPinnedPlace) -> None
 paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', 'fa47fa251f727c4a4f638d61e3c7c141'))
 paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.WeightNormParamAttr ('paddle.fluid.param_attr.WeightNormParamAttr', ('document', '48ab4f49c7eeeade5958b731b6a96aa0'))
@@ -1023,7 +1023,7 @@ paddle.fluid.unique_name.switch (ArgSpec(args=['new_generator'], varargs=None, k
 paddle.fluid.unique_name.guard (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ead717d6d440a1eb11971695cd1727f4'))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_file (ArgSpec(args=['filename', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None)), ('document', '65c7523e86f0c50bb729b01667f36310'))
 paddle.fluid.recordio_writer.convert_reader_to_recordio_files (ArgSpec(args=['filename', 'batch_per_file', 'reader_creator', 'feeder', 'compressor', 'max_num_records', 'feed_order'], varargs=None, keywords=None, defaults=(Compressor.Snappy, 1000, None)), ('document', 'bc643f0f5f1b9db57ff0d8a57d379bd7'))
-paddle.fluid.Scope Scope() -> paddle.fluid.core_avx._Scope
+paddle.fluid.Scope Scope() -> paddle.fluid.core_noavx._Scope
 paddle.fluid.install_check.run_check (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '66b7c84a17ed32fec2df9628367be2b9'))
 paddle.reader.cache (ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None), ('document', '1676886070eb607cb608f7ba47be0d3c'))
 paddle.reader.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '77cbadb09df588e21e5cc0819b69c87d'))
@@ -1031,6 +1031,7 @@ paddle.reader.buffered (ArgSpec(args=['reader', 'size'], varargs=None, keywords=
 paddle.reader.compose (ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None), ('document', '884291104e1c3f37f33aae44b7deeb0d'))
 paddle.reader.chain (ArgSpec(args=[], varargs='readers', keywords=None, defaults=None), ('document', 'd22c34e379a53901ae67a6bca7f4def4'))
 paddle.reader.shuffle (ArgSpec(args=['reader', 'buf_size'], varargs=None, keywords=None, defaults=None), ('document', 'e42ea6fee23ce26b23cb142cd1d6522d'))
+paddle.reader.ComposeNotAligned ('paddle.reader.decorator.ComposeNotAligned', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.reader.firstn (ArgSpec(args=['reader', 'n'], varargs=None, keywords=None, defaults=None), ('document', 'c5bb8f7dd4f917f1569a368aab5b8aad'))
 paddle.reader.xmap_readers (ArgSpec(args=['mapper', 'reader', 'process_num', 'buffer_size', 'order'], varargs=None, keywords=None, defaults=(False,)), ('document', '9c804a42f8a4dbaa76b3c98e0ab7f796'))
 paddle.reader.PipeReader ('paddle.reader.decorator.PipeReader', ('document', 'd3c250618f98c1a5fb646f869016a98e'))
