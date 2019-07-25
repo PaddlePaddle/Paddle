@@ -228,7 +228,7 @@ void DownpourWorker::AdjustInsWeight() {
   }
 
   float* ins_weights = ins_weight_tensor->data<float>();
-  size_t len = ins_weight_tensor->numel(); // len = batch size
+  size_t len = ins_weight_tensor->numel();  // len = batch size
   // here we assume nid_show slot only has one feasign in each instance
   CHECK(len == nid_show_.size()) << "ins_weight size should be equal to "
                                  << "nid_show size, " << len << " vs "
@@ -243,8 +243,9 @@ void DownpourWorker::AdjustInsWeight() {
     VLOG(3) << "nid_show " << nid_show;
     float ins_weight = 1.0;
     if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
-      ins_weight = log(M_E + (nid_adjw_threshold - nid_show) /
-          nid_adjw_threshold * nid_adjw_ratio);
+      ins_weight = log(M_E +
+                       (nid_adjw_threshold - nid_show) / nid_adjw_threshold *
+                           nid_adjw_ratio);
       // count nid adjw insnum and weight
       ++nid_adjw_num;
       nid_adjw_weight += ins_weight;
