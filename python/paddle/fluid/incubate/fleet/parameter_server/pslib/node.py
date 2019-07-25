@@ -53,8 +53,6 @@ class DownpourServer(Server):
         """
         Args:
             table_id(int): id of sparse params table
-            learning_rate(float): the learning rate used to update parameters. \
-                Can be a float value
             strategy(dict): the config dict.
         Returns:
             return None 
@@ -139,10 +137,7 @@ class DownpourServer(Server):
         """
         Args:
             table_id(int): id of sparse params table
-            learning_rate(float): the learning rate used to update parameters. \
-                Can be a float value
-            param_var(list): all dense param. it is a list.
-            grad_var(list): all dense grad parm it is a list.
+            strategy(dict): the dense config dict.
         Returns:
             return None 
         """
@@ -187,11 +182,8 @@ class DownpourServer(Server):
                             strategy):
         """
         Args:
-            table_id(int): id of sparse params table
-            learning_rate(float): the learning rate used to update parameters. \
-                Can be a float value
-            param_var(list): all dense param. it is a list.
-            grad_var(list): all dense grad parm it is a list.
+            table_id(int): id of datanorm table
+            strategy(dict): the datanorm config dict.
         Returns:
             return None 
         """

@@ -126,7 +126,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
             [optimize_ops, grads_and_weights]
         """
 
-        #table_name = find_distributed_lookup_table(losses[0].block.program)
         table_name = self._find_multi_distributed_lookup_table(losses)
         prefetch_slots = find_distributed_lookup_table_inputs(
             losses[0].block.program, table_name[0])
@@ -141,15 +140,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ps_param = pslib.PSParameter()
         server = DownpourServer()
         worker = DownpourWorker(self._window)
-        # if user specify a fleet_desc.prototxt file, then load the file
-        # instead of creating default fleet_desc.prototxt.
-        # user can specify server_param or trainer_param or fs_client_param.
-        if strategy.get("fleet_desc_file") is not None:
-            fleet_desc_file = strategy["fleet_desc_file"]
-            with open(fleet_desc_file) as f:
-                text_format.Merge(f.read(), ps_param)
-            server.get_desc().CopyFrom(ps_param.server_param)
-            worker.get_desc().CopyFrom(ps_param.trainer_param)
         sparse_table_index = 0
         for tn in table_name:
             server.add_sparse_table(sparse_table_index, strategy[tn])
@@ -157,8 +147,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                     outputs_dict[tn], strategy[tn])
             sparse_table_index += 1
 
-        #print server.get_desc().downpour_server_param.downpour_table_param
-        #print worker.get_desc().sparse_table
         dense_table_index = sparse_table_index
         program_configs = {}
         param_grads_list = []
