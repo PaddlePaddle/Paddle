@@ -81,26 +81,26 @@ class MemoryReusePass : public Pass {
   bool TryReuseVar(details::VarHandle *in_var,
                    details::VarHandle *out_var) const;
 
-  bool IsInVarReusable(details::VarHandle *in_var) const;
+  bool IsInVarReusable(const details::VarHandle &in_var) const;
 
-  bool IsOutVarReusable(details::VarHandle *out_var) const;
+  bool IsOutVarReusable(const details::VarHandle &out_var) const;
 
   std::unordered_set<Node *> FindNodesByName(
       const std::string &name, const std::vector<Node *> &nodes) const;
 
   size_t ScopeNum() const { return all_vars_->size(); }
 
-  int64_t GetMemorySize(details::VarHandle *var) const;
+  int64_t GetMemorySize(const details::VarHandle &var) const;
 
  private:
-  VarDesc *GetVarDesc(details::VarHandle *var) const;
+  VarDesc *GetVarDesc(const details::VarHandle &var) const;
 
-  bool IsVarPairReusable(details::VarHandle *in_var,
-                         details::VarHandle *out_var) const;
+  bool IsVarPairReusable(const details::VarHandle &in_var,
+                         const details::VarHandle &out_var) const;
 
-  bool IsInVarAlreadyReused(details::VarHandle *in_var) const;
+  bool IsInVarAlreadyReused(const details::VarHandle &in_var) const;
 
-  bool IsOutVarAlreadyReused(details::VarHandle *out_var) const;
+  bool IsOutVarAlreadyReused(const details::VarHandle &out_var) const;
 
   details::ShareTensorBufferOpHandle *InsertShareTensorBufferOpHandleToGraph(
       details::ComputationOpHandle *op) const;

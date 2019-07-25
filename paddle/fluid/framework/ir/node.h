@@ -99,7 +99,7 @@ class Node {
 
   // Test if the Node is wrapped by type T.
   template <typename T>
-  bool IsWrappedBy() {
+  bool IsWrappedBy() const {
     return std::type_index(typeid(T)) == wrapper_type_;
   }
 

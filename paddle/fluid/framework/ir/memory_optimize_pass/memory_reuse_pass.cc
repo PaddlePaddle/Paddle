@@ -62,7 +62,7 @@ bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
   auto *op =
       dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp());
   PADDLE_ENFORCE_NOT_NULL(op);
-  if (IsVarPairReusable(in_var, out_var)) {
+  if (IsVarPairReusable(*in_var, *out_var)) {
     AddReuseVar(op, in_var, out_var);
     return true;
   } else {
@@ -81,9 +81,9 @@ std::unordered_set<Node *> MemoryReusePass::FindNodesByName(
   return ret;
 }
 
-VarDesc *MemoryReusePass::GetVarDesc(details::VarHandle *var) const {
-  const auto var_name = var->Name();
-  size_t scope_idx = var->scope_idx();
+VarDesc *MemoryReusePass::GetVarDesc(const details::VarHandle &var) const {
+  const auto var_name = var.Name();
+  size_t scope_idx = var.scope_idx();
   auto iter = var_descs_[scope_idx].find(var_name);
   if (iter == var_descs_[scope_idx].end()) {
     PADDLE_ENFORCE((*all_vars_)[scope_idx].count(var_name),
@@ -97,7 +97,7 @@ VarDesc *MemoryReusePass::GetVarDesc(details::VarHandle *var) const {
   }
 }
 
-int64_t MemoryReusePass::GetMemorySize(details::VarHandle *var) const {
+int64_t MemoryReusePass::GetMemorySize(const details::VarHandle &var) const {
   auto *var_desc = GetVarDesc(var);
   auto shapes = var_desc->GetShape();
   return std::accumulate(shapes.begin(), shapes.end(), static_cast<int64_t>(1),
@@ -130,14 +130,18 @@ void MemoryReusePass::CollectReusedVars() const {
   }
 }
 
-bool MemoryReusePass::IsInVarAlreadyReused(details::VarHandle *in_var) const {
-  const auto var_name = in_var->Name();
-  size_t scope_idx = in_var->scope_idx();
+bool MemoryReusePass::IsInVarAlreadyReused(
+    const details::VarHandle &in_var) const {
+  const auto var_name = in_var.Name();
+  size_t scope_idx = in_var.scope_idx();
   return reused_in_var_names_[scope_idx].count(var_name) > 0;
 }
 
-bool MemoryReusePass::IsOutVarAlreadyReused(details::VarHandle *out_var) const {
-  return reused_out_var_names_[out_var->scope_idx()].count(out_var->Name()) > 0;
+bool MemoryReusePass::IsOutVarAlreadyReused(
+    const details::VarHandle &out_var) const {
+  const auto var_name = out_var.Name();
+  size_t scope_idx = out_var.scope_idx();
+  return reused_out_var_names_[scope_idx].count(var_name) > 0;
 }
 
 details::ShareTensorBufferOpHandle *
@@ -170,8 +174,8 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
   return buffer_share_op;
 }
 
-bool MemoryReusePass::IsInVarReusable(details::VarHandle *in_var) const {
-  if (in_var->Name() == kEmptyVarName) {
+bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
+  if (in_var.Name() == kEmptyVarName) {
     return false;
   }
 
@@ -192,21 +196,22 @@ bool MemoryReusePass::IsInVarReusable(details::VarHandle *in_var) const {
   return true;
 }
 
-bool MemoryReusePass::IsOutVarReusable(details::VarHandle *out_var) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp()));
-  const auto out_name = out_var->Name();
+bool MemoryReusePass::IsOutVarReusable(
+    const details::VarHandle &out_var) const {
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<const details::ComputationOpHandle *>(
+      out_var.GeneratedOp()));
+  const auto out_name = out_var.Name();
   if (out_name == kEmptyVarName) {
     return false;
   }
 
   // out_var must be the first version!!!
-  auto out_var_iter = (*all_vars_)[out_var->scope_idx()].find(out_name);
-  PADDLE_ENFORCE(out_var_iter != (*all_vars_)[out_var->scope_idx()].end() &&
+  auto out_var_iter = (*all_vars_)[out_var.scope_idx()].find(out_name);
+  PADDLE_ENFORCE(out_var_iter != (*all_vars_)[out_var.scope_idx()].end() &&
                      !out_var_iter->second.empty(),
                  "Cannot find variable %s", out_name);
 
-  if (out_var_iter->second[0] != out_var) {
+  if (out_var_iter->second[0] != &out_var) {
     return false;
   }
 
@@ -223,7 +228,7 @@ bool MemoryReusePass::IsOutVarReusable(details::VarHandle *out_var) const {
     return false;
   }
 
-  if (!FindNodesByName(out_name, out_var->GeneratedOp()->Node()->inputs)
+  if (!FindNodesByName(out_name, out_var.GeneratedOp()->Node()->inputs)
            .empty()) {
     return false;
   }
@@ -231,14 +236,14 @@ bool MemoryReusePass::IsOutVarReusable(details::VarHandle *out_var) const {
   return true;
 }
 
-bool MemoryReusePass::IsVarPairReusable(details::VarHandle *in_var,
-                                        details::VarHandle *out_var) const {
+bool MemoryReusePass::IsVarPairReusable(
+    const details::VarHandle &in_var, const details::VarHandle &out_var) const {
   auto *op =
-      dynamic_cast<details::ComputationOpHandle *>(out_var->GeneratedOp());
+      dynamic_cast<const details::ComputationOpHandle *>(out_var.GeneratedOp());
   PADDLE_ENFORCE_NOT_NULL(op);
 
-  const auto in_name = in_var->Name();
-  if (in_name == out_var->Name()) {
+  const auto in_name = in_var.Name();
+  if (in_name == out_var.Name()) {
     return false;
   }
 

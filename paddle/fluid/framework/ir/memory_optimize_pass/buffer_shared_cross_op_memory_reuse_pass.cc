@@ -198,8 +198,7 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
     }
   }
 
-  // Deep copy of `var_to_ops`, used to analysis unlived vars after one op runs
-  // in the following codes.
+  // Deep copy of `var_to_ops`, used to get last lived ops of each unlived var
   auto original_var_to_ops = var_to_ops;
 
   // Memory size of VarHandle -> list<VarHandle>
@@ -222,11 +221,11 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
       PADDLE_ENFORCE_NOT_NULL(out_var);
 
       // If out_arg is not reusable, skip it
-      if (!IsOutVarReusable(out_var)) {
+      if (!IsOutVarReusable(*out_var)) {
         continue;
       }
 
-      auto mem_size = GetMemorySize(out_var);
+      auto mem_size = GetMemorySize(*out_var);
       // Special case: if memory size of out_var is 0, skip it
       if (mem_size == 0) {
         continue;
@@ -283,8 +282,8 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
         // there is a unlived var, since all lived ops have run
         VarHandle *unlived_var = op_iter->first;
         var_to_ops.erase(op_iter++);
-        if (IsInVarReusable(unlived_var)) {
-          auto mem_size = GetMemorySize(unlived_var);
+        if (IsInVarReusable(*unlived_var)) {
+          auto mem_size = GetMemorySize(*unlived_var);
           if (mem_size != 0) {
             unlived_var_pool[std::abs(mem_size)].push_front(unlived_var);
           }
