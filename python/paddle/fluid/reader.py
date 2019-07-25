@@ -714,24 +714,9 @@ class PipeReader(object):
 
     def start(self):
         def __thread__():
-            converters = [
-                DataToPipeConverter(lod_level, shape, dtype)
-                for lod_level, shape, dtype in zip(self._lod_levels,
-                                                   self._shapes, self._dtypes)
-            ]
             with os.fdopen(self._writer, 'w') as writer:
-                for i, batch in enumerate(self._batch_reader()):
-                    for sample in batch:
-                        assert len(sample) == len(
-                            self._feed_list
-                        ), "The number of fields in data (%s) does not match len(feed_list) (%s)" % (
-                            len(sample), len(self._feed_list))
-                        for converter, slot in zip(converters, sample):
-                            converter.feed(slot)
-                    lod_arrays = [
-                        converter.done(writer) for converter in converters
-                    ]
-                    self._write(writer, lod_arrays)
+                for batch in self._batch_reader():
+                    self._write(writer, batch)
 
         self._process = multiprocessing.Process(target=__thread__)
         self._process.start()
@@ -778,7 +763,30 @@ class PipeReader(object):
                 sample_generator, batch_size=batch_size, drop_last=drop_last))
 
     def decorate_sample_list_generator(self, sample_list_generator):
-        self._batch_reader = sample_list_generator
+        def __batch_reader__():
+            converters = [
+                DataToPipeConverter(lod_level, shape, dtype)
+                for lod_level, shape, dtype in zip(self._lod_levels,
+                                                   self._shapes, self._dtypes)
+            ]
+            for i, batch in enumerate(sample_list_generator()):
+                for sample in batch:
+                    assert len(sample) == len(
+                        self._feed_list
+                    ), "the number of fields in data (%s) does not match len(feed_list) (%s)" % (
+                        len(sample), len(self._feed_list))
+                    for converter, slot in zip(converters, sample):
+                        converter.feed(slot)
+                yield [converter.done() for converter in converters]
+
+        self._batch_reader = __batch_reader__
+
+    def decorate_batch_generator(self, batch_generator):
+        def __batch_reader__():
+            for batch in batch_generator:
+                yield [], batch
+
+        self._batch_reader = batch_generator
 
 
 class DataToPipeConverter(object):
@@ -817,7 +825,7 @@ class DataToPipeConverter(object):
             for each_data in data:
                 self._feed_impl_(each_data, lod[1:], lod_level - 1)
 
-    def done(self, writer):
+    def done(self):
         arr = np.array(self.data, dtype=self.dtype)
         if self.shape is not None:
             if len(arr.shape) != len(self.shape):
