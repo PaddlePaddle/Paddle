@@ -16,28 +16,22 @@
 #include <cassert>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/fluid/inference/tensorrt/plugin/prelu_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
-#include "paddle/fluid/operators/math/prelu.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-PReluPlugin *CreatePreluPluginDeserialize(const void *buffer, size_t length) {
-  return new PReluPlugin(buffer, length);
+SwishPlugin *CreateSwishPluginDeserialize(const void *buffer, size_t length) {
+  return new SwishPlugin(buffer, length);
 }
-REGISTER_TRT_PLUGIN("prelu_plugin", CreatePreluPluginDeserialize);
+REGISTER_TRT_PLUGIN("swish_plugin", CreateSwishPluginDeserialize);
 
-int PReluPlugin::initialize() {
-  cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
-  cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
-             cudaMemcpyHostToDevice);
-  return 0;
-}
+int SwishPlugin::initialize() { return 0; }
 
-nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
+nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,
                                                 const nvinfer1::Dims *inputDims,
                                                 int nbInputs) {
   assert(nbInputs == 1);
@@ -46,34 +40,33 @@ nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;
 }
+__global__ void swish_kernel(int num, const float *input, float *output,
+                             float beta) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < num) {
+#if __CUDA_ARCH__ >= 350
+    output[index] =
+        __ldg(input + index) / (1.0f + expf(-beta * __ldg(input + index)));
+#else
+    output[index] = input[index] / (1.0f + expf(-beta * input[index]));
+#endif
+  }
+}
 
-int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
+int SwishPlugin::enqueue(int batch_size, const void *const *inputs,
                          void **outputs, void *workspace, cudaStream_t stream) {
   // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
-  // const float *alpha = reinterpret_cast<const float *>(alpha_.get().values);
-  const float *alpha = p_gpu_weight_;
   float *output = reinterpret_cast<float **>(outputs)[0];
-
-  std::vector<int> input_shape;
-  input_shape.push_back(batch_size);
+  int num = batch_size;
   for (int i = 0; i < input_dims.nbDims; i++) {
-    input_shape.push_back(input_dims.d[i]);
+    num *= input_dims.d[i];
   }
+  int threads = 1024;
+  int blocks = (num + threads - 1) / threads;
+  swish_kernel<<<blocks, threads, 0, stream>>>(num, input, output, beta_);
 
-  if (mode_ == "channel") {
-    operators::math::PreluChannelWiseDirectCUDAFunctor<float>
-        prelu_channel_wise;
-    prelu_channel_wise(stream, input, alpha, output, input_shape);
-  } else if (mode_ == "element") {
-    operators::math::PreluElementWiseDirectCUDAFunctor<float>
-        prelu_element_wise;
-    prelu_element_wise(stream, input, alpha, output, input_shape);
-  } else {
-    operators::math::PreluScalarDirectCUDAFunctor<float> prelu_scalar;
-    prelu_scalar(stream, input, alpha, output, input_shape);
-  }
   return cudaGetLastError() != cudaSuccess;
 }
 
