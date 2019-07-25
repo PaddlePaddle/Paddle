@@ -55,8 +55,8 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
 
   void GetSpecifiedOpsAndVars(
-      const std::string &op_type, const std::vector<std::string> &aux_vars_name,
-      ir::Node *node, std::vector<ir::Node *> *ops,
+      const std::vector<std::string> &aux_vars_name,
+      const std::vector<ir::Node *> &opt_nodes,
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
@@ -67,27 +67,30 @@ class FuseOptimizerOpPass : public ir::Pass {
                                   bool check_name = true) const;
 
   void InitFusedGradsAndAllocSpaceForGrads(
-      const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
       const std::vector<std::string> &params,
       const std::vector<std::string> &grads, const std::string &fused_grad_name,
       ir::Graph *result) const;
 
   void InitFusedVarsAndAllocSpaceForVars(
-      const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes,
       const std::vector<std::string> &aux_var_names,
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
-      const std::unordered_map<std::string, std::string> &fused_vars_name)
-      const;
+      const std::unordered_map<std::string, std::string> &fused_vars_name,
+      ir::Graph *result) const;
 
-  void RunInitOps(const std::vector<platform::Place> &places,
-                  const std::vector<Scope *> &local_scopes,
-                  const BlockDesc &global_block) const;
+  std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
+      const Graph &result) const;
 
-  void InitVars(const std::vector<Scope *> &local_scopes,
-                const std::string &fused_var_name) const;
+  proto::VarType::Type GetTypeOfVar(
+      const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
+      const std::string &name) const;
+
+  void GradientsFilter(const std::vector<size_t> &new_grad_idx,
+                       std::vector<Node *> *opt_nodes,
+                       std::unordered_map<std::string, std::vector<std::string>>
+                           *aux_var_set) const;
+
+  bool IsLoDTensorType(const proto::VarType::Type &type) const;
 };
 
 }  // namespace ir

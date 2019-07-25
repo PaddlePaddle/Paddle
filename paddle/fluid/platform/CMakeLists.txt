@@ -102,17 +102,17 @@ cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_pri
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
+  nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
+  nv_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 else()
-    cc_library(profiler SRCS profiler.cc DEPS device_tracer enforce)
+  cc_library(profiler SRCS profiler.cc DEPS device_tracer enforce)
+  cc_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info place)
 endif()
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 
-IF(WITH_GPU)
-  nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
-ENDIF()
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
 if(WITH_GPU)

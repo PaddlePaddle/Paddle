@@ -3632,6 +3632,8 @@ class Parameter(Variable):
 
         self.do_model_average = kwargs.get('do_model_average', None)
 
+        self.is_distributed = False
+
     def __str__(self):
         return self.to_string(True)
 
