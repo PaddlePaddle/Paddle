@@ -218,7 +218,18 @@ class OpTest(unittest.TestCase):
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
                                       self.dtype)
-
+        #print(inputs)
+        #print(outputs)
+        input_values = list(inputs.values())
+        output_values = list(outputs.values())
+        output_names = list(outputs.keys())
+        rename_dict = {}
+        for i in range(len(output_values)):
+            rename_dict[output_values[i].name] = input_values[i].name
+            output_values[i].name = input_values[i].name
+        outputs = dict(zip(output_names, output_values))
+        #print(outputs)
+        self.rename_dict = rename_dict
         if hasattr(self, "cache_name_list"):
             for name in self.cache_name_list:
                 inputs[name] = block.create_var(
@@ -226,7 +237,6 @@ class OpTest(unittest.TestCase):
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                     stop_gradient=True)
-
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
@@ -385,7 +395,8 @@ class OpTest(unittest.TestCase):
             def find_actual(target_name, fetch_list):
                 found = [
                     i for i, var in enumerate(fetch_list)
-                    if var.name == target_name
+                    if var.name == self.rename_dict[target_name]
+                    #if var.name == target_name
                 ]
                 self.assertTrue(
                     len(found) == 1, "Found {} {}".format(
