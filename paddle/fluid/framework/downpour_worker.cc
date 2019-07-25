@@ -16,6 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -152,7 +157,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     tensor_emb->set_lod(data_lod);
 
     bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
-        adjust_ins_weight_config_.nid_slot() == emb_slot_name);
+                   adjust_ins_weight_config_.nid_slot() == emb_slot_name);
     if (is_nid) {
       nid_show_.clear();
     }
@@ -188,13 +193,14 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
 }
 
 void DownpourWorker::AdjustInsWeight() {
+#ifdef _LINUX
   // check var and tensor not null
   if (!adjust_ins_weight_config_.need_adjust()) {
     VLOG(0) << "need_adjust=false, skip adjust ins weight";
     return;
   }
-  Variable* nid_var = thread_scope_->FindVar(
-      adjust_ins_weight_config_.nid_slot());
+  Variable* nid_var =
+      thread_scope_->FindVar(adjust_ins_weight_config_.nid_slot());
   if (nid_var == nullptr) {
     VLOG(0) << "nid slot var " << adjust_ins_weight_config_.nid_slot()
             << " is nullptr, skip adjust ins weight";
@@ -206,11 +212,10 @@ void DownpourWorker::AdjustInsWeight() {
             << " is nullptr, skip adjust ins weight";
     return;
   }
-  Variable* ins_weight_var = thread_scope_->FindVar(
-      adjust_ins_weight_config_.ins_weight_slot());
+  Variable* ins_weight_var =
+      thread_scope_->FindVar(adjust_ins_weight_config_.ins_weight_slot());
   if (ins_weight_var == nullptr) {
-    VLOG(0) << "ins weight var "
-            << adjust_ins_weight_config_.ins_weight_slot()
+    VLOG(0) << "ins weight var " << adjust_ins_weight_config_.ins_weight_slot()
             << " is nullptr, skip adjust ins weight";
     return;
   }
@@ -255,6 +260,7 @@ void DownpourWorker::AdjustInsWeight() {
   }
   VLOG(3) << "nid adjw info: total_adjw_num: " << nid_adjw_num
           << ", avg_adjw_weight: " << nid_adjw_weight;
+#endif
 }
 
 void DownpourWorker::TrainFilesWithProfiler() {
