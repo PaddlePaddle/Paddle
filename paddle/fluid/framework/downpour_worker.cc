@@ -161,30 +161,41 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (is_nid) {
       nid_show_.clear();
     }
+    int nid_ins_index = 0;
 
     for (int index = 0; index < len; ++index) {
       if (use_cvm_) {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data(),
                  sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(0);
+            ++nid_ins_index;
+          }
           continue;
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
-        if (is_nid) {
+        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
           nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
         }
         fea_idx++;
       } else {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
                  sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(0);
+            ++nid_ins_index;
+          }
           continue;
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
-        if (is_nid) {
+        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
           nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
         }
         fea_idx++;
       }
@@ -241,6 +252,10 @@ void DownpourWorker::AdjustInsWeight() {
   for (int i = 0; i < len; ++i) {
     float nid_show = nid_show_[i];
     VLOG(3) << "nid_show " << nid_show;
+    if (nid_show == 0) {
+      VLOG(3) << "nid_show is 0, continue";
+      continue;
+    }
     float ins_weight = 1.0;
     if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
       ins_weight = log(M_E +
