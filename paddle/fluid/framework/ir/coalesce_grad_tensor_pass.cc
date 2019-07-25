@@ -483,6 +483,4 @@ class CoalesceGradTensorPass : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(coalesce_grad_tensor_pass,
-              paddle::framework::ir::CoalesceGradTensorPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+              paddle::framework::ir::CoalesceGradTensorPass);

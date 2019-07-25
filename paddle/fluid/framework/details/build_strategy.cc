@@ -289,26 +289,20 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #endif
-    } else if (pass->Type() == "coalesce_grad_tensor_pass" ||
-               pass->Type() == "fuse_adam_op_pass" ||
-               pass->Type() == "fuse_sgd_op_pass" ||
-               pass->Type() == "fuse_momentum_op_pass" ||
-               pass->Type() == "fuse_all_reduce_op_pass") {
+    } else if (pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      if (pass->Type() == "fuse_all_reduce_op_pass") {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-        platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
-        pass->Erase(kNCCLCtxs);
-        pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
-        pass->Erase(kUseHierarchicalAllReduce);
-        pass->Set<bool>(kUseHierarchicalAllReduce,
-                        new bool(use_hierarchical_allreduce_));
+      platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
+      pass->Erase(kNCCLCtxs);
+      pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
+      pass->Erase(kUseHierarchicalAllReduce);
+      pass->Set<bool>(kUseHierarchicalAllReduce,
+                      new bool(use_hierarchical_allreduce_));
 #endif
-      }
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
