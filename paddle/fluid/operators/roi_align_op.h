@@ -285,7 +285,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
 
     int output_grad_size = out_grad->numel();
 
-    if ((!out_grad->IsInitialized) || (output_grad_size <= 0)) {
+    if ((!out_grad->IsInitialized()) || (output_grad_size <= 0)) {
       return;
     }
 
