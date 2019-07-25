@@ -285,60 +285,61 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
 
     int output_grad_size = out_grad->numel();
 
-    if (output_grad_size > 0) {
-      const T* rois_data = rois->data<T>();
-      const T* out_grad_data = out_grad->data<T>();
-      T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
+    if ((!out_grad->IsInitialized) || (output_grad_size <= 0)) {
+      return;
+    }
 
-      auto in_stride = framework::stride(in->dims());
-      auto roi_stride = framework::stride(rois->dims());
-      auto out_stride = framework::stride(out_grad->dims());
+    const T* rois_data = rois->data<T>();
+    const T* out_grad_data = out_grad->data<T>();
+    T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-      for (int n = 0; n < rois_num; ++n) {
-        int roi_batch_idx = roi_batch_id_data[n];
-        T roi_xmin = rois_data[0] * spatial_scale;
-        T roi_ymin = rois_data[1] * spatial_scale;
-        T roi_xmax = rois_data[2] * spatial_scale;
-        T roi_ymax = rois_data[3] * spatial_scale;
-        T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
-        T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
-        T bin_size_h =
-            static_cast<T>(roi_height) / static_cast<T>(pooled_height);
-        T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
-        for (int c = 0; c < channels; ++c) {
-          T* batch_grad_data =
-              in_grad_data + roi_batch_idx * in_stride[0] + c * in_stride[1];
-          const T* batch_out_grad_data =
-              out_grad_data + n * out_stride[0] + c * out_stride[1];
-          for (int ph = 0; ph < pooled_height; ++ph) {
-            for (int pw = 0; pw < pooled_width; ++pw) {
-              int pool_index = ph * pooled_width + pw;
-              T out_grad_this_bin = batch_out_grad_data[pool_index];
-              int roi_bin_grid_h = (sampling_ratio > 0)
-                                       ? sampling_ratio
-                                       : ceil(roi_height / pooled_height);
-              int roi_bin_grid_w = (sampling_ratio > 0)
-                                       ? sampling_ratio
-                                       : ceil(roi_width / pooled_width);
-              T count = roi_bin_grid_h * roi_bin_grid_w;
-              for (int iy = 0; iy < roi_bin_grid_h; iy++) {
-                const T y = roi_ymin + ph * bin_size_h +
-                            static_cast<T>(iy + .5f) * bin_size_h /
-                                static_cast<T>(roi_bin_grid_h);
-                for (int ix = 0; ix < roi_bin_grid_w; ix++) {
-                  const T x = roi_xmin + pw * bin_size_w +
-                              static_cast<T>(ix + .5f) * bin_size_w /
-                                  static_cast<T>(roi_bin_grid_w);
-                  bilinear_interpolate_gradient(height, width, y, x,
-                                                out_grad_this_bin, count,
-                                                batch_grad_data);
-                }
+    auto in_stride = framework::stride(in->dims());
+    auto roi_stride = framework::stride(rois->dims());
+    auto out_stride = framework::stride(out_grad->dims());
+
+    for (int n = 0; n < rois_num; ++n) {
+      int roi_batch_idx = roi_batch_id_data[n];
+      T roi_xmin = rois_data[0] * spatial_scale;
+      T roi_ymin = rois_data[1] * spatial_scale;
+      T roi_xmax = rois_data[2] * spatial_scale;
+      T roi_ymax = rois_data[3] * spatial_scale;
+      T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
+      T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
+      T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
+      T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
+      for (int c = 0; c < channels; ++c) {
+        T* batch_grad_data =
+            in_grad_data + roi_batch_idx * in_stride[0] + c * in_stride[1];
+        const T* batch_out_grad_data =
+            out_grad_data + n * out_stride[0] + c * out_stride[1];
+        for (int ph = 0; ph < pooled_height; ++ph) {
+          for (int pw = 0; pw < pooled_width; ++pw) {
+            int pool_index = ph * pooled_width + pw;
+            T out_grad_this_bin = batch_out_grad_data[pool_index];
+            int roi_bin_grid_h = (sampling_ratio > 0)
+                                     ? sampling_ratio
+                                     : ceil(roi_height / pooled_height);
+            int roi_bin_grid_w = (sampling_ratio > 0)
+                                     ? sampling_ratio
+                                     : ceil(roi_width / pooled_width);
+            T count = roi_bin_grid_h * roi_bin_grid_w;
+            for (int iy = 0; iy < roi_bin_grid_h; iy++) {
+              const T y = roi_ymin + ph * bin_size_h +
+                          static_cast<T>(iy + .5f) * bin_size_h /
+                              static_cast<T>(roi_bin_grid_h);
+              for (int ix = 0; ix < roi_bin_grid_w; ix++) {
+                const T x = roi_xmin + pw * bin_size_w +
+                            static_cast<T>(ix + .5f) * bin_size_w /
+                                static_cast<T>(roi_bin_grid_w);
+                bilinear_interpolate_gradient(height, width, y, x,
+                                              out_grad_this_bin, count,
+                                              batch_grad_data);
               }
             }
           }
         }
-        rois_data += roi_stride[0];
       }
+      rois_data += roi_stride[0];
     }
   }
 };
