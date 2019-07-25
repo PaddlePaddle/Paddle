@@ -11,17 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import os
 import sys
-from .optimizer_factory import *
+from optimizer_factory import *
 from google.protobuf import text_format
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
-from ...base.fleet_base import Fleet
-from ...base.fleet_base import Mode
-from ...base.role_maker import MPISymetricRoleMaker
-from ...base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class PSLib(Fleet):
@@ -191,6 +192,7 @@ class PSLib(Fleet):
         when using fleet, it will save sparse and dense feature
 
         Args:
+            executor(Executor): fluid executor
             dirname(str): save path. It can be hdfs/afs path or local path
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
@@ -259,6 +261,115 @@ class PSLib(Fleet):
                     continue
                 self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list,
                                                    decay)
+        self._role_maker._barrier_worker()
+
+    def load_one_table(self, table_id, model_path, **kwargs):
+        """
+        load pslib model for one table or load params from paddle model
+
+        Args:
+            table_id(int): load table id
+            model_path(str): load model path, can be local or hdfs/afs path
+            kwargs(dict): user defined params, currently support following:
+                only for load pslib model for one table:
+                    mode(int): load model mode. 0 is for load whole model, 1 is
+                               for load delta model (load diff), default is 0.
+                only for load params from paddle model:
+                    scope(Scope): Scope object
+                    model_proto_file(str): path of program desc proto binary
+                                           file, can be local or hdfs/afs file
+                    load_combine(bool): load from a file or splited param files
+                                        default False.
+
+        Examples:
+            .. code-block:: python
+
+              # load pslib model for one table
+              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+
+              # load params from paddle model
+              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                   scope = my_scope,
+                                   model_proto_file = "./my_program.bin",
+                                   load_combine = False)
+
+              # below is how to save proto binary file
+              with open("my_program.bin", "wb") as fout:
+                  my_program = fluid.default_main_program()
+                  fout.write(my_program.desc.serialize_to_string())
+
+        """
+        mode = kwargs.get("mode", 0)
+        scope = kwargs.get("scope", None)
+        model_proto_file = kwargs.get("model_proto_file", None)
+        load_combine = kwargs.get("load_combine", False)
+        if scope is not None and model_proto_file is not None:
+            self._load_one_table_from_paddle_model(
+                scope, table_id, model_path, model_proto_file, load_combine)
+        else:
+            self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
+
+    def _load_one_table_from_paddle_model(self,
+                                          scope,
+                                          table_id,
+                                          model_path,
+                                          model_proto_file,
+                                          load_combine=False):
+        """
+        load params from paddle model, and push params to pserver
+
+        Args:
+            scope(Scope): Scope object
+            table_id(int): the id of table to load
+            model_path(str): path of paddle model, can be local or hdfs/afs file
+            model_proto_file(str): path of program desc proto binary file,
+                                   can be local or hdfs/afs file
+            load_combine(bool): load from a file or splited param files
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            # get fs config from fleet_desc
+            fs_name = self._opt_info["fleet_desc"].fs_client_param.uri
+            fs_ugi = self._opt_info["fleet_desc"].fs_client_param.user + "," + \
+                     self._opt_info["fleet_desc"].fs_client_param.passwd
+            hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
+            # download model_path if it's hdfs/afs
+            if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+                dest = "./model_for_load_table_%s" % table_id
+                cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
+                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + model_path + \
+                      " " + dest
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError("download model failed")
+                model_path = dest
+            # download model_proto_file if it's hdfs/afs
+            if model_proto_file.startswith("hdfs:") or \
+                    model_proto_file.startswith("afs:"):
+                dest = "./model_proto_file_for_load_table_%s" % table_id
+                cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
+                      " -D hadoop.job.ugi=" + fs_ugi + " -get " + \
+                      model_proto_file + " " + dest
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError("download model proto file failed")
+                model_proto_file = dest
+            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
+                if table_id is not None and table_id != i.table_id:
+                    continue
+                var_list = [var for var in i.dense_variable_name]
+                skip = False
+                for var in var_list:
+                    if scope.find_var(var) is None:
+                        skip = True
+                        break
+                if skip:
+                    continue
+                self._fleet_ptr.load_from_paddle_model(
+                    scope, table_id, var_list, model_path, model_proto_file,
+                    load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):

@@ -149,7 +149,15 @@ class Tensor {
 
   void set_layout(const DataLayout layout) { layout_ = layout; }
 
-  void clear() { holder_ = nullptr; }
+  void clear() {
+    holder_ = nullptr;
+    offset_ = 0;
+  }
+
+  void ShareBufferWith(const Tensor& tensor) {
+    holder_ = tensor.holder_;
+    offset_ = tensor.offset_;
+  }
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }

@@ -71,6 +71,7 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
                        .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
+    bool overwrite = ctx.Attr<bool>("overwrite");
 
     const auto &index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
@@ -82,9 +83,17 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
     if (index_type == framework::proto::VarType::INT32) {
-      ScatterAssign<T, int>(ctx.device_context(), *dO, *index, dX);
+      if (overwrite) {
+        ScatterAssign<T, int32_t>(ctx.device_context(), *dO, *index, dX);
+      } else {
+        ScatterAssignAdd<T, int32_t>(ctx, *dO, *index, dX);
+      }
     } else if (index_type == framework::proto::VarType::INT64) {
-      ScatterAssign<T, int64_t>(ctx.device_context(), *dO, *index, dX);
+      if (overwrite) {
+        ScatterAssign<T, int64_t>(ctx.device_context(), *dO, *index, dX);
+      } else {
+        ScatterAssignAdd<T, int64_t>(ctx, *dO, *index, dX);
+      }
     }
   }
 };

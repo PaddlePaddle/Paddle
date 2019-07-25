@@ -15,23 +15,22 @@
 from __future__ import print_function
 
 import abc
-from enum import Enum
 
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
-from role_maker import MPISymetricRoleMaker
-from role_maker import RoleMakerBase
-from role_maker import UserDefinedRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
+from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 
 
-class Mode(Enum):
+class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
-    TRANSPILER = 1,
-    PSLIB = 2,
+    TRANSPILER = 1
+    PSLIB = 2
     COLLECTIVE = 3
 
 
@@ -158,19 +157,26 @@ class Fleet(object):
         Returns:
             list: files belongs to this worker.
         """
-        file_num = len(files)
         trainer_id = self.worker_index()
-        trainer_num = self.worker_num()
-        if trainer_num > file_num:
-            raise ValueError("trainer_num should be <= file_num : "
-                             "%s > %s" % (trainer_num, file_num))
-        start = 0
-        end = 0
-        for i in range(0, trainer_id + 1):
-            length = file_num / trainer_num + (i < (file_num % trainer_num))
-            start = end
-            end += length
-        return files[start:end]
+        trainers = self.worker_num()
+
+        if len(files) < trainers:
+            raise ValueError("file number must gather or equal trainer number")
+
+        remainder = len(files) % trainers
+        blocksize = len(files) / trainers
+
+        blocks = [blocksize] * trainers
+        for i in range(remainder):
+            blocks[i] += 1
+
+        trainer_files = [[]] * trainers
+        begin = 0
+        for i in range(trainers):
+            trainer_files[i] = files[begin:begin + blocks[i]]
+            begin += blocks[i]
+
+        return trainer_files[trainer_id]
 
     def init(self, role_maker=None):
         """
@@ -189,18 +195,8 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
-        if isinstance(role_maker, MPISymetricRoleMaker):
-            self._role_maker = role_maker
-            self._role_maker.generate_role()
-
-        elif isinstance(role_maker, UserDefinedRoleMaker):
-            self._role_maker = role_maker
-
-        else:
-            raise ValueError(
-                "role_maker must be an instance of UserDefinedRoleMaker/MPISymetricRoleMaker"
-            )
-
+        self._role_maker = role_maker
+        self._role_maker.generate_role()
         self._is_initialized = True
 
     @abc.abstractmethod

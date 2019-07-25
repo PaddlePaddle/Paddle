@@ -190,7 +190,7 @@ void Pool2dOpMaker::Make() {
       "exclusive",
       "(bool, default True) When true, will exclude the zero-padding in the "
       "averaging calculating, otherwise, include the zero-padding. Note, it "
-      "is only used when pooling_type is avg. The defalut is True.")
+      "is only used when pooling_type is avg. The default is True.")
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
@@ -360,7 +360,7 @@ void Pool3dOpMaker::Make() {
       "exclusive",
       "(bool, default True) When true, will exclude the zero-padding in the "
       "averaging calculating, otherwise, include the zero-padding. Note, it "
-      "is only used when pooling_type is avg. The defalut is True.")
+      "is only used when pooling_type is avg. The default is True.")
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
