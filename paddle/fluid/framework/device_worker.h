@@ -113,15 +113,15 @@ class DeviceWorker {
   // will make this zero copy in the future
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
-  virtual void SetDataFeed(const std::shared_ptr<DataFeed>& data_feed);
+  virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
 
  protected:
-  Scope* root_scope_;
+  Scope* root_scope_ = nullptr;
   paddle::platform::Place place_;
-  std::shared_ptr<DataFeed> device_reader_;
+  DataFeed* device_reader_ = nullptr;
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;
@@ -179,8 +179,10 @@ class DownpourWorker : public HogwildWorker {
 
  private:
   bool need_to_push_dense_;
+  bool dump_slot_;
   bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
+  float scale_datanorm_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
@@ -285,7 +287,6 @@ class SectionWorker : public DeviceWorker {
   int section_num_;
   int pipeline_num_;
   int thread_id_;
-
   // This worker will consume scope from in_scope_queue_
   // and produce scope to out_scope_queue_
   ScopeQueue* in_scope_queue_ = nullptr;

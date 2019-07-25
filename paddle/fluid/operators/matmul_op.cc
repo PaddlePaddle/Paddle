@@ -60,7 +60,18 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
+
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    int head_number = context.Attr<int>("head_number");
+    if (1 == head_number) {
+      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    } else {
+      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
+                          T(0));
+    }
+#else
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+#endif
   }
 };
 
@@ -295,16 +306,25 @@ class MatMulOp : public framework::OperatorWithKernel {
                      mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
     }
     std::vector<int64_t> dim_out;
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    int head_number = context->Attrs().Get<int>("head_number");
+    PADDLE_ENFORCE_GE(head_number, 1);
+    PADDLE_ENFORCE_LE(head_number, mat_dim_x.width_);
+    int64_t dim_out_y = head_number * mat_dim_y.width_;
+#else
+    int64_t dim_out_y = mat_dim_y.width_;
+#endif
+
     if (mat_dim_x.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+      dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+      dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
-      dim_out = {mat_dim_x.height_, mat_dim_y.width_};
+      dim_out = {mat_dim_x.height_, dim_out_y};
     }
 
     if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
@@ -339,6 +359,10 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    AddAttr<int>("head_number", "The number of heads of the matrix")
+        .SetDefault(1);
+#endif
     AddComment(R"DOC(
 MatMul Operator.
 
@@ -360,6 +384,9 @@ Examples without transpose:
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
 
+Example of matrix multiplication with head_number of H
+- X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
+
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
 - When the rank of the input data is less than or equal to 3, it
@@ -367,6 +394,9 @@ The differences are:
 - When the rank of the input is greater than 3, the rank of X and
   Y must be equal, and the first `rank - 2` dimensions must be equal.
 - We add `transpose_X` and `transpose_Y` flags.
+- We add `head_number` attribute, which is used to multiple two matrixes head
+  by head, and eventually concatenates the output of several (head_number)
+  small matrixes multiplication.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input `X`.

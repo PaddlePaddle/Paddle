@@ -14,21 +14,21 @@
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
 import numpy as np
-
 from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
+import logging
 
 __all__ = [
-    'enabled',
     'no_grad',
-    'not_support',
     'guard',
     'to_variable',
 ]
 
 
+# This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
+    # Internal use only
     return framework.in_dygraph_mode()
 
 
@@ -89,7 +89,9 @@ def _no_grad_(func):
 
 
 no_grad = wrap_decorator(_no_grad_)
-not_support = wrap_decorator(_dygraph_not_support_)
+# for fluidDoc
+no_grad.__doc__ = _no_grad_.__doc__
+_not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
@@ -136,6 +138,21 @@ def guard(place=None):
                     yield
 
 
+def _print_debug_msg():
+    if not core._is_dygraph_debug_enabled():
+        logging.warn(
+            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
+        )
+        return
+
+    unique_name_size = len(framework.unique_name.generator.ids)
+    tracer_var_size = len(framework._dygraph_tracer()._vars)
+    alive_cpp_var_size = len(core.VarBase._alive_vars())
+    logging.warn(
+        'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
+        .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
+
+
 def to_variable(value, block=None, name=None):
     """
     This function will create a variable from ndarray
@@ -161,7 +178,8 @@ def to_variable(value, block=None, name=None):
 
     """
     if isinstance(value, np.ndarray):
-        assert enabled(), "to_variable could only be called in dygraph mode"
+        assert framework.in_dygraph_mode(
+        ), "to_variable could only be called in dygraph mode"
 
         if not block:
             block = framework.default_main_program().current_block()

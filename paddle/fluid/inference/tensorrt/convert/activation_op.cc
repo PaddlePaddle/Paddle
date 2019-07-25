@@ -42,11 +42,20 @@ class ActivationOpConverter : public OpConverter {
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
         op_pair->second);
+
+#if IS_TRT_VERSION_GE(5130)
+    // max(alpha, min(beta, x))
+    if (op_type_ == "relu6") {
+      layer->setAlpha(0.);
+      layer->setBeta(6.);
+    }
+#endif
+
     auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
     if (op_desc.HasAttr("out_scale")) {
-#if IS_TRT_VERSION_GE(5000)
+#if IS_TRT_VERSION_GE(5130)
       float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
       engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
 #endif
@@ -63,6 +72,9 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"relu", nvinfer1::ActivationType::kRELU},
         {"sigmoid", nvinfer1::ActivationType::kSIGMOID},
         {"tanh", nvinfer1::ActivationType::kTANH},
+#if IS_TRT_VERSION_GE(5130)
+        {"relu6", nvinfer1::ActivationType::kCLIP},
+#endif
 };
 
 class ReluOpConverter : public ActivationOpConverter {
@@ -80,6 +92,11 @@ class TanhOpConverter : public ActivationOpConverter {
   TanhOpConverter() { op_type_ = "tanh"; }
 };
 
+class Relu6OpConverter : public ActivationOpConverter {
+ public:
+  Relu6OpConverter() { op_type_ = "relu6"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -87,3 +104,4 @@ class TanhOpConverter : public ActivationOpConverter {
 REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
+REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);

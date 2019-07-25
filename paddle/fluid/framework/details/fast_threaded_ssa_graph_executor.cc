@@ -16,6 +16,7 @@
 #include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -28,9 +29,11 @@ namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
       fetch_ctxs_(places),
@@ -122,7 +125,9 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
     std::vector<OpHandleBase *> *ready_fetch_ops) {
-  for (auto &fetch_var_name : fetch_tensors) {
+  std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
+                                                   fetch_tensors.end());
+  for (auto &fetch_var_name : fetch_tensor_set) {
     for (auto &var_map : graph_->Get<GraphVars>(kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
@@ -143,7 +148,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_);
+    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                 &local_exec_scopes_);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {

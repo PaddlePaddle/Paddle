@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""lookup_table_utils.py will move to fluid/incubate/fleet/utils/lookup_table.py"""
 
 from __future__ import print_function
 
@@ -363,7 +364,17 @@ def load_persistables_for_inference(dirname, executor, program,
                 })
             sums.append(param_var)
         global_block.append_op(
-            type='sum', inputs={"X": sums}, outputs={'Out': emb_var}, attrs={})
+            type='merge_sparse_lookup_table',
+            inputs={"X": sums},
+            outputs={'Out': emb_var},
+            attrs={})
+        global_block.append_op(
+            type='save',
+            inputs={"X": [emb_var]},
+            outputs={},
+            attrs={
+                'file_path': os.path.join(lookup_table_dirname, emb_var.name)
+            })
         global_block.append_op(type='delete_var', inputs={'X': sums})
         executor.run(convert_program)
 
