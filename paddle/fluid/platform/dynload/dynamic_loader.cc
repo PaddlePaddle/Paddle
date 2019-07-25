@@ -223,7 +223,7 @@ void* GetWarpCTCDsoHandle() {
 #elif defined(_WIN32)
   return GetDsoHandleFromDefaultPath("warpctc.dll", 0);
 #else
-  return GetDsoHandleFromDefaultPath("libwarpctc.so", RTLD_LAZY | RTLD_LOCAL);
+  return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.so");
 #endif
 }
 
