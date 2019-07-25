@@ -127,7 +127,7 @@ class BasicGRUUnit(Layer):
         r_hidden = r * pre_hidden
 
         candidate = layers.matmul(
-            layers.concat([input, pre_hidden], 1), self._candidate_weight)
+            layers.concat([input, r_hidden], 1), self._candidate_weight)
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
