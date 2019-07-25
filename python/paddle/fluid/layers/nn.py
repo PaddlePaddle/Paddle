@@ -380,9 +380,9 @@ def embedding(input,
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
         padding_idx(int|long|None): It will output all-zero paddig data whenever
-            lookup encounters :attr:`padding_idx` in Ids. If set :attr:`None`, it makes
-            no effect to output. If :math:`padding_idx < 0`, the :attr:`padding_idx`
-            will automatically be converted to :math:`size[0] + padding_idx` to use.
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
             Default: None.
         param_attr(ParamAttr): Parameters for this layer.
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
