@@ -244,9 +244,6 @@ class DownpourWorker(Worker):
         Returns:
             return None 
         """
-        #for table in self._worker.sparse_table:
-        #    if table.table_id == table_id:
-        #        return
         table = self._worker.sparse_table.add()
         table.table_id = table_id
         table.slot_key.extend([var.name for var in slot_key_vars])
