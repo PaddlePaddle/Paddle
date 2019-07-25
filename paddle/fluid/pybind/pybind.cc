@@ -45,6 +45,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/operators/reader/pipe_reader.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -610,6 +611,14 @@ All parameter, weight, gradient are variables in Paddle.
           return holder->GetQueue();
         },
         py::return_value_policy::copy);
+
+  using PipeReader = ::paddle::operators::reader::PipeReader;
+
+  m.def("init_pipe_reader", [](Variable &var, int file_descriptor) {
+    VLOG(1) << "init_pipe_reader";
+    auto *holder = var.GetMutable<ReaderHolder>();
+    holder->Reset(std::shared_ptr<PipeReader>(new PipeReader(file_descriptor)));
+  });
 
   py::class_<Scope>(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.

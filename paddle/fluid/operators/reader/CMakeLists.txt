@@ -19,6 +19,8 @@ endfunction()
 
 cc_library(py_reader SRCS py_reader.cc DEPS reader)
 cc_library(buffered_reader SRCS buffered_reader.cc DEPS reader simple_threadpool)
+cc_library(pipe SRCS pipe.cc)
+cc_library(pipe_reader SRCS pipe_reader.cc DEPS pipe reader)
 
 reader_library(open_files_op SRCS open_files_op.cc DEPS buffered_reader)
 reader_library(create_random_data_generator_op SRCS create_random_data_generator_op.cc)

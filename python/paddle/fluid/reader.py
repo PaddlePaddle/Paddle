@@ -13,10 +13,14 @@
 # limitations under the License.
 
 from . import core, dygraph
+import sys
 import six
 import warnings
+import os
 import numpy as np
 import threading
+import multiprocessing
+import binascii
 import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
 from .executor import global_scope
@@ -443,7 +447,7 @@ class PyReader(object):
             except Exception as ex:
                 self._queue.close()
                 logging.warn('Your decorated reader has raised an exception!')
-                raise ex
+                six.reraise(*sys.exc_info())
 
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True
@@ -672,3 +676,174 @@ class PyReader(object):
         if self._iterable:
             assert places is not None, "Places cannot be None when py_reader is iterable"
             self._init_iterable(places)
+
+
+class PipeReader(object):
+
+    unique_name_generator = UniqueNameGenerator()
+
+    def __init__(self, feed_list=None):
+        self._batch_reader = None
+        self._feed_list = feed_list
+        self._lod_levels = []
+        self._dtypes = []
+        self._shapes = []
+        for feed_data in self._feed_list:
+            self._dtypes.append(feed_data.dtype)
+            self._shapes.append(feed_data.shape)
+            self._lod_levels.append(feed_data.lod_level)
+
+        reader_name = PipeReader.unique_name_generator('pipe_reader')
+        reader_var = default_main_program().current_block().create_var(
+            name=reader_name, type=core.VarDesc.VarType.READER)
+        reader_var.desc.set_dtypes(self._dtypes)
+        reader_var.desc.set_shapes(self._shapes)
+        reader_var.desc.set_lod_levels(self._lod_levels)
+        reader_var.persistable = True
+
+        r, w = os.pipe()
+        self._writer = w
+        var = global_scope().var(reader_name)
+        core.init_pipe_reader(var, r)
+        self._process = None
+
+        default_main_program().current_block().append_op(
+            type='read',
+            inputs={'Reader': [reader_var]},
+            outputs={'Out': self._feed_list})
+
+    def start(self):
+        def __thread__():
+            converters = [
+                DataToPipeConverter(lod_level, shape, dtype)
+                for lod_level, shape, dtype in zip(self._lod_levels,
+                                                   self._shapes, self._dtypes)
+            ]
+            with os.fdopen(self._writer, 'w') as writer:
+                for i, batch in enumerate(self._batch_reader()):
+                    for sample in batch:
+                        assert len(sample) == len(
+                            self._feed_list
+                        ), "The number of fields in data (%s) does not match len(feed_list) (%s)" % (
+                            len(sample), len(self._feed_list))
+                        for converter, slot in zip(converters, sample):
+                            converter.feed(slot)
+                    lod_arrays = [
+                        converter.done(writer) for converter in converters
+                    ]
+                    self._write(writer, lod_arrays)
+
+        self._process = multiprocessing.Process(target=__thread__)
+        self._process.start()
+
+    def _write(self, writer, lod_arrays):
+        # write dtype
+        dtype_enum = {
+            np.dtype('int32'): 2,
+            np.dtype('int64'): 3,
+            np.dtype('float16'): 4,
+            np.dtype('float32'): 5,
+            np.dtype('float64'): 6,
+            np.dtype('uint8'): 20,
+        }
+        writer.write(int64(len(lod_arrays)))
+        for lod, arr in lod_arrays:
+            writer.write(int64(len(lod)))
+            for i in range(len(lod)):
+                writer.write(int64(len(lod[i])))
+                for j in range(len(self.lod[i])):
+                    writer.write(int64(lod[i][j]))
+            # write dtype
+            writer.write(int32(dtype_enum[arr.dtype]))
+            # write shape
+            writer.write(int64(len(arr.shape)))
+            for i in range(len(arr.shape)):
+                writer.write(int64(arr.shape[i]))
+            # write data
+            byte = arr.tobytes()
+            writer.write(byte)
+
+    def reset(self):
+        if self._process.is_alive():
+            self._process.terminate()
+        self._process.join()
+
+    def decorate_sample_generator(self,
+                                  sample_generator,
+                                  batch_size,
+                                  drop_last=True):
+        assert batch_size > 0, "batch_size must be larger than 0"
+        self.decorate_sample_list_generator(
+            paddle.batch(
+                sample_generator, batch_size=batch_size, drop_last=drop_last))
+
+    def decorate_sample_list_generator(self, sample_list_generator):
+        self._batch_reader = sample_list_generator
+
+
+class DataToPipeConverter(object):
+    def __init__(self, lod_level, shape, dtype):
+        dtype_map = {
+            core.VarDesc.VarType.FP32: 'float32',
+            core.VarDesc.VarType.INT64: 'int64',
+            core.VarDesc.VarType.FP64: 'float64',
+            core.VarDesc.VarType.FP16: 'float16',
+            core.VarDesc.VarType.INT32: 'int32',
+            core.VarDesc.VarType.UINT8: 'uint8',
+        }
+        self.lod_level = lod_level
+        self.shape = None if any(s < 0 for s in shape) else shape
+        if dtype in dtype_map:
+            self.dtype = dtype_map[dtype]
+        else:
+            raise ValueError(
+                "dtype must be any of [uint8, float16, int32, float32, int64, float64]"
+            )
+        self.data = []
+        self.lod = [[] for _ in range(self.lod_level)]
+
+    def _reset(self):
+        self.data = []
+        self.lod = [[] for _ in range(self.lod_level)]
+
+    def feed(self, data):
+        self._feed_impl_(data, self.lod, self.lod_level)
+
+    def _feed_impl_(self, data, lod, lod_level):
+        if lod_level == 0:
+            self.data.append(data)
+        else:
+            lod[0].append(len(data))
+            for each_data in data:
+                self._feed_impl_(each_data, lod[1:], lod_level - 1)
+
+    def done(self, writer):
+        arr = np.array(self.data, dtype=self.dtype)
+        if self.shape is not None:
+            if len(arr.shape) != len(self.shape):
+                try:
+                    arr = arr.reshape(self.shape)
+                except ValueError:
+                    raise ValueError(
+                        "Reshape error. What is defined in data layer is {}, but receive {}".
+                        format(self.shape, arr.shape))
+                    # write lod
+        lod = self.lod
+        self._reset()
+        return lod, arr
+
+
+def intn(value, n, endianness='little'):
+    fmt = '%%0%dx' % (n // 4)
+    s = binascii.unhexlify(fmt % value)
+    if endianness == 'little':
+        s = s[::-1]
+    return s
+
+
+def int64(value, endianness='little'):
+    return intn(value, 64, endianness)
+
+
+def int32(value, endianness='little'):
+    return intn(value, 32, endianness)
