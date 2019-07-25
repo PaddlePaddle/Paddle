@@ -55,6 +55,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPass("record_skip_memory_opt_vars_pass");
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
+    AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
@@ -64,7 +65,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
-    AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
