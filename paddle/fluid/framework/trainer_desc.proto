@@ -34,6 +34,7 @@ message TrainerDesc {
   optional FetchConfig fetch_config = 7;
   optional bool use_cvm = 8 [ default = false ];
   optional bool dump_slot = 9 [ default = false ];
+  optional float scale_datanorm = 10 [ default = -1 ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
