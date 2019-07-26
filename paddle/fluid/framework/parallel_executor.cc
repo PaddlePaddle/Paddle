@@ -258,8 +258,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
    * If gc is enabled, BuildStrategy.memory_optimize = False.
    * If gc is disabled, BuildStrategy.memory_optimize = True.
    * This is because gc+memory_optimize is worse than gc only.
-   * Users can enable BuildStrategy.memory_optimize forcely by setting True,
-   * and disable it forcely by setting False.
+   *
+   * As an option, users can enable BuildStrategy.memory_optimize forcely
+   * by setting True, and disable it forcely by setting False.
    */
   bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
   if (!build_strategy_.memory_optimize_) {
@@ -328,8 +329,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
     LOG(INFO) << "Garbage collection strategy is enabled, when "
-              << "FLAGS_eager_delete_tensor_gb="
-              << GetEagerDeletionThreshold() / (static_cast<int64_t>(1) << 30);
+              << "FLAGS_eager_delete_tensor_gb = "
+              << (static_cast<double>(GetEagerDeletionThreshold()) / (1 << 30));
   }
   return graph;
 }
