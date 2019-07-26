@@ -258,7 +258,14 @@ class DistributionTest(unittest.TestCase):
             gt_lp_float_np_broadcast,
             rtol=tolerance)
         np.testing.assert_allclose(output_lp_np, gt_lp, rtol=tolerance)
-        np.testing.assert_allclose(output_lp_variable, gt_lp, rtol=tolerance)
+        try:
+            np.testing.assert_allclose(
+                output_lp_variable, gt_lp, rtol=tolerance)
+        except Exception as e:
+            print(loc_np)
+            print(scale_np)
+            print(values_np)
+            raise e
         np.testing.assert_allclose(output_kl_float, gt_kl_float, rtol=tolerance)
         np.testing.assert_allclose(
             output_kl_float_np_broadcast,
