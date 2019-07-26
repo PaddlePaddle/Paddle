@@ -283,7 +283,7 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
     share_buffer_op->AddInput(in_var);
   }
 
-  share_buffer_op->Add(
+  share_buffer_op->AddReuseVarPair(
       (*var_infos_)[op->GetScopeIdx()].at(in_var->Name()).get(),
       out_var->Name());
   reused_in_var_names_[op->GetScopeIdx()].insert(in_var->Name());

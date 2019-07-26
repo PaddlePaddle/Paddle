@@ -52,7 +52,7 @@ ShareTensorBufferFunctor::ShareTensorBufferFunctor(
       out_var_names_(out_var_names) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size());
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
-    Add(in_var_infos_[i], out_var_names_[i]);
+    AddReuseVarPair(in_var_infos_[i], out_var_names_[i]);
   }
 }
 
@@ -65,8 +65,8 @@ ShareTensorBufferFunctor::ReusedVars() const {
   return result;
 }
 
-void ShareTensorBufferFunctor::Add(ir::MemOptVarInfo *in_var_info,
-                                   const std::string &out_var_name) {
+void ShareTensorBufferFunctor::AddReuseVarPair(
+    ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
   PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
   PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
                     "in/out cannot have same name: %s", out_var_name);

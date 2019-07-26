@@ -42,7 +42,8 @@ class ShareTensorBufferFunctor {
                            const std::vector<ir::MemOptVarInfo *> &in_var_infos,
                            const std::vector<std::string> &out_var_names);
 
-  void Add(ir::MemOptVarInfo *in_var_info, const std::string &out_var_name);
+  void AddReuseVarPair(ir::MemOptVarInfo *in_var_info,
+                       const std::string &out_var_name);
 
   void operator()(Scope *exec_scope);
 

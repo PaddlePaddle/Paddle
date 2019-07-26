@@ -82,6 +82,8 @@ OpGraphView::GetPrecedingDepNum() const {
   return result;
 }
 
+size_t OpGraphView::OpNumber() const { return preceding_ops_.size(); }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

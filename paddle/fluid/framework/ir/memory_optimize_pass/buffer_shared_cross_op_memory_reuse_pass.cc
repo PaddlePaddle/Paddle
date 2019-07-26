@@ -61,7 +61,7 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
   void BuildOpDependencyMap() const;
 
   // Get op index inside `ops_`, used to find dependency inside `deps_`
-  size_t OpIndex(ComputationOpHandle *op) const;
+  size_t OpIndex(const ComputationOpHandle *op) const;
 
   size_t ResolveDependencyBetween(
       ComputationOpHandle *op,
@@ -69,10 +69,10 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
 
   // Get dependency relationship between op1 and op2
   // Notice: GetOpDep(op1, op2) == ReverseNodeDependency(GetOpDep(op2, op1))
-  NodeDependency GetOpDep(ComputationOpHandle *op1,
-                          ComputationOpHandle *op2) const;
+  NodeDependency GetOpDep(const ComputationOpHandle *op1,
+                          const ComputationOpHandle *op2) const;
 
-  void SetOpDep(ComputationOpHandle *op1, ComputationOpHandle *op2,
+  void SetOpDep(const ComputationOpHandle *op1, const ComputationOpHandle *op2,
                 NodeDependency dep) const;
 
  private:
@@ -83,7 +83,7 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
 
   // Index of each op in `ops_`, grouped by scope index.
   // Index of each op is the index inside `deps_`.
-  mutable std::vector<std::unordered_map<ComputationOpHandle *, size_t>>
+  mutable std::vector<std::unordered_map<const ComputationOpHandle *, size_t>>
       op_to_idx_;
 
   // Dependency matrix of between any 2 ops
@@ -111,50 +111,12 @@ void BufferSharedCrossOpMemoryReusePass::Run(Graph *graph) const {
 // ratio.
 std::vector<OpHandleBase *> BufferSharedCrossOpMemoryReusePass::SortOp(
     const OpGraphView &graph_view) const {
-  auto op_deps = graph_view.GetPrecedingDepNum();
-  size_t op_num = op_deps.size();
   std::vector<OpHandleBase *> sorted_ops;
-  sorted_ops.reserve(op_num);
-
-  std::unordered_set<OpHandleBase *> visited_ops;
-  std::queue<OpHandleBase *> ready_ops;
-
-  for (auto iter = op_deps.begin(); iter != op_deps.end();) {
-    if (iter->second != 0) {
-      ++iter;
-      continue;
-    }
-
-    visited_ops.insert(iter->first);
-    ready_ops.push(iter->first);
-    sorted_ops.emplace_back(iter->first);
-    op_deps.erase(iter++);
-  }
-
-  while (!ready_ops.empty()) {
-    auto *cur_op = ready_ops.front();
-    ready_ops.pop();
-
-    auto &pending_ops = graph_view.PendingOps(cur_op);
-    for (auto *pending_op : pending_ops) {
-      if (visited_ops.count(pending_op) > 0) {
-        continue;
-      }
-
-      if (--op_deps.at(pending_op) == 0) {
-        visited_ops.insert(pending_op);
-        op_deps.erase(pending_op);
-        ready_ops.push(pending_op);
-        sorted_ops.emplace_back(pending_op);
-      }
-    }
-  }
-
-  PADDLE_ENFORCE_EQ(sorted_ops.size(), op_num,
-                    "There are unvisited op after sorted");
-  PADDLE_ENFORCE_EQ(visited_ops.size(), op_num,
-                    "There are unvisited op after sorted");
-  PADDLE_ENFORCE(op_deps.empty(), "There are unvisited op after sorted");
+  sorted_ops.reserve(graph_view.OpNumber());
+  graph_view.BreadthFirstVisit(
+      [&](OpHandleBase *cur_op) { sorted_ops.emplace_back(cur_op); });
+  PADDLE_ENFORCE_EQ(sorted_ops.size(), graph_view.OpNumber(),
+                    "There are unvisited ops");
   return sorted_ops;
 }
 
@@ -367,89 +329,51 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
   // A map to record all preceding ops of each op
   std::unordered_map<OpHandleBase *, std::unordered_set<OpHandleBase *>>
       preceding_ops;
-  {
-    // BFS to fill `preceding_ops`
-    auto op_deps = graph_view.GetPrecedingDepNum();
-    std::queue<OpHandleBase *> ready_ops;
-    std::unordered_set<OpHandleBase *> is_visited;
 
-    for (auto iter = op_deps.begin(); iter != op_deps.end();) {
-      if (iter->second != 0) {
-        ++iter;
-        continue;
-      }
-
-      ready_ops.push(iter->first);
-      is_visited.insert(iter->first);
-      op_deps.erase(iter++);
+  // BFS to fill `preceding_ops`
+  graph_view.BreadthFirstVisit([&](OpHandleBase *cur_op) {
+    // All preceding ops of cur_op should be:
+    //  - preceding ops of cur_op, that is connected to cur_op directely
+    //  - all preceding ops of `direct preceding ops of cur_op`
+    auto &all_preceding_ops_of_cur_op = preceding_ops[cur_op];
+    for (auto &preceding_op : graph_view.PrecedingOps(cur_op)) {
+      all_preceding_ops_of_cur_op.insert(preceding_op);
+      auto &prev_preceding_ops = preceding_ops[preceding_op];
+      all_preceding_ops_of_cur_op.insert(prev_preceding_ops.begin(),
+                                         prev_preceding_ops.end());
     }
+  });
+  PADDLE_ENFORCE_EQ(preceding_ops.size(), op_num);
 
-    while (!ready_ops.empty()) {
-      auto *cur_op = ready_ops.front();
-      ready_ops.pop();
-
-      // All preceding ops of cur_op should be:
-      //  - preceding ops of cur_op, that is connected to cur_op directely
-      //  - all preceding ops of `direct preceding ops of cur_op`
-      auto &all_preceding_ops_of_cur_op = preceding_ops[cur_op];
-      for (auto &preceding_op : graph_view.PrecedingOps(cur_op)) {
-        all_preceding_ops_of_cur_op.insert(preceding_op);
-        auto &prev_preceding_ops = preceding_ops[preceding_op];
-        all_preceding_ops_of_cur_op.insert(prev_preceding_ops.begin(),
-                                           prev_preceding_ops.end());
-      }
-
-      auto &pending_ops = graph_view.PendingOps(cur_op);
-      for (auto *pending_op : pending_ops) {
-        if (is_visited.count(pending_op) > 0) {
-          continue;
-        }
-
-        if (--op_deps.at(pending_op) == 0) {
-          ready_ops.push(pending_op);
-          is_visited.insert(pending_op);
-          op_deps.erase(pending_op);
-        }
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(is_visited.size(), op_num, "There are unvisited ops");
-    PADDLE_ENFORCE_EQ(op_deps.size(), 0, "There are unvisited ops");
+  // Find out ComputationOpHandles only
+  ops_.resize(scope_num);
+  op_to_idx_.resize(scope_num);
+  for (auto *op : ops) {
+    auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
+    if (compute_op == nullptr) continue;
+    size_t scope_idx = compute_op->GetScopeIdx();
+    ops_[scope_idx].emplace_back(compute_op);
+    op_to_idx_[scope_idx].emplace(compute_op, op_to_idx_[scope_idx].size());
   }
 
-  {
-    // Find out ComputationOpHandles only
-    ops_.resize(scope_num);
-    op_to_idx_.resize(scope_num);
-    for (auto *op : ops) {
-      auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
-      if (compute_op == nullptr) continue;
-      size_t scope_idx = compute_op->GetScopeIdx();
-      ops_[scope_idx].emplace_back(compute_op);
-      op_to_idx_[scope_idx].emplace(compute_op, op_to_idx_[scope_idx].size());
+  // Fill deps_ according to `preceding_ops`
+  deps_.resize(scope_num);
+  for (size_t i = 0; i < deps_.size(); ++i) {
+    deps_[i].resize(ops_[i].size());
+    for (auto &item : deps_[i]) {
+      item.assign(ops_[i].size(), NodeDependency::kNoDep);
     }
   }
 
-  {
-    // Fill deps_ according to `preceding_ops`
-    deps_.resize(scope_num);
-    for (size_t i = 0; i < deps_.size(); ++i) {
-      deps_[i].resize(ops_[i].size());
-      for (auto &item : deps_[i]) {
-        item.assign(ops_[i].size(), NodeDependency::kNoDep);
-      }
-    }
-
-    for (auto &ops_on_each_device : ops_) {
-      for (auto *op : ops_on_each_device) {
-        SetOpDep(op, op, NodeDependency::kSame);
-        for (auto *preceding_op : preceding_ops[op]) {
-          auto *compute_preceding_op =
-              dynamic_cast<ComputationOpHandle *>(preceding_op);
-          if (compute_preceding_op != nullptr &&
-              compute_preceding_op->GetScopeIdx() == op->GetScopeIdx()) {
-            SetOpDep(compute_preceding_op, op, NodeDependency::kBefore);
-          }
+  for (auto &ops_on_each_device : ops_) {
+    for (auto *op : ops_on_each_device) {
+      SetOpDep(op, op, NodeDependency::kSame);
+      for (auto *preceding_op : preceding_ops[op]) {
+        auto *compute_preceding_op =
+            dynamic_cast<ComputationOpHandle *>(preceding_op);
+        if (compute_preceding_op != nullptr &&
+            compute_preceding_op->GetScopeIdx() == op->GetScopeIdx()) {
+          SetOpDep(compute_preceding_op, op, NodeDependency::kBefore);
         }
       }
     }
@@ -457,21 +381,21 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
 }
 
 size_t BufferSharedCrossOpMemoryReusePass::OpIndex(
-    ComputationOpHandle *op) const {
+    const ComputationOpHandle *op) const {
   auto iter = op_to_idx_[op->GetScopeIdx()].find(op);
   PADDLE_ENFORCE(iter != op_to_idx_[op->GetScopeIdx()].end());
   return iter->second;
 }
 
 NodeDependency BufferSharedCrossOpMemoryReusePass::GetOpDep(
-    ComputationOpHandle *op1, ComputationOpHandle *op2) const {
+    const ComputationOpHandle *op1, const ComputationOpHandle *op2) const {
   PADDLE_ENFORCE_EQ(op1->GetScopeIdx(), op2->GetScopeIdx());
   return deps_[op1->GetScopeIdx()][OpIndex(op1)][OpIndex(op2)];
 }
 
-void BufferSharedCrossOpMemoryReusePass::SetOpDep(ComputationOpHandle *op1,
-                                                  ComputationOpHandle *op2,
-                                                  NodeDependency dep) const {
+void BufferSharedCrossOpMemoryReusePass::SetOpDep(
+    const ComputationOpHandle *op1, const ComputationOpHandle *op2,
+    NodeDependency dep) const {
   PADDLE_ENFORCE_EQ(op1->GetScopeIdx(), op2->GetScopeIdx());
   if (op1 == op2) {
     PADDLE_ENFORCE(dep == NodeDependency::kSame);

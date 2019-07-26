@@ -58,9 +58,9 @@ ShareTensorBufferOpHandle::ReusedVars() const {
   return functor_.ReusedVars();
 }
 
-void ShareTensorBufferOpHandle::Add(ir::MemOptVarInfo *in_var_info,
-                                    const std::string &out_var_name) {
-  functor_.Add(in_var_info, out_var_name);
+void ShareTensorBufferOpHandle::AddReuseVarPair(
+    ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
+  functor_.AddReuseVarPair(in_var_info, out_var_name);
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {
