@@ -3731,10 +3731,12 @@ def conv2d_transpose(input,
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
 
-           - if output_size is None, H_{out} == H^\prime_{out}, W_{out} == W^\prime_{out};
-           - else, the H_{out} of the output size must between in H^\prime_{out} and H^\prime_{out} + strides[0], 
-           - and the W_{out} of the output size must between in W^\prime_{out} and W^\prime_{out} + strides[1],
-           - conv2d_transpose can compute the kernel size automatically.
+    Note:
+          if output_size is None, :math:`H_{out} == H^\prime_{out}, W_{out} == W^\prime_{out}`; 
+          else, the :math:`H_{out}` of the output size must between in :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
+          between in :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
+          conv2d_transpose can compute the kernel size automatically.
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
