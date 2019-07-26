@@ -275,7 +275,7 @@ class PSLib(Fleet):
         if self._role_maker.is_first_worker():
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
-    
+
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
