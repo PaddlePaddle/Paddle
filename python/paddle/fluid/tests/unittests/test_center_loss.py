@@ -86,11 +86,6 @@ class TestCenterLossOp(OpTest):
         self.check_grad(['X'], 'Loss')
 
 
-class TestCenterLossOpNoUpdateFlase(TestCenterLossOp):
-    def config(self):
-        self.need_update = False
-
-
 class TestCenterLossOpNoUpdate(TestCenterLossOp):
     def config(self):
         self.need_update = False

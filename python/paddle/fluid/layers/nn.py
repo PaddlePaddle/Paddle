@@ -374,7 +374,7 @@ def center_loss(input,
         Out = \\frac{1}{2}(X - Y)^2
 
     Args:
-        input (Variable): a 2-D tensor with shape[N].
+        input (Variable): a 2-D tensor with shape[N x M].
         label (Variable): the groud truth which is a 2-D tensor
                          with shape[N x 1],where N is the batch size.
         num_classes (int): the number of classification categories.
@@ -387,6 +387,8 @@ def center_loss(input,
 
     Examples:
         .. code-block:: python
+
+          import paddle.fluid as fluid 
 
           input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
           label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
@@ -404,7 +406,8 @@ def center_loss(input,
     dtype = helper.input_dtype()
     centers_shape = [num_classes, input.shape[1]]
     centers_param = helper.create_parameter(
-        attr=param_attr, shape=centers_shape, dtype=dtype, stop_gradient=True)
+        attr=param_attr, shape=centers_shape, dtype=dtype)
+    centers_param.stop_gradient = True
     if isinstance(alpha, Variable):
         alpha_param = alpha
     else:

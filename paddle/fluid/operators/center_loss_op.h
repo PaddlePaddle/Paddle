@@ -87,8 +87,9 @@ class CenterLossKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
     int tLabel;
 
-    T *x_index;
-    T *center_index;
+    const T *x_index;
+    const T *center_index;
+    T *center_out_index;
     T *center_loss_diff_index;
     T *acc_index;
     platform::Transform<DeviceContext> trans;
@@ -96,9 +97,8 @@ class CenterLossKernel : public framework::OpKernel<T> {
     for (int i = 0; i < batch_size; ++i) {
       tLabel = label_data[i];
       center_update_count[tLabel]++;
-      x_index = const_cast<T *>(x_data) + i * deep_feat_dim;  // xi index
-      center_index = const_cast<T *>(centers_data) +
-                     tLabel * deep_feat_dim;  // center index
+      x_index = x_data + i * deep_feat_dim;                  // xi index
+      center_index = centers_data + tLabel * deep_feat_dim;  // center index
       center_loss_diff_index = centers_diff_data + i * deep_feat_dim;
       trans(dev_ctx, x_index, x_index + deep_feat_dim, center_index,
             center_loss_diff_index, SubFunctor<T>());
@@ -115,10 +115,10 @@ class CenterLossKernel : public framework::OpKernel<T> {
     if (need_update == true) {
       for (int i = 0; i < cluster_num; i++) {
         acc_index = centers_diffacc_data + i * deep_feat_dim;
-        center_index = centers_out_data + i * deep_feat_dim;
+        center_out_index = centers_out_data + i * deep_feat_dim;
         T scale = alpha / center_update_count[i];
         blas.SCAL(deep_feat_dim, scale, acc_index);
-        blas.VADD(deep_feat_dim, acc_index, center_index, center_index);
+        blas.VADD(deep_feat_dim, acc_index, center_out_index, center_out_index);
       }
     }
   }
