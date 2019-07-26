@@ -64,6 +64,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
+  scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
 }
 
@@ -298,7 +299,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -467,7 +469,8 @@ void DownpourWorker::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
       }
 
       VLOG(3) << "push dense gradient done.";
