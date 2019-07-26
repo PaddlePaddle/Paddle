@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);

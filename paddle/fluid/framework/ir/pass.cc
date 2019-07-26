@@ -37,7 +37,8 @@ Graph* Pass::Apply(Graph* graph) const {
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*graph),
-                 "Illegal Pass. Generated graph shouldn't has cycle.");
+                 "Illegal Pass %s. Generated graph shouldn't have cycle.",
+                 Type());
   PADDLE_ENFORCE(VarDescIsConsistency(*graph),
                  "The VarDescs of persistable variable are not consistency.");
   applied_ = true;
