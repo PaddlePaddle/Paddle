@@ -16,329 +16,152 @@
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/brpc/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/brpc/brpc_variable_response.h"
+#include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace sendrecv {
 
 namespace distributed = paddle::operators::distributed;
 
-typedef std::unordered_map<std::string, distributed::RequestHandler*>
+typedef std::unordered_map<distributed::RequestType,
+                           distributed::RequestHandler*,
+                           distributed::EnumClassHash>
     HandlerMap;
 
 class BRPCServiceImpl : public SendRecvService {
  public:
-  explicit BRPCServiceImpl(const HandlerMap& rpc_call_map,
+  explicit BRPCServiceImpl(HandlerMap* rpc_call_map,
                            distributed::RPCServer* rpc_server)
-      : rpc_server_(rpc_server) {
-    VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map.size();
-    auto it = rpc_call_map.find(distributed::kRequestSend);
-    if (it != rpc_call_map.end()) {
-      request_send_h_ = it->second;
+      : rpc_call_map_(rpc_call_map), rpc_server_(rpc_server) {
+    VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map->size();
+    auto it = rpc_call_map->find(distributed::RequestType::SEND);
+    if (it != rpc_call_map->end()) {
       send_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kRequestSend)));
+          rpc_server_->GetThreadNum(distributed::RequestType::SEND)));
     }
 
-    it = rpc_call_map.find(distributed::kRequestGet);
-    if (it != rpc_call_map.end()) {
-      request_get_h_ = it->second;
+    it = rpc_call_map->find(distributed::RequestType::RECV);
+    if (it != rpc_call_map->end()) {
       get_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kRequestGet)));
+          rpc_server_->GetThreadNum(distributed::RequestType::RECV)));
     }
 
-    it = rpc_call_map.find(distributed::kRequestGetNoBarrier);
-    if (it != rpc_call_map.end()) {
-      request_getnobarrier_h_ = it->second;
-      getnobarrier_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kRequestGetNoBarrier)));
+    it = rpc_call_map->find(distributed::RequestType::RECV_NO_BARRIER);
+    if (it != rpc_call_map->end()) {
+      getnobarrier_threads_.reset(
+          new paddle::framework::ThreadPool(rpc_server_->GetThreadNum(
+              distributed::RequestType::RECV_NO_BARRIER)));
     }
 
-    it = rpc_call_map.find(distributed::kRequestPrefetch);
-    if (it != rpc_call_map.end()) {
-      request_prefetch_h_ = it->second;
+    it = rpc_call_map->find(distributed::RequestType::PREFETCH);
+    if (it != rpc_call_map->end()) {
       prefetch_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
+          rpc_server_->GetThreadNum(distributed::RequestType::PREFETCH)));
     }
 
-    it = rpc_call_map.find(distributed::kRequestCheckpoint);
-    if (it != rpc_call_map.end()) {
-      request_checkpoint_h_ = it->second;
+    it = rpc_call_map->find(distributed::RequestType::CHECKPOINT);
+    if (it != rpc_call_map->end()) {
       checkpoint_notify_threads_.reset(new paddle::framework::ThreadPool(
-          rpc_server_->GetThreadNum(distributed::kRequestPrefetch)));
+          rpc_server_->GetThreadNum(distributed::RequestType::CHECKPOINT)));
     }
+  }
 
-    it = rpc_call_map.find(distributed::kRequestGetMonomerVariable);
-    if (it != rpc_call_map.end()) {
-      request_get_monomer_handler_h_ = it->second;
-    }
+  void HandleRequest(distributed::RequestType req_type,
+                     google::protobuf::RpcController* cntl_butil,
+                     const VariableMessage* request, VariableMessage* response,
+                     google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+    auto handler = rpc_call_map_->at(req_type);
+    distributed::RPCRequest req;
+    auto get_var_callback =
+        std::bind(&distributed::RequestHandler::GetOrCreateRequestVar, handler,
+                  std::placeholders::_1, &req);
 
-    it = rpc_call_map.find(distributed::kRequestGetMonomerBarrier);
-    if (it != rpc_call_map.end()) {
-      request_get_monomer_barrier_handler_h_ = it->second;
+    distributed::BRPCVariableResponse resp(get_var_callback,
+                                           handler->dev_ctx());
+    PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
+                   "parse iobuf to tensor error!");
+    req.Prepare(request->varname(), resp.GetVar(), "", "",
+                request->trainer_id(), req_type);
+    handler->Handle(&req);
+    bool var_is_stable =
+        req_type == distributed::RequestType::PREFETCH ? true : false;
+    if (req.out_var_) {
+      // respones do not need trainer id and table_name.
+      distributed::SerializeToIOBuf(
+          req.out_var_name_, req.out_var_, *handler->dev_ctx(), response,
+          &cntl->response_attachment(), req.out_var_name_, var_is_stable);
     }
   }
 
   virtual ~BRPCServiceImpl() {}
   void SendVariable(google::protobuf::RpcController* cntl_butil,
-                    const VariableMessage* request, VoidMessage* response,
+                    const VariableMessage* request, VariableMessage* response,
                     google::protobuf::Closure* done) override {
-    send_threads_->Run(
-        [=] { _SendVariable(cntl_butil, request, response, done); });
-  }
-
-  void _SendVariable(google::protobuf::RpcController* cntl_butil,
-                     const VariableMessage* request, VoidMessage* response,
-                     google::protobuf::Closure* done) {
-    PADDLE_ENFORCE(request_send_h_ != nullptr,
-                   "RequestSend handler should be registed first!");
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    std::string varname = request->varname();
-    VLOG(3) << "RequestSend var_name:" << varname
-            << ", trainer_id:" << request->trainer_id()
-            << ", from:" << cntl->remote_side();
-
-    distributed::BRPCVariableResponse resp(request_send_h_->scope(),
-                                           request_send_h_->dev_ctx(),
-                                           !request_send_h_->sync_mode());
-    PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
-                   "parse iobuf to tensor error!");
-
-    auto scope = resp.GetMutableLocalScope();
-    auto invar = resp.GetVar();
-    int trainer_id = request->trainer_id();
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_send_h_->Handle(varname, scope, invar, &outvar, trainer_id);
+    send_threads_->Run([=] {
+      HandleRequest(distributed::RequestType::SEND, cntl_butil, request,
+                    response, done);
+    });
   }
 
   void GetVariable(google::protobuf::RpcController* cntl_butil,
                    const VariableMessage* request, VariableMessage* response,
                    google::protobuf::Closure* done) override {
-    get_threads_->Run(
-        [=] { _GetVariable(cntl_butil, request, response, done); });
+    get_threads_->Run([=] {
+      HandleRequest(distributed::RequestType::RECV, cntl_butil, request,
+                    response, done);
+    });
   }
 
   void GetVariableNoBarrier(google::protobuf::RpcController* cntl_butil,
                             const VariableMessage* request,
                             VariableMessage* response,
                             google::protobuf::Closure* done) override {
-    getnobarrier_threads_->Run(
-        [=] { _GetVariableNoBarrier(cntl_butil, request, response, done); });
-  }
-
-  void _GetVariable(google::protobuf::RpcController* cntl_butil,
-                    const VariableMessage* request, VariableMessage* response,
-                    google::protobuf::Closure* done) {
-    PADDLE_ENFORCE(request_get_h_ != nullptr,
-                   "RequestGet handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    std::string varname = request->varname();
-    std::string out_varname = request->out_varname();
-    VLOG(3) << "RequestGet varname:" << varname
-            << ", out_varname:" << out_varname
-            << ", trainer_id:" << request->trainer_id()
-            << ", from:" << cntl->remote_side();
-
-    auto scope = request_get_h_->scope();
-    paddle::framework::Variable* invar = nullptr;
-    int trainer_id = request->trainer_id();
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_get_h_->Handle(varname, scope, invar, &outvar, trainer_id,
-                           out_varname);
-
-    if (outvar) {
-      distributed::SerializeToIOBuf(out_varname, outvar,
-                                    *request_get_h_->dev_ctx(), response,
-                                    &cntl->response_attachment(), "", false);
-    }
-  }
-
-  void _GetVariableNoBarrier(google::protobuf::RpcController* cntl_butil,
-                             const VariableMessage* request,
-                             VariableMessage* response,
-                             google::protobuf::Closure* done) {
-    PADDLE_ENFORCE(request_getnobarrier_h_ != nullptr,
-                   "RequestGetNoBarrier handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    std::string varname = request->varname();
-    std::string out_varname = request->out_varname();
-    int trainer_id = request->trainer_id();
-
-    VLOG(3) << "RequestGetNoBarrier varname:" << varname
-            << ", out_varname:" << out_varname << ", trainer_id:" << trainer_id
-            << ", from:" << cntl->remote_side();
-
-    auto scope = request_getnobarrier_h_->scope();
-    paddle::framework::Variable* invar = nullptr;
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_getnobarrier_h_->Handle(varname, scope, invar, &outvar, trainer_id,
-                                    out_varname);
-
-    if (outvar) {
-      distributed::SerializeToIOBuf(
-          out_varname, outvar, *request_getnobarrier_h_->dev_ctx(), response,
-          &cntl->response_attachment(), "", false);
-    }
+    getnobarrier_threads_->Run([=] {
+      HandleRequest(distributed::RequestType::RECV_NO_BARRIER, cntl_butil,
+                    request, response, done);
+    });
   }
 
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
                         google::protobuf::Closure* done) override {
-    prefetch_threads_->Run(
-        [=] { _PrefetchVariable(cntl_butil, request, response, done); });
-  }
-
-  void _PrefetchVariable(google::protobuf::RpcController* cntl_butil,
-                         const VariableMessage* request,
-                         VariableMessage* response,
-                         google::protobuf::Closure* done) {
-    PADDLE_ENFORCE(request_prefetch_h_ != nullptr,
-                   "kRequestPrefetch handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    // prefetch process...
-    std::string in_var_name = request->varname();
-    std::string out_var_name = request->out_varname();
-    VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
-            << ", out_var_name: " << out_var_name
-            << ", trainer_id:" << request->trainer_id()
-            << ", from:" << cntl->remote_side();
-
-    distributed::BRPCVariableResponse resp(
-        request_prefetch_h_->scope(), request_prefetch_h_->dev_ctx(), true);
-
-    PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
-                   "parse iobuf to tensor error!");
-
-    auto scope = resp.GetMutableLocalScope();
-    auto invar = scope->FindVar(in_var_name);
-    std::string table_name = request->table_name();
-    int trainer_id = request->trainer_id();
-    paddle::framework::Variable* outvar = scope->Var(out_var_name);
-
-    request_prefetch_h_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
-                                out_var_name, table_name);
-
-    distributed::SerializeToIOBuf(out_var_name, outvar,
-                                  *request_prefetch_h_->dev_ctx(), response,
-                                  &cntl->response_attachment(), "", true);
+    prefetch_threads_->Run([=] {
+      HandleRequest(distributed::RequestType::PREFETCH, cntl_butil, request,
+                    response, done);
+    });
   }
 
   void CheckpointNotify(google::protobuf::RpcController* cntl_butil,
-                        const VariableMessage* request, VoidMessage* response,
+                        const VariableMessage* request,
+                        VariableMessage* response,
                         google::protobuf::Closure* done) override {
-    checkpoint_notify_threads_->Run(
-        [=] { _CheckpointNotify(cntl_butil, request, response, done); });
-  }
-
-  void _CheckpointNotify(google::protobuf::RpcController* cntl_butil,
-                         const VariableMessage* request, VoidMessage* response,
-                         google::protobuf::Closure* done) {
-    PADDLE_ENFORCE(
-        request_checkpoint_h_ != nullptr,
-        "kRequestCheckpointNotify handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    distributed::BRPCVariableResponse resp(request_checkpoint_h_->scope(),
-                                           request_checkpoint_h_->dev_ctx());
-
-    auto scope = resp.GetMutableLocalScope();
-
-    std::string checkpoint_notify = request->varname();
-    std::string checkpoint_dir = request->out_varname();
-    int trainer_id = request->trainer_id();
-
-    VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
-            << ", dir: " << checkpoint_dir
-            << ", trainer_id:" << request->trainer_id()
-            << ", from:" << cntl->remote_side();
-
-    request_checkpoint_h_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                                  trainer_id, checkpoint_dir);
+    checkpoint_notify_threads_->Run([=] {
+      HandleRequest(distributed::RequestType::CHECKPOINT, cntl_butil, request,
+                    response, done);
+    });
   }
 
   void GetMonomerVariable(google::protobuf::RpcController* cntl_butil,
                           const VariableMessage* request,
                           VariableMessage* response,
                           google::protobuf::Closure* done) override {
-    PADDLE_ENFORCE(
-        request_get_monomer_handler_h_ != nullptr,
-        "kRequestGetMonomerVariable handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    // proc request.
-    std::string varname = request->varname();
-    VLOG(3) << "GetMonomerVariable " << varname
-            << ", trainer_id:" << request->trainer_id()
-            << ", from:" << cntl->remote_side();
-
-    rpc_server_->WaitVarCond(varname);
-    distributed::MonomerHandle h = rpc_server_->GetMonomer(varname);
-
-    auto scope = h.scope_;
-    auto invar = scope->FindVar(varname);
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_get_monomer_handler_h_->Handle(varname, scope, invar, &outvar,
-                                           request->trainer_id());
-
-    if (outvar) {
-      distributed::SerializeToIOBuf(varname, outvar, *h.dev_ctx_, response,
-                                    &cntl->response_attachment(), "", false);
-    }
+    HandleRequest(distributed::RequestType::GET_MONOMER, cntl_butil, request,
+                  response, done);
   }
 
   void GetMonomerBarrier(google::protobuf::RpcController* cntl_butil,
-                         const VariableMessage* request, VoidMessage* response,
+                         const VariableMessage* request,
+                         VariableMessage* response,
                          google::protobuf::Closure* done) override {
-    PADDLE_ENFORCE(
-        request_get_monomer_barrier_handler_h_ != nullptr,
-        "RequestGetMonomerBarrier handler should be registed first!");
-
-    brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
-
-    std::string varname = request->varname();
-    VLOG(3) << "RequestGetMonomerBarrier var_name:" << varname
-            << ", trainer_id:" << request->trainer_id()
-            << ", from:" << cntl->remote_side();
-
-    rpc_server_->WaitVarCond(varname);
-    distributed::MonomerHandle h = rpc_server_->GetMonomer(varname);
-
-    paddle::framework::Scope* scope = nullptr;
-    paddle::framework::Variable* invar = nullptr;
-    paddle::framework::Variable* outvar = nullptr;
-
-    request_get_monomer_barrier_handler_h_->Handle(
-        varname, scope, invar, &outvar, request->trainer_id());
+    HandleRequest(distributed::RequestType::GET_MONOMER_BARRIER, cntl_butil,
+                  request, response, done);
   }
 
  private:
-  distributed::RequestHandler* request_send_h_{nullptr};
-  distributed::RequestHandler* request_get_h_{nullptr};
-  distributed::RequestHandler* request_getnobarrier_h_{nullptr};
-  distributed::RequestHandler* request_prefetch_h_{nullptr};
-  distributed::RequestHandler* request_checkpoint_h_{nullptr};
-  distributed::RequestHandler* request_get_monomer_handler_h_{nullptr};
-  distributed::RequestHandler* request_get_monomer_barrier_handler_h_{nullptr};
-
+  HandlerMap* rpc_call_map_{nullptr};
   distributed::RPCServer* rpc_server_{nullptr};
 
   // FIXME(gongwb): brpc should support process one rpc use one threadpool.
@@ -356,7 +179,7 @@ namespace distributed {
 
 void AsyncBRPCServer::StartServer() {
   // Instance of your service.
-  sendrecv::BRPCServiceImpl service_impl(rpc_call_map_, this);
+  sendrecv::BRPCServiceImpl service_impl(&rpc_call_map_, this);
 
   // Add the service into server. Notice the second parameter, because the
   // service is put on stack, we don't want server to delete it, otherwise

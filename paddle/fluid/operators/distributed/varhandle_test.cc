@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/var_handle.h"
 
 using paddle::operators::distributed::VarHandlePtr;
 using paddle::operators::distributed::VarHandle;

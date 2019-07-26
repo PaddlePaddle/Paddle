@@ -26,12 +26,12 @@ DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 BRPCClient::~BRPCClient() { Wait(); }
 
-void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
-                        VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
-                        ChannelContextPtr ch_ctx, BRPCClient* cls) {
-  // std::unique_ptr makes sure cntl/response will be deleted before returning.
+void HandleSendResponse(brpc::Controller* cntl,
+                        sendrecv::VariableMessage* response, VarHandlePtr var_h,
+                        ChannelQueuePtr ch_ptr, ChannelContextPtr ch_ctx,
+                        BRPCClient* cls) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
-  std::unique_ptr<sendrecv::VoidMessage> response_guard(response);
+  std::unique_ptr<sendrecv::VariableMessage> response_guard(response);
 
   // this channel can be used by other now.
   ch_ptr->Push(ch_ctx);
@@ -68,7 +68,7 @@ VarHandlePtr BRPCClient::AsyncSendVar(const std::string& ep,
   framework::AsyncIO([=] {
     auto ch_ctx = ch_ptr->Pop();
     brpc::Controller* cntl = new brpc::Controller();
-    sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
+    sendrecv::VariableMessage* response = new sendrecv::VariableMessage();
     cntl->set_timeout_ms(time_out);
 
     auto* var = p_scope->FindVar(var_name_val);
@@ -404,7 +404,7 @@ VarHandlePtr BRPCClient::AsyncSendVarMessage(
   auto ch_ctx = ch_ptr->Pop();
 
   brpc::Controller* cntl = new brpc::Controller();
-  sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
+  sendrecv::VariableMessage* response = new sendrecv::VariableMessage();
   cntl->set_timeout_ms(time_out);
 
   platform::RecordRPCEvent record_event(method_name);

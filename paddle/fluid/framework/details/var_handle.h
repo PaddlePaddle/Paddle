@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_set>

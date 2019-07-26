@@ -24,7 +24,7 @@
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
 #include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/operators/distributed/request.h"
 
 // NOTE: This method was originally created by tensorflow
 //       (https://github.com/tensorflow/tensorflow/) we borrow this
@@ -76,39 +76,29 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-enum class GrpcMethod {
-  kSendVariable,
-  kGetVariable,
-  kPrefetchVariable,
-  kCheckpointNotify,
-  kGetVariableNoBarrier,
-  kGetMonomerVariable,
-  kGetMonomerBarrier,
-};
-
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kGetMonomerBarrier) + 1;
+    static_cast<int>(RequestType::GET_MONOMER_BARRIER) + 1;
 
-inline const char* GrpcMethodName(GrpcMethod id) {
-  switch (id) {
-    case GrpcMethod::kSendVariable:
+inline const char* GrpcMethodName(RequestType req_type) {
+  switch (req_type) {
+    case RequestType::SEND:
       return "/sendrecv.SendRecvService/SendVariable";
-    case GrpcMethod::kGetVariable:
+    case RequestType::RECV:
       return "/sendrecv.SendRecvService/GetVariable";
-    case GrpcMethod::kGetVariableNoBarrier:
+    case RequestType::RECV_NO_BARRIER:
       return "/sendrecv.SendRecvService/GetVariableNoBarrier";
-    case GrpcMethod::kGetMonomerVariable:
+    case RequestType::GET_MONOMER:
       return "/sendrecv.SendRecvService/GetMonomerVariable";
-    case GrpcMethod::kGetMonomerBarrier:
+    case RequestType::GET_MONOMER_BARRIER:
       return "/sendrecv.SendRecvService/GetMonomerBarrier";
-    case GrpcMethod::kPrefetchVariable:
+    case RequestType::PREFETCH:
       return "/sendrecv.SendRecvService/PrefetchVariable";
-    case GrpcMethod::kCheckpointNotify:
+    case RequestType::CHECKPOINT:
       return "/sendrecv.SendRecvService/CheckpointNotify";
   }
 
   // Shouldn't be reached.
-  PADDLE_ENFORCE(false, "Invalid id: not found valid method name");
+  PADDLE_THROW("Invalid id: not found valid method name");
   return nullptr;
 }
 
@@ -119,7 +109,7 @@ class GrpcService final {
     AsyncService() {
       for (int i = 0; i < kGrpcNumMethods; ++i) {
         AddMethod(new ::grpc::internal::RpcServiceMethod(
-            GrpcMethodName(static_cast<GrpcMethod>(i)),
+            GrpcMethodName(static_cast<RequestType>(i)),
             ::grpc::internal::RpcMethod::NORMAL_RPC, nullptr));
         ::grpc::Service::MarkMethodAsync(i);
       }

@@ -151,7 +151,10 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const framework::Scope* scope,
                                framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial");
-  operators::distributed::GRPCVariableResponse resp(scope, &ctx);
+  operators::distributed::GRPCVariableResponse resp(
+      [scope](const std::string& varname) { return scope->FindVar(varname); },
+      &ctx);
+
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
   *trainer_id = resp.GetTrainerId();

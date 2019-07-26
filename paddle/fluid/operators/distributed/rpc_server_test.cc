@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -22,7 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/handlers/prefetch_handler.h"
+#include "paddle/fluid/operators/distributed/handlers/send_handler.h"
+#include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
@@ -89,7 +93,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   }
 }
 
-void StartServer(const std::string& rpc_name) {
+void StartServer(distributed::RequestType req_type) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -106,13 +110,16 @@ void StartServer(const std::string& rpc_name) {
       prefetch_var_name_to_prepared;
   prefetch_var_name_to_prepared[in_var_name] = prepared[0];
 
+  if (req_type == distributed::RequestType::PREFETCH) {
+    (static_cast<distributed::PrefetchHandler*>(g_req_handler.get()))
+        ->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
+  }
   g_req_handler->SetProgram(&program);
-  g_req_handler->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
   g_req_handler->SetDevCtx(&ctx);
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);
 
-  g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
+  g_rpc_service->RegisterRPC(req_type, g_req_handler.get());
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
@@ -122,14 +129,15 @@ void StartServer(const std::string& rpc_name) {
 }
 
 TEST(PREFETCH, CPU) {
-  g_req_handler.reset(new distributed::RequestPrefetchHandler(true));
+  g_req_handler.reset(new distributed::PrefetchHandler());
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
-  std::thread server_thread(StartServer, distributed::kRequestPrefetch);
+  std::thread server_thread(StartServer, distributed::RequestType::PREFETCH);
   g_rpc_service->WaitServerReady();
 
+  g_rpc_service->SetState(distributed::RPCServerState::STATE_RECV);
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
@@ -162,19 +170,21 @@ TEST(PREFETCH, CPU) {
 }
 
 TEST(COMPLETE, CPU) {
-  g_req_handler.reset(new distributed::RequestSendHandler(true));
+  g_req_handler.reset(new distributed::SendHandlerSync());
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
   PADDLE_ENFORCE(client != nullptr);
-  std::thread server_thread(StartServer, distributed::kRequestSend);
+  std::thread server_thread(StartServer, distributed::RequestType::SEND);
   g_rpc_service->WaitServerReady();
+  g_rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
+
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
   client->AsyncSendComplete(ep);
   client->Wait();
 
-  EXPECT_EQ(g_rpc_service->GetClientNum(), 1);
+  EXPECT_EQ(g_rpc_service->GetNumClients(), 1);
 
   g_rpc_service->ShutDown();
   server_thread.join();

@@ -89,14 +89,12 @@ class ListenAndServOp : public framework::OperatorBase {
 
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
-  mutable std::shared_ptr<distributed::RequestHandler> request_send_handler_;
-  mutable std::shared_ptr<distributed::RequestHandler> request_get_handler_;
-  mutable std::shared_ptr<distributed::RequestHandler>
-      request_get_no_barrier_handler_;
-  mutable std::shared_ptr<distributed::RequestHandler>
-      request_prefetch_handler_;
-  mutable std::shared_ptr<distributed::RequestHandler>
-      request_checkpoint_handler_;
+
+  mutable std::unique_ptr<distributed::RequestHandler> send_handler_;
+  mutable std::unique_ptr<distributed::RequestHandler> get_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler> get_no_barrier_handler_;
+  mutable std::unique_ptr<distributed::RequestHandler> prefetch_handler_;
+  mutable std::unique_ptr<distributed::RequestHandler> checkpoint_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
   mutable std::vector<std::string> sparse_vars_;

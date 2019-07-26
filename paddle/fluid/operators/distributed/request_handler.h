@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -68,88 +69,10 @@ constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 
 class RPCServer;
 
-class VarHandle {
- public:
-  VarHandle(const std::string ep, const std::string& method,
-            const std::string& name,
-            const platform::DeviceContext* p_ctx = nullptr,
-            const framework::Scope* p_scope = nullptr)
-      : status_(kDefaultState) {
-    ep_ = ep;
-    ctx_ = p_ctx;
-    scope_ = p_scope;
-    name_ = name;
-    method_ = method;
-  }
-
-  virtual ~VarHandle() {}
-
- public:
-  bool Wait() {
-    int ret = kDefaultState;
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      wait_cond_.wait(lk, [this] { return status_ != kDefaultState; });
-      ret = status_;
-    }
-    VLOG(7) << "VarHandle wait:" << ret;
-    return ret != kErrorState;
-  }
-
-  void Finish(bool ok) {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      status_ = ok ? kFinishState : kErrorState;
-    }
-    VLOG(7) << "VarHandle finish:" << ok;
-    wait_cond_.notify_all();
-  }
-
-  std::string String() const {
-    std::ostringstream s;
-    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], status:["
-      << status_ << "]";
-    return s.str();
-  }
-
-  std::string ep() const { return ep_; }
-  const platform::DeviceContext* ctx() const { return ctx_; }
-  const framework::Scope* scope() const { return scope_; }
-  std::string name() const { return name_; }
-  std::string method() const { return method_; }
-
- protected:
-  // RPC endpoint.
-  std::string ep_;
-  const platform::DeviceContext* ctx_;
-  const framework::Scope* scope_;
-  // Variable name.
-  std::string name_;
-  // RPC method name.
-  std::string method_;
-
- protected:
-  std::mutex sync_mutex_;
-  std::condition_variable wait_cond_;
-
-  enum VarHandleStatus {
-    kDefaultState = -1,
-    kErrorState = 0,
-    kFinishState = 1,
-  };
-  VarHandleStatus status_;
-
- private:
-  DISABLE_COPY_AND_ASSIGN(VarHandle);
-};
-
-typedef std::shared_ptr<VarHandle> VarHandlePtr;
-
 class RequestHandler {
  public:
-  explicit RequestHandler(bool sync_mode)
-      : sync_mode_(sync_mode),
-        dev_ctx_(nullptr),
+  RequestHandler()
+      : dev_ctx_(nullptr),
         executor_(nullptr),
         scope_(nullptr),
         program_(nullptr),
@@ -163,80 +86,40 @@ class RequestHandler {
   void SetProgram(framework::ProgramDesc* program) { program_ = program; }
   void SetExecutor(framework::Executor* executor) { executor_ = executor; }
 
-  // Used for dist lookup table prefetch
-  void SetPrefetchPreparedCtx(
-      std::unordered_map<
-          std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
-    prefetch_var_name_to_prepared_ctx_ = g;
-  }
-
-  void SetCheckpointNotifyPreparedCtx(
-      std::shared_ptr<framework::ExecutorPrepareContext> g) {
-    checkpoint_prepared_ctx_ = g;
-  }
-
-  // Used for async.
+  // Used for send/get/prefetch handlers, so put it here.
   void SetGradToPreparedCtx(
       std::unordered_map<
           std::string, std::shared_ptr<framework::ExecutorPrepareContext>>* g) {
     grad_to_prepared_ctx_ = g;
   }
 
-  void SetSparseGradToParam(std::unordered_map<std::string, std::string>* g) {
-    sparse_grad_to_param_ = g;
-  }
-
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
   // Get attributes.
-  bool sync_mode() { return sync_mode_; }
   framework::Scope* scope() { return scope_; }
   const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
   framework::ProgramDesc* program() { return program_; }
   framework::Executor* executor() { return executor_; }
 
-  // This function processes user's rpc request.
-  // The implemention is in request_handler_impl.
-  // example:
-  //    std::string varname = request_.varname();
-  //
-  //    auto scope = request_handler_->scope();
-  //    auto invar = scope->FindVar(varname);
-  //    framework::Variable* outvar = nullptr;
-  //
-  //    request_handler_->Handle(varname, scope, invar, &outvar);
-  //    if (outvar) {
-  //        SerializeToByteBuffer(varname, outvar,
-  //           *request_handler_->dev_ctx(), &reply_);
-  //    }
-  virtual bool Handle(const std::string& varname, framework::Scope* scope,
-                      framework::Variable* var, framework::Variable** outvar,
-                      const int trainer_id,
-                      const std::string& out_var_name = "",
-                      const std::string& table_name = "") = 0;
+  // Handle should call start/finish as following order
+  // GetOrCreateRequestVar should return the variable pointer to store
+  // incomming.
+  // In Handle, process the request, set out_var as response.
+  virtual bool Handle(RPCRequest* request) = 0;
+  virtual framework::Variable* GetOrCreateRequestVar(const std::string& varname,
+                                                     RPCRequest* request) = 0;
 
  protected:
-  const bool sync_mode_;
-
   const platform::DeviceContext* dev_ctx_;
   framework::Executor* executor_;
   framework::Scope* scope_;
   framework::ProgramDesc* program_;
 
-  // used for distribute lookup table prefetch
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>*
-      prefetch_var_name_to_prepared_ctx_;
-  // used for checkpoint notify
-  std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_prepared_ctx_;
+  RPCServer* rpc_server_;
 
-  // Used for async.
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
-  std::unordered_map<std::string, std::string>* sparse_grad_to_param_;
-
-  RPCServer* rpc_server_;
 };
 
 }  // namespace distributed

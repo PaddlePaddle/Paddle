@@ -17,6 +17,7 @@ limitations under the License. */
 #endif
 #include <sys/time.h>
 #include <limits>
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
@@ -196,7 +197,10 @@ void DeserializeFromIOBuf(const ::sendrecv::VariableMessage& meta,
                           const platform::DeviceContext& ctx,
                           const framework::Scope* scope,
                           framework::Variable** var, int* trainer_id) {
-  operators::distributed::BRPCVariableResponse resp(scope, &ctx);
+  auto get_var_callback = [scope](const std::string& varname) {
+    return scope->FindVar(varname);
+  };
+  operators::distributed::BRPCVariableResponse resp(get_var_callback, &ctx);
   PADDLE_ENFORCE(resp.Parse(iobuf, meta) == 0, "parse iobuf to tensor error!");
   *var = resp.GetVar();
   *trainer_id = resp.GetTrainerId();

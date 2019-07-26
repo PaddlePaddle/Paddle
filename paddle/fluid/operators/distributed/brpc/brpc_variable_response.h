@@ -47,11 +47,7 @@ class BRPCSourceWrapper : public Source {
 
 class BRPCVariableResponse : public VariableResponse {
  public:
-  BRPCVariableResponse(const framework::Scope* scope,
-                       const platform::DeviceContext* dev_ctx,
-                       bool create_scope = false)
-      : VariableResponse(scope, dev_ctx, create_scope) {}
-
+  using VariableResponse::VariableResponse;
   virtual ~BRPCVariableResponse() {}
 
   // parse attachment from iobuf

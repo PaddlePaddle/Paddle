@@ -16,15 +16,14 @@
 
 #include <string>
 
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream.h"
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 
 DECLARE_string(rpc_server_profile_path);
@@ -53,23 +52,20 @@ class Source {
   virtual ::google::protobuf::io::ZeroCopyInputStream* contents() = 0;
 };
 
+typedef std::function<framework::Variable*(const std::string& varname)>
+    GetVarCallback;
+
 class VariableResponse {
  public:
-  VariableResponse(const framework::Scope* scope,
-                   const platform::DeviceContext* dev_ctx,
-                   bool create_scope = false)
-      : scope_(scope), dev_ctx_(dev_ctx), create_scope_(create_scope) {
-    if (create_scope) {
-      local_scope_ = scope->NewTmpScope().release();
-    }
-  }
+  VariableResponse(framework::Variable* var,
+                   const platform::DeviceContext* dev_ctx)
+      : dev_ctx_(dev_ctx), var_cache_(var) {}
+  // for cases that can not determin varname before head, use a callback
+  VariableResponse(GetVarCallback get_var_callback,
+                   const platform::DeviceContext* dev_ctx)
+      : dev_ctx_(dev_ctx), get_var_callback_(get_var_callback) {}
 
-  virtual ~VariableResponse() {
-    if (local_scope_) {
-      delete local_scope_;
-      local_scope_ = nullptr;
-    }
-  }
+  virtual ~VariableResponse() {}
 
   int Parse(Source* source, const sendrecv::VariableMessage& meta) {
     meta_ = meta;
@@ -82,18 +78,18 @@ class VariableResponse {
   // other: number of error field.
   virtual int Parse(Source* source) = 0;
 
-  inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
-  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
 
   // should call parse first.
   framework::Variable* GetVar() {
-    if (create_scope_) {
-      return local_scope_->Var(meta_.varname());
+    if (LIKELY(var_cache_)) {
+      return var_cache_;
     }
-    return scope_->FindVar(meta_.varname());
+    PADDLE_ENFORCE_NOT_NULL(get_var_callback_);
+    var_cache_ = get_var_callback_(meta_.varname());
+    return var_cache_;
   }
 
   int GetTrainerId() { return static_cast<int>(meta_.trainer_id()); }
@@ -121,8 +117,9 @@ class VariableResponse {
  protected:
   const framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
-  bool create_scope_ = false;
-  framework::Scope* local_scope_ = nullptr;
+
+  framework::Variable* var_cache_ = nullptr;
+  GetVarCallback get_var_callback_;
 
   sendrecv::VariableMessage meta_;
 };

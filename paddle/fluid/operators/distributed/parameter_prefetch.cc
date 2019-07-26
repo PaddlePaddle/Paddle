@@ -121,7 +121,8 @@ static void MergeMultipleVarsIntoOneBySection(
       auto& dims = prefetch_out_var.dims();
 
       PADDLE_ENFORCE_EQ(dims.size(), 2, "");
-      PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0]);
+      PADDLE_ENFORCE_EQ(ids_in_this_section.size(),
+                        static_cast<size_t>(dims[0]));
 
       auto row_numel = dims[1];
 

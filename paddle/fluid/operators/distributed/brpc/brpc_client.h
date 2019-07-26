@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/var_handle.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
@@ -132,7 +133,7 @@ class BRPCClient : public RPCClient {
                                    int64_t time_out);
 
   friend void HandleSendResponse(brpc::Controller* cntl,
-                                 sendrecv::VoidMessage* response,
+                                 sendrecv::VariableMessage* response,
                                  VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
                                  ChannelContextPtr ch_ctx, BRPCClient* cls);
 

@@ -15,49 +15,43 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/distributed/barrier.h"
+#include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-struct MonomerHandle {
-  std::string var_name_;
-  std::string rpc_name_;
-  framework::Scope* scope_{nullptr};
-  platform::DeviceContext* dev_ctx_{nullptr};
-  int64_t barrier_{0};
-
-  std::string String() {
-    std::stringstream ss;
-    ss << "var_name:" << var_name_ << ", rpc_name:" << rpc_name_
-       << ", scope:" << scope_ << ", dev_ctx:" << dev_ctx_
-       << ", barrier_:" << barrier_;
-    return ss.str();
-  }
-};
+enum RPCServerState { STATE_SEND, STATE_RECV, STATE_NONE };
 
 class RPCServer {
  public:
-  explicit RPCServer(const std::string& address, int client_num)
-      : cur_cond_(0),
+  explicit RPCServer(const std::string& address, int num_clients)
+      : state_(RPCServerState::STATE_RECV),
+        send_barrier_(new Barrier(num_clients)),
+        recv_barrier_(new Barrier(num_clients)),
         bind_address_(address),
         exit_flag_(false),
         selected_port_(0),
-        client_num_(client_num),
+        num_clients_(num_clients),
         need_reset_all_vars_(false) {}
 
   virtual ~RPCServer() {}
+
+  // ----------------------------------------------------------------
+  // Interfaces that implementations should have:
   virtual void StartServer() = 0;
   virtual void WaitServerReady() = 0;
+  // ----------------------------------------------------------------
 
   void ShutDown();
 
@@ -65,44 +59,41 @@ class RPCServer {
 
   int GetSelectedPort() const { return selected_port_; }
 
-  int GetClientNum();
+  int GetNumClients();
 
   void SavePort() const;
 
+  void Complete();
+
+  int GetThreadNum(const RequestType req_type) {
+    return rpc_thread_num_[req_type];
+  }
+
+  // ----------------------------------------------------------------
   // RegisterRPC, register the rpc method name to a handler
   // class, and auto generate a condition id for this call
   // to be used for the barrier.
-  void RegisterRPC(const std::string& rpc_name, RequestHandler* handler,
+  void RegisterRPC(const RequestType req_type, RequestHandler* handler,
                    int thread_num = 5);
 
-  int GetThreadNum(const std::string& rpc_name) {
-    return rpc_thread_num_[rpc_name];
-  }
+  // ----------------------------------------------------------------
+  // For sync training, server side barrier controls
+  void SetState(const RPCServerState state);
+  void WaitState(const RPCServerState state);
+  Barrier* SendBarrier() { return send_barrier_.get(); }
+  Barrier* RecvBarrier() { return recv_barrier_.get(); }
+  void ResetAllBarriers();
 
-  // Wait util all the clients have reached the barrier for one
-  // rpc method. This function should be called in the
-  // RequestHandler if you want to run the server/client in a
-  // synchronous mode.
-  void WaitBarrier(const std::string& rpc_name);
-
-  void SetCond(const std::string& rpc_name);
-  void WaitCond(const std::string& rpc_name);
-  void IncreaseBatchBarrier(const std::string rpc_name);
-
-  void RegisterVar(const std::string& var_name, const std::string& rpc_name,
-                   framework::Scope* scope, platform::DeviceContext* dev_ctx);
-  void IncreaseVarBarrier(const std::string& var_name);
-  void WaitVarBarrier(const std::string& var_name);
-  void SetVarCond(const std::string& var_name);
-  void WaitVarCond(const std::string& var_name);
-  void ClearRegisteredVars();
-  void ClearVar(const std::string& var_name);
-  MonomerHandle GetMonomer(const std::string& var_name);
-
-  void Complete();
-
-  void ResetBarrierCounter();
-
+  // TODO(typhoonzero): in here or in handler or in collective server?
+  // mark variable ready for workers to fetch, and only for fetch n
+  // (num_workers) times then the barrier will be removed.
+  // TODO(typhoonzero): Should use var ready barriers for recv
+  void MarkVarReady(const std::string& varname);
+  void UnmarkVarReady(const std::string& varname);
+  void WaitVarReady(const std::string& varname);
+  Barrier* VarReadyBarrier(const std::string& varname);
+  void ResetVarReady();
+  // ----------------------------------------------------------------
   bool NeedResetAllVars();
 
  protected:
@@ -110,28 +101,27 @@ class RPCServer {
 
  private:
   std::mutex mutex_;
-  std::unordered_map<std::string, int> barrier_counter_;
-  std::condition_variable barrier_cond_;
+  RPCServerState state_;
+  std::condition_variable state_cond_;
 
-  std::unordered_map<std::string, int> rpc_cond_map_;
-  std::atomic<int> cur_cond_;
-  std::condition_variable rpc_cond_;
+  std::unique_ptr<Barrier> send_barrier_;
+  std::unique_ptr<Barrier> recv_barrier_;
+
+  std::mutex var_ready_mutex_;
+  std::unordered_map<std::string, std::unique_ptr<Barrier>> var_ready_map_;
 
  protected:
   std::string bind_address_;
   std::atomic<int> exit_flag_;
   int selected_port_;
-  int client_num_;
+  int num_clients_;
   bool need_reset_all_vars_;
 
-  std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
-  std::unordered_map<std::string, int> rpc_thread_num_;
+  std::unordered_map<RequestType, RequestHandler*, EnumClassHash> rpc_call_map_;
+  std::unordered_map<RequestType, int, EnumClassHash> rpc_thread_num_;
   friend class RequestHandler;
-
-  // TODO(gongwb): use more cond to notify or wait;
-  std::unordered_map<std::string, MonomerHandle> var_map_;
 };
 
-};  // namespace distributed
-};  // namespace operators
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle

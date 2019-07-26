@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,22 +15,19 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "grpc++/grpc++.h"
-#include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_service.h"
+#include "paddle/fluid/operators/distributed/request.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
@@ -40,7 +37,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-class RequestBase;
+class GRPCRequest;
 
 class AsyncGRPCServer final : public RPCServer {
  public:
@@ -53,11 +50,10 @@ class AsyncGRPCServer final : public RPCServer {
 
  private:
   // HandleRequest needs to be thread-safe.
-  void HandleRequest(
-      ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
-      std::function<void(const std::string&, int)> TryToRegisterNewOne);
+  void HandleRequest(::grpc::ServerCompletionQueue* cq, RequestType rpc_type,
+                     std::function<void(RequestType, int)> TryToRegisterNewOne);
 
-  void TryToRegisterNewOne(const std::string& rpc_name, int req_id);
+  void TryToRegisterNewOne(const RequestType rpc_name, int req_id);
   void ShutdownQueue();
   void ShutDownImpl() override;
 
@@ -70,19 +66,22 @@ class AsyncGRPCServer final : public RPCServer {
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
 
-  // condition of the sub program
-  std::condition_variable barrier_condition_;
-
   std::mutex mutex_ready_;
   std::condition_variable condition_ready_;
 
   int ready_;
 
-  std::map<std::string, std::unique_ptr<::grpc::ServerCompletionQueue>> rpc_cq_;
-  std::map<std::string, std::vector<std::unique_ptr<std::thread>>> rpc_threads_;
-  std::map<std::string, std::vector<RequestBase*>> rpc_reqs_;
+  std::unordered_map<RequestType,
+                     std::unique_ptr<::grpc::ServerCompletionQueue>,
+                     EnumClassHash>
+      rpc_cq_;
+  std::unordered_map<RequestType, std::vector<std::unique_ptr<std::thread>>,
+                     EnumClassHash>
+      rpc_threads_;
+  std::unordered_map<RequestType, std::vector<GRPCRequest*>, EnumClassHash>
+      rpc_reqs_;
 };
 
-};  // namespace distributed
-};  // namespace operators
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle

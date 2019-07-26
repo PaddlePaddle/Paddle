@@ -14,18 +14,17 @@ limitations under the License. */
 
 #pragma once
 #include <iostream>
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
-#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {

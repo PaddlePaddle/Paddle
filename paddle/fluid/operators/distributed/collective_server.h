@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
@@ -24,62 +25,31 @@ limitations under the License. */
 #include "gflags/gflags.h"
 
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/handlers/get_monomer_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-class CollectiveServer;
-
-class GetMonomerHandler final : public RequestHandler {
- public:
-  GetMonomerHandler() : RequestHandler(true) {}
-  virtual ~GetMonomerHandler() {}
-  bool Handle(const std::string& var_name, framework::Scope* scope,
-              framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id, const std::string& out_var_name = "",
-              const std::string& table_name = "") override {
-    VLOG(50) << "GetMonomerHandler recv " << var_name;
-
-    *outvar = scope->FindVar(var_name);
-    PADDLE_ENFORCE(outvar != nullptr, "%s not found", var_name);
-
-    return true;
-  }
-};
-
-class GetMonomerBarrierHandler final : public RequestHandler {
- public:
-  GetMonomerBarrierHandler() : RequestHandler(true) {}
-  virtual ~GetMonomerBarrierHandler() {}
-  bool Handle(const std::string& var_name, framework::Scope* scope,
-              framework::Variable* var, framework::Variable** outvar,
-              const int trainer_id, const std::string& out_var_name = "",
-              const std::string& table_name = "") override {
-    VLOG(50) << "GetMonomerHandler recv " << var_name;
-
-    rpc_server_->IncreaseVarBarrier(var_name);
-
-    return true;
-  }
-};
-
 class CollectiveServer final {
  public:
-  explicit CollectiveServer(const std::string& end_point, int fan_in);
+  // NOTE: CollectiveServer will serv on the scope and dev_ctx passed here.
+  explicit CollectiveServer(const std::string &end_point, int fan_in,
+                            framework::Scope *scope,
+                            platform::DeviceContext *dev_ctx);
 
   virtual ~CollectiveServer() {}
 
   void StartServer();
 
-  static CollectiveServer* GetInstance(const std::string& end_point,
-                                       int fan_in) {
+  static CollectiveServer *GetInstance(const std::string &end_point, int fan_in,
+                                       framework::Scope *scope,
+                                       platform::DeviceContext *dev_ctx) {
     std::call_once(init_flag_, [&]() {
       if (collective_server_.get() == nullptr) {
-        collective_server_.reset(new CollectiveServer(end_point, fan_in));
+        collective_server_.reset(
+            new CollectiveServer(end_point, fan_in, scope, dev_ctx));
         collective_server_->StartServer();
       }
     });
@@ -103,6 +73,10 @@ class CollectiveServer final {
 
   static std::once_flag init_flag_;
   static std::shared_ptr<CollectiveServer> collective_server_;
+
+  // ***NOT OWNED***
+  framework::Scope *scope_;
+  platform::DeviceContext *dev_ctx_;
 };
 
 };  // namespace distributed

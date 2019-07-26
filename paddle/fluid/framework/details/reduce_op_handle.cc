@@ -84,12 +84,10 @@ void ReduceOpHandle::GatherSelectedRows(
   operators::distributed::CollectiveServer *server =
       operators::distributed::CollectiveServer::GetInstance(
           collective_context.endpoints_[collective_context.trainer_id_],
-          collective_context.endpoints_.size() - 1);
+          collective_context.endpoints_.size() - 1, scope, merged_dev_ctx);
 
   auto rpc_server = server->GetRPCServer();
-  rpc_server->RegisterVar(merged_var_name,
-                          operators::distributed::kRequestGetMonomerVariable,
-                          scope, merged_dev_ctx);
+  rpc_server->MarkVarReady(merged_var_name);
 
   // 3. gather them from all remote nodes.
   std::vector<const SelectedRows *> remote;
@@ -127,8 +125,8 @@ void ReduceOpHandle::GatherSelectedRows(
 
   merge_func(*merged_dev_ctx, all, dst_selected_rows);
 
-  rpc_server->WaitVarBarrier(merged_var_name);
-  rpc_server->ClearVar(merged_var_name);
+  rpc_server->WaitVarReady(merged_var_name);
+  rpc_server->UnmarkVarReady(merged_var_name);
 
   // 5. clear mid vars
   std::vector<std::string> tmp_vars{merged_var_name};

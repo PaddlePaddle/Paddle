@@ -96,11 +96,7 @@ bool VariableResponse::CopyLodTensorData(
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
   auto server_var = GetVar();
-  if (!server_var) {
-    LOG(ERROR) << "recved var should not on current server: "
-               << meta_.varname();
-    return false;
-  }
+  PADDLE_ENFORCE_NOT_NULL(server_var);
   auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
   framework::LoD lod;
@@ -119,7 +115,7 @@ bool VariableResponse::CopyLodTensorData(
   VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
           << ", Buffer Size = " << length << ", dims:" << dims
           << ", numel:" << tensor->numel();
-  PADDLE_ENFORCE_GE(tensor->memory_size(), static_cast<unsigned int>(length));
+  PADDLE_ENFORCE_EQ(tensor->memory_size(), static_cast<unsigned int>(length));
   return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
@@ -183,7 +179,7 @@ bool VariableResponse::ProcSerializedField(
 
   if (meta_.type() == sendrecv::NCCL_ID) {
 #ifdef PADDLE_WITH_CUDA
-    auto* var = scope_->FindVar(meta_.varname());
+    auto* var = GetVar();
     if (var != nullptr) {
       ncclUniqueId* id = var->GetMutable<ncclUniqueId>();
       if (!ReadRaw(input, *dev_ctx_, platform::CPUPlace(), id->internal,

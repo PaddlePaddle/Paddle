@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <condition_variable>  // NOLINT
-#include <mutex>               // NOLINT
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
 
 #include "brpc/server.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"

@@ -63,8 +63,8 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // desrialize
   {
     framework::Scope scope;
-    scope.Var("myvar");
-    operators::distributed::BRPCVariableResponse resp(&scope, &ctx);
+    auto* var = scope.Var("myvar");
+    operators::distributed::BRPCVariableResponse resp(var, &ctx);
     EXPECT_EQ(resp.Parse(iobuf, msg), 0);
 
     framework::Variable* var2 = resp.GetVar();
@@ -133,8 +133,8 @@ void RunTestLodTensor(platform::Place place) {
   // deserialize
   {
     framework::Scope scope;
-    scope.Var("myvar");
-    operators::distributed::BRPCVariableResponse resp(&scope, &ctx);
+    auto* var = scope.Var("myvar");
+    operators::distributed::BRPCVariableResponse resp(var, &ctx);
     EXPECT_EQ(resp.Parse(iobuf, msg), 0);
 
     framework::Variable* var2 = resp.GetVar();

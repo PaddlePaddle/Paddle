@@ -141,7 +141,7 @@ class BatchBarrierProcessor : public BaseProcessor {
   virtual ~BatchBarrierProcessor() {}
 
   void ProcessImpl() override {}
-  sendrecv::VoidMessage reply_;
+  sendrecv::VariableMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
@@ -169,7 +169,7 @@ class CheckpointNotifyProcessor : public BaseProcessor {
   virtual ~CheckpointNotifyProcessor() {}
 
   void ProcessImpl() override {}
-  sendrecv::VoidMessage reply_;
+  sendrecv::VariableMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 

@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/handlers/send_handler.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -47,6 +47,7 @@ void StartServer() {
   f::Scope scope;
   p::CPUPlace place;
   scope.Var(NCCL_ID_VARNAME);
+  // scope.Var("test_var");
   p::DeviceContextPool& pool = p::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(p::CPUPlace());
 
@@ -57,14 +58,15 @@ void StartServer() {
   g_req_handler->SetProgram(&empty_program);
   g_req_handler->SetExecutor(&executor);
 
-  g_rpc_service->RegisterRPC(distributed::kRequestSend, g_req_handler.get());
+  g_rpc_service->RegisterRPC(distributed::RequestType::SEND,
+                             g_req_handler.get());
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
       std::bind(&distributed::RPCServer::StartServer, g_rpc_service.get()));
 
-  g_rpc_service->SetCond(distributed::kRequestSend);
-  g_rpc_service->WaitBarrier(distributed::kRequestSend);
+  g_rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
+  g_rpc_service->SendBarrier()->Wait();
 
   LOG(INFO) << "got nccl id and stop server...";
   g_rpc_service->ShutDown();
@@ -72,7 +74,7 @@ void StartServer() {
 }
 
 TEST(SendNcclId, RPCServer) {
-  g_req_handler.reset(new distributed::RequestSendHandler(true));
+  g_req_handler.reset(new distributed::SendHandlerSync());
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);
@@ -100,6 +102,7 @@ TEST(SendNcclId, RPCServer) {
   client->AsyncSendBatchBarrier(ep);
   client->Wait();
 
+  g_rpc_service->ShutDown();
   server_thread.join();
   g_rpc_service.reset(nullptr);
   g_req_handler.reset(nullptr);

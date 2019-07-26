@@ -90,15 +90,6 @@ if (WITH_GPU)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 
-# FIXME(typhoonzero): operator deps may not needed.
-# op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
-# op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)
-# op_library(unsqueeze_op DEPS reshape_op)
-# op_library(squeeze_op DEPS reshape_op)
-# op_library(flatten_op DEPS reshape_op)
-# op_library(unstack_op DEPS stack_op)
-# op_library(tensor_array_to_tensor_op DEPS concat_op)
-
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 

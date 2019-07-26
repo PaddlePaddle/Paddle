@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/handlers/send_handler.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
@@ -184,11 +184,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    distributed::RequestSendHandler rpc_h(true);
+    distributed::SendHandlerSync rpc_h;
     std::unique_ptr<distributed::RPCServer> rpc_service(
         new RPCSERVER_T(endpoint, 1));
 
-    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
+    rpc_service->RegisterRPC(distributed::RequestType::SEND, &rpc_h);
     rpc_h.SetRPCServer(rpc_service.get());
 
     framework::ProgramDesc empty_program;
@@ -202,11 +202,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
     for (int i = 0; i < nccl_comm_num; i++) {
-      rpc_service->SetCond(distributed::kRequestSend);
+      rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
       VLOG(3) << "trainer_id:" << trainer_id
               << " start getting nccl id from trainer 0, nccl_comm_no:" << i;
-      rpc_service->WaitBarrier(distributed::kRequestSend);
-      rpc_service->ResetBarrierCounter();
+      rpc_service->SendBarrier()->Wait();
+      rpc_service->SendBarrier()->Reset();
     }
 
     if (use_hierarchical_allreduce) {
@@ -239,6 +239,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", inter_trainer_id:" << inter_trainer_id
             << ", exter_trainer_id:" << exter_trainer_id
             << " got nccl id and stop server...";
+
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
