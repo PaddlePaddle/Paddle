@@ -3732,10 +3732,10 @@ def conv2d_transpose(input,
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
 
     Note:
-          if output_size is None, :math:`H_{out} == H^\prime_{out}, W_{out} == W^\prime_{out}`; 
-          else, the :math:`H_{out}` of the output size must between in :math:`H^\prime_{out}` 
+          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
-          between in :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
           conv2d_transpose can compute the kernel size automatically.
 
     Args:
