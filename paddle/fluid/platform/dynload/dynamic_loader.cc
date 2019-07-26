@@ -20,7 +20,6 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
-#include "paddle/fluid/platform/dynload/warpctc_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -53,7 +52,7 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
-static constexpr char warpctc_lib_path[] = WARPCTC_LIB_PATH;
+static constexpr char warpctc_lib_path[] = "";
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
@@ -221,7 +220,7 @@ void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromDefaultPath("warpctc.dll", 0);
+  return GetDsoHandleFromSearchPath(warpctc_dir, "warpctc.dll");
 #else
   return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.so");
 #endif
