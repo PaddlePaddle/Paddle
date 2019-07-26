@@ -267,8 +267,10 @@ class PSLib(Fleet):
         """
         clear_model() will be called by user. It will clear sparse model.
 
-        Example:
-            >>> fleet.clear_model()
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_model()
 
         """
         self._role_maker._barrier_worker()
