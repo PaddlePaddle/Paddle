@@ -125,7 +125,8 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
-set(TEST_OPS_WITH_GC 
+set(TEST_OPS_WITH_GC
+  test_affine_channel_op
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
