@@ -29,9 +29,10 @@ feed_dict = {
 }
 
 
-class InplaceTestBase(unittest.TestCase):
+class BufferSharedPassTestBase(unittest.TestCase):
     def initParameter(self):
         self.use_cuda = True
+        self.num_iteration_per_drop_scope = 1
 
     def setUp(self):
         self.initParameter()
@@ -90,9 +91,12 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
+                exec_strategy = fluid.ExecutionStrategy()
+                exec_strategy.num_iteration_per_drop_scope = self.num_iteration_per_drop_scope
                 compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
                     loss_name=loss.name,
                     build_strategy=build_strategy,
+                    exec_strategy=exec_strategy,
                     places=self.place)
                 compiled_programs.append(compiled_prog)
 
@@ -135,10 +139,13 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
+                exec_strategy = fluid.ExecutionStrategy()
+                exec_strategy.num_iteration_per_drop_scope = self.num_iteration_per_drop_scope
                 compiled_program = fluid.CompiledProgram(
                     prog).with_data_parallel(
                         loss_name=loss.name,
                         build_strategy=build_strategy,
+                        exec_strategy=exec_strategy,
                         places=places)
                 compiled_programs.append(compiled_program)
 
@@ -159,9 +166,22 @@ class InplaceTestBase(unittest.TestCase):
                     self.assertTrue(np.array_equal(fetch_vals[0], item))
 
 
-class CPUInplaceTest(InplaceTestBase):
+class GPUBufferSharedPassTest2(BufferSharedPassTestBase):
+    def initParameter(self):
+        self.use_cuda = True
+        self.num_iteration_per_drop_scope = 100
+
+
+class CPUBufferSharedPassTest1(BufferSharedPassTestBase):
     def initParameter(self):
         self.use_cuda = False
+        self.num_iteration_per_drop_scope = 1
+
+
+class CPUBufferSharedPassTest2(BufferSharedPassTestBase):
+    def initParameter(self):
+        self.use_cuda = False
+        self.num_iteration_per_drop_scope = 100
 
 
 if __name__ == '__main__':
