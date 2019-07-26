@@ -173,6 +173,7 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
     auto out_args = op->Node()->Op()->OutputArgumentNames();
     for (auto &out_arg : out_args) {
       auto out_nodes = this->FindNodesByName(out_arg, op->Node()->outputs);
+      // If out_arg is kEmptyVarName, it may not be found in output nodes.
       if (out_nodes.size() != 1) {
         continue;
       }
