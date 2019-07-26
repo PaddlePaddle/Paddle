@@ -5200,7 +5200,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor variable.
+        Variable: The product Tensor (or LoDTensor) variable.
 
     Examples:
         .. code-block:: python
@@ -10200,9 +10200,9 @@ def logical_and(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_and(x=left, y=right)
     """
 
@@ -10229,9 +10229,9 @@ def logical_or(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_or(x=left, y=right)
     """
 
@@ -10258,9 +10258,9 @@ def logical_xor(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_xor(x=left, y=right)
     """
 
@@ -10286,7 +10286,7 @@ def logical_not(x, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             result = fluid.layers.logical_not(x=left)
     """
 
