@@ -47,6 +47,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // X1 is global FC output
     // Dim [batch size, embedding size]
     auto* x1 = context.Input<LoDTensor>("X1");
+    bool is_x1_lod = context.Attr<bool>("is_lod");
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
     auto* x2 = context.Input<LoDTensor>("X2");
@@ -65,7 +66,15 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto* x2_data = x2->data<int64_t>();
     // e.g get [0, 1, 2, 3, ...]
     auto x2_lods = x2->lod()[0];
-    auto x1_lods = x1->lod()[0];
+    Vector<size_t> x1_lods(1, 0);
+    if (!is_x1_lod) {
+        std::cout << "X1_dim 0: " << x1->dims()[0] << std::endl;
+        for (size_t i = 0; i < x1->dims()[0]; i++) {
+            x1_lods.push_back(i + 1);
+        }
+    } else {
+        x1_lods = context.Input<LoDTensor>("X1")->lod()[0];
+    }
 
     std::unordered_map<int64_t, int64_t> mmap_aux;
     std::vector<size_t> ins_after_filter;
@@ -93,11 +102,12 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto* x1_data = x1->data<T>();
     // expected auto = T
     size_t x1_embed_size = x1->dims()[1];
-    if (ins_after_filter.size() > 0) { 
+    if (ins_after_filter.size() > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 3}));
-      loss_weight->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 1}));
+      loss_weight->Resize(
+              framework::make_ddim({(int64_t)ins_after_filter.size(), 1}));
     } else {
       out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({1, 3}));
@@ -105,7 +115,8 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     }
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
-    auto* loss_weight_data = loss_weight->mutable_data<float>(context.GetPlace());
+    auto* loss_weight_data =
+        loss_weight->mutable_data<float>(context.GetPlace());
     if (ins_after_filter.size() > 0) {
       Vector<size_t> map_lods;
       for (size_t i = 0; i < ins_after_filter.size(); i++) {
@@ -123,7 +134,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-      
       memset(out_data, 0, out->numel()  * sizeof(T));
       for (size_t i = 0; i < loss_weight->numel(); i++) {
           loss_weight_data[i] = 1;
@@ -147,7 +157,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       out_lods.push_back(1);
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
-      
       map->set_lod(map_lod_info);
       loss_weight->set_lod(map_lod_info);
       std::vector<Vector<size_t>> out_lod_info;
@@ -165,10 +174,10 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("X1"));
-    auto* x1 = context.Input<LoDTensor>("X1");
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
     auto* mmap = context.Input<LoDTensor>("Map");
-    x1_grad->set_lod(x1->lod());
+    auto* x1 = context.Input<LoDTensor>("X1");
+    x1_grad->set_lod(context.Input<LoDTensor>("X1")->lod());
     x1_grad->Resize(x1->dims());
     auto mmap_data = mmap->data<int64_t>();
     // expected auto = T

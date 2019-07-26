@@ -9423,7 +9423,7 @@ def stack(x, axis=0):
 
 
 @templatedoc(op_type="filter_by_instag")
-def filter_by_instag(x1, x2, x3):
+def filter_by_instag(x1, x2, x3, is_lod):
     """
     **Filter By Instag Layer**
 
@@ -9451,7 +9451,7 @@ def filter_by_instag(x1, x2, x3):
 
     Returns:
         Variable: the output (LoDTensor), filtered ins
-        Loss weight
+        Loss weight: the output (Tensor), loss weight
 
     Examples:
         .. code-block:: python
@@ -9460,7 +9460,7 @@ def filter_by_instag(x1, x2, x3):
         x1 = layers.data(name='x1', shape=[-1,32], lod_level=0, dtype='float64')
         x2 = layers.data(name='x2', shape=[-1,16], lod_level=0, dtype='int64')
         x3 = layers.data(name='x3', shape=[-1,16], dtype='int64')
-        out, loss_weight, map = layers.filter_by_instag(x1, x2, x3)
+        out, loss_weight = layers.filter_by_instag(x1, x2, x3)
         		
     """
     helper = LayerHelper('filter_by_instag', **locals())
@@ -9475,7 +9475,9 @@ def filter_by_instag(x1, x2, x3):
                 'X3': x3},
         outputs={'Out': out,
                  'LossWeight': loss_weight,
-                 'Map': mmap})
+                 'Map': mmap},
+        attrs={'is_lod': is_lod})
+
     return [out, loss_weight]
 
 

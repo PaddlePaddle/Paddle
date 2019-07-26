@@ -71,6 +71,8 @@ class TestFilterByInstagOp(OpTest):
             'Map': (mmap, mmap_lod)
         }
 
+        self.attrs = {'is_lod': True}
+
     def test_check_output(self):
         self.check_output()
 
@@ -115,6 +117,7 @@ class TestFilterByInstagOp2(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'Map': (mmap, mmap_lod)
         }
+        self.attrs = {'is_lod': True, }
 
     def test_check_output(self):
         self.check_output()
@@ -159,6 +162,51 @@ class TestFilterByInstagOp3(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'Map': (mmap, mmap_lod)
         }
+        self.attrs = {'is_lod': True, }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
+
+
+"""This is Test Case 4"""
+
+
+class TestFilterByInstagOp4(OpTest):
+    def setUp(self):
+        self.op_type = 'filter_by_instag'
+        batch_size = 4
+        x1_embed_size = 4
+        fc_cnt = 2
+
+        x1 = np.array([[10, 13, 12, 1], [1, 1, 1, 1], [1, 1, 1, 1],
+                       [1, 1, 1, 1]]).astype('double')
+
+        x2 = np.array([[2], [1], [2], [1]]).astype('int64')
+        x2_lod = [[1, 1, 1, 1]]
+
+        x3 = np.array([3]).astype('int64')
+
+        out = np.array([[0, 0, 0, 0]]).astype('double')
+        out_lod = [[1]]
+
+        mmap = np.array([[0, 1, 1]]).astype('int64')
+        mmap_lod = [[1]]
+
+        loss_weight = np.array([[0]]).astype('double')
+        self.inputs = {
+            'X1': x1,
+            'X2': (x2, x2_lod),
+            'X3': x3,
+        }
+        self.outputs = {
+            'Out': (out, out_lod),
+            'LossWeight': (loss_weight, mmap_lod),
+            'Map': (mmap, mmap_lod)
+        }
+        self.attrs = {'is_lod': False, }
 
     def test_check_output(self):
         self.check_output()

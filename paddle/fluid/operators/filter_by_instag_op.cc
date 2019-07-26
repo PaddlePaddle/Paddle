@@ -27,15 +27,17 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("X2"), "Input(X2) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("X3"), "Input(X3) should be not null.");
+
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LossWeight"), "Output(LossWeight) shoudl not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("LossWeight"),
+            "Output(LossWeight) shoudl not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Map"), "Output(Map) should be not null.");
 
     auto x1_dims = ctx->GetInputDim("X1");  // batch_size * vec
 
     ctx->SetOutputDim("Out", framework::make_ddim({-1, x1_dims[1]}));
     ctx->SetOutputDim("LossWeight", framework::make_ddim({-1, 1}));
-    ctx->SetOutputDim("Map", framework::make_ddim({-1, 2}));  
+    ctx->SetOutputDim("Map", framework::make_ddim({-1, 2}));
   }
 
  protected:
@@ -52,6 +54,7 @@ class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X1", "(LoDTensor) embeded tensor");
     AddInput("X2", "(LoDTensor) ins tag list");
     AddInput("X3", "(1D Tensor) filter tag list");
+    AddAttr<bool>("is_lod", "is X1 with LoD info or not, default True");
     AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
     AddOutput("LossWeight", "(Tensor) loss weight.");
     AddOutput("Map", "(LoDTensor) mapping from Out rows to X1 rows");
@@ -77,7 +80,8 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Grad Input(Out) should be not null");
     PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) should be not null");
-    PADDLE_ENFORCE(ctx->HasInput("LossWeight"), "Input(LossWeight) should be not null");
+    PADDLE_ENFORCE(ctx->HasInput("LossWeight"),
+            "Input(LossWeight) should be not null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X1")),
                    "Grad Output(X1) should be not null");
 
@@ -106,6 +110,7 @@ class FilterByInstagGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetType("filter_by_instag_grad");
     op->SetInput("Map", Output("Map"));
     op->SetInput("X1", Input("X1"));
+    op->SetAttrMap(Attrs());
     op->SetInput("LossWeight", Output("LossWeight"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X1"), InputGrad("X1"));
@@ -116,8 +121,8 @@ class FilterByInstagGradOpDescMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(filter_by_instag, ops::FilterByInstagOp, ops::FilterByInstagOpMaker,
-                  ops::FilterByInstagGradOpDescMaker);
+REGISTER_OPERATOR(filter_by_instag, ops::FilterByInstagOp,
+        ops::FilterByInstagOpMaker, ops::FilterByInstagGradOpDescMaker);
 
 REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
 
@@ -126,7 +131,8 @@ REGISTER_OP_CPU_KERNEL(filter_by_instag, ops::FilterByInstagKernel<float>,
                        ops::FilterByInstagKernel<int32_t>,
                        ops::FilterByInstagKernel<int64_t>);
 
-REGISTER_OP_CPU_KERNEL(filter_by_instag_grad, ops::FilterByInstagGradKernel<float>,
-                       ops::FilterByInstagGradKernel<double>,
-                       ops::FilterByInstagGradKernel<int32_t>,
-                       ops::FilterByInstagGradKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(filter_by_instag_grad,
+        ops::FilterByInstagGradKernel<float>,
+        ops::FilterByInstagGradKernel<double>,
+        ops::FilterByInstagGradKernel<int32_t>,
+        ops::FilterByInstagGradKernel<int64_t>);
