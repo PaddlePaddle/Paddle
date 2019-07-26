@@ -207,6 +207,14 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
     auto scale_y = ctx.Attr<std::vector<float>>("scale_y");
 
+    // TODO(intel-minghui) : Remove the restriction that only supports Input(Y)
+    // as weights
+    bool enforce = std::is_same<YT, float>::value;
+    PADDLE_ENFORCE(
+        enforce == true,
+        "Input(Y) supposed to be fp32 data type since only fp32 data type is "
+        "supported in the current design of MKLDNN INT8.");
+
     auto x_matrix =
         this->template UpdateDataFormat<XT>(x_input, x_num_col_dims, ctx);
     auto y_matrix =
