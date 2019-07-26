@@ -64,7 +64,7 @@ void HogwildWorker::BindingDataFeedMemory() {
   const std::vector<std::string>& input_feed =
       device_reader_->GetUseSlotAlias();
   for (auto name : input_feed) {
-    device_reader_->AddFeedVar(thread_scope_->Var(name), name);
+    device_reader_->AddFeedVar(thread_scope_->FindVar(name), name);
   }
 }
 

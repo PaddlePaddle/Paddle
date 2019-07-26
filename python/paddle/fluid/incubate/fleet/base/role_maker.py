@@ -102,45 +102,10 @@ class RoleMakerBase(object):
         """
         return self._server_endpoints
 
-
-class MultiProcessRoleMaker(RoleMakerBase):
-    """
-    MultiProcessRoleMaker is a default role maker for multi-process
-    GPU training. It works with paddle.distributed.lanuch.py by-design
-    """
-
-    def __init__(self):
-        super(MultiProcessRoleMaker, self).__init__()
-        self._role_is_generated = False
-
-    def generate_role(self):
-        import os
-        if not self._role_is_generated:
-            self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-            self._num_trainers = 1
-            self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-            assert (self._training_role == "TRAINER")
-            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-            self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-            if self._worker_endpoints:
-                self._worker_endpoints = self._worker_endpoints.split(",")
-                self._num_trainers = len(self._worker_endpoints)
-            self._role_is_generated = True
-
-    def is_worker(self):
-        return True
-
-    def is_server(self):
-        return False
-
-    def is_first_worker(self):
-        return self._current_id == 0
-
-    def worker_index(self):
-        return self._current_id
-
-    def worker_num(self):
-        return self._worker_num
+    def to_string(self):
+        return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
+            self._role, self._current_id, self._worker_endpoints,
+            self._server_endpoints)
 
 
 class MPIRoleMaker(RoleMakerBase):
@@ -361,35 +326,69 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self):
+    def __init__(self, is_collective=False):
         super(PaddleCloudRoleMaker, self).__init__()
         self._role_is_generated = False
+        self._is_collective = is_collective
 
     def generate_role(self):
         if not self._role_is_generated:
-            self.port = os.getenv("PADDLE_PORT", "6174")
-            self.pserver_ips = os.getenv("PADDLE_PSERVERS", "")
-            eplist = []
-            for ip in self.pserver_ips.split(","):
-                eplist.append(':'.join([ip, self.port]))
-            self.endpoints = ",".join(eplist)
-            self._trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-            self.current_endpoint = os.getenv("POD_IP",
-                                              "localhost") + ":" + self.port
-            self.role = os.getenv("TRAINING_ROLE", "TRAINER")
-            self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-            self.eplist = eplist
-            print("PaddleCloudRoleMaker() endpoints: %s" % self.endpoints)
-            self.endpoints = self.endpoints.split(",")
-            self._server_endpoints = self.endpoints
-            self._worker_endpoints = self.endpoints
-            if self.role.upper() == "PSERVER":
-                self._current_id = self.endpoints.index(self.current_endpoint)
-                self._role = Role.SERVER
+            if not self._is_collective:
+                self.port = os.getenv("PADDLE_PORT",
+                                      "6174")  # port of current server
+                self.pserver_ips = os.getenv("PADDLE_PSERVERS",
+                                             "")  # ip of server
+
+                if "," in self.port:
+                    ports = self.port.split(",")
+                else:
+                    ports = [self.port for i in self.pserver_ips.split(",")]
+                eplist = []
+                # note that, we usually assign the same port to different ips
+                # if we run parameter server training in local mode
+                # port should be different in environment variables
+                for i, ip in enumerate(self.pserver_ips.split(",")):
+                    eplist.append(':'.join([ip, ports[i]]))
+                self.endpoints = ",".join(eplist)
+                self._trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+                # ip of current node, either a worker or a pserver
+                current_ip = os.getenv("POD_IP", "")
+                if current_ip == "":
+                    self._current_endpoint = os.getenv("CURRENT_ENDPOINT")
+                else:
+                    self._current_endpoint = current_ip + ports[0]
+                self.role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
+                # for trainer, only POD_IP and current trainer id is needed
+                # we usually do not need to know other trainer ips
+                self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+                self.eplist = eplist
+                self.endpoints = self.endpoints.split(",")
+                self._server_endpoints = self.endpoints
+                self._worker_endpoints = self.endpoints
+                if self.role.upper() == "PSERVER":
+                    # current endpoint index among all pservers
+                    self._current_id = self.endpoints.index(
+                        self._current_endpoint)
+                    self._role = Role.SERVER
+                else:
+                    self._current_id = self.trainer_id
+                    self._role = Role.WORKER
             else:
-                self._current_id = self.trainer_id
-                self._role = Role.WORKER
+                self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+                self._training_role = os.getenv("PADDLE_TRAINING_ROLE",
+                                                "TRAINER")
+                assert (self._training_role == "TRAINER")
+                self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+                self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+                if self._worker_endpoints:
+                    self._worker_endpoints = self._worker_endpoints.split(",")
+                    self._num_trainers = len(self._worker_endpoints)
             self._role_is_generated = True
+
+    def get_pserver_endpoints(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_endpoints
 
     def is_worker(self):
         if not self._role_is_generated:

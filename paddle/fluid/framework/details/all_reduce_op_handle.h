@@ -49,6 +49,9 @@ class AllReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
   std::vector<Scope *> local_scopes_;
 
 #if !(defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
