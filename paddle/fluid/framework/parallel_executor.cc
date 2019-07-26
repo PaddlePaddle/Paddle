@@ -253,7 +253,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   }
 
   /**
-   * NOTE(zjl): If BuildStrategy.memory_optimize = None in Python,
+   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
    * set BuildStrategy.memory_optimize according to whether gc is enabled.
    * If gc is enabled, BuildStrategy.memory_optimize = False.
    * If gc is disabled, BuildStrategy.memory_optimize = True.
