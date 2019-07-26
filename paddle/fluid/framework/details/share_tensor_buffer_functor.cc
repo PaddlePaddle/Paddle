@@ -43,7 +43,7 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
 
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
-    const std::vector<ir::MemOptVarInfo *> &in_var_infos,
+    const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
     const std::vector<std::string> &out_var_names)
     : scope_(scope),
       scope_idx_(scope_idx),
@@ -66,7 +66,7 @@ ShareTensorBufferFunctor::ReusedVars() const {
 }
 
 void ShareTensorBufferFunctor::AddReuseVarPair(
-    ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
+    const ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
   PADDLE_ENFORCE_NOT_NULL(in_var_info, "in_var_info cannot be nullptr");
   PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
                     "in/out cannot have same name: %s", out_var_name);

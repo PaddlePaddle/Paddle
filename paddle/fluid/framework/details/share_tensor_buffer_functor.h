@@ -37,12 +37,12 @@ namespace details {
 // this probable movement.
 class ShareTensorBufferFunctor {
  public:
-  ShareTensorBufferFunctor(Scope *scope, size_t scope_idx,
-                           const std::string &op_type,
-                           const std::vector<ir::MemOptVarInfo *> &in_var_infos,
-                           const std::vector<std::string> &out_var_names);
+  ShareTensorBufferFunctor(
+      Scope *scope, size_t scope_idx, const std::string &op_type,
+      const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
+      const std::vector<std::string> &out_var_names);
 
-  void AddReuseVarPair(ir::MemOptVarInfo *in_var_info,
+  void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);
 
   void operator()(Scope *exec_scope);
@@ -62,7 +62,7 @@ class ShareTensorBufferFunctor {
 
   size_t scope_idx_;
   std::string op_type_;
-  std::vector<ir::MemOptVarInfo *> in_var_infos_;
+  std::vector<const ir::MemOptVarInfo *> in_var_infos_;
   std::vector<std::string> out_var_names_;
 
   std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;

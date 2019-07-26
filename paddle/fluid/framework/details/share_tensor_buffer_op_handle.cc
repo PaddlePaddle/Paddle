@@ -48,7 +48,7 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
 
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
     ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
-    const std::vector<ir::MemOptVarInfo *> &in_var_infos,
+    const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
     const std::vector<std::string> &out_var_names)
     : OpHandleBase(node),
       functor_(scope, scope_idx, op_type, in_var_infos, out_var_names) {}
@@ -59,7 +59,7 @@ ShareTensorBufferOpHandle::ReusedVars() const {
 }
 
 void ShareTensorBufferOpHandle::AddReuseVarPair(
-    ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
+    const ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
   functor_.AddReuseVarPair(in_var_info, out_var_name);
 }
 

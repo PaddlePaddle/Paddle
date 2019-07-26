@@ -30,7 +30,7 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
   ShareTensorBufferOpHandle(
       ir::Node *node, Scope *scope, size_t scope_idx,
       const std::string &op_type,
-      const std::vector<ir::MemOptVarInfo *> &in_vars_infos,
+      const std::vector<const ir::MemOptVarInfo *> &in_vars_infos,
       const std::vector<std::string> &out_var_names);
 
   std::unordered_map<std::string, std::string> ReusedVars() const;
@@ -39,7 +39,7 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   size_t GetScopeIdx() const { return functor_.GetScopeIdx(); }
 
-  void AddReuseVarPair(ir::MemOptVarInfo *in_var_info,
+  void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);
 
   const ShareTensorBufferFunctor &Functor() const { return functor_; }
