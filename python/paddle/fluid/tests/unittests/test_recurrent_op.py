@@ -545,7 +545,6 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             name='x',
             append_batch_size=False)
         x.stop_gradient = False
-        x += 0.0
 
         emb = layers.data(
             name='emb',
@@ -553,7 +552,6 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             dtype='float32',
             append_batch_size=False)
         emb.stop_gradient = False
-        emb += 0.0
 
         w1 = layers.data(
             shape=[self.input_dim, self.input_dim],
