@@ -272,6 +272,9 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
 
+    T* transform_matrix =
+        out_transform_matrix->mutable_data<T>({rois_num, 9}, ctx.GetPlace());
+
     for (int n = 0; n < rois_num; ++n) {
       const T* n_rois = rois_data + n * 8;
       T roi_x[4];
@@ -282,11 +285,12 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
       }
       int image_id = roi2image_data[n];
       // Get transform matrix
-      T* transform_matrix =
-          out_transform_matrix->mutable_data<T>({9}, ctx.GetPlace());
+      T matrix[9];
       get_transform_matrix<T>(transformed_width, transformed_height, roi_x,
-                              roi_y, transform_matrix);
-
+                              roi_y, matrix);
+      for (int i = 0; i < 9; i++) {
+        transform_matrix[n * 9 + i] = matrix[i];
+      }
       for (int c = 0; c < channels; ++c) {
         for (int out_h = 0; out_h < transformed_height; ++out_h) {
           for (int out_w = 0; out_w < transformed_width; ++out_w) {
@@ -295,7 +299,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
                 c * transformed_height * transformed_width +
                 out_h * transformed_width + out_w;
             T in_w, in_h;
-            get_source_coords<T>(transform_matrix, out_w, out_h, &in_w, &in_h);
+            get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
             if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
               if (GT<T>(-0.5, in_w) ||
                   GT<T>(in_w, static_cast<T>(in_width - 0.5)) ||
@@ -507,7 +511,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
                                       static_cast<int64_t>(transformed_width)});
     auto mask_dims = framework::make_ddim(mask_dims_v);
 
-    std::vector<int64_t> matrix_dims_v(9);
+    std::vector<int64_t> matrix_dims_v({rois_dims[0], 9});
     auto matrix_dims = framework::make_ddim(matrix_dims_v);
 
     ctx->SetOutputDim("Out", out_dims);
@@ -580,7 +584,7 @@ class ROIPerspectiveTransformOpMaker
               "(Tensor), "
               "The output transform matrix of ROIPerspectiveTransformOp is a "
               "1-D tensor with shape "
-              "(9,).");
+              "(num_rois, 9).");
     AddOutput("Out2InIdx",
               "(Tensor), "
               "An intermediate tensor used to map indexes of input feature map "

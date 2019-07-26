@@ -551,7 +551,7 @@ class Executor(object):
 
             if not persistable:
                 logging.warn("""
-     Detect that memory optimize or inplace is enabled, but the some variables in the fetch
+     Detect that build_strategy.memory_optimize = True, but the some variables in the fetch
      list is not persistable, you may get wrong fetched value, or an exeception may be thrown
      about cannot find variable of the fetch list. 
 
@@ -668,9 +668,8 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
         else:
-            if fetch_list and program._is_data_parallel and program._program and (
-                    program._build_strategy.memory_optimize or
-                    program._build_strategy.enable_inplace):
+            if fetch_list and program._is_data_parallel and program._program and    \
+                    program._build_strategy._use_legacy_memory_optimize_strategy:
                 self._check_fetch_vars_persistable(program._program, fetch_list)
 
         program._compile(scope, self.place)

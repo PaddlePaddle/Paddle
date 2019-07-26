@@ -2844,7 +2844,6 @@ class Program(object):
         self._nccl_comm_num = 1
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0
-        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
@@ -3632,6 +3631,8 @@ class Parameter(Variable):
         self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
         self.do_model_average = kwargs.get('do_model_average', None)
+
+        self.is_distributed = False
 
     def __str__(self):
         return self.to_string(True)
