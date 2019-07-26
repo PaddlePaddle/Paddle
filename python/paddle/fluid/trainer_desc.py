@@ -75,6 +75,9 @@ class TrainerDesc(object):
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm
 
+    def _set_scale_datanorm(self, scale_datanorm=-1):
+        self.proto_desc.scale_datanorm = scale_datanorm
+
     def _set_dump_slot(self, dump_slot):
         self.proto_desc.dump_slot = dump_slot
 

@@ -182,6 +182,7 @@ class DownpourWorker : public HogwildWorker {
   bool dump_slot_;
   bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
+  float scale_datanorm_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
