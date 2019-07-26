@@ -54,8 +54,11 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
     memory_owned_ = other.memory_owned_;
   } else {
     Resize(other.length());
-    PADDLE_ENFORCE(!(other.length() > 0 && other.data() == nullptr));
-    memcpy(data_, other.data(), other.length());
+    // if other.length() == 0 or other.data() == nullptr, then the memcpy
+    // behavior is undefined
+    if (other.length() && other.data())
+      memcpy(data_, other.data(), other.length());
+
     length_ = other.length();
     memory_owned_ = true;
   }
