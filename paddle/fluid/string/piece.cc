@@ -60,11 +60,10 @@ int Compare(Piece a, Piece b) {
 }
 
 bool operator==(Piece x, Piece y) {
-  return (!x.data() || !y.data())
-             ? false
-             : ((x.len() == y.len()) &&
-                (x.data() == y.data() ||
-                 memcmp(x.data(), y.data(), x.len()) == 0));
+  return (!x.len() && !y.len()) ? true
+                                : ((x.len() == y.len()) &&
+                                   (x.data() == y.data() ||
+                                    memcmp(x.data(), y.data(), x.len()) == 0));
 }
 
 bool operator!=(Piece x, Piece y) { return !(x == y); }
@@ -76,17 +75,14 @@ bool operator<=(Piece x, Piece y) { return Compare(x, y) <= 0; }
 bool operator>=(Piece x, Piece y) { return Compare(x, y) >= 0; }
 
 bool HasPrefix(Piece s, Piece x) {
-  return (!s.data() || !x.data())
-             ? false
-             : ((s.len() >= x.len()) &&
-                (memcmp(s.data(), x.data(), x.len()) == 0));
+  return !x.len() ? true : ((s.len() >= x.len()) &&
+                            (memcmp(s.data(), x.data(), x.len()) == 0));
 }
 
 bool HasSuffix(Piece s, Piece x) {
-  return (!s.data() || !x.data())
-             ? false
-             : ((s.len() >= x.len()) && (memcmp(s.data() + (s.len() - x.len()),
-                                                x.data(), x.len()) == 0));
+  return !x.len() ? true : ((s.len() >= x.len()) &&
+                            (memcmp(s.data() + (s.len() - x.len()), x.data(),
+                                    x.len()) == 0));
 }
 
 Piece SkipPrefix(Piece s, size_t n) {
