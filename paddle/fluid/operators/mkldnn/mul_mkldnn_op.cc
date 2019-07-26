@@ -84,7 +84,7 @@ class MulPrimitiveFactory {
     if ((data->dims().size() == 4 &&
          src_fmt != (dst_fmt = memory::format::nchw)) ||
         (data->dims().size() == 5 &&
-         dst_fmt != (dst_fmt = memory::format::ncdhw))) {
+         src_fmt != (dst_fmt = memory::format::ncdhw))) {
       auto dst_mdesc = CreateMemDescriptor<T>(data, dst_fmt);
       x_tmp.mutable_data<T>(ctx.GetPlace(), data->memory_size());
 
