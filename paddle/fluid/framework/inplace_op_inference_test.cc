@@ -19,6 +19,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
