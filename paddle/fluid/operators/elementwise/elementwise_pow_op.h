@@ -40,7 +40,8 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    VLOG(3) << "starting....ElementwisePowKernel .....ElementwiseComputeEx().....";
+    VLOG(3)
+        << "starting....ElementwisePowKernel .....ElementwiseComputeEx().....";
     ElementwiseComputeEx<PowFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           PowFunctor<T>(), z);
   }
@@ -48,31 +49,34 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
 
 template <typename T>
 struct PowGradDX {
-    HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y * std::pow(x, y - 1); }
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * y * std::pow(x, y - 1);
+  }
 };
 
 template <typename T>
 struct PowGradDY {
-    HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * std::log(x) * out; }
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * std::log(x) * std::pow(x, y);
+  }
 };
 
 template <typename DeviceContext, typename T>
 class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
-public:
-    void Compute(const framework::ExecutionContext& ctx) const override {
-        ElemwiseGradKernel<T>::Compute(ctx);
-        using Tensor = framework::Tensor;
-        auto* x = ctx.Input<Tensor>("X");
-        auto* y = ctx.Input<Tensor>("Y");
-        auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-        auto* out = dout;
-        auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-        auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-        int axis = ctx.Attr<int>("axis");
-        ElemwiseGradCompute<DeviceContext, T, PowGradDX<T>, PowGradDY<T>>(
-                ctx, *x, *y, *out, *dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
-    }
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    using Tensor = framework::Tensor;
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = dout;
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    int axis = ctx.Attr<int>("axis");
+    ElemwiseGradCompute<DeviceContext, T, PowGradDX<T>, PowGradDY<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
+  }
 };
 }  // namespace operators
 }  // namespace paddle
-
