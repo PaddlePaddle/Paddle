@@ -50,11 +50,11 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
     for (auto &pair : each_scope_ops) {
       // If variable has more than 1 last lived ops, this variable cannot
       // be inplaced.
-      if (pair.second.size() != 1) {
+      if (pair.second.ops().size() != 1) {
         continue;
       }
 
-      auto *op = *(pair.second.begin());
+      auto *op = *(pair.second.ops().begin());
       const std::string &op_type = op->GetOp()->Type();
       const framework::OpDesc *op_desc = op->Node()->Op();
       PADDLE_ENFORCE_NOT_NULL(op_desc);
@@ -141,7 +141,7 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
                 << out_var_handle_ptr->Name()
                 << ". Debug String is: " << op->GetOp()->DebugString();
       } else {
-        VLOG(4) << "Inplace failed in op " << op_type << ": "
+        VLOG(3) << "Inplace failed in op " << op_type << ": "
                 << in_var_handle_ptr->Name() << " -> "
                 << out_var_handle_ptr->Name();
       }
