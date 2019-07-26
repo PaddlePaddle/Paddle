@@ -30,7 +30,6 @@ template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(3) << "starting....ElementwisePowKernel .....Compute().....";
     using Tensor = framework::LoDTensor;
     auto* x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE(x != nullptr,
@@ -40,8 +39,6 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    VLOG(3)
-        << "starting....ElementwisePowKernel .....ElementwiseComputeEx().....";
     ElementwiseComputeEx<PowFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           PowFunctor<T>(), z);
   }
