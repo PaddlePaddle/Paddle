@@ -20,15 +20,13 @@ namespace operators {
 template <typename T>
 class AffinityPropagateOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 template <typename T>
 class AffinityPropagateGradOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators

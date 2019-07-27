@@ -9,7 +9,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-
 #include "paddle/fluid/operators/affinity_propagate_op.h"
 
 namespace paddle {
@@ -25,46 +24,47 @@ class AffinityPropagateOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of AffinityPropagateOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Guidance"),
-                   "Input(Guidance) of AffinityPropagateOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("GateWeight"),
+        "Input(GateWeight) of AffinityPropagateOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of AffinityPropagateOp should not be null.");
-    
+
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE(dim_x.size() == 4 || dim_x.size() == 5,
                    "Input(X) dimension should be 4 or 5");
 
-    auto dim_guidance = ctx->GetInputDim("Guidance");
-    PADDLE_ENFORCE_EQ(dim_x.size(), dim_guidance.size(),
-                      "Input(X) and Input(Guidance) dimension should be same.");
+    auto dim_gate_w = ctx->GetInputDim("GateWeight");
+    PADDLE_ENFORCE_EQ(
+        dim_x.size(), dim_gate_w.size(),
+        "Input(X) and Input(GateWeight) dimension should be same.");
+
     int kernel_size = ctx->Attrs().Get<int>("kernel_size");
+    PADDLE_ENFORCE_EQ(kernel_size % 2, 1, "kernel_size should be odd number.");
+
     int channel_num = kernel_size * kernel_size - 1;
-    for (int i = 0; i < dim_guidance.size(); i++) {
+    for (int i = 0; i < dim_gate_w.size(); i++) {
       if (i == 1) {
         // Guidance channel number should be kernel_size * kernel_size - 1
-        PADDLE_ENFORCE_EQ(dim_guidance[i], channel_num, "Input(Guidance) channel number "
+        PADDLE_ENFORCE_EQ(dim_gate_w[i], channel_num,
+                          "Input(GateWeight) channel number "
                           "be kernel_size * kernel_size - 1.");
       } else {
-        PADDLE_ENFORCE_EQ(dim_x[i], dim_guidance[i],
-                          "Input(X) and Input(Guidance) should in same shape.");
+        PADDLE_ENFORCE_EQ(
+            dim_x[i], dim_gate_w[i],
+            "Input(X) and Input(GateWeight) should in same shape.");
       }
     }
 
     if (ctx->HasInput("Mask")) {
       auto dim_mask = ctx->GetInputDim("Mask");
-      PADDLE_ENFORCE_EQ(dim_x.size(), dim_guidance.size(),
+      PADDLE_ENFORCE_EQ(dim_x.size(), dim_mask.size(),
                         "Input(X) and Input(Mask) dimension should be same.");
       for (int i = 0; i < dim_x.size(); i++) {
         PADDLE_ENFORCE_EQ(dim_x[i], dim_mask[i],
                           "Input(X) and Input(Mask) should in same shape.");
       }
     }
-
-    int prop_iters = ctx->Attrs().Get<int>("prop_iters");
-    PADDLE_ENFORCE_GT(prop_iters, 0, "Attr(prop_iters) should be greater than 0");
-    std::string norm_type = ctx->Attrs().Get<std::string>("norm_type");
-    PADDLE_ENFORCE(norm_type == "sum" || norm_type == "abs_sum",
-                   "norm_type can only be \"sum\" or \"abs_sum\".");
 
     ctx->SetOutputDim("Out", dim_x);
     ctx->ShareLoD("X", "Out");
@@ -85,9 +85,11 @@ class AffinityPropagateOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of affinity propagate operator, "
              "This is a 4-D tensor with shape of [N, C, H, W] or a 5-D "
              "tensor with shape of [N, C, D, H, W].");
-    AddInput("Guidance",
-             "This guidance weight tesnor, it should be in the same "
-             "shape with Input(X)");
+    AddInput("GateWeight",
+             "This gate weight tesnor, which should be the normalized "
+             "guidance, it should be in the same shape with Input(X) "
+             "except channel number should be attr:`kernel_size` * "
+             "attr:`kernel_size` - 1.");
     AddInput("Mask",
              "The mask tensor, it should be in the same shape with "
              "Input(X)")
@@ -96,15 +98,10 @@ class AffinityPropagateOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output tensor of affinity propagate operator, "
               "It should be in the same shape with Input(X).");
 
-    AddAttr<int>("prop_iters", 
-                 "the times to perform convolution spatial propagation.")
-        .SetDefault(1);
-    AddAttr<int>("kernel_size", "the size of convolution kernel, "
-                 "currently only support 3.").SetDefault(3);
-    AddAttr<std::string>("norm_type",
-                         "the method to normalize affinity, currently "
-                         "only support \"sum\" and \"abs_sum\".")
-        .SetDefault("sum");
+    AddAttr<int>("kernel_size",
+                 "the size of convolution kernel, "
+                 "currently only support 3.")
+        .SetDefault(3);
     AddComment(R"DOC(
           TODO(dengkaipeng): add doc.
          )DOC");
@@ -124,8 +121,8 @@ class AffinityPropagateOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
     }
-    if (ctx->HasOutput(framework::GradVarName("Guidance"))) {
-      ctx->SetOutputDim(framework::GradVarName("Guidance"), dim_x);
+    if (ctx->HasOutput(framework::GradVarName("GateWeight"))) {
+      ctx->SetOutputDim(framework::GradVarName("GateWeight"), dim_x);
     }
   }
 
@@ -146,7 +143,7 @@ class AffinityPropagateGradDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("affinity_propagate_grad");
     op->SetInput("X", Input("X"));
-    op->SetInput("Guidance", Input("Guidance"));
+    op->SetInput("GateWeight", Input("GateWeight"));
     op->SetInput("Mask", Input("Mask"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
 
@@ -162,13 +159,14 @@ class AffinityPropagateGradDescMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(affinity_propagate, ops::AffinityPropagateOp, ops::AffinityPropagateOpMaker,
+REGISTER_OPERATOR(affinity_propagate, ops::AffinityPropagateOp,
+                  ops::AffinityPropagateOpMaker,
                   ops::AffinityPropagateGradDescMaker);
 REGISTER_OPERATOR(affinity_propagate_grad, ops::AffinityPropagateOpGrad);
 
 REGISTER_OP_CPU_KERNEL(affinity_propagate,
                        ops::AffinityPropagateOpKernel<float>,
                        ops::AffinityPropagateOpKernel<double>);
-REGISTER_OP_CPU_KERNEL(affinity_propagate_grad, 
+REGISTER_OP_CPU_KERNEL(affinity_propagate_grad,
                        ops::AffinityPropagateGradOpKernel<float>,
                        ops::AffinityPropagateGradOpKernel<double>);
