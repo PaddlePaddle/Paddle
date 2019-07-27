@@ -295,10 +295,11 @@ class TestDistCollectiveBase(unittest.TestCase):
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1):
 
-        self.pick_filename = "local_run.pkl"
+        pick_filename = "local_run_%s.pkl" % self._ps_endpoints
+        print(pick_filename)
         cmd = "%s %s --role trainer --lr %f --pick_filename %s" % \
               (self._python_interp, model,
-               self._lr, self.pick_filename)
+               self._lr, pick_filename)
         if batch_size != DEFAULT_BATCH_SIZE:
             cmd += " --batch_size %d" % batch_size
         if batch_merge_repeat > 1:
@@ -338,7 +339,7 @@ class TestDistCollectiveBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        return self.pick_filename
+        return pick_filename
 
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, pickle_filename,
                                trainer_id, trainer_num):
@@ -392,7 +393,12 @@ class TestDistCollectiveBase(unittest.TestCase):
         update_method = "nccl2"
 
         trainer_num = len(worker_endpoints)
-        pickle_filenames = ["trainer%d.pkl" % x for x in range(trainer_num)]
+        pickle_fileprefix = self._ps_endpoints
+        pickle_filenames = [
+            "trainer%d_%s.pkl" % (x, self._ps_endpoints)
+            for x in range(trainer_num)
+        ]
+        print(pickle_filenames)
 
         procs = []
         pipes = []
@@ -448,11 +454,10 @@ class TestDistCollectiveBase(unittest.TestCase):
             required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
-        local_picklefile = self._run_local(model_file, required_envs,
-                                           check_error_log)
         cluster_picklefiles = self._run_collective(model_file, required_envs,
                                                    check_error_log)
-
+        local_picklefile = self._run_local(model_file, required_envs,
+                                           check_error_log)
         with open(local_picklefile, "rb") as fin:
             local_result_dict = pickle.load(fin)
 
@@ -470,3 +475,6 @@ class TestDistCollectiveBase(unittest.TestCase):
             dist_loss = np.mean(cluster_losses)
             print("=======", local_loss, ":", dist_loss, "=======")
             self.assertAlmostEqual(local_loss, dist_loss, delta=delta)
+        for filename in cluster_picklefiles:
+            os.system("rm %s" % filename)
+        os.system("rm %s" % local_picklefile)
