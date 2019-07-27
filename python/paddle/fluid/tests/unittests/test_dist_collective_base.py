@@ -449,7 +449,7 @@ class TestDistCollectiveBase(unittest.TestCase):
             required_envs["GLOG_logtostderr"] = "1"
 
         local_picklefile = self._run_local(model_file, required_envs,
-                                           local_picklefile, check_error_log)
+                                           check_error_log)
         cluster_picklefiles = self._run_collective(model_file, required_envs,
                                                    check_error_log)
 

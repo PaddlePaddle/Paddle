@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import unittest
-from test_dist_base import TestDistBase
+from test_dist_collective_base import TestDistCollectiveBase
 import os
 
 
@@ -29,7 +29,7 @@ def skip_ci(func):
     return __func__
 
 
-class TestDistSeResneXt2x2(TestDistBase):
+class TestDistSeResneXt2x2(TestDistCollectiveBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False

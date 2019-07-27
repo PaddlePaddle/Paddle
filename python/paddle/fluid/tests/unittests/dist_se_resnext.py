@@ -28,7 +28,7 @@ from multiprocessing import Process
 import os
 import sys
 import signal
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_collective_base import TestDistRunnerBase, runtime_main
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
