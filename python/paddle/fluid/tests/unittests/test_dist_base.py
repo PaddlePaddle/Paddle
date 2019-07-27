@@ -25,7 +25,6 @@ import argparse
 import pickle
 import numpy as np
 import time
-import traceback
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
@@ -40,23 +39,9 @@ def my_print(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
     if six.PY2:
-        try:
-            sys.stderr.write(pickle.dumps(print_str))
-        except pickle.UnpicklingError:
-            print("-----------------------", file=sys.__stderr__)
-            print("cannot unpickle packet:", repr(packet), file=sys.__stderr__)
-            traceback.print_stack(file=sys.__stderr__)
-            print("-----------------------", file=sys.__stderr__)
-            raise
+        sys.stderr.write(pickle.dumps(print_str))
     else:
-        try:
-            sys.stderr.buffer.write(pickle.dumps(print_str))
-        except pickle.UnpicklingError:
-            print("-----------------------", file=sys.__stderr__)
-            print("cannot unpickle packet:", repr(packet), file=sys.__stderr__)
-            traceback.print_stack(file=sys.__stderr__)
-            print("-----------------------", file=sys.__stderr__)
-            raise
+        sys.stderr.buffer.write(pickle.dumps(print_str))
 
 
 class TestDistRunnerBase(object):
@@ -242,29 +227,9 @@ class TestDistRunnerBase(object):
         my_print(type(self).__name__, "trainer run finished")
 
         if six.PY2:
-            try:
-                print(pickle.dumps(out_losses))
-            except pickle.UnpicklingError:
-                print("-----------------------", file=sys.__stderr__)
-                print(
-                    "cannot unpickle packet:",
-                    repr(packet),
-                    file=sys.__stderr__)
-                traceback.print_stack(file=sys.__stderr__)
-                print("-----------------------", file=sys.__stderr__)
-                raise
+            print(pickle.dumps(out_losses))
         else:
-            try:
-                sys.stdout.buffer.write(pickle.dumps(out_losses))
-            except pickle.UnpicklingError:
-                print("-----------------------", file=sys.__stderr__)
-                print(
-                    "cannot unpickle packet:",
-                    repr(packet),
-                    file=sys.__stderr__)
-                traceback.print_stack(file=sys.__stderr__)
-                print("-----------------------", file=sys.__stderr__)
-                raise
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 class TestParallelDyGraphRunnerBase(object):
@@ -534,6 +499,9 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
+        sys.stderr.write('local_stderr: %s\n' % local_err)
+        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
+
         return pickle.loads(local_out)
 
     def _run_cluster(self, model, envs, check_error_log):
@@ -717,7 +685,7 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
-            "FLAGS_eager_delete_tensor_gb": "0.0",  # add gc for all test case
+            "FLAGS_eager_delete_tensor_gb": "0.0",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1"
