@@ -16,6 +16,7 @@ import collections
 import json
 import logging
 import math
+import numpy as np
 import os
 import sys
 import time
@@ -329,6 +330,7 @@ class FleetUtil(object):
         xbox_dict["monitor_path"] = output_path.rstrip("/") + "/monitor/" \
                                     + day + ".txt"
         xbox_dict["mpi_size"] = fleet.worker_num()
+        return json.dumps(xbox_dict)
 
     def write_model_donefile(self,
                              output_path,
@@ -636,6 +638,104 @@ class FleetUtil(object):
         fleet.save_persistables(None, model_path, mode=2)
         self.rank0_error("save_xbox_base_model done")
 
+    def save_paddle_params(self,
+                           executor,
+                           scope,
+                           program,
+                           model_name,
+                           output_path,
+                           day,
+                           pass_id,
+                           hadoop_fs_name,
+                           hadoop_fs_ugi,
+                           hadoop_home="$HADOOP_HOME",
+                           var_names=None,
+                           save_combine=True):
+        """
+        save paddle model, and upload to hdfs dnn_plugin path
+
+        Args:
+            executor(Executor): fluid Executor
+            scope(Scope): fluid Scope
+            program(Program): fluid Program
+            model_name(str): save model local dir or filename
+            output_path(str): hdfs/afs output path
+            day(str|int): training day
+            pass_id(str|int): training pass
+            hadoop_fs_name(str): hadoop fs name
+            hadoop_fs_ugi(str): hadoop fs ugi
+            hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
+            var_names(list): save persistable var names, default is None
+            save_combine(bool): whether to save in a file or seperate files,
+                                default is True
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              fleet_util.save_paddle_params(exe,
+                                            join_scope,
+                                            join_program,
+                                            "paddle_dense.model.0",
+                                            "hdfs:/my/output/path/",
+                                            day=20190727,
+                                            pass_id=6,
+                                            hadoop_fs_name="xxx",
+                                            hadoop_fs_ugi="xxx,xxx",
+                                            var_names=join_all_var_names)
+              fleet_util.save_paddle_params(exe,
+                                            join_scope,
+                                            join_program,
+                                            "paddle_dense.model.usr.0",
+                                            "hdfs:/my/output/path/",
+                                            day=20190727,
+                                            pass_id=6,
+                                            hadoop_fs_name="xxx",
+                                            hadoop_fs_ugi="xxx,xxx",
+                                            var_names=join_user_var_names)
+              fleet_util.save_paddle_params(exe,
+                                            join_scope,
+                                            join_program,
+                                            "paddle_dense.model.item.0",
+                                            "hdfs:/my/output/path/",
+                                            day=20190727,
+                                            pass_id=6,
+                                            hadoop_fs_name="xxx",
+                                            hadoop_fs_ugi="xxx,xxx",
+                                            var_names=join_user_item_names)
+
+        """
+        day = str(day)
+        pass_id = str(pass_id)
+        if fleet.worker_index() == 0:
+            if save_combine:
+                fluid.io.save_vars(executor, model_name, program,
+                                   vars=var_names)
+            else:
+                fluid.io.save_vars(executor, "./", program, vars=var_names,
+                                   filename=model_name)
+
+            configs = {
+                "fs.default.name": hadoop_fs_name,
+                "hadoop.job.ugi": hadoop_fs_ugi
+            }
+            client = HDFSClient(hadoop_home, configs)
+
+            if pass_id == "-1":
+                dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
+            else:
+                dest = "%s/%s/delta-%d/dnn_plugin/" % (output_path, day,
+                                                       pass_id)
+
+            if not client.is_exist():
+                client.makedirs(dest)
+
+            client.upload(dest, model_name)
+
+        fleet._role_maker._barrier_worker()
+
+
     def get_last_save_model(self,
                             output_path,
                             hadoop_fs_name,
@@ -803,9 +903,19 @@ class FleetUtil(object):
         if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
             self.rank0_print("not found auc bucket")
             return
-        if scope.find_var(ctr_metric) is None:
-            self.rank0_print("not found metric")
+        elif scope.find_var(sqrerr_name) is None:
+            self.rank0_print("not found sqrerr_name=%s" % sqrerr_name)
             return
+        elif scope.find_var(abserr_name) is None:
+            self.rank0_print("not found abserr_name=%s" % abserr_name)
+            return
+        elif scope.find_var(prob_name) is None:
+            self.rank0_print("not found prob_name=%s" % prob_name)
+            return
+        elif scope.find_var(q_name) is None:
+            self.rank0_print("not found q_name=%s" % q_name)
+            return
+
         # barrier worker to ensure all workers finished training
         fleet._role_maker._barrier_worker()
 
@@ -961,6 +1071,22 @@ class FleetUtil(object):
                   fluid.contrib.layers.ctr_metric_bundle(similarity_norm, label)
 
         """
+        if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
+            self.rank0_print("not found auc bucket")
+            return
+        elif scope.find_var(sqrerr_name) is None:
+            self.rank0_print("not found sqrerr_name=%s" % sqrerr_name)
+            return
+        elif scope.find_var(abserr_name) is None:
+            self.rank0_print("not found abserr_name=%s" % abserr_name)
+            return
+        elif scope.find_var(prob_name) is None:
+            self.rank0_print("not found prob_name=%s" % prob_name)
+            return
+        elif scope.find_var(q_name) is None:
+            self.rank0_print("not found q_name=%s" % q_name)
+            return
+
         auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,\
             mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
