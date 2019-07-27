@@ -25,6 +25,7 @@ import argparse
 import pickle
 import numpy as np
 import time
+import traceback
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
@@ -39,9 +40,23 @@ def my_print(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
     if six.PY2:
-        sys.stderr.write(pickle.dumps(print_str))
+        try:
+            sys.stderr.write(pickle.dumps(print_str))
+        except pickle.UnpicklingError:
+            print("-----------------------", file=sys.__stderr__)
+            print("cannot unpickle packet:", repr(packet), file=sys.__stderr__)
+            traceback.print_stack(file=sys.__stderr__)
+            print("-----------------------", file=sys.__stderr__)
+            raise
     else:
-        sys.stderr.buffer.write(pickle.dumps(print_str))
+        try:
+            sys.stderr.buffer.write(pickle.dumps(print_str))
+        except pickle.UnpicklingError:
+            print("-----------------------", file=sys.__stderr__)
+            print("cannot unpickle packet:", repr(packet), file=sys.__stderr__)
+            traceback.print_stack(file=sys.__stderr__)
+            print("-----------------------", file=sys.__stderr__)
+            raise
 
 
 class TestDistRunnerBase(object):
@@ -108,10 +123,6 @@ class TestDistRunnerBase(object):
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size)
 
-        if args.mem_opt:
-            my_print(type(self).__name__, "begin to run memory optimize")
-            fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-            my_print(type(self).__name__, "trainer run memory optimize done.")
         if args.update_method == "pserver":
             my_print(
                 type(self).__name__,
@@ -231,9 +242,29 @@ class TestDistRunnerBase(object):
         my_print(type(self).__name__, "trainer run finished")
 
         if six.PY2:
-            print(pickle.dumps(out_losses))
+            try:
+                print(pickle.dumps(out_losses))
+            except pickle.UnpicklingError:
+                print("-----------------------", file=sys.__stderr__)
+                print(
+                    "cannot unpickle packet:",
+                    repr(packet),
+                    file=sys.__stderr__)
+                traceback.print_stack(file=sys.__stderr__)
+                print("-----------------------", file=sys.__stderr__)
+                raise
         else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+            try:
+                sys.stdout.buffer.write(pickle.dumps(out_losses))
+            except pickle.UnpicklingError:
+                print("-----------------------", file=sys.__stderr__)
+                print(
+                    "cannot unpickle packet:",
+                    repr(packet),
+                    file=sys.__stderr__)
+                traceback.print_stack(file=sys.__stderr__)
+                print("-----------------------", file=sys.__stderr__)
+                raise
 
 
 class TestParallelDyGraphRunnerBase(object):
@@ -328,7 +359,6 @@ def runtime_main(test_class):
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
-    parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -388,7 +418,6 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
         self._sync_mode = True
         self._enforce_place = None
-        self._mem_opt = False
         self._use_reduce = False
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
@@ -436,9 +465,6 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             ps0_cmd += " --sync_mode"
             ps1_cmd += " --sync_mode"
-        if self._mem_opt:
-            ps0_cmd += " --mem_opt"
-            ps1_cmd += " --mem_opt"
 
         print(ps0_cmd)
         print(ps1_cmd)
@@ -508,9 +534,6 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stderr: %s\n' % local_err)
-        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
-
         return pickle.loads(local_out)
 
     def _run_cluster(self, model, envs, check_error_log):
@@ -531,9 +554,6 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
             tr1_cmd += " --sync_mode"
-        if self._mem_opt:
-            tr0_cmd += " --mem_opt"
-            tr1_cmd += " --mem_opt"
         if self._use_reduce:
             tr0_cmd += " --use_reduce"
             tr1_cmd += " --use_reduce"
@@ -604,8 +624,6 @@ class TestDistBase(unittest.TestCase):
                   (self._python_interp, model, self._ps_endpoints,
                    trainer_id, ep, update_method, self._lr)
 
-        if self._mem_opt:
-            tr_cmd += " --mem_opt"
         if self._use_reduce:
             tr_cmd += " --use_reduce"
         if self._use_reader_alloc:
@@ -699,6 +717,7 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_eager_delete_tensor_gb": "0.0",  # add gc for all test case
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1"
