@@ -9,7 +9,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/affinity_propagate_op.h"
+
+#include <string>
+#include <unordered_map>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -155,10 +158,3 @@ REGISTER_OPERATOR(affinity_propagate, ops::AffinityPropagateOp,
                   ops::AffinityPropagateOpMaker,
                   ops::AffinityPropagateGradDescMaker);
 REGISTER_OPERATOR(affinity_propagate_grad, ops::AffinityPropagateOpGrad);
-
-REGISTER_OP_CPU_KERNEL(affinity_propagate,
-                       ops::AffinityPropagateOpKernel<float>,
-                       ops::AffinityPropagateOpKernel<double>);
-REGISTER_OP_CPU_KERNEL(affinity_propagate_grad,
-                       ops::AffinityPropagateGradOpKernel<float>,
-                       ops::AffinityPropagateGradOpKernel<double>);
