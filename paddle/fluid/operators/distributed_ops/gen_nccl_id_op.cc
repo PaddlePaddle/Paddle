@@ -212,25 +212,25 @@ class GenNCCLIdOp : public framework::OperatorBase {
     if (use_hierarchical_allreduce) {
       if (inter_trainer_id > 0) {
         for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
+          rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
           VLOG(3) << "trainer_id:" << trainer_id
                   << ", inter_trainer_id:" << inter_trainer_id
                   << " start getting nccl id from inter_trainer:" << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
+          rpc_service->SendBarrier()->Wait();
+          rpc_service->SendBarrier()->Reset();
         }
       }
 
       if (exter_trainer_id > 0) {
         for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
+          rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
           VLOG(3)
               << "trainer_id:" << trainer_id
               << ", exter_trainer_id:" << exter_trainer_id
               << " start getting nccl id from exter_trainer 0, nccl_comm_no:"
               << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
+          rpc_service->SendBarrier()->Wait();
+          rpc_service->SendBarrier()->Reset();
         }
       }
     }
