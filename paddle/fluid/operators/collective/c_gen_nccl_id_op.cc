@@ -89,11 +89,11 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    distributed::RequestSendHandler rpc_h(true);
+    distributed::SendHandlerSync rpc_h;
     std::unique_ptr<distributed::RPCServer> rpc_service(
         new RPCSERVER_T(endpoint, 1));
 
-    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
+    rpc_service->RegisterRPC(distributed::RequestType::SEND, &rpc_h);
     rpc_h.SetRPCServer(rpc_service.get());
 
     framework::ProgramDesc empty_program;
