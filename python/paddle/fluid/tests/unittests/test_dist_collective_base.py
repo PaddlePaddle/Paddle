@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ from paddle.fluid import compiler
 # when process ends, load pick files, and compare loss with local training
 
 RUN_STEP = 5
-DEFAULT_BATCH_SIZE = 2
+DEFAULT_BATCH_SIZE = 4
 
 
 class TestDistRunnerBase(object):
@@ -381,7 +381,7 @@ class TestDistCollectiveBase(unittest.TestCase):
 
         return tr_cmd, env
 
-    def _run_collective(self, model, envs, pickle_filenames, check_error_log):
+    def _run_collective(self, model, envs, check_error_log):
         if self._use_hallreduce:
             self._ps_endpoints = ""
             for i in range(0, 4):
@@ -392,8 +392,8 @@ class TestDistCollectiveBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         update_method = "nccl2"
 
-        #trainer_num = len(worker_endpoints)
-        trainer_num = 2
+        trainer_num = len(worker_endpoints)
+        pickle_filenames = ["trainer%d.pkl" % x for x in range(trainer_num)]
 
         procs = []
         pipes = []
@@ -422,7 +422,7 @@ class TestDistCollectiveBase(unittest.TestCase):
             outs.append(tr_out)
             pipes[i].close()
 
-        return
+        return pickle_filenames
 
     def check_with_place(self,
                          model_file,
@@ -452,23 +452,23 @@ class TestDistCollectiveBase(unittest.TestCase):
         local_picklefile = "local_run.pkl"
         self._run_local(model_file, required_envs, local_picklefile,
                         check_error_log)
-        cluster_picklefiles = ["trainer0.pkl", "trainer1.pkl"]
-        self._run_collective(model_file, required_envs, cluster_picklefiles,
-                             check_error_log)
+        cluster_picklefiles = self._run_collective(model_file, required_envs,
+                                                   check_error_log)
 
         with open(local_picklefile, "rb") as fin:
             local_result_dict = pickle.load(fin)
 
-        with open(cluster_picklefiles[0], "rb") as fin:
-            cluster_trainer0_result_dict = pickle.load(fin)
+        cluster_trainer_result_dicts = []
 
-        with open(cluster_picklefiles[1], "rb") as fin:
-            cluster_trainer1_result_dict = pickle.load(fin)
+        for pickle_file in cluster_picklefiles:
+            with open(pickle_file, "rb") as fin:
+                cluster_trainer_result_dicts.append(pickle.load(fin))
 
         for step_id in range(RUN_STEP):
             local_loss = local_result_dict["loss"][step_id]
-            tr0_loss = cluster_trainer0_result_dict["loss"][step_id]
-            tr1_loss = cluster_trainer1_result_dict["loss"][step_id]
-            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
-            print("=======", local_loss, ":", dist_loss[0], "=======")
-            self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+            cluster_losses = [
+                x["loss"][step_id] for x in cluster_trainer_result_dicts
+            ]
+            dist_loss = np.mean(cluster_losses)
+            print("=======", local_loss, ":", dist_loss, "=======")
+            self.assertAlmostEqual(local_loss, dist_loss, delta=delta)
