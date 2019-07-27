@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -107,9 +106,9 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     std::thread server_thread(
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
-    rpc_service->SetCond(distributed::kRequestSend);
+    rpc_service->SetState(distributed::RPCServerState::STATE_SEND);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service->WaitBarrier(distributed::kRequestSend);
+    rpc_service->SendBarrier()->Wait();
     VLOG(3) << "got nccl id and stop server...";
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
