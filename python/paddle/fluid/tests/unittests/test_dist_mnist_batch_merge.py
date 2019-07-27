@@ -14,11 +14,11 @@
 
 from __future__ import print_function
 import unittest
-from test_dist_base import TestDistBase
+from test_dist_collective_base import TestDistCollectiveBase
 import os
 
 
-class TestDistMnist2x2(TestDistBase):
+class TestDistMnist2x2(TestDistCollectiveBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -46,21 +46,30 @@ class TestDistMnist2x2(TestDistBase):
             required_envs["GLOG_v"] = "7"
             required_envs["GLOG_logtostderr"] = "1"
 
-        no_merge_losses = self._run_local(
+        no_merge_pkl_file = self._run_local(
             model_file,
             required_envs,
             check_error_log=check_error_log,
             batch_size=4)
+        import pickle
+        no_merge_result = {}
+        with open(no_merge_pkl_file, "rb") as fin:
+            no_merge_result = pickle.load(fin)
 
-        batch_merge_losses = self._run_local(
+        batch_merge_pkl_file = self._run_local(
             model_file,
             required_envs,
             check_error_log=check_error_log,
             batch_size=2,
             batch_merge_repeat=2)
-        # Ensure both result have values.
-        self.assertGreater(len(no_merge_losses), 1)
-        self.assertEqual(len(no_merge_losses), len(batch_merge_losses))
+        batch_merge_result = {}
+        with open(batch_merge_pkl_file) as fin:
+            batch_merge_result = pickle.load(fin)
+
+        step = len(no_merge_result["loss"])
+        for i in range(step):
+            print("=======", no_merge_result["loss"][i], ":",
+                  batch_merge_result["loss"][i], "=======")
 
 
 if __name__ == "__main__":

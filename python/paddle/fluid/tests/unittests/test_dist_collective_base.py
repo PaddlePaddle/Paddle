@@ -291,15 +291,14 @@ class TestDistCollectiveBase(unittest.TestCase):
     def _run_local(self,
                    model,
                    envs,
-                   pickle_filename,
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1):
 
-        self.pick_filename = pickle_filename
+        self.pick_filename = "local_run.pkl"
         cmd = "%s %s --role trainer --lr %f --pick_filename %s" % \
               (self._python_interp, model,
-               self._lr, pickle_filename)
+               self._lr, self.pick_filename)
         if batch_size != DEFAULT_BATCH_SIZE:
             cmd += " --batch_size %d" % batch_size
         if batch_merge_repeat > 1:
@@ -339,7 +338,7 @@ class TestDistCollectiveBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        return
+        return self.pick_filename
 
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, pickle_filename,
                                trainer_id, trainer_num):
@@ -449,9 +448,8 @@ class TestDistCollectiveBase(unittest.TestCase):
             required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
-        local_picklefile = "local_run.pkl"
-        self._run_local(model_file, required_envs, local_picklefile,
-                        check_error_log)
+        local_picklefile = self._run_local(model_file, required_envs,
+                                           local_picklefile, check_error_log)
         cluster_picklefiles = self._run_collective(model_file, required_envs,
                                                    check_error_log)
 
