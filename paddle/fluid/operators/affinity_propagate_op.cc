@@ -41,8 +41,11 @@ class AffinityPropagateOp : public framework::OperatorWithKernel {
 
     int kernel_size = ctx->Attrs().Get<int>("kernel_size");
     PADDLE_ENFORCE_EQ(kernel_size % 2, 1, "kernel_size should be odd number.");
+    PADDLE_ENFORCE_GT(kernel_size, 1, "kernel_size should be greater than 1.");
 
-    int channel_num = kernel_size * kernel_size - 1;
+    int channel_num = dim_x.size() == 4
+                          ? kernel_size * kernel_size - 1
+                          : kernel_size * kernel_size * kernel_size - 1;
     for (int i = 0; i < dim_gate_w.size(); i++) {
       if (i == 1) {
         // Guidance channel number should be kernel_size * kernel_size - 1
@@ -53,16 +56,6 @@ class AffinityPropagateOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             dim_x[i], dim_gate_w[i],
             "Input(X) and Input(GateWeight) should in same shape.");
-      }
-    }
-
-    if (ctx->HasInput("Mask")) {
-      auto dim_mask = ctx->GetInputDim("Mask");
-      PADDLE_ENFORCE_EQ(dim_x.size(), dim_mask.size(),
-                        "Input(X) and Input(Mask) dimension should be same.");
-      for (int i = 0; i < dim_x.size(); i++) {
-        PADDLE_ENFORCE_EQ(dim_x[i], dim_mask[i],
-                          "Input(X) and Input(Mask) should in same shape.");
       }
     }
 
@@ -90,10 +83,6 @@ class AffinityPropagateOpMaker : public framework::OpProtoAndCheckerMaker {
              "guidance, it should be in the same shape with Input(X) "
              "except channel number should be attr:`kernel_size` * "
              "attr:`kernel_size` - 1.");
-    AddInput("Mask",
-             "The mask tensor, it should be in the same shape with "
-             "Input(X)")
-        .AsDispensable();
     AddOutput("Out",
               "The output tensor of affinity propagate operator, "
               "It should be in the same shape with Input(X).");
@@ -115,14 +104,17 @@ class AffinityPropagateOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("GateWeight"),
+                   "Input(GateWeight) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
     }
+    auto dim_gate_weight = ctx->GetInputDim("GateWeight");
     if (ctx->HasOutput(framework::GradVarName("GateWeight"))) {
-      ctx->SetOutputDim(framework::GradVarName("GateWeight"), dim_x);
+      ctx->SetOutputDim(framework::GradVarName("GateWeight"), dim_gate_weight);
     }
   }
 
@@ -144,11 +136,11 @@ class AffinityPropagateGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetType("affinity_propagate_grad");
     op->SetInput("X", Input("X"));
     op->SetInput("GateWeight", Input("GateWeight"));
-    op->SetInput("Mask", Input("Mask"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
 
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Guidance"), InputGrad("Guidance"));
+    op->SetOutput(framework::GradVarName("GateWeight"),
+                  InputGrad("GateWeight"));
 
     op->SetAttrMap(Attrs());
     return op;
