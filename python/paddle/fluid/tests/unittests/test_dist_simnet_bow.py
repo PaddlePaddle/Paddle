@@ -37,25 +37,6 @@ class TestDistSimnetBowDense2x2(TestDistBase):
             need_envs=need_envs)
 
 
-class TestDistSimnetBow2x2DenseAsync(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._enforce_place = "CPU"
-
-    #FIXME(typhoonzero): fix async tests later
-    def notest_simnet_bow(self):
-        need_envs = {
-            "IS_DISTRIBUTED": '0',
-            "IS_SPARSE": '0',
-            'IS_SELF_CONTAINED_LR': '1',
-        }
-        self.check_with_place(
-            "dist_simnet_bow.py",
-            delta=100,
-            check_error_log=False,
-            need_envs=need_envs)
-
-
 class TestDistSimnetBowSparse2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True

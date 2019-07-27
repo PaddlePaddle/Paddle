@@ -25,15 +25,6 @@ class TestDistW2V2x2(TestDistBase):
         self.check_with_place("dist_word2vec.py", delta=1e-4)
 
 
-class TestDistW2V2x2WithMemOpt(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = True
-        self._mem_opt = True
-
-    def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
-
-
 class TestDistW2V2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False

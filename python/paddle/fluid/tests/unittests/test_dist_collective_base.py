@@ -454,10 +454,13 @@ class TestDistCollectiveBase(unittest.TestCase):
             required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
+        start_time = time.time()
         cluster_picklefiles = self._run_collective(model_file, required_envs,
                                                    check_error_log)
         local_picklefile = self._run_local(model_file, required_envs,
                                            check_error_log)
+        end_time = time.time()
+        print("time of local run + cluster run = %f" % (end_time - start_time))
         with open(local_picklefile, "rb") as fin:
             local_result_dict = pickle.load(fin)
 
