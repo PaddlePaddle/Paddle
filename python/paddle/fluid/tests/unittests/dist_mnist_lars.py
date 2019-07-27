@@ -28,7 +28,7 @@ from multiprocessing import Process
 import os
 import signal
 from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_collective_base import TestDistRunnerBase, runtime_main
 from dist_mnist import cnn_model
 
 DTYPE = "float32"

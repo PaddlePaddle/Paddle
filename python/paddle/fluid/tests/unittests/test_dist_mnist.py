@@ -14,34 +14,18 @@
 
 from __future__ import print_function
 import unittest
-from test_dist_base import TestDistBase
+from test_dist_collective_base import TestDistCollectiveBase, runtime_main
 
 
-class TestDistMnist2x2(TestDistBase):
+class TestDistMnist2x2(TestDistCollectiveBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
 
     def test_dist_train(self):
         self.check_with_place("dist_mnist.py", delta=1e-5)
-
-
-class TestDistMnist2x2WithMemopt(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = True
-
-    def test_dist_train(self):
-        self.check_with_place("dist_mnist.py", delta=1e-5)
-
-
-class TestDistMnistAsync(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._use_reduce = False
-
-    def test_dist_train(self):
-        self.check_with_place("dist_mnist.py", delta=200)
 
 
 if __name__ == "__main__":
     unittest.main()
+    #runtime_main(TestDistMnist2x2)

@@ -28,7 +28,7 @@ from multiprocessing import Process
 import os
 import signal
 from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_collective_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
