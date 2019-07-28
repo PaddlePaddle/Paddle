@@ -23,7 +23,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
-from paddle.fluid.incubate.fleet.util.hdfs import HDFSClient
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 
 class Mode:
