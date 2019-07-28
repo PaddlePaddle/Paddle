@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/handlers/send_handler.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
