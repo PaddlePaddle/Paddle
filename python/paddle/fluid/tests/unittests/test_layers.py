@@ -1961,6 +1961,24 @@ class TestBook(LayerTest):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_affinity_propagate(self):
+        if core.is_compiled_with_cuda():
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                input = layers.data(
+                    name='input',
+                    append_batch_size=False,
+                    shape=[2, 3, 32, 32],
+                    dtype="float32")
+                gate_weight = layers.data(
+                    name='gate_weight',
+                    append_batch_size=False,
+                    shape=[2, 8, 32, 32],
+                    dtype="float32")
+                out = layers.affinity_propagate(
+                    input=input, gate_weight=gate_weight, kernel_size=3)
+                return (out)
+
     def test_deformable_conv(self):
         if core.is_compiled_with_cuda():
             with program_guard(fluid.default_main_program(),

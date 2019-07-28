@@ -9,7 +9,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/framework/op_registry.h"
@@ -95,7 +94,29 @@ class AffinityPropagateOpMaker : public framework::OpProtoAndCheckerMaker {
                  "currently only support 3.")
         .SetDefault(3);
     AddComment(R"DOC(
-          TODO(dengkaipeng): add doc.
+      This operator calculates the affinity propagatation for CSPN(
+      Convolution spatial propagation network), convolution will be
+      perform between Input(X) and Input(GateWeight) in
+      :attr:`kernel_size`, channel number of Input(GateWeight) should
+      be equal to convolution kernel point number except the kernel
+      center(e.g. :math:`kernel_size * kernel_size - 1` in 2D kernel).
+
+      While input is in shape of [N, C, H, W] in 2D propagation.
+
+      $$
+      Output[i, j] = \sum_{a, b=-(k - 1) / 2; a ,b \not= 0}^{(k - 1) / 2} \
+      K_{i, j}(a, b) * H_{i-a, j-b}
+      $$
+
+      While input is in shape of [N, C, D, H, W] in 3D propagation.
+
+      $$
+      Output[i, j, l] = \sum_{a, b, c=-(k - 1) / 2;a, b, c \not= 0}^{\
+      (k - 1) / 2} K_{i, j, l}(a, b, c) * H_{i-a, j-b, l-c}
+      $$
+
+      While :attr:`k` is the :attr:`kernel_size`, (a, b, c) if for the
+      channel order in Input(GateWeight)
          )DOC");
   }
 };

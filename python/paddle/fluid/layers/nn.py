@@ -204,6 +204,7 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
+    'affinity_propagate',
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
@@ -12123,6 +12124,55 @@ def unique(x, dtype='int32'):
                  'Index': [index]})
 
     return out, index
+
+
+@templatedoc(op_type="affinity_propagate")
+def affinity_propagate(input, gate_weight, kernel_size, name=None):
+    """
+    **Affinity Propagte Layer**
+
+    ${comment} 
+    
+    Args:
+        input (Variable): ${x_comment} 
+        gate_weight (Variable): ${gate_weight_comment}
+        kernel_sizes (int): ${kernel_size_comment}
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None
+    Returns:
+        Variable: The tensor variable in same shape with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          gate_weight = fluid.layers.data(name='gate_weight', shape=[8, 32, 32], dtype='float32')
+          out = fluid.layers.affinity_propagate(input=data, gate_weight=gate_weight,
+                                                kernel_size=3)
+    """
+
+    helper = LayerHelper('affinity_propagate', **locals())
+    dtype = helper.input_dtype()
+
+    if not isinstance(input, Variable):
+        raise TypeError("Input of affinity_propagate must be Variable")
+    if not isinstance(gate_weight, Variable):
+        raise TypeError(
+            "Input GateWeight of affinity_propagate must be Variable")
+
+    out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='affinity_propagate',
+        inputs={
+            'X': input,
+            'GateWeight': gate_weight,
+        },
+        outputs={"Out": out},
+        attrs={'kernel_size': kernel_size, })
+
+    return out
 
 
 def deformable_conv(input,
