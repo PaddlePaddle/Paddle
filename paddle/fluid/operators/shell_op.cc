@@ -35,17 +35,16 @@ class ShellOp : public framework::OperatorBase {
                     Attr<std::vector<std::string>>("cmd_params");
     std::string cmd = cmd_format;
     for (size_t i = 0; i < cmd_params.size(); i++) {
-      cmd_params_var = scope.FindVar(cmd_params[i]);
+      framework::Variable *cmd_params_var = scope.FindVar(cmd_params[i]);
       if (cmd_params_var != nullptr) {
         auto *pv = cmd_params_var->GetMutable<std::string>();
-        cmd.replace(cmd.find("{}"), 2, *pv)
+        cmd.replace(cmd.find("{}"), 2, *pv);
       } else {
         VLOG(4) << "ERROR";
       }
     }
-    using namespace paddle::framework; // NOLINT
     VLOG(4) << "shell op: " << cmd;
-    shell_execute(cmd);
+    framework::shell_execute(cmd);
   }
 };
 
