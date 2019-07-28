@@ -12211,10 +12211,13 @@ def unique_with_counts(x, dtype='int32'):
                                                         # count is [1, 3, 1, 1]
     """
     if not (dtype == 'int32' or dtype == 'int64'):
-        raise TypeError("dtype must be int32_t or int64_t")
+        raise TypeError(
+            "Op unique_with_counts, dtype must be int32_t or int64_t")
 
     if x is None or len(x.shape) != 1:
-        raise ValueError("x must not be null and size of dim must be 1")
+        raise ValueError(
+            "Op unique_with_counts, x must not be null and size of dim must be 1"
+        )
 
     helper = LayerHelper("unique_with_counts", **locals())
 
