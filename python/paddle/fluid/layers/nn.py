@@ -107,6 +107,7 @@ __all__ = [
     'squeeze',
     'unsqueeze',
     'lod_reset',
+    'lod_append',
     'lrn',
     'pad',
     'pad_constant_like',
@@ -1470,7 +1471,7 @@ def dropout(x,
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0,
+            'seed': seed,
             'dropout_implementation': dropout_implementation,
         })
     return out
@@ -3690,7 +3691,7 @@ def conv2d_transpose(input,
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
-    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    `therein <https://ieeexplore.ieee.org/document/5539957>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -3728,8 +3729,15 @@ def conv2d_transpose(input,
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
+
+    Note:
+          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
+          conv2d_transpose can compute the kernel size automatically.
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
@@ -3882,7 +3890,7 @@ def conv3d_transpose(input,
     is the width of the feature. Parameters(dilations, strides, paddings) are
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    explanation and references `therein <https://ieeexplore.ieee.org/document/5539957>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -5200,7 +5208,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor variable.
+        Variable: The product Tensor (or LoDTensor) variable.
 
     Examples:
         .. code-block:: python
@@ -6981,7 +6989,7 @@ def lod_reset(x, y=None, target_lod=None):
     considered as target LoD first, otherwise :attr:`y.data` would be
     considered as target LoD. If :attr:`y` is not provided, target LoD should
     be specified by :attr:`target_lod`. If target LoD is specified by
-    :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
+    :attr:`y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
@@ -7033,7 +7041,7 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LodTensor.
+        x (Variable): Input variable which could be a Tensor or LoDTensor.
         y (Variable|None): If provided, output's LoD would be derived
                            from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
@@ -7066,8 +7074,60 @@ def lod_reset(x, y=None, target_lod=None):
             attrs={'target_lod': target_lod},
             outputs={'Out': out})
     else:
-        raise ValueError("y and target_lod should not be both None.")
+        raise ValueError("y and target_lod should not be both none.")
+    return out
 
+
+def lod_append(x, level):
+    """
+    Append level to LoD of :attr:`x`.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            given a 1-level LoDTensor x:
+                x.lod =  [[ 2,           3,                   1 ]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+            level: [1, 1, 1, 1, 1, 1, 1]
+
+            then we get a 2-level LoDTensor:
+                x.lod =  [[ 2, 3, 1 ], [1, 1, 1, 1, 1, 1]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+    Args:
+        x (Variable): Input variable which could be a tensor or LoDTensor.
+        level (list|tuple): The LoD level to be appended into LoD of x.
+
+    Returns:
+        Variable: Output variable with new LoD level.
+
+    Raises:
+        ValueError: If :attr:`y` is None or and :attr:`level` is not Iterator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
+            out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
+    """
+    from collections import Iterable
+    if x is None:
+        raise ValueError("Input(x) can't be None.")
+    if not isinstance(level, Iterable):
+        raise ValueError("Input(level) must be list or tuple.")
+    helper = LayerHelper("lod_append", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="lod_reset",
+        inputs={'X': x},
+        attrs={'target_lod': level,
+               'append': True},
+        outputs={'Out': out})
     return out
 
 
@@ -10148,9 +10208,9 @@ def logical_and(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_and(x=left, y=right)
     """
 
@@ -10177,9 +10237,9 @@ def logical_or(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_or(x=left, y=right)
     """
 
@@ -10206,9 +10266,9 @@ def logical_xor(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_xor(x=left, y=right)
     """
 
@@ -10234,7 +10294,7 @@ def logical_not(x, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             result = fluid.layers.logical_not(x=left)
     """
 
