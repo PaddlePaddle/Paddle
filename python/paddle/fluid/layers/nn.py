@@ -12126,17 +12126,45 @@ def unique(x, dtype='int32'):
     return out, index
 
 
-@templatedoc(op_type="affinity_propagate")
 def affinity_propagate(input, gate_weight, kernel_size, name=None):
     """
     **Affinity Propagte Layer**
 
-    ${comment} 
+      This operator calculates the affinity propagatation for CSPN(
+      Convolution spatial propagation network), convolution will be
+      perform between Input(X) and Input(GateWeight) in
+      :attr:`kernel_size`, channel number of Input(GateWeight) should
+      be equal to convolution kernel point number except the kernel
+      center(e.g. :math:`kernel_size * kernel_size - 1` in 2D kernel).
+
+      While input is in shape of [N, C, H, W] in 2D propagation.
+
+      $$
+      Output[i, j] = \sum_{a, b=-(k - 1) / 2; a ,b \not= 0}^{(k - 1) / 2} \
+      K_{i, j}(a, b) * H_{i-a, j-b}
+      $$
+
+      While input is in shape of [N, C, D, H, W] in 3D propagation.
+
+      $$
+      Output[i, j, l] = \sum_{a, b, c=-(k - 1) / 2;a, b, c \not= 0}^{\
+      (k - 1) / 2} K_{i, j, l}(a, b, c) * H_{i-a, j-b, l-c}
+      $$
+
+      While :attr:`k` is the :attr:`kernel_size`, (a, b, c) if for the
+      channel order in Input(GateWeight)
     
     Args:
-        input (Variable): ${x_comment} 
-        gate_weight (Variable): ${gate_weight_comment}
-        kernel_sizes (int): ${kernel_size_comment}
+        input (Variable): The input tensor of affinity propagate operator.
+                          This is a 4-D tensor with shape of [N, C, H, W]
+                          or a 5-D tensor with shape of [N, C, D, H, W].
+        gate_weight (Variable): This gate weight tesnor, which should be
+                                the normalized guidance, it should be in
+                                the same shape with Input(X) except channel
+                                number should be attr:`kernel_size` * 
+                                attr:`kernel_size` - 1.
+        kernel_sizes (int): the size of convolution kernel, currently only
+                            support 3.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
     Returns:

@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -45,12 +45,12 @@ class AffinityPropagateOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(kernel_size % 2, 1, "kernel_size should be odd number.");
     PADDLE_ENFORCE_GT(kernel_size, 1, "kernel_size should be greater than 1.");
 
+    // Guidance channel number should be equal channel_num
     int channel_num = dim_x.size() == 4
                           ? kernel_size * kernel_size - 1
                           : kernel_size * kernel_size * kernel_size - 1;
     for (int i = 0; i < dim_gate_w.size(); i++) {
       if (i == 1) {
-        // Guidance channel number should be kernel_size * kernel_size - 1
         PADDLE_ENFORCE_EQ(dim_gate_w[i], channel_num,
                           "Input(GateWeight) channel number "
                           "be kernel_size * kernel_size - 1.");
@@ -77,7 +77,7 @@ class AffinityPropagateOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor of affinity propagate operator, "
+             "The input tensor of affinity propagate operator. "
              "This is a 4-D tensor with shape of [N, C, H, W] or a 5-D "
              "tensor with shape of [N, C, D, H, W].");
     AddInput("GateWeight",
@@ -86,12 +86,12 @@ class AffinityPropagateOpMaker : public framework::OpProtoAndCheckerMaker {
              "except channel number should be attr:`kernel_size` * "
              "attr:`kernel_size` - 1.");
     AddOutput("Out",
-              "The output tensor of affinity propagate operator, "
+              "The output tensor of affinity propagate operator. "
               "It should be in the same shape with Input(X).");
 
     AddAttr<int>("kernel_size",
-                 "the size of convolution kernel, "
-                 "currently only support 3.")
+                 "the size of convolution kernel, currently only "
+                 "support 3.")
         .SetDefault(3);
     AddComment(R"DOC(
       This operator calculates the affinity propagatation for CSPN(
