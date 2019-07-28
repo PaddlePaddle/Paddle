@@ -37,8 +37,8 @@ def affinity_propagate(x, gate_weight, kernel_size=3):
         expand_x = np.concatenate(
             xs, axis=1)[:, :, :, side_num:-side_num, side_num:-side_num]
         out = np.sum(expand_x * gate_weight[:, :, np.newaxis, :, :], axis=1)
-        gate_sum = np.sum(gate_weight, axis=1, keepdims=True)
-        out = (1.0 - gate_sum) * x + out
+        # gate_sum = np.sum(gate_weight, axis=1, keepdims=True)
+        # out = (1.0 - gate_sum) * x + out
     elif len(x.shape) == 5:
         xs = []
         for i in range(2 * side_num + 1):
@@ -53,8 +53,8 @@ def affinity_propagate(x, gate_weight, kernel_size=3):
             xs, axis=1)[:, :, :, side_num:-side_num, side_num:-side_num,
                         side_num:-side_num]
         out = np.sum(expand_x * gate_weight[:, :, np.newaxis, :, :, :], axis=1)
-        gate_sum = np.sum(gate_weight, axis=1, keepdims=True)
-        out = (1.0 - gate_sum) * x + out
+        # gate_sum = np.sum(gate_weight, axis=1, keepdims=True)
+        # out = (1.0 - gate_sum) * x + out
 
     return out
 

@@ -47,24 +47,21 @@ __global__ void KeAffinityPropagate2DFw(T* output, const T* input,
 
     int rc = 0;
     T result = 0.;
-    T weight_sum = 0.;
     for (int i = -side_num; i <= side_num; i++) {
       for (int j = -side_num; j <= side_num; j++) {
         if (i != 0 || j != 0) {
           int rh = hi - i;
           int rw = wi - j;
-          int gate_idx = ni * channel_num * h * w + rc * h * w + hi * w + wi;
-          weight_sum += gate_weight[gate_idx];
           if (rh >= 0 && rh < h && rw >= 0 && rw < w) {
             int input_idx = tid - i * w - j;
+            int gate_idx = ni * channel_num * h * w + rc * h * w + hi * w + wi;
             result += input[input_idx] * gate_weight[gate_idx];
           }
           rc++;
         }
       }
     }
-
-    output[tid] = result + (1. - weight_sum) * input[tid];
+    output[tid] = result;
   }
 }
 
@@ -86,19 +83,14 @@ __global__ void KeAffinityPropagate2DBw(T* input_grad, T* gate_weight_grad,
     int wi = tid % w;
 
     int rc = 0;
-    T result = 0.;
-    T weight_sum = 0.;
     for (int i = -side_num; i <= side_num; i++) {
       for (int j = -side_num; j <= side_num; j++) {
         if (i != 0 || j != 0) {
           int rh = hi - i;
           int rw = wi - j;
-          int gate_idx = ni * channel_num * h * w + rc * h * w + hi * w + wi;
-          weight_sum += gate_weight[gate_idx];
-          platform::CudaAtomicAdd(&gate_weight_grad[gate_idx],
-                                  -input[tid] * output_grad[tid]);
           if (rh >= 0 && rh < h && rw >= 0 && rw < w) {
             int input_idx = tid - i * w - j;
+            int gate_idx = ni * channel_num * h * w + rc * h * w + hi * w + wi;
             platform::CudaAtomicAdd(&input_grad[input_idx],
                                     output_grad[tid] * gate_weight[gate_idx]);
             platform::CudaAtomicAdd(&gate_weight_grad[gate_idx],
@@ -108,8 +100,6 @@ __global__ void KeAffinityPropagate2DBw(T* input_grad, T* gate_weight_grad,
         }
       }
     }
-    platform::CudaAtomicAdd(&input_grad[tid],
-                            output_grad[tid] * (1. - weight_sum));
   }
 }
 
@@ -132,7 +122,6 @@ __global__ void KeAffinityPropagate3DFw(T* output, const T* input,
 
     int rc = 0;
     T result = 0.;
-    T weight_sum = 0.;
     for (int i = -side_num; i <= side_num; i++) {
       for (int j = -side_num; j <= side_num; j++) {
         for (int l = -side_num; l <= side_num; l++) {
@@ -140,11 +129,10 @@ __global__ void KeAffinityPropagate3DFw(T* output, const T* input,
             int rd = di - i;
             int rh = hi - j;
             int rw = wi - l;
-            int gate_idx = ni * channel_num * d * h * w + rc * d * h * w +
-                           di * h * w + hi * w + wi;
-            weight_sum += gate_weight[gate_idx];
             if (rd >= 0 && rd < d && rh >= 0 && rh < h && rw >= 0 && rw < w) {
               int input_idx = tid - i * h * w - j * w - l;
+              int gate_idx = ni * channel_num * d * h * w + rc * d * h * w +
+                             di * h * w + hi * w + wi;
               result += input[input_idx] * gate_weight[gate_idx];
             }
             rc++;
@@ -152,8 +140,7 @@ __global__ void KeAffinityPropagate3DFw(T* output, const T* input,
         }
       }
     }
-
-    output[tid] = result + (1. - weight_sum) * input[tid];
+    output[tid] = result;
   }
 }
 
@@ -176,8 +163,6 @@ __global__ void KeAffinityPropagate3DBw(T* input_grad, T* gate_weight_grad,
     int wi = tid % w;
 
     int rc = 0;
-    T result = 0.;
-    T weight_sum = 0.;
     for (int i = -side_num; i <= side_num; i++) {
       for (int j = -side_num; j <= side_num; j++) {
         for (int l = -side_num; l <= side_num; l++) {
@@ -185,13 +170,10 @@ __global__ void KeAffinityPropagate3DBw(T* input_grad, T* gate_weight_grad,
             int rd = di - i;
             int rh = hi - j;
             int rw = wi - l;
-            int gate_idx = ni * channel_num * d * h * w + rc * d * h * w +
-                           di * h * w + hi * w + wi;
-            weight_sum += gate_weight[gate_idx];
-            platform::CudaAtomicAdd(&gate_weight_grad[gate_idx],
-                                    -input[tid] * output_grad[tid]);
             if (rd >= 0 && rd < d && rh >= 0 && rh < h && rw >= 0 && rw < w) {
               int input_idx = tid - i * h * w - j * w - l;
+              int gate_idx = ni * channel_num * d * h * w + rc * d * h * w +
+                             di * h * w + hi * w + wi;
               platform::CudaAtomicAdd(&input_grad[input_idx],
                                       output_grad[tid] * gate_weight[gate_idx]);
               platform::CudaAtomicAdd(&gate_weight_grad[gate_idx],
@@ -202,8 +184,6 @@ __global__ void KeAffinityPropagate3DBw(T* input_grad, T* gate_weight_grad,
         }
       }
     }
-    platform::CudaAtomicAdd(&input_grad[tid],
-                            output_grad[tid] * (1. - weight_sum));
   }
 }
 
