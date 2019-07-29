@@ -20,6 +20,5 @@ configure_file(warpctc_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/warpctc_lib_pat
 cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 if (WITH_MKLML)
     cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
-    target_link_libraries(dynload_mklml glog gflags enforce)
 endif()
 # TODO(TJ): add iomp, mkldnn?
