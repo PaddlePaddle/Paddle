@@ -52,6 +52,7 @@ void BindFleetWrapper(py::module* m) {
       .def("cache_shuffle", &framework::FleetWrapper::CacheShuffle)
       .def("save_cache", &framework::FleetWrapper::SaveCache)
       .def("load_model", &framework::FleetWrapper::LoadModel)
+      .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("stop_server", &framework::FleetWrapper::StopServer)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
