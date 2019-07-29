@@ -1707,7 +1707,7 @@ class DistributeTranspiler(object):
 
         hadoop_config = self.config.pserver_hadoop_configs
         if endpoint:
-            enpoint = endpoint.split(":")[0]
+            endpoint = endpoint.split(":")[0]
         if hadoop_config and endpoint and endpoint in hadoop_config:
             hadoop_commands = []
             if 'HADOOP_HOME' in hadoop_config[endpoint]:
@@ -1718,7 +1718,7 @@ class DistributeTranspiler(object):
             hadoop_commands.append(hadoop_bin)
             dfs = 'fs'
             hadoop_commands.append(dfs)
-            for k, v in hadoop_config[endpoint]['configs']:
+            for k, v in hadoop_config[endpoint]['configs'].items():
                 config_command = '-D%s=%s' % (k, v)
                 hadoop_commands.append(config_command)
             hadoop_commands.append('-put')

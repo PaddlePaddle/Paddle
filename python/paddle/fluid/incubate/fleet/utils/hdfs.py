@@ -66,9 +66,6 @@ class HDFSClient(object):
             config_command = '-D%s=%s' % (k, v)
             self.pre_commands.append(config_command)
 
-    def get_precomands(self):
-        return self.pre_comands
-
     def __run_hdfs_cmd(self, commands, retry_times=5):
         whole_commands = copy.deepcopy(self.pre_commands)
         whole_commands.extend(commands)
@@ -350,12 +347,6 @@ class HDFSClient(object):
 
         return trainer_files[trainer_id]
 
-    def download_cmd(self, hdfs_file, local_path):
-        download_commands = ["-get", hdfs_file, local_path]
-        cmd = copy.deepcopy(self.pre_commands)
-        cmd = cmd.extend(download_commands)
-        return cmd
-
     def download(self,
                  hdfs_path,
                  local_path,
@@ -430,12 +421,6 @@ class HDFSClient(object):
                 t = os.path.join(dirname, i)
                 local_downloads.append(t)
         return local_downloads
-
-    def upload_cmd(self, hdfs_path, local_file):
-        upload_commands = ["-put", local_file, hdfs_path]
-        cmd = copy.deepcopy(self.pre_commands)
-        cmd = cmd.extend(upload_commands)
-        return cmd
 
     def upload(self,
                hdfs_path,

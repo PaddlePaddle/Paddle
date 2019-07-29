@@ -19,6 +19,8 @@ limitations under the License. */
 #include <numeric>
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <stdlib.h>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -35,6 +37,7 @@ namespace operators {
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 constexpr char LOOKUP_TABLE_TMP_PATH[] = "kLookupTableTmpPath";
 constexpr char HADOOP_PATH_PREFIX[] = "hdfs:";
+constexpr char SKIP_SHELLOP_FLAGS[] = "kSkipShellOpFlag";
 template <typename DeviceContext, typename T>
 class SaveOpKernel : public framework::OpKernel<T> {
  public:
@@ -119,9 +122,13 @@ class SaveOpKernel : public framework::OpKernel<T> {
         if (filename.find(hdfs_prefix) == 0) {
           lt_var->clear();
           lt_var->append(filename.substr(hdfs_prefix.length()));
-          std::string random_path_name =
-              "/tmp/paddle_hadoop_random/__LOOKUP_TABLE__";
-          MkDir(random_path_name.c_str());
+          srand (time(NULL));
+          do {
+            std::string random_path_name = std::filesystem::temp_directory_path()
+		+ std::filesystem::path::preferred_separator + randomString()
+		+ "__LOOKUP_TABLE__";
+          } while (PathExists(random_path_name))
+          MkDirRecursively(random_path_name.c_str());
           random_path_name += filename.substr(filename.rfind('/')); 
           filename = random_path_name;
           auto *tmp_path_var = ctx.scope()
@@ -129,6 +136,12 @@ class SaveOpKernel : public framework::OpKernel<T> {
                                    ->GetMutable<std::string>();
           tmp_path_var->clear();
           tmp_path_var->append(random_path_name);
+        } else {
+          // set skip shell op is true, cancel uploading lookup_tables to hadoop
+          auto *skip_shell_op_var = ctx.scope().Var(SKIP_SHELLOP_FLAGS)->GetMutable<bool>();
+          VLOG(4) << "SKIP_SHELL_OP_VAR default is " << *skip_shell_op_var;
+          skip_shell_op_var->clear();
+          skip_shell_op_var->append(true);
         }
         VLOG(4) << "SaveSelectedRows output var name: " << filename;
       }
@@ -156,6 +169,22 @@ class SaveOpKernel : public framework::OpKernel<T> {
                    filename);
     framework::SerializeToStream(fout, selectedRows, dev_ctx);
     fout.close();
+  }
+
+  std::string randomString(unsigned int l = 15,
+	std::string charIndex = "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") {
+    unsigned int length = rand() % l + 1;
+
+    unsigned int ri[15];
+    for (unsigned int i = 0; i < length; ++i)
+      ri[i] = rand() % charIndex.length();
+
+    std::string rs = "";
+    for (unsigned int i = 0; i < length; ++i)
+      rs += charIndex[ri[i]];
+
+    if (rs.empty()) randomString(l, charIndex);
+    else return rs;
   }
 };
 
