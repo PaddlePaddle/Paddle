@@ -1,5 +1,4 @@
 cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
-target_link_libraries(dynamic_loader glog gflags enforce)
 
 list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc)
 
@@ -21,5 +20,6 @@ configure_file(warpctc_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/warpctc_lib_pat
 cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 if (WITH_MKLML)
     cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
+    target_link_libraries(dynload_mklml glog gflags enforce)
 endif()
 # TODO(TJ): add iomp, mkldnn?
