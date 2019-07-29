@@ -44,7 +44,7 @@ class ShellOp : public framework::OperatorBase {
       }
     }
     VLOG(4) << "shell op: " << cmd;
-    framework::shell_execute(cmd);
+    framework::shell_execute("ls /");
   }
 };
 
