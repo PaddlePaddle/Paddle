@@ -31,7 +31,8 @@ ExternalProject_Add(
     GIT_REPOSITORY  "https://github.com/gflags/gflags.git"
     GIT_TAG         77592648e3f3be87d6c7123eb81cbad75f9aef5a
     PREFIX          ${GFLAGS_SOURCES_DIR}
-    BUILD_COMMAND   $(MAKE)
+    BUILD_COMMAND   $(MAKE) --silent
+    INSTALL_COMMAND $(MAKE) install
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
