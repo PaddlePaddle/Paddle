@@ -32,7 +32,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
 RUN_STEP = 5
-DEFAULT_BATCH_SIZE = 2
+DEFAULT_BATCH_SIZE = 4
 
 
 def my_print(class_name, log_str):
@@ -272,23 +272,14 @@ class TestParallelDyGraphRunnerBase(object):
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
-                my_print(
-                    type(self).__name__,
-                    "begin to prepare context in dygraph with nccl2")
                 dygraph.parallel.prepare_context(strategy)
                 model = dygraph.parallel.DataParallel(model, strategy)
-                my_print(type(self).__name__, "model built in dygraph")
             out_losses = []
-            my_print(type(self).__name__, "begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
                 data = _get_data(data)
                 if step_id == RUN_STEP:
                     break
                 loss = self.run_one_loop(model, opt, data)
-                if step_id % 10 == 0:
-                    my_print(
-                        type(self).__name__,
-                        "loss at step %d: %f" % (step_id, loss))
                 out_losses.append(loss.numpy())
 
                 # FIXME(Yancey1989): scale the loss inplace
@@ -301,7 +292,6 @@ class TestParallelDyGraphRunnerBase(object):
 
                 opt.minimize(loss)
                 model.clear_gradients()
-            my_print(type(self).__name__, pickle.dumps(out_losses))
 
 
 def runtime_main(test_class):
@@ -457,7 +447,7 @@ class TestDistBase(unittest.TestCase):
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1):
-
+        pick_filename = "local_run_%s.pkl" % self._ps_endpoints
         cmd = "%s %s --role trainer --lr %f" % (self._python_interp, model,
                                                 self._lr)
         if batch_size != DEFAULT_BATCH_SIZE:
@@ -478,7 +468,6 @@ class TestDistBase(unittest.TestCase):
             env_local = {'CPU_NUM': '1'}
 
         env_local.update(envs)
-        print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
             err_log = open("/tmp/trainer.err.log", "wb")
@@ -499,9 +488,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stderr: %s\n' % local_err)
-        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
-
+        return pick_filename
         return pickle.loads(local_out)
 
     def _run_cluster(self, model, envs, check_error_log):
@@ -583,6 +570,24 @@ class TestDistBase(unittest.TestCase):
         ps1.terminate()
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
+
+    def _get_pserver_trainer_cmd(self, model, ep, trainer_id, trainer_num):
+        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver -lr %f --pick_filename %s"
+        tr_cmd_str_list = []
+        endpoints = self._ps_endpoints.split(",")
+        for i in range(trainer_num):
+            tmp_cmd = tr_cmd % \
+                      (self._python_interp, model, self._ps_endpoints,
+                       i, endpoints[i], self._trainers, self._lr)
+            if self._sync_mode:
+                tmp_cmd += " --sync_mode"
+            if self._use_reduce:
+                tmp_cmd += " --use_reduce"
+            if self._use_reader_alloc:
+                tmp_cmd += " -- use_reader_alloc"
+
+            tr_cmd_str_list.append(tmp_cmd)
+        return tr_cmd_str_list
 
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
                                trainer_num):

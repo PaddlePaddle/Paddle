@@ -296,7 +296,6 @@ class TestDistCollectiveBase(unittest.TestCase):
                    batch_merge_repeat=1):
 
         pick_filename = "local_run_%s.pkl" % self._ps_endpoints
-        print(pick_filename)
         cmd = "%s %s --role trainer --lr %f --pick_filename %s" % \
               (self._python_interp, model,
                self._lr, pick_filename)
@@ -398,7 +397,6 @@ class TestDistCollectiveBase(unittest.TestCase):
             "trainer%d_%s.pkl" % (x, self._ps_endpoints)
             for x in range(trainer_num)
         ]
-        print(pickle_filenames)
 
         procs = []
         pipes = []
