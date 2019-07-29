@@ -40,7 +40,8 @@ class ShellOp : public framework::OperatorBase {
         auto *pv = cmd_params_var->GetMutable<std::string>();
         cmd.replace(cmd.find("{}"), 2, *pv);
       } else {
-        VLOG(4) << "ERROR";
+        PADDLE_THROW("%s variable doesn't exist, it's needed by shell op",
+                   cmd_params[i]);
       }
     }
     VLOG(4) << "shell op: " << cmd;

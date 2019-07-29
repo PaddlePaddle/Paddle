@@ -209,7 +209,7 @@ class Fleet(object):
             raise ValueError(
                 "hdfs_client_trainer must be an instance of HDFSClient")
 
-        if hdfs_server_config and not isinstance(hdfs_client_server, dict()):
+        if hdfs_server_config and not isinstance(hdfs_server_config, dict):
             raise ValueError("hdfs_server_config must be an instance of dict")
 
         self._hdfs_client_trainer = hdfs_client_trainer
