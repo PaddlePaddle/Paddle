@@ -34,10 +34,10 @@ extern std::once_flag PaddleInferenceAnakinPredictor<T, P, R>::init_anakin_;
 
 template <typename T, Precision P, OpRunType R>
 void PaddleInferenceAnakinPredictor<T, P, R>::InitEnv() {
-  anakin::TargetWrapper<T>::set_device(this->config_.device_id);
   std::call_once(this->init_anakin_, [this]() {
     anakin::Env<T>::env_init(this->config_.max_stream);
   });
+  anakin::TargetWrapper<T>::set_device(this->config_.device_id);
 }
 template <typename T, Precision P, OpRunType R>
 void PaddleInferenceAnakinPredictor<T, P, R>::InitNet() {
@@ -54,14 +54,20 @@ template <typename T, Precision P, OpRunType R>
 void PaddleInferenceAnakinPredictor<T, P, R>::InitGraph() {
   this->graph_p_ =
       std::make_shared<anakin::graph::Graph<T, anakin::Precision::FP32>>();
-  if (!(this->graph_p_->load(this->config_.model_file))) {
-    LOG(FATAL) << "fail to load graph from " << this->config_.model_file;
+  if (!this->config_.model_file.empty()) {
+    this->graph_p_->load(this->config_.model_file);
+  } else if (this->config_.model_buf_p) {
+    this->graph_p_->load(this->config_.model_buf_p,
+                         this->config_.model_buf_len);
+  } else {
+    LOG(FATAL) << "Model load error.";
   }
-  auto inputs = this->graph_p_->get_ins();
-  for (auto &input_str : inputs) {
+  this->input_names_ = this->graph_p_->get_ins();
+  this->output_names_ = this->graph_p_->get_outs();
+  for (auto &input_str : this->input_names_) {
     if (this->config_.init_inputs_shape.find(input_str) ==
         this->config_.init_inputs_shape.end()) {
-      LOG(FATAL) << input_str << " is not implemented.";
+      LOG(FATAL) << input_str << " should be set in init_inputs_shape.";
     }
     std::vector<int> shape =
         this->config_.init_inputs_shape.find(input_str)->second;
@@ -189,13 +195,14 @@ template <typename T, Precision P, OpRunType R>
 bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data) {
+  anakin::TargetWrapper<T>::set_device(this->config_.device_id);
   for (const auto &input : inputs) {
     if (input.dtype != PaddleDType::FLOAT32) {
       LOG(FATAL) << "Only support float type inputs. " << input.name
                  << "'s type is not float";
     }
     auto d_tensor_p = this->executor_p_->get_in(input.name);
-    auto net_shape = d_tensor_p->shape();
+    auto net_shape = d_tensor_p->valid_shape();
     if (net_shape.size() != input.shape.size()) {
       LOG(FATAL) << " input  " << input.name
                  << "'s shape size should be equal to that of net";
@@ -244,6 +251,10 @@ bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
     LOG(FATAL) << "At least one output should be set with tensors' names.";
   }
   for (auto &output : *output_data) {
+    if (std::find(this->output_names_.begin(), this->output_names_.end(),
+                  output.name) == this->output_names_.end()) {
+      LOG(FATAL) << output.name << " is not in the outputs of the graph.";
+    }
     auto *d_tensor_p = this->executor_p_->get_out(output.name);
     output.shape = d_tensor_p->valid_shape();
     if (output.data.length() < d_tensor_p->valid_size() * sizeof(float)) {
@@ -258,20 +269,23 @@ bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
   return true;
 }
 template <typename T, Precision P, OpRunType R>
-bool PaddleInferenceAnakinPredictor<T, P, R>::ResetConfig(
-    const AnakinConfig &config) {
-  this->config_ = config;
-  return true;
-}
-template <typename T, Precision P, OpRunType R>
-anakin::Net<T, P, R> &PaddleInferenceAnakinPredictor<T, P, R>::ResetExecuter(
-    std::shared_ptr<anakin::graph::Graph<T, P>> graph_p) {
-  this->graph_p_ = graph_p;
+bool PaddleInferenceAnakinPredictor<T, P, R>::Reset(
+    PaddleInferenceAnakinPredictor<T, P, R> *predictor) {
+  this->config_ = predictor->GetConfig();
+  this->graph_p_ = predictor->GetGraph();
+  this->input_names_ = predictor->GetInputNames();
+  this->output_names_ = predictor->GetOutputNames();
   this->ctx_p_ = std::make_shared<anakin::Context<T>>(
       this->config_.device_id, this->config_.data_stream_id,
       this->config_.compute_stream_id);
   this->InitNet();
-  return *this->executor_p_;
+  return true;
+}
+template <typename T, Precision P, OpRunType R>
+std::unique_ptr<PaddlePredictor>
+PaddleInferenceAnakinPredictor<T, P, R>::New() {
+  return std::unique_ptr<PaddlePredictor>(
+      new PaddleInferenceAnakinPredictor<T, P, R>());
 }
 // the cloned new Predictor of anakin share the same net weights from original
 // Predictor
@@ -279,20 +293,23 @@ template <typename T, Precision P, OpRunType R>
 std::unique_ptr<PaddlePredictor>
 PaddleInferenceAnakinPredictor<T, P, R>::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(
-      new PaddleInferenceAnakinPredictor<T, P, R>());
-  // construct executer from other graph
+  std::unique_ptr<PaddlePredictor> cls = std::move(this->New());
   auto anakin_predictor_p =
       dynamic_cast<PaddleInferenceAnakinPredictor<T, P, R> *>(cls.get());
   if (!anakin_predictor_p) {
     LOG(FATAL) << "fail to call Init";
   }
-  anakin_predictor_p->ResetConfig(this->config_);
-  anakin_predictor_p->ResetExecuter(this->graph_p_);
+  anakin_predictor_p->Reset(this);
   return cls;
 }
 
 #ifdef ANAKIN_MLU_PLACE
+template <Precision P, OpRunType R>
+std::unique_ptr<PaddlePredictor>
+PaddleInferenceAnakinMLUPredictor<P, R>::New() {
+  return std::unique_ptr<PaddlePredictor>(
+      new PaddleInferenceAnakinMLUPredictor<P, R>());
+}
 template <Precision P, OpRunType R>
 void PaddleInferenceAnakinMLUPredictor<P, R>::SetContext() {
   this->ctx_p_ = std::make_shared<anakin::Context<anakin::MLU>>(
@@ -321,6 +338,32 @@ void PaddleInferenceAnakinMLUPredictor<P, R>::Predict() {
 }
 #endif
 
+#ifdef ANAKIN_BM_PLACE
+template <Precision P, OpRunType R>
+std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinBMPredictor<P, R>::New() {
+  return std::unique_ptr<PaddlePredictor>(
+      new PaddleInferenceAnakinBMPredictor<P, R>());
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinBMPredictor<P, R>::OptimizeGraph() {
+  if (!this->graph_p_->fusion_optimize()) {
+    LOG(FATAL) << "Graph optimization error.";
+  }
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinBMPredictor<P, R>::InitNet() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  this->executor_p_ = new anakin::Net<anakin::BM, P, R>();
+  this->executor_p_->fusion_init(*this->graph_p_, this->ctx_p_, true);
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinBMPredictor<P, R>::Predict() {
+  anakin::TargetWrapper<anakin::BM>::device_sync();
+  this->executor_p_->fusion_prediction();
+  anakin::TargetWrapper<anakin::BM>::device_sync();
+}
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 template class PaddleInferenceAnakinPredictor<
     anakin::NV, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>;
@@ -332,6 +375,10 @@ template class PaddleInferenceAnakinPredictor<
 #ifdef ANAKIN_MLU_PLACE
 template class PaddleInferenceAnakinMLUPredictor<anakin::Precision::FP32,
                                                  ::anakin::OpRunType::SYNC>;
+#endif
+#ifdef ANAKIN_BM_PLACE
+template class PaddleInferenceAnakinBMPredictor<anakin::Precision::FP32,
+                                                ::anakin::OpRunType::ASYNC>;
 #endif
 
 // A factory to help create difference predictor.
@@ -361,7 +408,16 @@ CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
             config));
   }
 #endif
-  LOG(FATAL) << "Anakin Predictor create on unknown platform.";
+#ifdef ANAKIN_BM_PLACE
+  if (config.target_type == contrib::AnakinConfig::BM) {
+    return std::unique_ptr<PaddlePredictor>(
+        new PaddleInferenceAnakinBMPredictor<anakin::Precision::FP32,
+                                             ::anakin::OpRunType::ASYNC>(
+            config));
+  }
+#endif
+  LOG(FATAL) << "Anakin Predictor create on unknown platform: "
+             << config.target_type;
   return nullptr;
 }
 template <typename T, Precision P, OpRunType R>

@@ -204,6 +204,4 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_adam_op_pass, paddle::framework::ir::FuseAdamOpPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+REGISTER_PASS(fuse_adam_op_pass, paddle::framework::ir::FuseAdamOpPass);

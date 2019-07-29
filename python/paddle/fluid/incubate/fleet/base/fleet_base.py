@@ -157,19 +157,26 @@ class Fleet(object):
         Returns:
             list: files belongs to this worker.
         """
-        file_num = len(files)
         trainer_id = self.worker_index()
-        trainer_num = self.worker_num()
-        if trainer_num > file_num:
-            raise ValueError("trainer_num should be <= file_num : "
-                             "%s > %s" % (trainer_num, file_num))
-        start = 0
-        end = 0
-        for i in range(0, trainer_id + 1):
-            length = file_num / trainer_num + (i < (file_num % trainer_num))
-            start = end
-            end += length
-        return files[start:end]
+        trainers = self.worker_num()
+
+        if len(files) < trainers:
+            raise ValueError("file number must gather or equal trainer number")
+
+        remainder = len(files) % trainers
+        blocksize = len(files) / trainers
+
+        blocks = [blocksize] * trainers
+        for i in range(remainder):
+            blocks[i] += 1
+
+        trainer_files = [[]] * trainers
+        begin = 0
+        for i in range(trainers):
+            trainer_files[i] = files[begin:begin + blocks[i]]
+            begin += blocks[i]
+
+        return trainer_files[trainer_id]
 
     def init(self, role_maker=None):
         """

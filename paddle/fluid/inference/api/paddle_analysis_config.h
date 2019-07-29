@@ -61,6 +61,11 @@ struct AnalysisConfig {
   /** Set parameter composed file path.
    */
   void SetParamsFile(const std::string& x) { params_file_ = x; }
+  /** Set opt cache dir.
+   */
+  void SetOptimCacheDir(const std::string& opt_cache_dir) {
+    opt_cache_dir_ = opt_cache_dir;
+  }
   /** Get the model directory path.
    */
   const std::string& model_dir() const { return model_dir_; }
@@ -143,7 +148,7 @@ struct AnalysisConfig {
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = false);
+                            bool use_calib_mode = true);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -179,6 +184,10 @@ struct AnalysisConfig {
   /** Turn on MKLDNN.
    */
   void EnableMKLDNN();
+  /** set the cache capacity of different input shapes for MKLDNN.
+   *  Default 0 means don't cache any shape.
+   */
+  void SetMkldnnCacheCapacity(int capacity);
   /** A boolean state telling whether to use the MKLDNN.
    */
   bool mkldnn_enabled() const { return use_mkldnn_; }
@@ -223,7 +232,6 @@ struct AnalysisConfig {
   /** A boolean state telling whether the model is set from the CPU memory.
    */
   bool model_from_memory() const { return model_from_memory_; }
-  void SetEngineOptInfo(std::map<std::string, std::string> engine_opt_info);
 
   /** Turn on memory optimize
    * NOTE still in development, will release latter.
@@ -311,15 +319,18 @@ struct AnalysisConfig {
   bool anakin_auto_config_layout_{false};
   std::vector<std::string> anakin_passes_filter_;
   std::vector<std::string> anakin_ops_filter_;
-  std::map<std::string, std::string> engine_opt_info_;
 
+  // mkldnn related.
+  int mkldnn_cache_capacity_{0};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+
   // If the config is already used on a predictor, it becomes invalid.
-  mutable bool is_valid_{true};
   // Any config can only be used with one predictor.
   // Variables held by config can take up a lot of memory in some cases.
   // So we release the memory when the predictor is set up.
+  mutable bool is_valid_{true};
+  std::string opt_cache_dir_;
 };
 
 }  // namespace paddle

@@ -8,7 +8,11 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_simple_dist_transpiler)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
-    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_nccl)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_dgc_nccl)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_hallreduce)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_multi_comm)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_ring_allreduce)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_backward_deps)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_lars)
     LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     LIST(REMOVE_ITEM TEST_OPS test_dist_ctr)
@@ -26,7 +30,6 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
 endif()
-
 
 LIST(REMOVE_ITEM TEST_OPS test_launch)
 
@@ -53,12 +56,15 @@ if(APPLE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
         list(REMOVE_ITEM TEST_OPS test_program_code)
     endif(NOT WITH_DISTRIBUTE)
-    message(WARNING "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext")
+    message(WARNING "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*")
     # this op is not support on mac
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
     # TODO: add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_detection_map_op)
-    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
+    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_dgc)
+    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync)
+    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_async)
+    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync_with_memopt)
     # TODO(tangwei12): add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
@@ -66,6 +72,11 @@ endif()
 if(NOT WITH_MKLML)
     # this op is not support on openblas
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
+endif()
+
+if(WITH_GPU OR NOT WITH_MKLML)
+    # matmul with multiple heads need MKL support
+    LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
 endif()
 
 function(py_test_modules TARGET_NAME)
@@ -79,7 +90,7 @@ function(py_test_modules TARGET_NAME)
       add_test(NAME ${TARGET_NAME}
           COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-          ${PYTHON_EXECUTABLE} -m coverage run -a --branch ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
       add_test(NAME ${TARGET_NAME}
@@ -122,12 +133,17 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
-list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
+list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_dgc)
+list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync)
+list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_async)
+list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync_with_memopt)
 list(REMOVE_ITEM TEST_OPS test_dgc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_nccl)
 list(REMOVE_ITEM TEST_OPS test_dist_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
@@ -147,7 +163,8 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
-set(TEST_OPS_WITH_GC 
+set(TEST_OPS_WITH_GC
+  test_affine_channel_op
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
@@ -212,11 +229,23 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
-        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 300)
-        set_tests_properties(test_dist_mnist_nccl PROPERTIES TIMEOUT 300)
-        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 300)
-        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 300)
-        py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
+        set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 350)
+        set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES TIMEOUT 350)
+	set_tests_properties(test_dist_mnist_hallreduce PROPERTIES TIMEOUT 350)
+	set_tests_properties(test_dist_mnist_multi_comm PROPERTIES TIMEOUT 350)
+	set_tests_properties(test_dist_mnist_ring_allreduce PROPERTIES TIMEOUT 350)
+	set_tests_properties(test_dist_mnist_backward_deps PROPERTIES TIMEOUT 350)
+        set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 350)
+        set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 350)
+
+    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_dgc)
+        list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync)
+	    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_async)
+	        list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync_with_memopt)
+        py_test_modules(test_dist_se_resnext_dgc MODULES test_dist_se_resnext_dgc)
+	py_test_modules(test_dist_se_resnext_sync MODULES test_dist_se_resnext_sync)
+	py_test_modules(test_dist_se_resnext_async MODULES test_dist_se_resnext_async)
+	py_test_modules(test_dist_se_resnext_sync_with_memopt MODULES test_dist_se_resnext_sync_with_memopt)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
         bash_test_modules(test_launch MODULES test_launch.sh)
         # FIXME(typhoonzero): add these tests back
@@ -227,10 +256,12 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+py_test_modules(test_parallel_executor_crf_auto_growth MODULES test_parallel_executor_crf_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
+py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
@@ -256,4 +287,5 @@ endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
-        PROPERTIES LABELS "RUN_TYPE=DIST")
+        test_parallel_executor_crf_auto_growth
+        test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
