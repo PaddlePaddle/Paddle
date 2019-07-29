@@ -803,7 +803,8 @@ PDNode *patterns::ConvLeakyReLU::operator()(
   // Create Operators
   conv_input->assert_is_op_input("conv2d", "Input");
   auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
-  auto *leaky_relu_op = pattern->NewNode(leaky_relu_repr())->assert_is_op("leaky_relu");
+  auto *leaky_relu_op =
+      pattern->NewNode(leaky_relu_repr())->assert_is_op("leaky_relu");
   // Create variables
   // Filter
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
@@ -817,8 +818,8 @@ PDNode *patterns::ConvLeakyReLU::operator()(
                            ->assert_is_op_input("leaky_relu");
   // output
   auto *leaky_relu_out_var = pattern->NewNode(leaky_relu_out_repr())
-                           ->AsOutput()
-                           ->assert_is_op_output("leaky_relu");
+                                 ->AsOutput()
+                                 ->assert_is_op_output("leaky_relu");
 
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
   leaky_relu_op->LinksFrom({conv_out_var}).LinksTo({leaky_relu_out_var});

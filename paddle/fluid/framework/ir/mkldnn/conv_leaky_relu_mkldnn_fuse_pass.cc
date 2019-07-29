@@ -30,8 +30,8 @@ void ConvLeakyReLUFusePass::ApplyImpl(ir::Graph* graph) const {
                          ->NewNode("conv_leaky_relu_mkldnn_fuse/conv_input")
                          ->AsInput()
                          ->assert_is_op_input("conv2d", "Input");
-  patterns::ConvLeakyReLU conv_leaky_relu_pattern(gpd.mutable_pattern(),
-                                       "conv_leaky_relu_mkldnn_fuse");
+  patterns::ConvLeakyReLU conv_leaky_relu_pattern(
+      gpd.mutable_pattern(), "conv_leaky_relu_mkldnn_fuse");
   conv_leaky_relu_pattern(conv_input);
 
   int found_conv_leaky_relu_count = 0;
@@ -39,11 +39,14 @@ void ConvLeakyReLUFusePass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     VLOG(4) << "handle ConvLeakyReLU fuse";
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
-                              conv_leaky_relu_pattern);                      // Filter
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_leaky_relu_pattern);  // tmp
-    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_leaky_relu_pattern);                // CONV op
-    GET_IR_NODE_FROM_SUBGRAPH(leaky_relu_out, leaky_relu_out, conv_leaky_relu_pattern);        // Out
-    GET_IR_NODE_FROM_SUBGRAPH(leaky_relu, leaky_relu, conv_leaky_relu_pattern);                // LeakyReLU op
+                              conv_leaky_relu_pattern);  // Filter
+    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out,
+                              conv_leaky_relu_pattern);              // tmp
+    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_leaky_relu_pattern);  // CONV op
+    GET_IR_NODE_FROM_SUBGRAPH(leaky_relu_out, leaky_relu_out,
+                              conv_leaky_relu_pattern);  // Out
+    GET_IR_NODE_FROM_SUBGRAPH(leaky_relu, leaky_relu,
+                              conv_leaky_relu_pattern);  // LeakyReLU op
 
     FuseOptions fuse_option = FindFuseOption(*conv, *leaky_relu);
     if (fuse_option == DO_NOT_FUSE) {
@@ -53,7 +56,8 @@ void ConvLeakyReLUFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Transform Conv node into ConvLeakyReLU node.
     OpDesc* desc = conv->Op();
-    desc->SetOutput("Output", std::vector<std::string>({leaky_relu_out->Name()}));
+    desc->SetOutput("Output",
+                    std::vector<std::string>({leaky_relu_out->Name()}));
     desc->SetAttr("fuse_leaky_relu", true);
     desc->SetAttr("fuse_leaky_relu_alpha", leaky_relu->Op()->GetAttr("alpha"));
 

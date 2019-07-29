@@ -170,7 +170,8 @@ void Conv2DTransposeOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("fuse_leaky_relu", "(bool, default false) Only used in mkldnn kernel")
+  AddAttr<bool>("fuse_leaky_relu",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<float>("fuse_leaky_relu_alpha",
                  "(float, default 0.02) Only used in mkldnn kernel")

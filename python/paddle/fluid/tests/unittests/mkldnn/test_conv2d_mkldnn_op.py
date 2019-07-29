@@ -89,7 +89,8 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
             output = np.maximum(output, 0).astype(self.dsttype)
 
         if self.fuse_leaky_relu:
-            output = np.maximum(output, self.fuse_leaky_relu_alpha * output).astype(self.dsttype)
+            output = np.maximum(output, self.fuse_leaky_relu_alpha *
+                                output).astype(self.dsttype)
 
         if self.fuse_brelu:
             output = np.minimum(
