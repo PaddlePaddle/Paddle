@@ -33,11 +33,12 @@ class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(cls,
                                   method,
                                   use_cuda=True,
-                                  memory_opt=True,
+                                  memory_opt=False,
                                   iter=50,
                                   batch_size=None,
                                   allow_op_delay=False,
                                   feed_dict=None,
+                                  get_data_from_feeder=None,
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
@@ -65,13 +66,19 @@ class TestParallelExecutorBase(unittest.TestCase):
                 main.random_seed = seed
 
             loss = method(use_feed=feed_dict is not None)
-            loss.persistable = True
+            # NOTE(zjl): memory_optimize/inplace pass would not require 
+            # that loss.persistable = True 
+            loss.persistable = memory_opt
 
             if optimizer:
                 optimizer().minimize(loss)
 
             if memory_opt:
                 fluid.memory_optimize(main)
+
+            if get_data_from_feeder is not None:
+                assert feed_dict is None
+                feed_dict = get_data_from_feeder()
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -80,17 +87,17 @@ class TestParallelExecutorBase(unittest.TestCase):
         exec_strategy.allow_op_delay = allow_op_delay
         if use_fast_executor:
             exec_strategy.use_experimental_executor = True
+
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
             if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
         build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
-        build_strategy.memory_optimize = False if memory_opt else use_ir_memory_optimize
         build_strategy.fuse_all_optimizer_ops = fuse_all_optimizer_ops
         build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops
-        # python memory optimization is conflict with inplace pass.
-        # Use ir graph memory optimization after inplace pass is the correct way.
-        build_strategy.enable_inplace = False if memory_opt else enable_inplace
+
+        build_strategy.memory_optimize = use_ir_memory_optimize
+        build_strategy.enable_inplace = enable_inplace
         build_strategy.enable_sequential_execution = enable_sequential_execution
 
         if use_cuda and core.is_compiled_with_cuda():

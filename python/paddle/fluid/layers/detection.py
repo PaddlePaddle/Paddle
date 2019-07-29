@@ -2108,7 +2108,7 @@ def roi_perspective_transform(input,
             (num_rois, 1, transformed_h, transformed_w).
 
             transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
-            a 1-D tensor with shape (9,).
+            a 2-D tensor with shape (num_rois, 9).
 
     Examples:
         .. code-block:: python

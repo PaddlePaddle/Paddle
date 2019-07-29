@@ -115,8 +115,15 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   auto *out = context.Output<LoDTensor>("Out");
   bool in_place = in_vars[0] == context.OutputVar("Out");
+
   if (!in_place) {
-    out->mutable_data<T>(context.GetPlace());
+    auto *out_ptr = out->mutable_data<T>(context.GetPlace());
+    if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+      auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+      if (in_0_tensor.numel() > 0) {
+        in_place = (in_0_tensor.data<T>() == out_ptr);
+      }
+    }
   }
 
   // Sum of two tensors

@@ -12,6 +12,7 @@ if(NOT WITH_FAST_MATH)
   add_definitions(-DEIGEN_FAST_MATH=0)
 endif()
 
+
 if(WIN32)
     set(EIGEN_GIT_REPOSITORY https://github.com/wopeizl/eigen-git-mirror)
     set(EIGEN_GIT_TAG support_cuda9_win)
