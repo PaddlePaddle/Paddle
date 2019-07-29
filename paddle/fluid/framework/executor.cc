@@ -60,8 +60,9 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
 #ifdef PADDLE_WITH_NGRAPH
   if (FLAGS_use_ngraph) {
-    LOG(WARNING, 1) << "FLAGS_use_ngraph=True, garbage collection strategy is "
-                       "disabled in Executor";
+    LOG_FIRST_N(WARNING, 1)
+        << "FLAGS_use_ngraph=True, garbage collection strategy is "
+           "disabled in Executor";
     force_disable_gc = true;
   }
 #endif
