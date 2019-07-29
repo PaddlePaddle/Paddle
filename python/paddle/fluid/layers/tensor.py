@@ -821,7 +821,7 @@ def isfinite(x):
             var = fluid.layers.data(name="data",
                                     shape=(4, 6),
                                     dtype="float32")
-            out = fluid.layers.isfinite(v)
+            out = fluid.layers.isfinite(var)
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
