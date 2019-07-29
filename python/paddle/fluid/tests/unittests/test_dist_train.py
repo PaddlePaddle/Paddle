@@ -112,6 +112,7 @@ class TestSendOp(unittest.TestCase):
                 dtype='float32',
                 name='X',
                 append_batch_size=False)
+            x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
             get_var = main.global_block().create_var(
