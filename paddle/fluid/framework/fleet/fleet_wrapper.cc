@@ -526,6 +526,7 @@ double FleetWrapper::GetCacheThreshold() {
   return cache_threshold;
 #else
     VLOG(0) << "FleetWrapper::GetCacheThreshold does nothing when no pslib";
+    return 0.0;
 #endif
 }
 

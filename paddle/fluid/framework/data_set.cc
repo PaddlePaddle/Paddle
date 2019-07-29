@@ -767,7 +767,7 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
                 if (!multi_consume_channel_[i]) {
                     continue;
                 }
-                multi_output_channel_[i]->Clear();
+                multi_consume_channel_[i]->Clear();
             }   
         }
     }
@@ -784,7 +784,7 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
                 if (!multi_consume_channel_[i]) {
                     continue;
                 }
-                end_size += multi_output_channel_[i]->Size();
+                end_size += multi_consume_channel_[i]->Size();
             }   
         }
     std::cout << "input channel size before check: " << input_channel_->Size() << " out channel size: " << end_size <<  std::endl;
