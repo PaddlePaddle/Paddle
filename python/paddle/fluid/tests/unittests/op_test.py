@@ -224,10 +224,10 @@ class OpTest(unittest.TestCase):
         output_values = list(outputs.values())
         output_names = list(outputs.keys())
         rename_dict = {}
-        for i in range(len(output_values)):
-            rename_dict[output_values[i].name] = input_values[i].name
-            output_values[i].name = input_values[i].name
-        outputs = dict(zip(output_names, output_values))
+        #for i in range(len(output_values)):
+        #    rename_dict[output_values[i].name] = input_values[i].name
+        #    output_values[i].name = input_values[i].name
+        #outputs = dict(zip(output_names, output_values))
         #print(outputs)
         self.rename_dict = rename_dict
         if hasattr(self, "cache_name_list"):

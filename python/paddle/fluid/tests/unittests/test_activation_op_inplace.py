@@ -17,30 +17,27 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
+from op_inplace_test import OpInplaceTest
 from scipy.special import expit, erf
 
 
-class TestActivation(OpTest):
+class TestActivation(OpInplaceTest):
     def setUp(self):
         self.op_type = "exp"
         self.dtype = np.float32
         self.init_dtype()
         self.init_kernel_type()
+        self.memory_optimize = False
+        self.fuse_all_optimizer_ops = False
 
-        x = np.random.uniform(0.1, 1, [3, 3]).astype(self.dtype)
+        x = np.random.uniform(0.1, 1, [2, 2]).astype(self.dtype)
         out = np.exp(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpInplaceTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -53,17 +50,14 @@ class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
         self.init_dtype()
+        self.memory_optimize = False
+        self.fuse_all_optimizer_ops = False
 
         x = np.random.uniform(-1, 1, [2, 2]).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpInplaceTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 '''
