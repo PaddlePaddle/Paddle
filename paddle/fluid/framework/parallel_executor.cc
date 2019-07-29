@@ -252,7 +252,18 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "buffer_shared_inplace_pass Applied";
   }
 
-  // TODO(zjl): refactor MemoryOptimizePass as well!!!
+  if (build_strategy_.memory_optimize_) {
+    auto cross_op_memory_reuse_pass = ir::PassRegistry::Instance().Get(
+        "buffer_shared_cross_op_memory_reuse_pass");
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
+                                            &mem_opt_var_infos_);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
+                                            &last_live_ops_of_vars);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
+    graph = cross_op_memory_reuse_pass->Apply(graph);
+    VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
+  }
 
   if (GetEagerDeletionThreshold() < 0) {
     return graph;
@@ -780,3 +791,4 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
+USE_PASS(buffer_shared_cross_op_memory_reuse_pass);

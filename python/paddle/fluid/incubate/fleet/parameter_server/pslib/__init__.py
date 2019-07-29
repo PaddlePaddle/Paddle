@@ -227,21 +227,22 @@ class PSLib(Fleet):
                 self._fleet_ptr.shrink_sparse_table(i.table_id)
         self._role_maker._barrier_worker()
 
-    def shrink_dense_table(self, decay, scope=None, table_id=None):
+    def shrink_dense_table(self, decay, emb_dim=11, scope=None, table_id=None):
         """
-        shrink all dense params in pserver by multiplying by decay
+        shrink batch_sum in pserver by multiplying by decay
 
         Args:
             decay(float): the decay rate, usually range in (0, 1)
+            emb_dim(int): one element's length in datanorm layer
             scope(Scope): Scope object, default is fluid.global_scope()
             table_id(int): table id of shrinking dense table. None means shrink all,
                            you should specify it when using multiple scopes,
                            default is None.
 
         Example:
-            >>> fleet.shrink_dense_table(0.98, myscope1, 1)
-            >>> fleet.shrink_dense_table(0.98, myscope1, 2)
-            >>> fleet.shrink_dense_table(0.98, myscope2, 3)
+            >>> fleet.shrink_dense_table(0.98, 11, myscope1, 1)
+            >>> fleet.shrink_dense_table(0.98, 11, myscope1, 2)
+            >>> fleet.shrink_dense_table(0.98, 11, myscope2, 3)
 
         """
         if scope is None:
@@ -260,7 +261,7 @@ class PSLib(Fleet):
                 if skip:
                     continue
                 self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list,
-                                                   decay)
+                                                   decay, emb_dim)
         self._role_maker._barrier_worker()
 
     def load_one_table(self, table_id, model_path, **kwargs):

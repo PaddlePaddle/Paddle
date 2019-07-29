@@ -75,7 +75,7 @@ class DownpourServer(Server):
         table.type = pslib.PS_SPARSE_TABLE
         table.compress_in_save = True
         table.shard_num = 1000
-        table.accessor.accessor_class = "DownpourFeatureValueAccessor"
+        table.accessor.accessor_class = "DownpourCtrAccessor"
         table.accessor.sparse_sgd_param.learning_rate = learning_rate
         table.accessor.sparse_sgd_param.initial_g2sum = 3
         table.accessor.sparse_sgd_param.initial_range = 1e-4
@@ -88,7 +88,8 @@ class DownpourServer(Server):
         table.accessor.downpour_accessor_param.click_coeff = 2
         table.accessor.downpour_accessor_param.base_threshold = 0.2
         table.accessor.downpour_accessor_param.delta_threshold = 0.15
-        table.accessor.downpour_accessor_param.delta_keep_days = 31
+        table.accessor.downpour_accessor_param.delta_keep_days = 16
+        table.accessor.downpour_accessor_param.delete_after_unseen_days = 30
         table.accessor.downpour_accessor_param.show_click_decay_rate = 0.999
         table.accessor.downpour_accessor_param.delete_threshold = 0.8
 
