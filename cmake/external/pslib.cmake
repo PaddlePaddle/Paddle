@@ -59,8 +59,9 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${PSLIB_SOURCE_DIR}
     DOWNLOAD_DIR          ${PSLIB_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
-                          && tar zxvf ${PSLIB_NAME}.tar.gz
+    DOWNLOAD_COMMAND      cp /home/yaoxuefeng/repos/env_package_for_pslib/baidu/personal-code/paddle-parallelcpu-env/pslib/d21a2f6/pslib.tar.gz  . && tar zxvf pslib.tar.gz  
+    #wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
+    #                      && tar zxvf ${PSLIB_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}

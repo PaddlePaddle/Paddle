@@ -91,6 +91,24 @@ class DatasetBase(object):
         """
         self.proto_desc.pipe_command = pipe_command
 
+    def set_fea_eval(self, fea_eval, record_candidate_size):
+        """
+
+        #TODO: annotation
+        """
+        if fea_eval:
+            self.dataset.set_fea_eval(fea_eval, record_candidate_size)
+        self.fea_eval = True
+
+    def slots_shuffle(self, slots):
+        """
+
+        :param slots:
+        :return:
+        """
+        if self.fea_eval:
+            self.dataset.slots_shuffle(slots)
+
     def set_batch_size(self, batch_size):
         """
         Set batch size. Will be effective during training
