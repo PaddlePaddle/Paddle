@@ -121,7 +121,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
           lt_var->append(filename.substr(hdfs_prefix.length()));
           std::string random_path_name =
               "/tmp/paddle_hadoop_random/__LOOKUP_TABLE__";
-          MKDIR(random_path_name);
+          MkDir(random_path_name.c_str());
           random_path_name += filename.substr(filename.rfind('/')); 
           filename = random_path_name;
           auto *tmp_path_var = ctx.scope()
