@@ -16,6 +16,8 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 #include <string>
+#include <unordered_map>
+#include <utility>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -59,12 +61,6 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "size specified by this flag. Else Paddle will reallocate by "
               "FLAGS_fraction_of_gpu_memory_to_use");
 
-DEFINE_uint64(gpu_max_chunk_size_in_mb, 4096ul,
-              "PaddlePaddle uses a memory pool to pre-load the GPU memory "
-              "to speed up memory allocation. But for large memory chunk whose"
-              " size is greater than this flag value, PaddlePaddle doesn't keep"
-              " the large chunk in the pool in order to save user's memory");
-
 DEFINE_bool(
     enable_cublas_tensor_op_math, false,
     "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
@@ -86,6 +82,8 @@ DEFINE_string(selected_gpus, "",
 
 namespace paddle {
 namespace platform {
+
+static unordered_map<int, size_t> device_max_chunk_size;
 
 inline std::string CudaErrorWebsite() {
   return "Please see detail in https://docs.nvidia.com/cuda/cuda-runtime-api"
@@ -283,18 +281,14 @@ size_t GpuMinChunkSize() {
 }
 
 size_t GpuMaxChunkSize() {
-  size_t total = 0;
-  size_t available = 0;
-
-  GpuMemoryUsage(&available, &total);
-  VLOG(10) << "GPU Usage " << (available >> 20) << "M/" << (total >> 20) << "M";
-  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
-  // If available less than minimum chunk size, no usable memory exists.
-  available =
-      std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
-               total - reserving);
-
-  return FLAGS_gpu_max_chunk_size_in_mb << 20;
+  int device_id = GetDeviceId();
+  auto iter = device_max_chunk_size.find(device_id);
+  if (iter != device_max_chunk_size.end()) {
+    return iter->second;
+  }
+  size_t max_chunk_size = GpuMaxAllocSize();
+  device_max_chunk_size.insert(std::make_pair(device_id, allocating));
+  return max_chunk_size;
 }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,

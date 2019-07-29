@@ -171,7 +171,10 @@ void BuddyAllocator::Free(void* p) {
   }
 }
 
-size_t BuddyAllocator::Used() { return total_used_; }
+size_t BuddyAllocator::Used() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return total_used_;
+}
 size_t BuddyAllocator::GetMinChunkSize() { return min_chunk_size_; }
 size_t BuddyAllocator::GetMaxChunkSize() { return max_chunk_size_; }
 
