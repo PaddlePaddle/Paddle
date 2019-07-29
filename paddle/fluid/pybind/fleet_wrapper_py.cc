@@ -49,6 +49,7 @@ void BindFleetWrapper(py::module* m) {
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
       .def("load_model", &framework::FleetWrapper::LoadModel)
+      .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("stop_server", &framework::FleetWrapper::StopServer)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
