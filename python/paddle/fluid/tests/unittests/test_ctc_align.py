@@ -20,6 +20,7 @@ import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
 
+
 def CTCAlign(input, lod, blank, merge_repeated, padding=0):
     if lod is not None and len(lod) > 0:
         lod0 = lod[0]
@@ -30,7 +31,7 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0):
             for j in range(cur_offset, cur_offset + lod0[i]):
                 token = input[j][0]
                 if (token != blank) and not (merge_repeated and
-                                         token == prev_token):
+                                             token == prev_token):
                     result.append(token)
                 prev_token = token
             cur_offset += lod0[i]
@@ -43,13 +44,15 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0):
             prev_token = -1
             for j in range(len(input[i])):
                 token = input[i][j]
-                if (token != blank ) and not (merge_repeated and token == prev_token):
+                if (token != blank) and not (merge_repeated and
+                                             token == prev_token):
                     result[i].append(token)
                 prev_token = token
             start = len(result[i])
             for j in range(start, len(input[i])):
                 result[i].append(padding)
-        result = np.array(result).reshape([len(input), len(input[0])]).astype("int32")
+        result = np.array(result).reshape(
+            [len(input), len(input[0])]).astype("int32")
 
     return result
 
@@ -100,6 +103,7 @@ class TestCTCAlignOpCase2(TestCTCAlignOp):
         self.merge_repeated = True
         self.input = np.array([0, 0, 0, 0]).reshape([4, 1]).astype("int32")
 
+
 class TestCTCAlignPaddingOp(OpTest):
     def config(self):
         self.op_type = "ctc_align"
@@ -115,12 +119,14 @@ class TestCTCAlignPaddingOp(OpTest):
         self.config()
         output = CTCAlign(self.input, self.input_lod, self.blank,
                           self.merge_repeated, self.padding_num)
-        self.inputs = {"Input": (self.input, self.input_lod),}
-        self.outputs = {"Output" : output}
-        self.attrs = {"blank" : self.blank,
-                      "merge_repeated" : self.merge_repeated,
-                      "padding_num" : self.padding_num
-                      }
+        self.inputs = {"Input": (self.input, self.input_lod), }
+        self.outputs = {"Output": output}
+        self.attrs = {
+            "blank": self.blank,
+            "merge_repeated": self.merge_repeated,
+            "padding_num": self.padding_num
+        }
+
     def test_check_output(self):
         self.check_output()
         pass
@@ -133,22 +139,26 @@ class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):
         self.input_lod = []
         self.merge_repeated = True
         self.padding_num = 0
-        self.input = np.array([[0, 1, 2, 2, 0, 4],
-                               [0, 4, 5, 0, 6, 0],
+        self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
                                [0, 7, 7, 7, 0, 0]]).reshape(
-                                       [3, 6]).astype("int32")
+                                   [3, 6]).astype("int32")
+
 
 class TestCTCAlignOpCase4(TestCTCAlignPaddingOp):
+    '''
+    # test tensor input which has attr input padding_num
+    '''
+
     def config(self):
         self.op_type = "ctc_align"
         self.blank = 0
         self.input_lod = []
         self.merge_repeated = False
         self.padding_num = 0
-        self.input = np.array([[0, 1, 2, 2, 0, 4],
-                               [0, 4, 5, 0, 6, 0],
+        self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
                                [0, 7, 7, 7, 0, 0]]).reshape(
-                                       [3,6]).astype("int32")
+                                   [3, 6]).astype("int32")
+
 
 class TestCTCAlignOpCase5(TestCTCAlignPaddingOp):
     def config(self):
@@ -157,12 +167,9 @@ class TestCTCAlignOpCase5(TestCTCAlignPaddingOp):
         self.input_lod = []
         self.merge_repeated = False
         self.padding_num = 1
-        self.input = np.array([[0, 1, 2, 2, 0, 4],
-                               [0, 4, 5, 0, 6, 0],
+        self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
                                [0, 7, 1, 7, 0, 0]]).reshape(
-                                       [3,6]).astype("int32")
-
-
+                                   [3, 6]).astype("int32")
 
 
 if __name__ == "__main__":

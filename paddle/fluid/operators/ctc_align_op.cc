@@ -56,9 +56,10 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: true), whether to "
                   "merge repeated elements between two blanks. ")
         .SetDefault(true);
+    // add attr padding number for tensor input
     AddAttr<int>("padding_num",
-                "(int, default: 0), padding number "
-                "use to padding tensor. ")
+                 "(int, default: 0), padding number "
+                 "use to padding tensor. ")
         .SetDefault(0);
     AddComment(R"DOC(
 CTCAlign op is used to merge repeated elements between two blanks
