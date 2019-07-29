@@ -23,7 +23,6 @@ from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
-from paddle.fluid import core
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
@@ -146,7 +145,7 @@ class DistributedTranspiler(Fleet):
             raise ValueError("optimizer must be an instance of Optimizer")
         self._optimizer = TranspilerOptimizer(optimizer, strategy)
         return self._optimizer
-    
+
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -184,11 +183,8 @@ class DistributedTranspiler(Fleet):
         if hdfs_dirname.startswith(HDFS_PREFIX):
             #self._hdfs_client.upload(hdfs_dirname[len(HDFS_PREFIX):], dirname)
             print("rm -irf " + dirname)
-  
-    def save_persistables(self,
-                          executor,
-                          dirname,
-                          main_program=None):
+
+    def save_persistables(self, executor, dirname, main_program=None):
         """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
@@ -208,11 +204,12 @@ class DistributedTranspiler(Fleet):
         if main_program is None:
             main_program = self.main_program
 
-        io.save_persistables(executor, dirname, main_program, None, hdfs_dirname)
+        io.save_persistables(executor, dirname, main_program, None,
+                             hdfs_dirname)
 
         if hdfs_dirname:
             #self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
-                                             #dirname)
+            #dirname)
             print("rm -irf " + dirname)
 
     def _transpile(self, config):

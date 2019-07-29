@@ -15,33 +15,32 @@
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/io/shell.h"
+#include "paddle/fluid/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
 class ShellOp : public framework::OperatorBase {
  public:
-  ShellOp(const std::string& type,
-                const framework::VariableNameMap& inputs,
-                const framework::VariableNameMap& outputs,
-                const framework::AttributeMap& attrs)
+  ShellOp(const std::string& type, const framework::VariableNameMap& inputs,
+          const framework::VariableNameMap& outputs,
+          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::string cmd_format = Attr<std::string>("cmd_format");
     std::vector<std::string> cmd_params =
-                    Attr<std::vector<std::string>>("cmd_params");
+        Attr<std::vector<std::string>>("cmd_params");
     std::string cmd = cmd_format;
     for (size_t i = 0; i < cmd_params.size(); i++) {
-      framework::Variable *cmd_params_var = scope.FindVar(cmd_params[i]);
+      framework::Variable* cmd_params_var = scope.FindVar(cmd_params[i]);
       if (cmd_params_var != nullptr) {
-        auto *pv = cmd_params_var->GetMutable<std::string>();
+        auto* pv = cmd_params_var->GetMutable<std::string>();
         cmd.replace(cmd.find("{}"), 2, *pv);
       } else {
         PADDLE_THROW("%s variable doesn't exist, it's needed by shell op",
-                   cmd_params[i]);
+                     cmd_params[i]);
       }
     }
     VLOG(4) << "shell op: " << cmd;
@@ -59,10 +58,11 @@ class ShellOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("cmd_format",
                          "(string ,default'')"
                          "indicate the command format with placeholder {}");
-    AddAttr<std::vector<std::string>>("cmd_params",
-                         "(vector<string>, default vector<string>())"
-                         "indicate the name of needed parameters")
-                        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "cmd_params",
+        "(vector<string>, default vector<string>())"
+        "indicate the name of needed parameters")
+        .SetDefault({});
   }
 };
 
@@ -77,5 +77,4 @@ class ShellOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(shell, ops::ShellOp, paddle::framework::EmptyGradOpMaker,
-                    ops::ShellOpMaker, ops::ShellOpShapeInference);
-
+                  ops::ShellOpMaker, ops::ShellOpShapeInference);

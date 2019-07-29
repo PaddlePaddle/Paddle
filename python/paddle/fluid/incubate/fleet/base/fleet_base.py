@@ -226,7 +226,7 @@ class Fleet(object):
             #        "if you want to use hadoop path, please init hadoop client firstly"
             #    )
             while True:
-                rets = '/tmp/paddle_hadoop_tmp_%s' % uuid.uuid4().hex()
+                rets = '/tmp/paddle_hadoop_tmp_%s' % uuid.uuid4()
                 if not os.path.exists(rets):
                     break
         #elif self._hdfs_client_trainer or self._hdfs_client_server:

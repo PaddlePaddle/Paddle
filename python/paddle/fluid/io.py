@@ -291,7 +291,10 @@ def save_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def _save_distributed_persistables(executor, dirname, main_program, hdfs_dirname=None):
+def _save_distributed_persistables(executor,
+                                   dirname,
+                                   main_program,
+                                   hdfs_dirname=None):
     """
     save_persistables for distributed training.
     the method will do things listed below:
@@ -404,7 +407,8 @@ def _save_distributed_persistables(executor, dirname, main_program, hdfs_dirname
         executor.run(prog)
 
     def __save_distributed_lookup_tables(executor, dirname,
-                                         distributed_lookup_table, endpoints, hdfs_dirname):
+                                         distributed_lookup_table, endpoints,
+                                         hdfs_dirname):
         """
         because the distributed lookup table may too huge to merge and save at one place,
         it will be saved at parameter server independent respectively.
@@ -420,8 +424,8 @@ def _save_distributed_persistables(executor, dirname, main_program, hdfs_dirname
         attrs = {}
         attrs['epmap'] = endpoints
         attrs['dir'] = os.path.join(
-                hdfs_dirname,
-                "__lookup_table__") if hdfs_dirname else lookup_table_filename
+            hdfs_dirname,
+            "__lookup_table__") if hdfs_dirname else lookup_table_filename
         attrs['lookup_table'] = distributed_lookup_table
         block.append_op(
             type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
@@ -474,7 +478,11 @@ def _save_distributed_persistables(executor, dirname, main_program, hdfs_dirname
                 main_program._endpoints, hdfs_dirname)
 
 
-def save_persistables(executor, dirname, main_program=None, filename=None, hdfs_dirname=None):
+def save_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      hdfs_dirname=None):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then saves these variables to the folder `dirname`
@@ -514,7 +522,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None, hdfs_
 
     if main_program and main_program._is_distributed:
         _save_distributed_persistables(
-            executor, dirname=dirname, main_program=main_program, hdfs_dirname=hdfs_dirname)
+            executor,
+            dirname=dirname,
+            main_program=main_program,
+            hdfs_dirname=hdfs_dirname)
 
     else:
         save_vars(
