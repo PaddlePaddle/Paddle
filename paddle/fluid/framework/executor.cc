@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
@@ -69,6 +70,15 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   force_disable_gc_ = force_disable_gc;
   if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
     return;
+  }
+
+  // If gc is enabled and block size > 1
+  if (prog_.Size() > 1) {
+    operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        block_id_, ops_);
   }
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
@@ -415,13 +425,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
-    // If gc is enabled and block size > 1
-    if (gc && ctx->prog_.Size() > 1) {
-      operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
-                                                                 ctx->ops_);
-      operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-          ctx->block_id_, ctx->ops_);
-    }
   }
 
   for (auto& op : ctx->ops_) {
