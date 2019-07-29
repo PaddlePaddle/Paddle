@@ -569,6 +569,15 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 #endif
 }
 
+void FleetWrapper::ClearModel() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->clear();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
                                     std::vector<std::string> var_list,
                                     float decay, int emb_dim) {
