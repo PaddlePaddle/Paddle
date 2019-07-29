@@ -346,6 +346,8 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         // Seldomly, some vars may have no pending or preceding computation ops
         // Just break;
         if (status == LastLiveOpSearchStatus::kFailure) {
+          VLOG(1) << "Cannot find last live ops of variable " << var_name
+                  << " in scope " << (*iter)->scope_idx();
           break;
         }
 
@@ -362,7 +364,9 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
         var_infos[i][var_name].reset(
             new MemOptVarInfo(var_name, result.size()));
-        last_live_ops_of_vars[i].emplace(var_name, std::move(result));
+        auto &last_live_ops_of_var = last_live_ops_of_vars[i][var_name];
+        last_live_ops_of_var.set_var(*iter);
+        *(last_live_ops_of_var.mutable_ops()) = std::move(result);
         break;
       }
 
