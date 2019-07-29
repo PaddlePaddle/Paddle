@@ -38,7 +38,7 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32),
+            'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float32),
             'Y': np.random.uniform(0.1, 1, [1]).astype(np.float32)
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
