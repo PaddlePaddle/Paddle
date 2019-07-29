@@ -83,7 +83,7 @@ DEFINE_string(selected_gpus, "",
 namespace paddle {
 namespace platform {
 
-static unordered_map<int, size_t> device_max_chunk_size;
+static std::unordered_map<int, size_t> device_max_chunk_size;
 
 inline std::string CudaErrorWebsite() {
   return "Please see detail in https://docs.nvidia.com/cuda/cuda-runtime-api"
@@ -281,15 +281,21 @@ size_t GpuMinChunkSize() {
 }
 
 size_t GpuMaxChunkSize() {
-  int device_id = GetDeviceId();
+  int device_id = GetCurrentDeviceId();
   auto iter = device_max_chunk_size.find(device_id);
   if (iter != device_max_chunk_size.end()) {
+    VLOG(2) << "Max chunk bytes for device " << device_id << " is "
+            << iter->second;
     return iter->second;
   }
   size_t max_chunk_size = GpuMaxAllocSize();
-  device_max_chunk_size.insert(std::make_pair(device_id, allocating));
+  device_max_chunk_size.insert(std::make_pair(device_id, max_chunk_size));
+  VLOG(2) << "Max chunk bytes for device " << device_id << " is "
+          << max_chunk_size;
   return max_chunk_size;
 }
+
+void ResetGpuMaxChunkSize() { device_max_chunk_size.clear(); }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {

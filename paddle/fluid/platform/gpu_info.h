@@ -72,6 +72,9 @@ size_t GpuMinChunkSize();
 //! Get the maximum chunk size for GPU buddy allocator.
 size_t GpuMaxChunkSize();
 
+//! Clear the stored GPU max chunk size
+void ResetGpuMaxChunkSize();
+
 //! Copy memory from address src to dst asynchronously.
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream);

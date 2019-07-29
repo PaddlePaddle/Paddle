@@ -22,8 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+
 DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(gpu_max_chunk_size_in_mb);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
@@ -75,10 +76,10 @@ void TestBuddyAllocator(BuddyAllocator* allocator, size_t size_bytes,
 #ifdef PADDLE_WITH_CUDA
 TEST(BuddyAllocator, GpuFraction) {
   // In a 16 GB machine, the pool size will be about 160 MB
+  platform::ResetGpuMaxChunkSize();
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
-
-  FLAGS_gpu_max_chunk_size_in_mb = 500;
-  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(500 << 20));
+  FLAGS_initial_gpu_memory_in_mb = 0;
+  FLAGS_reallocate_gpu_memory_in_mb = 0;
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
@@ -89,22 +90,18 @@ TEST(BuddyAllocator, GpuFraction) {
   TestBuddyAllocator(&buddy_allocator, 10 << 10);
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
 
-  // Less than max chunk size but exceed pool size
-  TestBuddyAllocator(&buddy_allocator, 499 << 20);
-  TestBuddyAllocator(&buddy_allocator, 499 << 20);
-  TestBuddyAllocator(&buddy_allocator, 499 << 20);
-
   // Greater than max chunk size
+  TestBuddyAllocator(&buddy_allocator, 499 << 20, USE_SYSTEM_ALLOCATOR);
   TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
                      USE_SYSTEM_ALLOCATOR);
 }
 
 TEST(BuddyAllocator, InitRealloc) {
+  platform::ResetGpuMaxChunkSize();
   FLAGS_initial_gpu_memory_in_mb = 100;
   FLAGS_reallocate_gpu_memory_in_mb = 50;
 
-  FLAGS_gpu_max_chunk_size_in_mb = 500;
-  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(500 << 20));
+  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(100 << 20));
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
@@ -114,23 +111,19 @@ TEST(BuddyAllocator, InitRealloc) {
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
   // Between initial size and reallocate size and not exceed pool
   TestBuddyAllocator(&buddy_allocator, 80 << 20);
-  // Less then reallocate size and exceed pool
-  TestBuddyAllocator(&buddy_allocator, 40 << 20);
-  // Greater than reallocate size and exceed pool
-  TestBuddyAllocator(&buddy_allocator, 80 << 20);
-  // Less than max chunk size and exceed pool
-  TestBuddyAllocator(&buddy_allocator, 499 << 20);
+  TestBuddyAllocator(&buddy_allocator, 99 << 20);
   // Greater than max chunk size
+  TestBuddyAllocator(&buddy_allocator, 101 << 20, USE_SYSTEM_ALLOCATOR);
   TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
                      USE_SYSTEM_ALLOCATOR);
 }
 
 TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
+  platform::ResetGpuMaxChunkSize();
   FLAGS_initial_gpu_memory_in_mb = 5;
   FLAGS_reallocate_gpu_memory_in_mb = 10;
 
-  FLAGS_gpu_max_chunk_size_in_mb = 500;
-  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(500 << 20));
+  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(10 << 20));
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
@@ -138,72 +131,62 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
 
   // Less than initial size and reallocate size
   TestBuddyAllocator(&buddy_allocator, 1 << 20);
-  // Between initial size and reallocate size and not exceed pool
-  TestBuddyAllocator(&buddy_allocator, 3 << 20);
-  // Less than initial size and exceed pool
-  TestBuddyAllocator(&buddy_allocator, 3 << 20);
-  // Less than reallocate size and not exceed pool (now pool is 15 MB, used 7
-  // MB)
-  TestBuddyAllocator(&buddy_allocator, 7 << 20);
-  // Less then reallocate size and exceed pool
+  // Between initial size and reallocate size and exceed pool
+  TestBuddyAllocator(&buddy_allocator, 6 << 20);
   TestBuddyAllocator(&buddy_allocator, 8 << 20);
-  // Less than max chunk size and exceed pool
-  TestBuddyAllocator(&buddy_allocator, 499 << 20);
+  TestBuddyAllocator(&buddy_allocator, 9 << 20);
   // Greater than max trunk size
+  TestBuddyAllocator(&buddy_allocator, 11 << 20, USE_SYSTEM_ALLOCATOR);
   TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
                      USE_SYSTEM_ALLOCATOR);
 }
 
-TEST(BuddyAllocator, VerySmallMaxChunkSize) {
-  // Very small max chunk size should trigger system allocator again and again
-  FLAGS_gpu_max_chunk_size_in_mb = 1;
-  // In a 16 GB machine, the pool size will be about 160 MB
-  FLAGS_fraction_of_gpu_memory_to_use = 0.01;
+TEST(BuddyAllocator, LargeFractionRealloc) {
+  platform::ResetGpuMaxChunkSize();
+  FLAGS_fraction_of_gpu_memory_to_use = 0.92;
+  FLAGS_initial_gpu_memory_in_mb = 0;
+  FLAGS_reallocate_gpu_memory_in_mb = 0;
 
-  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(1 << 20));
-
+  size_t max_chunk_size = platform::GpuMaxChunkSize();
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(), max_chunk_size);
 
-  // Less than max chunk size and pool size
-  TestBuddyAllocator(&buddy_allocator, 1 << 10);
-  TestBuddyAllocator(&buddy_allocator, 2 << 10);
-  TestBuddyAllocator(&buddy_allocator, 3 << 10);
+  // Less than pool size
+  TestBuddyAllocator(&buddy_allocator, max_chunk_size - 1000);
+  // Max chunk size should be same during allocation
+  EXPECT_EQ(max_chunk_size, platform::GpuMaxChunkSize());
 
-  // Greater than max chunk size and less than the pool size
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(2 << 20),
-                     USE_SYSTEM_ALLOCATOR);
-
-  // Greater tahn max chunk size and greater than the pool size
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
-                     USE_SYSTEM_ALLOCATOR);
+  // Exceed pool trigger refilling size of fraction of avaiable gpu
+  TestBuddyAllocator(&buddy_allocator, 2000);
+  // Max chunk size should be same during allocation
+  EXPECT_EQ(max_chunk_size, platform::GpuMaxChunkSize());
 }
 
-TEST(BuddyAllocator, VerySmallMaxChunkSizeRealloc) {
-  // Very small max chunk size should trigger system allocator again and again
-  FLAGS_gpu_max_chunk_size_in_mb = 2;
-  FLAGS_initial_gpu_memory_in_mb = 5;
-  FLAGS_reallocate_gpu_memory_in_mb = 8;
+TEST(BuddyAllocator, AllocFromAvailable) {
+  platform::ResetGpuMaxChunkSize();
+  FLAGS_fraction_of_gpu_memory_to_use = 0.7;
+  FLAGS_initial_gpu_memory_in_mb = 0;
+  FLAGS_reallocate_gpu_memory_in_mb = 0;
 
-  EXPECT_EQ(platform::GpuMaxChunkSize(), static_cast<size_t>(2 << 20));
+  size_t total = 0, available = 0;
+  platform::SetDeviceId(TEST_GPU_ID);
+  platform::GpuMemoryUsage(&available, &total);
 
+  // Taken half of available GPU
+  void* p;
+  cudaError_t result = cudaMalloc(&p, available >> 1);
+  EXPECT_TRUE(result == cudaSuccess);
+
+  // BuddyAllocator should be able to alloc remaining GPU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
-  // Less than max chunk size and pool size
-  TestBuddyAllocator(&buddy_allocator, 1 << 20);
-  // Greater than max chunk size and less than the pool size
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(3 << 20),
-                     USE_SYSTEM_ALLOCATOR);
-  // Greater tahn max chunk size and greater than the pool size
-  TestBuddyAllocator(&buddy_allocator, 2 * static_cast<size_t>(1 << 30),
-                     USE_SYSTEM_ALLOCATOR);
-  // Less than max chunk size and exceed pool size to trigger refilling
-  for (int i = 0; i < 16; ++i) {
-    TestBuddyAllocator(&buddy_allocator, 1 << 20);
-  }
+  TestBuddyAllocator(&buddy_allocator, 10);
+  TestBuddyAllocator(&buddy_allocator, 10 << 10);
+  TestBuddyAllocator(&buddy_allocator, 10 << 20);
+  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1 << 30));
 }
 
 #endif
