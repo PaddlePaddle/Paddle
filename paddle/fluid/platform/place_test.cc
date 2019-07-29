@@ -30,16 +30,6 @@ TEST(Place, Equality) {
   EXPECT_FALSE(paddle::platform::places_are_same_class(g0, cpu));
 }
 
-TEST(Place, Default) {
-  EXPECT_TRUE(paddle::platform::is_gpu_place(paddle::platform::get_place()));
-  EXPECT_TRUE(paddle::platform::is_gpu_place(paddle::platform::default_gpu()));
-  EXPECT_TRUE(paddle::platform::is_cpu_place(paddle::platform::default_cpu()));
-
-  EXPECT_FALSE(paddle::platform::is_cpu_place(paddle::platform::get_place()));
-  paddle::platform::set_place(paddle::platform::CPUPlace());
-  EXPECT_TRUE(paddle::platform::is_cpu_place(paddle::platform::get_place()));
-}
-
 TEST(Place, Print) {
   {
     std::stringstream ss;
