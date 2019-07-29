@@ -188,6 +188,9 @@ PYBIND11_MODULE(core_noavx, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
+  m.def("_set_py_site_package_path",
+        &paddle::platform::dynload::SetPySitePackagePath);
+
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())

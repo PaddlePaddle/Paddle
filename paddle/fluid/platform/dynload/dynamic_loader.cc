@@ -33,8 +33,6 @@ DEFINE_string(cuda_dir, "",
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
-DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
-
 DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libcublas, "
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
@@ -51,8 +49,16 @@ DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 namespace paddle {
 namespace platform {
 namespace dynload {
+
+struct PathNode {
+  PathNode() {}
+  std::string path = "";
+};
+
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
 static constexpr char warpctc_lib_path[] = "";
+
+static PathNode s_py_site_pkg_path;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
@@ -75,6 +81,10 @@ static inline std::string join(const std::string& part1,
   }
   ret += part2;
   return ret;
+}
+
+void SetPySitePackagePath(const std::string& py_site_pkg_path) {
+  s_py_site_pkg_path.path = py_site_pkg_path;
 }
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
@@ -214,8 +224,8 @@ void* GetCurandDsoHandle() {
 
 void* GetWarpCTCDsoHandle() {
   std::string warpctc_dir = warpctc_lib_path;
-  if (!FLAGS_warpctc_dir.empty()) {
-    warpctc_dir = FLAGS_warpctc_dir;
+  if (!s_py_site_pkg_path.path.empty()) {
+    warpctc_dir = s_py_site_pkg_path.path;
   }
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.dylib");
