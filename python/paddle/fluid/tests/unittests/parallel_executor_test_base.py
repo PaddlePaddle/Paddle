@@ -38,6 +38,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   batch_size=None,
                                   allow_op_delay=False,
                                   feed_dict=None,
+                                  get_data_from_feeder=None,
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
@@ -74,6 +75,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
+            if get_data_from_feeder is not None:
+                assert feed_dict is None
+                feed_dict = get_data_from_feeder()
+
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
@@ -81,6 +86,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         exec_strategy.allow_op_delay = allow_op_delay
         if use_fast_executor:
             exec_strategy.use_experimental_executor = True
+
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
             if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
