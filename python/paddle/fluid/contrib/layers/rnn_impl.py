@@ -736,8 +736,10 @@ class BasicLSTMUnit(Layer):
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
                 pre_cell,
-                layers.sigmoid(layers.elementwise_add(f, self._forget_bias))),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)))
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+                self._gate_activation(
+                    layers.elementwise_add(f, self._forget_bias))),
+            layers.elementwise_mul(
+                self._gate_activation(i), self._activation(j)))
+        new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
         return new_hidden, new_cell
