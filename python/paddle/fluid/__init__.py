@@ -206,7 +206,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
             'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
+            'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
