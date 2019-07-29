@@ -29,7 +29,8 @@ namespace details {
 struct FetchOpHandle : public OpHandleBase {
  public:
   FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
-                std::vector<Scope *> *local_scopes);
+                std::vector<Scope *> *local_scopes,
+                std::vector<Scope *> *local_exec_scopes);
 
   ~FetchOpHandle();
 
@@ -44,12 +45,15 @@ struct FetchOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return *local_scopes_; }
+
   void WaitInputVarGenerated(const platform::Place &place) override;
 
  private:
   FeedFetchList *data_;
   size_t offset_;
   std::vector<Scope *> *local_scopes_;
+  std::vector<Scope *> *local_exec_scopes_;
   std::vector<LoDTensor> tensors_;
 };
 

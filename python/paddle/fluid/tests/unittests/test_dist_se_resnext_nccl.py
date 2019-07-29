@@ -56,6 +56,7 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
             self.check_with_place(
                 "dist_se_resnext.py",
                 delta=1e-5,
+                check_error_log=True,
                 need_envs={"NCCL_P2P_DISABLE": "1"})
 
 

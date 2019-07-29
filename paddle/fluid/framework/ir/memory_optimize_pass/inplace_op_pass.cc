@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_pass.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_info.h"
 
@@ -106,6 +107,9 @@ class InplacePass : public ir::Pass {
   // Check whether var is the last version one in SSA graph
   bool IsLastVersionVar(ir::Node *var) const;
 
+  // Check whether var is the first version one in SSA graph
+  bool IsFirstVersionVar(ir::Node *var) const;
+
   // Check whether all `ops` is the preceding ops of `op`
   bool CheckOpDeps(ir::Node *op, const std::vector<ir::Node *> &ops) const;
 
@@ -153,6 +157,10 @@ std::vector<ir::Node *> *InplacePass::AllVersionVars(
 
 bool InplacePass::IsSkipVar(const std::string &var_name) const {
   return skip_vars_.count(var_name) > 0;
+}
+
+bool InplacePass::IsFirstVersionVar(ir::Node *var) const {
+  return AllVersionVars(var->Name())->front() == var;
 }
 
 bool InplacePass::IsLastVersionVar(ir::Node *var) const {
@@ -429,12 +437,18 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
       }
 
       if (!FindNodesByName(out_arg, op_node->inputs).empty()) {
-        VLOG(4) << "Cannot inplace because Output(" << in_param
+        VLOG(4) << "Cannot inplace because Output(" << out_param
                 << ")=" << out_arg << " occurs in input of op " << op_type;
         continue;
       }
 
       auto *out_node = *out_nodes.begin();
+
+      if (!IsFirstVersionVar(out_node)) {
+        VLOG(4) << "Cannot inplace because Output(" << out_param
+                << ")=" << out_arg << " does not occur first in op " << op_type;
+        continue;
+      }
 
       if (!NodeCanReused(out_node)) {
         VLOG(4) << "Cannot inplace because Output(" << out_param
