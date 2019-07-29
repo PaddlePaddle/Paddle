@@ -1880,6 +1880,9 @@ void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
 void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   auto reshape1_op =
       pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
+  reshape1_op->assert_more([&](Node *x) {
+    return boost::get<std::vector<int>>(x->Op()->GetAttr("shape")).size() == 5;
+  });
 
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->assert_is_op_output("reshape2", "Out")

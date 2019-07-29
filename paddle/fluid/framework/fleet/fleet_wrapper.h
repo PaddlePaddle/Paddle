@@ -82,7 +82,8 @@ class FleetWrapper {
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* push_sparse_status);
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      float scale_datanorm, int batch_size);
 
   void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -100,7 +101,7 @@ class FleetWrapper {
       const std::vector<std::string>& sparse_grad_names, const int emb_dim,
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      const int batch_size, const bool use_cvm);
+      const int batch_size, const bool use_cvm, const bool dump_slot);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -131,16 +132,27 @@ class FleetWrapper {
 
   // flush all push requests
   void ClientFlush();
+  // load from paddle model
+  void LoadFromPaddleModel(Scope& scope, const uint64_t table_id,  // NOLINT
+                           std::vector<std::string> var_list,
+                           std::string model_path, std::string model_proto_file,
+                           bool load_combine);
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
+  // mode = 0, load all feature
+  // mode = 1, laod delta feature, which means load diff
+  void LoadModelOneTable(const uint64_t table_id, const std::string& path,
+                         const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
 
+  void ClearModel();
   void ShrinkSparseTable(int table_id);
   void ShrinkDenseTable(int table_id, Scope* scope,
-                        std::vector<std::string> var_list, float decay);
+                        std::vector<std::string> var_list, float decay,
+                        int emb_dim);
 
   // register client to client communication
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;

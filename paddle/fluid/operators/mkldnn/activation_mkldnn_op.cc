@@ -105,7 +105,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   std::string key = platform::MKLDNNHandler::GetHash(
       src_tz, std::to_string(algorithm) + std::to_string(alpha) +
-                  std::to_string(beta) + ctx.op().Output("Out"));
+                  std::to_string(beta) + ctx.op().Input("X"));
 
   // TODO(jczaja): Make it Thread safe
   // save input data and layout to be referred in backward path
@@ -177,7 +177,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   std::string key = platform::MKLDNNHandler::GetHash(
       diff_dst_tz, std::to_string(algorithm) + std::to_string(alpha) +
-                       std::to_string(beta) + ctx.op().Input("Out"));
+                       std::to_string(beta) + ctx.op().Input("X"));
 
   const std::string key_src_data = key + "@eltwise_fwd_src_data";
   const std::string key_src_layout = key + "@eltwise_fwd_src_layout";
