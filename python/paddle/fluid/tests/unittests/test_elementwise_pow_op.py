@@ -38,7 +38,7 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.rand(3, 3, 4).astype('float32'),
+            'X': np.random.rand(2, 3, 4).astype('float32'),
             'Y': np.random.rand(1).astype('float32')
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
@@ -54,14 +54,54 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwisePowOp_tensor2(TestElementwisePowOp):
+class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.rand(3, 4).astype(np.float64),
-            'Y': np.random.rand(3, 4).astype(np.float64)
+            'X': np.random.rand(2, 3, 4).astype(np.float32),
+            'Y': np.random.rand(4).astype(np.float32)
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float32),
+            'Y': np.random.rand(3).astype(np.float32)
+        }
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out': np.power(self.inputs['X'], self.inputs['Y'].reshape(3, 1))
+        }
+
+
+class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float32),
+            'Y': np.random.rand(2).astype(np.float32)
+        }
+        self.attrs = {'axis': 0}
+        self.outputs = {
+            'Out': np.power(self.inputs['X'], self.inputs['Y'].reshape(2, 1, 1))
+        }
+
+
+class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
+            'Y': np.random.rand(3, 4).astype(np.float32)
+        }
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out': np.power(self.inputs['X'], self.inputs['Y'].reshape(1, 3, 4,
+                                                                       1))
+        }
 
 
 if __name__ == '__main__':
