@@ -91,10 +91,24 @@ class DatasetBase(object):
         """
         self.proto_desc.pipe_command = pipe_command
 
-    def set_fea_eval(self, fea_eval, record_candidate_size):
+    def set_fea_eval(self, record_candidate_size, fea_eval=True):
         """
+        set fea eval mode for slots shuffle to debug the importance level of
+        slots(features), fea_eval need to be set True for slots shuffle.
+        
+        Args:
+            record_candidate_size(int): size of instances candidate to shuffle 
+                                        one slot
+            fea_eval(bool): wheather enable fea eval mode to enable slots shuffle.
+                            default is True.
+            
+        Examples:
+            .. code-block:: python
 
-        #TODO: annotation
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_fea_eval(1000000, True)
+
         """
         if fea_eval:
             self.dataset.set_fea_eval(fea_eval, record_candidate_size)
@@ -102,9 +116,21 @@ class DatasetBase(object):
 
     def slots_shuffle(self, slots):
         """
+        Slots Shuffle 
+        Slots Shuffle is a shuffle method in slots level, whicih is usually used 
+        in sparse feature with large scale of instances. To compare the metric, i.e.
+        auc with slots shuffle on one or several slots to evaluate the importance level
+        of slots(features).
+        
+        Args:
+            slots(set): the set of slots to do slots shuffle.
 
-        :param slots:
-        :return:
+        Examples:
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_merge_by_lineid()
+            #suppose there is a slot 0
+            dataset.slots_shuffle({0})
         """
         if self.fea_eval:
             self.dataset.slots_shuffle(slots)

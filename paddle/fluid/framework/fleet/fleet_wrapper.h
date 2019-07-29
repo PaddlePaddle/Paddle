@@ -151,7 +151,7 @@ class FleetWrapper {
   double GetCacheThreshold();
   void CacheShuffle(int table_id, const std::string& path,
                     const int mode, const double cache_threshold);
-  void SaveCache(int table_id, const std::string& path, const int mode);
+  int32_t SaveCache(int table_id, const std::string& path, const int mode);
 
   void ShrinkSparseTable(int table_id);
   void ShrinkDenseTable(int table_id, Scope* scope,

@@ -545,7 +545,7 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
 #endif
 }
 
-void FleetWrapper::SaveCache(int table_id, const std::string& path, const int mode) {
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
   ret.wait();
@@ -557,6 +557,7 @@ void FleetWrapper::SaveCache(int table_id, const std::string& path, const int mo
 #else
     VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
 #endif
+  return feasign_cnt;    
 }
 
 

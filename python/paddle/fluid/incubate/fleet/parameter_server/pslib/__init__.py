@@ -245,10 +245,12 @@ class PSLib(Fleet):
 
         self._role_maker._barrier_worker()
 
+        feasign_num = -1
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.save_cache(0, dirname, mode)
+            feasign_num = self._fleet_ptr.save_cache(0, dirname, mode)
 
         self._role_maker._barrier_worker()
+        return feasign_num
 
 
 
