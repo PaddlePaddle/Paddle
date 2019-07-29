@@ -212,6 +212,46 @@ class PSLib(Fleet):
             self._fleet_ptr.save_model(dirname, mode)
         self._role_maker._barrier_worker()
 
+    def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
+        """
+        save sparse cache table,
+        when using fleet, it will save sparse cache table
+
+        Args:
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+
+        Example:
+            >>> fleet.save_cache(dirname="/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+        cache_threshold = 0.0
+
+        if self._role_maker.is_first_worker():
+            cache_threshold = self._fleet_ptr.get_cache_threshold();
+        #check cache threshold right or not
+        self._role_maker._barrier_worker()
+
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.cache_shuffle(0, dirname, mode, cache_threshold)
+
+        self._role_maker._barrier_worker()
+
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_cache(0, dirname, mode)
+
+        self._role_maker._barrier_worker()
+
+
+
     def shrink_sparse_table(self):
         """
         shrink cvm of all sparse embedding in pserver, the decay rate

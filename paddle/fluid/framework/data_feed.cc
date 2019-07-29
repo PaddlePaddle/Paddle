@@ -35,8 +35,49 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/platform/timer.h"
 
+
 namespace paddle {
 namespace framework {
+
+void RecordCandidateList::ReSize(size_t length) {
+    _mutex.lock();
+    _capacity = length;
+    CHECK(_capacity > 0);
+    _candidate_list.clear();
+    _candidate_list.resize(_capacity);
+    _full = false;
+    _cur_size = 0;
+    _total_size = 0;
+    _mutex.unlock();
+}
+
+void RecordCandidateList::ReInit() {
+    _mutex.lock();
+    _full = false;
+    _cur_size = 0;
+    _total_size = 0;
+    _mutex.unlock();
+}
+
+void RecordCandidateList::AddAndGet(const Record& record, RecordCandidate& result, std::shared_ptr<FleetWrapper>& fleet_ptr) {
+    _mutex.lock();
+    size_t index = 0;
+    ++_total_size;
+
+    if (!_full) {
+        _candidate_list[_cur_size++] = record;
+        _full = (_cur_size == _capacity);
+    } else {
+        CHECK(_cur_size == _capacity);
+        index = fleet_ptr->LocalRandomEngine()() % _total_size;
+        if (index < _capacity) {
+            _candidate_list[index] = record;
+        }
+    }
+    index = fleet_ptr->LocalRandomEngine()() % _cur_size;
+    result = _candidate_list[index];
+    _mutex.unlock();
+}
 
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();

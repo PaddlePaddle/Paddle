@@ -119,4 +119,7 @@ message TableParameter {
   optional int32 emb_dim = 10;
   optional int32 fea_dim = 11;
   optional string label_var_name = 12;
+  //optional bool enable_sparse_table_cache = 13 [default = true];
+  //optional double sparse_table_cache_rate = 14 [default = 0.00055];
+  //optional uint32 sparse_table_cache_file_num = 15 [default = 16];
 }
