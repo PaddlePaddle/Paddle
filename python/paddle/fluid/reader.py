@@ -783,10 +783,10 @@ class PipeReader(object):
 
     def decorate_batch_generator(self, batch_generator):
         def __batch_reader__():
-            for batch in batch_generator:
-                yield [], batch
+            for batch in batch_generator():
+                yield [([], slot) for slot in batch]
 
-        self._batch_reader = batch_generator
+        self._batch_reader = __batch_reader__
 
 
 class DataToPipeConverter(object):
