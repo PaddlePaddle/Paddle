@@ -23,6 +23,7 @@ import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model
 from paddle.fluid.transpiler import memory_optimize
@@ -112,6 +113,37 @@ class TestSaveInferenceModel(unittest.TestCase):
         self.assertEqual(program._is_mem_optimized, True)
         # will print warning message
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+
+
+class TestInstance(unittest.TestCase):
+    def test_save_inference_model(self):
+        MODEL_DIR = "./tmp/inference_model3"
+        init_program = Program()
+        program = Program()
+
+        # fake program without feed/fetch
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(cost)
+
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        exe.run(init_program, feed={}, fetch_list=[])
+
+        # will print warning message
+
+        cp_prog = CompiledProgram(program).with_data_parallel(
+            loss_name=avg_cost.name)
+
+        self.assertRaises(TypeError, save_inference_model,
+                          [MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog])
+        self.assertRaises(TypeError, save_inference_model,
+                          [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
 
 
 if __name__ == '__main__':
