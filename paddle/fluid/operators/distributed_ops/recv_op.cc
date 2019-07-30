@@ -73,10 +73,10 @@ class RecvOp : public framework::OperatorBase {
           rets.push_back(
               rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
         }
-        if (sync_mode) {
-          for (size_t i = 0; i < rets.size(); i++) {
-            PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          }
+        for (size_t i = 0; i < rets.size(); i++) {
+          VLOG(7) << "before sync_recv " << ins[i] << "from " << epmap[i];
+          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+          VLOG(7) << "after sync_recv " << ins[i] << "from " << epmap[i];
         }
       } else {
         std::vector<distributed::VarHandlePtr> rets;
@@ -87,8 +87,13 @@ class RecvOp : public framework::OperatorBase {
           rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
                                                           varname, outs[i]));
         }
+
         for (size_t i = 0; i < rets.size(); i++) {
+          VLOG(7) << "before sync_recv_nobarrier " << ins[i] << "from "
+                  << epmap[i];
           PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+          VLOG(7) << "after sync_recv_nobarrier " << ins[i] << "from "
+                  << epmap[i];
         }
       }
     }

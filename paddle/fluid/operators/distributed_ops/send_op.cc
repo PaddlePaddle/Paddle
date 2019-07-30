@@ -75,12 +75,10 @@ class SendOp : public framework::OperatorBase {
           VLOG(3) << "don't send no-initialied variable: " << ins[i];
         }
       }
-      if (sync_send) {
-        for (size_t i = 0; i < rets.size(); i++) {
-          VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
-        }
+      for (size_t i = 0; i < rets.size(); i++) {
+        VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+        VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
   }
