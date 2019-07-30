@@ -7099,7 +7099,7 @@ def lod_append(x, level):
 
     Args:
         x (Variable): Input variable which could be a tensor or LoDTensor.
-        level (list|tuple): The LoD level to be appended into LoD of x.
+        level (list|tuple|Variable): The LoD level to be appended into LoD of x.
 
     Returns:
         Variable: Output variable with new LoD level.
@@ -7117,16 +7117,21 @@ def lod_append(x, level):
     from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
-    if not isinstance(level, Iterable):
-        raise ValueError("Input(level) must be list or tuple.")
+    if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
+        raise ValueError("Input(level) must be list, tuple or Variable.")
+
     helper = LayerHelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    inputs = {'X': x}
+    attrs = {'append': True}
+
+    if isinstance(level, Variable):
+        inputs['Y'] = level
+    else:
+        attrs['target_lod'] = level
     helper.append_op(
-        type="lod_reset",
-        inputs={'X': x},
-        attrs={'target_lod': level,
-               'append': True},
-        outputs={'Out': out})
+        type="lod_reset", inputs=inputs, attrs=attrs, outputs={'Out': out})
     return out
 
 
