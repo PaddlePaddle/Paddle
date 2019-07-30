@@ -554,10 +554,11 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path, const int
     LOG(ERROR) << "table save cache failed";
     exit(-1);
   }
+  return feasign_cnt;
 #else
     VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
-#endif
-  return feasign_cnt;    
+    return -1;
+#endif  
 }
 
 
