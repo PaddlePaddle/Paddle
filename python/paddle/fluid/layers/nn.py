@@ -379,7 +379,7 @@ def embedding(input,
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): It will output all-zero paddig data whenever
+        padding_idx(int|long|None): It will output all-zero padding data whenever
             lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
             no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
             will automatically be converted to :math:`size[0] + padding\_idx` to use.
