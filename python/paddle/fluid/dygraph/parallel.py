@@ -168,7 +168,7 @@ class DataParallel(layers.Layer):
         loss = loss / loss_scale
         return loss
 
-    def _coalesce_tensor(self, var_groups):
+    def _coalesce_tensors(self, var_groups):
         from ..layers import nn
         coalesced_grads_and_grad_vars = []
         for group_id, grad_vars in var_groups.items():
@@ -184,7 +184,7 @@ class DataParallel(layers.Layer):
                 [coalesced_grad, grad_vars, g_var_shapes])
         return coalesced_grads_and_grad_vars
 
-    def _split_vars(self, coalesced_grads_and_grad_vars):
+    def _split_tensors(self, coalesced_grads_and_grad_vars):
         from ..layers import nn
         for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
             grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
@@ -220,26 +220,32 @@ class DataParallel(layers.Layer):
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)
 
+        # FIXME(zcd): the type of the var should be LoDTensor, i.e
+        # the gradients should be dense, otherwise, the following
+        # logic should be updated.
         # 128 MB as a group
-        kMB = 128 * 1024 * 1024
+        mega_bytes = 128 * 1024 * 1024
         group_idx = 0
         memory_counter = 0
         grad_var_groups = OrderedDict()
+        dtype = grad_vars[0].dtype
         for g_var in grad_vars:
-            if memory_counter < kMB:
-                memory_counter += np.prod(g_var.shape)
+            # Note: the dtype of the same group should be the same.
+            bytes = np.prod(g_var.shape) * core.size_of_dtype(g_var.dtype)
+            if memory_counter < mega_bytes and dtype == g_var.dtype:
+                memory_counter += bytes
             else:
-                memory_counter = np.prod(g_var.shape)
+                memory_counter = bytes
                 group_idx += 1
             grad_var_groups.setdefault(group_idx, []).append(g_var)
 
-        coalesced_grads_and_vars = self._coalesce_tensor(grad_var_groups)
+        coalesced_grads_and_vars = self._coalesce_tensors(grad_var_groups)
 
         for coalesced_grad, g_vars, g_shapes in coalesced_grads_and_vars:
             collective._allreduce(
                 coalesced_grad, coalesced_grad, sync_mode=False)
 
-        self._split_vars(coalesced_grads_and_vars)
+        self._split_tensors(coalesced_grads_and_vars)
 
     def _is_data_parallel_mode(self):
         return self._strategy.nranks > 1
