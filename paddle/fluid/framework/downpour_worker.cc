@@ -64,6 +64,8 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
+  scale_datanorm_ = desc.scale_datanorm();
+  dump_slot_ = desc.dump_slot();
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -89,7 +91,12 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     VLOG(3) << "sparse_key_names_[" << i
             << "]: " << sparse_key_names_[table_id][i];
     Variable* fea_var = thread_scope_->FindVar(sparse_key_names_[table_id][i]);
+    if (fea_var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var "
+                             << sparse_key_names_[table_id][i] << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
@@ -128,7 +135,11 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
     Variable* var = thread_scope_->FindVar(slot_name);
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
@@ -198,6 +209,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
+  double op_sum_time = 0;
+  std::unordered_map<std::string, double> op_to_time;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -271,7 +284,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_);
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+            dump_slot_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -285,7 +299,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -346,7 +361,27 @@ void DownpourWorker::TrainFilesWithProfiler() {
         for (size_t i = 0; i < op_total_time.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          if (op_to_time.find(op_name[i]) == op_to_time.end()) {
+            op_to_time[op_name[i]] = 0.0;
+          }
+          op_to_time[op_name[i]] += op_total_time[i];
+          op_sum_time += op_total_time[i];
         }
+        for (auto& i : op_to_time) {
+          fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+                  i.second / batch_cnt);
+        }
+        fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
+        fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
+        fprintf(stderr, "pull sparse time: %fs\n",
+                pull_sparse_time / batch_cnt);
+        fprintf(stderr, "fill sparse time: %fs\n",
+                fill_sparse_time / batch_cnt);
+        fprintf(stderr, "push sparse time: %fs\n",
+                push_sparse_time / batch_cnt);
+        fprintf(stderr, "push dense time: %fs\n", push_dense_time / batch_cnt);
+        fprintf(stderr, "collect label time: %fs\n",
+                collect_label_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
@@ -423,7 +458,8 @@ void DownpourWorker::TrainFiles() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_);
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+            dump_slot_);
       }
     }
 
@@ -433,7 +469,8 @@ void DownpourWorker::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
       }
 
       VLOG(3) << "push dense gradient done.";
