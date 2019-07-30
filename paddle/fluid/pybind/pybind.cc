@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -188,8 +189,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  m.def("_set_py_site_package_path",
-        &paddle::platform::dynload::SetPySitePackagePath);
+  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
   BindImperative(&m);
 

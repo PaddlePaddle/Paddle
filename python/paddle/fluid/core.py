@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import site
 import sys
 import os
 
@@ -175,6 +176,11 @@ if avx_supported():
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
+        from .core_avx import _set_paddle_lib_path
+        _set_paddle_lib_path([
+            os.path.sep.join([x, 'paddle', 'libs'])
+            for x in site.getsitepackages() if 'site-packages' in x
+        ][0])
     except Exception as e:
         if has_avx_core:
             raise e
@@ -203,6 +209,11 @@ if load_noavx:
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
+        from .core_noavx import _set_paddle_lib_path
+        _set_paddle_lib_path([
+            os.path.sep.join([x, 'paddle', 'libs'])
+            for x in site.getsitepackages() if 'site-packages' in x
+        ][0])
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(

@@ -83,8 +83,9 @@ static inline std::string join(const std::string& part1,
   return ret;
 }
 
-void SetPySitePackagePath(const std::string& py_site_pkg_path) {
+void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   s_py_site_pkg_path.path = py_site_pkg_path;
+  VLOG(3) << "Set paddle lib path : " << py_site_pkg_path;
 }
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
