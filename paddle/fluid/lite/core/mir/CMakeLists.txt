@@ -23,7 +23,7 @@ lite_cc_library(mir_passes
       graph_visualize_pass.cc
       generate_program_pass.cc
       argument_type_display_pass.cc
-      trans_weigths_pass.cc
+      #trans_weigths_pass.cc
       demo_pass.cc
       runtime_context_assign_pass.cc
   DEPS mir_pass types_lite context_lite ${mir_fusers})
