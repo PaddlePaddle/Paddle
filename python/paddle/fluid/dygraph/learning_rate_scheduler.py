@@ -44,7 +44,7 @@ class LearningRateDecay(object):
         if isinstance(lr, float):
             lr = self.create_lr_var(lr)
         self.step_num += self.step_size
-        self.lr = lr
+        self.lr = lr.numpy()
         return lr
 
     def create_lr_var(self, lr):
@@ -69,7 +69,7 @@ class LearningRateDecay(object):
         raise NotImplementedError()
 
     def numpy(self):
-        return self.lr.numpy()
+        return self.lr
 
 
 class PiecewiseDecay(LearningRateDecay):
