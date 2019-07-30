@@ -77,14 +77,26 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   VLOG(0) << "communicator_merge_sparse_grad: "
           << FLAGS_communicator_merge_sparse_grad;
-  send_scope_.reset(new Scope());
-  for (auto &iter : send_varname_to_ctx_) {
-    send_varname_to_queue_[iter.first] =
-        std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-            FLAGS_communicator_send_queue_size);
+
+  if (send_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be send, will not start send_thread";
+  } else {
+    send_scope_.reset(new Scope());
+    for (auto &iter : send_varname_to_ctx_) {
+      send_varname_to_queue_[iter.first] =
+          std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
+              FLAGS_communicator_send_queue_size);
+    }
+    send_threadpool_.reset(
+        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
-  send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
-  recv_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+
+  if (recv_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be received, will not start recv_thread";
+  } else {
+    recv_threadpool_.reset(
+        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  }
 }
 
 Communicator::~Communicator() {
