@@ -12591,8 +12591,9 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
     input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height 
     and width infomation for :attr:`input` tensor. If feature of input sequence is less 
     than topk, it will padding 0. at the back.
+
     .. code-block:: text
-        * Example 1:
+
             If channel_num is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
@@ -12600,18 +12601,22 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
                 input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
                 input.dims = [116, 1]   # where 116 = 60 + 56
             If topks is [1, 3, 5], then we get a 1-level LoDTensor:
-                out.lod =  [[5, 4]] # share Lod info with row LodTensor
-                out.dims = [9, 6]   # where 6 = len(topks) * channel_num
+                out.lod =  [[5, 4]] 	# share Lod info with row LodTensor
+                out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
+
     Args:
         input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
         row (Variable): The row shoud be 1-level LodTensor.
         col (Variable): The col shoud be 1-level LodTensor.
         topks (list): A list of increasing value to average the topk feature.
         channel_num (int): The number of input channel.
+
     Returns:
         Variable: output with LoD specified by this layer.
+
     Examples:
         .. code-block:: python
+
             import numpy as np
             from paddle.fluid import layers
             x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
