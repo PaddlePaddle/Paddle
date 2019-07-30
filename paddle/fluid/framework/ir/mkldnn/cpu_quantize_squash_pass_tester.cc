@@ -160,6 +160,34 @@ ProgramDesc BuildProgramDesc5(bool use_mkldnn, float scale_out, float scale1,
   return prog;
 }
 
+// a->Conv1->b
+// b->Dequant1(Scale1)->c
+// c->Concat
+ProgramDesc BuildProgramDesc6(bool use_mkldnn, float scale_out, float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
+  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
+// a->Conv1->b
+// b->Dequant1(Scale1)->c
+// b->Conv2->d
+ProgramDesc BuildProgramDesc7(bool use_mkldnn, float scale_out, float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
+  SetOp(&prog, "conv2d", "Conv2", {"b"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
@@ -351,6 +379,24 @@ TEST(CpuQuantizeSquashPass, more_than_one_conv_out_outputs) {
   auto remove_nodes = 0;
   CountNodeTest(BuildProgramDesc5(use_mkldnn, scale_out, scale, scale2),
                 remove_nodes);
+}
+// a->Conv1->c->Concat
+TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // remove 2 nodes: Dequant1, c
+  auto remove_nodes = 2;
+  CountNodeTest(BuildProgramDesc6(use_mkldnn, scale_out, scale), remove_nodes);
+}
+
+TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(BuildProgramDesc7(use_mkldnn, scale_out, scale), remove_nodes);
 }
 
 }  // namespace ir

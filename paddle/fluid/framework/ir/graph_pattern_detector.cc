@@ -1292,6 +1292,24 @@ PDNode *patterns::ConvRequant::operator()() {
   return requant_out;
 }
 
+PDNode *patterns::ConvDequant::operator()() {
+  // Create Operators
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d", "Output");
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+
+  conv_op->LinksTo({conv_out});
+  dequant_op->LinksFrom({conv_out}).LinksTo({dequant_out});
+
+  return dequant_out;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
