@@ -12601,8 +12601,9 @@ def match_matrix_tensor(x,
     is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
     the corresponding activation function will be applied to output matrix.
     The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
+
     .. code-block:: text
-        * Example 1:
+
             Given a 1-level LoDTensor x:
                 x.lod =  [[2,                     3,                               ]]
                 x.data = [[0.3, 0.1], [0.2, 0.3], [0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
@@ -12614,6 +12615,7 @@ def match_matrix_tensor(x,
             set channel_num 2, then we get a 1-level LoDTensor:
                 out.lod =  [[12, 6]]   # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
                 out.dims = [18, 1]     # where 18 = 12 + 6
+
     Args:
         x (Variable): Input variable x which should be 1-level LodTensor.
         y (Variable): Input variable y which should be 1-level LodTensor.
@@ -12623,12 +12625,16 @@ def match_matrix_tensor(x,
             parameters/weights of this layer.
         dtype ('float32'): The data type of w data.
         name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
+
     Returns:
         Variable: output with LoD specified by this layer.
+
     Examples:
         .. code-block:: python
+
             import numpy as np
             from paddle.fluid import layers
+
             x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
             y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
             out, out_tmp = layers.match_matrix_tensor(x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
