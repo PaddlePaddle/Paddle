@@ -59,7 +59,7 @@ struct SelectedRowsAddTo {
 template <typename DeviceContext, typename T>
 struct SelectedRowsSumTo {
   void operator()(const DeviceContext& context,
-                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<const framework::SelectedRows*>& input1,
                   const std::vector<int64_t>& input2_offsets,
                   framework::SelectedRows* input2);
 };

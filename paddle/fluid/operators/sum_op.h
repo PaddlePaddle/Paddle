@@ -57,27 +57,37 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     for (auto &in_var : in_vars) {
       auto &in = in_var->Get<SelectedRows>();
       if (in.rows().size() > 0) {
-        inputs.push_back(&in_var->Get<SelectedRows>());
+        inputs.push_back(&in);
       }
     }
   }
 
   auto *out = context.Output<SelectedRows>("Out");
   out->mutable_rows()->clear();
-
+  std::vector<int64_t> input1_offsize;
   bool has_data = false;
-  for (auto &in : inputs) {
-    if (in->rows().size() > 0) {
-      has_data = true;
-      break;
+  framework::DDim out_dim;
+
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    has_data = true;
+    out_dim = inputs[idx]->value().dims();
+    if (idx == 0) {
+      input1_offsize.push_back(0);
+    } else {
+      input1_offsize.push_back(inputs[idx - 1]->value().numel());
     }
   }
   if (has_data) {
-    math::scatter::MergeAdd<DeviceContext, T> merge_add;
-    merge_add(context.template device_context<DeviceContext>(), inputs, out);
-
-    out->SyncIndex();
-
+    int64_t row_num = 0;
+    for (auto &in : inputs) {
+      row_num += in->rows().size();
+    }
+    out_dim[0] = row_num;
+    out->mutable_value()->Resize(out_dim);
+    out->mutable_value()->mutable_data<T>(context.GetPlace());
+    paddle::operators::math::SelectedRowsSumTo<DeviceContext, T> add_functor;
+    add_functor(context.template device_context<DeviceContext>(), inputs,
+                input1_offsize, out);
   } else {
     // no data, just set a empty out tensor.
     out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
