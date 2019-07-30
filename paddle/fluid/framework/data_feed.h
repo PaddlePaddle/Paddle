@@ -37,7 +37,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -446,7 +445,7 @@ public:
 
     void ReInit();
 
-    void AddAndGet(const Record& record, RecordCandidate& result, std::shared_ptr<FleetWrapper>& fleet_ptr);
+    void AddAndGet(const Record& record, RecordCandidate& result);
 
 private:
     size_t _capacity = 0;

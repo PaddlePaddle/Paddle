@@ -112,7 +112,7 @@ class DatasetBase(object):
         """
         if fea_eval:
             self.dataset.set_fea_eval(fea_eval, record_candidate_size)
-        self.fea_eval = True
+        self.fea_eval = fea_eval
 
     def slots_shuffle(self, slots):
         """

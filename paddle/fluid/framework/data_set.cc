@@ -116,9 +116,9 @@ void DatasetImpl<T>::SetMergeByInsId(
 
 template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
-   fea_eval_ = fea_eval;
-   _rclist.ReSize(record_candidate_size);
-   std::cout << "SetFeaEval fea eval mode: " << fea_eval << " with record candidate size: " << record_candidate_size << std::endl;
+   slots_shuffle_fea_eval_ = fea_eval;
+   slots_shuffle_rclist_.ReSize(record_candidate_size);
+   VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval << " with record candidate size: " << record_candidate_size;
 }
 
 template <typename T>
@@ -658,13 +658,12 @@ void MultiSlotDataset::MergeByInsId() {
 void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace, std::vector<Record>& result) {
     int debug_erase_cnt = 0;
     int debug_push_cnt = 0;
-    auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
-    auto fleet_ptr = FleetWrapper::GetInstance();
-    _rclist.ReInit();
-    for (const auto& rec : original_data_) {
+    auto multi_slot_desc = data_feed_desc_.multi_slot_desc(); 
+    slots_shuffle_rclist_.ReInit();
+    for (const auto& rec : slots_shuffle_original_data_) {
         RecordCandidate rand_rec;
         Record new_rec = rec;
-        _rclist.AddAndGet(rec, rand_rec, fleet_ptr);
+        slots_shuffle_rclist_.AddAndGet(rec, rand_rec);
         for (auto it = new_rec.uint64_feasigns_.begin(); it != new_rec.uint64_feasigns_.end();) {
             if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
                 it = new_rec.uint64_feasigns_.erase(it);
@@ -698,12 +697,12 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
             out_channel_size += multi_consume_channel_[i]->Size();        
         }
     }
-    std::cout << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: " << input_channel_->Size() << " output channel size: " << out_channel_size << std::endl; 
-    if (!fea_eval_) {
+    VLOG(3) <<  "DatasetImpl<T>::SlotsShuffle() begin with input channel size: " << input_channel_->Size() << " output channel size: " << out_channel_size; 
+    if (!slots_shuffle_fea_eval_) {
         VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, fea eval mode off, need to set on for slots shuffle";
         return;   
     }
-    if ((!input_channel_ || input_channel_->Size() == 0) && original_data_.size() == 0 && out_channel_size == 0) {
+    if ((!input_channel_ || input_channel_->Size() == 0) && slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
         VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
         return;
     }
@@ -718,12 +717,12 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
             index_slots.insert(i);
         }
     }
-    if (original_data_.size() == 0) {
+    if (slots_shuffle_original_data_.size() == 0) {
         //before first slots shuffle, instances could be in input_channel, oupput_channel or consume_channel
         if (input_channel_ && input_channel_->Size() != 0) {
-            original_data_.reserve(input_channel_->Size());
+            slots_shuffle_original_data_.reserve(input_channel_->Size());
             input_channel_->Close();
-            input_channel_->ReadAll(original_data_);
+            input_channel_->ReadAll(slots_shuffle_original_data_);
         } else {
             CHECK(out_channel_size > 0);
             if (cur_channel_ == 0) {
@@ -731,8 +730,8 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
                     std::vector<Record> vec_data;
                     multi_output_channel_[i]->Close();
                     multi_output_channel_[i]->ReadAll(vec_data);
-                    original_data_.reserve(original_data_.size()+vec_data.size());
-                    original_data_.insert(original_data_.end(),std::make_move_iterator(vec_data.begin()),
+                    slots_shuffle_original_data_.reserve(slots_shuffle_original_data_.size()+vec_data.size());
+                    slots_shuffle_original_data_.insert(slots_shuffle_original_data_.end(),std::make_move_iterator(vec_data.begin()),
                          std::make_move_iterator(vec_data.end()));
                     vec_data.clear();
                     vec_data.shrink_to_fit();
@@ -743,8 +742,8 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
                     std::vector<Record> vec_data;
                     multi_consume_channel_[i]->Close();
                     multi_consume_channel_[i]->ReadAll(vec_data);
-                    original_data_.reserve(original_data_.size()+vec_data.size());
-                    original_data_.insert(original_data_.end(),std::make_move_iterator(vec_data.begin()),
+                    slots_shuffle_original_data_.reserve(slots_shuffle_original_data_.size()+vec_data.size());
+                    slots_shuffle_original_data_.insert(slots_shuffle_original_data_.end(),std::make_move_iterator(vec_data.begin()),
                          std::make_move_iterator(vec_data.end()));
                     vec_data.clear();
                     vec_data.shrink_to_fit();
@@ -787,7 +786,6 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
                 end_size += multi_consume_channel_[i]->Size();
             }   
         }
-    std::cout << "input channel size before check: " << input_channel_->Size() << " out channel size: " << end_size <<  std::endl;
     CHECK(input_channel_->Size() == 0) << "input channel should be empty before slots shuffle";
     std::vector<Record> random_data;
     random_data.clear();
@@ -803,9 +801,6 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end"
             << ", memory data size for slots shuffle=" << input_channel_->Size()
             << ", cost time=" << timeline.ElapsedSec() << " seconds";
-    std::cout << "DatasetImpl<T>::SlotsShuffle() end"
-              << ", memory data size for slots shuffle=" << input_channel_->Size()
-              << ", cost time=" << timeline.ElapsedSec() << " seconds" << std::endl;
 
 
 }

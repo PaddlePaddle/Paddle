@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/platform/timer.h"
-
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -59,11 +59,11 @@ void RecordCandidateList::ReInit() {
     _mutex.unlock();
 }
 
-void RecordCandidateList::AddAndGet(const Record& record, RecordCandidate& result, std::shared_ptr<FleetWrapper>& fleet_ptr) {
+void RecordCandidateList::AddAndGet(const Record& record, RecordCandidate& result) {
     _mutex.lock();
     size_t index = 0;
     ++_total_size;
-
+    auto fleet_ptr = FleetWrapper::GetInstance();
     if (!_full) {
         _candidate_list[_cur_size++] = record;
         _full = (_cur_size == _capacity);

@@ -15,7 +15,6 @@ import os
 import sys
 from optimizer_factory import *
 from google.protobuf import text_format
-
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
@@ -227,7 +226,8 @@ class PSLib(Fleet):
                            3 means save batch model.
 
         Example:
-            >>> fleet.save_cache(dirname="/you/path/to/model", mode = 0)
+            .. code-block:: python
+            >>> fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
 
         """
         mode = kwargs.get("mode", 0)
@@ -251,8 +251,6 @@ class PSLib(Fleet):
 
         self._role_maker._barrier_worker()
         return feasign_num
-
-
 
     def shrink_sparse_table(self):
         """

@@ -176,8 +176,8 @@ class DatasetImpl : public Dataset {
   // and when finish reading, we set cur_channel = 1 - cur_channel,
   // so if cur_channel=0, all data are in output_channel, else consume_channel
   int cur_channel_;
-  std::vector<T> original_data_;
-  RecordCandidateList _rclist;
+  std::vector<T> slots_shuffle_original_data_;
+  RecordCandidateList slots_shuffle_rclist_;
   int thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
   int trainer_num_;
@@ -194,7 +194,7 @@ class DatasetImpl : public Dataset {
   bool keep_unmerged_ins_;
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
-  bool fea_eval_ = false;
+  bool slots_shuffle_fea_eval_ = false;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
