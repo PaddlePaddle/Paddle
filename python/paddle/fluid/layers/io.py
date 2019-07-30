@@ -677,6 +677,7 @@ def py_reader(capacity,
 
     Args:
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
+            The unit is batch number. 
        shapes(list|tuple): List of tuples which declaring data shapes.
        dtypes(list|tuple): List of strs which declaring data type.
        lod_levels(list|tuple): List of ints which declaring data lod_level.
@@ -820,6 +821,7 @@ def create_py_reader_by_data(capacity,
 
     Args:
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
+            The unit is batch number.  
        feed_list(list(Variable)): The data feed list.
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.

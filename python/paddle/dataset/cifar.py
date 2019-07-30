@@ -56,11 +56,10 @@ def reader_creator(filename, sub_name, cycle=False):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():
-        with tarfile.open(filename, mode='r') as f:
-            names = (each_item.name for each_item in f
-                     if sub_name in each_item.name)
-
-            while True:
+        while True:
+            with tarfile.open(filename, mode='r') as f:
+                names = (each_item.name for each_item in f
+                         if sub_name in each_item.name)
                 for name in names:
                     if six.PY2:
                         batch = pickle.load(f.extractfile(name))
@@ -69,8 +68,9 @@ def reader_creator(filename, sub_name, cycle=False):
                             f.extractfile(name), encoding='bytes')
                     for item in read_batch(batch):
                         yield item
-                if not cycle:
-                    break
+
+            if not cycle:
+                break
 
     return reader
 

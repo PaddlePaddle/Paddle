@@ -55,7 +55,8 @@ class PyReader(object):
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.layers.data()`.
             it can be None under iterable mode.
-        capacity (int): capacity of the queue maintained in PyReader object. 
+        capacity (int): capacity of the queue maintained in PyReader object.
+            The unit is batch number.  
         use_double_buffer (bool): whether to use double_buffer_reader to 
             speed up data feeding. 
         iterable (bool): whether the created reader object is iterable.   

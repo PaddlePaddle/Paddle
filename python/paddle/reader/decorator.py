@@ -23,6 +23,7 @@ import subprocess
 import multiprocessing
 import sys
 
+import six
 from six.moves.queue import Queue
 from six.moves import zip_longest
 from six.moves import map
@@ -390,11 +391,15 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     assert type(readers) is list and len(readers) > 0
 
     def _read_into_queue(reader, queue):
-        for sample in reader():
-            if sample is None:
-                raise ValueError("sample has None")
-            queue.put(sample)
-        queue.put(None)
+        try:
+            for sample in reader():
+                if sample is None:
+                    raise ValueError("sample has None")
+                queue.put(sample)
+            queue.put(None)
+        except:
+            queue.put(None)
+            six.reraise(*sys.exc_info())
 
     def queue_reader():
         queue = multiprocessing.Queue(queue_size)
@@ -413,12 +418,17 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                 yield sample
 
     def _read_into_pipe(reader, conn):
-        for sample in reader():
-            if sample is None:
-                raise ValueError("sample has None!")
-            conn.send(json.dumps(sample))
-        conn.send(json.dumps(None))
-        conn.close()
+        try:
+            for sample in reader():
+                if sample is None:
+                    raise ValueError("sample has None!")
+                conn.send(json.dumps(sample))
+            conn.send(json.dumps(None))
+            conn.close()
+        except:
+            conn.send(json.dumps(None))
+            conn.close()
+            six.reraise(*sys.exc_info())
 
     def pipe_reader():
         conns = []
