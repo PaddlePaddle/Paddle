@@ -145,7 +145,7 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
                      /* use_system_allocator = */ true);
 }
 
-TEST(BuddyAllocator, FractionRefillPoolTwice) {
+TEST(BuddyAllocator, FractionRefillPool) {
   FLAGS_fraction_of_gpu_memory_to_use = 0.6;
   FLAGS_initial_gpu_memory_in_mb = 0;
   FLAGS_reallocate_gpu_memory_in_mb = 0;
@@ -165,7 +165,7 @@ TEST(BuddyAllocator, FractionRefillPoolTwice) {
   size_t alloc =
       platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
   // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
-  // be able to alloc 60% of remaining
+  // be able to alloc 60% of the remaining GPU
   int* p1 = TestBuddyAllocator(&buddy_allocator, alloc,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
@@ -175,7 +175,7 @@ TEST(BuddyAllocator, FractionRefillPoolTwice) {
   alloc =
       platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
   // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
-  // be able to alloc 60% of remaining
+  // be able to alloc 60% of the remaining GPU
   TestBuddyAllocator(&buddy_allocator, alloc,
                      /* use_system_allocator = */ false);
   // Max chunk size should be same during allocation
@@ -194,12 +194,12 @@ TEST(BuddyAllocator, AllocFromAvailable) {
   platform::SetDeviceId(TEST_GPU_ID);
   platform::GpuMemoryUsage(&available, &total);
 
-  // Taken half of available GPU
+  // Take half of available GPU
   void* p;
   cudaError_t result = cudaMalloc(&p, available >> 1);
   EXPECT_TRUE(result == cudaSuccess);
 
-  // BuddyAllocator should be able to alloc remaining GPU
+  // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());

@@ -58,7 +58,7 @@ void SetDeviceId(int device_id);
 void GpuMemoryUsage(size_t *available, size_t *total);
 
 //! Get the available memory to allocate, which is the size of available gpu
-//! minus reserving
+//! minus reserving.
 size_t GpuAvailableMemToAlloc();
 
 //! Get the maximum allocation size of current GPU device.
