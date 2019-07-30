@@ -429,7 +429,7 @@ struct RecordCandidate {
     feas.clear();
     ins_id_ = rec.ins_id_;
     for (auto &fea : rec.uint64_feasigns_) {
-        feas.insert({fea.slot(), fea.sign()});
+      feas.insert({fea.slot(), fea.sign()});
     }
     return *this;
   }

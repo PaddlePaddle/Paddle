@@ -59,7 +59,8 @@ void RecordCandidateList::ReInit() {
   _mutex.unlock();
 }
 
-void RecordCandidateList::AddAndGet(const Record& record, RecordCandidate& result) {
+void RecordCandidateList::AddAndGet(const Record& record,
+                                    RecordCandidate& result) {
   _mutex.lock();
   size_t index = 0;
   ++_total_size;
