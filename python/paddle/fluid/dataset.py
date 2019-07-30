@@ -117,23 +117,24 @@ class DatasetBase(object):
     def slots_shuffle(self, slots):
         """
         Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, whicih is usually used 
+        Slots Shuffle is a shuffle method in slots level, which is usually used 
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc with slots shuffle on one or several slots to evaluate the importance level
-        of slots(features).
+        auc while doing slots shuffle on one or several slots with baseline to 
+        evaluate the importance level of slots(features).
         
         Args:
-            slots(set): the set of slots to do slots shuffle.
+            slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
             import paddle.fluid as fluid
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             dataset.set_merge_by_lineid()
             #suppose there is a slot 0
-            dataset.slots_shuffle({0})
+            dataset.slots_shuffle(['0'])
         """
         if self.fea_eval:
-            self.dataset.slots_shuffle(slots)
+            slots_set = set(slots)
+            self.dataset.slots_shuffle(slots_set)
 
     def set_batch_size(self, batch_size):
         """

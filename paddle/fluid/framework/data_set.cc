@@ -686,7 +686,7 @@ void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
 
 
 //slots shuddle to input_channel_ with needed-shuffle slots
-void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) {
+void MultiSlotDataset::SlotsShuffle(const std::set<std::string>& slots_to_replace) {
     int out_channel_size = 0;
     if (cur_channel_ == 0) {
         for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
@@ -711,8 +711,7 @@ void MultiSlotDataset::SlotsShuffle(const std::set<uint16_t>& slots_to_replace) 
     auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
     std::set<uint16_t> index_slots;
     for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
-        char* endptr;
-        int cur_slot = strtol(multi_slot_desc.slots(i).name().c_str(), &endptr, 10);
+        std::string cur_slot = multi_slot_desc.slots(i).name();
         if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
             index_slots.insert(i);
         }

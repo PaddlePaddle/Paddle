@@ -97,7 +97,7 @@ class Dataset {
   // global shuffle data
   virtual void GlobalShuffle() = 0;
   // for slots shuffle
-  virtual void SlotsShuffle(const std::set<uint16_t>& slots_to_replace) = 0;
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace, std::vector<Record>& result) = 0;
   // create readers
   virtual void CreateReaders() = 0;
@@ -156,7 +156,7 @@ class DatasetImpl : public Dataset {
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
-  virtual void SlotsShuffle(const std::set<uint16_t>& slots_to_replace) {}
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace, std::vector<Record>& result) {}
   virtual void CreateReaders();
   virtual void DestroyReaders();
@@ -202,7 +202,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
-  virtual void SlotsShuffle(const std::set<uint16_t>& slots_to_replace);
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace, std::vector<Record>& result);
   virtual ~MultiSlotDataset() {}
 };
