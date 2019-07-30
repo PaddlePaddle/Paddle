@@ -710,11 +710,15 @@ class FleetUtil(object):
         pass_id = str(pass_id)
         if fleet.worker_index() == 0:
             if save_combine:
-                fluid.io.save_vars(executor, model_name, program,
-                                   vars=var_names)
+                fluid.io.save_vars(
+                    executor, model_name, program, vars=var_names)
             else:
-                fluid.io.save_vars(executor, "./", program, vars=var_names,
-                                   filename=model_name)
+                fluid.io.save_vars(
+                    executor,
+                    "./",
+                    program,
+                    vars=var_names,
+                    filename=model_name)
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
@@ -727,14 +731,12 @@ class FleetUtil(object):
             else:
                 dest = "%s/%s/delta-%d/dnn_plugin/" % (output_path, day,
                                                        pass_id)
-
             if not client.is_exist():
                 client.makedirs(dest)
 
             client.upload(dest, model_name)
 
         fleet._role_maker._barrier_worker()
-
 
     def get_last_save_model(self,
                             output_path,
