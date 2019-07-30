@@ -122,8 +122,9 @@ class SaveOpKernel : public framework::OpKernel<T> {
           lt_var->clear();
           lt_var->append(filename.substr(hdfs_prefix.length()));
           srand (time(NULL));
+          std::string random_path_name;
           do {
-            std::string random_path_name = "/tmp/" + randomString()
+            random_path_name = "/tmp/" + randomString()
 		+ "__LOOKUP_TABLE__";
           } while (PathExists(random_path_name))
           MkDirRecursively(random_path_name.c_str());
