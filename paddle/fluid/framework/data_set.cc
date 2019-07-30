@@ -655,7 +655,8 @@ void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId end";
 }
 
-void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace, std::vector<Record>& result) {
+void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace, 
+                                     std::vector<Record>& result) {
     int debug_erase_cnt = 0;
     int debug_push_cnt = 0;
     auto multi_slot_desc = data_feed_desc_.multi_slot_desc(); 
