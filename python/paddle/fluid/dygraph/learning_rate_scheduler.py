@@ -67,7 +67,7 @@ class LearningRateDecay(object):
 
     def step(self):
         raise NotImplementedError()
-	
+
     def numpy(self):
         return self.lr.numpy()
 
