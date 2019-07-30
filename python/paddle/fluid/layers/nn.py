@@ -12636,7 +12636,7 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
                  'pos': pos},
         attrs={'topks': topks,
                'channel_num': channel_num})
-    
+
     return out
 
 
