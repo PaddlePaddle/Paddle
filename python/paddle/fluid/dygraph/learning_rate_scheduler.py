@@ -44,7 +44,7 @@ class LearningRateDecay(object):
         if isinstance(lr, float):
             lr = self.create_lr_var(lr)
         self.step_num += self.step_size
-	self.lr = lr
+        self.lr = lr
         return lr
 
     def create_lr_var(self, lr):
