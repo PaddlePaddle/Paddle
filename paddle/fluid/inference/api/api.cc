@@ -58,6 +58,10 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
     // behavior is undefined
     if (other.length() && other.data())
       memcpy(data_, other.data(), other.length());
+    else if (other.length())
+      PADDLE_THROW(
+          "Invalid argument, null pointer data with length %u is passed",
+          other.length());
 
     length_ = other.length();
     memory_owned_ = true;
