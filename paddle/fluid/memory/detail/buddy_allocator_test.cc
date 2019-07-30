@@ -49,7 +49,7 @@ int* TestBuddyAllocator(BuddyAllocator* allocator, size_t size_bytes,
 #ifdef PADDLE_WITH_CUDA
     if (size_bytes < allocator->GetMaxChunkSize()) {
 #else
-    if (size_bytes < allocator->CetMaxChunkSize()) {
+    if (size_bytes < allocator->GetMaxChunkSize()) {
 #endif
       // Not allocate from SystemAllocator
       EXPECT_FALSE(use_system_allocator);
