@@ -367,6 +367,25 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestLeakyRelu(TestActivation):
+    def setUp(self):
+        self.op_type = "leaky_relu"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0.02 * x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 class TestGelu(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
