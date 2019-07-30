@@ -205,7 +205,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
       allocate_bytes = std::max(platform::GpuInitAllocSize(), request_bytes);
     } else {
       // Compute the re-allocation size, we store the re-allocation size when
-      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value to speed up.
+      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
       if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
         realloc_size_ = platform::GpuReallocSize();
       }
