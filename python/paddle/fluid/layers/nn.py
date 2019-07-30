@@ -12629,7 +12629,7 @@ def sequence_topk_pooling(input, topk, channel_num):
                  'pos': pos},
         attrs={'topk': topk,
                'channel_num': channel_num})
-    
+
     return out
 
 
