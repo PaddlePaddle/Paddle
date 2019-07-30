@@ -234,9 +234,11 @@ class DataParallel(layers.Layer):
             grad_var_groups.setdefault(group_idx, []).append(g_var)
 
         coalesced_grads_and_vars = self._coalesce_tensor(grad_var_groups)
+
         for coalesced_grad, g_vars, g_shapes in coalesced_grads_and_vars:
             collective._allreduce(
-                coalesced_grad, coalesced_grad, sync_mode=True)
+                coalesced_grad, coalesced_grad, sync_mode=False)
+
         self._split_vars(coalesced_grads_and_vars)
 
     def _is_data_parallel_mode(self):
