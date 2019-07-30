@@ -19,7 +19,6 @@ limitations under the License. */
 #include <numeric>
 #include <string>
 #include <vector>
-#include <boost/filesystem.hpp>
 #include <stdlib.h>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -124,8 +123,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
           lt_var->append(filename.substr(hdfs_prefix.length()));
           srand (time(NULL));
           do {
-            std::string random_path_name = boost::filesystem::temp_directory_path()
-		+ boost::filesystem::path::preferred_separator + randomString()
+            std::string random_path_name = "/tmp/" + randomString()
 		+ "__LOOKUP_TABLE__";
           } while (PathExists(random_path_name))
           MkDirRecursively(random_path_name.c_str());
