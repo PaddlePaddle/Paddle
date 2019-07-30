@@ -154,7 +154,7 @@ template struct SelectedRowsAddTo<platform::CPUDeviceContext, int64_t>;
 template <typename T>
 struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<const framework::SelectedRows*>& input1,
                   const std::vector<int64_t>& input2_offsets,
                   framework::SelectedRows* input2) {
     // Ensure all selected rows have the same height
