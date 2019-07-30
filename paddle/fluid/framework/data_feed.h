@@ -428,7 +428,7 @@ struct RecordCandidate {
   RecordCandidate& operator=(const Record& rec) {
     feas.clear();
     ins_id_ = rec.ins_id_;
-    for (auto &fea : rec.uint64_feasigns_) {
+    for (auto& fea : rec.uint64_feasigns_) {
       feas.insert({fea.slot(), fea.sign()});
     }
     return *this;
@@ -436,7 +436,7 @@ struct RecordCandidate {
 };
 
 class RecordCandidateList {
-public:
+ public:
   RecordCandidateList() = default;
   RecordCandidateList(const RecordCandidateList&) = delete;
   RecordCandidateList& operator=(const RecordCandidateList&) = delete;
@@ -447,7 +447,7 @@ public:
 
   void AddAndGet(const Record& record, RecordCandidate& result);
 
-private:
+ private:
   size_t _capacity = 0;
   std::mutex _mutex;
   bool _full = false;
