@@ -224,6 +224,67 @@ struct TransposeParam {
   std::string data_format{"AnyLayout"};
 };
 
+struct GruParam {
+  lite::Tensor* x{};
+  lite::Tensor* h0{};
+  lite::Tensor* weight{};
+  lite::Tensor* bias{};
+  lite::Tensor* batchGate{};
+  lite::Tensor* batchResetHiddenPrev{};
+  lite::Tensor* batchHidden{};
+  lite::Tensor* hidden{};
+  std::string activation{"tanh"};
+  std::string gate_activation{"sigmoid"};
+  bool is_reverse{false};
+  bool origin_mode{false};
+};
+
+struct FusionGruParam {
+  lite::Tensor* x{};
+  lite::Tensor* h0{};
+  lite::Tensor* weightX{};
+  lite::Tensor* weightH{};
+  lite::Tensor* bias{};
+  lite::Tensor* reorderedH0{};
+  lite::Tensor* xx{};
+  lite::Tensor* batchedInput{};
+  lite::Tensor* batchedOut{};
+  lite::Tensor* hidden{};
+  std::string activation{"tanh"};
+  std::string gate_activation{"sigmoid"};
+  bool is_reverse{false};
+  bool use_seq{true};
+};
+
+struct LookupTableParam {
+  lite::Tensor* w{};
+  lite::Tensor* ids{};
+  lite::Tensor* output{};
+  bool is_sparse{false};
+  bool is_distributed{false};
+  int64_t padding_idx{-1};
+  bool remote_prefetch{false};
+  int trainer_id{0};
+  std::vector<std::string> epmap{};
+  std::vector<int32_t> height_sections{};
+  std::vector<std::string> table_names{};
+};
+
+struct SequenceReshapeParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+  int new_dim;
+};
+
+///----------------------- reduce operators -----------------------------
+struct ReduceParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+  std::vector<int> dim{0};
+  bool keep_dim{false};
+  bool reduce_all{false};
+};
+
 /// ----------------------- element wise operators ----------------------
 struct ElementwiseParam {
   const lite::Tensor* X{};

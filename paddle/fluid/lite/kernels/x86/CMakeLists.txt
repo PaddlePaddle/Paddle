@@ -19,6 +19,11 @@ lite_cc_library(conv_compute_x86 SRCS conv_compute.cc DEPS ${lite_kernel_deps} b
 lite_cc_library(pool_compute_x86 SRCS pool_compute.cc DEPS ${lite_kernel_deps} pooling)
 lite_cc_library(batch_norm_compute_x86 SRCS batch_norm_compute.cc DEPS ${lite_kernel_deps})
 lite_cc_library(uniform_random_compute_x86 SRCS uniform_random_compute.cc DEPS ${lite_kernel_deps} )
+lite_cc_library(reshape_compute_x86 SRCS reshape_compute.cc DEPS ${lite_kernel_deps})
+lite_cc_library(gru_compute_x86 SRCS gru_compute.cc DEPS ${lite_kernel_deps} sequence2batch gru_compute)
+lite_cc_library(reduce_compute_x86 SRCS reduce_compute.cc DEPS ${lite_kernel_deps})
+lite_cc_library(lookup_table_compute_x86 SRCS lookup_table_compute.cc DEPS ${lite_kernel_deps})
+lite_cc_library(sequence_reshape_compute_x86 SRCS sequence_reshape_compute.cc DEPS ${lite_kernel_deps})
 
 lite_cc_test(test_fc_compute_x86 SRCS fc_compute_test.cc DEPS fc_compute_x86)
 lite_cc_test(test_conv2d_compute_x86 SRCS conv_compute_test.cc DEPS conv_compute_x86)
@@ -50,5 +55,10 @@ set(x86_kernels
     batch_norm_compute_x86
     uniform_random_compute_x86
     sgd_compute_x86
+    reshape_compute_x86
+    gru_compute_x86
+    reduce_compute_x86
+    lookup_table_compute_x86
+    sequence_reshape_compute_x86
     CACHE INTERNAL "x86 kernels")
     

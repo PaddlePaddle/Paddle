@@ -25,6 +25,14 @@ namespace lite {
 namespace kernels {
 namespace x86 {
 
+inline int count(int start_axis, int end_axis, const lite::DDim& dim) {
+  int count = 1;
+  for (int i = start_axis; i < end_axis; ++i) {
+    count *= dim[i];
+  }
+  return count;
+}
+
 template <typename T>
 class ConcatCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
  public:
@@ -33,62 +41,28 @@ class ConcatCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
     int64_t axis = static_cast<int64_t>(param.axis);
+    auto x_dims = param.x[0]->dims();
     auto out = param.output;
+    if (param.x.size() == 1) return;
 
-    if (axis == 0 && param.x.size() < 10) {
-      size_t output_offset = 0;
-      for (auto* in : param.x) {
-        if (!in || in->dims().production() == 0UL) {
-          continue;
-        }
-        auto in_stride = framework::stride_numel(in->dims().data());
-        auto out_stride = framework::stride_numel(out->dims().data());
-        paddle::operators::StridedNumelCopyWithAxis<T>(
-            platform::CPUDeviceContext(), axis,
-            out->mutable_data<T>() + output_offset, out_stride, in->data<T>(),
-            in_stride, in_stride[axis]);
-
-        output_offset += in_stride[axis];
+    auto output_data = param.output->template mutable_data<T>();
+    int offset_concat_axis = 0;
+    int num_concat = count(0, axis, x_dims);
+    int concat_input_size = count(axis + 1, x_dims.size(), x_dims);
+    const int top_concat_axis = out->dims()[axis];
+    for (size_t i = 0; i < param.x.size(); ++i) {
+      auto bottom_data = param.x[i]->data<T>();
+      const int64_t bottom_concat_axis = param.x[i]->dims()[axis];
+      for (int n = 0; n < num_concat; ++n) {
+        std::memcpy(
+            output_data +
+                (n * top_concat_axis + offset_concat_axis) * concat_input_size,
+            bottom_data + n * bottom_concat_axis * concat_input_size,
+            (bottom_concat_axis * concat_input_size) * sizeof(T));
       }
-    } else {
-      std::vector<lite::Tensor> inputs;
-      for (size_t j = 0; j < param.x.size(); ++j) {
-        if (param.x[j] && param.x[j]->dims().production() > 0) {
-          inputs.push_back(*param.x[j]);
-        } else {
-          continue;
-        }
-      }
-
-      int num = inputs.size();
-      int rows = 1;
-      auto dim_0 = inputs[0].dims();
-      for (int i = 0; i < axis; ++i) {
-        rows *= dim_0[i];
-      }
-      int out_rows = rows, out_cols = 0;
-
-      std::vector<int64_t> input_cols(inputs.size());
-      for (int i = 0; i < num; ++i) {
-        int t_cols = inputs[i].dims().production() / rows;
-        out_cols += t_cols;
-        input_cols[i] = t_cols;
-      }
-      // computation
-      auto output_data = param.output->template mutable_data<T>();
-      int col_idx = 0;
-      for (int j = 0; j < num; ++j) {
-        int col_len = input_cols[j];
-        auto input_data = inputs[j].data<float>();
-        for (int k = 0; k < out_rows; ++k) {
-          std::memcpy(output_data + k * out_cols + col_idx,
-                      input_data + k * col_len, sizeof(T) * col_len);
-        }
-        col_idx += col_len;
-      }
+      offset_concat_axis += bottom_concat_axis;
     }
   }
-
   virtual ~ConcatCompute() = default;
 };
 

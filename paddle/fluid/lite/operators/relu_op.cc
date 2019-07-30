@@ -26,7 +26,7 @@ bool ReluOp::InferShape() const {
   // TODO(Superjomn) Enable data sharing.
   param_.Out->Resize(param_.X->dims());
   // share lod
-  // param_.output->set_lod(param_.X->lod());
+  param_.Out->raw_tensor().set_lod(param_.X->lod());
   return true;
 }
 

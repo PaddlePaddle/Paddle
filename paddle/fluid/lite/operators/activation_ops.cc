@@ -30,6 +30,7 @@ class ActivationOp : public OpLite {
 
   bool InferShape() const override {
     param_.Out->Resize(param_.X->dims());
+    param_.Out->raw_tensor().set_lod(param_.X->raw_tensor().lod());
     return true;
   }
 
@@ -104,6 +105,7 @@ class ActivationGradOp : public OpLite {
 }  // namespace paddle
 
 REGISTER_LITE_OP(square, paddle::lite::operators::ActivationOp);
+REGISTER_LITE_OP(softsign, paddle::lite::operators::ActivationOp);
 #ifdef LITE_WITH_X86
 REGISTER_LITE_OP(square_grad, paddle::lite::operators::ActivationGradOp);
 #endif

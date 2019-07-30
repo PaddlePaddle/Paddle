@@ -76,6 +76,9 @@ void AttrsPbToCpp(const pb::OpDesc &pb_desc, cpp::OpDesc *cpp_desc) {
         cpp_desc->SetAttr<std::vector<int64_t>>(
             name, pb_desc.GetAttr<std::vector<int64_t>>(name));
         break;
+      case AttrType::LONG:
+        cpp_desc->SetAttr<int64_t>(name, pb_desc.GetAttr<int64_t>(name));
+        break;
       default:
         LOG(FATAL) << "Unsupported attr type found " << static_cast<int>(type);
     }

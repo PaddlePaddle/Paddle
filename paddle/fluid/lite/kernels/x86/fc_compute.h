@@ -21,6 +21,8 @@
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/fc_compute.h"
 
 namespace paddle {
 namespace lite {
@@ -73,20 +75,24 @@ class FcCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = *param_.get_mutable<param_t>();
-    CHECK_GE(param.input->dims().size(), 2UL);
-    CHECK_EQ(param.output->dims().size(), 2UL);
+    auto& ctx = ctx_->As<X86Context>();
+    // CHECK_GE(param.input->dims().size(), 2UL);
+    // CHECK_EQ(param.output->dims().size(), 2UL);
 
-    fc_compute_eigen(
-        param.input->data<T>(),  // x
-        param.input->dims().Slice(0, param.in_num_col_dims).production(),
-        param.input->dims()
-            .Slice(param.in_num_col_dims, param.input->dims().size())
-            .production(),
-        param.w->data<T>(),     // w
-        param.w->dims()[0],     // w_h
-        param.w->dims()[1],     // w_w
-        param.bias->data<T>(),  // b
-        param.output->mutable_data<T>());
+    auto w_dims = param.w->dims();
+    auto out_dims = param.output->dims();
+    int M = out_dims.production() / w_dims[1];
+
+    auto bias = param.bias;
+    const T* input_data = param.input->data<T>();
+    const T* w_data = param.w->data<T>();
+    T* output_data = param.output->mutable_data<T>();
+
+    auto blas = paddle::operators::math::GetBlas<platform::CPUDeviceContext, T>(
+        *ctx.x86_device_context());
+    paddle::operators::math::FCCompute<platform::CPUDeviceContext, T>(
+        blas, M, w_dims[1], w_dims[0], input_data, w_data, output_data,
+        bias ? bias->data<T>() : NULL);
   }
 
   virtual ~FcCompute() = default;

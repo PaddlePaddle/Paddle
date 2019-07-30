@@ -62,6 +62,14 @@ USE_LITE_KERNEL(conv2d, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(depthwise_conv2d, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(pool2d, kX86, kFloat, kNCHW, def);
 USE_LITE_KERNEL(batch_norm, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(softsign, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(reshape, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(reshape2, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(gru, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(reduce_sum, kX86, kFloat, kNCHW, def);
+// USE_LITE_KERNEL(lookup_table, kX86, kFloat, kNCHW, def);
+USE_LITE_KERNEL(lookup_table, kX86, kInt64, kNCHW, def);
+USE_LITE_KERNEL(sequence_reshape, kX86, kFloat, kNCHW, def);
 #endif
 
 #ifdef LITE_WITH_CUDA

@@ -38,6 +38,13 @@ USE_LITE_OP(batch_norm)
 USE_LITE_OP(fusion_elementwise_sub_activation)
 USE_LITE_OP(transpose)
 USE_LITE_OP(transpose2)
+USE_LITE_OP(reshape)
+USE_LITE_OP(reshape2)
+USE_LITE_OP(softsign)
+USE_LITE_OP(gru)
+USE_LITE_OP(reduce_sum)
+USE_LITE_OP(lookup_table)
+USE_LITE_OP(sequence_reshape)
 
 USE_LITE_OP(fake_quantize_moving_average_abs_max);
 USE_LITE_OP(fake_dequantize_max_abs);

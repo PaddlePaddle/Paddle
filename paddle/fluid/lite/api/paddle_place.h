@@ -33,6 +33,7 @@ enum class PrecisionType : int {
   kFloat,
   kInt8,
   kInt32,
+  kInt64,
   kAny,  // any precision
   NUM,   // number of fields.
 };
@@ -51,6 +52,8 @@ static size_t PrecisionTypeLength(PrecisionType type) {
       return 1;
     case PrecisionType::kInt32:
       return 4;
+    case PrecisionType::kInt64:
+      return 8;
     default:
       return 4;
   }

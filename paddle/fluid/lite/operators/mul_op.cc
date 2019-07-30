@@ -65,7 +65,7 @@ bool MulOpLite::InferShape() const {
   param_.output->Resize(lite::DDim(out_dims));
 
   // share LoD
-  // param_.output->set_lod(param_.input->lod());
+  param_.output->raw_tensor().set_lod(param_.x->lod());
   return true;
 }
 

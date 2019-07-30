@@ -73,7 +73,7 @@ void Program::Build(const framework::proto::ProgramDesc &program) {
     auto op_type = op_desc.Type();
     // if (op_type == "feed" || op_type == "fetch") continue;
     VLOG(4) << "create Op [" << op_type << "]";
-    LOG(INFO) << "create Op [" << op_type << "]";
+    // LOG(INFO) << "create Op [" << op_type << "]";
     auto op = LiteOpRegistry::Global().Create(op_type);
     CHECK(op) << "no Op found for " << op_type;
     ops_.emplace_back(std::move(op));

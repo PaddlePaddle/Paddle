@@ -12,42 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/operators/softmax_op.h"
+#include "paddle/fluid/lite/operators/sequence_reshape_op.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace operators {
 
-bool SoftmaxOp::CheckShape() const {
+bool SequenceReshapeOp::CheckShape() const {
   CHECK_OR_FALSE(param_.x);
   CHECK_OR_FALSE(param_.output);
   auto x_dims = param_.x->dims();
-  auto x_rank = x_dims.size();
-  CHECK_OR_FALSE(param_.axis >= -static_cast<int>(x_rank) &&
-                 param_.axis < static_cast<int>(x_rank));
+  CHECK_EQ_OR_FALSE(x_dims.size(), 2U);
   return true;
 }
 
-bool SoftmaxOp::InferShape() const {
-  param_.output->Resize(param_.x->dims());
-  param_.output->raw_tensor().set_lod(param_.x->lod());
+bool SequenceReshapeOp::InferShape() const {
+  int new_dim = param_.new_dim;
+  auto x_numel = param_.x->dims().production();
+  std::vector<int64_t> out_shape{x_numel / new_dim,
+                                 static_cast<int64_t>(new_dim)};
+  param_.output->Resize(lite::DDim(out_shape));
   return true;
 }
 
-bool SoftmaxOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
-  param_.x = const_cast<lite::Tensor *>(
-      &scope->FindVar(opdesc.Input("X").front())->Get<lite::Tensor>());
+bool SequenceReshapeOp::AttachImpl(const cpp::OpDesc &opdesc,
+                                   lite::Scope *scope) {
+  param_.x =
+      scope->FindVar(opdesc.Input("X").front())->GetMutable<lite::Tensor>();
   param_.output =
       scope->FindVar(opdesc.Output("Out").front())->GetMutable<lite::Tensor>();
 
-  if (opdesc.HasAttr("axis")) {
-    param_.axis = opdesc.GetAttr<int>("axis");
-  } else {
-    param_.axis = -1;
-  }
-  CHECK(param_.x);
-  CHECK(param_.output);
+  param_.new_dim = opdesc.GetAttr<int>("new_dim");
   return true;
 }
 
@@ -55,4 +51,4 @@ bool SoftmaxOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_OP(softmax, paddle::lite::operators::SoftmaxOp);
+REGISTER_LITE_OP(sequence_reshape, paddle::lite::operators::SequenceReshapeOp);

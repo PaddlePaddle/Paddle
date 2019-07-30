@@ -42,6 +42,8 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
       CREATE_KERNEL1(target__, kFloat);                 \
     case PRECISION(kInt8):                              \
       CREATE_KERNEL1(target__, kInt8);                  \
+    case PRECISION(kInt64):                             \
+      CREATE_KERNEL1(target__, kInt64);                 \
     case PRECISION(kAny):                               \
       CREATE_KERNEL1(target__, kAny);                   \
     default:                                            \
@@ -95,6 +97,7 @@ KernelRegistry::KernelRegistry()
   INIT_FOR(kHost, kAny, kAny);
 
   INIT_FOR(kX86, kFloat, kNCHW);
+  INIT_FOR(kX86, kInt64, kNCHW);
   INIT_FOR(kX86, kAny, kNCHW);
   INIT_FOR(kX86, kAny, kAny);
 

@@ -112,6 +112,7 @@ class TensorHvy : public TensorBase<TensorHvy> {
 
   void ShareDataWith(const TensorHvy& other) {
     data_.ShareDataWith(other.data_);
+    data_.set_lod(other.data_.lod());
   }
   void ShareDataWith(const framework::Tensor& other) {
     data_.ShareDataWith(other);

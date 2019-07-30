@@ -19,6 +19,11 @@ lite_cc_library(mean_op_lite SRCS mean_op.cc DEPS ${op_DEPS})
 lite_cc_library(fill_constant_op_lite SRCS fill_constant_op.cc DEPS ${op_DEPS})
 lite_cc_library(sgd_op_lite SRCS sgd_op.cc DEPS ${op_DEPS})
 lite_cc_library(uniform_random_op_lite SRCS uniform_random_op.cc DEPS ${op_DEPS})
+lite_cc_library(gru_op_lite SRCS gru_op.cc DEPS ${op_DEPS})
+#lite_cc_library(fusion_gru_op_lite SRCS fusion_gru_op.cc DEPS ${op_DEPS})
+lite_cc_library(reduce_ops_lite SRCS reduce_ops.cc DEPS ${op_DEPS})
+lite_cc_library(lookup_table_op_lite SRCS lookup_table_op.cc DEPS ${op_DEPS})
+lite_cc_library(sequence_reshape_op_lite SRCS sequence_reshape_op.cc DEPS ${op_DEPS})
 
 lite_cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite} any_lite framework_proto_lite)
 lite_cc_library(dropout_op_lite SRCS dropout_op.cc DEPS ${op_DEPS})
@@ -56,6 +61,10 @@ set(ops_lite
         fake_dequant
         sgd_op_lite
         uniform_random_op_lite
+        gru_op_lite
+        reduce_ops_lite
+        lookup_table_op_lite
+        sequence_reshape_op_lite
         CACHE INTERNAL "ops lite")
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc 

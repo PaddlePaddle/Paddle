@@ -30,7 +30,7 @@ function check_need_ci {
 
 function cmake_x86 {
     prepare_workspace
-    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags}
+    cmake ..  -DCMAKE_BUILD_TYPE=Release -DWITH_MKL=ON -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON -DLITE_WITH_PROFILE=OFF ${common_flags}
 }
 
 function cmake_opencl {
@@ -126,14 +126,14 @@ function build_opencl {
 # This method is only called in CI.
 function cmake_x86_for_CI {
     prepare_workspace # fake an empty __generated_code__.cc to pass cmake.
-    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=ON
+    cmake ..  -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DLITE_WITH_X86=ON ${common_flags} -DLITE_WITH_PROFILE=OFF
 
     # Compile and execute the gen_code related test, so it will generate some code, and make the compilation reasonable.
     make test_gen_code_lite -j$NUM_CORES_FOR_COMPILE
     make test_cxx_api_lite -j$NUM_CORES_FOR_COMPILE
     ctest -R test_cxx_api_lite
     ctest -R test_gen_code_lite
-    make test_generated_code -j$NUM_CORES_FOR_COMPILE
+    make test_generated_code -j #$NUM_CORES_FOR_COMPILE
 }
 
 function cmake_gpu {

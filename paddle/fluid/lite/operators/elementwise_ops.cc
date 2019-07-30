@@ -29,6 +29,7 @@ bool ElementwiseOp::CheckShape() const {
 bool ElementwiseOp::InferShape() const {
   CHECK_OR_FALSE(param_.X->dims().size() >= param_.Y->dims().size());
   param_.Out->Resize(param_.X->dims());
+  param_.Out->raw_tensor().set_lod(param_.X->lod());
   return true;
 }
 
