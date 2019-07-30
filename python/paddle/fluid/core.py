@@ -177,10 +177,6 @@ if avx_supported():
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _set_paddle_lib_path
-        _set_paddle_lib_path([
-            os.path.sep.join([x, 'paddle', 'libs'])
-            for x in site.getsitepackages() if 'site-packages' in x
-        ][0])
     except Exception as e:
         if has_avx_core:
             raise e
@@ -210,13 +206,25 @@ if load_noavx:
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _set_paddle_lib_path
-        _set_paddle_lib_path([
-            os.path.sep.join([x, 'paddle', 'libs'])
-            for x in site.getsitepackages() if 'site-packages' in x
-        ][0])
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(
                 'Error: Can not import noavx core while this file exists ' +
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
         raise e
+
+# set paddle lib path
+if hasattr(site, 'getsitepackages'):
+    for site_dir in site.getsitepackages():
+        lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
+        if os.path.exists(lib_dir):
+            _set_paddle_lib_path(lib_dir)
+            break
+else:
+    for path in sys.path:
+        if 'site-packages' not in path:
+            continue
+        lib_dir = os.path.sep.join([path, 'paddle', 'libs'])
+        if os.path.exists(lib_dir):
+            _set_paddle_lib_path(lib_dir)
+            break
