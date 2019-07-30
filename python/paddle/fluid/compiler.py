@@ -45,6 +45,14 @@ def _is_pserver_mode(main_program):
     return False
 
 
+def _has_backward_op(graph):
+    for node in graph.nodes():
+        if node.is_op() and node.op() is not None and \
+                node.op().type().endswith("_grad"):
+            return True
+    return False
+
+
 class CompiledProgram(object):
     """
     Compiles to Graph for execution.
@@ -112,6 +120,87 @@ class CompiledProgram(object):
         self._compiled = False
         self._is_data_parallel = False
         self._is_inference = False
+        self._loss_name = None
+        self._build_strategy = None
+        self._exec_strategy = None
+        self._share_vars_from = None
+        self._places = None
+        self._with_strategy = False
+
+    def set_strategy(self,
+                     loss_name=None,
+                     build_strategy=None,
+                     exec_strategy=None,
+                     share_vars_from=None):
+        """Add build strategy and execution strategy to the program.
+
+        Example:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import paddle.fluid.compiler as compiler
+              import numpy
+              import os
+
+              use_cuda = True
+              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+              # NOTE: If you use CPU to run the program, you need
+              # to specify the CPU_NUM, otherwise, fluid will use
+              # all the number of the logic core as the CPU_NUM,
+              # in that case, the batch size of the input should be
+              # greater than CPU_NUM, if not, the process will be
+              # failed by an exception.
+              if not use_cuda:
+                  os.environ['CPU_NUM'] = str(2)
+
+              exe = fluid.Executor(place)
+
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+              fluid.default_startup_program().random_seed=1
+              exe.run(fluid.default_startup_program())
+              compiled_prog = compiler.CompiledProgram(
+                       fluid.default_main_program()).set_strategy(
+                                loss_name=loss.name)
+
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              loss_data, = exe.run(compiled_prog,
+                                   feed={"X": x},
+                                   fetch_list=[loss.name])
+
+        Args:
+            loss_name (str): The loss name must set in training. Default None.
+            build_strategy(BuildStrategy): build_strategy is used to
+                build the graph so it can run on multiple devices/cores with
+                optimized topology.
+                For more information, please refer to fluid.BuildStrategy.
+                Default None.
+            exec_strategy(ExecutionStrategy): exec_strategy is used to
+                to select the a way to execute the graph, for example how many
+                threads are used, how many iterations to clean up the temp
+                variables. For more information, please refer
+                to fluid.ExecutionStrategy. Default None.
+            share_vars_from(CompiledProgram): If provided, this CompiledProgram
+                will share variables from `share_vars_from`. `share_vars_from`
+                must be run by the executor before this CompiledProgram so that
+                vars are ready.
+
+        Returns:
+            self
+        """
+        assert not self._with_strategy, "Already set build_strategy and exec_strategy."
+        self._with_strategy = True
+        self._loss_name = loss_name
+        self._build_strategy = build_strategy
+        self._exec_strategy = exec_strategy
+        self._share_vars_from = share_vars_from
+        if _has_backward_op(self._graph):
+            assert loss_name is not None, "The loss_name should be set here."
+        return self
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -188,22 +277,22 @@ class CompiledProgram(object):
         """
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
+        if _has_backward_op(self._graph) and loss_name is None:
+            print("The loss_name should be set here.")
+        self._with_strategy = True
         self._is_data_parallel = True
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        if self._build_strategy is None:
-            self._build_strategy = BuildStrategy()
+
+        if _has_backward_op(self._graph):
+            assert self._loss_name is not None, "The loss_name should be set here."
+
         if places is not None:
             if not isinstance(places, (list, tuple)):
-                places = [places]
-            self._places = places
-        else:
-            self._places = None
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+                self._places = [places]
+
         return self
 
     def with_inference_optimize(self, config):
@@ -228,10 +317,13 @@ class CompiledProgram(object):
     def _with_distributed(self):
         raise NotImplementedError()
 
-    def _compile_data_parallel(self, use_cuda=False, scope=None):
+    def _compile_data_parallel(self, use_cuda=False, scope=None, places=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
+            if not self._is_data_parallel:
+                raise ValueError(
+                    "Currently, only data parallel mode need share_vars_from.")
             if not self._share_vars_from._is_data_parallel:
                 raise ValueError("share_vars_from is not data parallel. Cannot "
                                  "share vars from it.")
@@ -239,31 +331,30 @@ class CompiledProgram(object):
                 raise ValueError(
                     "share_vars_from is not compiled and run, so there is no "
                     "var to share.")
+            # if not isinstance(self._share_vars_from._executor, core.ParallelExecutor):
+            #     raise ValueError(
+            #         "share_vars_from is not compiled and run, so there is no "
+            #         "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
-            # drop the local_exe_scopes of the previous parallel_executor
-            self._share_vars_from._executor.drop_local_exe_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
 
+        if self._build_strategy is None:
+            self._build_strategy = BuildStrategy()
+        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+
+        if self._exec_strategy is None:
+            self._exec_strategy = ExecutionStrategy()
         self._exec_strategy.use_cuda = use_cuda
-        has_set_place = (self._places is not None)
-        if has_set_place:
-            for p in self._places:
-                assert p._type() == self._place._type(), \
-                    "Place type not match. You may set the wrong type of places"
-        else:
-            self._places = cuda_places(
-            ) if self._exec_strategy.use_cuda else cpu_places()
-        assert self._places, "no place for execution"
 
         if self._exec_strategy.num_threads == 0:
             if self._exec_strategy.use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(self._places) * 4
+                self._exec_strategy.num_threads = len(places) * 4
             else:
-                self._exec_strategy.num_threads = len(self._places) * 2
+                self._exec_strategy.num_threads = len(places) * 2
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
@@ -290,7 +381,8 @@ class CompiledProgram(object):
                     node.var().type() != core.VarDesc.VarType.RAW:
                 self._persistable_vars.append(cpt.to_text(node.name()))
 
-        places = list(map(_place_obj, self._places))
+        places = list(map(_place_obj, places))
+
         # ParallelExecutor would broadcast all the parameters during initializing.
         # The parameters of each process should be in the same ordered for the data-parallelism
         # distributed training to keep the broadcast correct.
@@ -327,13 +419,31 @@ class CompiledProgram(object):
 
         self._scope = scope
         self._place = place
-        if self._is_data_parallel:
+
+        if self._is_inference:
+            self._executor = self._compile_inference()
+        elif self._with_strategy:
+            if self._is_data_parallel:
+                self._places = self._get_places(self._place, self._places)
+            else:
+                self._places = [self._place]
             self._executor = self._compile_data_parallel(
                 use_cuda=isinstance(self._place, core.CUDAPlace),
-                scope=self._scope)
-        elif self._is_inference:
-            self._executor = self._compile_inference()
+                scope=self._scope,
+                places=self._places)
         else:
             p = _place_obj(self._place)
             self._executor = core.Executor(p)
         return self
+
+    def _get_places(self, place, place_list):
+        has_set_place = (place_list is not None)
+        if has_set_place:
+            for p in place_list:
+                assert p._type() == place._type(), \
+                    "Place type not match. You may set the wrong type of places"
+        else:
+            place_list = cuda_places() if isinstance(
+                place, core.CUDAPlace) else cpu_places()
+        assert place_list, "no place for execution"
+        return place_list
