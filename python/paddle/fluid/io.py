@@ -1116,7 +1116,7 @@ def save_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    save_persistables(executor, save_dirname, main_program, params_filename)
+    save_persistables(executor, save_dirname, main_program, params_filename, hdfs_dirname)
     return target_var_name_list
 
 

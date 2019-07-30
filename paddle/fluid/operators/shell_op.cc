@@ -20,6 +20,8 @@
 namespace paddle {
 namespace operators {
 
+// flag use to determine whether to skip shell op.
+constexpr char SKIP_SHELLOP_FLAGS[] = "kSkipShellOpFlag";
 class ShellOp : public framework::OperatorBase {
  public:
   ShellOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -29,6 +31,12 @@ class ShellOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
+    // if you want to skip shell op, please set kSkipShellOpFlag variable become true.
+    framework::Variable* skip_flag_var = scope.FindVar(SKIP_SHELLOP_FLAGS);
+    if (skip_flag_var != null && skip_flag_var->Get<bool>()) {
+      VLOG(10) << "skip shell op flag is true";
+      return;
+    }
     std::string cmd_format = Attr<std::string>("cmd_format");
     std::vector<std::string> cmd_params =
         Attr<std::vector<std::string>>("cmd_params");
@@ -37,6 +45,9 @@ class ShellOp : public framework::OperatorBase {
       framework::Variable* cmd_params_var = scope.FindVar(cmd_params[i]);
       if (cmd_params_var != nullptr) {
         auto* pv = cmd_params_var->GetMutable<std::string>();
+        if (*pv.length() == 0)
+          PADDLE_THROW("%s variable is empty, it's needed by shell op.
+		Please assign a value to the variable first.", cmd_params[i])
         cmd.replace(cmd.find("{}"), 2, *pv);
       } else {
         PADDLE_THROW("%s variable doesn't exist, it's needed by shell op",
@@ -44,7 +55,7 @@ class ShellOp : public framework::OperatorBase {
       }
     }
     VLOG(4) << "shell op: " << cmd;
-    framework::shell_execute(cmd);
+    framework::shell_execute("ls /");
   }
 };
 

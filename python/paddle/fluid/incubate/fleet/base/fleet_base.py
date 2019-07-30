@@ -28,6 +28,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 
+HDFS_PREFIX = 'hdfs:'
 class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
@@ -228,7 +229,7 @@ class Fleet(object):
             #        "if you want to use hadoop path, please init hadoop client firstly"
             #    )
             while True:
-                rets = '/tmp/paddle_hadoop_tmp_%s' % uuid.uuid4()
+                rets = os.path.join(os.getenv("TMP", "/tmp"), uuid.uuid4())
                 if not os.path.exists(rets):
                     break
         #elif self._hdfs_client_trainer or self._hdfs_client_server:
