@@ -12600,19 +12600,20 @@ def var_conv_2d(input,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
     and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
     padding. Besides, input.dims[1] should be 1. 
+
     .. code-block:: text
-        * Example 1:
             
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
             input is a lodTensor: 
-                input.lod = [[60, 56]]  # where 60 = input_channel * 5 * 6
-                input.dims = [116, 1]    # where 116 = 60 + 56
+                input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
+                input.dims = [116, 1]	# where 116 = 60 + 56
             
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
-                output.lod = [[90, 84]] where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
+                output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
                 output.dims = [174, 1]  # where 174 = 90 + 84
+
     Args:
         input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
         row (Variable): The row shoud be 1-level LodTensor to provide height information.
@@ -12635,12 +12636,16 @@ def var_conv_2d(input,
         dtype ('float32'): The data type of parameter and output.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
+
     Returns:
         Variable: Output variable with LoD specified by this layer.
+
     Examples:
         .. code-block:: python
+
             import numpy as np
             from paddle.fluid import layers
+
             x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
             row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
             col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
