@@ -124,7 +124,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
           lt_var->append(filename.substr(hdfs_prefix.length()));
           srand (time(NULL));
           do {
-            std::string random_path_name = boost::filesystem.hpp::temp_directory_path()
+            std::string random_path_name = boost::filesystem::temp_directory_path()
 		+ boost::filesystem::path::preferred_separator + randomString()
 		+ "__LOOKUP_TABLE__";
           } while (PathExists(random_path_name))
