@@ -272,7 +272,8 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
       int w = offset[i + 1] - offset[i];
       if (w_drop == 0) {
         if (w >= 2) {
-          for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
+          for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w;
+               ++ilayer) {
             for (int l = 0; l < w - ilayer; ++l) {
               iter++;
             }
@@ -372,13 +373,7 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int _space_len = ctx.Attr<int>("space_len");
     int _pyramid_layer = ctx.Attr<int>("pyramid_layer");
 
-    const auto* bottom_data_ori = bottom->data<int32_t>();
-    Tensor buff;
-    buff.Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
-    T* bottom_data = buff.mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < bottom->dims()[0]; i++) {
-      bottom_data[i] = bottom_data_ori[i];
-    }
+    const auto* bottom_data = bottom->data<int32_t>();
 
     int _slot_len = bottom->dims()[0];
     if (_slot_len == bottom->lod()[0].size() - 1 &&
@@ -437,10 +432,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::CPUSearchPyramidHashOPKernel<plt::CPUDeviceContext, float>
     //     ops::CPUSearchPyramidHashOPKernel<plt::CPUDeviceContext,
     //                                       double>
-);
+    );
 REGISTER_OP_CPU_KERNEL(
     search_pyramid_hash_grad,
     ops::CPUSearchPyramidHashOPGradKernel<plt::CPUDeviceContext, float>
     //     ops::CPUSearchPyramidHashOPGradKernel<plt::CPUDeviceContext,
     //                                           double>
-);
+    );
