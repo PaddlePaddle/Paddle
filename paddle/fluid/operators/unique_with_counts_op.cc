@@ -32,7 +32,9 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
                    "Output(Count) of UniqueWithCountsOp should not be null.");
 
     auto in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(in_dims.size() == 1, "Input(X) should be a vector.");
+    PADDLE_ENFORCE(in_dims.size() == 1,
+                   "The op of fluid.layers.unique_with_counts, Input(X) should "
+                   "be a vector.");
 
     ctx->SetOutputDim("Out", {-1});
     ctx->SetOutputDim("Index", in_dims);
@@ -48,7 +50,8 @@ class UniqueWithCountsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",
               "An index tensor pointing to unique subsequence, which has "
-              "identical shape with input tensor and int64 dtype.");
+              "identical shape with input tensor and the data type is set by "
+              "the attr `dtype`");
     AddOutput("Count", "A subsequence for the count of unique index");
     AddComment(R"DOC(
     Return a unique subsequence for 1-D input tensor, index tensor pointing to this unique subsequence, 

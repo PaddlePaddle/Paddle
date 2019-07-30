@@ -12212,7 +12212,7 @@ def unique_with_counts(x, dtype='int32'):
     """
     if not (dtype == 'int32' or dtype == 'int64'):
         raise TypeError(
-            "Op unique_with_counts, dtype must be int32_t or int64_t")
+            "Op unique_with_counts, index dtype must be int32 or int64")
 
     if x is None or len(x.shape) != 1:
         raise ValueError(
