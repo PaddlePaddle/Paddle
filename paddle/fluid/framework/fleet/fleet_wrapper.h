@@ -149,8 +149,8 @@ class FleetWrapper {
   void SaveModel(const std::string& path, const int mode);
 
   double GetCacheThreshold();
-  void CacheShuffle(int table_id, const std::string& path,
-                    const int mode, const double cache_threshold);
+  void CacheShuffle(int table_id, const std::string& path, const int mode,
+                    const double cache_threshold);
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
 
   void ClearModel();
