@@ -491,7 +491,6 @@ function assert_api_spec_approvals() {
     API_FILES=("CMakeLists.txt"
                "paddle/fluid/API.spec"
                "paddle/fluid/op_use_default_grad_op_maker.spec"
-               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/details/op_registry.h"
@@ -506,8 +505,11 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/ir/graph.h"
                "paddle/fluid/framework/framework.proto"
                "python/requirements.txt"
-               "python/paddle/fluid/compiler.py"
                "python/paddle/fluid/__init__.py"
+               "python/paddle/fluid/compiler.py"
+               "python/paddle/fluid/parallel_executor.py"
+               "python/paddle/fluid/framework.py"
+               "python/paddle/fluid/backward.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
