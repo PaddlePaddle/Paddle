@@ -123,8 +123,7 @@ def ctr_metric_bundle(input, label):
         outputs={"Out": [local_abserr]})
 
     helper.append_op(
-        type="reduce_sum",
-        inputs={"X": [input]},
+        type="reduce_sum", inputs={"X": [input]},
         outputs={"Out": [batch_prob]})
     helper.append_op(
         type="elementwise_add",
