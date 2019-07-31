@@ -312,9 +312,9 @@ class FleetUtil(object):
                       monitor_data={}):
         xbox_dict = collections.OrderedDict()
         xbox_dict["id"] = int(time.time())
-        xbox_dict["key"] = xbox_base_key
+        xbox_dict["key"] = str(xbox_base_key)
         xbox_dict["input"] = model_path.rstrip("/") + "/000"
-        xbox_dict["record_count"] = 111111
+        xbox_dict["record_count"] = "111111"
         xbox_dict["job_name"] = "default_job_name"
         xbox_dict["ins_tag"] = "feasign"
         xbox_dict["ins_path"] = data_path
@@ -329,12 +329,11 @@ class FleetUtil(object):
         xbox_dict["monitor_data"] = ""
         xbox_dict["monitor_path"] = output_path.rstrip("/") + "/monitor/" \
                                     + day + ".txt"
-        xbox_dict["mpi_size"] = fleet.worker_num()
+        xbox_dict["mpi_size"] = str(fleet.worker_num())
         return json.dumps(xbox_dict)
 
     def write_model_donefile(self,
                              output_path,
-                             model_path,
                              day,
                              pass_id,
                              xbox_base_key,
@@ -347,7 +346,6 @@ class FleetUtil(object):
 
         Args:
             output_path(str): output path
-            model_path(str): save model path
             day(str|int): training day
             pass_id(str|int): training pass id
             xbox_base_key(str|int): xbox base key
@@ -372,7 +370,15 @@ class FleetUtil(object):
         """
         day = str(day)
         pass_id = str(pass_id)
-        xbox_base_key = str(xbox_base_key)
+        xbox_base_key = int(xbox_base_key)
+
+        if pass_id != "-1":
+            suffix_name = "/%s/%s/" % (day, pass_id)
+            model_path = output_path.rstrip("/") + suffix_name
+        else:
+            suffix_name = "/%s/batch_model/" % day
+            model_path = output_path.rstrip("/") + suffix_name
+
 
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
@@ -390,18 +396,20 @@ class FleetUtil(object):
                 pass_list = [i.split("\t")[3] for i in pre_content_list]
                 exist = False
                 for i in range(len(day_list)):
-                    if day == day_list[i] and pass_id == pass_list[i]:
+                    if int(day) == int(day_list[i]) and \
+                            int(pass_id) == int(pass_list[i]):
                         exist = True
                         break
                 if not exist:
                     with open(donefile_name, "w") as f:
                         f.write(pre_content + "\n")
                         f.write(content + "\n")
+                    client.delete(donefile_path)
                     client.upload(
-                        donefile_path,
+                        output_path,
                         donefile_name,
                         multi_processes=1,
-                        overwrite=True)
+                        overwrite=False)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -411,17 +419,16 @@ class FleetUtil(object):
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
                 client.upload(
-                    donefile_path,
+                    output_path,
                     donefile_name,
                     multi_processes=1,
-                    overwrite=True)
+                    overwrite=False)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
 
     def write_xbox_donefile(self,
                             output_path,
-                            model_path,
                             day,
                             pass_id,
                             xbox_base_key,
@@ -436,7 +443,6 @@ class FleetUtil(object):
 
         Args:
             output_path(str): output path
-            model_path(str): model path
             day(str|int): training day of model
             pass_id(str|int): training pass id of model
             xbox_base_key(str|int): xbox base key
@@ -467,7 +473,15 @@ class FleetUtil(object):
         """
         day = str(day)
         pass_id = str(pass_id)
-        xbox_base_key = str(xbox_base_key)
+        xbox_base_key = int(xbox_base_key)
+
+        if pass_id != "-1":
+            suffix_name = "/%s/delta-%s/" % (day, pass_id)
+            model_path = output_path.rstrip("/") + suffix_name
+        else:
+            suffix_name = "/%s/base/" % day
+            model_path = output_path.rstrip("/") + suffix_name
+
         if isinstance(data_path, list):
             data_path = ",".join(data_path)
 
@@ -486,18 +500,20 @@ class FleetUtil(object):
                 last_day = last_dict["input"].split("/")[-3]
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
                 exist = False
-                if day < int(last_day) or \
-                        day == int(last_day) and pass_id <= int(last_pass):
+                if int(day) < int(last_day) or \
+                        int(day) == int(last_day) and \
+                        int(pass_id) <= int(last_pass):
                     exist = True
                 if not exist:
                     with open(donefile_name, "w") as f:
                         f.write(pre_content + "\n")
                         f.write(xbox_str + "\n")
+                    client.delete(donefile_path)
                     client.upload(
-                        donefile_path,
+                        output_path,
                         donefile_name,
                         multi_processes=1,
-                        overwrite=True)
+                        overwrite=False)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -507,10 +523,10 @@ class FleetUtil(object):
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 client.upload(
-                    donefile_path,
+                    output_path,
                     donefile_name,
                     multi_processes=1,
-                    overwrite=True)
+                    overwrite=False)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -537,7 +553,7 @@ class FleetUtil(object):
         suffix_name = "/%s/%s/" % (day, pass_id)
         load_path = output_path + suffix_name
         self.rank0_error("going to load_model %s" % load_path)
-        load_fleet_model(load_path)
+        self.load_fleet_model(load_path)
         self.rank0_error("load_model done")
 
     def save_model(self, output_path, day, pass_id):
@@ -562,7 +578,7 @@ class FleetUtil(object):
         suffix_name = "/%s/%s/" % (day, pass_id)
         model_path = output_path + suffix_name
         self.rank0_error("going to save_model %s" % model_path)
-        save_fleet_model(model_path)
+        self.save_fleet_model(model_path)
         self.rank0_error("save_model done")
 
     def save_batch_model(self, output_path, day):
@@ -613,14 +629,13 @@ class FleetUtil(object):
         fleet.save_persistables(None, model_path, mode=1)
         self.rank0_error("save_delta_model done")
 
-    def save_xbox_base_model(self, output_path, day, pass_id):
+    def save_xbox_base_model(self, output_path, day):
         """
         save xbox base model
 
         Args:
             output_path(str): output path
             day(str|int): training day
-            pass_id(str|int): training pass id
 
         Examples:
             .. code-block:: python
@@ -902,27 +917,29 @@ class FleetUtil(object):
                   fluid.contrib.layers.ctr_metric_bundle(similarity_norm, label)
 
         """
-        if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
+        if scope.find_var(stat_pos_name) is None or \
+                scope.find_var(stat_neg_name) is None:
             self.rank0_print("not found auc bucket")
-            return
+            return [None] * 9
         elif scope.find_var(sqrerr_name) is None:
             self.rank0_print("not found sqrerr_name=%s" % sqrerr_name)
-            return
+            return [None] * 9
         elif scope.find_var(abserr_name) is None:
             self.rank0_print("not found abserr_name=%s" % abserr_name)
-            return
+            return [None] * 9
         elif scope.find_var(prob_name) is None:
             self.rank0_print("not found prob_name=%s" % prob_name)
-            return
+            return [None] * 9
         elif scope.find_var(q_name) is None:
             self.rank0_print("not found q_name=%s" % q_name)
-            return
+            return [None] * 9
 
         # barrier worker to ensure all workers finished training
         fleet._role_maker._barrier_worker()
 
         # get auc
-        pos = np.array(scope.find_var(stat_pos).get_tensor())
+        auc = self.get_global_auc(scope, stat_pos_name, stat_neg_name)
+        pos = np.array(scope.find_var(stat_pos_name).get_tensor())
         # auc pos bucket shape
         old_pos_shape = np.array(pos.shape)
         # reshape to one dim
@@ -933,7 +950,7 @@ class FleetUtil(object):
         # reshape to its original shape
         global_pos = global_pos.reshape(old_pos_shape)
         # auc neg bucket
-        neg = np.array(scope.find_var(stat_neg).get_tensor())
+        neg = np.array(scope.find_var(stat_neg_name).get_tensor())
         old_neg_shape = np.array(neg.shape)
         neg = neg.reshape(-1)
         global_neg = np.copy(neg) * 0
@@ -951,17 +968,19 @@ class FleetUtil(object):
             neg_ins_num += global_neg[0][i]
             total_ins_num += global_neg[0][i]
 
-        metric = np.array(scope.find_var(ctr_metric).get_tensor())
-        old_metric_shape = np.array(metric.shape)
-        metric = metric.reshape(-1)
-        global_metric = np.copy(metric) * 0
-        fleet._role_maker._node_type_comm.Allreduce(metric, global_metric)
-        global_metric = global_metric.reshape(old_metric_shape)
+        def get_metric(name):
+            metric = np.array(scope.find_var(name).get_tensor())
+            old_metric_shape = np.array(metric.shape)
+            metric = metric.reshape(-1)
+            global_metric = np.copy(metric) * 0
+            fleet._role_maker._node_type_comm.Allreduce(metric, global_metric)
+            global_metric = global_metric.reshape(old_metric_shape)
+            return global_metric[0]
 
-        global_abserr = global_metric[0]
-        global_sqrerr = global_metric[1]
-        global_prob = global_metric[2]
-        global_q_value = global_metric[3]
+        global_sqrerr = get_metric(sqrerr_name)
+        global_abserr =  get_metric(abserr_name)
+        global_prob = get_metric(prob_name)
+        global_q_value = get_metric(q_name)
 
         mae = global_abserr / total_ins_num
         rmse = math.sqrt(global_sqrerr / total_ins_num)

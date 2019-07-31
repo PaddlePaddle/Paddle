@@ -171,10 +171,10 @@ class HDFSClient(object):
         if not self.is_exist(hdfs_path):
             return False
 
-        dir_cmd = ['-test', '-f', hdfs_path]
+        dir_cmd = ['-test', '-d', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
 
-        if returncode:
+        if returncode == 0:
             _logger.error("HDFS path: {} failed is not a file".format(
                 hdfs_path))
             return False
