@@ -702,17 +702,16 @@ void MultiSlotDataset::SlotsShuffle(
       out_channel_size += multi_consume_channel_[i]->Size();
     }
   }
-  VLOG(3) <<  "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
-          << input_channel_->Size() << " output channel size: "
-          << out_channel_size;
+  VLOG(3) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
+          << input_channel_->Size()
+          << " output channel size: " << out_channel_size;
   if (!slots_shuffle_fea_eval_) {
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end,"
                "fea eval mode off, need to set on for slots shuffle";
     return;
   }
   if ((!input_channel_ || input_channel_->Size() == 0) &&
-       slots_shuffle_original_data_.size() == 0 &&
-       out_channel_size == 0) {
+       slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
     return;
   }
@@ -741,7 +740,7 @@ void MultiSlotDataset::SlotsShuffle(
           multi_output_channel_[i]->Close();
           multi_output_channel_[i]->ReadAll(vec_data);
           slots_shuffle_original_data_.reserve(
-              slots_shuffle_original_data_.size()+vec_data.size());
+              slots_shuffle_original_data_.size() + vec_data.size());
           slots_shuffle_original_data_.insert(
               slots_shuffle_original_data_.end(),
               std::make_move_iterator(vec_data.begin()),
@@ -756,7 +755,7 @@ void MultiSlotDataset::SlotsShuffle(
           multi_consume_channel_[i]->Close();
           multi_consume_channel_[i]->ReadAll(vec_data);
           slots_shuffle_original_data_.reserve(
-              slots_shuffle_original_data_.size()+vec_data.size());
+              slots_shuffle_original_data_.size() + vec_data.size());
           slots_shuffle_original_data_.insert(
               slots_shuffle_original_data_.end(),
               std::make_move_iterator(vec_data.begin()),
@@ -791,7 +790,7 @@ void MultiSlotDataset::SlotsShuffle(
     for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
       if (!multi_output_channel_[i]) {
         continue;
-        }
+      }
       end_size += multi_output_channel_[i]->Size();
     }
   } else {
