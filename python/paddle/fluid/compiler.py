@@ -100,9 +100,21 @@ class CompiledProgram(object):
             (potentially optimized before), it will be directly used for
             further optimizations. Note: graph is only supported when compiled
             with with_data_parallel option.
+        build_strategy(BuildStrategy): build_strategy is used to
+            build the graph with the specified options.
+            For more information, please refer to fluid.BuildStrategy.
+            Default None.
+        exec_strategy(ExecutionStrategy): exec_strategy is used to
+            to select the a way to execute the graph, for example how many
+            threads are used, how many iterations to clean up the temp
+            variables. For more information, please refer
+            to fluid.ExecutionStrategy. Default None.
     """
 
-    def __init__(self, program_or_graph):
+    def __init__(self,
+                 program_or_graph,
+                 build_strategy=None,
+                 exec_strategy=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
             # don't not create a new program here.
@@ -121,63 +133,10 @@ class CompiledProgram(object):
         self._is_data_parallel = False
         self._is_inference = False
         self._loss_name = None
-        self._build_strategy = None
-        self._exec_strategy = None
         self._share_vars_from = None
         self._places = None
-        self._with_strategy = False
-
-    def set_strategy(self, build_strategy=None, exec_strategy=None):
-        """Add build strategy and execution strategy to compile the program.
-
-        Example:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-              import paddle.fluid.compiler as compiler
-              import numpy
-
-              use_cuda = True
-              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-              exe = fluid.Executor(place)
-
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-              exe.run(fluid.default_startup_program())
-
-              build_strategy = fluid.BuildStrategy()
-              build_strategy.memory_optimize = True
-              compiled_prog = compiler.CompiledProgram(
-                       fluid.default_main_program()).set_strategy(
-                                build_strategy=build_strategy)
-
-              x = numpy.random.random(size=(10, 1)).astype('float32')
-              loss_data, = exe.run(compiled_prog,
-                                   feed={"X": x},
-                                   fetch_list=[loss.name])
-
-        Args:
-            build_strategy(BuildStrategy): build_strategy is used to
-                build the graph with the specified options.
-                For more information, please refer to fluid.BuildStrategy.
-                Default None.
-            exec_strategy(ExecutionStrategy): exec_strategy is used to
-                to select the a way to execute the graph, for example how many
-                threads are used, how many iterations to clean up the temp
-                variables. For more information, please refer
-                to fluid.ExecutionStrategy. Default None.
-
-        Returns:
-            self
-        """
-        assert not self._with_strategy, "Already set build_strategy and exec_strategy."
-        self._with_strategy = True
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
-        return self
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -254,7 +213,6 @@ class CompiledProgram(object):
         """
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
-        self._with_strategy = True
         self._is_data_parallel = True
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
@@ -396,7 +354,7 @@ class CompiledProgram(object):
 
         if self._is_inference:
             self._executor = self._compile_inference()
-        elif self._with_strategy:
+        else:
             if self._is_data_parallel:
                 self._places = self._get_places(self._place, self._places)
             else:
@@ -405,9 +363,6 @@ class CompiledProgram(object):
                 use_cuda=isinstance(self._place, core.CUDAPlace),
                 scope=self._scope,
                 places=self._places)
-        else:
-            p = _place_obj(self._place)
-            self._executor = core.Executor(p)
         return self
 
     def _get_places(self, place, place_list):

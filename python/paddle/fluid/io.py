@@ -115,7 +115,7 @@ def _get_valid_program(main_program):
             raise TypeError("program should be as Program type or None")
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended.")
-    elif not isinstance(main_program, Program):
+    if not isinstance(main_program, Program):
         raise TypeError("program should be as Program type or None")
     return main_program
 
@@ -516,11 +516,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             fluid.io.save_persistables(executor=exe, dirname=param_path,
                                        main_program=prog)
     """
-    if main_program:
-        main_program = _get_valid_program(main_program)
-        if main_program._is_distributed:
-            _save_distributed_persistables(
-                executor, dirname=dirname, main_program=main_program)
+    if main_program and main_program._is_distributed:
+        _save_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program)
     else:
         save_vars(
             executor,
