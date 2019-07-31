@@ -706,7 +706,8 @@ void MultiSlotDataset::SlotsShuffle(
           << input_channel_->Size() << " output channel size: "
           << out_channel_size;
   if (!slots_shuffle_fea_eval_) {
-    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, fea eval mode off, need to set on for slots shuffle";
+    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end,"
+               "fea eval mode off, need to set on for slots shuffle";
     return;
   }
   if ((!input_channel_ || input_channel_->Size() == 0) &&
@@ -739,10 +740,12 @@ void MultiSlotDataset::SlotsShuffle(
           std::vector<Record> vec_data;
           multi_output_channel_[i]->Close();
           multi_output_channel_[i]->ReadAll(vec_data);
-          slots_shuffle_original_data_.reserve(slots_shuffle_original_data_.size()+vec_data.size());
-          slots_shuffle_original_data_.insert(slots_shuffle_original_data_.end(),
-                                              std::make_move_iterator(vec_data.begin()),
-                                              std::make_move_iterator(vec_data.end()));
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size()+vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
           vec_data.clear();
           vec_data.shrink_to_fit();
           multi_output_channel_[i]->Clear();
@@ -752,10 +755,12 @@ void MultiSlotDataset::SlotsShuffle(
           std::vector<Record> vec_data;
           multi_consume_channel_[i]->Close();
           multi_consume_channel_[i]->ReadAll(vec_data);
-          slots_shuffle_original_data_.reserve(slots_shuffle_original_data_.size()+vec_data.size());
-          slots_shuffle_original_data_.insert(slots_shuffle_original_data_.end(),
-                                              std::make_move_iterator(vec_data.begin()),
-                                              std::make_move_iterator(vec_data.end()));
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size()+vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
           vec_data.clear();
           vec_data.shrink_to_fit();
           multi_consume_channel_[i]->Clear();
@@ -797,7 +802,8 @@ void MultiSlotDataset::SlotsShuffle(
       end_size += multi_consume_channel_[i]->Size();
     }
   }
-  CHECK(input_channel_->Size() == 0) << "input channel should be empty before slots shuffle";
+  CHECK(input_channel_->Size() == 0)
+      << "input channel should be empty before slots shuffle";
   std::vector<Record> random_data;
   random_data.clear();
   // get slots shuffled random_data

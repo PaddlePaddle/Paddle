@@ -25,10 +25,10 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
-#include <thread>  // NOLINT
+#include <thread>  // NOLINiT
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <unordered_map>
 
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
