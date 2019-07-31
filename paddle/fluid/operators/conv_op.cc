@@ -207,14 +207,14 @@ void Conv2DOpMaker::Make() {
                 "int8 kernel. "
                 "Only used on CPU.")
       .SetDefault(false);
-  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
-  AddAttr<bool>("fuse_brelu",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
-  AddAttr<float>("fuse_brelu_threshold",
-                 "(float, default false 6.0) Only used in mkldnn kernel")
-      .SetDefault(6.0f);
+  AddAttr<std::string>("fuse_activation",
+                       "(string, default \"\") Only used in mkldnn kernel")
+      .SetDefault("");
+  AddAttr<float>("fuse_alpha",
+                 "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
+  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
@@ -350,8 +350,14 @@ void Conv3DOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+  AddAttr<std::string>("fuse_activation",
+                       "(string, default \"\") Only used in mkldnn kernel")
+      .SetDefault("");
+  AddAttr<float>("fuse_alpha",
+                 "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
+  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "

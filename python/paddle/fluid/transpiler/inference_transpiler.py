@@ -172,7 +172,7 @@ class InferenceTranspiler(object):
         '''
         Transpile the program by fused relu activation for MKLDNN program.
         Relu activation following convolution OP can be fused by adding
-        'fuse_relu' attribute to convolution OP.
+        'fuse_activation = "relu"' attribute to convolution OP.
         The result of fuse is:
             - before:
                 - conv->relu->any_other_op
@@ -190,7 +190,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op._set_attr("fuse_relu", True)
+                    current_op._set_attr("fuse_activation", "relu")
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
