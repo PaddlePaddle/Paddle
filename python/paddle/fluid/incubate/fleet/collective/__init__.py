@@ -36,11 +36,8 @@ class DistributedStrategy(object):
         self.h_allreduce_inter_nranks = 8
         # number of nccl2 communicators
         self.nccl_comm_num = 1
-        # configurations for BuildStrategy
-        self.enable_backward_optimizer_op_deps = False
-        self.fuse_all_reduce_ops = False
-        # configurations for ExecutorStrategy
-        self.use_experimental_executor = False
+        # features to improve speed
+        self.use_tensor_fusion = False
 
     def build(self):
         self.strategy_map = {}
@@ -55,7 +52,7 @@ class DistributedStrategy(object):
         self.strategy_map["localsgd"] = self.local_sgd
         self.strategy_map["dgc"] = self.dgc
         self.strategy_map["h_allreduce"] = self.h_allreduce
-        self.strategy_map["fuse"] = self.fuse_all_reduce_ops
+        self.strategy_map["tensor_fusion"] = self.use_tensor_fusion
 
 
 class DistributedOptimizerFactory(object):
@@ -69,7 +66,7 @@ class DistributedOptimizerFactory(object):
             "CollectiveOptimizer", "FP32SGDOptimizer", "FP32LocalSGDOptimizer"
         ]
         pattern["localsgd"] = ["FP16LocalSGDOptimizer", "FP32LocalSGDOptimizer"]
-        pattern["fuse"] = ["CollectiveOptimizer"]
+        pattern["tensor_fusion"] = ["CollectiveOptimizer"]
         pattern["h_allreduce"] = [
             "CollectiveOptimizer",
             "FP32SGDOptimizer",
@@ -88,13 +85,13 @@ class DistributedOptimizerFactory(object):
             if strategy.strategy_map[key]:
                 strategy_list.append(self.pattern[key])
         classname = list(set.intersection(*map(set, strategy_list)))[0]
-        print("classname: {}".format(classname))
         return globals()[classname](optimizer, strategy)
 
 
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
+        self.startup_program = None
         self.main_program = None
 
     def init_worker(self):
@@ -228,16 +225,6 @@ class FP32SGDOptimizer(CollectiveOpBasedOptimizer):
 
 
 class CollectiveOptimizer(CollectiveOpBasedOptimizer):
-    """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
-    minimize() function is implemented.
-    DistributedOptimizer is the starting point for a user who wants to
-    run distributed training. The optimized information will be stored in
-    Fleet() instance who holds the global information about current distributed
-    training.
-    """
-
     def __init__(self, optimizer, strategy=None):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
         self.strategy = strategy
@@ -247,22 +234,6 @@ class CollectiveOptimizer(CollectiveOpBasedOptimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """
-        minimize a program through loss
-        Args:
-            loss (Variable|Variable List): loss variable or loss variable list to run optimization.
-            startup_program (Program): startup_program for initializing parameters
-                in `parameter_list`.
-            parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
-        Returns:
-            tuple: (optimize_ops, params_grads) which are, list of operators appended;
-            and list of (param, grad) Variables pair for optimization.
-        Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
-        process, but currently the optimization part is written into Fleet(). A user does not
-        need to care about how to startup a pserver node.
-        """
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
@@ -279,8 +250,8 @@ class CollectiveOptimizer(CollectiveOpBasedOptimizer):
         config.nccl_comm_num = self.strategy.nccl_comm_num
         num_trainers = len(worker_endpoints)
         if self.strategy.h_allreduce and \
-            self.strategy.h_allreduce_inter_nranks > 1 and \
-            num_trainers > self.strategy.h_allreduce_inter_nranks:
+                self.strategy.h_allreduce_inter_nranks > 1 and \
+                num_trainers > self.strategy.h_allreduce_inter_nranks:
             config.use_hierarchical_allreduce = True
             config.hierarchical_allreduce_inter_nranks = \
                 self.strategy.h_allreduce_inter_nranks
@@ -292,20 +263,19 @@ class CollectiveOptimizer(CollectiveOpBasedOptimizer):
             trainers=','.join(worker_endpoints),
             startup_program=startup_program,
             current_endpoint=current_endpoint)
+        fleet.startup_program = startup_program
 
         # Compiling main program
         exec_strategy = fluid.ExecutionStrategy()
-        if self.strategy.use_experimental_executor:
+        if self.strategy.use_tensor_fusion:
             exec_strategy.use_experimental_executor = True
         build_strategy = fluid.BuildStrategy()
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
-        if self.strategy.enable_backward_optimizer_op_deps:
-            build_strategy.enable_backward_op_deps = True
-        if self.strategy.fuse_all_reduce_ops:
+        if self.strategy.use_tensor_fusion:
+            build_strategy.enable_backward_optimizer_op_deps = True
             build_strategy.fuse_all_reduce_ops = True
 
-        print("wawa")
         main_program = loss.block.program
         fleet.main_program = compiler.CompiledProgram(main_program)
         fleet.main_program.with_data_parallel(
