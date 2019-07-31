@@ -1092,7 +1092,8 @@ class FleetUtil(object):
                   fluid.contrib.layers.ctr_metric_bundle(similarity_norm, label)
 
         """
-        if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
+        if scope.find_var(stat_pos_name) is None or \
+                scope.find_var(stat_neg_name) is None:
             self.rank0_print("not found auc bucket")
             return
         elif scope.find_var(sqrerr_name) is None:
