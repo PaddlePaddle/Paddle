@@ -62,6 +62,7 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
     return;
   }
+
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
 
