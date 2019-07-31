@@ -711,7 +711,7 @@ void MultiSlotDataset::SlotsShuffle(
     return;
   }
   if ((!input_channel_ || input_channel_->Size() == 0) &&
-       slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
+      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
     return;
   }
@@ -818,7 +818,6 @@ void MultiSlotDataset::SlotsShuffle(
           << ", memory data size for slots shuffle=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
 }
-
 
 }  // end namespace framework
 }  // end namespace paddle
