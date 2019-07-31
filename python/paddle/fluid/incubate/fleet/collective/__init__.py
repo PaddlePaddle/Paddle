@@ -21,6 +21,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
+"""
 class DGCConfig(Object):
     def __init__(self):
         self.learning_rate=0.001
@@ -37,6 +38,7 @@ class DGCConfig(Object):
 class LocalSGCConfig(Object):
     def __init__(self):
         pass
+"""
 
 class LambConfig(Object):
     def __init__(self):
@@ -62,13 +64,13 @@ class DistributedStrategy(fluid.BuildStratey):
         self.fuse_layer_size  = 1
 
         self.use_local_sgd = False
-        self.use_dgc = False
-        self.use_lamb = False
         self.use_dist_fc = False
+        #self.use_dgc = False
+        #self.use_lamb = False
 
         self.local_sgd_config = None  # LocalSGDConfig
-        self.dgc_config = None   # DGCConfig
-        self.lamb_config = None  # LambConfig
+        #self.dgc_config = None   # DGCConfig
+        #self.lamb_config = None  # LambConfig
         self.dist_fc_config = None  # DistFCConfig
 
 
@@ -142,6 +144,7 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
     def apply_gradients(self, params_grads):
         return self._optimizer.apply_gradients(params_grads)
 
+"""
 class DistributedDGCOptimizer(Object):
     def __init__(self):
         pass
@@ -149,6 +152,7 @@ class DistributedDGCOptimizer(Object):
 class DistributedLambOptimizer(object)
     def __init__(self):
         pass
+
 
 def _create_dgc_optimizer(optimizer, dgc_config):
     return fluid.DGCOptimizer(
@@ -166,7 +170,7 @@ def _create_dgc_optimizer(optimizer, dgc_config):
 
 def _create_lamb_optimizer(optimizer, lamb_config):
     pass
-
+"""
 
 class CollectiveOptimizer(DistributedOptimizer):
     """
@@ -205,6 +209,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
             return optimizer
 
+        """
         if strategy.use_dgc:
             #check conditions
             assert not (strategy.use_local_sgd
@@ -218,6 +223,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                         or strategy.use_dgc or strategy.use_dist_fc), error_string
             assert strategy.dgc_config is not None, "DistributedStrategy.lamb_config should be set"
             return _create_lamb_optimizer(optimizer, strategy.lamb_config)
+        """
 
         if strategy.use_dist_fc:
             #check conditions
