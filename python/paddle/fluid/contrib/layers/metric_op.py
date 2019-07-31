@@ -102,7 +102,7 @@ def ctr_metric_bundle(input, label):
                 "Y": [label]},
         outputs={"Out": [tmp_res_elesub]})
 
-    helper.append_op
+    helper.append_op(
         type="squared_l2_norm",
         inputs={"X": [tmp_res_elesub]},
         outputs={"Out": [batch_sqrerr]})
