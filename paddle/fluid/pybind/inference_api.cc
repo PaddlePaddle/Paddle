@@ -199,6 +199,7 @@ void BindAnalysisConfig(py::module *m) {
   py::enum_<AnalysisConfig::Precision>(analysis_config, "Precision")
       .value("Float32", AnalysisConfig::Precision::kFloat32)
       .value("Int8", AnalysisConfig::Precision::kInt8)
+      .value("Half", AnalysisConfig::Precision::kHalf)
       .export_values();
 
   analysis_config.def(py::init<const AnalysisConfig &>())
