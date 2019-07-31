@@ -35,11 +35,12 @@ std::string randomString(
     unsigned int l = 15,
     std::string charIndex =
         "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") {
-  unsigned int length = rand_r() % l + 1;
+  unsigned int seed = time(NULL);
+  unsigned int length = rand_r(&seed) % l + 1;
 
   unsigned int ri[15];
   for (unsigned int i = 0; i < length; ++i)
-    ri[i] = rand_r() % charIndex.length();
+    ri[i] = rand_r(&seed) % charIndex.length();
 
   std::string rs = "";
   for (unsigned int i = 0; i < length; ++i) rs += charIndex[ri[i]];
@@ -136,7 +137,6 @@ class SaveOpKernel : public framework::OpKernel<T> {
         if (filename.find(hdfs_prefix) == 0) {
           lt_var->clear();
           lt_var->append(filename.substr(hdfs_prefix.length()));
-          srand(time(NULL));
           std::string random_path_name;
           do {
             random_path_name = "/tmp/";
