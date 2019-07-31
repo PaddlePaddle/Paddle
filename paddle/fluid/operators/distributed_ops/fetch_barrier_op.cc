@@ -47,9 +47,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
-      VLOG(7) << "before sync_fetch_barrier " << ins[i] << "from " << epmap[i];
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-      VLOG(7) << "after sync_fetch_barrier " << ins[i] << "from " << epmap[i];
     }
   }
 };

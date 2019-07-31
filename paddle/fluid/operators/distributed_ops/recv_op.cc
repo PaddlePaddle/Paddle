@@ -89,10 +89,10 @@ class RecvOp : public framework::OperatorBase {
         }
 
         for (size_t i = 0; i < rets.size(); i++) {
-          VLOG(7) << "before sync_recv_nobarrier " << ins[i] << "from "
+          VLOG(7) << "before sync_recv_nobarrier " << outs[i] << "from "
                   << epmap[i];
           PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          VLOG(7) << "after sync_recv_nobarrier " << ins[i] << "from "
+          VLOG(7) << "after sync_recv_nobarrier " << outs[i] << "from "
                   << epmap[i];
         }
       }

@@ -52,12 +52,8 @@ class SendBarrierOp : public framework::OperatorBase {
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
-      VLOG(7) << "before sync_send_barrier " << ins[i] << "from " << epmap[i];
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-      VLOG(7) << "after sync_send_barrier " << ins[i] << "from " << epmap[i];
     }
-
-    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 
