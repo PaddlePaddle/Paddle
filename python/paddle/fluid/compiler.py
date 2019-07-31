@@ -127,11 +127,7 @@ class CompiledProgram(object):
         self._places = None
         self._with_strategy = False
 
-    def set_strategy(self,
-                     loss_name=None,
-                     build_strategy=None,
-                     exec_strategy=None,
-                     share_vars_from=None):
+    def set_strategy(self, build_strategy=None, exec_strategy=None):
         """Add build strategy and execution strategy to the program.
 
         Example:
@@ -144,16 +140,6 @@ class CompiledProgram(object):
 
               use_cuda = True
               place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-
-              # NOTE: If you use CPU to run the program, you need
-              # to specify the CPU_NUM, otherwise, fluid will use
-              # all the number of the logic core as the CPU_NUM,
-              # in that case, the batch size of the input should be
-              # greater than CPU_NUM, if not, the process will be
-              # failed by an exception.
-              if not use_cuda:
-                  os.environ['CPU_NUM'] = str(2)
-
               exe = fluid.Executor(place)
 
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
@@ -161,11 +147,13 @@ class CompiledProgram(object):
               loss = fluid.layers.mean(hidden)
               fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-              fluid.default_startup_program().random_seed=1
               exe.run(fluid.default_startup_program())
+
+              build_strategy = fluid.BuildStrategy()
+              build_strategy.memory_optimize = True
               compiled_prog = compiler.CompiledProgram(
                        fluid.default_main_program()).set_strategy(
-                                loss_name=loss.name)
+                                build_strategy=build_strategy)
 
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = exe.run(compiled_prog,
@@ -173,7 +161,6 @@ class CompiledProgram(object):
                                    fetch_list=[loss.name])
 
         Args:
-            loss_name (str): The loss name must set in training. Default None.
             build_strategy(BuildStrategy): build_strategy is used to
                 build the graph so it can run on multiple devices/cores with
                 optimized topology.
@@ -184,22 +171,14 @@ class CompiledProgram(object):
                 threads are used, how many iterations to clean up the temp
                 variables. For more information, please refer
                 to fluid.ExecutionStrategy. Default None.
-            share_vars_from(CompiledProgram): If provided, this CompiledProgram
-                will share variables from `share_vars_from`. `share_vars_from`
-                must be run by the executor before this CompiledProgram so that
-                vars are ready.
 
         Returns:
             self
         """
         assert not self._with_strategy, "Already set build_strategy and exec_strategy."
         self._with_strategy = True
-        self._loss_name = loss_name
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
-        self._share_vars_from = share_vars_from
-        if _has_backward_op(self._graph):
-            assert loss_name is not None, "The loss_name should be set here."
         return self
 
     def with_data_parallel(self,
@@ -289,9 +268,10 @@ class CompiledProgram(object):
         if _has_backward_op(self._graph):
             assert self._loss_name is not None, "The loss_name should be set here."
 
-        if places is not None:
-            if not isinstance(places, (list, tuple)):
-                self._places = [places]
+        self._places = places
+        if self._places is not None:
+            if not isinstance(self._places, (list, tuple)):
+                self._places = [self._places]
 
         return self
 
@@ -331,10 +311,6 @@ class CompiledProgram(object):
                 raise ValueError(
                     "share_vars_from is not compiled and run, so there is no "
                     "var to share.")
-            # if not isinstance(self._share_vars_from._executor, core.ParallelExecutor):
-            #     raise ValueError(
-            #         "share_vars_from is not compiled and run, so there is no "
-            #         "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
         else:
             assert scope is not None, ""

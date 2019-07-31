@@ -130,7 +130,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
 
         prog = compiler.CompiledProgram(fluid.default_main_program())
         if self.with_data_parallel:
-            prog = prog.with_data_parallel()
+            prog = prog.with_data_parallel(loss_name=loss.name)
 
         for _ in range(5):
             d = []
