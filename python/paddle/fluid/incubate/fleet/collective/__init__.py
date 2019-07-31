@@ -21,25 +21,6 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
-"""
-class DGCConfig(Object):
-    def __init__(self):
-        self.learning_rate=0.001
-        self.momentum=None
-        self.rampup_begin_step=0
-        self.rampup_step=1
-        self.sparsity=[0.999]
-        self.use_nesterov=False
-        self.local_grad_clip_norm=None
-        self.num_trainers=None
-        self.regularization=None
-        self.name=None
-
-class LocalSGCConfig(Object):
-    def __init__(self):
-        pass
-"""
-
 class LambConfig(Object):
     def __init__(self):
         pass
@@ -48,30 +29,7 @@ class DistFCConfig(Object):
     def __init__(self):
         pass
 
-class DistributedStrategy(fluid.BuildStratey):
-    """
-    Init function of DistributedStrategy
-    """
-    def __init__(self):
-        #self.build_stratey = None
-        """
-        self.nccl_comm_num=1
-        self.use_hierarchical_allreduce=False
 
-        self.fuse_all_reduce_ops = False
-        """
-        self.fuse_memory_size = -1
-        self.fuse_layer_size  = 1
-
-        self.use_local_sgd = False
-        self.use_dist_fc = False
-        #self.use_dgc = False
-        #self.use_lamb = False
-
-        self.local_sgd_config = None  # LocalSGDConfig
-        #self.dgc_config = None   # DGCConfig
-        #self.lamb_config = None  # LambConfig
-        self.dist_fc_config = None  # DistFCConfig
 
 
 class Collective(Fleet):
@@ -121,6 +79,21 @@ class Collective(Fleet):
 
 fleet = Collective()
 
+class DistributedStrategy(fluid.BuildStratey):
+    """
+    Init function of DistributedStrategy
+    """
+    def __init__(self):
+        self.fuse_memory_size = -1
+        self.fuse_layer_size = 1
+
+        self.use_local_sgd = False
+        self.use_dist_fc = False
+
+        self.local_sgd_config = None  # LocalSGDConfig
+        self.dist_fc_config = None  # DistFCConfig
+        self.mode = "nccl2"  # or collective
+        self.collective_mode = None  # local_sgd or grad_allreduce
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
     """
@@ -144,34 +117,6 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
     def apply_gradients(self, params_grads):
         return self._optimizer.apply_gradients(params_grads)
 
-"""
-class DistributedDGCOptimizer(Object):
-    def __init__(self):
-        pass
-
-class DistributedLambOptimizer(object)
-    def __init__(self):
-        pass
-
-
-def _create_dgc_optimizer(optimizer, dgc_config):
-    return fluid.DGCOptimizer(
-        learning_rate = dgc_config.learning_rate,
-        momentum = optimizer,
-        rampup_begin_step = dgc_config.rampup_begin_step,
-        rampup_step=dgc_config.rampup_step,
-        sparsity=dgc_config.sparsity,
-        use_nesterov=dgc_config.use_nesterov,
-        local_grad_clip_norm=dgc_config.local_grad_clip_norm,
-        num_trainers=dgc_config.num_trainers,
-        regularization=dgc_config.regularization,
-        name=dgc_config.name
-    )
-
-def _create_lamb_optimizer(optimizer, lamb_config):
-    pass
-"""
-
 class CollectiveOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
@@ -183,9 +128,8 @@ class CollectiveOptimizer(DistributedOptimizer):
     training.
     """
 
-    def __init__(self, optimizer, strategy=None):
-        dist_optimizer = self._get_create_optimizer(optimizer, strategy)
-        super(CollectiveOptimizer, self).__init__(dist_optimizer, strategy)
+    def __init__(self, optimizer, strategy=DistributedStrategy()):
+        super(CollectiveOptimizer, self).__init__(optimizer, strategy)
 
     def backward(self,
                  loss,
@@ -200,38 +144,27 @@ class CollectiveOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
     @staticmethod
-    def _get_create_optimizer(optimizer, strategy):
-        error_string="You can use only one of 'use_dgc use_lamb use_dist_fc use_local_sgd' option"
+    def _check_condition(name, **kwargs):
+        for k,v in kwargs.iterms():
+            if v is True:
+                assert False, "you can't use %s and %s together" % (name, k)
+
+    @staticmethod
+    def _check(main_program, optimizer, strategy):
         if strategy.use_local_sgd:
-            #check conditions
-            assert not (strategy.use_dgc
-                        or strategy.use_lamb or strategy.use_dist_fc), error_string
-
-            return optimizer
-
-        """
-        if strategy.use_dgc:
-            #check conditions
-            assert not (strategy.use_local_sgd
-                        or strategy.use_lamb or strategy.use_dist_fc), error_string
-            assert strategy.dgc_config is not None, "DistributedStrategy.dgc_config should be set"
-            return _create_dgc_optimizer(optimizer, strategy.dgc_config)
-
-        if strategy.use_lamb:
-            #check conditions
-            assert not (strategy.use_local_sgd
-                        or strategy.use_dgc or strategy.use_dist_fc), error_string
-            assert strategy.dgc_config is not None, "DistributedStrategy.lamb_config should be set"
-            return _create_lamb_optimizer(optimizer, strategy.lamb_config)
-        """
+            _check_condition("use_local_sgd", use_dgc=main_program._enable_dgc,
+                   use_dist_fc=strategy.use_dist_fc,
+                   use_lamb=main_program._use_lamb)
+            assert strategy.local_sgd_config is not None, "DistributedStrategy.local_sgd_config should be set"
 
         if strategy.use_dist_fc:
-            #check conditions
-            assert not (strategy.use_local_sgd
-                        or strategy.use_dgc or strategy.use_lamb), error_string
-            return optimizer
+            _check_condition("use_dist_fc", use_dgc=main_program._enable_dgc,
+                   use_local_sgd=strategy.use_local_sgd,
+                   use_lamb=main_program._use_lamb)
+            assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+        return optimizer
 
-    def _transpiler():
+    def _transpile(self):
         if self._strategy.fuse_all_reduce_ops:
             os.environ['FLAGS_fuse_parameter_memory_size'] = self.fuse_memory_size
             os.environ['FLAGS_fuse_parameter_groups_size'] = self.fuse_layer_size
@@ -247,15 +180,15 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         # call transpiler
         config = dist_transpiler.DistributeTranspilerConfig()
-        config.mode = "nccl2"
+        config.mode = self._strategy.mode
+        config.collective_mode = self._strategy.collective_mode
         t = dist_transpiler.DistributeTranspiler(config=config)
         t.transpile(
-            trainer_id,
+            trainer_id=trainer_id,
             trainers=','.join(worker_endpoints),
             startup_program=startup_program,
-            program = main_program,
+            program=main_program,
             current_endpoint=current_endpoint)
-
 
     def minimize(self,
                  loss,
@@ -278,7 +211,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """
-        self._transpiler()
+        _check(loss.block.program, self._optimizer, self._strategy)
+        self._transpile()
 
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)

@@ -2176,6 +2176,7 @@ class LambOptimizer(AdamOptimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        block.program._use_lamb = True
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])

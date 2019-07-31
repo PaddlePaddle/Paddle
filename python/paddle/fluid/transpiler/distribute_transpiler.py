@@ -174,7 +174,7 @@ class DistributeTranspilerConfig(object):
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
-    # supported modes: sgd, local_sgd
+    # supported modes: grad_allreduce, local_sgd
     collective_mode = None
 
 
