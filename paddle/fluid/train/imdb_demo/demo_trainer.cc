@@ -26,6 +26,7 @@
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "save_model.h"
 
 namespace paddle {
 namespace train {
@@ -51,6 +52,16 @@ std::unique_ptr<paddle::framework::ProgramDesc> LoadProgramDesc(
     return main_program;
 }
 
+bool IsPersistable(const paddle::framework::VarDesc* var) {
+  if (var->Persistable() &&
+      var->GetType() != paddle::framework::proto::VarType::FEED_MINIBATCH &&
+      var->GetType() != paddle::framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != paddle::framework::proto::VarType::RAW) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace train
 }  // namespace paddle
 
@@ -72,7 +83,7 @@ int main(int argc, char* argv[]) {
   paddle::framework::Scope scope;
   auto startup_program = paddle::train::LoadProgramDesc(std::string(argv[3]));
   auto main_program = paddle::train::LoadProgramDesc(std::string(argv[4]));
-
+  
   executor.Run(*startup_program, &scope, 0);
   
   std::string data_feed_desc_str;
@@ -83,14 +94,25 @@ int main(int argc, char* argv[]) {
       paddle::framework::DatasetFactory::CreateDataset("MultiSlotDataset");
   VLOG(3) << "initialize dataset ptr done";
 
-  int epoch_num = 30;
 
+  // find all params
+  std::vector<std::string> param_names; 
+  const paddle::framework::BlockDesc& global_block = main_program->Block(0);
+  for (auto* var : global_block.AllVars()) {
+    if (paddle::train::IsPersistable(var)) {
+      VLOG(3) << "persistable variable's name: " << var->Name();
+      param_names.push_back(var->Name());
+    }
+  }
+
+  int epoch_num = 30;
   std::string loss_name = "mean_0.tmp_0";
   auto loss_var = scope.Var(loss_name);
 
+  LOG(INFO) << "Start training...";
+
   for (int epoch = 0; epoch < epoch_num; ++epoch) {
     VLOG(3) << "Epoch:" << epoch;
-
     // get reader
     dataset_ptr->SetFileList(file_vec);
     VLOG(3) << "set file list done";
@@ -121,9 +143,16 @@ int main(int argc, char* argv[]) {
     }
     float average_loss = accumulate(loss_vec.begin(), loss_vec.end(), 0.0)/loss_vec.size(); 
 
-    std::cout << "epoch: " << epoch << " average loss: "
-              << average_loss
-              << std::endl;
-  dataset_ptr->DestroyReaders();
+    LOG(INFO) << "epoch: " << epoch << "; average loss: "
+              << average_loss;
+    dataset_ptr->DestroyReaders();
+
+    // save model
+    std::string save_dir = "cnn_model/epoch" + std::to_string(epoch) + ".model";
+    paddle::framework::save_model(main_program,
+                                  &scope,
+                                  param_names,
+                                  save_dir,
+                                  false); 
   }
 }
