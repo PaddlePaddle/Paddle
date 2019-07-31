@@ -136,7 +136,6 @@ class CompiledProgram(object):
               import paddle.fluid as fluid
               import paddle.fluid.compiler as compiler
               import numpy
-              import os
 
               use_cuda = True
               place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -256,19 +255,17 @@ class CompiledProgram(object):
         """
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
-        if _has_backward_op(self._graph) and loss_name is None:
-            print("The loss_name should be set here.")
         self._with_strategy = True
         self._is_data_parallel = True
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
+        self._places = places
 
         if _has_backward_op(self._graph):
             assert self._loss_name is not None, "The loss_name should be set here."
 
-        self._places = places
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
                 self._places = [self._places]
