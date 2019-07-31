@@ -118,7 +118,7 @@ template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_fea_eval_ = fea_eval;
   slots_shuffle_rclist_.ReSize(record_candidate_size);
-  VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval 
+  VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval
           << " with record candidate size: " << record_candidate_size;
 }
 
@@ -656,17 +656,18 @@ void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId end";
 }
 
-void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace, 
+void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
                                      std::vector<Record>& result) {
   int debug_erase_cnt = 0;
   int debug_push_cnt = 0;
-  auto multi_slot_desc = data_feed_desc_.multi_slot_desc(); 
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   slots_shuffle_rclist_.ReInit();
   for (const auto& rec : slots_shuffle_original_data_) {
     RecordCandidate rand_rec;
     Record new_rec = rec;
     slots_shuffle_rclist_.AddAndGet(rec, rand_rec);
-    for (auto it = new_rec.uint64_feasigns_.begin(); it != new_rec.uint64_feasigns_.end();) {
+    for (auto it = new_rec.uint64_feasigns_.begin(); 
+         it != new_rec.uint64_feasigns_.end();) {
       if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
         it = new_rec.uint64_feasigns_.erase(it);
         debug_erase_cnt += 1;
