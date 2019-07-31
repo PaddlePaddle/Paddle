@@ -28,6 +28,16 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "save_model.h"
 
+#include "gflags/gflags.h"
+
+DEFINE_string(filelist, "train_filelist.txt", "filelist for fluid dataset");
+DEFINE_string(data_proto_desc, "data.proto", "data feed protobuf description");
+DEFINE_string(startup_program_file, "startup_program", "startup program description");
+DEFINE_string(main_program_file, "", "main program description");
+DEFINE_string(loss_name, "mean_0.tmp_0", "loss tensor name in the main program");
+DEFINE_string(save_dir, "cnn_model", "directory to save trained models");
+
+
 namespace paddle {
 namespace train {
 
@@ -66,8 +76,9 @@ bool IsPersistable(const paddle::framework::VarDesc* var) {
 }  // namespace paddle
 
 int main(int argc, char* argv[]) {
-  // filelist, data_feed.prototxt startup_prog, main_prog, model
-  std::string filelist = std::string(argv[1]);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  std::string filelist = std::string(FLAGS_filelist);
   std::vector<std::string> file_vec;
   std::ifstream fin(filelist);
   if (fin) {
@@ -81,13 +92,13 @@ int main(int argc, char* argv[]) {
   const auto cpu_place = paddle::platform::CPUPlace();
   paddle::framework::Executor executor(cpu_place);
   paddle::framework::Scope scope;
-  auto startup_program = paddle::train::LoadProgramDesc(std::string(argv[3]));
-  auto main_program = paddle::train::LoadProgramDesc(std::string(argv[4]));
+  auto startup_program = paddle::train::LoadProgramDesc(std::string(FLAGS_startup_program_file));
+  auto main_program = paddle::train::LoadProgramDesc(std::string(FLAGS_main_program_file));
   
   executor.Run(*startup_program, &scope, 0);
   
   std::string data_feed_desc_str;
-  paddle::train::ReadBinaryFile(std::string(argv[2]), &data_feed_desc_str);
+  paddle::train::ReadBinaryFile(std::string(FLAGS_data_proto_desc), &data_feed_desc_str);
   VLOG(3) << "load data feed desc done.";
   std::unique_ptr<paddle::framework::Dataset> dataset_ptr;
   dataset_ptr =
@@ -106,7 +117,7 @@ int main(int argc, char* argv[]) {
   }
 
   int epoch_num = 30;
-  std::string loss_name = "mean_0.tmp_0";
+  std::string loss_name = FLAGS_loss_name;
   auto loss_var = scope.Var(loss_name);
 
   LOG(INFO) << "Start training...";
@@ -148,7 +159,8 @@ int main(int argc, char* argv[]) {
     dataset_ptr->DestroyReaders();
 
     // save model
-    std::string save_dir = "cnn_model/epoch" + std::to_string(epoch) + ".model";
+    std::string save_dir_root = FLAGS_save_dir;
+    std::string save_dir = save_dir_root + "/epoch" + std::to_string(epoch) + ".model";
     paddle::framework::save_model(main_program,
                                   &scope,
                                   param_names,
