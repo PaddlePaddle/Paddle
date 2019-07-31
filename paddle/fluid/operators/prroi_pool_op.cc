@@ -169,7 +169,6 @@ class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
     return op;
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 

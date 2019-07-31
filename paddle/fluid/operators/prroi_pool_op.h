@@ -107,6 +107,57 @@ HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
   return sum_out;
 }
 
+template <typename T>
+HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
+                                           const int h, const int w,
+                                           const int height, const int width,
+                                           const T coeff) {
+  bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
+  if (!overflow) {
+    *(diff + h * width + w) = top_diff * coeff;
+  }
+};
+
+template <typename T, typename Functor>
+HOSTDEVICE void PrRoIPoolingMatDistributeDiff(
+    T* diff, const T top_diff, const int s_h, const int s_w, const int e_h,
+    const int e_w, const T y0, const T x0, const T y1, const T x1, const int h0,
+    const int w0, Functor functor) {
+  T alpha, beta, lim_alpha, lim_beta, tmp;
+
+  alpha = x0 - static_cast<T>(s_w);
+  beta = y0 - static_cast<T>(s_h);
+  lim_alpha = x1 - static_cast<T>(s_w);
+  lim_beta = y1 - static_cast<T>(s_h);
+  tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
+         0.5f * alpha * alpha) *
+        (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
+  functor(diff, top_diff, s_h, s_w, h0, w0, tmp);
+
+  alpha = static_cast<T>(e_w) - x1;
+  lim_alpha = static_cast<T>(e_w) - x0;
+  tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
+         0.5f * alpha * alpha) *
+        (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
+  functor(diff, top_diff, s_h, e_w, h0, w0, tmp);
+
+  alpha = x0 - static_cast<T>(s_w);
+  beta = static_cast<T>(e_h) - y1;
+  lim_alpha = x1 - static_cast<T>(s_w);
+  lim_beta = static_cast<T>(e_h) - y0;
+  tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
+         0.5f * alpha * alpha) *
+        (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
+  functor(diff, top_diff, e_h, s_w, h0, w0, tmp);
+
+  alpha = static_cast<T>(e_w) - x1;
+  lim_alpha = static_cast<T>(e_w) - x0;
+  tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
+         0.5f * alpha * alpha) *
+        (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
+  functor(diff, top_diff, e_h, e_w, h0, w0, tmp);
+}
+
 template <typename DeviceContext, typename T>
 class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
@@ -177,13 +228,13 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
       T roi_end_h =
           static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
 
-      // Force too small rois to be 1 x 1
-      T roi_height = std::max(roi_end_h - roi_start_h, (T)0.1);  // avoid 0
-      T roi_width = std::max(roi_end_w - roi_start_w, (T)0.1);
+      T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
+      T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
 
-      // Compute bin size w and h at input feature map
+      // Compute w and h at input feature map
       T bin_size_h = roi_height / static_cast<T>(pooled_height);
       T bin_size_w = roi_width / static_cast<T>(pooled_width);
+      T win_size = std::max(static_cast<T>(0.0), bin_size_w * bin_size_h);
 
       // calculate each pixel of the output feature map.
       int out_roi_offset = n * out_stride[0];
@@ -194,34 +245,42 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
           int out_row_offset = out_plane_offset + ph * out_stride[2];
           for (int pw = 0; pw < pooled_width; ++pw) {
             // calculate w and h at input feature map
-            int hstart = floor(static_cast<T>(ph) * bin_size_h + roi_start_h);
-            int wstart = floor(static_cast<T>(pw) * bin_size_w + roi_start_w);
-            int hend = ceil(static_cast<T>(ph + 1) * bin_size_h + roi_start_h);
-            int wend = ceil(static_cast<T>(pw + 1) * bin_size_w + roi_start_w);
+            T win_start_h = static_cast<T>(ph) * bin_size_h + roi_start_h;
+            T win_start_w = static_cast<T>(pw) * bin_size_w + roi_start_w;
+            T win_end_h = static_cast<T>(ph + 1) * bin_size_h + roi_start_h;
+            T win_end_w = static_cast<T>(pw + 1) * bin_size_w + roi_start_w;
             //  Add roi offsets and clip to input boundaries
-            hstart = std::min(std::max(hstart, 0), height);
-            wstart = std::min(std::max(wstart, 0), width);
-            hend = std::min(std::max(hend, 0), height);
-            wend = std::min(std::max(wend, 0), width);
+            int s_w = std::floor(win_start_w);
+            int e_w = std::ceil(win_end_w);
+            int s_h = std::floor(win_start_h);
+            int e_h = std::ceil(win_end_h);
 
             int output_index = out_row_offset + pw;
             int input_channel = (c * pooled_height + ph) * pooled_width + pw;
             int input_plane_offset =
                 roi_batch_id * in_stride[0] + input_channel * in_stride[1];
             const T* offset_input_data = input_data + input_plane_offset;
-            T out_sum = 0.;
-            bool is_empty = (hend <= hstart) || (wend <= wstart);
-            for (int h_iter = hstart; h_iter < hend; ++h_iter) {
-              for (int w_iter = wstart; w_iter < wend; ++w_iter) {
-                out_sum += PrRoIPoolingMatCalculation(
-                    offset_input_data, h_iter, w_iter, h_iter + 1, w_iter + 1,
-                    std::max(hstart, T(h_iter)), std::max(wstart, T(w_iter)),
-                    std::min(hend, T(h_iter) + 1.0),
-                    std::min(wend, T(w_iter + 1.0)), height, width);
+            T sum_out = 0.;
+
+            if (win_size > static_cast<T>(0.0)) {
+              for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
+                for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
+                  sum_out += PrRoIPoolingMatCalculation(
+                      offset_input_data, h_iter, w_iter, h_iter + 1, w_iter + 1,
+                      std::max(win_start_h, static_cast<T>(h_iter)),
+                      std::max(win_start_w, static_cast<T>(w_iter)),
+                      std::min(win_end_h,
+                               static_cast<T>(h_iter) + static_cast<T>(1.0)),
+                      std::min(win_end_w,
+                               static_cast<T>(w_iter) + static_cast<T>(1.0)),
+                      height, width);
+                }
               }
+
+              output_data[output_index] = sum_out / win_size;
+            } else {
+              output_data[output_index] = 0.;
             }
-            T bin_area = (hend - hstart) * (wend - wstart);
-            output_data[output_index] = is_empty ? 0. : out_sum / bin_area;
           }
         }
       }
@@ -303,33 +362,41 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         T roi_end_h =
             static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
 
-        // Force too small ROIs to be 1x1
-        T roi_height = std::max(roi_end_h - roi_start_h, (T)0.1);  // avoid 0
-        T roi_width = std::max(roi_end_w - roi_start_w, (T)0.1);
+        T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
+        T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
 
         // Compute w and h at input feature map
         T bin_size_h = roi_height / static_cast<T>(pooled_height);
         T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
-        int hstart = floor(bin_size_h * static_cast<T>(ph) + roi_start_h);
-        int wstart = floor(bin_size_w * static_cast<T>(pw) + roi_start_w);
-        int hend = ceil(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
-        int wend = ceil(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
+        T win_start_w = roi_start_w + bin_size_w * pw;
+        T win_start_h = roi_start_h + bin_size_h * ph;
+        T win_end_w = win_start_w + bin_size_w;
+        T win_end_h = win_start_h + bin_size_h;
 
-        // Add roi offsets and clip to input boundaries
-        hstart = std::min(std::max(hstart, 0), height);
-        hend = std::min(std::max(hend, 0), height);
-        wstart = std::min(std::max(wstart, 0), width);
-        wend = std::min(std::max(wend, 0), width);
-        bool is_empty = (hend <= hstart) || (wend <= wstart);
+        T win_size = std::max(static_cast<T>(0.0), bin_size_w * bin_size_h);
 
-        // Accumulate diff_val into input data
-        T bin_area = static_cast<T>((hend - hstart) * (wend - wstart));
-        T diff_val = is_empty ? 0. : output_grad_data[i] / bin_area;
-        for (int ih = hstart; ih < hend; ++ih) {
-          for (int iw = wstart; iw < wend; ++iw) {
-            int input_index = ih * width + iw;
-            offset_input_grad_data[input_index] += diff_val;
+        T sum_out = win_size == static_cast<T>(0.)
+                        ? static_cast<T>(0.)
+                        : *offset_input_grad_data / win_size;
+
+        int s_w = std::floor(win_start_w);
+        int e_w = std::ceil(win_end_w);
+        int s_h = std::floor(win_start_h);
+        int e_h = std::ceil(win_end_h);
+
+        // Accumubin_arealate diff_val into input data
+        for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
+          for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
+            PrRoIPoolingMatDistributeDiff(
+                offset_input_grad_data, sum_out, h_iter, w_iter, h_iter + 1,
+                w_iter + 1, std::max(win_start_h, static_cast<T>(h_iter)),
+                std::max(win_start_w, static_cast<T>(w_iter)),
+                std::min(win_end_h,
+                         static_cast<T>(h_iter) + static_cast<T>(1.0)),
+                std::min(win_end_w,
+                         static_cast<T>(w_iter) + static_cast<T>(1.0)),
+                height, width, PrRoIPoolingDistributeDiff<T>);
           }
         }
       }
