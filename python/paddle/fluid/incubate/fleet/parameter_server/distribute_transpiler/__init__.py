@@ -237,6 +237,7 @@ class DistributedTranspiler(Fleet):
 
         if not config.sync_mode:
             config.runtime_split_send_recv = True
+        config.pserver_hadoop_configs = self._hdfs_server_config
 
         # _origin_program is a deep copy for default_main_program, for inference
         self._origin_program = default_main_program().clone(for_test=False)
