@@ -98,33 +98,28 @@ def ctr_metric_bundle(input, label):
 
     helper.append_op(
         type="elementwise_sub",
-        inputs={
-            "X": [input],
-            "Y": [label]},
+        inputs={"X": [input],
+                "Y": [label]},
         outputs={"Out": [tmp_res_elesub]})
 
-    helper.append_op(
+    helper.append_op
         type="squared_l2_norm",
         inputs={"X": [tmp_res_elesub]},
-        outputs={"Out": [batch_sqrerr]}
-    )
+        outputs={"Out": [batch_sqrerr]})
     helper.append_op(
         type="elementwise_add",
-        inputs={
-            "X": [batch_sqrerr],
-            "Y": [local_sqrerr]},
+        inputs={"X": [batch_sqrerr],
+                "Y": [local_sqrerr]},
         outputs={"Out": [local_sqrerr]})
 
     helper.append_op(
         type="l1_norm",
         inputs={"X": [tmp_res_elesub]},
-        outputs={"Out": [batch_abserr]}
-    )
+        outputs={"Out": [batch_abserr]})
     helper.append_op(
         type="elementwise_add",
-        inputs={
-            "X": [batch_abserr],
-            "Y": [local_abserr]},
+        inputs={"X": [batch_abserr],
+                "Y": [local_abserr]},
         outputs={"Out": [local_abserr]})
 
     helper.append_op(
@@ -133,9 +128,8 @@ def ctr_metric_bundle(input, label):
         outputs={"Out": [batch_prob]})
     helper.append_op(
         type="elementwise_add",
-        inputs={
-            "X": [batch_prob],
-            "Y": [local_prob]},
+        inputs={"X": [batch_prob],
+                "Y": [local_prob]},
         outputs={"Out": [local_prob]})
     helper.append_op(
         type="sigmoid",
@@ -147,9 +141,8 @@ def ctr_metric_bundle(input, label):
         outputs={"Out": [batch_q]})
     helper.append_op(
         type="elementwise_add",
-        inputs={
-            "X": [batch_q],
-            "Y": [local_q]},
+        inputs={"X": [batch_q],
+                "Y": [local_q]},
         outputs={"Out": [local_q]})
 
     return local_sqrerr, local_abserr, local_prob, local_q
