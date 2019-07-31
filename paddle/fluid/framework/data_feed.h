@@ -28,6 +28,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"

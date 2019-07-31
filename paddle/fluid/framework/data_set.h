@@ -21,6 +21,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <set>
 
 #include "paddle/fluid/framework/data_feed.h"
 
@@ -61,7 +62,7 @@ class Dataset {
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins) = 0;
-  //set fea eval mode 
+  // set fea eval mode
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
   // get file list
   virtual const std::vector<std::string>& GetFileList() = 0;
@@ -98,7 +99,7 @@ class Dataset {
   virtual void GlobalShuffle() = 0;
   // for slots shuffle
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
-  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace, 
+  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>& result) = 0;
   // create readers
   virtual void CreateReaders() = 0;
@@ -136,7 +137,7 @@ class DatasetImpl : public Dataset {
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins);
 
-  virtual void SetFeaEval(bool fea_eval, int record_candidate_size);    
+  virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
@@ -205,7 +206,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   MultiSlotDataset() {}
   virtual void MergeByInsId();
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
-  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace, 
+  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>& result);
   virtual ~MultiSlotDataset() {}
 };
