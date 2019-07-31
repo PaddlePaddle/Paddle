@@ -525,15 +525,16 @@ double FleetWrapper::GetCacheThreshold() {
   }
   return cache_threshold;
 #else
-    VLOG(0) << "FleetWrapper::GetCacheThreshold does nothing when no pslib";
-    return 0.0;
+  VLOG(0) << "FleetWrapper::GetCacheThreshold does nothing when no pslib";
+  return 0.0;
 #endif
 }
 
 void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
                                 const int mode, const double cache_threshold) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(0, path, std::to_string(mode), std::to_string(cache_threshold));
+  auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
+      0, path, std::to_string(mode), std::to_string(cache_threshold));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
@@ -541,11 +542,12 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
     exit(-1);
   }
 #else
-    VLOG(0) << "FleetWrapper::CacheShuffle does nothing when no pslib";
+  VLOG(0) << "FleetWrapper::CacheShuffle does nothing when no pslib";
 #endif
 }
 
-int32_t FleetWrapper::SaveCache(int table_id, const std::string& path, const int mode) {
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+                                const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
   ret.wait();
@@ -556,11 +558,10 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path, const int
   }
   return feasign_cnt;
 #else
-    VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
-    return -1;
-#endif  
+  VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
+  return -1;
+#endif
 }
-
 
 void FleetWrapper::ShrinkSparseTable(int table_id) {
 #ifdef PADDLE_WITH_PSLIB

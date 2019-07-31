@@ -17,11 +17,11 @@
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-#include <set>
 
 #include "paddle/fluid/framework/data_feed.h"
 

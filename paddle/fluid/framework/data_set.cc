@@ -688,7 +688,6 @@ void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
           << " repush feasign num: " << debug_push_cnt;
 }
 
-
 // slots shuffle to input_channel_ with needed-shuffle slots
 void MultiSlotDataset::SlotsShuffle(
     const std::set<std::string>& slots_to_replace) {
