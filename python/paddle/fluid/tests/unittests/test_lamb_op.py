@@ -140,15 +140,12 @@ def lamb_step(inputs, attributes):
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
 
-    mom1_tmp = moment1_out / (1 - beta1_pow)
-    mom2_tmp = moment2_out / (1 - beta2_pow)
-
     r_1 = np.linalg.norm(param)
-    r_2 = np.linalg.norm(mom1_tmp / np.sqrt(mom2_tmp + epsilon) + weight_decay *
-                         param)
+    r_2 = np.linalg.norm(moment1_out / (np.sqrt(moment2_out) + epsilon) +
+                         weight_decay * param)
     lr_t = lr * r_1 / r_2
 
-    param_out = param - lr_t * (mom1_tmp / np.sqrt(mom2_tmp + epsilon) +
+    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon) +
                                 weight_decay * param)
     return param_out, moment1_out, moment2_out
 
@@ -190,16 +187,13 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
             1 - beta2) * np.square(update_value)
 
     def update_param():
-        mom1_tmp = moment1_out / (1 - beta1_pow)
-        mom2_tmp = moment2_out / (1 - beta2_pow)
-
         r_1 = np.linalg.norm(param)
-        r_2 = np.linalg.norm(mom1_tmp / np.sqrt(mom2_tmp + epsilon) +
+        r_2 = np.linalg.norm(moment1_out / (np.sqrt(moment2_out) + epsilon) +
                              weight_decay * param)
         lr_t = lr * r_1 / r_2
 
-        param_out = param - lr_t * (mom1_tmp / np.sqrt(mom2_tmp + epsilon) +
-                                    weight_decay * param)
+        param_out = param - lr_t * (moment1_out / (
+            np.sqrt(moment2_out) + epsilon) + weight_decay * param)
 
     for row_id in range(param_out.shape[0]):
         update_value = np.zeros(np_grad[0].shape).astype("float32")

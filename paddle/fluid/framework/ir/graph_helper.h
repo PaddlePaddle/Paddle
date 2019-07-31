@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -35,6 +36,9 @@ struct NodeComp {
 
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
+
+// Check if the var desc of node is consistency.
+bool VarDescIsConsistency(const Graph &graph);
 
 // Find All Circles for debugging,
 // store all subgraph in circles.

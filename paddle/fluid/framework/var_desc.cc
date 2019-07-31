@@ -264,5 +264,10 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
   }
 }
 
+bool operator==(const VarDesc &left, const VarDesc &right) {
+  return left.Proto()->SerializeAsString() ==
+         right.Proto()->SerializeAsString();
+}
+
 }  // namespace framework
 }  // namespace paddle
