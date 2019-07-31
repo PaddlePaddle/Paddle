@@ -379,7 +379,6 @@ class FleetUtil(object):
             suffix_name = "/%s/batch_model/" % day
             model_path = output_path.rstrip("/") + suffix_name
 
-
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
             content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
@@ -978,7 +977,7 @@ class FleetUtil(object):
             return global_metric[0]
 
         global_sqrerr = get_metric(sqrerr_name)
-        global_abserr =  get_metric(abserr_name)
+        global_abserr = get_metric(abserr_name)
         global_prob = get_metric(prob_name)
         global_q_value = get_metric(q_name)
 
