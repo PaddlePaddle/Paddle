@@ -128,7 +128,7 @@ class CompiledProgram(object):
         self._with_strategy = False
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):
-        """Add build strategy and execution strategy to the program.
+        """Add build strategy and execution strategy to compile the program.
 
         Example:
             .. code-block:: python
@@ -161,8 +161,7 @@ class CompiledProgram(object):
 
         Args:
             build_strategy(BuildStrategy): build_strategy is used to
-                build the graph so it can run on multiple devices/cores with
-                optimized topology.
+                build the graph with the specified options.
                 For more information, please refer to fluid.BuildStrategy.
                 Default None.
             exec_strategy(ExecutionStrategy): exec_strategy is used to
@@ -312,6 +311,8 @@ class CompiledProgram(object):
         else:
             assert scope is not None, ""
             self._local_scopes = []
+
+        assert places, "The places must be specified."
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
