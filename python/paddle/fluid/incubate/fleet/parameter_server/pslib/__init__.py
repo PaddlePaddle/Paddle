@@ -236,7 +236,7 @@ class PSLib(Fleet):
         cache_threshold = 0.0
 
         if self._role_maker.is_first_worker():
-            cache_threshold = self._fleet_ptr.get_cache_threshold();
+            cache_threshold = self._fleet_ptr.get_cache_threshold()
         #check cache threshold right or not
         self._role_maker._barrier_worker()
 

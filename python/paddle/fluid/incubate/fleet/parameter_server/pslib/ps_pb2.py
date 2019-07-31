@@ -16,8 +16,7 @@
 # source: ps.proto
 
 import sys
-_b = sys.version_info[0] < 3 and (lambda x: x) or (
-    lambda x: x.encode('latin1'))
+_b = sys.version_info[0] < 3 and (lambda x: x) or (lambda x: x.encode('latin1'))
 from google.protobuf.internal import enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -44,8 +43,7 @@ _TABLETYPE = _descriptor.EnumDescriptor(
     file=DESCRIPTOR,
     values=[
         _descriptor.EnumValueDescriptor(
-            name='PS_SPARSE_TABLE', index=0, number=0, options=None,
-            type=None),
+            name='PS_SPARSE_TABLE', index=0, number=0, options=None, type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_DENSE_TABLE', index=1, number=1, options=None, type=None),
     ],
@@ -87,8 +85,7 @@ _PSCMDID = _descriptor.EnumDescriptor(
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_SHRINK_TABLE', index=4, number=4, options=None,
-            type=None),
+            name='PS_SHRINK_TABLE', index=4, number=4, options=None, type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_SAVE_ONE_TABLE',
             index=5,
@@ -132,10 +129,7 @@ _PSCMDID = _descriptor.EnumDescriptor(
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_STOP_SERVER',
-            index=12,
-            number=12,
-            options=None,
+            name='PS_STOP_SERVER', index=12, number=12, options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_SAVE_ONE_CACHE_TABLE',
@@ -2195,8 +2189,7 @@ _PSPARAMETER.fields_by_name['worker_param'].message_type = _WORKERPARAMETER
 _PSPARAMETER.fields_by_name['server_param'].message_type = _SERVERPARAMETER
 _PSPARAMETER.fields_by_name[
     'trainer_param'].message_type = _DOWNPOURTRAINERPARAMETER
-_PSPARAMETER.fields_by_name[
-    'fs_client_param'].message_type = _FSCLIENTPARAMETER
+_PSPARAMETER.fields_by_name['fs_client_param'].message_type = _FSCLIENTPARAMETER
 _WORKERPARAMETER.fields_by_name[
     'downpour_worker_param'].message_type = _DOWNPOURWORKERPARAMETER
 _SERVERPARAMETER.fields_by_name[
@@ -2225,8 +2218,7 @@ _TABLEACCESSORPARAMETER.fields_by_name[
 _TABLEACCESSORPARAMETER.fields_by_name[
     'table_accessor_save_param'].message_type = _TABLEACCESSORSAVEPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name['adam'].message_type = _ADAMSGDPARAMETER
-_DENSESGDRULEPARAMETER.fields_by_name[
-    'naive'].message_type = _NAIVESGDPARAMETER
+_DENSESGDRULEPARAMETER.fields_by_name['naive'].message_type = _NAIVESGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name[
     'summary'].message_type = _SUMMARYSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name[
@@ -2243,8 +2235,7 @@ DESCRIPTOR.message_types_by_name[
     'DownpourTrainerParameter'] = _DOWNPOURTRAINERPARAMETER
 DESCRIPTOR.message_types_by_name['ProgramConfig'] = _PROGRAMCONFIG
 DESCRIPTOR.message_types_by_name['DenseTableParameter'] = _DENSETABLEPARAMETER
-DESCRIPTOR.message_types_by_name[
-    'SparseTableParameter'] = _SPARSETABLEPARAMETER
+DESCRIPTOR.message_types_by_name['SparseTableParameter'] = _SPARSETABLEPARAMETER
 DESCRIPTOR.message_types_by_name[
     'DownpourServerParameter'] = _DOWNPOURSERVERPARAMETER
 DESCRIPTOR.message_types_by_name[
