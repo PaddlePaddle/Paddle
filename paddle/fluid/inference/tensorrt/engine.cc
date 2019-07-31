@@ -51,7 +51,18 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
-  if (enable_int8_) {
+  bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
+  if (enable_fp16) {
+    bool support_fp16 = infer_builder_->platformHasFastFp16();
+    infer_builder_->setFp16Mode(support_fp16);
+    if (!support_fp16) {
+      LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
+                   "FP16 speed up, use FP32 instead.";
+    }
+  }
+  bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+
+  if (enable_int8) {
     infer_builder_->setInt8Mode(true);
     if (calibrator_) {
       infer_builder_->setInt8Calibrator(calibrator_);
