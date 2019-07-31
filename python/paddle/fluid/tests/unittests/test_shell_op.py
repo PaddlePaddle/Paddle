@@ -14,27 +14,56 @@
 
 from __future__ import print_function
 
+import unittest
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 
+
 class TestShellOp(unittest.TestCase):
-    def test_shell_op_no_params():
+    def _shell_op_(self, params_dict=None, cmd_format='ls /', create_var=True):
         scope = fluid.core.Scope()
         program = Program()
         with fluid.scope_guard(scope):
             with program_guard(program, startup_program=Program()):
                 place = fluid.CPUPlace()
+                params = []
+                if params_dict and type(params_dict) == dict:
+                    for k, v in params_dict.items():
+                        if create_var:
+                            param = scope.var(k)
+                            if v:
+                                param.set_string(v)
+                        params.append(k)
+
                 program.global_block().append_op(
                     type="shell",
                     inputs={},
                     outputs={},
-                    attrs={
-                        "cmd_format": 'ls /',
-                    })
+                    attrs={"cmd_format": cmd_format,
+                           "cmd_params": params})
 
             exe = fluid.Executor(place)
             exe.run(program)
 
+    def test_shell_op(self):
+        #default no params
+        self._shell_op_()
+        # exception 1, command format have more placeholder {}
+        self.assertRaises(Exception, self._shell_op_, None, 'ls {}')
+
+        # exception 2, param variable doesnt have value
+        params_dict = dict()
+        params_dict['params'] = None
+        self.assertRaises(Exception, self._shell_op_, params_dict, 'ls {}')
+
+        # exception 3, param variable doesnt exists
+        self.assertRaises(Exception, self._shell_op_, params_dict, 'ls {}',
+                          False)
+
+        # correct use
+        params_dict['params'] = "/"
+        self._shell_op_(params_dict, 'ls {}')
+
+
 if __name__ == '__main__':
     unittest.main()
-

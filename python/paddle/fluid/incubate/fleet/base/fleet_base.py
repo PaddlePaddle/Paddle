@@ -27,8 +27,9 @@ from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
-
 HDFS_PREFIX = 'hdfs:'
+
+
 class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
@@ -36,9 +37,6 @@ class Mode:
     TRANSPILER = 1
     PSLIB = 2
     COLLECTIVE = 3
-
-
-HDFS_PREFIX = 'hdfs:'
 
 
 class Fleet(object):
@@ -224,18 +222,11 @@ class Fleet(object):
     def generate_random_path(self, dirname):
         rets = dirname
         if dirname.startswith(HDFS_PREFIX):
-            #if not self._hdfs_client_trainer or not self._hdfs_client_server:
-            #    raise ValueError(
-            #        "if you want to use hadoop path, please init hadoop client firstly"
-            #    )
             while True:
-                rets = os.path.join(os.getenv("TMP", "/tmp"), uuid.uuid4())
+                rets = os.path.join(
+                    str(os.getenv("TMP", "/tmp")), str(uuid.uuid4()))
                 if not os.path.exists(rets):
                     break
-        #elif self._hdfs_client_trainer or self._hdfs_client_server:
-        #    warnings.warn(
-        #        "you have init hadoop client, if you want to use hdfs path, please make sure your path starts with \"%s\""
-        #        % HDFS_PREFIX)
         return rets
 
     @abc.abstractmethod

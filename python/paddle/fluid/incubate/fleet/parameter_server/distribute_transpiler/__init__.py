@@ -91,18 +91,21 @@ class DistributedTranspiler(Fleet):
         if model_dir:
             _hadoop_model_dir_ = False
             if model_dir.startswith(HDFS_PREFIX):
-                _hadoop_model_dir = True
-                if not self._hdfs_client.is_dir(model_dir[len(HDFS_PREFIX):]):
-                    raise ValueError("There is no hadoop directory named '%s'", model_dir[len(HDFS_PREFIX):])
+                _hadoop_model_dir_ = True
+                if not self._hdfs_client_trainer.is_dir(model_dir[len(
+                        HDFS_PREFIX):]):
+                    raise ValueError("There is no hadoop directory named '%s'",
+                                     model_dir[len(HDFS_PREFIX):])
                 tmp_path = self.generate_random_path(model_dir)
                 model_dir = model_dir[len(HDFS_PREFIX):]
-                self._hdfs_client.download(model_dir[len(HDFS_PREFIX):], tmp_path)
+                self._hdfs_client_trainer.download(model_dir, tmp_path)
                 model_dir = tmp_path
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
             io.load_persistables(self._executor, model_dir, self.main_program)
-            os.sys('rm -rf ' + model_dir)
+            if _hadoop_model_dir_:
+                os.system('rm -rf ' + model_dir)
 
     def run_server(self):
         """
@@ -190,13 +193,11 @@ class DistributedTranspiler(Fleet):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(self.main_program)
-            if not program._is_distributed:
-                raise ValueError(
-                    "main_program is for local, may not use fleet.save_persistables")
             io.save_persistables(executor, dirname, program, None, hdfs_dirname)
-        if hdfs_dirname.startswith(HDFS_PREFIX):
-            #self._hdfs_client.upload(hdfs_dirname[len(HDFS_PREFIX):], dirname)
-            os.sys('mv ' + dirname + ' /tmp/paddle_hadoop_random/ && rm -rf ' + dirname)
+        if hdfs_dirname:
+            self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
+                                             dirname)
+            os.system('rm -rf ' + dirname)
 
     def save_persistables(self, executor, dirname, main_program=None):
         """
@@ -225,9 +226,9 @@ class DistributedTranspiler(Fleet):
                              hdfs_dirname)
 
         if hdfs_dirname:
-            #self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
-            #dirname)
-            os.sys('mv ' + dirname + ' /tmp/paddle_hadoop_random/ && rm -rf ' + dirname)
+            self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
+                                             dirname)
+            os.system('rm -rf ' + dirname)
 
     def _transpile(self, config):
         if not isinstance(config, DistributeTranspilerConfig):

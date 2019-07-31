@@ -20,8 +20,10 @@
 namespace paddle {
 namespace operators {
 
-// flag use to determine whether to skip shell op.
-constexpr char SKIP_SHELLOP_FLAGS[] = "kSkipShellOpFlag";
+// if you want to upload distributed lookup table on parameter server to hadoop,
+// this
+// variable stores the local temporary directory. Conversely, it's empty.
+constexpr char LOOKUP_TABLE_TMP_PATH[] = "kLookupTableTmpPath";
 class ShellOp : public framework::OperatorBase {
  public:
   ShellOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -31,31 +33,58 @@ class ShellOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    // if you want to skip shell op, please set kSkipShellOpFlag variable become true.
-    framework::Variable* skip_flag_var = scope.FindVar(SKIP_SHELLOP_FLAGS);
-    if (skip_flag_var != null && skip_flag_var->Get<bool>()) {
-      VLOG(10) << "skip shell op flag is true";
-      return;
-    }
     std::string cmd_format = Attr<std::string>("cmd_format");
     std::vector<std::string> cmd_params =
         Attr<std::vector<std::string>>("cmd_params");
     std::string cmd = cmd_format;
+    std::string delete_lookup_table_temp = "";
     for (size_t i = 0; i < cmd_params.size(); i++) {
       framework::Variable* cmd_params_var = scope.FindVar(cmd_params[i]);
       if (cmd_params_var != nullptr) {
         auto* pv = cmd_params_var->GetMutable<std::string>();
-        if (*pv.length() == 0)
-          PADDLE_THROW("%s variable is empty, it's needed by shell op.
-		Please assign a value to the variable first.", cmd_params[i])
+        if (pv->length() == 0) {
+          if (cmd_params[i] == LOOKUP_TABLE_TMP_PATH) {
+            // if LOOKUP_TABLE_TMP_PATH is empty, it means we don't need to
+            // execute
+            // command 'hadoop fs -put {} {}'
+            cmd = "";
+            break;
+          }
+          PADDLE_THROW(
+              "%s variable is empty, it's needed by shell op. Please assign a "
+              "value to the variable first.",
+              cmd_params[i]);
+        } else if (cmd_params[i] == LOOKUP_TABLE_TMP_PATH) {
+          delete_lookup_table_temp = *pv;
+          delete_lookup_table_temp = delete_lookup_table_temp.substr(
+              0, delete_lookup_table_temp.rfind('/'));
+        }
+        if (cmd.find("{}") == cmd.npos) {
+          PADDLE_THROW(
+              "command format : %s doesn't have enough placeholder {} for %s "
+              "params",
+              cmd_format, cmd_params[i]);
+        }
         cmd.replace(cmd.find("{}"), 2, *pv);
       } else {
         PADDLE_THROW("%s variable doesn't exist, it's needed by shell op",
                      cmd_params[i]);
       }
     }
+    if (cmd.find("{}") != cmd.npos) {
+      PADDLE_THROW(
+          "there are too many placeholder in command format : %s, we only have "
+          "%d parameters",
+          cmd_format, cmd_params.size());
+    }
     VLOG(4) << "shell op: " << cmd;
-    framework::shell_execute("ls /");
+    framework::shell_execute(cmd);
+    if (delete_lookup_table_temp.length() > 0) {
+      // we need to delete temporary lookup table path
+      cmd = "rm -rf " + delete_lookup_table_temp;
+      VLOG(4) << "shell op: " << cmd;
+      framework::shell_execute(cmd);
+    }
   }
 };
 
@@ -63,9 +92,8 @@ class ShellOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddComment(R"DOC(
-		Shell operator
-        This operator will execute cmds.
-        )DOC");
+        Shell operator
+        This operator will execute cmds.)DOC");
     AddAttr<std::string>("cmd_format",
                          "(string ,default'')"
                          "indicate the command format with placeholder {}");

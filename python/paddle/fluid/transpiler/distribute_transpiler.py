@@ -1733,7 +1733,7 @@ class DistributeTranspiler(object):
             outputs={},
             attrs={
                 'cmd_format': cmd_format,
-                'cmd_params': ["kLookupTablePath", "kLookupTableTmpPath"]
+                'cmd_params': ["kLookupTableTmpPath", "kLookupTablePath"]
             })
         return checkpoint_save_block.idx
 

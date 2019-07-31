@@ -551,6 +551,14 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("get_float",
            [](const Variable &var) -> float { return var.Get<float>(); })
+      .def("set_string",
+           [](Variable &var, std::string val) -> void {
+             *var.GetMutable<std::string>() = val;
+           })
+      .def("get_string",
+           [](const Variable &var) -> std::string {
+             return var.Get<std::string>();
+           })
       .def("get_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
