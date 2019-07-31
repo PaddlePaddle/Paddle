@@ -385,7 +385,8 @@ def embedding(input,
             will automatically be converted to :math:`size[0] + padding\_idx` to use.
             Default: None.
         param_attr(ParamAttr): Parameters for this layer.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
