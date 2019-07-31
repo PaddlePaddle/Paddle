@@ -150,7 +150,6 @@ include(external/warpctc)   # download, build, install warpctc
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
 include(cupti)
-include(external/gzstream)
 endif (NOT WIN32)
 
 if(WITH_PSLIB)
@@ -209,7 +208,6 @@ if (WITH_PROFILER)
 endif()
 
 include(generic)            # simplify cmake module
-include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
