@@ -61,6 +61,10 @@ void TensorRTEngine::FreezeNetwork() {
                    "FP16 speed up, use FP32 instead.";
     }
   }
+#else
+  LOG(INFO) << "Using FP16 in Paddle-trt must ensure that the version of TRT "
+               "is at least 5."
+               "So, use FP32 to run.";
 #endif
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
 
