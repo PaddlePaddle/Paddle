@@ -34,14 +34,11 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    // TODO(jczaja): Make it faster
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    key_ = key_common_ + "-t:" + ss.str();
     if (platform::get_cur_mkldnn_session_id() !=
         platform::kMKLDNNSessionID_Default) {
       key_ = key_common_;
+    } else {
+      key_ = key_common_ + "-t:" + MKLDNNHandler::ThreadIDasStr();
     }
   }
 
@@ -203,6 +200,11 @@ class MKLDNNHandler {
       }
     }
     return target_memory_p;
+  }
+
+  static std::string ThreadIDasStr(void) {
+    return std::to_string(
+        std::hash<std::thread::id>()(std::this_thread::get_id()));
   }
 
   static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT

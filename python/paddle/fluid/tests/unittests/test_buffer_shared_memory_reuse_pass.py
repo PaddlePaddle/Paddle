@@ -32,6 +32,7 @@ feed_dict = {
 class InplaceTestBase(unittest.TestCase):
     def initParameter(self):
         self.use_cuda = True
+        self.fuse_all_optimizer_ops = False
 
     def setUp(self):
         self.initParameter()
@@ -39,7 +40,6 @@ class InplaceTestBase(unittest.TestCase):
             self.device_count = fluid.core.get_cuda_device_count()
         else:
             self.device_count = 4
-
         assert batch_size % self.device_count == 0
 
     def build_program_and_scope(self):
@@ -76,30 +76,26 @@ class InplaceTestBase(unittest.TestCase):
 
         return all_vars_name
 
-    def test_single_card_fetch_var(self):
+    def check_single_card_fetch_var(self):
         if self.is_invalid_test():
             return
 
         prog1, scope1, exe, loss1 = self.build_program_and_scope()
-        prog2, scope2, _, loss2 = self.build_program_and_scope()
-        prog3, scope3, _, loss3 = self.build_program_and_scope()
-
-        build_strategy2 = fluid.BuildStrategy()
-        build_strategy2.memory_optimize = False
-        build_strategy2.enable_inplace = True
-
-        compiled_prog2 = fluid.CompiledProgram(prog2).with_data_parallel(
-            loss_name=loss2.name,
-            build_strategy=build_strategy2,
-            places=self.place)
-
-        build_strategy3 = fluid.BuildStrategy()
-        build_strategy3.memory_optimize = False
-        build_strategy3.enable_inplace = False
-        compiled_prog3 = fluid.CompiledProgram(prog3).with_data_parallel(
-            loss_name=loss2.name,
-            build_strategy=build_strategy3,
-            places=self.place)
+        scopes = []
+        compiled_programs = []
+        for memory_optimize in [False, True]:
+            for enable_inplace in [False, True]:
+                prog, scope, _, loss = self.build_program_and_scope()
+                scopes.append(scope)
+                build_strategy = fluid.BuildStrategy()
+                build_strategy.memory_optimize = memory_optimize
+                build_strategy.enable_inplace = enable_inplace
+                build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
+                    loss_name=loss.name,
+                    build_strategy=build_strategy,
+                    places=self.place)
+                compiled_programs.append(compiled_prog)
 
         all_vars_name = self.get_all_vars(prog1)
         repeated_var_names = all_vars_name * 4
@@ -112,65 +108,81 @@ class InplaceTestBase(unittest.TestCase):
                                           feed=feed_dict,
                                           fetch_list=[fetch_var])
 
-                with fluid.scope_guard(scope2):
-                    fetch_val2, = exe.run(compiled_prog2,
-                                          feed=feed_dict,
-                                          fetch_list=[fetch_var])
+                for scope, compiled_prog in zip(scopes, compiled_programs):
+                    with fluid.scope_guard(scope):
+                        fetch_val2, = exe.run(compiled_prog,
+                                              feed=feed_dict,
+                                              fetch_list=[fetch_var])
 
-                with fluid.scope_guard(scope3):
-                    fetch_val3, = exe.run(compiled_prog3,
-                                          feed=feed_dict,
-                                          fetch_list=[fetch_var])
+                        self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
 
-                self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
-                self.assertTrue(np.array_equal(fetch_val1, fetch_val3))
-
-    def test_multi_card_fetch_var(self):
+    def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
             return
 
         prog1, scope1, exe, loss1 = self.build_program_and_scope()
-        prog2, scope2, _, loss2 = self.build_program_and_scope()
-
-        build_strategy1 = fluid.BuildStrategy()
-        build_strategy1.memory_optimize = False
-        build_strategy1.enable_inplace = True
-
-        build_strategy2 = fluid.BuildStrategy()
-        build_strategy2.memory_optimize = False
-        build_strategy2.enable_inplace = False
+        scopes = []
+        compiled_programs = []
 
         if self.use_cuda:
             places = fluid.cuda_places()
         else:
             places = fluid.cpu_places(self.device_count)
 
-        compiled_prog1 = fluid.CompiledProgram(prog1).with_data_parallel(
-            loss_name=loss1.name, build_strategy=build_strategy1, places=places)
-        compiled_prog2 = fluid.CompiledProgram(prog2).with_data_parallel(
-            loss_name=loss2.name, build_strategy=build_strategy2, places=places)
+        for memory_optimize in [False, True]:
+            for enable_inplace in [False, True]:
+                prog, scope, _, loss = self.build_program_and_scope()
+                scopes.append(scope)
+                build_strategy = fluid.BuildStrategy()
+                build_strategy.memory_optimize = memory_optimize
+                build_strategy.enable_inplace = enable_inplace
+                build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                compiled_program = fluid.CompiledProgram(
+                    prog).with_data_parallel(
+                        loss_name=loss.name,
+                        build_strategy=build_strategy,
+                        places=places)
+                compiled_programs.append(compiled_program)
 
         repeated_var_names = self.get_all_vars(prog1) * 4
         random.shuffle(repeated_var_names)  # add some random 
 
         for fetch_var in repeated_var_names:
             for _ in range(4):
-                with fluid.scope_guard(scope1):
-                    fetch_val1, = exe.run(compiled_prog1,
-                                          feed=feed_dict,
-                                          fetch_list=[fetch_var])
+                fetch_vals = []
+                for scope, compiled_prog in zip(scopes, compiled_programs):
+                    with fluid.scope_guard(scope):
+                        fetch_val, = exe.run(compiled_prog,
+                                             feed=feed_dict,
+                                             fetch_list=[fetch_var])
+                        fetch_vals.append(fetch_val)
 
-                with fluid.scope_guard(scope2):
-                    fetch_val2, = exe.run(compiled_prog2,
-                                          feed=feed_dict,
-                                          fetch_list=[fetch_var])
+                for item in fetch_vals:
+                    self.assertTrue(np.array_equal(fetch_vals[0], item))
 
-                self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
+
+class CUDAInplaceTest(InplaceTestBase):
+    def initParameter(self):
+        self.use_cuda = True
+        self.fuse_all_optimizer_ops = False
+
+    def test_multi_card_fetch_var(self):
+        self.check_multi_card_fetch_var()
+
+    def test_single_card_fetch_var(self):
+        self.check_single_card_fetch_var()
 
 
 class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
+        self.fuse_all_optimizer_ops = False
+
+    def test_multi_card_fetch_var(self):
+        self.check_multi_card_fetch_var()
+
+    def test_single_card_fetch_var(self):
+        self.check_single_card_fetch_var()
 
 
 if __name__ == '__main__':
