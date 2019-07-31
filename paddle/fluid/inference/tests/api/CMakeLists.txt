@@ -43,6 +43,17 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	     --iterations=2)
 endfunction()
 
+function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path warmup_batch_size)
+	inference_analysis_test_run(${TARGET_NAME}
+	COMMAND ${test_binary}
+        ARGS --infer_model=${model_dir}/model
+             --infer_data=${data_path}
+             --warmup_batch_size=${warmup_batch_size}
+             --batch_size=50
+             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+	     --iterations=2)
+endfunction()
+
 function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
@@ -245,7 +256,7 @@ if(WITH_MKLDNN)
   # mobilenet-ssd int8
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+  inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH} 9)
 
 endif()
 
