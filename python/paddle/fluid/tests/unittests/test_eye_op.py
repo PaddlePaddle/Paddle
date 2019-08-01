@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,11 +30,11 @@ class TestEyeOp(OpTest):
 
         self.inputs = {}
         self.attrs = {
-            'num_rows': 2019,
-            'num_columns': 3019,
+            'num_rows': 219,
+            'num_columns': 319,
             'dtype': framework.convert_np_dtype_to_dtype_(np.int32)
         }
-        self.outputs = {'Out': np.eye(2019, 3019, dtype=np.int32)}
+        self.outputs = {'Out': np.eye(219, 319, dtype=np.int32)}
 
     def test_check_output(self):
         self.check_output()
@@ -48,8 +48,8 @@ class TestEyeOp1(OpTest):
         self.op_type = "eye"
 
         self.inputs = {}
-        self.attrs = {'num_rows': 2019}
-        self.outputs = {'Out': np.eye(2019, dtype=float)}
+        self.attrs = {'num_rows': 50}
+        self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
         self.check_output()
@@ -63,8 +63,8 @@ class TestEyeOp2(OpTest):
         self.op_type = "eye"
 
         self.inputs = {}
-        self.attrs = {'num_rows': 2019, 'num_columns': 1}
-        self.outputs = {'Out': np.eye(2019, 1, dtype=float)}
+        self.attrs = {'num_rows': 99, 'num_columns': 1}
+        self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
         self.check_output()

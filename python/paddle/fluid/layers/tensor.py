@@ -995,21 +995,22 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
     """
     **eye**
 
-    This function construct an identity matrix, or a batch of matrix.
+    This function constructs an identity tensor, or a batch of tensor.
 
     Args:
-        num_rows(int): giving the number of rows in each batch matrix.
-        num_columns(int): giving the number of columns in each batch matrix.
-                          If None, default: num_rows
-        batch_shape(list(int)): If provided, the return matrix will have leading
-                                batch dimensions of this shape.
-        dtype(string): 'float32'|'int32'|..., the data type of the output matrix.
+        num_rows(int): the number of rows in each batch tensor.
+        num_columns(int): the number of columns in each batch tensor.
+                          If None, default: num_rows.
+        batch_shape(list(int)): If provided, the returned tensor will have a leading
+                                batch size of this shape.
+        dtype(string): 'float32'|'int32'|..., the data type of the returned tensor.
 
     Returns:
-        Variable: An identity matrix of shape batch_shape + [num_rows, num_columns].
+        Variable: An identity tensor of shape batch_shape + [num_rows, num_columns].
 
     Examples:
         .. code-block:: python
+
           import paddle.fluid as fluid
  	  data = fluid.layers.eye(3, dtype='int32')
 	  # [[1, 0, 0]
@@ -1018,10 +1019,10 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
     
           data = fluid.layers.eye(3,2, dtype='int32')
 	  # [[1, 0, 0]
-          #  [0, 1, 0]
+          #  [0, 1, 0]]
     
-	  # Construct a batch of 3 identity matricies, each 2 x 2.
-	  # data[i, :, :] is a 2 x 2 identity matrix, i = 0, 1, 2.
+	  # Construct a batch of 3 identity tensors, each 2 x 2.
+	  # data[i, :, :] is a 2 x 2 identity tensor, i = 0, 1, 2.
 	  data = fluid.layers.eye(2, batch_shape=[3])
 
     """

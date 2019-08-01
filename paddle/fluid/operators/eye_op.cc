@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,15 +62,16 @@ class EyeOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<int64_t>("num_rows",
-                     "(int64_t) the number of rows in output matrix");
+                     "(int64_t) the number of rows in output tensor");
     AddAttr<int64_t>("num_columns",
-                     "(int64_t) the number of columns in output matrix")
+                     "(int64_t) the number of columns in output tensor."
+                     "Default -1 means that num_columns=num_rows")
         .SetDefault(-1);
     AddOutput("Out",
               "(Tensor) Construct an identity tensor with "
-              "specified shape");
+              "specified shape [num_rows, num_columns]");
     AddComment(R"DOC(
-Return an identity tensor
+Return an identity tensor whose shape is [num_rows, num_columns].
 )DOC");
   }
 };
