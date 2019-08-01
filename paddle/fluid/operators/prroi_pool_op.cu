@@ -41,7 +41,7 @@ DEVICE void PrRoIPoolingDistributeDiffCUDA(T* diff, const T top_diff,
 }
 
 template <typename T>
-HOSTDEVICE void GPUPRROIPoolForward(
+__global__ void GPUPRROIPoolForward(
     const int nthreads, const T* input_data, const T* input_rois,
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
@@ -111,7 +111,7 @@ HOSTDEVICE void GPUPRROIPoolForward(
 }
 
 template <typename T>
-HOSTDEVICE void GPUPRROIPoolBackward(
+__global__ void GPUPRROIPoolBackward(
     const int nthreads, const T* input_rois, const T* output_grad_data,
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
