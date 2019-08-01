@@ -111,6 +111,9 @@ void BindDataset(py::module* m) {
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,
+      .def("pass_begin", &framework::Dataset::PassBegin,
+           py::call_guard<py::gil_scoped_release>())
+      .def("pass_end", &framework::Dataset::PassEnd,
            py::call_guard<py::gil_scoped_release>());
 }
 

@@ -15,11 +15,13 @@
 #include "paddle/fluid/framework/data_set.h"
 #include <algorithm>
 #include <random>
+#include <set>
 #include <unordered_map>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
+#include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
@@ -667,6 +669,7 @@ void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId end";
 }
 
+<<<<<<< HEAD
 void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
                                      std::vector<Record>* result) {
   int debug_erase_cnt = 0;
@@ -827,6 +830,25 @@ void MultiSlotDataset::SlotsShuffle(
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
           << ", memory data size for slots shuffle=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
+
+void MultiSlotDataset::PassBegin() {
+  auto box_ptr = BoxWrapper::GetInstance();
+  std::vector<Record> pass_data;
+  std::set<uint64_t> feasign_to_box;
+  input_channel_->ReadAll(pass_data);
+  for (const auto& ins : pass_data) {
+    const auto& feasign_v = ins.uint64_feasigns_;
+    for (const auto feasign : feasign_v) {
+      feasign_to_box.insert(feasign.sign().uint64_feasign_);
+    }
+  }
+  input_channel_->Write(pass_data);
+  box_ptr->PassBegin(feasign_to_box);
+}
+
+void MultiSlotDataset::PassEnd() {
+  auto box_ptr = BoxWrapper::GetInstance();
+  box_ptr->PassEnd();
 }
 
 }  // end namespace framework

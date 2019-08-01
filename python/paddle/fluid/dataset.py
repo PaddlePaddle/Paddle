@@ -609,6 +609,12 @@ class InMemoryDataset(DatasetBase):
             return global_data_size[0]
         return local_data_size[0]
 
+    def pass_begin(self):
+        self.dataset.pass_begin()
+
+    def pass_end(self):
+        self.dataset.pass_end()
+
 
 class QueueDataset(DatasetBase):
     """
