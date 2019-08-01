@@ -46,20 +46,24 @@ HOSTDEVICE T PrRoIPoolingInterpolation(const T* data, const T h, const T w,
   T retVal = 0.0f;
   int h1 = floorf(h);
   int w1 = floorf(w);
-  retVal += PrRoIPoolingGetData(data, h1, w1, height, width) *
-            PrRoIPoolingGetCoeff(h - T(h1), w - T(w1));
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
   h1 = floorf(h) + 1;
   w1 = floorf(w);
-  retVal += PrRoIPoolingGetData(data, h1, w1, height, width) *
-            PrRoIPoolingGetCoeff(h - T(h1), w - T(w1));
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
   h1 = floorf(h);
   w1 = floorf(w) + 1;
-  retVal += PrRoIPoolingGetData(data, h1, w1, height, width) *
-            PrRoIPoolingGetCoeff(h - T(h1), w - T(w1));
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
   h1 = floorf(h) + 1;
   w1 = floorf(w) + 1;
-  retVal += PrRoIPoolingGetData(data, h1, w1, height, width) *
-            PrRoIPoolingGetCoeff(h - T(h1), w - T(w1));
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
   return retVal;
 }
 
@@ -72,33 +76,33 @@ HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
   T alpha, beta, lim_alpha, lim_beta, tmp;
   T sum_out = 0;
 
-  alpha = x0 - T(s_w);
-  beta = y0 - T(s_h);
-  lim_alpha = x1 - T(s_w);
-  lim_beta = y1 - T(s_h);
+  alpha = x0 - static_cast<T>(s_w);
+  beta = y0 - static_cast<T>(s_h);
+  lim_alpha = x1 - static_cast<T>(s_w);
+  lim_beta = y1 - static_cast<T>(s_h);
   tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
          0.5f * alpha * alpha) *
         (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
   sum_out += PrRoIPoolingGetData(this_data, s_h, s_w, h0, w0) * tmp;
 
-  alpha = T(e_w) - x1;
-  lim_alpha = T(e_w) - x0;
+  alpha = static_cast<T>(e_w) - x1;
+  lim_alpha = static_cast<T>(e_w) - x0;
   tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
          0.5f * alpha * alpha) *
         (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
   sum_out += PrRoIPoolingGetData(this_data, s_h, e_w, h0, w0) * tmp;
 
-  alpha = x0 - T(s_w);
-  beta = T(e_h) - y1;
-  lim_alpha = x1 - T(s_w);
-  lim_beta = T(e_h) - y0;
+  alpha = x0 - static_cast<T>(s_w);
+  beta = static_cast<T>(e_h) - y1;
+  lim_alpha = x1 - static_cast<T>(s_w);
+  lim_beta = static_cast<T>(e_h) - y0;
   tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
          0.5f * alpha * alpha) *
         (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
   sum_out += PrRoIPoolingGetData(this_data, e_h, s_w, h0, w0) * tmp;
 
-  alpha = T(e_w) - x1;
-  lim_alpha = T(e_w) - x0;
+  alpha = static_cast<T>(e_w) - x1;
+  lim_alpha = static_cast<T>(e_w) - x0;
   tmp = (lim_alpha - 0.5f * lim_alpha * lim_alpha - alpha +
          0.5f * alpha * alpha) *
         (lim_beta - 0.5f * lim_beta * lim_beta - beta + 0.5f * beta * beta);
