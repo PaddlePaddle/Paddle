@@ -60,12 +60,10 @@ __global__ void GPUPRROIPoolForward(
 
     // [start, end) interval for spatial sampling
     const T* offset_input_rois = input_rois + n * 4;
-    T roi_start_w = static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
-    T roi_start_h = static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
-    T roi_end_w =
-        static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
-    T roi_end_h =
-        static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
+    T roi_start_w = static_cast<T>(offset_input_rois[0]) * spatial_scale;
+    T roi_start_h = static_cast<T>(offset_input_rois[1]) * spatial_scale;
+    T roi_end_w = static_cast<T>(offset_input_rois[2]) * spatial_scale;
+    T roi_end_h = static_cast<T>(offset_input_rois[3]) * spatial_scale;
 
     T roi_width = max(roi_end_w - roi_start_w, static_cast<T>(0.0));
     T roi_height = max(roi_end_h - roi_start_h, static_cast<T>(0.0));
@@ -131,16 +129,14 @@ __global__ void GPUPRROIPoolBackward(
     int input_offset =
         (roi_batch_id * input_channels + input_channel) * height * width;
     T* offset_input_grad_data = input_grad_data + input_offset;
-    const T *offset_output_grad_data = output_grad_data + i;
+    const T* offset_output_grad_data = output_grad_data + i;
 
     // [start, end) interval for spatial sampling
     const T* offset_input_rois = input_rois + n * 4;
-    T roi_start_w = static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
-    T roi_start_h = static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
-    T roi_end_w =
-        static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
-    T roi_end_h =
-        static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
+    T roi_start_w = static_cast<T>(offset_input_rois[0]) * spatial_scale;
+    T roi_start_h = static_cast<T>(offset_input_rois[1]) * spatial_scale;
+    T roi_end_w = static_cast<T>(offset_input_rois[2]) * spatial_scale;
+    T roi_end_h = static_cast<T>(offset_input_rois[3]) * spatial_scale;
 
     T roi_width = max(roi_end_w - roi_start_w, static_cast<T>(0.0));
     T roi_height = max(roi_end_h - roi_start_h, static_cast<T>(0.0));

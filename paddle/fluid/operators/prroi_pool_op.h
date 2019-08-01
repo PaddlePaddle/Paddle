@@ -350,14 +350,10 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
         // [start, end) interval for spatial sampling
         const T* offset_input_rois = input_rois + n * 4;
-        T roi_start_w =
-            static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
-        T roi_start_h =
-            static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
-        T roi_end_w =
-            static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
-        T roi_end_h =
-            static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
+        T roi_start_w = static_cast<T>(offset_input_rois[0]) * spatial_scale;
+        T roi_start_h = static_cast<T>(offset_input_rois[1]) * spatial_scale;
+        T roi_end_w = static_cast<T>(offset_input_rois[2]) * spatial_scale;
+        T roi_end_h = static_cast<T>(offset_input_rois[3]) * spatial_scale;
 
         T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
         T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
