@@ -61,23 +61,27 @@ int main(int argc, char** argv) {
   undefok.push_back("initial_cpu_memory_in_mb");
 #endif
 
+  char* env_str = nullptr;
   if (envs.size() > 0) {
     std::string env_string = "--tryfromenv=";
     for (auto t : envs) {
       env_string += t + ",";
     }
     env_string = env_string.substr(0, env_string.length() - 1);
-    new_argv.push_back(strdup(env_string.c_str()));
+    env_str = strdup(env_string.c_str());
+    new_argv.push_back(env_str);
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
+  char* undefok_str = nullptr;
   if (undefok.size() > 0) {
     std::string undefok_string = "--undefok=";
     for (auto t : undefok) {
       undefok_string += t + ",";
     }
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
-    new_argv.push_back(strdup(undefok_string.c_str()));
+    undefok_str = strdup(undefok_string.c_str());
+    new_argv.push_back(undefok_str);
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
@@ -88,11 +92,8 @@ int main(int argc, char** argv) {
 
   int ret = RUN_ALL_TESTS();
 
-  for (int i = argc; i < new_argv.size(); ++i) {
-    if (new_argv[i]) {
-      free(new_argv[i]);
-    }
-  }
+  if (env_str) free(env_str);
+  if (undefok_str) free(undefok_str);
 
   return ret;
 }
