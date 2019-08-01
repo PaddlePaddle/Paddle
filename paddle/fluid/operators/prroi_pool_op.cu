@@ -30,15 +30,14 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-DEVICE void PrRoIPoolingDistributeDiffCUDA(const T* diff, const T top_diff, const int h,
+DEVICE void PrRoIPoolingDistributeDiffCUDA(T* diff, const T top_diff, const int h,
                                 const int w, const int height, const int width,
                                 const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
-    atomicAdd(diff + h * width + w, top_diff * coeff);
+    paddle::platform::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
   }
 }
-};
 
 template <typename T>
 __global__ void GPUPRROIPoolForward(
@@ -85,7 +84,7 @@ __global__ void GPUPRROIPoolForward(
         input_data +
         (roi_batch_id * input_channels + input_channel) * height * width;
 
-    if (win_size > static_cast<T>(0.0) {
+    if (win_size > static_cast<T>(0.0)) {
       int s_w = std::floor(win_start_w);
       int e_w = std::ceil(win_end_w);
       int s_h = std::floor(win_start_h);
@@ -110,6 +109,7 @@ __global__ void GPUPRROIPoolForward(
       output_data[i] = 0.;
     }
   }
+}
 
   template <typename T>
   __global__ void GPUPRROIPoolBackward(
@@ -157,7 +157,11 @@ __global__ void GPUPRROIPoolForward(
       T win_end_w = win_start_w + bin_size_w;
       T win_end_h = win_start_h + bin_size_h;
 
-      T win_size = max(static_cast<T>(0.0), bin_size_w * bin_size_h);
+      T win_size = std::max(static_cast<T>(0.0), bin_size_w * bin_size_h);
+      int s_w = std::floor(win_start_w);
+      int e_w = std::ceil(win_end_w);
+      int s_h = std::floor(win_start_h);
+      int e_h = std::ceil(win_end_h);
 
       T sum_out = win_size == static_cast<T>(0.)
                       ? static_cast<T>(0.)
