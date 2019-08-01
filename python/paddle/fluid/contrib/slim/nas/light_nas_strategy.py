@@ -82,15 +82,7 @@ class LightNASStrategy(Strategy):
             self._server_ip = self._get_host_ip()
 
     def _get_host_ip(self):
-
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(('8.8.8.8', 80))
-            ip = s.getsockname()[0]
-        finally:
-            s.close()
-
-        return ip
+        return socket.gethostbyname(socket.gethostname())
 
     def on_compression_begin(self, context):
         self._current_tokens = context.search_space.init_tokens()
