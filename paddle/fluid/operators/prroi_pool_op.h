@@ -350,6 +350,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         int input_offset =
             (roi_batch_id * input_channels + input_channel) * height * width;
         T* offset_input_grad_data = input_grad_data + input_offset;
+				const T *offset_output_grad_data = output_grad_data + i;
 
         // [start, end) interval for spatial sampling
         const T* offset_input_rois = input_rois + n * 4;
@@ -378,7 +379,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
         T sum_out = win_size == static_cast<T>(0.)
                         ? static_cast<T>(0.)
-                        : *offset_input_grad_data / win_size;
+                        : *offset_output_grad_data / win_size;
 
         int s_w = std::floor(win_start_w);
         int e_w = std::ceil(win_end_w);

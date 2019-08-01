@@ -41,7 +41,7 @@ DEVICE void PrRoIPoolingDistributeDiffCUDA(T* diff, const T top_diff,
 }
 
 template <typename T>
-__global__ void GPUPRROIPoolForward(
+HOSTDEVICE void GPUPRROIPoolForward(
     const int nthreads, const T* input_data, const T* input_rois,
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
@@ -67,8 +67,8 @@ __global__ void GPUPRROIPoolForward(
     T roi_end_h =
         static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
 
-    T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
-    T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
+    T roi_width = max(roi_end_w - roi_start_w, static_cast<T>(0.0));
+    T roi_height = max(roi_end_h - roi_start_h, static_cast<T>(0.0));
 
     // Compute w and h at input feature map
     T bin_size_h = roi_height / static_cast<T>(pooled_height);
@@ -86,20 +86,20 @@ __global__ void GPUPRROIPoolForward(
         (roi_batch_id * input_channels + input_channel) * height * width;
 
     if (win_size > static_cast<T>(0.0)) {
-      int s_w = std::floor(win_start_w);
-      int e_w = std::ceil(win_end_w);
-      int s_h = std::floor(win_start_h);
-      int e_h = std::ceil(win_end_h);
+      int s_w = floor(win_start_w);
+      int e_w = ceil(win_end_w);
+      int s_h = floor(win_start_h);
+      int e_h = ceil(win_end_h);
       T sum_out = 0;
 
       for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
         for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
           sum_out += PrRoIPoolingMatCalculation(
               offset_input_data, h_iter, w_iter, h_iter + 1, w_iter + 1,
-              std::max(win_start_h, static_cast<T>(h_iter)),
-              std::max(win_start_w, static_cast<T>(w_iter)),
-              std::min(win_end_h, static_cast<T>(h_iter) + static_cast<T>(1.0)),
-              std::min(win_end_w, static_cast<T>(w_iter) + static_cast<T>(1.0)),
+              max(win_start_h, static_cast<T>(h_iter)),
+              max(win_start_w, static_cast<T>(w_iter)),
+              min(win_end_h, static_cast<T>(h_iter) + static_cast<T>(1.0)),
+              min(win_end_w, static_cast<T>(w_iter) + static_cast<T>(1.0)),
               height, width);
         }
       }
@@ -111,7 +111,7 @@ __global__ void GPUPRROIPoolForward(
 }
 
 template <typename T>
-__global__ void GPUPRROIPoolBackward(
+HOSTDEVICE void GPUPRROIPoolBackward(
     const int nthreads, const T* input_rois, const T* output_grad_data,
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
@@ -131,6 +131,7 @@ __global__ void GPUPRROIPoolBackward(
     int input_offset =
         (roi_batch_id * input_channels + input_channel) * height * width;
     T* offset_input_grad_data = input_grad_data + input_offset;
+    const T *offset_output_grad_data = output_grad_data + i;
 
     // [start, end) interval for spatial sampling
     const T* offset_input_rois = input_rois + n * 4;
@@ -141,8 +142,8 @@ __global__ void GPUPRROIPoolBackward(
     T roi_end_h =
         static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
 
-    T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
-    T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
+    T roi_width = max(roi_end_w - roi_start_w, static_cast<T>(0.0));
+    T roi_height = max(roi_end_h - roi_start_h, static_cast<T>(0.0));
 
     // Compute w and h at input feature map
     T bin_size_h = roi_height / static_cast<T>(pooled_height);
@@ -153,25 +154,25 @@ __global__ void GPUPRROIPoolBackward(
     T win_end_w = win_start_w + bin_size_w;
     T win_end_h = win_start_h + bin_size_h;
 
-    T win_size = std::max(static_cast<T>(0.0), bin_size_w * bin_size_h);
-    int s_w = std::floor(win_start_w);
-    int e_w = std::ceil(win_end_w);
-    int s_h = std::floor(win_start_h);
-    int e_h = std::ceil(win_end_h);
+    T win_size = max(static_cast<T>(0.0), bin_size_w * bin_size_h);
+    int s_w = floor(win_start_w);
+    int e_w = ceil(win_end_w);
+    int s_h = floor(win_start_h);
+    int e_h = ceil(win_end_h);
 
     T sum_out = win_size == static_cast<T>(0.)
                     ? static_cast<T>(0.)
-                    : *offset_input_grad_data / win_size;
+                    : *offset_output_grad_data / win_size;
 
     // Accumubin_arealate diff_val into input data
     for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
       for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
         PrRoIPoolingMatDistributeDiff(
             offset_input_grad_data, sum_out, h_iter, w_iter, h_iter + 1,
-            w_iter + 1, std::max(win_start_h, static_cast<T>(h_iter)),
-            std::max(win_start_w, static_cast<T>(w_iter)),
-            std::min(win_end_h, static_cast<T>(h_iter) + static_cast<T>(1.0)),
-            std::min(win_end_w, static_cast<T>(w_iter) + static_cast<T>(1.0)),
+            w_iter + 1, max(win_start_h, static_cast<T>(h_iter)),
+            max(win_start_w, static_cast<T>(w_iter)),
+            min(win_end_h, static_cast<T>(h_iter) + static_cast<T>(1.0)),
+            min(win_end_w, static_cast<T>(w_iter) + static_cast<T>(1.0)),
             height, width, PrRoIPoolingDistributeDiffCUDA<T>);
       }
     }
