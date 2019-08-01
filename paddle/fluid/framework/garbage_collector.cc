@@ -28,6 +28,7 @@
 namespace paddle {
 namespace framework {
 
+// Disable gc by default when inference library is built
 #ifdef PADDLE_ON_INFERENCE
 static const double kDefaultEagerDeleteTensorGB = -1;
 #else

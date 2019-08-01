@@ -61,6 +61,9 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
 #ifdef PADDLE_WITH_NGRAPH
   if (FLAGS_use_ngraph) {
+    // FIXME(zjl): There is difference when ngraph and gc are both enabled
+    // in unittests. I do not know why it happens. Maybe ngraph engine
+    // would cache some variables?
     LOG_FIRST_N(WARNING, 1)
         << "FLAGS_use_ngraph=True, garbage collection strategy is "
            "disabled in Executor";
