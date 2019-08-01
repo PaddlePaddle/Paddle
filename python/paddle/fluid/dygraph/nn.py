@@ -2162,6 +2162,12 @@ class Conv2DTranspose(layers.Layer):
         self._img_filter = self.create_parameter(
             dtype=input.dtype, shape=filter_shape, attr=self._param_attr)
 
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[self._num_filters],
+            dtype=self._dtype,
+            is_bias=True)
+
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)
@@ -2179,7 +2185,18 @@ class Conv2DTranspose(layers.Layer):
                 'use_cudnn': self._use_cudnn
             })
 
-        pre_act = self._helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
+
         out = self._helper.append_activation(pre_act)
         return out
 
@@ -2237,6 +2254,12 @@ class SequenceConv(layers.Layer):
         self._filter_param = self.create_parameter(
             attr=self._param_attr, shape=filter_shape, dtype=self._dtype)
 
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[self._num_filters],
+            dtype=self._dtype,
+            is_bias=True)
+
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -2251,7 +2274,19 @@ class SequenceConv(layers.Layer):
                 'contextStart': -int(self._filter_size // 2),
                 'contextLength': self._filter_size
             })
-        pre_act = self._helper.append_bias_op(pre_bias)
+
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
+
         return self._helper.append_activation(pre_act)
 
 
