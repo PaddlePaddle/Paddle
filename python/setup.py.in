@@ -237,6 +237,8 @@ if os.name == 'nt':
         fix_package_dir[k] = v.replace('/', '\\')
     package_dir = fix_package_dir
     ext_modules = []
+elif sys.platform == 'darwin':
+    ext_modules = []
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
