@@ -42,7 +42,7 @@ namespace framework {
 void RecordCandidateList::ReSize(size_t length) {
   _mutex.lock();
   _capacity = length;
-  CHECK(_capacity > 0); // NOLINT
+  CHECK(_capacity > 0);  // NOLINT
   _candidate_list.clear();
   _candidate_list.resize(_capacity);
   _full = false;
@@ -60,7 +60,7 @@ void RecordCandidateList::ReInit() {
 }
 
 void RecordCandidateList::AddAndGet(const Record& record,
-                                    RecordCandidate* result ) {
+                                    RecordCandidate* result) {
   _mutex.lock();
   size_t index = 0;
   ++_total_size;

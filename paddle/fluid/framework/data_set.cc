@@ -732,7 +732,7 @@ void MultiSlotDataset::SlotsShuffle(
       input_channel_->Close();
       input_channel_->ReadAll(slots_shuffle_original_data_);
     } else {
-      CHECK(out_channel_size > 0); // NOLINT
+      CHECK(out_channel_size > 0);  // NOLINT
       if (cur_channel_ == 0) {
         for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
           std::vector<Record> vec_data;
