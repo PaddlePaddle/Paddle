@@ -532,6 +532,7 @@ static int count_contours(polygon_node *polygon) {
 }
 
 static void add_left(polygon_node *p, double x, double y) {
+  PADDLE_ENFORCE_NOT_NULL(p);
   vertex_node *nv = NULL;
 
   /* Create a new vertex node and set its fields */
@@ -587,6 +588,7 @@ static void add_right(polygon_node *p, double x, double y) {
 }
 
 static void merge_right(polygon_node *p, polygon_node *q, polygon_node *list) {
+  PADDLE_ENFORCE_NOT_NULL(p);
   polygon_node *target = NULL;
 
   /* Label contour as external */
@@ -662,6 +664,7 @@ void add_vertex(vertex_node **t, double x, double y) {
 }
 
 void gpc_vertex_create(edge_node *e, int p, int s, double x, double y) {
+  PADDLE_ENFORCE_NOT_NULL(e);
   add_vertex(&(e->outp[p]->v[s]), x, y);
   e->outp[p]->active++;
 }
@@ -1014,6 +1017,7 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
     e0 = aet;
     e1 = aet;
     /* Set up bundle fields of first edge */
+    PADDLE_ENFORCE_NOT_NULL(aet);
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
     aet->bstate[ABOVE] = UNBUNDLED;
@@ -1646,6 +1650,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
     e1 = aet;
 
     /* Set up bundle fields of first edge */
+    PADDLE_ENFORCE_NOT_NULL(aet);
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
     aet->bstate[ABOVE] = UNBUNDLED;
@@ -1782,7 +1787,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
                 }
                 new_tristrip(&tlist, cf, cf->xb, yb);
               }
-              edge->outp[ABOVE] = cf->outp[ABOVE];
+              if (cf) edge->outp[ABOVE] = cf->outp[ABOVE];
               gpc_vertex_create(edge, ABOVE, RIGHT, xb, yb);
               break;
             case ILI:

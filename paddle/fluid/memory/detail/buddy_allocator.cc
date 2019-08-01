@@ -23,6 +23,10 @@ DEFINE_bool(free_idle_memory, false,
             "If it is true, Paddle will try to free idle memory trunks during "
             "running time.");
 
+#ifdef PADDLE_WITH_CUDA
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
+#endif
+
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -200,8 +204,9 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
       // Compute the allocation size for gpu for the first allocation.
       allocate_bytes = std::max(platform::GpuInitAllocSize(), request_bytes);
     } else {
-      // Reallocation size
-      if (realloc_size_ == 0) {
+      // Compute the re-allocation size, we store the re-allocation size when
+      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
+      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
         realloc_size_ = platform::GpuReallocSize();
       }
       allocate_bytes = std::max(realloc_size_, request_bytes);
