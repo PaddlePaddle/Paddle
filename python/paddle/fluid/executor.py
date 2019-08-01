@@ -18,6 +18,7 @@ import logging
 import os
 import multiprocessing
 import sys
+import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
@@ -621,8 +622,9 @@ class Executor(object):
         if program is None:
             program = default_main_program()
             if len(program.global_block().ops) == 0:
-                raise ValueError('The program(Input) is not set, and the "\
-                    "default_main_program is empty.')
+                warnings.warn(
+                    "The program(Input) is not set, and the default_main_program is empty."
+                )
 
         if scope is None:
             scope = global_scope()
@@ -631,10 +633,9 @@ class Executor(object):
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
                 fetch_list = [fetch_list]
             assert isinstance(fetch_list, tuple)or isinstance(fetch_list, list), \
-                "Currently , The fetch_list type only should be list or tuple, "\
-                "but the input type is {}. For more information please refer to "\
-                "the executor.run.".format(type(fetch_list))
-            self._vars_is_in_program(program, fetch_list)
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
         else:
             fetch_list = []
 
@@ -679,20 +680,6 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=False)
-
-    def _vars_is_in_program(self, program, fetch_list):
-        fetch_var_names = list(map(_to_name_str, fetch_list))
-        var_names = []
-        if isinstance(program, Program):
-            var_names = program.global_block().vars.keys()
-        elif isinstance(program, compiler.CompiledProgram):
-            assert program._graph is not None
-            for node in program._graph.nodes():
-                if node.is_var() and node.var():
-                    var_names.append(cpt.to_text(node.name()))
-        for var_name in fetch_var_names:
-            assert var_name in var_names, "{} is not in the program".format(
-                var_name)
 
     def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
