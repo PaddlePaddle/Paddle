@@ -219,14 +219,10 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
 
       // [start, end) interval for spatial sampling
       const T* offset_input_rois = input_rois + n * 4;
-      T roi_start_w =
-          static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
-      T roi_start_h =
-          static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
-      T roi_end_w =
-          static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
-      T roi_end_h =
-          static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
+      T roi_start_w = static_cast<T>(offset_input_rois[0]) * spatial_scale;
+      T roi_start_h = static_cast<T>(offset_input_rois[1]) * spatial_scale;
+      T roi_end_w = static_cast<T>(offset_input_rois[2]) * spatial_scale;
+      T roi_end_h = static_cast<T>(offset_input_rois[3]) * spatial_scale;
 
       T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
       T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
@@ -247,8 +243,8 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
             // calculate w and h at input feature map
             T win_start_h = static_cast<T>(ph) * bin_size_h + roi_start_h;
             T win_start_w = static_cast<T>(pw) * bin_size_w + roi_start_w;
-            T win_end_h = static_cast<T>(ph + 1) * bin_size_h + roi_start_h;
-            T win_end_w = static_cast<T>(pw + 1) * bin_size_w + roi_start_w;
+            T win_end_h = win_start_h + bin_size_h;
+            T win_end_w = win_start_w + bin_size_w;
             //  Add roi offsets and clip to input boundaries
             int s_w = std::floor(win_start_w);
             int e_w = std::ceil(win_end_w);
@@ -350,7 +346,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         int input_offset =
             (roi_batch_id * input_channels + input_channel) * height * width;
         T* offset_input_grad_data = input_grad_data + input_offset;
-				const T *offset_output_grad_data = output_grad_data + i;
+        const T* offset_output_grad_data = output_grad_data + i;
 
         // [start, end) interval for spatial sampling
         const T* offset_input_rois = input_rois + n * 4;
