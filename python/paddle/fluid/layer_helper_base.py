@@ -244,6 +244,8 @@ class LayerHelperBase(object):
             out=g_param,
             dim=attr.dim,
             block=self.startup_program.global_block())
+
+        # keep g_param shape to be consistent with that in main_program
         __reshape_op(
             g_param,
             g_param_shape,
