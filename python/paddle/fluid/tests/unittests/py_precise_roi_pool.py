@@ -101,19 +101,41 @@ class PyPrRoIPool(object):
 
         return sum_out
 
-    def calculate(self, x, rois, output_channels, spatial_scale, pooled_height,
-                  pooled_width):
+    def calculate(self,
+                  x,
+                  rois,
+                  output_channels,
+                  spatial_scale=0.1,
+                  pooled_height=1,
+                  pooled_width=1):
         '''
         calculate the precise roi pooling values
-        :param x:
-        :param rois:
-        :param output_channels:
-        :param spatial_scale:
-        :param pooled_height:
-        :param pooled_width:
-        :return:
+        Note: This function is implements as pure python without any paddle concept involved
+        :param x (array): array[N, C, H, W]
+        :param rois (array): ROIs[id, x1, y1, x2, y2] (Regions of Interest) to pool over.
+        :param output_channels (Integer): Expected output channels
+        :param spatial_scale (float): spatial scale, default = 0.1
+        :param pooled_height (Integer): Expected output height, default = 1
+        :param pooled_width (Integer): Expected output width, default = 1
+        :return: array[len(rois), output_channels, pooled_height, pooled_width]
         '''
+        if not isinstance(output_channels, int):
+            raise TypeError("output_channels must be int type")
+        if not isinstance(spatial_scale, float):
+            raise TypeError("spatial_scale must be float type")
+        if not isinstance(pooled_height, int):
+            raise TypeError("pooled_height must be int type")
+        if not isinstance(pooled_width, int):
+            raise TypeError("pooled_width must be int type")
+
         (batch_size, channels, height, width) = np.array(x).shape
+        if not isinstance(batch_size, int) or not isinstance(
+                channels, int) or not isinstance(height, int) or not isinstance(
+                    width, int):
+            raise TypeError(
+                "please check the input(x)'s shape, expected[int, int, int, int]"
+            )
+
         rois_num = len(rois)
         output_shape = (rois_num, output_channels, pooled_height, pooled_width)
         out_data = np.zeros(output_shape)
@@ -166,4 +188,4 @@ class PyPrRoIPool(object):
 
                             out_data[i, c, ph, pw] = sum_out / win_size
 
-        return out_data.astype('float32')
+        return out_data
