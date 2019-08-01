@@ -116,7 +116,7 @@ HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
   if (!overflow) {
     *(diff + h * width + w) = top_diff * coeff;
   }
-};
+}
 
 template <typename T, typename Functor>
 HOSTDEVICE void PrRoIPoolingMatDistributeDiff(
