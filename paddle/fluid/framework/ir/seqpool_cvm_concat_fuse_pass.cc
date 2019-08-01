@@ -23,10 +23,11 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+namespace {
 static PDNode* BuildCVMConcatPattern(PDPattern* pattern) {
-  auto cvm_behind_x = [=](Node* x) -> bool {
-    auto adj = x->inputs[0];
-    auto alt = x->inputs[0]->inputs[0];
+  auto cvm_behind_x = [](Node* x) -> bool {
+    Node* adj = x->inputs[0];
+    Node* alt = x->inputs[0]->inputs[0];
     return x && adj && adj->IsVar() && alt->IsOp() &&
            alt->Op()->Type() == "cvm";
   };
@@ -48,6 +49,7 @@ static void GetConcatNodes(ir::Graph* graph, std::vector<Node*>* concat_nodes) {
   };
   gpd(graph, handler);
 }
+}  // anonymous namespace
 
 void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("seqpool_cvm_concat_fuse", graph);
@@ -61,27 +63,28 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     auto concat_before_x = [=](Node* x) -> bool {
       return x && x->outputs[0] == concat_node;
     };
-    auto seqpool_in_var_node =
+    PDNode* seqpool_in_var_node =
         pattern->NewNode("seqpool_in_var")
             ->assert_is_only_input_of_op("sequence_pool");
-    auto seqpool_op_node = pattern->NewNode("seqpool_op")
-                               ->assert_is_op("sequence_pool")
-                               ->assert_op_attr<std::string>("pooltype", "SUM");
-    auto seqpool_out_var_node =
+    PDNode* seqpool_op_node =
+        pattern->NewNode("seqpool_op")
+            ->assert_is_op("sequence_pool")
+            ->assert_op_attr<std::string>("pooltype", "SUM");
+    PDNode* seqpool_out_var_node =
         pattern->NewNode("seqpool_out_var")
             ->assert_is_op_nth_output("sequence_pool", "Out", 0)
             ->assert_is_op_nth_input("cvm", "X", 0);
-    auto seqpool_idx_out_var_node =
+    PDNode* seqpool_idx_out_var_node =
         pattern->NewNode("seqpool_idx_out_var")
             ->assert_is_op_nth_output("sequence_pool", "MaxIndex", 0);
-    auto cvm_op_node =
+    PDNode* cvm_op_node =
         pattern->NewNode("cvm_op")->assert_is_op("cvm")->assert_op_attr<bool>(
             "use_cvm", true);
-    auto cvm_out_var_node = pattern->NewNode("cvm_op_out_var")
-                                ->assert_is_op_nth_output("cvm", "Y", 0)
-                                ->assert_more(concat_before_x);
-    auto cvm_cvm_in_var_node = pattern->NewNode("cvm_cvm_in_var")
-                                   ->assert_is_op_nth_input("cvm", "CVM", 0);
+    PDNode* cvm_out_var_node = pattern->NewNode("cvm_op_out_var")
+                                   ->assert_is_op_nth_output("cvm", "Y", 0)
+                                   ->assert_more(concat_before_x);
+    PDNode* cvm_cvm_in_var_node = pattern->NewNode("cvm_cvm_in_var")
+                                      ->assert_is_op_nth_input("cvm", "CVM", 0);
 
     seqpool_op_node->LinksFrom({seqpool_in_var_node})
         .LinksTo({seqpool_out_var_node, seqpool_idx_out_var_node});
