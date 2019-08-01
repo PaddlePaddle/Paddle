@@ -17,16 +17,34 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 namespace memory {
-std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+
+std::shared_ptr<Allocation> AllocShared(const platform::Place &place,
                                         size_t size) {
   return allocation::AllocatorFacade::Instance().AllocShared(place, size);
 }
 
-AllocationPtr Alloc(const platform::Place& place, size_t size) {
+AllocationPtr Alloc(const platform::Place &place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
+}
+
+AllocationPtr Alloc(const platform::DeviceContext &dev_ctx, size_t size) {
+  auto place = dev_ctx.GetPlace();
+  if (size == 0 || !platform::is_gpu_place(place)) {
+    return Alloc(place, size);
+  }
+  auto *default_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto &desired_dev_ctx =
+      static_cast<const platform::CUDADeviceContext &>(dev_ctx);
+  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+    return Alloc(place, size);
+  } else {
+    return CUDADeviceContextAllocatorPool::Instance().Alloc(dev_ctx, size);
+  }
 }
 
 }  // namespace memory

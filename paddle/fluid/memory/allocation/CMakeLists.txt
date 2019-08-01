@@ -8,6 +8,7 @@ cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allo
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
+  nv_library(cuda_device_context_allocator SRCS cuda_device_context_allocator.cc DEPS allocator device_context place)
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
