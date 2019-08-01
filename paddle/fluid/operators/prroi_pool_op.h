@@ -285,7 +285,6 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
         }
       }
     }
-    return;
   }
 };
 
@@ -382,7 +381,6 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         int s_h = std::floor(win_start_h);
         int e_h = std::ceil(win_end_h);
 
-        // Accumubin_arealate diff_val into input data
         for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
           for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
             PrRoIPoolingMatDistributeDiff(
@@ -398,7 +396,6 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         }
       }
     }
-    return;
   }
 };
 

@@ -160,7 +160,6 @@ __global__ void GPUPRROIPoolBackward(
                     ? static_cast<T>(0.)
                     : *offset_output_grad_data / win_size;
 
-    // Accumubin_arealate diff_val into input data
     for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
       for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
         PrRoIPoolingMatDistributeDiff(
@@ -175,7 +174,7 @@ __global__ void GPUPRROIPoolBackward(
   }
 }
 
-template <typename Place, typename T>
+template <typename T>
 class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -240,7 +239,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -302,11 +301,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    prroi_pool,
-    ops::GPUPRROIPoolOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUPRROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    prroi_pool_grad,
-    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(prroi_pool, ops::GPUPRROIPoolOpKernel<float>,
+                        ops::GPUPRROIPoolOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(prroi_pool_grad, ops::GPUPRROIPoolGradOpKernel<float>,
+                        ops::GPUPRROIPoolGradOpKernel<double>);
