@@ -61,13 +61,13 @@ limitations under the License. */
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
-
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -1105,6 +1105,8 @@ All parameter, weight, gradient are variables in Paddle.
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
+
+  m.def("size_of_dtype", framework::SizeOfType);
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
