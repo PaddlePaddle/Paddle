@@ -194,7 +194,7 @@ class TestPRROIPoolOp(OpTest):
                             for w_iter in range(int(s_w), int(e_w)):
                                 for h_iter in range(int(s_h), int(e_h)):
                                     sum_out += self.PrRoIPoolingMatCalculation(
-                                        x_i[c], h_iter, w_iter, h_iter + 1,
+                                        x_i[c_in], h_iter, w_iter, h_iter + 1,
                                         w_iter + 1,
                                         max(win_start_h, float(h_iter)),
                                         max(win_start_w, float(w_iter)),
@@ -212,9 +212,6 @@ class TestPRROIPoolOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':
