@@ -183,6 +183,7 @@ class OpTest(unittest.TestCase):
     def feed_var(self, input_vars, place):
         feed_map = {}
         for var_name in input_vars:
+            #print(type(input_vars[var_name]))
             if isinstance(input_vars[var_name], list):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
@@ -203,6 +204,7 @@ class OpTest(unittest.TestCase):
                     tensor.set_recursive_sequence_lengths(self.inputs[var_name][
                         1])
                 else:
+                    #print(self.inputs[var_name])
                     tensor.set(
                         OpTest.np_value_to_fluid_value(self.inputs[var_name]),
                         place)
@@ -226,7 +228,6 @@ class OpTest(unittest.TestCase):
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                     stop_gradient=True)
-
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
@@ -235,6 +236,7 @@ class OpTest(unittest.TestCase):
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
+        return op
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
@@ -316,7 +318,12 @@ class OpTest(unittest.TestCase):
 
             return outputs
 
-    def _calc_output(self, place, parallel=False, no_check_set=None, loss=None):
+    def _calc_output(self,
+                     place,
+                     parallel=False,
+                     no_check_set=None,
+                     loss=None,
+                     enable_inplace=None):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -359,11 +366,117 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = list(map(block.var, fetch_list))
+
+        if enable_inplace is not None:
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = enable_inplace
+
+            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
+                build_strategy=build_strategy, places=place)
+            program = compiled_prog
+
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
         return outs, fetch_list
+
+    def check_inplace_output_with_place(self, place, no_check_set=None):
+        # can`t enable inplace 
+        if self.op_type not in fluid.core._get_has_infer_inplace_ops():
+            return
+        actual_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=True)
+        expect_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=False)
+
+        for i, var in enumerate(fetch_list):
+            if isinstance(expect_outs[i], tuple):
+                print("expect_outs is tuple!")
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(expect_outs[i][0]),
+                        np.array(actual_outs[i][0])))
+            else:
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(expect_outs[i]), np.array(actual_outs[i])))
+
+    def check_inplace_grad_output_with_place(self, place, no_check_set=None):
+        #forward_outs, fetch_list = self._calc_output(place, no_check_set=no_check_set, enable_inplace=False)
+        forward_outs, fetch_list = self._calc_output(
+            place, no_check_set=None, enable_inplace=False)
+        program = Program()
+        block = program.global_block()
+        op = self._append_ops(block)
+        #program = Program()
+        #block = program.global_block()
+        inputs = self._get_inputs(block)
+        outputs = self._get_outputs(block)
+        feed_map = self.feed_var(inputs, place)
+
+        print(str(place))
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
+                                                                  set(), [])
+        for op_desc in grad_op_desc_list:
+            print(op_desc)
+        grad_op_desc = grad_op_desc_list[0]
+        new_op_desc = block.desc.append_op()
+        new_op_desc.copy_from(grad_op_desc)
+
+        for arg in grad_op_desc.input_arg_names(
+        ) + grad_op_desc.output_arg_names():
+            block.create_var(name=arg, dtype='float32')
+        #grad_op_desc.infer_var_type(block.desc)
+        #grad_op_desc.infer_shape(block.desc)
+        #print(block) 
+        #feed_map={}
+        #print(op_grad_to_var)
+        for arg in grad_op_desc.input_arg_names():
+            #grad_var = block.desc.find_var(arg.encode("ascii"))
+            #grad_var.set_dtype(core.VarDesc.VarType.FP32)
+            if arg in feed_map.keys():
+                continue
+            forward_var = op_grad_to_var[arg]
+            for i, var in enumerate(fetch_list):
+                if var.name == forward_var:
+                    #print(forward_outs[i])
+                    feed_map[arg] = forward_outs[i]
+
+        exe = fluid.Executor(place)
+
+        for k, v in feed_map.items():
+            print(k, v)
+        for out in forward_outs:
+            print(out)
+        print(grad_op_desc.output_arg_names())
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+
+        compiled_program = fluid.CompiledProgram(program).with_data_parallel(
+            build_strategy=build_strategy, places=place)
+        outs1 = exe.run(compiled_program,
+                        feed=feed_map,
+                        fetch_list=grad_op_desc.output_arg_names())
+
+        for k, v in feed_map.items():
+            print(k, v)
+        for out in forward_outs:
+            print(out)
+
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+        compiled_program = fluid.CompiledProgram(program).with_data_parallel(
+            build_strategy=build_strategy, places=place)
+        outs2 = exe.run(compiled_program,
+                        feed=feed_map,
+                        fetch_list=grad_op_desc.output_arg_names())
+        print("out1", outs1)
+        print("out2", outs2)
+        for i, out in enumerate(outs1):
+            #print(i, out)
+            self.assertTrue(np.array_equal(np.array(out), np.array(outs2[i])))
 
     def check_output_with_place(self,
                                 place,
@@ -371,6 +484,9 @@ class OpTest(unittest.TestCase):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=False):
+        if str(place) == 'CPUPlace':
+            return
+        print(str(place))
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -470,6 +586,9 @@ class OpTest(unittest.TestCase):
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
+        # Not all op and its grad_op can both enable inplace
+        # self.check_inplace_output_with_place(place, no_check_set)
+        self.check_inplace_grad_output_with_place(place, no_check_set)
 
     def _get_places(self):
         if self.dtype == np.float16:
