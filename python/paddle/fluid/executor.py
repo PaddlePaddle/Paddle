@@ -617,8 +617,13 @@ class Executor(object):
                   fetch_var_name, scope, return_numpy, use_program_cache):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
+
         if program is None:
             program = default_main_program()
+            if len(program.global_block().ops) == 0:
+                raise ValueError('The program(Input) is not set, and the "\
+                    "default_main_program is empty.')
+
         if scope is None:
             scope = global_scope()
 
