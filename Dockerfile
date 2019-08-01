@@ -54,8 +54,8 @@ RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
 RUN rm -r /root/python_build
 
 RUN apt-get update && \
-    apt-get install -y --allow-downgrades patchelf \
-    python3 python3-dev python3-pip \
+    apt-get install -y --allow-downgrades --allow-change-held-packages \
+    patchelf python3 python3-dev python3-pip \
     git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
@@ -171,6 +171,11 @@ RUN pip3 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.6 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.7 --no-cache-dir install pylint pytest astroid isort
 RUN pip --no-cache-dir install pylint pytest astroid isort LinkChecker
+
+RUN pip3 --no-cache-dir install coverage                
+RUN pip3.6 --no-cache-dir install coverage             
+RUN pip3.7 --no-cache-dir install coverage            
+RUN pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
 RUN pip3 --no-cache-dir install -r /root/requirements.txt

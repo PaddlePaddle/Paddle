@@ -34,14 +34,11 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    // TODO(jczaja): Make it faster
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    key_ = key_common_ + "-t:" + ss.str();
     if (platform::get_cur_mkldnn_session_id() !=
         platform::kMKLDNNSessionID_Default) {
       key_ = key_common_;
+    } else {
+      key_ = key_common_ + "-t:" + MKLDNNHandler::ThreadIDasStr();
     }
   }
 
@@ -203,6 +200,11 @@ class MKLDNNHandler {
       }
     }
     return target_memory_p;
+  }
+
+  static std::string ThreadIDasStr(void) {
+    return std::to_string(
+        std::hash<std::thread::id>()(std::this_thread::get_id()));
   }
 
   static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
@@ -429,6 +431,22 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
     }
 
     return eltwise_bwd_p;
+  }
+
+  static std::string GetHash(const memory::dims& input_dims,
+                             const mkldnn::algorithm algorithm,
+                             const mkldnn::memory::format fmt,
+                             const float alpha, const float beta,
+                             const std::string& suffix) {
+    std::string key;
+    key.reserve(platform::MKLDNNHandler::MaxKeyLength);
+    platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(algorithm));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(alpha));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(beta));
+    platform::MKLDNNHandler::AppendKey(&key, suffix);
+    return key;
   }
 
  private:
