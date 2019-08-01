@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/pipe.h"
 
 namespace paddle {
@@ -25,14 +26,18 @@ namespace reader {
 
 class PipeReader : public framework::FileReader {
  public:
-  explicit PipeReader(const int pipe_fd);
+  explicit PipeReader(const int pipe_fd, size_t capacity = 64);
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  ~PipeReader() {}
-  void Shutdown() override {}
-  void Start() override {}
+  ~PipeReader();
+  void Shutdown() override;
+  void Start() override;
 
  private:
+  void ThreadFunc();
+
   std::unique_ptr<ReadPipe> pipe_;
+  std::unique_ptr<LoDTensorBlockingQueue> queue_;
+  std::unique_ptr<std::thread> thread_;
 };
 }  // namespace reader
 }  // namespace operators

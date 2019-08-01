@@ -17,6 +17,7 @@ import sys
 import six
 import warnings
 import os
+import time
 import numpy as np
 import threading
 import multiprocessing
@@ -702,9 +703,10 @@ class PipeReader(object):
         reader_var.persistable = True
 
         r, w = os.pipe()
-        self._writer = w
+        self._writer = os.fdopen(w, 'w')
         var = global_scope().var(reader_name)
         core.init_pipe_reader(var, r)
+        self._reader_var = var
         self._process = None
 
         default_main_program().current_block().append_op(
@@ -714,12 +716,14 @@ class PipeReader(object):
 
     def start(self):
         def __thread__():
-            with os.fdopen(self._writer, 'w') as writer:
-                for batch in self._batch_reader():
-                    self._write(writer, batch)
+            for batch in self._batch_reader():
+                self._write(self._writer, batch)
+            self._writer.write(int64(0))
+            self._writer.flush()
 
         self._process = multiprocessing.Process(target=__thread__)
         self._process.start()
+        self._reader_var.get_reader().start()
 
     def _write(self, writer, lod_arrays):
         # write dtype
@@ -746,11 +750,11 @@ class PipeReader(object):
                 writer.write(int64(arr.shape[i]))
             # write data
             byte = arr.tobytes()
-            writer.write(byte)
+            write_bytes = writer.write(byte)
 
     def reset(self):
-        if self._process.is_alive():
-            self._process.terminate()
+        # write '0' to terminate the c++ process
+        self._reader_var.get_reader().shutdown()
         self._process.join()
 
     def decorate_sample_generator(self,

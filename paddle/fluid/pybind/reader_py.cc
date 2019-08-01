@@ -153,7 +153,8 @@ void BindReader(py::module *module) {
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
       .def("start", &framework::ReaderHolder::Start)
-      .def("reset", &framework::ReaderHolder::ResetAll);
+      .def("reset", &framework::ReaderHolder::ResetAll)
+      .def("shutdown", &framework::ReaderHolder::Shutdown);
 
   py::class_<MultiDeviceFeedReader>(m, "MultiDeviceFeedReader", "")
       .def("read_next", &MultiDeviceFeedReader::ReadNext,

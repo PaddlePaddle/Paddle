@@ -30,13 +30,10 @@ namespace reader {
 class LoDTensorBlockingQueueHolder;
 
 class LoDTensorBlockingQueue {
-  friend class LoDTensorBlockingQueueHolder;
-
- private:
+ public:
   explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)
       : queue_(capacity, speed_test_mode) {}
 
- public:
   bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
     return queue_.Send(lod_tensor_vec);
   }
