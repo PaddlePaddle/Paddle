@@ -873,20 +873,20 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
     def test_eye_op(self):
-        np_eye = np.eye(10, 20)
-        array_rlt1 = [np_eye for _ in range(30)]
+        np_eye = np.eye(3, 2)
+        array_rlt1 = [np_eye for _ in range(3)]
         stack_rlt1 = np.stack(array_rlt1, axis=0)
-        array_rlt2 = [stack_rlt1 for _ in range(40)]
+        array_rlt2 = [stack_rlt1 for _ in range(4)]
         stack_rlt2 = np.stack(array_rlt2, axis=0)
 
         with self.dynamic_graph():
-            eye_tensor = layers.eye(num_rows=10, num_columns=20)
-            eye_tensor_rlt1 = layers.eye(num_rows=10,
-                                         num_columns=20,
-                                         batch_shape=[30])
-            eye_tensor_rlt2 = layers.eye(num_rows=10,
-                                         num_columns=20,
-                                         batch_shape=[40, 30])
+            eye_tensor = layers.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt1 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[3])
+            eye_tensor_rlt2 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[4, 3])
 
         self.assertTrue(np.allclose(eye_tensor.numpy(), np_eye))
         self.assertTrue(np.allclose(eye_tensor_rlt1.numpy(), stack_rlt1))
