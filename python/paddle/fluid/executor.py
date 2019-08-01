@@ -622,13 +622,6 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        if feed is not None:
-            assert isinstance(feed, dict) or isinstance(
-                feed, list) or isinstance(feed, tuple), \
-                "Currently , The feed type only should be dict, list or tuple, "\
-                "but the input type is {}. For more information please refer to "\
-                "the executor.run.".format(type(feed))
-
         if fetch_list is not None:
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
                 fetch_list = [fetch_list]
