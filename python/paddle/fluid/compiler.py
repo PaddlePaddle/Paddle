@@ -187,8 +187,7 @@ class CompiledProgram(object):
         Args:
             loss_name (str): The loss name must set in training. Default None.
             build_strategy(BuildStrategy): build_strategy is used to
-                build the graph so it can run on multiple devices/cores with
-                optimized topology.
+                build the graph with the specified options.
                 For more information, please refer to fluid.BuildStrategy.
                 Default None.
             exec_strategy(ExecutionStrategy): exec_strategy is used to
