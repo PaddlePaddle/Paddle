@@ -30,7 +30,7 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-void PrRoIPoolingDistributeDiff(const T* diff, const T top_diff, const int h,
+DEVICE void PrRoIPoolingDistributeDiffCUDA(const T* diff, const T top_diff, const int h,
                                 const int w, const int height, const int width,
                                 const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
@@ -67,8 +67,8 @@ __global__ void GPUPRROIPoolForward(
     T roi_end_h =
         static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
 
-    T roi_width = std::max(roi_end_w - roi_start_w, static<T>(0.0));
-    T roi_height = std::max(roi_end_h - roi_start_h, static<T>(0.0));
+    T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
+    T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
 
     // Compute w and h at input feature map
     T bin_size_h = roi_height / static_cast<T>(pooled_height);
@@ -95,12 +95,14 @@ __global__ void GPUPRROIPoolForward(
       for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
         for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
           sum_out += PrRoIPoolingMatCalculation(
-              offset_input_data, h_iter, w_iter, h_iter + 1, w_iter + 1,
-              std::max(win_start_h, static_cast<T>(h_iter)),
-              std::max(win_start_w, static_cast<T>(w_iter)),
-              std::min(win_end_h, static_cast<T>(h_iter) + static_cast<T>(1.0)),
-              std::min(win_end_w, static_cast<T>(w_iter) + static_cast<T>(1.0)),
-              height, width);
+            offset_input_data, h_iter, w_iter, h_iter + 1, w_iter + 1,
+            std::max(win_start_h, static_cast<T>(h_iter)),
+            std::max(win_start_w, static_cast<T>(w_iter)),
+            std::min(win_end_h,
+                     static_cast<T>(h_iter) + static_cast<T>(1.0)),
+            std::min(win_end_w,
+                     static_cast<T>(w_iter) + static_cast<T>(1.0)),
+            height, width);
         }
       }
       output_data[i] = sum_out / win_size;
@@ -143,8 +145,8 @@ __global__ void GPUPRROIPoolForward(
       T roi_end_h =
           static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
 
-      T roi_width = std::max(roi_end_w - roi_start_w, static<T>(0.0));
-      T roi_height = std::max(roi_end_h - roi_start_h, static<T>(0.0));
+      T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
+      T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
 
       // Compute w and h at input feature map
       T bin_size_h = roi_height / static_cast<T>(pooled_height);
@@ -165,19 +167,21 @@ __global__ void GPUPRROIPoolForward(
       for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
         for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
           PrRoIPoolingMatDistributeDiff(
-              offset_input_grad_data, sum_out, h_iter, w_iter, h_iter + 1,
-              w_iter + 1, std::max(win_start_h, static_cast<T>(h_iter)),
-              max(win_start_w, float(w_iter)),
-              std::min(win_end_h, static_cast<T>(h_iter) + 1.0),
-              min(win_end_w, float(w_iter + 1.0)), height, width,
-              PrRoIPoolingDistributeDiff<T>);
+            offset_input_grad_data, sum_out, h_iter, w_iter, h_iter + 1,
+            w_iter + 1, std::max(win_start_h, static_cast<T>(h_iter)),
+            std::max(win_start_w, static_cast<T>(w_iter)),
+            std::min(win_end_h,
+                     static_cast<T>(h_iter) + static_cast<T>(1.0)),
+            std::min(win_end_w,
+                     static_cast<T>(w_iter) + static_cast<T>(1.0)),
+            height, width, PrRoIPoolingDistributeDiffCUDA<T>);
         }
       }
     }
   }
 
   template <typename Place, typename T>
-  class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
+  class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
    public:
     void Compute(const framework::ExecutionContext& ctx) const override {
       auto* in = ctx.Input<Tensor>("X");
