@@ -197,6 +197,7 @@ __all__ = [
     'temporal_shift',
     'py_func',
     'psroi_pool',
+    'prroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'kldiv_loss',
@@ -11771,6 +11772,67 @@ def psroi_pool(input,
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='psroi_pool',
+        inputs={'X': input,
+                'ROIs': rois},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
+    return out
+
+
+@templatedoc()
+def prroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale,
+               pooled_height,
+               pooled_width,
+               name=None):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${x_comment}
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
+        output_channels (integer): ${output_channels_comment}
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        pooled_height (integer): ${pooled_height_comment} Default: 1
+        pooled_width (integer): ${pooled_width_comment} Default: 1
+        name (str, default None): The name of this layer.
+
+    Returns:
+        Variable: ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.prroi_pool(x, rois, 10, 1.0, 7, 7)
+    """
+    helper = LayerHelper('prroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='prroi_pool',
         inputs={'X': input,
                 'ROIs': rois},
         outputs={'Out': out},
