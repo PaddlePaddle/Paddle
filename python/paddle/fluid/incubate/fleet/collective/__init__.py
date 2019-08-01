@@ -187,6 +187,10 @@ class FP32LocalSGDOptimizer(CollectiveOpBasedOptimizer):
                  parameter_list=None,
                  no_grad_set=None):
         opts, param_and_grads = self._optimizer.minimize(loss)
+
+        fleet.main_program = loss.block.program
+        fleet.startup_program = startup_program
+
         config = fluid.DistributeTranspilerConfig()
         config.mode = 'collective'
         config.collective_mode = 'local_sgd'
@@ -210,6 +214,10 @@ class FP32SGDOptimizer(CollectiveOpBasedOptimizer):
                  parameter_list=None,
                  no_grad_set=None):
         opts, param_and_grads = self._optimizer.minimize(loss)
+
+        fleet.main_program = loss.block.program
+        fleet.startup_program = startup_program
+
         config = fluid.DistributeTranspilerConfig()
         config.mode = 'collective'
         config.collective_mode = 'grad_allreduce'
@@ -263,7 +271,6 @@ class CollectiveOptimizer(CollectiveOpBasedOptimizer):
             trainers=','.join(worker_endpoints),
             startup_program=startup_program,
             current_endpoint=current_endpoint)
-        fleet.startup_program = startup_program
 
         # Compiling main program
         exec_strategy = fluid.ExecutionStrategy()
@@ -277,6 +284,7 @@ class CollectiveOptimizer(CollectiveOpBasedOptimizer):
             build_strategy.fuse_all_reduce_ops = True
 
         main_program = loss.block.program
+        fleet.startup_program = startup_program
         fleet.main_program = compiler.CompiledProgram(main_program)
         fleet.main_program.with_data_parallel(
             loss_name=loss.name,
