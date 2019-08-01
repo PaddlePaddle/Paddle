@@ -620,6 +620,7 @@ class OpTest(unittest.TestCase):
         for place in places:
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
                                          check_dygraph)
+            return
 
     def check_output_customized(self, checker):
         places = self._get_places()
