@@ -1057,7 +1057,7 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
             if batch_val <= 0:
                 raise ValueError("batch_shape should be a positive int list")
             else:
-                stack_vars = [out for _ in xrange(batch_val)]
+                stack_vars = [out for _ in numpy.arange(batch_val)]
                 out = stack(stack_vars, axis=0)
     return out
 
