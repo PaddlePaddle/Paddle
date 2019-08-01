@@ -24,7 +24,7 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
+from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass, TransformThroughFP32Pass
 from paddle.fluid import core
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
@@ -43,6 +43,10 @@ def parse_args():
     )
     parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
+    parser.add_argument(
+        '--qat2',
+        action='store_true',
+        help='If used, the QAT model is treated as a second generation model.')
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--batch_num',
@@ -164,12 +168,20 @@ class TestQatInt8Comparison(unittest.TestCase):
                      model_path, exe, 'model', 'params')
 
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
+            graph.draw('.', 'qat_orig', graph.all_op_nodes())
             if (transform_to_int8):
-                mkldnn_int8_pass = TransformForMkldnnPass(
-                    scope=inference_scope, place=place)
-                mkldnn_int8_pass.apply(graph)
+                if (test_case_args.qat2):
+                    transform_to_fp32_pass = TransformThroughFP32Pass(
+                        scope=inference_scope, place=place, core=core)
+                    graph = transform_to_fp32_pass.apply(graph)
+                else:
+                    mkldnn_int8_pass = TransformForMkldnnPass(
+                        scope=inference_scope, place=place)
+                    graph = mkldnn_int8_pass.apply(graph)
+
             else:
                 graph = self._prepare_for_fp32_mkldnn(graph)
+
             inference_program = graph.to_program()
 
             dshape = [3, 224, 224]
