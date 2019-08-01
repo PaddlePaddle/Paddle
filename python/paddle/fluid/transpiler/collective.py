@@ -26,9 +26,11 @@ import numpy as np
 
 from .. import core, unique_name
 from ..framework import Program, default_main_program, default_startup_program
+from ..backward import _append_grad_suffix_
 from .details import wait_server_ready
+from .. import layers
 
-__all__ = ['GradAllReduce', 'LocalSGD']
+__all__ = ['GradAllReduce', 'LocalSGD', 'DistributedClassificationOptimizer']
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
@@ -168,7 +170,7 @@ class Collective(object):
 
     def _is_update_op(self, op):
         return 'Param' in op.input_names and 'Grad' in op.input_names and \
-                "LearningRate" in op.input_names
+                'LearningRate' in op.input_names
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and \
@@ -370,3 +372,81 @@ class LocalSGD(Collective):
                 inputs={'X': [param]},
                 outputs={'Out': [snapshot]},
                 attrs={self.op_role_key: OpRole.Optimize})
+
+
+class DistributedClassificationOptimizer(object):
+    '''
+    '''
+
+    def __init__(self, optimizer, batch_size):
+        self._optimizer = optimizer
+        self._batch_size = batch_size
+
+    def minimize(self, loss):
+        # TODO: use paddle enforce
+        assert loss._get_info('shard_logit')
+
+        shard_logit = loss._get_info('shard_logit')
+        shard_prob = loss._get_info('shard_prob')
+        shard_label = loss._get_info('shard_label')
+        shard_dim = loss._get_info('shard_dim')
+
+        op_maker = core.op_proto_and_checker_maker
+        op_role_key = op_maker.kOpRoleAttrName()
+        op_role_var_key = op_maker.kOpRoleVarAttrName()
+        backward_role = int(op_maker.OpRole.Backward)
+        loss_backward_role = int(op_maker.OpRole.Loss) | int(
+            op_maker.OpRole.Backward)
+
+        # minimize a scalar of reduce_sum to generate the backward network
+        scalar = layers.reduce_sum(shard_logit)
+        ret = self._optimizer.minimize(scalar)
+
+        block = loss.block
+        # remove the unnecessary ops
+        index = 0
+        for i, op in enumerate(block.ops):
+            if op.all_attrs()[op_role_key] == loss_backward_role:
+                index = i
+                break
+
+        # TODO: use paddle enforce
+        assert block.ops[index - 1].type == 'reduce_sum'
+        assert block.ops[index].type == 'fill_constant'
+        assert block.ops[index + 1].type == 'reduce_sum_grad'
+        block._remove_op(index + 1)
+        block._remove_op(index)
+        block._remove_op(index - 1)
+
+        # insert the calculated gradient 
+        dtype = shard_logit.dtype
+        shard_one_hot = layers.create_tensor(dtype, name='shard_one_hot')
+        block._insert_op(
+            index - 1,
+            type='one_hot',
+            inputs={'X': shard_label},
+            outputs={'Out': shard_one_hot},
+            attrs={
+                'depth': shard_dim,
+                'allow_out_of_range': True,
+                op_role_key: backward_role
+            })
+        shard_logit_grad = layers.create_tensor(
+            dtype, name=_append_grad_suffix_(shard_logit.name))
+        block._insert_op(
+            index,
+            type='elementwise_sub',
+            inputs={'X': shard_prob,
+                    'Y': shard_one_hot},
+            outputs={'Out': shard_logit_grad},
+            attrs={op_role_key: backward_role})
+        block._insert_op(
+            index + 1,
+            type='scale',
+            inputs={'X': shard_logit_grad},
+            outputs={'Out': shard_logit_grad},
+            attrs={
+                'scale': 1.0 / self._batch_size,
+                op_role_key: loss_backward_role
+            })
+        return ret
