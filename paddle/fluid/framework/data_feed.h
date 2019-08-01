@@ -25,7 +25,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
-#include <thread>  // NOLINiT
+#include <thread>  // NOLINT
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -446,7 +446,7 @@ class RecordCandidateList {
 
   void ReInit();
 
-  void AddAndGet(const Record& record, RecordCandidate& result);
+  void AddAndGet(const Record& record, RecordCandidate* result);
 
  private:
   size_t _capacity = 0;
