@@ -611,17 +611,33 @@ class Executor(object):
         except Exception as e:
             if not isinstance(e, core.EOFException):
                 print("An exception was thrown!\n {}".format(str(e)))
-            raise e
+            six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache):
-
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
-
+        if program is None:
+            program = default_main_program()
         if scope is None:
             scope = global_scope()
-        if fetch_list is None:
+
+        if feed is not None:
+            assert isinstance(feed, dict) or isinstance(
+                feed, list) or isinstance(feed, tuple), \
+                "Currently , The feed type only should be dict, list or tuple, "\
+                "but the input type is {}. For more information please refer to "\
+                "the executor.run.".format(type(feed))
+
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple)or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, "\
+                "but the input type is {}. For more information please refer to "\
+                "the executor.run.".format(type(fetch_list))
+            self._vars_is_in_program(program, fetch_list)
+        else:
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
@@ -666,6 +682,20 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=False)
 
+    def _vars_is_in_program(self, program, fetch_list):
+        fetch_var_names = list(map(_to_name_str, fetch_list))
+        var_names = []
+        if isinstance(program, Program):
+            var_names = program.global_block().vars.keys()
+        elif isinstance(program, compiler.CompiledProgram):
+            assert program._graph is not None
+            for node in program._graph.nodes():
+                if node.is_var() and node.var():
+                    var_names.append(cpt.to_text(node.name()))
+        for var_name in fetch_var_names:
+            assert var_name in var_names, "{} is not in the program".format(
+                var_name)
+
     def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
 
@@ -679,9 +709,8 @@ class Executor(object):
             raise TypeError(
                 "feed requires dict as its Parameter. But you passed in %s" %
                 (type(feed)))
-        if program is None:
-            program = default_main_program()
 
+        assert program is not None, "The program should not be Empty"
         if not isinstance(program, Program):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
