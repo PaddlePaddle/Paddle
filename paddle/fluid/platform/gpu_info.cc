@@ -230,8 +230,8 @@ void GpuMemoryUsage(size_t *available, size_t *total) {
 size_t GpuAvailableMemToAlloc() {
   size_t total = 0;
   size_t available = 0;
-  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   GpuMemoryUsage(&available, &total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   // If available size is less than minimum chunk size, no usable memory exists
   size_t min_chunk_size = GpuMinChunkSize();
   size_t available_to_alloc =
