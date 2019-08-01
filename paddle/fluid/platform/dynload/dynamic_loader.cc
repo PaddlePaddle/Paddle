@@ -56,7 +56,6 @@ struct PathNode {
 };
 
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
-static constexpr char warpctc_lib_path[] = "";
 
 static PathNode s_py_site_pkg_path;
 
@@ -224,7 +223,7 @@ void* GetCurandDsoHandle() {
 }
 
 void* GetWarpCTCDsoHandle() {
-  std::string warpctc_dir = warpctc_lib_path;
+  std::string warpctc_dir = "";
   if (!s_py_site_pkg_path.path.empty()) {
     warpctc_dir = s_py_site_pkg_path.path;
   }

@@ -213,22 +213,21 @@ if load_noavx:
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
         raise e
 
+
 # set paddle lib path
-if hasattr(site, 'USER_SITE'):
-    lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
-    if os.path.exists(lib_dir):
-        _set_paddle_lib_path(lib_dir)
-elif hasattr(site, 'getsitepackages'):
-    for site_dir in site.getsitepackages():
+def set_paddle_lib_path():
+    site_dirs = site.getsitepackages() if hasattr(
+        site,
+        'getsitepackages') else [x for x in sys.path if 'site-packages' in x]
+    for site_dir in site_dirs:
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
-            break
-else:
-    for path in sys.path:
-        if 'site-packages' not in path:
-            continue
-        lib_dir = os.path.sep.join([path, 'paddle', 'libs'])
+            return
+    if hasattr(site, 'USER_SITE'):
+        lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
-            break
+
+
+set_paddle_lib_path()
