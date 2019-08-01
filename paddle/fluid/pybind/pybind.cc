@@ -266,11 +266,18 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
-      .def("__str__", [](const Tensor &self) {
-        std::stringstream ostr;
-        ostr << self;
-        return ostr.str();
-      });
+      .def("__str__",
+           [](const Tensor &self) {
+             std::stringstream ostr;
+             ostr << self;
+             return ostr.str();
+           })
+      .def("_id",
+           [](Tensor &self) {
+             return reinterpret_cast<size_t>(self.data<void>());
+           })
+      .def("_tensor_id",
+           [](Tensor &self) { return reinterpret_cast<size_t>(&self); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -340,6 +347,13 @@ PYBIND11_MODULE(core_noavx, m) {
              new (&instance) LoDTensor(new_offset_lod);
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
+      .def("_copy",
+           [](const LoDTensor &self) {
+             LoDTensor dst;
+             TensorCopySync(self, self.place(), &dst);
+             dst.set_lod(self.lod());
+             return dst;
+           })
       // We implement offset based LOD in C++ while we use length based with
       // Python API. So we changed set_lod to set_recursive_sequence_lengths to
       // avoid misuse.
@@ -671,7 +685,11 @@ All parameter, weight, gradient are variables in Paddle.
            R"DOC(
            Delete all sub-scopes of the current scope.
            )DOC")
-      .def("_kids", &Scope::kids);
+      .def("_kids", &Scope::kids)
+      .def("local_var_names", &Scope::LocalVarNames)
+      .def("parent", &Scope::parent)
+      .def("erase_var",
+           [](Scope &self, const std::string &var) { self.EraseVars({var}); });
 
   m.def("Scope",
         []() -> Scope * {

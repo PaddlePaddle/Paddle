@@ -420,60 +420,107 @@ class OpTest(unittest.TestCase):
                                                                   set(), [])
         for op_desc in grad_op_desc_list:
             print(op_desc)
+
+        grad_program = Program()
+        grad_block = grad_program.global_block()
         grad_op_desc = grad_op_desc_list[0]
-        new_op_desc = block.desc.append_op()
+        new_op_desc = grad_block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
+        grad_program._sync_with_cpp()
 
         for arg in grad_op_desc.input_arg_names(
         ) + grad_op_desc.output_arg_names():
-            block.create_var(name=arg, dtype='float32')
+            fwd_var_name = op_grad_to_var.get(arg, None)
+            if fwd_var_name is None:
+                fwd_var_name = arg
+            fwd_var = block.vars.get(fwd_var_name)
+            assert fwd_var is not None, "{} cannot be found".format(
+                fwd_var_name)
+            grad_var = grad_block.create_var(
+                name=arg,
+                dtype=fwd_var.dtype,
+                shape=fwd_var.shape,
+                type=fwd_var.type,
+                persistable=False)
+            print(grad_var.dtype)
+
+        grad_program._sync_with_cpp()
+        print('Grad program is')
+        print(grad_program)
         #grad_op_desc.infer_var_type(block.desc)
         #grad_op_desc.infer_shape(block.desc)
         #print(block) 
         #feed_map={}
         #print(op_grad_to_var)
         for arg in grad_op_desc.input_arg_names():
-            #grad_var = block.desc.find_var(arg.encode("ascii"))
-            #grad_var.set_dtype(core.VarDesc.VarType.FP32)
             if arg in feed_map.keys():
                 continue
             forward_var = op_grad_to_var[arg]
             for i, var in enumerate(fetch_list):
                 if var.name == forward_var:
-                    #print(forward_outs[i])
-                    feed_map[arg] = forward_outs[i]
+                    forward_tensor = forward_outs[i]
+                    feed_map[arg] = forward_tensor._copy()
 
         exe = fluid.Executor(place)
 
+        print('Before run')
         for k, v in feed_map.items():
             print(k, v)
         for out in forward_outs:
-            print(out)
+            print(np.array(out))
+            print(id(out), out._id())
+            # out._clear()
+
+        print(grad_op_desc.input_arg_names())
         print(grad_op_desc.output_arg_names())
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
 
-        compiled_program = fluid.CompiledProgram(program).with_data_parallel(
-            build_strategy=build_strategy, places=place)
-        outs1 = exe.run(compiled_program,
-                        feed=feed_map,
-                        fetch_list=grad_op_desc.output_arg_names())
+        compiled_program = fluid.CompiledProgram(grad_program)
+        '''
+        compiled_program = compiled_program.with_data_parallel(
+                build_strategy=build_strategy, places=place)
+        '''
+        scope = fluid.global_scope()
+        print('Scope parent: ', scope.parent())
+        print('Scope vars: ', scope.local_var_names())
+        out_var = scope.find_var('Out')
+        fetch_array = scope.find_var('fetch').get_lod_tensor_array()
+        print(fetch_array[0]._id(), forward_outs[0]._id())
+        print(fetch_array[0]._tensor_id(), forward_outs[0]._tensor_id())
 
+        scope.erase_var('fetch')
+        print('Out var: ', out_var)
+        with fluid.scope_guard(fluid.global_scope()):
+            print('Feed map: ', feed_map)
+            outs1 = exe.run(compiled_program,
+                            feed=feed_map,
+                            fetch_list=grad_op_desc.output_arg_names())
+        print('After run')
         for k, v in feed_map.items():
             print(k, v)
-        for out in forward_outs:
-            print(out)
 
-        build_strategy.enable_inplace = False
+        print(type(forward_outs))
+
+        for out in forward_outs:
+            print(np.array(out))
+            print(id(out), out._id(), feed_map['X']._id())
+
+        build_strategy.enable_inplace = True
         build_strategy.memory_optimize = False
-        compiled_program = fluid.CompiledProgram(program).with_data_parallel(
+        compiled_program = fluid.CompiledProgram(grad_program)
+        '''
+        compiled_program = fluid.CompiledProgram(grad_program).with_data_parallel(
             build_strategy=build_strategy, places=place)
-        outs2 = exe.run(compiled_program,
-                        feed=feed_map,
-                        fetch_list=grad_op_desc.output_arg_names())
-        print("out1", outs1)
-        print("out2", outs2)
+        '''
+        with fluid.scope_guard(fluid.global_scope()):
+            print('Feed map: ', feed_map)
+            outs2 = exe.run(compiled_program,
+                            feed=feed_map,
+                            fetch_list=grad_op_desc.output_arg_names())
+        #print("out1", outs1)
+        #print("out2", outs2)
         for i, out in enumerate(outs1):
             #print(i, out)
             self.assertTrue(np.array_equal(np.array(out), np.array(outs2[i])))
