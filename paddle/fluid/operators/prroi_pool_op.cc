@@ -67,7 +67,9 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
 **PRROIPool Operator**
 
 Precise region of interest pooling (also known as PRROIPooling) is to perform
- score maps and a list of num_rois regions of interest.
+ bilinear interpolation average pooling method for RoI Pooling.
+
+Please refer to https://arxiv.org/abs/1807.11590 for more details.
 
     )Doc");
   }
