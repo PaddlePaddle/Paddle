@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-constexpr char kGraphvizPath[] = "debug_graphviz_path";
+constexpr char kGraphvizPath[] = "graph_viz_path";
 
 class SSAGraphPrinter {
  public:

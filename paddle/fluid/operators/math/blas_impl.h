@@ -567,6 +567,41 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
+    int64_t strideA, int64_t strideB, int64_t head_number) const {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N * head_number;
+  int sub_width = K / head_number;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+
+  for (int i = 0; i < head_number; i++) {
+    int sub_matA_offset = (transA == CblasNoTrans) ? i * (K / head_number)
+                                                   : i * (K / head_number) * M;
+    int sub_matB_offset = (transB == CblasNoTrans) ? i * (K / head_number) * N
+                                                   : i * (K / head_number);
+    int sub_matC_offset = i * N;
+    for (int k = 0; k < batchCount; ++k) {
+      a_array[k] = &A[k * strideA] + sub_matA_offset;
+      b_array[k] = &B[k * strideB] + sub_matB_offset;
+      c_array[k] = &C[k * M * head_number * N] + sub_matC_offset;
+    }
+
+    CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &sub_width,
+                         &alpha, a_array.data(), &lda, b_array.data(), &ldb,
+                         &beta, c_array.data(), &ldc, 1 /* group_count */,
+                         &batchCount);
+  }
+}
+#endif
+
 template <typename DeviceContext>
 template <typename T>
 void Blas<DeviceContext>::MatMul(const int M, const int N, const int K,
@@ -627,6 +662,67 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
         dim_a.stride_, dim_b.stride_);
   }
 }
+
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+/*
+ * Multiple two matrixes with multiple heads
+ *
+ * A new parameter, i.e head_number is added compared to normal MatMul.
+ * The head_number describes the number of heads a matrix is vertically
+ * split.
+ *
+ * When user calls this API, the multiplication of two big matrixes is split
+ * into multiplication of several (head_number_) small matrixes. e.g. if Mat A
+ * is [3, 24] and Mat B is [24, 4], when multiple A and B with head_number as
+ * 4, Mat A will be split as 4 matrix of [3, 6] and Mat B will be 4 matrix of
+ * [6, 4]. The result of final matrix will be 4 matrix of [3, 4], i.e. [3, 16].
+ *
+ */
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMulWithHead(
+    const framework::Tensor &mat_a, const MatDescriptor &dim_a,
+    const framework::Tensor &mat_b, const MatDescriptor &dim_b, T alpha,
+    int head_number, framework::Tensor *mat_out, T beta) const {
+  PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
+  PADDLE_ENFORCE_EQ(dim_a.width_ % head_number, 0);
+  PADDLE_ENFORCE_GE(head_number, 1);
+  PADDLE_ENFORCE_LE(head_number, dim_a.width_);
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    for (int i = 0; i < head_number; i++) {
+      int sub_matA_offset =
+          dim_a.trans_ ? i * (dim_a.width_ / head_number) * dim_a.height_
+                       : i * (dim_a.width_ / head_number);
+      int sub_matB_offset =
+          dim_b.trans_ ? i * (dim_b.height_ / head_number)
+                       : i * (dim_b.height_ / head_number) * dim_b.width_;
+      int sub_matC_offset = i * dim_b.width_;
+      int lda = !dim_a.trans_ ? dim_a.width_ : dim_a.height_;
+      int ldb = !dim_b.trans_ ? dim_b.width_ : dim_b.height_;
+      int ldc = head_number * dim_b.width_;
+
+      this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
+                             dim_a.width_ / head_number, alpha,
+                             mat_a.data<T>() + sub_matA_offset, lda,
+                             mat_b.data<T>() + sub_matB_offset, ldb, beta,
+                             mat_out->data<T>() + sub_matC_offset, ldc);
+    }
+  } else {
+    PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
+                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+
+    this->template BatchedGEMMWithHead<T>(
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
+        mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_, dim_b.stride_, head_number);
+  }
+}
+#endif
+
 template <typename DeviceContext>
 template <typename T>
 void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {

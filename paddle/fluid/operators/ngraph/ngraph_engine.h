@@ -30,14 +30,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum class OpState {                /* nGraph support state on ops          */
-                     FULL_TRAIN,    /* Support full ops for train           */
-                     PARTIAL_TRAIN, /* Support partial ops for train        */
-                     FULL_TEST,     /* Support full list of ops for test    */
-                     PARTIAL_TEST,  /* Support partial list of ops for test */
-                     UNKNOWN        /* Output all for debug purpose         */
-};
-
 // cache engine repetitives
 struct EngineCache {
   std::shared_ptr<ngraph::runtime::Executable> ngraph_handle;
@@ -78,7 +70,6 @@ class NgraphEngine {
   std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
   std::set<std::string> persistables_;
   std::unordered_set<std::string> post_op_inputs_;
-  OpState op_state_ = OpState::UNKNOWN;
   bool is_test_{true};
   std::string func_cache_key_;
 
