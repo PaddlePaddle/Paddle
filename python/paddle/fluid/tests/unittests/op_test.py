@@ -415,6 +415,7 @@ class OpTest(unittest.TestCase):
         outputs = self._get_outputs(block)
         feed_map = self.feed_var(inputs, place)
 
+        print(str(place))
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
                                                                   set(), [])
         for op_desc in grad_op_desc_list:
@@ -616,7 +617,6 @@ class OpTest(unittest.TestCase):
                      equal_nan=False,
                      check_dygraph=False):
         places = self._get_places()
-        print(places)
         for place in places:
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
                                          check_dygraph)
