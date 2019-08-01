@@ -2649,6 +2649,7 @@ class TreeConv(layers.Layer):
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)
         else:
+
             out = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
 
