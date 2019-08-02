@@ -164,7 +164,8 @@ class Fleet(object):
         trainers = self.worker_num()
 
         if len(files) < trainers:
-            raise ValueError("file number must gather or equal trainer number")
+            raise ValueError(
+                "file number must be greater than or equal to trainer number")
 
         remainder = len(files) % trainers
         blocksize = len(files) / trainers
