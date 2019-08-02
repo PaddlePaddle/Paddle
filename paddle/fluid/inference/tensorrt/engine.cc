@@ -51,6 +51,7 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
+#if IS_TRT_VERSION_GE(5000)
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
@@ -60,6 +61,11 @@ void TensorRTEngine::FreezeNetwork() {
                    "FP16 speed up, use FP32 instead.";
     }
   }
+#else
+  LOG(INFO) << "Using FP16 in Paddle-trt must ensure that the version of TRT "
+               "is at least 5."
+               "So, use FP32 to run.";
+#endif
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
 
   if (enable_int8) {
