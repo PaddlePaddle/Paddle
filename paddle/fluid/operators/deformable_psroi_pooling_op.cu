@@ -28,7 +28,7 @@
 #include <limits>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"

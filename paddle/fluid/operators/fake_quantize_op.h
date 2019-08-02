@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {

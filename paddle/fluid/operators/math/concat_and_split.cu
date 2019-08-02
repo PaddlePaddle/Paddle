@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
