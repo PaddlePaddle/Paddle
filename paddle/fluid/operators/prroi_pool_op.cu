@@ -239,7 +239,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -278,7 +278,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
                             ctx.device_context(), &rois_batch_id_list_gpu);
 
       input_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
+      math::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.cuda_device_context(), input_grad, static_cast<T>(0));
 
       int output_grad_size = output_grad->numel();
@@ -303,5 +303,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(prroi_pool, ops::GPUPRROIPoolOpKernel<float>,
                         ops::GPUPRROIPoolOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(prroi_pool_grad, ops::GPUPRROIPoolGradOpKernel<float>,
-                        ops::GPUPRROIPoolGradOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    prroi_pool_grad,
+    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);
