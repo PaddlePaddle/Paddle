@@ -221,7 +221,7 @@ class TestQatInt8Comparison(unittest.TestCase):
                 samples = len(data)
                 total_samples += samples
                 batch_times.append(batch_time)
-                fps = samples / batch_time
+                fps = samples / batch_time * 1000
                 fpses.append(fps)
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
