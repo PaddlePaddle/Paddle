@@ -104,6 +104,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
+    if (strategy_.async_mode_) {
+      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
+             "async mode.";
+      strategy_.fuse_all_optimizer_ops_ = false;
+    }
   }
 
   void AppendMultiGraphOptPasses() {

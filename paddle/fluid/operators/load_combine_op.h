@@ -41,10 +41,15 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     if (!model_from_memory) {
       std::ifstream fin(filename, std::ios::binary);
       PADDLE_ENFORCE(static_cast<bool>(fin),
-                     "Cannot open file %s for load_combine op", filename);
+                     "OP(LoadCombine) fail to open file %s, please check "
+                     "whether the model file is complete or damaged.",
+                     filename);
       LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
     } else {
-      PADDLE_ENFORCE(!filename.empty(), "Cannot load file from memory");
+      PADDLE_ENFORCE(!filename.empty(),
+                     "OP(LoadCombine) fail to open file %s, please check "
+                     "whether the model file is complete or damaged.",
+                     filename);
       std::stringstream fin(filename, std::ios::in | std::ios::binary);
       LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
     }

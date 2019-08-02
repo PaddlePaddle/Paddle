@@ -145,6 +145,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
+                  "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
                   "fc_lstm_fuse_pass",             //
                   "mul_lstm_fuse_pass",            //
