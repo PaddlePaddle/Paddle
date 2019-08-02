@@ -1,9 +1,8 @@
 add_subdirectory(detail)
 add_subdirectory(allocation)
 cc_library(malloc SRCS malloc.cc DEPS
-    #cuda_device_context_allocation
-    #cuda_device_context_allocator cuda_device_context_allocator_pool
-    device_context place enforce allocator_facade profiler)
+    cuda_device_context_allocator_pool
+    place enforce allocator_facade profiler)
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
 cc_library(memory

@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -106,13 +107,11 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
     int encode_size = 2 * k * sizeof(int);
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    auto tmp_ious_data = allocator.Allocate(buf_size);
+    auto tmp_ious_data = memory::Alloc(place, buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel

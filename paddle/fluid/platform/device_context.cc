@@ -123,16 +123,19 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
+    /*
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
     }
-    auto buf = paddle::memory::Alloc(place_, num_bytes);
+    auto buf = memory::Alloc(place_, num_bytes);
     void* retv = buf->ptr();
     {
       std::lock_guard<std::mutex> lock(mtx_);
       allocations_.emplace(retv, std::move(buf));
     }
     return retv;
+    */
+    return nullptr;
   }
 
   void deallocate(void* buffer) const override {
