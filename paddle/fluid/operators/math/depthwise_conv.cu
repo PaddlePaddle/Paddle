@@ -487,8 +487,12 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
     check_case(1, 2, 3);
     check_case(1, 2, 5);
     check_case(1, 2, -1);
-    check_case(0, 0, 3);
-    check_case(0, 0, 5);
+    check_case(2, 1, 3);
+    check_case(2, 1, 5);
+    check_case(2, 1, -1);
+    check_case(2, 2, 3);
+    check_case(2, 2, 5);
+    check_case(2, 2, -1);
     check_case(0, 0, -1);
 // NOTE(liangdun): 0,0 for other case
 // add other case if needed, e.g. check_case(2^n,1)

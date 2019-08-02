@@ -83,11 +83,9 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
                                      std::to_string(multi_input[0]->format()));
   if (platform::get_cur_mkldnn_session_id() ==
       platform::kMKLDNNSessionID_Default) {
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
     platform::MKLDNNHandler::AppendKey(&key, "-t:");
-    platform::MKLDNNHandler::AppendKey(&key, ss.str());
+    platform::MKLDNNHandler::AppendKey(
+        &key, platform::MKLDNNHandler::ThreadIDasStr());
   }
   return key;
 }
