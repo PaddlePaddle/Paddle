@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator_pool.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -37,13 +38,15 @@ AllocationPtr Alloc(const platform::DeviceContext &dev_ctx, size_t size) {
   if (size == 0 || !platform::is_gpu_place(place)) {
     return Alloc(place, size);
   }
-  auto *default_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto *default_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place));
   auto &desired_dev_ctx =
       static_cast<const platform::CUDADeviceContext &>(dev_ctx);
   if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
     return Alloc(place, size);
   } else {
-    return CUDADeviceContextAllocatorPool::Instance().Alloc(dev_ctx, size);
+    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+        desired_dev_ctx, size);
   }
 }
 

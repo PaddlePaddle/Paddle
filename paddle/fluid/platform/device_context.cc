@@ -15,7 +15,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -86,8 +85,6 @@ DeviceContextPool::DeviceContextPool(
     }
   }
 }
-
-#ifdef PADDLE_WITH_CUDA
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
@@ -295,13 +292,13 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   if (cudnn_handle_ == nullptr) {
     PADDLE_ENFORCE(cudaSetDevice(place_.device));
     PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(&cudnn_handle_, stream_));
   }
-  return cudnn_handle;
+  return cudnn_handle_;
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(*this, &stream_);
+  return CudnnWorkspaceHandle(*this);
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
