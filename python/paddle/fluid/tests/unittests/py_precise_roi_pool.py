@@ -129,13 +129,6 @@ class PyPrRoIPool(object):
             raise TypeError("pooled_width must be int type")
 
         (batch_size, channels, height, width) = np.array(x).shape
-        if not isinstance(batch_size, int) or not isinstance(
-                channels, int) or not isinstance(height, int) or not isinstance(
-                    width, int):
-            raise TypeError(
-                "please check the input(x)'s shape, expected[int, int, int, int]"
-            )
-
         rois_num = len(rois)
         output_shape = (rois_num, output_channels, pooled_height, pooled_width)
         out_data = np.zeros(output_shape)
