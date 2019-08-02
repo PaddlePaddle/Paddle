@@ -12,34 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 
 #include <cuda_runtime.h>
 
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 CUDADeviceContextAllocator::CUDADeviceContextAllocator(
-    const platform::CUDAPlace place) place_(place) {
+    const platform::CUDAPlace place)
+    : place_(place) {
   cudaEventCreate(&event_);
 }
 
-CUDADeviceContextAllocator::CUDADeviceContextAllocator(
-    const platform::CUDAPlace place) place_(place) {
+CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
   if (event_) {
-    PADDLE_ENFORCE(cudaEventDestroy(&event_));
+    PADDLE_ENFORCE(cudaEventDestroy(event_));
   }
 }
 
 Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
   auto allocation =
-      new CUDADeviceContextAllocation(memory::Alloc(place_, size_));
+      new CUDADeviceContextAllocation(memory::Alloc(place_, size));
   if (event_) {
     cudaEventRecord(event_);
   }

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -169,7 +170,31 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
+CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+    : workspace_(nullptr), stream_(stream), place_(place) {
+  PADDLE_ENFORCE(cudaSetDevice(place_.device));
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+}
+
+CudnnHolder::~CudnnHolder() {
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
+  if (required_workspace_len <= WorkspaceSize()) {
+    return;
+  }
+  if (workspace_ != nullptr) {
+    // Maybe someone is using the current workspace
+    PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+    workspace_.reset();
+  }
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
+}
+
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : place_(place), cudnn_holder_(nullptr) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
@@ -288,17 +313,21 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
+CudnnHolder* CUDADeviceContext::cudnn_holder() const {
+  std::call_once(init_cudnn_, [&]() {
+    if (dynload::HasCUDNN()) {
+      cudnn_holder_.reset(new CudnnHolder(&stream_, place_));
+    }
+  });
+  return cudnn_holder_.get();
+}
+
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  if (cudnn_handle_ == nullptr) {
-    PADDLE_ENFORCE(cudaSetDevice(place_.device));
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(&cudnn_handle_, stream_));
-  }
-  return cudnn_handle_;
+  return cudnn_holder()->cudnn_handle();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(*this);
+  return CudnnWorkspaceHandle(cudnn_holder());
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

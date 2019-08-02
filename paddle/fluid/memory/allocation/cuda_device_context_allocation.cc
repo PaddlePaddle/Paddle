@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
 
 #include <utility>
@@ -23,7 +22,8 @@ namespace allocation {
 
 CUDADeviceContextAllocation::CUDADeviceContextAllocation(
     AllocationPtr allocation)
-    : underlying_allocation_(std::move(allocation)) {}
+    : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
+      underlying_allocation_(std::move(allocation)) {}
 
 CUDADeviceContextAllocation::~CUDADeviceContextAllocation() {
   PADDLE_ENFORCE_NOT_NULL(dev_ctx_);

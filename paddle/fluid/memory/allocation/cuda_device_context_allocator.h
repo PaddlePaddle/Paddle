@@ -25,6 +25,7 @@ namespace allocation {
 class CUDADeviceContextAllocator : public Allocator {
  public:
   explicit CUDADeviceContextAllocator(platform::CUDAPlace place);
+  ~CUDADeviceContextAllocator();
 
  protected:
   Allocation *AllocateImpl(size_t size);

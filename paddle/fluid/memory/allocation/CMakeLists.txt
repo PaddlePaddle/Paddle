@@ -9,8 +9,10 @@ cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allo
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
   nv_library(cuda_device_context_allocation SRCS cuda_device_context_allocation.cc DEPS allocator device_context place)
-  nv_library(cuda_device_context_allocator SRCS cuda_device_context_allocator.cc DEPS allocator device_context place)
-  nv_library(cuda_device_context_allocator_pool SRCS cuda_device_context_allocator_pool.cc DEPS allocator device_context place)
+  nv_library(cuda_device_context_allocator SRCS cuda_device_context_allocator.cc 
+      DEPS allocator device_context place cuda_device_context_allocation)
+  nv_library(cuda_device_context_allocator_pool SRCS cuda_device_context_allocator_pool.cc
+      DEPS allocator device_context place cuda_device_context_allocation cuda_device_context_allocator)
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)

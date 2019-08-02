@@ -76,73 +76,104 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 
 #ifdef PADDLE_WITH_CUDA
 
-class CUDADeviceContext;
-
-class CudnnWorkspaceHandle {
+class EigenCudaStreamDevice;
+class CudnnHolder {
  public:
-  inline explicit CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx)
-      : device_context_(dev_ctx) {}
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place);
+  ~CudnnHolder();
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
 
-  /*! \brief Thread which call RunFunc() would acquire the lock first
-   *  before invoking cudnn functions. */
+ private:
+  friend class CudnnWorkspaceHandle;
+  void ReallocateWorkspace(size_t required_workspace_len);
+
   template <typename Callback>
-  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
+  void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (required_workspace_len > WorkspaceSize()) {
+      ReallocateWorkspace(required_workspace_len);
     }
     VLOG(2) << "Cudnn workspace size: "
             << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    cudnn_func(allocation_->ptr());
+    cudnn_func(WorkspacePtr());
   }
 
-  /*! \brief Thread which call RunFuncSync() would release gpu memory after
-   *  running the function. Currently this function is only used when cudnn
-   *  exhaustive searching and callers have to guarantee that the input function
-   *  is host blocking */
-  template <typename Callback>
-  inline void RunFuncSync(Callback&& cudnn_func,
-                          size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
-    }
-    VLOG(2) << "Cudnn workspace size: "
-            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    cudnn_func(allocation_->ptr());
-    ResetWorkspace();
-  }
-
-  inline void ReallocWorkspace(size_t required_workspace_bytes) {
-    if (required_workspace_bytes <= WorkspaceSize()) {
-      return;
-    }
-    if (allocation_) {
-      allocation_.reset();
-    }
-    allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
-  }
-
+  /*! \brief Reset workspace thus release the memory */
   inline void ResetWorkspace() {
-    if (allocation_) {
-      allocation_ = nullptr;
+    if (workspace_) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      workspace_ = nullptr;
+    }
+  }
+
+  inline void* WorkspacePtr() {
+    if (workspace_) {
+      return workspace_->ptr();
+    } else {
+      return nullptr;
     }
   }
 
   inline size_t WorkspaceSize() {
-    if (allocation_ == nullptr) {
+    if (workspace_) {
+      return workspace_->size();
+    } else {
       return 0;
     }
-    return allocation_->size();
+  }
+
+  std::mutex& Mutex() { return mtx_; }
+
+  cudnnHandle_t cudnn_handle_;
+  memory::AllocationPtr workspace_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+class CudnnWorkspaceHandle {
+ public:
+  /*! \brief The lock would not be acquired when constructor calls.
+   *  The lock would be acquired when RunFunc() is called first time. */
+  inline explicit CudnnWorkspaceHandle(CudnnHolder* holder) : holder_(holder) {}
+
+  /*! \brief Thread which call RunFunc() would acquire the lock first
+   *  before invoking cudnn functions. */
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+  }
+
+  /*! \brief Thread which call RunFuncSync() would acquire the lock first
+   *  before invoking cudnn function and release gpu memory after running
+   *  the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  template <typename Callback>
+  inline void RunFuncSync(Callback&& cudnn_func,
+                          size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+    holder_->ResetWorkspace();
   }
 
   CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
   CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
 
  private:
-  memory::allocation::AllocationPtr allocation_;
-  const CUDADeviceContext& device_context_;
+  CudnnHolder* holder_;  // not own
+  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
 };
 
-class EigenCudaStreamDevice;
 class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
@@ -226,8 +257,8 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
+  mutable std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cudnnHandle_t cudnn_handle_{nullptr};
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
@@ -249,6 +280,7 @@ class CUDADeviceContext : public DeviceContext {
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+  CudnnHolder* cudnn_holder() const;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator_pool.h"
 
 #include <utility>
 #include <vector>
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 
 namespace paddle {
@@ -35,7 +35,7 @@ AllocationPtr CUDADeviceContextAllocatorPool::Alloc(
   PADDLE_ENFORCE(iter != allocators_.end());
   auto allocation = iter->second->Allocate(size);
   static_cast<CUDADeviceContextAllocation *>(allocation.get())
-      ->SetDeviceContext(&dev_ctx);
+      ->SetCUDADeviceContext(&dev_ctx);
   return allocation;
 }
 

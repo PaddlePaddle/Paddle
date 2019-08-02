@@ -20,7 +20,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class CUDADeviceContextAllocation {
+class CUDADeviceContextAllocation : public Allocation {
  public:
   explicit CUDADeviceContextAllocation(AllocationPtr allocation);
   ~CUDADeviceContextAllocation();
