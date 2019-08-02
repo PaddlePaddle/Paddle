@@ -124,6 +124,9 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'epsilon' should be between 0.0 and 0.001.");
         });
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddInput("X", "The input tensor");
     AddInput("BatchSize",
              "BatchSize is a 1-dimensional tensor of size C "

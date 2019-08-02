@@ -24,7 +24,8 @@ namespace framework {
 namespace ir {
 
 namespace {
-static PDNode* BuildCVMConcatPattern(PDPattern* pattern) {
+
+PDNode* BuildCVMConcatPattern(PDPattern* pattern) {
   auto cvm_behind_x = [](Node* x) -> bool {
     Node* adj = x->inputs[0];
     Node* alt = x->inputs[0]->inputs[0];
@@ -38,7 +39,7 @@ static PDNode* BuildCVMConcatPattern(PDPattern* pattern) {
   return concat_op_node;
 }
 
-static void GetConcatNodes(ir::Graph* graph, std::vector<Node*>* concat_nodes) {
+void GetConcatNodes(ir::Graph* graph, std::vector<Node*>* concat_nodes) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   auto concat_op_node = BuildCVMConcatPattern(pattern);
@@ -57,15 +58,20 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   GetConcatNodes(graph, &concat_nodes);
 
   int count = 0;
+  auto has_only_one_output = [](Node* x) -> bool {
+    return x && x->outputs.size() == 1;
+  };
   for (auto* concat_node : concat_nodes) {
     GraphPatternDetector gpd;
     auto* pattern = gpd.mutable_pattern();
     auto concat_before_x = [=](Node* x) -> bool {
       return x && x->outputs[0] == concat_node;
     };
+    PDNode* feed_op_node = pattern->NewNode("feed_op")->assert_is_op("feed");
     PDNode* seqpool_in_var_node =
         pattern->NewNode("seqpool_in_var")
-            ->assert_is_only_input_of_op("sequence_pool");
+            ->assert_is_only_input_of_op("sequence_pool")
+            ->assert_more(has_only_one_output);
     PDNode* seqpool_op_node =
         pattern->NewNode("seqpool_op")
             ->assert_is_op("sequence_pool")
@@ -86,6 +92,7 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     PDNode* cvm_cvm_in_var_node = pattern->NewNode("cvm_cvm_in_var")
                                       ->assert_is_op_nth_input("cvm", "CVM", 0);
 
+    feed_op_node->LinksTo({seqpool_in_var_node});
     seqpool_op_node->LinksFrom({seqpool_in_var_node})
         .LinksTo({seqpool_out_var_node, seqpool_idx_out_var_node});
     seqpool_out_var_node->LinksFrom({seqpool_op_node}).LinksTo({cvm_op_node});
@@ -99,6 +106,7 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
 
     Node* cvm_input_of_cvm;
     Node* concat_out_var = concat_node->outputs[0];
+    int slots_num = concat_node->inputs.size();
 
     GraphPatternDetector::handle_t handler = [&](
         const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
@@ -116,9 +124,18 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     gpd(graph, handler);
 
     if (!ins_to_concat.empty()) {
-      for (const auto* in : concat_node->inputs) {
-        subgraph_ins.push_back(ins_to_concat.at(in->Name()));
-        subgraph_ins_name.push_back(ins_to_concat.at(in->Name())->Name());
+      for (int i = 0; i < slots_num; i++) {
+        const auto* in = concat_node->inputs[i];
+        if (i == 0) {
+          string::PrettyLogEndl(string::Style::detail(),
+                                "---  Reserved input node: %s",
+                                ins_to_concat.at(in->Name())->Name());
+          subgraph_ins.push_back(ins_to_concat.at(in->Name()));
+          subgraph_ins_name.push_back(ins_to_concat.at(in->Name())->Name());
+        } else {
+          marked_nodes.insert({ins_to_concat.at(in->Name()),
+                               ins_to_concat.at(in->Name())->inputs[0]});
+        }
       }
 
       // Create New OpDesc
@@ -128,6 +145,7 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
       op_desc.SetInput("CVM", {cvm_input_of_cvm->Name()});
       op_desc.SetAttr("pooltype", std::string("SUM"));
       op_desc.SetAttr("use_cvm", true);
+      op_desc.SetAttr("slots_num", slots_num);
       op_desc.SetAttr("axis", concat_node->Op()->GetAttr("axis"));
       op_desc.SetOutput("Out", {concat_out_var->Name()});
       auto* op = graph->CreateOpNode(&op_desc);

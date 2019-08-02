@@ -88,11 +88,11 @@ std::unique_ptr<ir::Graph> GetNumNodesOfBeforeAfter(
  *                 m
  *
  * Type of op1, op2 and op3 are sequence_pool, with "SUM" pooltype attr.
- * Type of op4, op5 and op6 are cvm, with use_cvm is true.
+ * Type of op4, op5 and op6 are CVM, with use_cvm is true.
  *
  * After fuse:
- *    a      b      c      n
- *    \      |      |     /
+ *       a             n
+ *        \           /
  *  fusion_seqpool_cvm_concat
  *              |
  *              m
@@ -124,65 +124,11 @@ TEST(SeqPoolCVMConcatFusePass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   int before, after;
   graph = GetNumNodesOfBeforeAfter(std::move(graph), &before, &after);
-  // Remove 16 Nodes: op1, op2, op3, op4, op5, op6, d, e, f, g, h, i, j, k, l,
+  // Remove 16 Nodes: op1, op2, op3, op4, op5, op6, b, c, d, e, f, g, h, i, j,
+  // k, l,
   // concat_op
   // Add 1 Node: fusion_seqpool_cvm_concat
-  EXPECT_EQ(after, before - 15);
-  EXPECT_EQ(CountOpType(graph.get()), 1);
-}
-
-/*
- * Before fuse:
- *    a               b
- *    |           /       \
- *   op1  k     op2   k   op3
- *   / \ /      / \  /      \
- *  c  d       e   f         g
- *     |           |
- *    op4         op5
- *     |           |
- *     h           i
- *      \         /
- *        concat
- *          |
- *          j
- * Type of op1 and op2 are sequence_pool, with "SUM" pooltype attr.
- * Type of op4 and op5 are cvm, with use_cvm is true.
- *
- * After fuse:
- *   a          k              b
- *    \         |           /     \
- *   fusion_seqpool_cvm_concat    op3
- *              |                  |
- *              j                  g
- */
-TEST(SeqPoolCVMConcatFusePass, advanced) {
-  ProgramDesc prog;
-  for (auto& v : std::vector<std::string>(
-           {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"})) {
-    auto* var = prog.MutableBlock(0)->Var(v);
-    var->SetType(proto::VarType::LOD_TENSOR);
-  }
-
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"a"}),
-        std::vector<std::string>({"c", "d"}));
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"b"}),
-        std::vector<std::string>({"e", "f"}));
-  SetOp(&prog, "op3", std::vector<std::string>({"b"}),
-        std::vector<std::string>({"g"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"d", "k"}),
-        std::vector<std::string>({"h"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"f", "k"}),
-        std::vector<std::string>({"i"}));
-  SetOp(&prog, "concat", std::vector<std::string>({"h", "i"}),
-        std::vector<std::string>({"j"}));
-
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  int before, after;
-  graph = GetNumNodesOfBeforeAfter(std::move(graph), &before, &after);
-  // Remove 11 Nodes: op1, op2, op4, op5, c, d, e, f, h, i, concat_op
-  // Add 1 Node: fusion_seqpool_cvm_concat
-  EXPECT_EQ(after, before - 10);
+  EXPECT_EQ(after, before - 17);
   EXPECT_EQ(CountOpType(graph.get()), 1);
 }
 
@@ -224,10 +170,10 @@ TEST(SeqPoolCVMConcatFusePass, more_inputs) {
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
     int before, after;
     graph = GetNumNodesOfBeforeAfter(std::move(graph), &before, &after);
-    // Remove Nodes: n * (seqpool_op, seqpool_out, out_unused, cvm_op, cvm_out),
-    // and concat_op
+    // Remove Nodes: n * (seqpool_op, seqpool_out, out_unused, cvm_op, cvm_out
+    // , seqpool_in) and concat_op, except the fitst seqpool_in
     // Add Node: fusion_seqpool_cvm_concat op
-    EXPECT_EQ(after, before - num * 5);
+    EXPECT_EQ(after, before - num * 6 + 1);
     EXPECT_EQ(CountOpType(graph.get()), 1);
   }
 }

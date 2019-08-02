@@ -22,9 +22,8 @@ namespace operators {
 
 void FusionSeqPoolCVMConcatOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_GE(
-      ctx->Inputs("X").size(), 1UL,
-      "Inputs(X) of FusionSeqPoolCVMConcatOp should not be empty.");
+  PADDLE_ENFORCE_EQ(ctx->Inputs("X").size(), 1UL,
+                    "Inputs(X) of FusionSeqPoolCVMConcatOp must be 1.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
                  "Output(Out) of FusionSeqPoolCVMConcatOp should not be null.");
   int axis = ctx->Attrs().Get<int>("axis");
@@ -34,19 +33,18 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   PADDLE_ENFORCE_EQ(
       use_cvm, true,
       "FusionSeqPoolCVMConcatOp only supports use_cvm is true yet.");
-
+  int n = ctx->Attrs().Get<int>("slots_num");
+  PADDLE_ENFORCE_GT(
+      n, 1UL,
+      "slots_num of FusionSeqPoolCVMConcatOp should be greater than 1.");
   auto ins_dims = ctx->GetInputsDim("X");
-  const size_t n = ins_dims.size();
-  PADDLE_ENFORCE_GT(n, 0UL, "Input tensors count should > 0.");
-  if (n == 1) {
-    LOG(WARNING) << "Only have one input, may waste memory";
-  }
+  PADDLE_ENFORCE_GT(ins_dims.size(), 0UL, "Input tensors count should > 0.");
 
   // The output height should be confirmed in Compute,
   // since input lod is not accessible here.
   PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2,
                     "The dims size of first input should be 2.");
-  ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
+  ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * n});
 }
 
 framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
@@ -71,8 +69,11 @@ void FusionSeqPoolCVMConcatOpMaker::Make() {
                "The axis along which the input tensors will be concatenated. "
                "Only supports concat axis=1 yet.")
       .SetDefault(1);
+  AddAttr<int>("slots_num",
+               "The number of slots input to this layer. "
+               "This value is determined by pass when fusing.");
   AddComment(R"DOC(
-Fusion Sequence Pool of pooltype(sum, average and sqrt) and Concat Operator.
+Fusion Sequence Pool of pooltype(sum, average and sqrt), CVM and Concat Operator.
 )DOC");
 }
 
@@ -80,13 +81,15 @@ template <typename T>
 class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto in = ctx.MultiInput<LoDTensor>("X")[0];
     auto* out = ctx.Output<LoDTensor>("Out");
     std::string pooltype = ctx.Attr<std::string>("pooltype");
-    auto x0_lod = ins[0]->lod();
-    auto x0_dims = ins[0]->dims();
+    auto slots_num = ctx.Attr<int>("slots_num");
+    PADDLE_ENFORCE_GT(slots_num, 1, "slots_num should be greater than 1.");
+    auto x_lod = in->lod()[0];
+    auto x_dims = in->dims();
     auto y_dims = out->dims();
-    size_t bs = x0_lod[0].size() - 1;
+    size_t bs = (x_lod.size() - 1) / slots_num;
     out->Resize({static_cast<int64_t>(bs), y_dims[1]});
     framework::LoD y_lod(1);
     y_lod[0].resize(bs + 1);
@@ -96,8 +99,10 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     out->set_lod(y_lod);
     auto place = ctx.GetPlace();
     T* y_data = out->mutable_data<T>(place);
-
-    int w = ins[0]->numel() / x0_dims[0];
+    PADDLE_ENFORCE_GT(
+        x_dims[0], 0,
+        "X[0]->dims()[0] of FusionSeqpoolCVMConcat should be greater than 0.");
+    int w = in->numel() / x_dims[0];
     PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
                       "The output of dims[1] should be dividable of w");
     jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
@@ -109,28 +114,14 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     auto seqpool =
         jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
             attr);
-    size_t n = ins.size();
-    size_t dst_step_size = n * w;
-    for (size_t i = 0; i < n; ++i) {
-      auto x_dims = ins[i]->dims();
-      auto x_lod = ins[i]->lod()[0];
-      const T* src = ins[i]->data<T>();
+    for (size_t i = 0; i < bs * slots_num; ++i) {
+      const T* src = in->data<T>() + x_lod[i] * w;
       T* dst = y_data + i * w;
-      PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]), w,
-                        "Width of all inputs should be equal.");
-      PADDLE_ENFORCE_EQ(x_lod.size(), bs + 1,
-                        "Batchsize of all inputs should be equal.");
-      for (size_t j = 0; j < bs; ++j) {
-        attr.h = static_cast<int>(x_lod[j + 1] - x_lod[j]);
-        seqpool(src, dst, &attr);
-
-        // Currently only use_cvm is true.
-        dst[0] = log(dst[0] + 1);
-        dst[1] = log(dst[1] + 1) - dst[0];
-
-        dst += dst_step_size;
-        src += attr.h * attr.w;
-      }
+      auto tmp_attr = attr;
+      tmp_attr.h = static_cast<int>(x_lod[i + 1] - x_lod[i]);
+      seqpool(src, dst, &tmp_attr);
+      dst[0] = log(dst[0] + 1);
+      dst[1] = log(dst[1] + 1) - dst[0];
     }
   }
 };

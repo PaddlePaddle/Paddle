@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -27,6 +28,7 @@ namespace ir {
  * Fuse SequencePool(with sum pooltype yet) and Concat;
  *
  * Before fuse:
+ *   feed      feed          feed
  *    |         |             |
  * seq_pool, seq_pool, ... seq_pool
  *    |         |             |
@@ -35,7 +37,8 @@ namespace ir {
  *            concat
  *              |
  * After fuse:
- *    \      |       /
+ *          feed
+ *           |
  * FusionSeqPoolCVMConcat
  *           |
  */

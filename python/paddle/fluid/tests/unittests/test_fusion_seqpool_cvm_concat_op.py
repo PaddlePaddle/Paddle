@@ -23,46 +23,47 @@ from test_cvm_op import cvm_compute
 
 
 class TestFusionSeqPoolCVMConcatOp(OpTest):
+    """This class is used to test FusionSeqPoolCVMConcatOp."""
+
     def setUp(self):
+        """Constructing an initialization environment."""
         self.w = 11
         self.use_cvm = True
-        self.lods = [[[2, 3, 5]], [[1, 5, 2]]]
+        self.lod = [[1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5]]
         self.set_conf()
         self.set_pooltype()
         self.op_type = 'fusion_seqpool_cvm_concat'
+        self.slots_num = 2
         self.axis = 1
-        bs = len(self.lods[0][0])
+        bs = len(self.lod[0]) / self.slots_num
         inputs = []
-        outs = []
         # The cvm variable is not actually used.
         cvm = np.array([[0.6, 0.4]]).astype("float32")
-        i = 0
-        for lod in self.lods:
-            assert bs == len(lod[0]), 'All lod size should be equal'
-            x = np.random.uniform(0.1, 1,
-                                  [sum(lod[0]), self.w]).astype('float32')
-            offset = convert_to_offset(lod)
-            out = np.zeros((bs, self.w)).astype('float32')
-            if self.pooltype == "SUM":
-                compute_seqpool_sum(x, offset, out)
-                out = cvm_compute(out, self.w, self.use_cvm)
-            elif self.pooltype == "AVERAGE":
-                compute_seqpool_avg(x, offset, out)
-                out = cvm_compute(out, self.w, self.use_cvm)
-            elif self.pooltype == "SQRT":
-                compute_seqpool_sqrt(x, offset, out)
-                out = cvm_compute(out, self.w, self.use_cvm)
-            else:
-                raise Exception("Unsupported pool type!")
-            inputs.append(('x_{0}'.format(i), (x, lod)))
-            outs.append(out)
-            i = i + 1
+
+        assert len(self.lod[0]) % self.slots_num == 0
+        x = np.random.uniform(0.1, 1,
+                              [sum(self.lod[0]), self.w]).astype('float32')
+        offset = convert_to_offset(self.lod)
+        out = np.zeros((bs * self.slots_num, self.w)).astype('float32')
+        if self.pooltype == "SUM":
+            compute_seqpool_sum(x, offset, out)
+            out = cvm_compute(out, self.w, self.use_cvm)
+        elif self.pooltype == "AVERAGE":
+            compute_seqpool_avg(x, offset, out)
+            out = cvm_compute(out, self.w, self.use_cvm)
+        elif self.pooltype == "SQRT":
+            compute_seqpool_sqrt(x, offset, out)
+            out = cvm_compute(out, self.w, self.use_cvm)
+        else:
+            raise Exception("Unsupported pool type!")
+        inputs.append(('x', (x, self.lod)))
 
         self.inputs = {'X': inputs, "CVM": cvm}
-        self.outputs = {'Out': np.concatenate(outs, axis=self.axis)}
+        self.outputs = {'Out': out}
         self.attrs = {
             'pooltype': self.pooltype,
             'axis': self.axis,
+            'slots_num': self.slots_num,
         }
 
     def set_pooltype(self):
@@ -75,30 +76,9 @@ class TestFusionSeqPoolCVMConcatOp(OpTest):
         self.check_output()
 
 
-class TestFusionSeqPoolCVMConcatOpCase1(TestFusionSeqPoolCVMConcatOp):
-    def set_conf(self):
-        self.lods = [[[1]]]
-
-
-class TestFusionSeqPoolCVMConcatOpCase2(TestFusionSeqPoolCVMConcatOp):
-    def set_conf(self):
-        self.lods = [[[1]], [[1]], [[1]]]
-
-
-class TestFusionSeqPoolCVMConcatOpCase3(TestFusionSeqPoolCVMConcatOp):
-    def set_conf(self):
-        self.lods = [[[1, 3, 4, 6]]]
-        self.w = 10
-
-
-class TestFusionSeqPoolCVMConcatOpCase4(TestFusionSeqPoolCVMConcatOp):
-    def set_conf(self):
-        self.lods = [[[2, 13, 4]], [[1, 1, 1]], [[5, 3, 1]], [[9, 10, 3]]]
-        self.w = 3
-
-
-## test avg pool and sqrt
 def create_test_avg_sqrt_class(parent):
+    """Test averge and square root behavior."""
+
     class TestSeqPoolAvgCase(parent):
         def set_pooltype(self):
             self.pooltype = "AVERAGE"
@@ -116,10 +96,6 @@ def create_test_avg_sqrt_class(parent):
 
 
 create_test_avg_sqrt_class(TestFusionSeqPoolCVMConcatOp)
-create_test_avg_sqrt_class(TestFusionSeqPoolCVMConcatOpCase1)
-create_test_avg_sqrt_class(TestFusionSeqPoolCVMConcatOpCase2)
-create_test_avg_sqrt_class(TestFusionSeqPoolCVMConcatOpCase3)
-create_test_avg_sqrt_class(TestFusionSeqPoolCVMConcatOpCase4)
 
 if __name__ == '__main__':
     unittest.main()
