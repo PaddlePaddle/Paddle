@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cuda.h>
+#include <cuda_runtime.h>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
+#include "paddle/fluid/memory/malloc.h"
 
 namespace paddle {
 namespace memory {
@@ -22,7 +26,7 @@ namespace allocation {
 const int NUM_STREAMS = 8;
 const int N = 1 << 20;
 
-__global__ void test_kernel(float *x, int n) {
+__global__ void kernel(float *x, int n) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < n; i += blockDim.x * gridDim.x) {
     x[i] = 3.14159 * i;
@@ -30,7 +34,29 @@ __global__ void test_kernel(float *x, int n) {
 }
 
 TEST(CUDADeviceContextAllocator, multi_stream) {
-  CUDADeviceContextAllocator allocator(platform::CUDAPlace(0));
+  auto place = platform::CUDAPlace(0);
+  CUDADeviceContextAllocator allocator(place);
+  PADDLE_ENFORCE(cudaSetDevice(0));
+
+  AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
+  float *main_stream_data =
+      reinterpret_cast<float *>(main_stream_alloc_ptr->ptr());
+
+  cudaStream_t streams[NUM_STREAMS];
+  float *data[NUM_STREAMS];
+
+  for (int i = 0; i < NUM_STREAMS; ++i) {
+    // default stream
+    kernel<<<1, 64>>>(main_stream_data, N);
+
+    cudaStreamCreate(&streams[i]);
+    AllocationPtr allocationPtr = allocator.Allocate(N * sizeof(float));
+    data[i] = reinterpret_cast<float *>(allocationPtr->ptr());
+
+    // multi-streams
+    kernel<<<1, 64, 0, streams[i]>>>(data[i], N);
+  }
+  cudaDeviceReset();
 }
 
 }  // namespace allocation
