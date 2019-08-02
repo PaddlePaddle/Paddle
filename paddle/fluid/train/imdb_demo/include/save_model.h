@@ -10,36 +10,32 @@
    limitations under the License. */
 
 #pragma once
-#include <stdio.h>
-#include <string.h>
 #include <fcntl.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <fstream>
 #include <iostream>
-#include <unistd.h>
+#include <memory>
+#include <string>
+#include <vector>
 #include "gflags/gflags.h"
-#include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/place.h"
-// #include "multi_trainer.h"
-// #include "util_func.h"
-//#include "pproto.h"
+
 namespace paddle {
 namespace framework {
-    void save_model(
-        const std::unique_ptr<ProgramDesc> & main_program,
-        Scope * scope, 
-        std::vector<std::string> & param_names,
-        std::string & model_name,
-        bool save_combine);
-        
-    }
-} 
-
+void save_model(const std::unique_ptr<ProgramDesc>& main_program, Scope* scope,
+                const std::vector<std::string>& param_names,
+                const std::string& model_name, bool save_combine);
+}
+}

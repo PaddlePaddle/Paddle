@@ -31,7 +31,6 @@ link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
 link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 
-include_directories(include)
 add_executable(demo_trainer save_model.cc demo_trainer.cc)
 
 if(WITH_MKLDNN)
