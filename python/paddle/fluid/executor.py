@@ -621,10 +621,8 @@ class Executor(object):
 
         if program is None:
             program = default_main_program()
-            if len(program.global_block().ops) == 0:
-                warnings.warn(
-                    "The program(Input) is not set, and the default_main_program is empty."
-                )
+        if len(program.global_block().ops) == 0:
+            warnings.warn("The current program is empty.")
 
         if scope is None:
             scope = global_scope()
@@ -632,7 +630,7 @@ class Executor(object):
         if fetch_list is not None:
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
                 fetch_list = [fetch_list]
-            assert isinstance(fetch_list, tuple)or isinstance(fetch_list, list), \
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
                 "Currently , The fetch_list type only should be list or tuple, \n"\
                 "but the input type is {}. For more information please refer to \n"\
                 "the executor.run(...).".format(type(fetch_list))
