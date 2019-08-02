@@ -108,8 +108,6 @@ bool VarDescIsConsistency(const Graph &graph) {
       var_name2node_set;
   for (ir::Node *node : graph.Nodes()) {
     if (node->IsVar() && node->Var()) {
-      // Note: The graph may have the same name node. For example, parameter
-      // is the input of operator and it also is the output of optimizer;
       var_name2node_set[node->Var()->Name()].emplace(node);
     }
   }

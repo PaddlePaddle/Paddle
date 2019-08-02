@@ -49,6 +49,7 @@ void BindFleetWrapper(py::module* m) {
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
       .def("load_model", &framework::FleetWrapper::LoadModel)
+      .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("stop_server", &framework::FleetWrapper::StopServer)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
@@ -57,7 +58,10 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::CreateClient2ClientConnection)
       .def("shrink_sparse_table", &framework::FleetWrapper::ShrinkSparseTable)
       .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable)
-      .def("client_flush", &framework::FleetWrapper::ClientFlush);
+      .def("client_flush", &framework::FleetWrapper::ClientFlush)
+      .def("load_from_paddle_model",
+           &framework::FleetWrapper::LoadFromPaddleModel)
+      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

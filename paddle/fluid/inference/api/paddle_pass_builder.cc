@@ -74,6 +74,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
   "infer_clean_graph_pass",                        //
       "conv_affine_channel_fuse_pass",             //
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
+      "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
       // "fc_fuse_pass",                                 //
@@ -144,6 +145,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
+                  "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
                   "fc_lstm_fuse_pass",             //
                   "mul_lstm_fuse_pass",            //
