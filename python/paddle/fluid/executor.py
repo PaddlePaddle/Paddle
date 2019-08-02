@@ -621,7 +621,8 @@ class Executor(object):
 
         if program is None:
             program = default_main_program()
-        if len(program.global_block().ops) == 0:
+        if isinstance(program,Program) and \
+                        len(program.global_block().ops) == 0:
             warnings.warn("The current program is empty.")
 
         if scope is None:
