@@ -227,47 +227,47 @@ void GpuMemoryUsage(size_t *available, size_t *total) {
                  error_code, CudaErrorWebsite());
 }
 
+size_t GpuAvailableMemToAlloc() {
+  size_t total = 0;
+  size_t available = 0;
+  GpuMemoryUsage(&available, &total);
+  size_t reserving =
+      static_cast<size_t>(fraction_reserve_gpu_memory * available);
+  // If available size is less than minimum chunk size, no usable memory exists
+  size_t available_to_alloc = available - reserving;
+  size_t min_chunk_size = GpuMinChunkSize();
+  if (available_to_alloc < min_chunk_size) {
+    available_to_alloc = 0;
+  }
+  VLOG(10) << "GPU usage " << (available >> 20) << "M/" << (total >> 20)
+           << "M, " << (available_to_alloc >> 20) << "M available to allocate";
+  return available_to_alloc;
+}
+
 size_t GpuMaxAllocSize() {
   return std::max(GpuInitAllocSize(), GpuReallocSize());
 }
 
-size_t GpuInitAllocSize() {
-  if (FLAGS_initial_gpu_memory_in_mb > 0ul) {
-    // Initial memory will be allocated by FLAGS_initial_gpu_memory_in_mb
-    return static_cast<size_t>(FLAGS_initial_gpu_memory_in_mb << 20);
-  }
-
-  // FLAGS_initial_gpu_memory_in_mb is 0, initial memory will be allocated by
-  // fraction
-  size_t total = 0;
-  size_t available = 0;
-
-  GpuMemoryUsage(&available, &total);
-  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
-
-  return static_cast<size_t>((total - reserving) *
-                             FLAGS_fraction_of_gpu_memory_to_use);
+static size_t GpuAllocSize(bool realloc) {
+  size_t available_to_alloc = GpuAvailableMemToAlloc();
+  PADDLE_ENFORCE_GT(available_to_alloc, 0, "No enough available GPU memory");
+  // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
+  // allocated by fraction
+  size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
+                           : FLAGS_initial_gpu_memory_in_mb;
+  size_t alloc_bytes =
+      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
+                                           FLAGS_fraction_of_gpu_memory_to_use);
+  PADDLE_ENFORCE_GE(available_to_alloc, alloc_bytes,
+                    "No enough available GPU memory");
+  VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
+           << " MiB, is it Re-alloc: " << realloc;
+  return alloc_bytes;
 }
 
-size_t GpuReallocSize() {
-  if (FLAGS_reallocate_gpu_memory_in_mb > 0ul) {
-    // Additional memory will be allocated by
-    // FLAGS_reallocate_gpu_memory_in_mb
-    return static_cast<size_t>(FLAGS_reallocate_gpu_memory_in_mb << 20);
-  }
+size_t GpuInitAllocSize() { return GpuAllocSize(/* realloc = */ false); }
 
-  // FLAGS_reallocate_gpu_memory_in_mb is 0, additional memory will be
-  // allocated
-  // by fraction
-  size_t total = 0;
-  size_t available = 0;
-
-  GpuMemoryUsage(&available, &total);
-  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
-
-  return static_cast<size_t>((total - reserving) *
-                             FLAGS_fraction_of_gpu_memory_to_use);
-}
+size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
 
 size_t GpuMinChunkSize() {
   // Allow to allocate the minimum chunk size is 256 bytes.
@@ -275,24 +275,9 @@ size_t GpuMinChunkSize() {
 }
 
 size_t GpuMaxChunkSize() {
-  size_t total = 0;
-  size_t available = 0;
-
-  GpuMemoryUsage(&available, &total);
-  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
-           << total / 1024 / 1024 << "M";
-  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
-  // If available less than minimum chunk size, no usable memory exists.
-  available =
-      std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
-               total - reserving);
-
-  size_t allocating = GpuMaxAllocSize();
-
-  PADDLE_ENFORCE_LE(allocating, available,
-                    "Insufficient GPU memory to allocation.");
-
-  return allocating;
+  size_t max_chunk_size = GpuMaxAllocSize();
+  VLOG(10) << "Max chunk size " << (max_chunk_size >> 20) << "M";
+  return max_chunk_size;
 }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
