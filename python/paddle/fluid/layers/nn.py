@@ -36,6 +36,7 @@ from .. import core
 from ..dygraph import layers
 
 __all__ = [
+    'scatter_nd',
     'fc',
     'embedding',
     'dynamic_lstm',
@@ -211,6 +212,23 @@ __all__ = [
 ]
 
 kIgnoreIndex = -100
+
+
+def scatter_nd(input, index, updates, name=None, dim=0):
+    helper = LayerHelper('scatter_nd', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    updates_tmp = updates
+    if isinstance(updates, float):
+        fill_constant(index.shape, 'float32', updates, out=updates_tmp)
+    helper.append_op(
+        type="scatter_nd",
+        inputs={"X": input,
+                "Ids": index,
+                "Updates": updates_tmp},
+        attrs={'dim': dim},
+        outputs={"Out": out})
+    return out
 
 
 def fc(input,
