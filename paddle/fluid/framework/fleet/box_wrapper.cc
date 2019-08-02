@@ -30,5 +30,21 @@ int BoxWrapper::PassEnd() const {
   boxps_ptr_->PassEnd();
   return 0;
 }
+
+int BoxWrapper::PullSparsePara(const Scope& scope,
+                               const paddle::platform::Place& place,
+                               const std::vector<std::vector<uint64_t>>& keys,
+                               std::vector<std::vector<float>>* values) {
+  boxps_ptr_->PullSparse(keys, values);
+  return 0;
+}
+
+int BoxWrapper::PushSparseGrad(
+    const Scope& scope, const paddle::platform::Place& place,
+    const std::vector<std::vector<uint64_t>>& keys,
+    const std::vector<std::vector<float>>& grad_values) {
+  boxps_ptr_->PushSparse(keys, grad_values);
+  return 0;
+}
 }  // end namespace framework
 }  // end namespace paddle

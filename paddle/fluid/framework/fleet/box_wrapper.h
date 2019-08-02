@@ -33,14 +33,12 @@ class BoxWrapper {
 
   int PassBegin(const std::set<uint64_t>& feasgin_to_box) const;
   int PassEnd() const;
-  int PullSparse(const Scope& scope, const paddle::platform::Place& place,
-                 std::vector<std::string> para) {
-    return 0;
-  }
-  int PushSparse(const Scope& scope, const paddle::platform::Place& place,
-                 const std::vector<std::string> para) {
-    return 0;
-  }
+  int PullSparsePara(const Scope& scope, const paddle::platform::Place& place,
+                     const std::vector<std::vector<uint64_t>>& keys,
+                     std::vector<std::vector<float>>* values);
+  int PushSparseGrad(const Scope& scope, const paddle::platform::Place& place,
+                     const std::vector<std::vector<uint64_t>>& keys,
+                     const std::vector<std::vector<float>>& grad_values);
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
     if (nullptr == s_instance_) {
@@ -53,7 +51,7 @@ class BoxWrapper {
         s_instance_->boxps_ptr_ = std::shared_ptr<paddle::boxps::BoxPS>(
             new paddle::boxps::FakeBoxPS());
         s_instance_->boxps_ptr_->init(
-            9);  // Just hard code for embedding size now.
+            2);  // Just hard code for embedding size now.
       }
     }
     return s_instance_;

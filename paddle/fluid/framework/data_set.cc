@@ -842,7 +842,9 @@ void MultiSlotDataset::PassBegin() {
       feasign_to_box.insert(feasign.sign().uint64_feasign_);
     }
   }
+  input_channel_->Open();
   input_channel_->Write(pass_data);
+  input_channel_->Close();
   box_ptr->PassBegin(feasign_to_box);
 }
 

@@ -33,6 +33,11 @@ class BoxPS {
   virtual int init(int hidden_size) = 0;
   virtual int PassBegin(const std::set<uint64_t> &pass_data) = 0;
   virtual int PassEnd() = 0;
+  virtual int PullSparse(const std::vector<std::vector<uint64_t>> &keys,
+                         std::vector<std::vector<float>> *values) = 0;
+  virtual int PushSparse(
+      const std::vector<std::vector<uint64_t>> &keys,
+      const std::vector<std::vector<float>> &grad_values) = 0;
 };
 
 class FakeBoxPS : public BoxPS {
@@ -43,33 +48,20 @@ class FakeBoxPS : public BoxPS {
   int init(int hidden_size) override {
     hidden_size_ = hidden_size;
     return 0;
-  };
-  int PassBegin(const std::set<uint64_t> &pass_data) override {
-    printf("FakeBoxPS: Pass begin...\n");
-    for (const auto fea : pass_data) {
-      if (emb_.find(fea) == emb_.end()) {
-        emb_[fea] = std::vector<float>(hidden_size_, 0.0);
-      }
-    }
-
-    for (auto i = emb_.begin(); i != emb_.end(); ++i) {
-      printf("%lu: ", i->first);
-      for (const auto e : i->second) {
-        printf("%f ", e);
-      }
-      printf("\n");
-    }
-    return 0;
   }
+  int PassBegin(const std::set<uint64_t> &pass_data) override;
 
-  int PassEnd() override {
-    printf("FakeBoxPS: Pass end...\n");
-    return 0;
-  }
+  int PassEnd() override;
+
+  int PullSparse(const std::vector<std::vector<uint64_t>> &keys,
+                 std::vector<std::vector<float>> *values) override;
+  int PushSparse(const std::vector<std::vector<uint64_t>> &keys,
+                 const std::vector<std::vector<float>> &grad_values) override;
 
  private:
   std::map<uint64_t, std::vector<float>> emb_;
   int hidden_size_ = 1;
+  float learning_rate_ = 0.01;
 };
 }  // namespace boxps
 }  // namespace paddle

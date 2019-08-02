@@ -216,6 +216,7 @@ __all__ = [
     'var_conv_2d',
     'shard_index',
     'hard_swish',
+    'pull_box_sparse',
 ]
 
 kIgnoreIndex = -100
@@ -512,6 +513,20 @@ def embedding(input,
             'padding_idx': padding_idx
         })
     return tmp
+
+
+def pull_box_sparse(input, size):
+    helper = LayerHelper('pull_box_sparse', **locals())
+    outs = [
+        helper.create_variable_for_type_inference('float32')
+        for i in range(len(input))
+    ]
+    helper.append_op(
+        type='pull_box_sparse',
+        inputs={'Ids': input},
+        outputs={'Out': outs},
+        attrs={'size': size})
+    return outs
 
 
 @templatedoc(op_type="lstm")
