@@ -179,18 +179,26 @@ def Print(input,
            
            import paddle.fluid as fluid
            
-           input = fluid.layers.data(name="input", shape=[1, 28, 28], dtype='float32')
+           input = fluid.layers.fill_constant(shape=[10,2], value=3, dtype='int64')
            input = fluid.layers.Print(input, message="The content of input layer:")
-    
-    Output at runtime:
-        .. code-block:: console 
            
-           1564546375  The content of input layer:     The place is:CPUPlace
-           Tensor[input]
-               shape: [64,1,28,28]
-               dtype: f
-               data: -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+           main_program = fluid.default_main_program()
+           exe = fluid.Executor(fluid.CPUPlace())
+           exe.run(main_program)
 
+    Output at runtime:
+        .. code-block:: bash 
+           
+           1564546375   The content of input layer:     The place is:CPUPlace
+           Tensor[fill_constant_0.tmp_0]
+               shape: [10,2,]
+               dtype: x
+               data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
+               
+           # The information of dtype at runtime may vary in different environments.
+           # Eg: 
+           #    If the dtype='int64' of Tensor y, the corresponding c++ type is int64_t.
+           #    The dtype of output is "x" ("x" is typeid(int64_t).name()) with MacOS and gcc4.8.2
     '''
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
