@@ -185,7 +185,7 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
     // training
     auto* in_accum = context.Input<framework::Tensor>("InAccum");
     auto* in_state = context.Input<framework::Tensor>("InState");
-    auto& cur_scale = memory::Alloc(dev_ctx, sizeof(T));
+    auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
     T* cur_scale_data = static_cast<T*>(cur_scale->ptr());
 
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(), in->numel(),

@@ -25,7 +25,7 @@ namespace allocation {
 CUDADeviceContextAllocator::CUDADeviceContextAllocator(
     const platform::CUDAPlace place)
     : place_(place) {
-  cudaEventCreate(&event_);
+  PADDLE_ENFORCE(cudaEventCreate(&event_));
 }
 
 CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
@@ -37,9 +37,9 @@ CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
 Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
   auto allocation =
       new CUDADeviceContextAllocation(memory::Alloc(place_, size));
-  if (event_) {
-    cudaEventRecord(event_);
-  }
+  // Wait for the event on default stream
+  PADDLE_ENFORCE(cudaEventRecord(event_));
+  PADDLE_ENFORCE(cudaStreamWaitEvent(/* stream = */ 0, event_, 0));
   return allocation;
 }
 
