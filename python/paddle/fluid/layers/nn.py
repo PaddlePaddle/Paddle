@@ -9690,7 +9690,8 @@ def expand(x, expand_times, name=None):
                     new_expand_times.append(ele)
                 else:
                     assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    temp_out = helper.create_variable_for_type_inference(
+                        "int32")
                     fill_constant(
                         [1], 'int32', ele, force_cpu=True, out=temp_out)
                     new_expand_times.append(temp_out)

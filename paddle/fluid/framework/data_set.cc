@@ -352,8 +352,6 @@ void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "Filelist size in Dataset: " << filelist_.size();
   VLOG(3) << "channel num in Dataset: " << channel_num_;
   CHECK(thread_num_ > 0) << "thread num should > 0";
-  CHECK(thread_num_ <= filelist_.size())
-      << "thread num should <= filelist size";
   CHECK(channel_num_ > 0) << "channel num should > 0";
   CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
