@@ -220,10 +220,7 @@ class PSLib(Fleet):
             dirname(str): save path. It can be hdfs/afs path or local path
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
-                mode(int): 0 means save all pserver model,
-                           1 means save delta pserver model (save diff),
-                           2 means save xbox base,
-                           3 means save batch model.
+                mode(int): currently no use, will pass a default value 0 
 
         Example:
             .. code-block:: python
