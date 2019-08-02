@@ -1,5 +1,6 @@
 # Get the latest git tag.
 set(PADDLE_VERSION $ENV{PADDLE_VERSION})
+set(PADDLE_GITHUB_REPO "https://github.com/PaddlePaddle/Paddle.git")
 set(tmp_version "HEAD")
 set(TAG_VERSION_REGEX "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
 set(COMMIT_VERSION_REGEX "[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+")
@@ -12,6 +13,7 @@ while ("${PADDLE_VERSION}" STREQUAL "")
     RESULT_VARIABLE GIT_BRANCH_RESULT
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
   if (NOT ${GIT_BRANCH_RESULT})
+    # Get version from local tags
     execute_process(
       COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0 --always ${tmp_version}
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
@@ -52,6 +54,25 @@ while ("${PADDLE_VERSION}" STREQUAL "")
     else()
       set(PADDLE_VERSION "0.0.0")
       message(WARNING "Cannot add paddle version from git tag")
+    endif()
+    # Extract remote tags.
+    if(${PADDLE_VERSION} EQUAL "0.0.0")
+      execute_process(
+        COMMAND ${GIT_EXECUTABLE} ls-remote --tags --refs ${PADDLE_GITHUB_REPO}
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_REMOTE_TAGS
+        RESULT_VARIABLE GIT_RESULT
+        ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+      if(NOT ${GIT_RESULT})
+        string(REGEX REPLACE "\n" ";" GIT_REMOTE_TAGS ${GIT_REMOTE_TAGS})
+        foreach(tag ${GIT_REMOTE_TAGS})
+          set(GIT_LATEST_TAG ${tag})
+        endforeach()
+        string(REGEX MATCH "v[0-9]+.[0-9]+.[0-9]+" FINAL_LATEST_TAG "${GIT_LATEST_TAG}")
+        if(FINAL_LATEST_TAG)
+          string(REPLACE "v" "" PADDLE_VERSION ${FINAL_LATEST_TAG})
+        endif()
+      endif()
     endif()
   else()
     set(PADDLE_VERSION "0.0.0")
