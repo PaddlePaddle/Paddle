@@ -49,6 +49,9 @@ def parse_args():
         help="Print the config or not")
 
     parser.add_argument(
+        "--endpoints", type=str, default="", help="User defined endpoints")
+
+    parser.add_argument(
         "--worker_num", type=int, default=2, help="number of workers")
 
     parser.add_argument(
@@ -87,13 +90,23 @@ def start_procs(args):
     cmds = []
     log_fns = []
     ports = range(start_port, start_port + server_num, 1)
-    endpoints = ",".join(["127.0.0.1:" + str(x) for x in ports])
+    default_endpoints = ",".join(["127.0.0.1:" + str(x) for x in ports])
+    user_endpoints = ""
+    if args.endpoints == "":
+        user_endpoints = default_endpoints
+    else:
+        user_endpoints = args.endpoints
+    user_endpoints_ips = [x.split(":")[0] for x in user_endpoints.split(",")]
+    user_endpoints_port = [x.split(":")[1] for x in user_endpoints.split(",")]
     for i in range(server_num):
         current_env.update({
-            "TRAINER_NUM": str(worker_num),
-            "CURRENT_ID": str(i),
-            "ENDPOINTS": endpoints,
-            "TRAINING_ROLE": "PSERVER"
+            "PADDLE_TRAINERS_NUM": str(server_num),
+            "PADDLE_PORT": ",".join(user_endpoints_port),
+            #"POD_IP": user_endpoints_ips[i],
+            "CURRENT_ENDPOINT":
+            user_endpoints_ips[i] + ":" + user_endpoints_port[i],
+            "PADDLE_PSERVERS": ",".join(user_endpoints_ips),
+            "PADDLE_TRAINING_ROLE": "PSERVER"
         })
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
@@ -110,10 +123,11 @@ def start_procs(args):
 
     for i in range(worker_num):
         current_env.update({
-            "ENDPOINTS": endpoints,
-            "TRAINER_NUM": str(worker_num),
-            "TRAINING_ROLE": "TRAINER",
-            "CURRENT_ID": str(i)
+            "PADDLE_PSERVERS": ",".join(user_endpoints_ips),
+            "PADDLE_PORT": ",".join(user_endpoints_port),
+            "PADDLE_TRAINERS_NUM": str(worker_num),
+            "PADDLE_TRAINING_ROLE": "TRAINER",
+            "PADDLE_TRAINER_ID": str(i)
         })
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args

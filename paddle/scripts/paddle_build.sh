@@ -480,7 +480,6 @@ function assert_api_spec_approvals() {
     API_FILES=("CMakeLists.txt"
                "paddle/fluid/API.spec"
                "paddle/fluid/op_use_default_grad_op_maker.spec"
-               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/details/op_registry.h"
@@ -495,8 +494,11 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/ir/graph.h"
                "paddle/fluid/framework/framework.proto"
                "python/requirements.txt"
-               "python/paddle/fluid/compiler.py"
                "python/paddle/fluid/__init__.py"
+               "python/paddle/fluid/compiler.py"
+               "python/paddle/fluid/parallel_executor.py"
+               "python/paddle/fluid/framework.py"
+               "python/paddle/fluid/backward.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
@@ -541,6 +543,17 @@ function assert_api_spec_approvals() {
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the usage (either add or delete) of const_cast."
+            exit 1
+        fi
+    fi
+    
+    HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
+    if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 47554610` 
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag."
             exit 1
         fi
     fi

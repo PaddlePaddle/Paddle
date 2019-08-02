@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace operators {
 
@@ -84,8 +86,10 @@ class ActivationGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
 
-    if (static_cast<int>(kDepValue) &
-        static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+    if ((static_cast<int>(kDepValue) &
+         static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
+        FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
+                             boost::get<bool>(op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", Input("X"));
     }
 
@@ -363,6 +367,13 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of LeakyRelu operator");
     AddOutput("Out", "Output of LeakyRelu operator");
     AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
@@ -570,7 +581,7 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \\frac{x}{1 + e^{- \beta x}}$$
+$$out = \\frac{x}{1 + e^{- \beta \ x}}$$
 
 )DOC");
   }

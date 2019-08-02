@@ -73,6 +73,7 @@ option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -121,6 +122,12 @@ endif()
 if (REPLACE_ENFORCE_GLOG)
   add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
+
+if (SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
+  message("Choose the correct type of sanitizer")
+  return()
+endif()
+
 ########################################################################################
 
 include(external/mklml)     # download mklml package
@@ -208,7 +215,6 @@ if (WITH_PROFILER)
 endif()
 
 include(generic)            # simplify cmake module
-include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION

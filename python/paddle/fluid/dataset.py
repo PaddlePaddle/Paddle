@@ -235,7 +235,7 @@ class InMemoryDataset(DatasetBase):
         """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
-        self.fleet_send_batch_size = 80000
+        self.fleet_send_batch_size = None
         self.queue_num = None
         self.merge_by_lineid = False
 
@@ -413,6 +413,8 @@ class InMemoryDataset(DatasetBase):
         if fleet is not None:
             fleet._role_maker._barrier_worker()
             trainer_num = fleet.worker_num()
+        if self.fleet_send_batch_size is None:
+            self.fleet_send_batch_size = 800 * trainer_num
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
