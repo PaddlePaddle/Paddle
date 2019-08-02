@@ -18,6 +18,24 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
+
+
+def generateCUDNNMask(origin_mask):
+    origin_array = origin_mask.flatten()
+    mask_size = (len(origin_array) + 8 - 1) // 8
+    bit_size = 8
+    mask_array = []
+    for i in range(mask_size):
+        result = 0
+        for j in range(bit_size):
+            origin_pos = i * bit_size + j
+            origin_val = 0
+            if origin_pos < len(origin_array):
+                origin_val = origin_array[origin_pos]
+                result = result + origin_val * pow(2, j)
+        mask_array.append(result)
+    return np.array(mask_array)
 
 
 class TestDropoutOp(OpTest):
@@ -178,6 +196,92 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.input_size = [32, 64, 3]
         self.prob = 0.75
         self.fix_seed = False
+
+
+class TestCUDNNDropoutOP(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.cache_name_list = ['Cache']
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'use_cudnn': True
+        }
+        mask_origin = np.ones((32, 64)).astype('uint8')
+        mask = generateCUDNNMask(mask_origin)
+        self.outputs = {'Out': self.inputs['X'], 'Mask': mask}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
+            self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+
+    def test_check_grad_normal(self):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
+            self.check_grad(['X'], 'Out', max_relative_error=0.05)
+
+
+class TestCUDNNDropoutOP1(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 32)).astype("float32")}
+        self.cache_name_list = ['Cache']
+        self.attrs = {
+            'dropout_prob': 1.0,
+            'fix_seed': True,
+            'is_test': False,
+            'use_cudnn': True
+        }
+        mask_origin = np.zeros((32, 32)).astype('uint8')
+        mask = generateCUDNNMask(mask_origin)
+        self.outputs = {
+            'Out': np.zeros((32, 32)).astype('float32'),
+            'Mask': mask
+        }
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
+            self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.05)
+
+
+class TestCUDNNDropoutOp2(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.cache_name_list = ['Cache']
+        self.attrs = {
+            'dropout_prob': 0.35,
+            'fix_seed': True,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train',
+            'use_cudnn': True
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestCUDNNDropoutOp3(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.cache_name_list = ['Cache']
+        self.attrs = {
+            'dropout_prob': 0.75,
+            'fix_seed': True,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train',
+            'use_cudnn': True
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':

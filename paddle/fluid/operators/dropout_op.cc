@@ -16,6 +16,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -35,6 +39,20 @@ class DropoutOp : public framework::OperatorWithKernel {
     }
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx) && ctx.Attr<bool>("use_cudnn")) {
+      library = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+        framework::StringToDataLayout("ANYLAYOUT"), library);
+  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -43,7 +61,11 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
-
+    AddInput("Cache",
+             "The cache of dropout op, a RAW type variable including random "
+             "number generator states and some descriptors, which is used in "
+             "dropout cudnn kernel.")
+        .AsDispensable();
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float& drop_p) {
@@ -85,6 +107,11 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
               "dropout_implementation can only be downgrade_in_infer or "
               "upscale_in_train");
         });
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default false) Only used in cudnn kernel, need "
+                  "install cudnn. Note that cudnn dropout kernel use the "
+                  "upscale_in_train mode.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Dropout Operator.
@@ -112,7 +139,6 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) must not be null.");
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
     ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
     ctx->ShareLoD(framework::GradVarName("Out"),
                   /*->*/ framework::GradVarName("X"));
@@ -121,9 +147,15 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx) && ctx.Attr<bool>("use_cudnn")) {
+      library = framework::LibraryType::kCUDNN;
+    }
+#endif
     return framework::OpKernelType(
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+        ctx.GetPlace(), framework::StringToDataLayout("ANYLAYOUT"), library);
   }
 };
 
@@ -136,6 +168,7 @@ class DropoutGradOpDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("dropout_grad");
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Cache", Input("Cache"));
     op->SetInput("Mask", Output("Mask"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());

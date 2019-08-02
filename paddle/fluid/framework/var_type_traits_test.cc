@@ -30,6 +30,7 @@
 #endif
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#include "paddle/fluid/operators/dropout_op_cache.h"
 #endif
 
 namespace paddle {

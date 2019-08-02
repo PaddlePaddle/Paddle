@@ -53,7 +53,7 @@ class Scope;
 namespace operators {
 
 class CudnnRNNCache;
-
+class CudnnDropoutCache;
 namespace reader {
 class LoDTensorBlockingQueueHolder;
 }  // namespace reader
@@ -143,7 +143,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #ifndef _WIN32
     ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
 #endif
-    operators::CudnnRNNCache,
+    operators::CudnnRNNCache, operators::CudnnDropoutCache,
 #endif
     int, float>;
 

@@ -180,6 +180,7 @@ class OperatorBase {
   //! Get an output which has multiple variables.
   //! TODO add a vector_view to prevent memory copy.
   const std::vector<std::string>& Outputs(const std::string& name) const;
+
   //! Get all outputs variable names
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
@@ -294,6 +295,13 @@ class ExecutionContext {
     return var == nullptr ? nullptr : var->GetMutable<T>();
   }
 
+  const std::string InputVarName(const std::string& name) const {
+    return op_.Input(name);
+  }
+
+  const std::string OutputVarName(const std::string& name) const {
+    return op_.Output(name);
+  }
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
     auto it = ctx_.inputs.find(name);

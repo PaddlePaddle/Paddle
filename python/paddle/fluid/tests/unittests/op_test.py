@@ -31,6 +31,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from paddle.fluid.unique_name import generate
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
@@ -218,11 +219,11 @@ class OpTest(unittest.TestCase):
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
                                       self.dtype)
-
         if hasattr(self, "cache_name_list"):
             for name in self.cache_name_list:
+                unique_name = generate(name)
                 inputs[name] = block.create_var(
-                    name=name,
+                    name=unique_name,
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                     stop_gradient=True)

@@ -1489,7 +1489,8 @@ def dropout(x,
             is_test=False,
             seed=None,
             name=None,
-            dropout_implementation="downgrade_in_infer"):
+            dropout_implementation="downgrade_in_infer",
+            use_cudnn=True):
     """
     Computes dropout.
 
@@ -1527,7 +1528,7 @@ def dropout(x,
 
                                            (mask is a tensor same shape with input, value is 0 or 1
                                            ratio of 0 is dropout_prob)
-
+        use_cudnn (bool): use the cudnn to realize  the dropout OP
 
     Returns:
         Variable: A tensor variable is the shape with `x`.
@@ -1546,12 +1547,16 @@ def dropout(x,
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
+    if use_cudnn:
+        cache = helper.create_variable(
+            persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
 
     helper.append_op(
         type='dropout',
-        inputs={'X': [x]},
+        inputs={'X': [x],
+                'Cache': [cache]} if use_cudnn else {'X': [x]},
         outputs={'Out': [out],
                  'Mask': [mask]},
         attrs={
@@ -1560,6 +1565,7 @@ def dropout(x,
             'fix_seed': seed is not None,
             'seed': seed,
             'dropout_implementation': dropout_implementation,
+            'use_cudnn': use_cudnn,
         })
     return out
 
