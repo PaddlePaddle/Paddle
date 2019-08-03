@@ -28,8 +28,8 @@ class CUDADeviceContextAllocator : public Allocator {
   ~CUDADeviceContextAllocator();
 
  protected:
-  Allocation *AllocateImpl(size_t size);
-  void Free(Allocation *allocation);
+  Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(Allocation *allocation) override;
 
  private:
   platform::CUDAPlace place_;

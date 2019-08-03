@@ -30,7 +30,7 @@ CUDADeviceContextAllocator::CUDADeviceContextAllocator(
 
 CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
   if (event_) {
-    PADDLE_ENFORCE(cudaEventDestroy(event_));
+    cudaEventDestroy(event_);
   }
 }
 
@@ -43,7 +43,7 @@ Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
   return allocation;
 }
 
-void CUDADeviceContextAllocator::Free(Allocation *allocation) {
+void CUDADeviceContextAllocator::FreeImpl(Allocation *allocation) {
   delete allocation;
 }
 

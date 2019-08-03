@@ -9,6 +9,13 @@ cc_library(memory
         DEPS
         malloc
         memcpy)
+
+if (WITH_GPU)
+    nv_test(malloc_test
+            SRCS malloc_test.cu
+            DEPS device_context malloc)
+endif()
+
 #if (WITH_GPU)
 #   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)
 #endif()

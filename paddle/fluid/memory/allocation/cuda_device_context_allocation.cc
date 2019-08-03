@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
-
 #include <utility>
 
 namespace paddle {
@@ -26,10 +25,15 @@ CUDADeviceContextAllocation::CUDADeviceContextAllocation(
       underlying_allocation_(std::move(allocation)) {}
 
 CUDADeviceContextAllocation::~CUDADeviceContextAllocation() {
-  PADDLE_ENFORCE_NOT_NULL(dev_ctx_);
+  PADDLE_ENFORCE_NOT_NULL(
+      dev_ctx_, "Didn't set device context for CUDADeviceContextAllocation");
   auto *p_allocation = underlying_allocation_.release();
-  dev_ctx_->AddStreamCallback(
-      [p_allocation] { AllocationDeleter()(p_allocation); });
+  VLOG(4) << "Adding callback to delete CUDADeviceContextAllocation at "
+          << p_allocation;
+  dev_ctx_->AddStreamCallback([p_allocation] {
+    VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
+    AllocationDeleter()(p_allocation);
+  });
 }
 
 void CUDADeviceContextAllocation::SetCUDADeviceContext(
