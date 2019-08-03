@@ -38,6 +38,7 @@ AllocationPtr Alloc(const platform::DeviceContext &dev_ctx, size_t size) {
   if (size == 0 || !platform::is_gpu_place(place)) {
     return Alloc(place, size);
   }
+#ifdef PADDLE_WITH_CUDA
   auto *default_dev_ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place));
   auto &desired_dev_ctx =
@@ -48,6 +49,7 @@ AllocationPtr Alloc(const platform::DeviceContext &dev_ctx, size_t size) {
     return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
         desired_dev_ctx, size);
   }
+#endif
 }
 
 }  // namespace memory

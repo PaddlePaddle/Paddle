@@ -1,7 +1,6 @@
 add_subdirectory(detail)
 add_subdirectory(allocation)
 cc_library(malloc SRCS malloc.cc DEPS
-    cuda_device_context_allocator_pool
     place enforce allocator_facade profiler)
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
@@ -11,6 +10,7 @@ cc_library(memory
         memcpy)
 
 if (WITH_GPU)
+    add_dependencies(malloc cuda_device_context_allocator_pool)
     nv_test(malloc_test
             SRCS malloc_test.cu
             DEPS device_context malloc)
