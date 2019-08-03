@@ -37,9 +37,7 @@ AllocationPtr Alloc(const platform::Place &place, size_t size) {
 
 AllocationPtr Alloc(const platform::DeviceContext &dev_ctx, size_t size) {
   auto place = dev_ctx.GetPlace();
-#ifndef PADDLE_WITH_CUDA
-  return Alloc(place, size);
-#else
+#ifdef PADDLE_WITH_CUDA
   if (size == 0 || !platform::is_gpu_place(place)) {
     return Alloc(place, size);
   }
@@ -53,6 +51,8 @@ AllocationPtr Alloc(const platform::DeviceContext &dev_ctx, size_t size) {
     return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
         desired_dev_ctx, size);
   }
+#else
+  return Alloc(place, size);
 #endif
 }
 
