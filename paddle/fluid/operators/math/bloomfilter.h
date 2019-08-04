@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#define BLOOMFILTER_HEADER_SIZE 32
-#define BLOOMFILTER_MAGIC_NUM_OLD 17062621
 #define BLOOMFILTER_MAGIC_NUM_NEW 17070416
 
 #include <inttypes.h>
@@ -24,6 +22,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+#pragma pack(4)
 struct bloomfilter {
   uint64_t magic_num;
   uint64_t m;
@@ -61,11 +60,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-#define bit_set(v, n) ((v)[(n) >> 3] |= (0x1 << (0x7 - ((n)&0x7))))
 #define bit_get(v, n) ((v)[(n) >> 3] & (0x1 << (0x7 - ((n)&0x7))))
-#define bit_clr(v, n) ((v)[(n) >> 3] &= ~(0x1 << (0x7 - ((n)&0x7))))
-
-#define ROTL32(x, r) (((x) << (r)) | ((x) >> (32 - (r))))
 #define ROTL64(x, r) (((x) << (r)) | ((x) >> (64 - (r))))
 #define BIG_CONSTANT(x) (x##LLU)
 
