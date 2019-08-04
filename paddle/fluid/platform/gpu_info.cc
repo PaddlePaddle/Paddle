@@ -230,12 +230,15 @@ void GpuMemoryUsage(size_t *available, size_t *total) {
 size_t GpuAvailableMemToAlloc() {
   size_t total = 0;
   size_t available = 0;
-  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   GpuMemoryUsage(&available, &total);
+  size_t reserving =
+      static_cast<size_t>(fraction_reserve_gpu_memory * available);
   // If available size is less than minimum chunk size, no usable memory exists
+  size_t available_to_alloc = available - reserving;
   size_t min_chunk_size = GpuMinChunkSize();
-  size_t available_to_alloc =
-      std::min(available > min_chunk_size ? available : 0, total - reserving);
+  if (available_to_alloc < min_chunk_size) {
+    available_to_alloc = 0;
+  }
   VLOG(10) << "GPU usage " << (available >> 20) << "M/" << (total >> 20)
            << "M, " << (available_to_alloc >> 20) << "M available to allocate";
   return available_to_alloc;
@@ -255,7 +258,7 @@ static size_t GpuAllocSize(bool realloc) {
   size_t alloc_bytes =
       (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
                                            FLAGS_fraction_of_gpu_memory_to_use);
-  PADDLE_ENFORCE_GT(available_to_alloc, alloc_bytes,
+  PADDLE_ENFORCE_GE(available_to_alloc, alloc_bytes,
                     "No enough available GPU memory");
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
