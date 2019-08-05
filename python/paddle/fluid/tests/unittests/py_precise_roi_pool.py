@@ -101,13 +101,13 @@ class PyPrRoIPool(object):
 
         return sum_out
 
-    def calculate(self,
-                  x,
-                  rois,
-                  output_channels,
-                  spatial_scale=0.1,
-                  pooled_height=1,
-                  pooled_width=1):
+    def compute(self,
+                x,
+                rois,
+                output_channels,
+                spatial_scale=0.1,
+                pooled_height=1,
+                pooled_width=1):
         '''
         calculate the precise roi pooling values
         Note: This function is implements as pure python without any paddle concept involved
