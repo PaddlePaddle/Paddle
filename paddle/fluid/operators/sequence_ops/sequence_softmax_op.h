@@ -97,6 +97,9 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
 
     const size_t level = lod.size() - 1;
+    PADDLE_ENFORCE_GT(
+        lod.size(), 0U,
+        "Input X of sequence_softmax op should have lod information.");
     PADDLE_ENFORCE_EQ(dims[0], static_cast<int64_t>(lod[level].back()),
                       "The first dimension of Input(X) should be equal to the "
                       "sum of all sequences' lengths.");
