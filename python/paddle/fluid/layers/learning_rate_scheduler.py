@@ -405,23 +405,23 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
     .. math::
 
-	decayed\_lr = learning\_rate * 0.5 * (math.cos * (epoch * \\frac{math.pi}{epochs} ) + 1)
-    
+        decayed\_lr = learning\_rate * 0.5 * (math.cos * (epoch * \\frac{math.pi}{epochs} ) + 1)
+
     Args:
         learning_rate(Variable|float): The initial learning rate.
         step_each_epoch(int): the number of steps in an epoch.
         epochs(int): the number of epochs.
 
     Returns:
-	Variable: The decayed learning rate.
+        Variable: The decayed learning rate.
 
     Examples:
-	.. code-block:: python
+        .. code-block:: python
 
-  	    import paddle.fluid as fluid
-        base_lr = 0.1
-	    lr = fluid.layers.cosine_decay(
-	    learning_rate = base_lr, step_each_epoch=10000, epochs=120)
+            import paddle.fluid as fluid
+            base_lr = 0.1
+            lr = fluid.layers.cosine_decay(
+            learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
 
     with default_main_program()._lr_schedule_guard():

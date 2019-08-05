@@ -224,7 +224,7 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
-    set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
+    set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20 LABELS "RUN_TYPE=EXCLUSIVE")
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
