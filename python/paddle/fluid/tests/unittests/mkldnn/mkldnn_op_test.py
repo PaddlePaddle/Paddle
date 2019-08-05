@@ -27,7 +27,6 @@ def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):
 
 def check_if_mkldnn_primitives_exist_in_bwd(test_case, op_type, x, out,
                                             out_grad, x_grad):
-
     place = core.CPUPlace()
 
     var_dict = {'x': x, 'out': out, 'out@GRAD': out_grad, 'x@GRAD': x_grad}
@@ -146,6 +145,7 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
                 __assert_close(test_case, var_dict[name], out[id], name)
 
         print("MKLDNN op test forward passed: ", str(place), data_layout)
+
 
 def format_reorder(out, size):
     in_n = size[0]
