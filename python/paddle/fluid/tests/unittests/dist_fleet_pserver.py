@@ -37,15 +37,20 @@ class TestDistPServer(FleetDistRunnerBase):
         input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
         fc_1 = fluid.layers.fc(input=input_x, size=hid_dim, act='tanh')
         fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim, act='tanh')
-        prediction = fluid.layers.fc(input=[fc_2], size=label_dim, act='softmax')
+        prediction = fluid.layers.fc(input=[fc_2],
+                                     size=label_dim,
+                                     act='softmax')
         cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
         avg_cost = fluid.layers.mean(x=cost)
         self.avg_cost = avg_cost
         return avg_cost
 
     def gen_data(self):
-        return {"x": np.random.random(size=(128, 32)).astype('float32'),
-                "y": np.random.randint(2, size=(128, 1)).astype('int64')}
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(
+                2, size=(128, 1)).astype('int64')
+        }
 
     def do_training(self, fleet):
         fleet.init_worker()
@@ -55,10 +60,9 @@ class TestDistPServer(FleetDistRunnerBase):
         step = 1001
         cost_list = []
         for i in range(step):
-            cost_val = exe.run(
-                program=fleet.main_program,
-                feed=self.gen_data(),
-                fetch_list=[self.avg_cost.name])
+            cost_val = exe.run(program=fleet.main_program,
+                               feed=self.gen_data(),
+                               fetch_list=[self.avg_cost.name])
             cost_list.append(cost_val)
             print("worker_index: %d, step%d cost = %f" %
                   (fleet.worker_index(), i, cost_val[0]))
@@ -67,6 +71,6 @@ class TestDistPServer(FleetDistRunnerBase):
                 fout.write(str(val) + "\n")
         fleet.stop_worker()
 
+
 if __name__ == "__main__":
     runtime_main(TestDistPServer)
-
