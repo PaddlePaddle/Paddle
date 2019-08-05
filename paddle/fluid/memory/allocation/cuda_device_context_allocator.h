@@ -34,6 +34,7 @@ class CUDADeviceContextAllocator : public Allocator {
  private:
   platform::CUDAPlace place_;
   cudaEvent_t event_;
+  std::mutex mtx_;
 };
 
 }  // namespace allocation

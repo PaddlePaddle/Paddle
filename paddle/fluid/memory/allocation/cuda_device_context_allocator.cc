@@ -17,6 +17,7 @@
 #include <cuda_runtime.h>
 
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -26,21 +27,27 @@ namespace allocation {
 CUDADeviceContextAllocator::CUDADeviceContextAllocator(
     const platform::CUDAPlace place)
     : place_(place) {
-  PADDLE_ENFORCE(cudaEventCreate(&event_));
+  platform::CUDADeviceGuard guard(place_.device);
+  PADDLE_ENFORCE(cudaSuccess ==
+                 cudaEventCreate(&event_, cudaEventDisableTiming));
 }
 
 CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
   if (event_) {
-    cudaEventDestroy(event_);
+    platform::CUDADeviceGuard guard(place_.device);
+    PADDLE_ENFORCE(cudaSuccess == cudaEventDestroy(event_));
   }
 }
 
 Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  platform::CUDADeviceGuard guard(place_.device);
   auto allocation =
       new CUDADeviceContextAllocation(memory::Alloc(place_, size));
   // Wait for the event on default stream
-  PADDLE_ENFORCE(cudaEventRecord(event_));
-  PADDLE_ENFORCE(cudaStreamWaitEvent(/* stream = */ 0, event_, 0));
+  PADDLE_ENFORCE(cudaSuccess == cudaEventRecord(event_));
+  PADDLE_ENFORCE(cudaSuccess ==
+                 cudaStreamWaitEvent(/* stream = */ 0, event_, 0));
   return allocation;
 }
 
