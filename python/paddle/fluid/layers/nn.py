@@ -1558,7 +1558,7 @@ def dropout(x,
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed,
+            'seed': seed if seed is not None else 0,
             'dropout_implementation': dropout_implementation,
         })
     return out
