@@ -35,17 +35,17 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
              "[N x 1], where N is the total element number in a mini-batch. "
              "The ground truth.");
-    //Emission_Length,Transition_Length,Label_Length,has_length      
+    //Emission_Length,Transition_Length,Label_Length,has_length   
+    
     AddInput("EmissionLength",
              "(LoDTensor, default LoDTensor<float>) "
              "A 2-D LoDTensor with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
-             "weight matrix for the linear chain CRF. ");
+             "weight matrix for the linear chain CRF. ").AsDispensable();
     AddInput("LabelLength",
              "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
              "[N x 1], where N is the total element number in a mini-batch. "
-             "The ground truth.");
-      
+             "The ground truth.").AsDispensable();
     AddOutput(
         "Alpha",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "

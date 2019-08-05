@@ -54,34 +54,28 @@ template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // TODO(caoying) The checks related to LoD information should be
-    // moved into InferShape once after the InferShape is refactored.
-   // PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Emission")->NumLevels(), 1UL,
-    //                  "The Input(Emission) should be a sequence.");
-   // PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Label")->NumLevels(), 1UL,
-     //                 "The Input(Label) should be a sequence.");
 
     //调整输入数据，定义tensor，
     const Tensor* emission_weights = ctx.Input<framework::Tensor>("Emission");
     const Tensor* transition_weights = ctx.Input<framework::Tensor>("Transition");
     const Tensor* label = ctx.Input<framework::Tensor>("Label");
-    const Tensor* label_length=ctx.Input<framework::Tensor>("LabelLength");
     auto emission_dims = emission_weights->dims();
     const size_t batch_size = emission_dims[0];
     const size_t tag_num = emission_dims[1];
 
     framework::Vector<size_t> in_lod(batch_size+1);
-    size_t seq_num = 0;
+    size_t seq_num = batch_size;
+    VLOG(2)<<seq_num;
     if (ctx.HasInput("LabelLength")){
-        auto label_length_ptr = ctx.Input<framework::Tensor>("LabelLength")->data<int64_t>();
-        for (auto i = 0; i <= batch_size; i++) {
+        const Tensor* label_length = ctx.Input<framework::Tensor>("LabelLength");
+        auto label_length_ptr = label_length->data<int64_t>();
+        for (size_t i = 0; i <= batch_size; i++) {
             in_lod[i + 1] = in_lod[i] + label_length_ptr[i];
         }
-        seq_num = label_length->numel();
     }else{
         in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
-       // PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
-        seq_num = in_lod.size() - 1;
+        VLOG(2)<<in_lod;
+        PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
     }
 
   
@@ -210,17 +204,26 @@ template <typename DeviceContext, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const size_t level = 0;  // currently, only support sequence.
-    auto lod = ctx.Input<LoDTensor>("Label")->lod();
-    PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
-
-    const Tensor* label = ctx.Input<LoDTensor>("Label");
+    const Tensor* label = ctx.Input<Tensor>("Label");
     const Tensor* emission_exps = ctx.Input<Tensor>("EmissionExps");
     const Tensor* transition_exps = ctx.Input<Tensor>("TransitionExps");
     const Tensor* alpha = ctx.Input<Tensor>("Alpha");
     const T* ll_grad =
         ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
-
+    auto emission_exps_dims = emission_exps->dims();
+    const size_t batch_size = emission_exps_dims[0]; 
+    framework::Vector<size_t> lod(batch_size+1);
+    if (ctx.HasInput("LabelLength")){
+        auto label_length_ptr = ctx.Input<framework::Tensor>("LabelLength")->data<int64_t>();
+        for (size_t i = 0; i <= batch_size; i++) {
+            lod[i + 1] = lod[i] + label_length_ptr[i];
+        }
+    }else{
+        lod = ctx.Input<LoDTensor>("Label")->lod()[0];
+        PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
+    }
+  
+      
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
     Tensor* transition_grad =
@@ -244,9 +247,9 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     Tensor beta;
     beta.mutable_data<T>(emission_dims, platform::CPUPlace());
 
-    for (size_t i = 0; i < lod[level].size() - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
+    for (size_t i = 0; i < lod.size() - 1; ++i) {
+      int start_pos = static_cast<int>(lod[i]);
+      int end_pos = static_cast<int>(lod[i + 1]);
       if (end_pos == start_pos) continue;
 
       const Tensor one_seq_emission_exps =

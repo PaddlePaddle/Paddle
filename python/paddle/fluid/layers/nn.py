@@ -1310,9 +1310,9 @@ def linear_chain_crf(input,label, param_attr=None, EmissionLength=None, LabelLen
                 "Transition": transition,
                 "Label": label}
     if EmissionLength:
-        this_inputs['EmissionLength'] = EmissionLength
+        this_inputs['EmissionLength'] = [EmissionLength]
     if LabelLength:
-        this_inputs['LabelLength'] = LabelLength
+        this_inputs['LabelLength'] = [LabelLength]
     helper.append_op(
         type='linear_chain_crf',
         inputs=this_inputs,
