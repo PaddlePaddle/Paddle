@@ -137,7 +137,7 @@ paddle.fluid.layers.reduce_any (ArgSpec(args=['input', 'dim', 'keep_dim', 'name'
 paddle.fluid.layers.sequence_first_step (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', 'f2dfd65b859de9844e7261e7a4503f63'))
 paddle.fluid.layers.sequence_last_step (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', '1af2e3a887e4f914f9d6650406186ab6'))
 paddle.fluid.layers.sequence_slice (ArgSpec(args=['input', 'offset', 'length', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '39fbc5437be389f6c0c769f82fc1fba2'))
-paddle.fluid.layers.dropout (ArgSpec(args=['x', 'dropout_prob', 'is_test', 'seed', 'name', 'dropout_implementation'], varargs=None, keywords=None, defaults=(False, None, None, 'downgrade_in_infer')), ('document', '558d13133596209190df9a624264f28f'))
+paddle.fluid.layers.dropout (ArgSpec(args=['x', 'dropout_prob', 'is_test', 'seed', 'name', 'dropout_implementation', 'use_cudnn'], varargs=None, keywords=None, defaults=(False, None, None, 'downgrade_in_infer', True)), ('document', 'd4c69741fd82686dcd6c1a02066fd5f1'))
 paddle.fluid.layers.split (ArgSpec(args=['input', 'num_or_sections', 'dim', 'name'], varargs=None, keywords=None, defaults=(-1, None)), ('document', '78cf3a7323d1a7697658242e13f63759'))
 paddle.fluid.layers.ctc_greedy_decoder (ArgSpec(args=['input', 'blank', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '2bc3a59efa9d52b628a6255422d9f0e8'))
 paddle.fluid.layers.edit_distance (ArgSpec(args=['input', 'label', 'normalized', 'ignored_tokens', 'input_length', 'label_length'], varargs=None, keywords=None, defaults=(True, None, None, None)), ('document', '77cbfb28cd2fc589f589c7013c5086cd'))
