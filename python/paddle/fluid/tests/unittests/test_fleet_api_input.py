@@ -136,26 +136,5 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
         )  # current_id must be less than len(worker_endpoints)
 
 
-class DistributedTranspilerTest(unittest.TestCase):
-    def _distributed_optimizer(self, optimizer, config):
-        optimizer = fleet.distributed_optimizer(optimizer, config)
-
-    def testDistributedTranspiler(self):
-        role = UserDefinedRoleMaker(
-            current_id=0,
-            role=Role.WORKER,
-            worker_num=1,
-            server_endpoints=["127.0.0.1:8080"])
-        fleet.init(role)
-        optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-        config = DistributeTranspilerConfig()
-        self.assertRaises(Exception, self._distributed_optimizer, optimizer,
-                          dict({
-                              "sync_mode": False
-                          }))
-        self.assertRaises(Exception, self._distributed_optimizer, None, config)
-        optimizer = fleet.distributed_optimizer(optimizer, config)
-
-
 if __name__ == '__main__':
     unittest.main()
