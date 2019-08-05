@@ -218,7 +218,7 @@ class CudnnWorkspaceHandle {
     VLOG(2) << "Cudnn workspace size: "
             << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
     cudnn_func(allocation_->ptr());
-    ResetWorkspace();
+    // ResetWorkspace();
   }
 
   inline void ReallocWorkspace(size_t required_workspace_bytes) {

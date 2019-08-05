@@ -238,7 +238,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
-      PADDLE_ENFORCE(cudaSetDevice(place_.device));
       PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
       PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
     }
@@ -298,7 +297,10 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
+  PADDLE_ENFORCE(cudaSetDevice(place_.device));
+  return cudnn_handle_;
+}
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this);
