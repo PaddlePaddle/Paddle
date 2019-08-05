@@ -31,7 +31,7 @@ class ConcatOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should be empty.");
+                      "Inputs(X) of ConcatOp should not be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 

@@ -77,11 +77,6 @@ framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
 const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
 bool NgraphEngine::is_training = false;
 
-std::unordered_map<std::string, EngineCache> NgraphEngine::engine_cache = {};
-std::unordered_map<std::string,
-                   std::vector<std::shared_ptr<ngraph::runtime::Tensor>>>
-    NgraphEngine::t_in_cache_ = {};
-
 std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
@@ -453,6 +448,9 @@ std::shared_ptr<ngraph::Function> NgraphEngine::BuildNgFunction(
 }
 
 void NgraphEngine::ClearNgCache() {
+  auto& engine_cache = main_engine_cache::fetch();
+  auto& t_in_cache_ = main_t_in_cache::fetch();
+
   auto it = engine_cache.begin();
   while (it != engine_cache.end()) {
     auto ng_engine = it->second;
@@ -494,6 +492,8 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
                      std::to_string(interval[1]) + engine_key;
   func_cache_key_ = std::to_string(std::hash<std::string>()(func_cache_key_));
 
+  auto& engine_cache = main_engine_cache::fetch();
+
   if (engine_cache.find(func_cache_key_) != engine_cache.end()) {
     if (engine_cache[func_cache_key_].persistables.size() == 0) {
       ClearNgCache();
@@ -532,6 +532,9 @@ void NgraphEngine::Run(const framework::Scope& scope,
   const std::vector<std::string>* p_var_in;
   const std::vector<std::string>* p_var_out;
   bool is_test;
+
+  auto& engine_cache = main_engine_cache::fetch();
+  auto& t_in_cache_ = main_t_in_cache::fetch();
 
   PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
                  "Cannot find cached data to run ngraph function");

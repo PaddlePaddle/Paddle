@@ -42,10 +42,10 @@ def force_init_on_cpu():
 
         .. code-block:: python
 
-	    import paddle.fluid as fluid
-        if fluid.initializer.force_init_on_cpu():
-    		step = fluid.layers.create_global_var(
-        	    shape=[2,3], value=1.0, dtype='float32')
+            import paddle.fluid as fluid
+            if fluid.initializer.force_init_on_cpu():
+                step = fluid.layers.create_global_var(
+                    shape=[2,3], value=1.0, dtype='float32')
 
     """
     return _force_init_on_cpu_
@@ -59,10 +59,10 @@ def init_on_cpu():
     Examples:
         .. code-block:: python
 
-	    import paddle.fluid as fluid
-        with fluid.initializer.init_on_cpu():
-    		step = fluid.layers.create_global_var(
-        	    shape=[2,3], value=1.0, dtype='float32')
+            import paddle.fluid as fluid
+            with fluid.initializer.init_on_cpu():
+                step = fluid.layers.create_global_var(
+                    shape=[2,3], value=1.0, dtype='float32')
 
     """
     global _force_init_on_cpu_
@@ -295,10 +295,10 @@ class NormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-	    import paddle.fluid as fluid
-        x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-	    fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
     """
 
@@ -611,11 +611,11 @@ class MSRAInitializer(Initializer):
 
     Examples:
         .. code-block:: python
-		
-	    import paddle.fluid as fluid
-        x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-	    fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.MSRA(uniform=False))
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.MSRA(uniform=False))
 
     """
 
@@ -715,25 +715,25 @@ class BilinearInitializer(Initializer):
 
         .. code-block:: python
 
-	    import paddle.fluid as fluid
-        factor = 2
-	    C = 2
-	    w_attr = fluid.param_attr.ParamAttr(
-		learning_rate=0., 
-		regularizer=fluid.regularizer.L2Decay(0.),
+            import paddle.fluid as fluid
+            factor = 2
+            C = 2
+            w_attr = fluid.param_attr.ParamAttr(
+                learning_rate=0., 
+                regularizer=fluid.regularizer.L2Decay(0.),
                 initializer=fluid.initializer.Bilinear())
-	    x = fluid.layers.data(name="data", shape=[3, 32, 32], 
-				  dtype="float32")
-	    conv_up = fluid.layers.conv2d_transpose(
-    		input=x,
-    		num_filters=C,
-    		output_size=None,
-    		filter_size=2 * factor - factor % 2,
-    		padding=int(math.ceil((factor - 1) / 2.)),
-    		stride=factor,
-    		groups=C,
-    		param_attr=w_attr,
-    		bias_attr=False)
+            x = fluid.layers.data(name="data", shape=[3, 32, 32], 
+                                  dtype="float32")
+            conv_up = fluid.layers.conv2d_transpose(
+                input=x,
+                num_filters=C,
+                output_size=None,
+                filter_size=2 * factor - factor % 2,
+                padding=int(math.ceil((factor - 1) / 2.)),
+                stride=factor,
+                groups=C,
+                param_attr=w_attr,
+                bias_attr=False)
 
     Where, `num_filters=C` and `groups=C` means this is channel-wise transposed
     convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
