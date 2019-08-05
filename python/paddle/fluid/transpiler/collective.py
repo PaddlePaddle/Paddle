@@ -376,6 +376,8 @@ class LocalSGD(Collective):
 
 class DistributedClassificationOptimizer(object):
     '''
+    A optimizer wrapper to generate backward network for distributed
+    classification training of model parallelism.
     '''
 
     def __init__(self, optimizer, batch_size):
