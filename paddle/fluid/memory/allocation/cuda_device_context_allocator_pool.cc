@@ -18,6 +18,7 @@
 #include <vector>
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
