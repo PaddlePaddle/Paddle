@@ -1261,7 +1261,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input, label, param_attr=None):
+def linear_chain_crf(input,label, param_attr=None, EmissionLength=None, LabelLength=None):
     """
     Linear Chain CRF.
 
@@ -1306,11 +1306,16 @@ def linear_chain_crf(input, label, param_attr=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    this_inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label}
+    if EmissionLength:
+        this_inputs['EmissionLength'] = EmissionLength
+    if LabelLength:
+        this_inputs['LabelLength'] = LabelLength
     helper.append_op(
         type='linear_chain_crf',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=this_inputs,
         outputs={
             "Alpha": [alpha],
             "EmissionExps": [emission_exps],

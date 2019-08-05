@@ -56,19 +56,35 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(caoying) The checks related to LoD information should be
     // moved into InferShape once after the InferShape is refactored.
-    PADDLE_ENFORCE_EQ(ctx.Input<LoDTensor>("Emission")->NumLevels(), 1UL,
-                      "The Input(Emission) should be a sequence.");
-    PADDLE_ENFORCE_EQ(ctx.Input<LoDTensor>("Label")->NumLevels(), 1UL,
-                      "The Input(Label) should be a sequence.");
-    auto in_lod = ctx.Input<LoDTensor>("Label")->lod();
-    PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
-    const size_t level = 0;
-    const size_t seq_num = in_lod[level].size() - 1;
+   // PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Emission")->NumLevels(), 1UL,
+    //                  "The Input(Emission) should be a sequence.");
+   // PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("Label")->NumLevels(), 1UL,
+     //                 "The Input(Label) should be a sequence.");
 
-    const LoDTensor* emission_weights = ctx.Input<LoDTensor>("Emission");
-    const Tensor* transition_weights = ctx.Input<Tensor>("Transition");
-    const LoDTensor* label = ctx.Input<LoDTensor>("Label");
+    //调整输入数据，定义tensor，
+    const Tensor* emission_weights = ctx.Input<framework::Tensor>("Emission");
+    const Tensor* transition_weights = ctx.Input<framework::Tensor>("Transition");
+    const Tensor* label = ctx.Input<framework::Tensor>("Label");
+    const Tensor* label_length=ctx.Input<framework::Tensor>("LabelLength");
+    auto emission_dims = emission_weights->dims();
+    const size_t batch_size = emission_dims[0];
+    const size_t tag_num = emission_dims[1];
 
+    framework::Vector<size_t> in_lod(batch_size+1);
+    size_t seq_num = 0;
+    if (ctx.HasInput("LabelLength")){
+        auto label_length_ptr = ctx.Input<framework::Tensor>("LabelLength")->data<int64_t>();
+        for (auto i = 0; i <= batch_size; i++) {
+            in_lod[i + 1] = in_lod[i] + label_length_ptr[i];
+        }
+        seq_num = label_length->numel();
+    }else{
+        in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
+       // PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
+        seq_num = in_lod.size() - 1;
+    }
+
+  
     Tensor* emission_exps = ctx.Output<Tensor>("EmissionExps");
     Tensor* transition_exps = ctx.Output<Tensor>("TransitionExps");
     Tensor* alpha = ctx.Output<Tensor>("Alpha");
@@ -85,9 +101,6 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     ll->mutable_data<T>(platform::CPUPlace());
 
     // Now, all the inputs and outputs should be on the CPU memory.
-    auto emission_dims = emission_weights->dims();
-    const size_t batch_size = emission_dims[0];
-    const size_t tag_num = emission_dims[1];
 
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
@@ -112,8 +125,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     T* log_likelihood = ll->data<T>();
     for (size_t i = 0; i < seq_num; ++i) {
-      int start_pos = static_cast<int>(in_lod[level][i]);
-      int end_pos = static_cast<int>(in_lod[level][i + 1]);
+      int start_pos = static_cast<int>(in_lod[i]);
+      int end_pos = static_cast<int>(in_lod[i + 1]);
       if (end_pos == start_pos) {
         // If an empty input sequence is given, pad 0 for its cost.
         log_likelihood[i] = 0.;
