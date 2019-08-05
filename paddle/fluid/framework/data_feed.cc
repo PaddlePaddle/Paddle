@@ -106,6 +106,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   PADDLE_ENFORCE(queue_size > 0, "Illegal queue size: %d.", queue_size);
   queue_size_ = queue_size;
   queue_ = paddle::framework::MakeChannel<T>();
+  queue_->SetCapacity(queue_size);
 }
 
 template <typename T>
