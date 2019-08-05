@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ class TestPRROIPoolOp(OpTest):
         self.init_test_case()
         self.make_rois()
         self.prRoIPool = PyPrRoIPool()
-        self.outs = self.prRoIPool.calculate(
+        self.outs = self.prRoIPool.compute(
             self.x, self.rois, self.output_channels, self.spatial_scale,
             self.pooled_height, self.pooled_width).astype('float32')
         self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
