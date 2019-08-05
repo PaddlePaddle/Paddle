@@ -833,8 +833,11 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   std::vector<std::vector<size_t>> offset(use_slots_.size(),
                                           std::vector<size_t>{0});
   std::vector<bool> visit(use_slots_.size(), false);
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(ins_vec.size());
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
+    ins_id_vec_.push_back(r.ins_id_);
     for (auto& item : r.float_feasigns_) {
       batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
       visit[item.slot()] = true;

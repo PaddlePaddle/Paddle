@@ -331,6 +331,7 @@ class PSLib(Fleet):
                   fout.write(my_program.desc.serialize_to_string())
 
         """
+        self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
         scope = kwargs.get("scope", None)
         model_proto_file = kwargs.get("model_proto_file", None)
@@ -339,7 +340,9 @@ class PSLib(Fleet):
             self._load_one_table_from_paddle_model(
                 scope, table_id, model_path, model_proto_file, load_combine)
         else:
-            self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
+            if self._role_maker.is_first_worker():
+                self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
+        self._role_maker._barrier_worker()
 
     def _load_one_table_from_paddle_model(self,
                                           scope,
@@ -498,7 +501,7 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-
+        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]

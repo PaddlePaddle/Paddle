@@ -108,6 +108,12 @@ class DataFeed {
     mutex_for_pick_file_ = mutex;
   }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual const std::vector<std::string>& GetInsIdVec() {
+    return ins_id_vec_;
+  }
+  virtual int GetCurBatchSize() {
+    return batch_size_;
+  }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
@@ -158,6 +164,7 @@ class DataFeed {
   bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
+  std::vector<std::string> ins_id_vec_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.

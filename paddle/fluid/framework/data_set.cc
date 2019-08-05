@@ -104,6 +104,11 @@ void DatasetImpl<T>::SetChannelNum(int channel_num) {
 }
 
 template <typename T>
+void DatasetImpl<T>::SetParseInsId(bool parse_ins_id) {
+  parse_ins_id_ = parse_ins_id;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetMergeByInsId(
     const std::vector<std::string>& merge_slot_list, bool erase_duplicate_feas,
     int min_merge_size, bool keep_unmerged_ins) {
@@ -372,7 +377,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     readers_[i]->SetFileListIndex(&file_idx_);
     readers_[i]->SetFileList(filelist_);
-    readers_[i]->SetParseInsId(merge_by_insid_);
+    readers_[i]->SetParseInsId(parse_ins_id_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }

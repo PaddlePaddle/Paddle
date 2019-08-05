@@ -81,6 +81,16 @@ class TrainerDesc(object):
     def _set_dump_slot(self, dump_slot):
         self.proto_desc.dump_slot = dump_slot
 
+    def _set_mpi_rank(self, mpi_rank):
+        self.proto_desc.mpi_rank = mpi_rank
+
+    def _set_dump_fields(self, dump_fields):
+        for field in dump_fields:
+            self.proto_desc.dump_fields.append(field)
+
+    def _set_dump_fields_path(self, path):
+        self.proto_desc.dump_fields_path = path
+
     def _desc(self):
         from google.protobuf import text_format
         return self.proto_desc.SerializeToString()

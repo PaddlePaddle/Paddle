@@ -237,6 +237,7 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = 80000
         self.queue_num = None
+        self.parse_ins_id = False
         self.merge_by_lineid = False
 
     def _prepare_to_run(self):
@@ -250,6 +251,7 @@ class InMemoryDataset(DatasetBase):
         if self.queue_num is None:
             self.queue_num = self.thread_num
         self.dataset.set_queue_num(self.queue_num)
+        self.dataset.set_parse_ins_id(self.parse_ins_id)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
@@ -270,6 +272,23 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.queue_num = queue_num
+
+    def set_parse_ins_id(self, parse_ins_id):
+        """
+        Set Dataset output queue num, training threads get data from queues
+
+        Args:
+            parse_ins_id(bool): if parse ins_id or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_parse_ins_id(True)
+
+        """
+        self.parse_ins_id = parse_ins_id
 
     def set_fleet_send_batch_size(self, fleet_send_batch_size):
         """

@@ -180,6 +180,10 @@ class DownpourWorker : public HogwildWorker {
  private:
   bool need_to_push_dense_;
   bool dump_slot_;
+  bool need_dump_field_;
+  std::string dump_fields_path_;
+  std::vector<std::string> dump_fields_;
+  int mpi_rank_;
   bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
