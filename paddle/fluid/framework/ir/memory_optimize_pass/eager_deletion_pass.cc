@@ -269,6 +269,11 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     }
   }
 
+  auto conditional_block_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get(
+          "conditional_block_op_eager_deletion_pass");
+  conditional_block_op_eager_deletion_pass->Apply(graph);
+
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
@@ -288,5 +293,6 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
     .RequirePassAttr(paddle::framework::ir::kAllPlaces)
     .RequirePassAttr(paddle::framework::ir::kGarbageCollector);
 
+USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
