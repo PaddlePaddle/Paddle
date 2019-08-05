@@ -64,11 +64,6 @@ class TestDistPServer(FleetDistRunnerBase):
                                feed=self.gen_data(),
                                fetch_list=[self.avg_cost.name])
             cost_list.append(cost_val)
-            print("worker_index: %d, step%d cost = %f" %
-                  (fleet.worker_index(), i, cost_val[0]))
-        with open("cost_file.txt", "w") as fout:
-            for val in cost_list:
-                fout.write(str(val) + "\n")
         fleet.stop_worker()
 
 
