@@ -337,6 +337,10 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
 
       for (auto iter = var_handles.rbegin(); iter != var_handles.rend();
            ++iter) {
+        if ((*iter)->Node()->IsCtrlVar()) {
+          break;
+        }
+
         VLOG(10) << "Try to find last living ops of " << var_name << " "
                  << (iter - var_handles.rbegin()) << " time";
         LastLiveOpSearchStatus status = LastLiveOpSearchStatus::kFailure;
