@@ -48,7 +48,7 @@ void CheckKernelOutput(float *x, int n) {
 TEST(Malloc, CUDADeviceContextMultiStream) {
   auto place = platform::CUDAPlace(0);
 
-  CUDADeviceContextAllocator allocator(place);
+  allocation::CUDADeviceContextAllocator allocator(place);
   EXPECT_TRUE(cudaSuccess == cudaSetDevice(0));
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
