@@ -530,6 +530,77 @@ class FleetUtil(object):
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
 
+    def write_cache_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             key_num,
+                             hadoop_fs_name,
+                             hadoop_fs_ugi,
+                             hadoop_home="$HADOOP_HOME",
+                             donefile_name="sparse_cache.meta"):
+        """
+        write cache donefile
+
+        Args:
+            output_path(str): output path
+            day(str|int): training day of model
+            pass_id(str|int): training pass id of model
+            key_num(str|int): save cache return value
+            hadoop_fs_name(str): hdfs/afs fs name
+            hadoop_fs_ugi(str): hdfs/afs fs ugi
+            hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
+            donefile_name(str): donefile name, default is "sparse_cache.meta"
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              fleet_util.write_cache_donefile(
+                  output_path="hdfs:/my/output/",
+                  day=20190722,
+                  pass_id=1,
+                  key_num=123456,
+                  hadoop_fs_name="hdfs://xxx",
+                  hadoop_fs_ugi="user,passwd",
+                  )
+
+        """
+        day = str(day)
+        pass_id = str(pass_id)
+        key_num = int(key_num)
+
+        if pass_id != "-1":
+            suffix_name = "/%s/delta-%s/000_cache" % (day, pass_id)
+            model_path = output_path.rstrip("/") + suffix_name
+        else:
+            suffix_name = "/%s/base/000_cache" % day
+            model_path = output_path.rstrip("/") + suffix_name
+
+        if fleet.worker_index() == 0:
+            donefile_path = model_path + "/" + donefile_name
+            configs = {
+                "fs.default.name": hadoop_fs_name,
+                "hadoop.job.ugi": hadoop_fs_ugi
+            }
+            client = HDFSClient(hadoop_home, configs)
+            if client.is_file(donefile_path):
+                self.rank0_error( \
+                    "not write because %s already exists" % donefile_path)
+            else:
+                meta_str = \
+                    "file_prefix:part\npart_num:16\nkey_num:%d\n" % key_num
+                with open(donefile_name, "w") as f:
+                    f.write(meta_str)
+                client.upload(
+                    model_path,
+                    donefile_name,
+                    multi_processes=1,
+                    overwrite=False)
+                self.rank0_error("write %s succeed" % donefile_path)
+        fleet._role_maker._barrier_worker()
+
     def load_model(self, output_path, day, pass_id):
         """
         load pslib model
@@ -651,6 +722,63 @@ class FleetUtil(object):
         self.rank0_error("going to save_xbox_base_model " + model_path)
         fleet.save_persistables(None, model_path, mode=2)
         self.rank0_error("save_xbox_base_model done")
+
+    def save_cache_model(self, output_path, day, pass_id):
+        """
+        save cache model
+
+        Args:
+            output_path(str): output path
+            day(str|int): training day
+            pass_id(str|int): training pass id
+
+        Returns:
+            key_num(int): cache key num
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              fleet_util.save_cache_model("hdfs:/my/path", 20190722, 88)
+
+        """
+        day = str(day)
+        pass_id = str(pass_id)
+        suffix_name = "/%s/delta-%s/000_cache" % (day, pass_id)
+        model_path = output_path.rstrip("/") + suffix_name
+        self.rank0_error("going to save_cache_model %s" % model_path)
+        key_num = fleet.save_cache_model(None, model_path, mode=0)
+        self.rank0_error("save_cache_model done")
+        return key_num
+
+    def save_cache_base_model(self, output_path, day):
+        """
+        save cache model
+
+        Args:
+            output_path(str): output path
+            day(str|int): training day
+            pass_id(str|int): training pass id
+
+        Returns:
+            key_num(int): cache key num
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              fleet_util.save_cache_base_model("hdfs:/my/path", 20190722)
+
+        """
+        day = str(day)
+        suffix_name = "/%s/base/000_cache" % day
+        model_path = output_path.rstrip("/") + suffix_name
+        self.rank0_error("going to save_cache_model %s" % model_path)
+        key_num = fleet.save_cache_model(None, model_path, mode=0)
+        self.rank0_error("save_cache_model done")
+        return key_num
 
     def save_paddle_params(self,
                            executor,
