@@ -1065,7 +1065,10 @@ All parameter, weight, gradient are variables in Paddle.
                    t = fluid.LoDTensor()
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
-           )DOC");
+           )DOC")
+      .def("move", [](LoDTensorArray &self, LoDTensorArray &dst) {
+        dst = std::move(self);
+      });
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
@@ -1650,7 +1653,7 @@ All parameter, weight, gradient are variables in Paddle.
                      const std::vector<std::string> &fetch_tensors,
                      const std::string &fetched_var_name) {
         pybind11::gil_scoped_release release;
-        self.Run(fetch_tensors, fetched_var_name);
+        return self.Run(fetch_tensors, fetched_var_name);
       });
 
   BindRecordIOWriter(&m);
