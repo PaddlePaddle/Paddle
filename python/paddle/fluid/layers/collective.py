@@ -298,12 +298,12 @@ class DistributedClassifier(object):
 
         return avg_loss
 
-    def arcmargin_classify(self,
-                           x,
-                           label,
-                           margin=0.5,
-                           logit_scale=64,
-                           param_attr=None):
+    def arcface_classify(self,
+                         x,
+                         label,
+                         margin=0.5,
+                         logit_scale=64,
+                         param_attr=None):
         '''
         reference: ArcFace. https://arxiv.org/abs/1801.07698
         '''
@@ -362,72 +362,126 @@ class DistributedClassifier(object):
         return avg_loss
 
 
-def distributed_fc_classify(x,
-                            label,
-                            class_num,
-                            nranks,
-                            rank_id,
-                            param_attr=None,
-                            use_bias=True,
-                            name='dist_fc'):
+def _distributed_fc_classify(x,
+                             label,
+                             class_num,
+                             nranks,
+                             rank_id,
+                             param_attr=None,
+                             use_bias=True,
+                             name=None):
     '''
+    Classification layer with FC, softmax and cross entropy calculation of
+    distibuted version in case of too large number of classes.
+    
+    Args:
+        x (Variable): The feature representation of the input samples. This
+            feature will be flattened into 2-D tensor from dimension index
+            1. E.g. [32, 1024, 1, 1] will be flattened to [32, 1024].
+        label (Variable): The label corresponding to the input samples.
+        class_num (integer): The number of classes of the classification problem.
+        nranks (integer): The number of ranks of distributed trainers.
+        rank_id (integer): The rank index of the current trainer.
+        param_attr (ParamAttr, default None): The parameter attribute for
+            learnable distributed parameters/weights of this layer.
+        use_bias (float, default 64.0): The scale factor for logit value
+            of cosine range.
+        name (str, default None): The name of this layer.
+    Returns:
+        Variable: The ArcFace loss.
+
+
+    Examples:
+      .. code-block:: python
+
+        import paddle.fluid as fluid
+        input = fluid.layers.data(name="input",
+                                  shape=[32, 1024], 
+                                  dtype='float32', 
+                                  append_batch_size=False)                   
+        label = fluid.layers.data(name="label",
+                                  shape=[32, 1], 
+                                  dtype='int64', 
+                                  append_batch_size=False)                   
+        y = fluid.layers.collective.distributed_fc_classify(x=input,
+                                                            label=label,
+                                                            class_num=1000,
+                                                            nranks=8,
+                                                            rank_id=0)
     '''
+
+    if name is None:
+        name = 'dist_fc'
     helper = LayerHelper(name, **locals())
     classifier = DistributedClassifier(class_num, nranks, rank_id, helper)
     return classifier.fc_classify(x, label, param_attr, use_bias)
 
 
-def distributed_arcmargin_classify(x,
-                                   label,
-                                   class_num,
-                                   nranks,
-                                   rank_id,
-                                   margin=0.5,
-                                   logit_scale=64,
-                                   param_attr=None,
-                                   name='dist_fc'):
+def _distributed_arcface_classify(x,
+                                  label,
+                                  class_num,
+                                  nranks,
+                                  rank_id,
+                                  margin=0.5,
+                                  logit_scale=64.0,
+                                  param_attr=None,
+                                  name=None):
     '''
+    Classification layer with ArcFace loss of distibuted version in case of
+    too large number of classes. the equation is
+
+    .. math::
+
+        L=-\frac{1}{N}\sum^N_{i=1}\log\frac{e^{s(cos(\theta_{y_i}+m))}}{e^{s(cos(\theta_{y_i}+m))}+\sum^n_{j=1,j\neq y_i} e^{scos\theta_{y_i}}}
+
+    where the :math: `\theta_{y_i}` is the angle between the feature :math: `x` and
+    the representation of class :math: `i`. The details of ArcFace loss
+    could be referred to https://arxiv.org/abs/1801.07698.
+    
+    Args:
+        x (Variable): The feature representation of the input samples. This
+            feature will be flattened into 2-D tensor from dimension index
+            1. E.g. [32, 1024, 1, 1] will be flattened to [32, 1024].
+        label (Variable): The label corresponding to the input samples.
+        class_num (integer): The number of classes of the classification problem.
+        nranks (integer): The number of ranks of distributed trainers.
+        rank_id (integer): The rank index of the current trainer.
+        margin (float, default 0.5): The angular margin penalty to enhance
+            the intra-class compactness and inter-class discrepancy.
+        logit_scale (float, default 64.0): The scale factor for logit value
+            of cosine range.
+        param_attr (ParamAttr, default None): The parameter attribute for
+            learnable distributed parameters/weights of this layer.
+        name (str, default None): The name of this layer.
+    Returns:
+        Variable: The ArcFace loss.
+
+
+    Examples:
+      .. code-block:: python
+
+        import paddle.fluid as fluid
+        input = fluid.layers.data(name="input",
+                                  shape=[32, 1024], 
+                                  dtype='float32', 
+                                  append_batch_size=False)                   
+        label = fluid.layers.data(name="label",
+                                  shape=[32, 1], 
+                                  dtype='int64', 
+                                  append_batch_size=False)                   
+        y = fluid.layers.collective.distributed_arcface_classify(x=input,
+                                                                 label=label,
+                                                                 class_num=1000,
+                                                                 nranks=8,
+                                                                 rank_id=0)
     '''
+    if name is None:
+        name = 'dist_fc'
     helper = LayerHelper(name, **locals())
     classifier = DistributedClassifier(class_num, nranks, rank_id, helper)
-    return classifier.arcmargin_classify(
+    return classifier.arcface_classify(
         x=x,
         label=label,
         margin=margin,
         logit_scale=logit_scale,
         param_attr=param_attr)
-
-
-def distributed_fc(x,
-                   out_dim,
-                   nranks,
-                   rank_id,
-                   param_attr=None,
-                   use_bias=True,
-                   name='dist_fc'):
-    '''
-    '''
-    helper = LayerHelper(name, **locals())
-    classifier = DistributedClassifier(out_dim, nranks, rank_id, helper)
-    weight, bias = classifier.create_parameter(
-        dtype=x.dtype,
-        in_dim=x.shape[-1],
-        param_attr=param_attr,
-        use_bias=use_bias)
-    x_all = _c_allgather(x, nranks=self.nranks, use_calc_stream=True)
-    label_all = _c_allgather(label, nranks=self.nranks, use_calc_stream=True)
-
-    shard_fc = nn.mul(x_all, weight)
-    if use_bias:
-        shard_fc = nn.elementwise_add(shard_fc, bias)
-
-    # sample code
-    #if not classifier.is_equal_division:
-    #    shard_fc = nn.pad(shard_fc)
-    #fc = _c_slice_allgather(shard_fc,
-    #                        nranks=nranks,
-    #                        rank_id=rank_id)
-    #if not classifier.is_equal_division:
-    #    fc = nn.depad(fc)
-    #return fc
-    raise NotImplementedError('distributed_fc')
