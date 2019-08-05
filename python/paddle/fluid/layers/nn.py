@@ -1261,7 +1261,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input,label, param_attr=None, EmissionLength=None, LabelLength=None):
+def linear_chain_crf(input,label, param_attr=None, Length=None):
     """
     Linear Chain CRF.
 
@@ -1308,11 +1308,9 @@ def linear_chain_crf(input,label, param_attr=None, EmissionLength=None, LabelLen
         dtype=helper.input_dtype())
     this_inputs={"Emission": [input],
                 "Transition": transition,
-                "Label": label}
-    if EmissionLength:
-        this_inputs['EmissionLength'] = [EmissionLength]
-    if LabelLength:
-        this_inputs['LabelLength'] = [LabelLength]
+                "Label": [label]}
+    if Length:
+        this_inputs['Length'] = [Length]
     helper.append_op(
         type='linear_chain_crf',
         inputs=this_inputs,
