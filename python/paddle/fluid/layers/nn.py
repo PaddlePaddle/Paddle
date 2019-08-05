@@ -148,6 +148,7 @@ __all__ = [
     'unstack',
     'sequence_enumerate',
     'unique',
+    'unique_with_counts',
     'expand',
     'sequence_concat',
     'scale',
@@ -5810,40 +5811,40 @@ def nce(input,
         .. code-block:: python
 
 
-	    import paddle.fluid as fluid
-        import numpy as np
+            import paddle.fluid as fluid
+            import numpy as np
 
-	    window_size = 5
-	    words = []
-	    for i in xrange(window_size):
-		words.append(fluid.layers.data(
-		    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(fluid.layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
-	    dict_size = 10000
-	    label_word = int(window_size / 2) + 1
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
 
-	    embs = []
-	    for i in xrange(window_size):
-		if i == label_word:
-		    continue
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
 
-		emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
-				   param_attr='embed', is_sparse=True)
-		embs.append(emb)
+                emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
+                                   param_attr='embed', is_sparse=True)
+                embs.append(emb)
 
-	    embs = fluid.layers.concat(input=embs, axis=1)
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=dict_size, param_attr='nce.w_0',
-		      bias_attr='nce.b_0')
+            embs = fluid.layers.concat(input=embs, axis=1)
+            loss = fluid.layers.nce(input=embs, label=words[label_word],
+                      num_total_classes=dict_size, param_attr='nce.w_0',
+                      bias_attr='nce.b_0')
 
-	    #or use custom distribution
-	    dist = np.array([0.05,0.5,0.1,0.3,0.05])
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=5, param_attr='nce.w_1',
-		      bias_attr='nce.b_1',
-		      num_neg_samples=3,
-		      sampler="custom_dist",
-		      custom_dist=dist)
+             #or use custom distribution
+             dist = np.array([0.05,0.5,0.1,0.3,0.05])
+             loss = fluid.layers.nce(input=embs, label=words[label_word],
+                       num_total_classes=5, param_attr='nce.w_1',
+                       bias_attr='nce.b_1',
+                       num_neg_samples=3,
+                       sampler="custom_dist",
+                       custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -7299,9 +7300,9 @@ def pad(x, paddings, pad_value=0., name=None):
     padded width is specified by :attr:`paddings`.
 
     Specifically, the number of values padded before the contents of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    in dimension :attr:`i` is indicated by :attr:`paddings[2i]`, and the number
     of values padded after the contents of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[i+1]`.
+    indicated by :attr:`paddings[2i+1]`.
 
     See below for an example.
 
@@ -9689,7 +9690,8 @@ def expand(x, expand_times, name=None):
                     new_expand_times.append(ele)
                 else:
                     assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    temp_out = helper.create_variable_for_type_inference(
+                        "int32")
                     fill_constant(
                         [1], 'int32', ele, force_cpu=True, out=temp_out)
                     new_expand_times.append(temp_out)
@@ -12275,6 +12277,58 @@ def unique(x, dtype='int32'):
                  'Index': [index]})
 
     return out, index
+
+
+def unique_with_counts(x, dtype='int32'):
+    """
+    **unique** 
+
+    Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
+
+    Args:
+        x(Variable): A 1-D input tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
+
+    Returns:
+        tuple: (out, index, count). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
+            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor, \
+            `count` is count of unqiue element in the `x`.
+
+    Examples:
+        .. code-block:: python
+
+             import numpy as np
+             import paddle.fluid as fluid
+             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
+             out, index, count = fluid.layers.unique_with_counts(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
+                                                        # count is [1, 3, 1, 1]
+    """
+    if not (dtype == 'int32' or dtype == 'int64'):
+        raise TypeError(
+            "Op unique_with_counts, index dtype must be int32 or int64")
+
+    if x is None or len(x.shape) != 1:
+        raise ValueError(
+            "Op unique_with_counts, x must not be null and size of dim must be 1"
+        )
+
+    helper = LayerHelper("unique_with_counts", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    index = helper.create_variable_for_type_inference(dtype)
+
+    count = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='unique_with_counts',
+        inputs={'X': x},
+        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
+        outputs={'Out': [out],
+                 'Index': [index],
+                 'Count': [count]})
+
+    return out, index, count
 
 
 def deformable_conv(input,
