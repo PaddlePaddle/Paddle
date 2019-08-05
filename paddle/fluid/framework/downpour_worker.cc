@@ -100,12 +100,25 @@ std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start, int64_t end)
   return os.str();
 }
 
+std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start, int64_t end) {
+  auto count = tensor->numel();
+  if (start < 0 || end > count) {
+    VLOG(3) << "access violation";
+    return "access violation";
+  }
+  std::ostringstream os;
+  for (int64_t i = start; i < end; i++) {
+    os << static_cast<uint64_t>(tensor->data<int64_t>()[i]) << " ";
+  }
+  return os.str();
+}
+
 std::string print_lod_tensor(LoDTensor* tensor, int64_t start, int64_t end) {
   std::string out_val;
   if (tensor->type() == proto::VarType::FP32) {
     out_val = print_lod_tensor_type<float>(tensor, start, end);
   } else if (tensor->type() == proto::VarType::INT64) {
-    out_val = print_lod_tensor_type<int64_t>(tensor, start, end);
+    out_val = print_lod_tensor_int_type(tensor, start, end);
   } else if (tensor->type() == proto::VarType::FP64) {
     out_val = print_lod_tensor_type<double>(tensor, start, end);
   } else {

@@ -76,7 +76,7 @@ class DownpourServer(Server):
         table.compress_in_save = True
         table.shard_num = 1000
         table.accessor.accessor_class = "DownpourCtrAccessor"
-        table.accessor.sparse_sgd_param.learning_rate = learning_rate
+        table.accessor.sparse_sgd_param.learning_rate = 0.05
         table.accessor.sparse_sgd_param.initial_g2sum = 3
         table.accessor.sparse_sgd_param.initial_range = 1e-4
         table.accessor.sparse_sgd_param.weight_bounds.extend([-10, 10])

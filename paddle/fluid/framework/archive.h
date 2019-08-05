@@ -314,16 +314,16 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
   
   template<class... ARGS>
   void printf(const char* fmt, ARGS && ... args) {
-      size_t temp = Limit() - Finish();
-      int len = snprintf(Finish(), temp, fmt, args...);
-      CHECK(len >= 0);
-
-      if ((size_t)len >= temp) {
-          PrepareWrite(len + 1);
-          CHECK(snprintf(Finish(), (size_t)len + 1, fmt, args...) == len);
-      }
-
-      AdvanceFinish(len);
+    size_t temp = Limit() - Finish();
+    int len = snprintf(Finish(), temp, fmt, args...);
+    CHECK(len >= 0);
+    
+    if ((size_t)len >= temp) {
+      PrepareWrite(len + 1);
+      CHECK(snprintf(Finish(), (size_t)len + 1, fmt, args...) == len);
+    }
+    
+    AdvanceFinish(len);
   }
 };
 
