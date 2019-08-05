@@ -88,7 +88,7 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class PullBoxSparseGradOpDescMaker : public framework::SingleGradOpDescMaker {
+class PushBoxSparseOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
@@ -104,7 +104,7 @@ class PullBoxSparseGradOpDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class PullBoxSparseOpGrad : public framework::OperatorWithKernel {
+class PushBoxSparseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -123,9 +123,9 @@ class PullBoxSparseOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
-                  ops::PullBoxSparseOpMaker, ops::PullBoxSparseGradOpDescMaker);
+                  ops::PullBoxSparseOpMaker, ops::PushBoxSparseOpDescMaker);
 
-REGISTER_OPERATOR(pull_box_sparse_grad, ops::PullBoxSparseOpGrad);
+REGISTER_OPERATOR(pull_box_sparse_grad, ops::PushBoxSparseOp);
 
 REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>,
                        ops::PullBoxSparseCPUKernel<int64_t>);

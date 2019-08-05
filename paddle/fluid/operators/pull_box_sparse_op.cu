@@ -26,7 +26,7 @@ using LoDTensor = framework::LoDTensor;
 template <typename T>
 class PullBoxSparseCUDAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     printf("pull_box_sparse in gpu\n");
   }
 };

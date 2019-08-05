@@ -31,19 +31,21 @@ int BoxWrapper::PassEnd() const {
   return 0;
 }
 
-int BoxWrapper::PullSparsePara(const Scope& scope,
-                               const paddle::platform::Place& place,
-                               const std::vector<std::vector<uint64_t>>& keys,
-                               std::vector<std::vector<float>>* values) {
-  boxps_ptr_->PullSparse(keys, values);
+int BoxWrapper::PullSparse(const Scope& scope,
+                           const paddle::platform::Place& place,
+                           const std::vector<const uint64_t*>& keys,
+                           const std::vector<float*>& values,
+                           const std::vector<int64_t>& slot_lengths) {
+  boxps_ptr_->PullSparse(keys, values, slot_lengths);
   return 0;
 }
 
-int BoxWrapper::PushSparseGrad(
-    const Scope& scope, const paddle::platform::Place& place,
-    const std::vector<std::vector<uint64_t>>& keys,
-    const std::vector<std::vector<float>>& grad_values) {
-  boxps_ptr_->PushSparse(keys, grad_values);
+int BoxWrapper::PushSparseGrad(const Scope& scope,
+                               const paddle::platform::Place& place,
+                               const std::vector<const uint64_t*>& keys,
+                               const std::vector<const float*>& grad_values,
+                               const std::vector<int64_t>& slot_lengths) {
+  boxps_ptr_->PushSparse(keys, grad_values, slot_lengths);
   return 0;
 }
 }  // end namespace framework

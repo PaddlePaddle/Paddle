@@ -45,40 +45,47 @@ int FakeBoxPS::PassEnd() {
   return 0;
 }
 
-int FakeBoxPS::PullSparse(const std::vector<std::vector<uint64_t>> &keys,
-                          std::vector<std::vector<float>> *values) {
+int FakeBoxPS::PullSparse(const std::vector<const uint64_t *> &keys,
+                          const std::vector<float *> &values,
+                          const std::vector<int64_t> &slot_lengths) {
   printf("FakeBoxPS:begin pull sparse...\n");
   auto slot_size = keys.size();
   for (auto slot_id = 0; slot_id < slot_size; ++slot_id) {
-    for (auto i = 0; i < keys[slot_id].size(); ++i) {
-      const auto iter = emb_.find(keys[slot_id][i]);
+    const auto len = slot_lengths[slot_id];
+    const uint64_t *key_ptr = keys[slot_id];
+    for (auto i = 0; i < len; ++i) {
+      const auto iter = emb_.find(*(key_ptr + i));
       if (iter == emb_.end()) {
         printf("Pull Sparse error - no key for %lu\n", keys[slot_id][i]);
         return 1;
       }
       const auto *value = iter->second.data();
       // memory in values has been allocated in pull_sparse_op
-      memcpy(values->at(slot_id).data() + i * hidden_size_, value,
+      memcpy(values[slot_id] + i * hidden_size_, value,
              hidden_size_ * sizeof(float));
     }
   }
   return 0;
 }
 
-int FakeBoxPS::PushSparse(const std::vector<std::vector<uint64_t>> &keys,
-                          const std::vector<std::vector<float>> &values) {
+int FakeBoxPS::PushSparse(const std::vector<const uint64_t *> &keys,
+                          const std::vector<const float *> &values,
+                          const std::vector<int64_t> &slot_lengths) {
   printf("FakeBoxPS:begin push grad sparse...\n");
   auto slot_size = keys.size();
   for (auto slot_id = 0; slot_id < slot_size; ++slot_id) {
-    for (auto i = 0; i < keys[slot_id].size(); ++i) {
-      auto iter = emb_.find(keys[slot_id][i]);
+    const auto len = slot_lengths[slot_id];
+    const uint64_t *key_ptr = keys[slot_id];
+    for (auto i = 0; i < len; ++i) {
+      auto iter = emb_.find(*(key_ptr + i));
       if (iter == emb_.end()) {
         printf("Push Sparse grad error - no key for %lu\n", keys[slot_id][i]);
         return 1;
       }
       auto &para = iter->second;
+      auto start_ptr = values[slot_id] + i * hidden_size_;
       for (int j = 0; j < hidden_size_; ++j) {
-        para[j] -= learning_rate_ * values[slot_id][i * hidden_size_ + j];
+        para[j] -= learning_rate_ * (*(start_ptr + j));
       }
     }
   }

@@ -27,36 +27,33 @@ template <typename T>
 class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    printf("paddlebox: pull box sparse ff start..\n");
+    printf("paddlebox: pull box sparse int cpu ff start..\n");
     auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
     auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
     auto hidden_size = ctx.Attr<int>("size");
     printf("paddlebox: hidden size in op: %d\n", hidden_size);
 
     const auto slot_size = inputs.size();
-    std::vector<std::vector<uint64_t>> all_keys(slot_size);
-    std::vector<std::vector<float>> all_values(slot_size);
+    // std::vector<std::vector<uint64_t>> all_keys(slot_size);
+    // std::vector<std::vector<float>> all_values(slot_size);
+    std::vector<const uint64_t *> all_keys(slot_size);
+    std::vector<float *> all_values(slot_size);
+    std::vector<int64_t> slot_lengths(slot_size);
     for (auto i = 0; i < slot_size; i++) {
       const auto *slot = inputs[i];
       const uint64_t *single_slot_keys =
           reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
+      all_keys[i] = single_slot_keys;
       const auto key_numel = slot->numel();
-
+      auto *output = outputs[i]->mutable_data<float>(ctx.GetPlace());
+      all_values[i] = output;
+      slot_lengths[i] = key_numel;
       printf("paddlebox: numel in the %d slot is %ld\n", i, key_numel);
-      all_values[i].resize(hidden_size * key_numel);
-      all_keys[i].resize(key_numel);
-      memcpy(all_keys[i].data(), single_slot_keys,
-             key_numel * sizeof(uint64_t));
     }
 
     auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-    box_ptr->PullSparsePara(ctx.scope(), ctx.GetPlace(), all_keys, &all_values);
-
-    for (size_t i = 0; i < slot_size; ++i) {
-      auto *output = outputs[i]->mutable_data<float>(ctx.GetPlace());
-      memcpy(output, all_values[i].data(),
-             all_values[i].size() * sizeof(float));
-    }
+    box_ptr->PullSparse(ctx.scope(), ctx.GetPlace(), all_keys, all_values,
+                        slot_lengths);
   }
 };
 
@@ -68,29 +65,24 @@ class PullBoxSparseGradKernel : public framework::OpKernel<T> {
     auto d_output =
         ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
 
-    auto hidden_size = ctx.Attr<int>("size");
-
     const auto slot_size = inputs.size();
-    std::vector<std::vector<uint64_t>> all_keys(slot_size);
-    std::vector<std::vector<float>> all_grad_values(slot_size);
+    std::vector<const uint64_t *> all_keys(slot_size);
+    std::vector<const float *> all_grad_values(slot_size);
+    std::vector<int64_t> slot_lengths(slot_size);
     for (auto i = 0; i < slot_size; i++) {
       const auto *slot = inputs[i];
       const uint64_t *single_slot_keys =
           reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
+      all_keys[i] = single_slot_keys;
       const float *grad_value = d_output[i]->data<float>();
-
       const auto key_numel = slot->numel();
-      all_grad_values[i].resize(hidden_size * key_numel);
-      all_keys[i].resize(key_numel);
-      memcpy(all_keys[i].data(), single_slot_keys,
-             key_numel * sizeof(uint64_t));
-      memcpy(all_grad_values[i].data(), grad_value,
-             hidden_size * key_numel * sizeof(float));
+      all_grad_values[i] = grad_value;
+      slot_lengths[i] = key_numel;
     }
 
     auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
     box_ptr->PushSparseGrad(ctx.scope(), ctx.GetPlace(), all_keys,
-                            all_grad_values);
+                            all_grad_values, slot_lengths);
   }
 };
 }  // namespace operators

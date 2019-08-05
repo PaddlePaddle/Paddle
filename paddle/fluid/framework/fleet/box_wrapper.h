@@ -33,12 +33,14 @@ class BoxWrapper {
 
   int PassBegin(const std::set<uint64_t>& feasgin_to_box) const;
   int PassEnd() const;
-  int PullSparsePara(const Scope& scope, const paddle::platform::Place& place,
-                     const std::vector<std::vector<uint64_t>>& keys,
-                     std::vector<std::vector<float>>* values);
+  int PullSparse(const Scope& scope, const paddle::platform::Place& place,
+                 const std::vector<const uint64_t*>& keys,
+                 const std::vector<float*>& values,
+                 const std::vector<int64_t>& slot_lengths);
   int PushSparseGrad(const Scope& scope, const paddle::platform::Place& place,
-                     const std::vector<std::vector<uint64_t>>& keys,
-                     const std::vector<std::vector<float>>& grad_values);
+                     const std::vector<const uint64_t*>& keys,
+                     const std::vector<const float*>& grad_values,
+                     const std::vector<int64_t>& slot_lengths);
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
     if (nullptr == s_instance_) {

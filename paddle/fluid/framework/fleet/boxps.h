@@ -33,11 +33,12 @@ class BoxPS {
   virtual int init(int hidden_size) = 0;
   virtual int PassBegin(const std::set<uint64_t> &pass_data) = 0;
   virtual int PassEnd() = 0;
-  virtual int PullSparse(const std::vector<std::vector<uint64_t>> &keys,
-                         std::vector<std::vector<float>> *values) = 0;
-  virtual int PushSparse(
-      const std::vector<std::vector<uint64_t>> &keys,
-      const std::vector<std::vector<float>> &grad_values) = 0;
+  virtual int PullSparse(const std::vector<const uint64_t *> &keys,
+                         const std::vector<float *> &values,
+                         const std::vector<int64_t> &slot_lengths) = 0;
+  virtual int PushSparse(const std::vector<const uint64_t *> &keys,
+                         const std::vector<const float *> &values,
+                         const std::vector<int64_t> &slot_lengths) = 0;
 };
 
 class FakeBoxPS : public BoxPS {
@@ -53,10 +54,12 @@ class FakeBoxPS : public BoxPS {
 
   int PassEnd() override;
 
-  int PullSparse(const std::vector<std::vector<uint64_t>> &keys,
-                 std::vector<std::vector<float>> *values) override;
-  int PushSparse(const std::vector<std::vector<uint64_t>> &keys,
-                 const std::vector<std::vector<float>> &grad_values) override;
+  int PullSparse(const std::vector<const uint64_t *> &keys,
+                 const std::vector<float *> &values,
+                 const std::vector<int64_t> &slot_lengths) override;
+  int PushSparse(const std::vector<const uint64_t *> &keys,
+                 const std::vector<const float *> &values,
+                 const std::vector<int64_t> &slot_lengths) override;
 
  private:
   std::map<uint64_t, std::vector<float>> emb_;
