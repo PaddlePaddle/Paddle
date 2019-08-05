@@ -176,6 +176,7 @@ class DownpourWorker : public HogwildWorker {
   void FillSparseValue(size_t table_id);
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
+  void AdjustInsWeight();
 
  private:
   bool need_to_push_dense_;
@@ -205,6 +206,10 @@ class DownpourWorker : public HogwildWorker {
   std::shared_ptr<PullDenseWorker> _pull_dense_worker;
   std::vector<::std::future<int32_t>> push_sparse_status_;
   std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
