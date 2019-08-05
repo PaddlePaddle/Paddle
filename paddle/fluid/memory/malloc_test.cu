@@ -22,7 +22,6 @@
 
 namespace paddle {
 namespace memory {
-namespace allocation {
 
 const int NUM_STREAMS = 8;
 const int N = 1 << 10;
@@ -85,6 +84,5 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   EXPECT_TRUE(cudaSuccess == cudaDeviceReset());
 }
 
-}  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
