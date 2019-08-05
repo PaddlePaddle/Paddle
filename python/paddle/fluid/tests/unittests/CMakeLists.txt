@@ -70,6 +70,7 @@ if(APPLE)
     # TODO(tangwei12): add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
+    list(REMOVE_ITEM TEST_OPS test_dist_fleet_pserver)
 endif()
 if(NOT WITH_MKLML)
     # this op is not support on openblas
