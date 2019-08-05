@@ -2,6 +2,7 @@ file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0) 
 
+
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
     list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
