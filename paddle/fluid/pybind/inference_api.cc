@@ -37,19 +37,21 @@ using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::AnalysisPredictor;
 
-static void BindPaddleDType(py::module *m);
-static void BindPaddleBuf(py::module *m);
-static void BindPaddleTensor(py::module *m);
-static void BindPaddlePlace(py::module *m);
-static void BindPaddlePredictor(py::module *m);
-static void BindNativeConfig(py::module *m);
-static void BindNativePredictor(py::module *m);
-static void BindAnalysisConfig(py::module *m);
-static void BindAnalysisPredictor(py::module *m);
+namespace {
+void BindPaddleDType(py::module *m);
+void BindPaddleBuf(py::module *m);
+void BindPaddleTensor(py::module *m);
+void BindPaddlePlace(py::module *m);
+void BindPaddlePredictor(py::module *m);
+void BindNativeConfig(py::module *m);
+void BindNativePredictor(py::module *m);
+void BindAnalysisConfig(py::module *m);
+void BindAnalysisPredictor(py::module *m);
 
 #ifdef PADDLE_WITH_MKLDNN
-static void BindMkldnnQuantizerConfig(py::module *m);
+void BindMkldnnQuantizerConfig(py::module *m);
 #endif
+}  // namespace
 
 void BindInferenceApi(py::module *m) {
   BindPaddleDType(m);
@@ -71,6 +73,7 @@ void BindInferenceApi(py::module *m) {
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
 }
 
+namespace {
 void BindPaddleDType(py::module *m) {
   py::enum_<PaddleDType>(*m, "PaddleDType")
       .value("FLOAT32", PaddleDType::FLOAT32)
@@ -227,6 +230,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("switch_ir_optim", &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
+      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
+      .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops", &AnalysisConfig::SwitchUseFeedFetchOps,
            py::arg("x") = true)
       .def("use_feed_fetch_ops_enabled",
@@ -312,6 +317,6 @@ void BindAnalysisPredictor(py::module *m) {
       .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
            py::arg("dir"));
 }
-
+}  // namespace
 }  // namespace pybind
 }  // namespace paddle
