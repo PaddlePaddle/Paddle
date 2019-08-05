@@ -48,6 +48,7 @@ DatasetImpl<T>::DatasetImpl() {
   erase_duplicate_feas_ = true;
   keep_unmerged_ins_ = true;
   min_merge_size_ = 2;
+  parse_ins_id_ = false;
 }
 
 // set filelist, file_idx_ will reset to zero.
