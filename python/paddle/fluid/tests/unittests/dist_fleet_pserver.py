@@ -57,7 +57,7 @@ class TestDistPServer(FleetDistRunnerBase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fleet.startup_program)
-        step = 1001
+        step = 10
         cost_list = []
         for i in range(step):
             cost_val = exe.run(program=fleet.main_program,
