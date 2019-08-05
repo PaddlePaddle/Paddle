@@ -61,13 +61,13 @@ limitations under the License. */
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
-
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -1106,6 +1106,8 @@ All parameter, weight, gradient are variables in Paddle.
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
 
+  m.def("size_of_dtype", framework::SizeOfType);
+
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)
@@ -1548,17 +1550,31 @@ All parameter, weight, gradient are variables in Paddle.
                 )DOC")
       .def_property(
           "memory_optimize",
-          [](const BuildStrategy &self) { return self.memory_optimize_; },
-          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
-          R"DOC(The type is BOOL, memory opitimize aims to save total memory
+          [](const BuildStrategy &self) -> py::object {
+            if (self.memory_optimize_) {
+              return py::cast(self.memory_optimize_.get());
+            } else {
+              return py::cast(nullptr);
+            }
+          },
+          [](BuildStrategy &self, const py::handle &value) {
+            auto *py_obj = value.ptr();
+            if (py_obj == nullptr || py_obj == Py_None) {
+              self.memory_optimize_ = boost::none;
+            } else if (PyBool_Check(py_obj)) {
+              self.memory_optimize_ = (py_obj == Py_True);
+            } else {
+              PADDLE_THROW(
+                  "BuildStrategy.memory_optimize must be None, False or True");
+            }
+          },
+          R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
-                Memory Optimize is our experimental feature, some variables
-                may be reused/removed by optimize strategy. If you need to
-                fetch some variable values when using this feature, please
-                set the persistable property of the variables to True.
-
-                Default False)DOC")
+                Default None. None means framework would choose to use or not use 
+                this strategy automatically. Currently, None means that it is 
+                enabled when GC is disabled, and disabled when GC is enabled. 
+                True means enabling and False means disabling. Default None.)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
@@ -1578,13 +1594,6 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
-      .def_property("_use_legacy_memory_optimize_strategy",
-                    [](const BuildStrategy &self) {
-                      return self.use_legacy_memory_optimize_strategy_;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      self.use_legacy_memory_optimize_strategy_ = b;
-                    })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },

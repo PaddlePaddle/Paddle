@@ -28,8 +28,15 @@
 namespace paddle {
 namespace framework {
 
+// Disable gc by default when inference library is built
+#ifdef PADDLE_ON_INFERENCE
+static const double kDefaultEagerDeleteTensorGB = -1;
+#else
+static const double kDefaultEagerDeleteTensorGB = 0;
+#endif
+
 DEFINE_double(
-    eager_delete_tensor_gb, -1.0,
+    eager_delete_tensor_gb, kDefaultEagerDeleteTensorGB,
     "Memory size threshold (GB) when the garbage collector clear tensors."
     "Disabled when this value is less than 0");
 
@@ -48,6 +55,9 @@ GarbageCollector::GarbageCollector(const platform::Place &place,
     : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
   garbages_.reset(new GarbageQueue());
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  if (max_memory_size_ > 1) {
+    mutex_.reset(new std::mutex());
+  }
 }
 
 CPUGarbageCollector::CPUGarbageCollector(const platform::CPUPlace &place,
