@@ -250,7 +250,6 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dist_se_resnext_dgc MODULES test_dist_se_resnext_dgc)
 	py_test_modules(test_dist_se_resnext_sync MODULES test_dist_se_resnext_sync)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
-	py_test_modules(test_dist_fleet_pserver MODULES test_dist_fleet_pserver)
         bash_test_modules(test_launch MODULES test_launch.sh)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
