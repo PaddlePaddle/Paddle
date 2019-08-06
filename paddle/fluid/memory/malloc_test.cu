@@ -81,7 +81,6 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
   CheckKernelOutput(main_stream_data, N);
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    cudaStreamSynchronize(streams[i]);
     CheckKernelOutput(data[i], N);
     CheckKernelOutput(second_data[i], N);
   }

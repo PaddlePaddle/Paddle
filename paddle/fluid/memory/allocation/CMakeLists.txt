@@ -34,10 +34,6 @@ if (WITH_GPU)
                  cuda_allocator
                  device_context
                  memcpy)
-    nv_test(cuda_device_context_allocator_test
-            SRCS cuda_device_context_allocator_test.cu
-            DEPS cuda_device_context_allocator
-                 device_context malloc)
 else()
     cc_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc
