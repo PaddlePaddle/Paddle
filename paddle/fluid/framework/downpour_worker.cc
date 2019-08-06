@@ -739,7 +739,6 @@ void DownpourWorker::TrainFiles() {
         ar.clear();
       }
       auto& ins_id_vec = device_reader_->GetInsIdVec();
-
       for (size_t i = 0; i < ins_id_vec.size(); i++) {
         ars[i] += ins_id_vec[i];
       }
