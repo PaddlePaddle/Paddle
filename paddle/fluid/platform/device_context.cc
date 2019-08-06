@@ -239,6 +239,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
       }
       PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
       PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
+    } else {
+      cudnn_handle_ = nullptr;
     }
   }
 
