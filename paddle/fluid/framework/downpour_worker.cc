@@ -758,20 +758,21 @@ void DownpourWorker::TrainFiles() {
           ars[i] += print_lod_tensor(tensor, bound.first, bound.second);
         }
       }
-//      #pragma omp parallel for
+      //#pragma omp parallel for
       for (size_t i = 0; i < ars.size(); i++) {
         if (ars[i].length() == 0) {
           continue;
         }
-        size_t write_count = fwrite_unlocked(ars[i].data(), 1, ars[i].length(), fp.get());
+        size_t write_count =
+            fwrite_unlocked(ars[i].data(), 1, ars[i].length(), fp.get());
         if (write_count != ars[i].length()) {
-            VLOG(3) << "dump text failed";
-            break;
+          VLOG(3) << "dump text failed";
+          break;
         }
         write_count = fwrite_unlocked("\n", 1, 1, fp.get());
         if (write_count != 1) {
-            VLOG(3) << "dump text failed";
-            break;
+          VLOG(3) << "dump text failed";
+          break;
         }
       }
     }
