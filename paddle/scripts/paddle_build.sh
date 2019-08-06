@@ -509,7 +509,7 @@ function assert_api_spec_approvals() {
     if [[ "$git_files" > 19 || "$git_count" > 999 ]];then
       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 5086632`
       if [ "${APPROVALS}" == "FALSE" ]; then
-        echo "You must have Dianhai approval for change more than 20 files or add than 1000+ lines of content"
+        echo "You must have Dianhai approval for change 20+ files or add than 1000+ lines of content"
       fi
     fi    
 
