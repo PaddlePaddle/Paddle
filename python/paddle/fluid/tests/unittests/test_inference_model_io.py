@@ -109,8 +109,6 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe = executor.Executor(place)
         exe.run(init_program, feed={}, fetch_list=[])
 
-        memory_optimize(program, print_log=True)
-        # will print warning message
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
 
 

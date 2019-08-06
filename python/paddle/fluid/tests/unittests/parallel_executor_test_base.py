@@ -33,7 +33,6 @@ class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(cls,
                                   method,
                                   use_cuda=True,
-                                  memory_opt=False,
                                   iter=50,
                                   batch_size=None,
                                   allow_op_delay=False,
@@ -68,13 +67,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             loss = method(use_feed=feed_dict is not None)
             # NOTE(zjl): memory_optimize/inplace pass would not require 
             # that loss.persistable = True 
-            loss.persistable = memory_opt
+            loss.persistable = False
 
             if optimizer:
                 optimizer().minimize(loss)
-
-            if memory_opt:
-                fluid.memory_optimize(main)
 
             if get_data_from_feeder is not None:
                 assert feed_dict is None
