@@ -312,8 +312,8 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
     return x;
   }
   
-  template<class... ARGS>
-  void printf(const char* fmt, ARGS && ... args) {
+  template <class... ARGS>
+  void printf(const char* fmt, ARGS&&... args) {
     size_t temp = Limit() - Finish();
     int len = snprintf(Finish(), temp, fmt, args...);
     CHECK(len >= 0);

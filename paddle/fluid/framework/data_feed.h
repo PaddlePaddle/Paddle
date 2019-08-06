@@ -111,9 +111,7 @@ class DataFeed {
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
-  virtual int GetCurBatchSize() {
-    return batch_size_;
-  }
+  virtual int GetCurBatchSize() { return batch_size_; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
