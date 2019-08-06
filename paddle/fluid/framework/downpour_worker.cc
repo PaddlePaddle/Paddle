@@ -101,8 +101,8 @@ std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string print_lod_tensor_int_type(LoDTensor* tensor, 
-                                      int64_t start, int64_t end) {
+std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start, 
+                                      int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -147,8 +147,7 @@ bool check_valid_output(LoDTensor* tensor, int batch_size) {
     if (lod.size() != batch_size + 1) {
       return false;
     }
-  }
-  else {
+  } else {
     if (dims[0] != batch_size) {
       return false;
     }
