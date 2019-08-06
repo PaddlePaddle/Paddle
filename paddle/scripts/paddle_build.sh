@@ -503,7 +503,7 @@ function assert_api_spec_approvals() {
                "paddle/fluid/operators/distributed/send_recv.proto.in")
 
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-    git_log=`git diff --numstat upstream/%BRANCH%`
+    git_log=`git diff --numstat upstream/$BRANCH`
     git_files=`echo $git_log| wc -l`
     git_count=`echo $git_log| awk '{sum+=$1}END{print sum}'`
     
