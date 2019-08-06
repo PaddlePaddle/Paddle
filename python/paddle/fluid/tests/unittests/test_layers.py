@@ -1304,6 +1304,22 @@ class TestBook(LayerTest):
             return (output)
 
     def make_resize_nearest(self):
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(name='x1', shape=[3, 9, 6], dtype="float32")
+                output = layers.resize_nearest(x, out_shape=[12, 12])
+        except ValueError:
+            pass
+
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(name='x2', shape=[3, 9, 6, 7], dtype="float32")
+                output = layers.resize_nearest(x, out_shape=[12, 12, 12])
+        except ValueError:
+            pass
+
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
@@ -1313,11 +1329,27 @@ class TestBook(LayerTest):
     def make_resize_nearest_by_scale(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
-            x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
+            x = self._get_data(name='x1', shape=[3, 9, 6], dtype="float32")
             output = layers.resize_nearest(x, scale=1.8)
             return (output)
 
     def make_resize_trilinear(self):
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(name='x2', shape=[3, 9, 6], dtype="float32")
+                output = layers.resize_trilinear(x, out_shape=[12, 12, 12])
+        except ValueError:
+            pass
+
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
+                output = layers.resize_trilinear(x, out_shape=[12, 12])
+        except ValueError:
+            pass
+
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
