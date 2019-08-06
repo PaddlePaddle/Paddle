@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # make package for paddle fluid shared and static library
+
+ set(COPY_SCRIPT_DIR ${PADDLE_SOURCE_DIR}/cmake)
 function(copy TARGET)
     set(options "")
     set(oneValueArgs "")
@@ -26,42 +28,14 @@ function(copy TARGET)
         message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
     endif ()
     math(EXPR len "${copy_lib_SRCS_len} - 1")
-
     add_custom_target(${TARGET} DEPENDS ${copy_lib_DEPS})
     foreach (index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
-        if (WIN32)
-            if(IS_DIRECTORY ${src})
-                get_filename_component(last_path ${src} NAME)
-                string(APPEND dst "/" ${last_path})
-                add_custom_command(TARGET ${TARGET} PRE_BUILD
-                        COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
-                        )
-                if(EXISTS ${src})
-                    add_custom_command(TARGET ${TARGET} PRE_BUILD
-                            COMMAND cmake -E copy_directory "${src}" "${dst}"
-                            COMMENT "copying ${src} -> ${dst}")
-                else()
-                    message(WARNING "${src} not exist!")
-                endif()
-            else()
-                # windows cmd shell will not expand wildcard automatically.
-                # below expand the files, and copy them by rules.
-                file(GLOB src_files ${src})
-                if (NOT "${src_files}" STREQUAL "")
-                    list(REMOVE_DUPLICATES src_files)
-                endif ()
-                add_custom_command(TARGET ${TARGET} PRE_BUILD
-                        COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
-                        )
-                foreach (src_file ${src_files})
-                    add_custom_command(TARGET ${TARGET} PRE_BUILD
-                            COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
-                            COMMENT "copying ${src_file} -> ${dst}")
-                endforeach ()
-            endif()
-        else (WIN32) # not windows
+        if (WIN32)   #windows
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                    COMMAND python ${COPY_SCRIPT_DIR}/copyfile.py ${src} ${dst})
+        else (WIN32) #not windows
             add_custom_command(TARGET ${TARGET} PRE_BUILD
                     COMMAND mkdir -p "${dst}"
                     COMMAND cp -r "${src}" "${dst}"
@@ -191,6 +165,8 @@ set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
 if (NOT WIN32)
     set(framework_lib_deps framework_py_proto)
+else (NOT WIN32)
+    set(framework_lib_deps framework_proto)
 endif (NOT WIN32)
 
 copy(framework_lib DEPS ${framework_lib_deps}
