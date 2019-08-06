@@ -165,6 +165,7 @@ class Communicator {
   ~Communicator();
 
   void Start();
+  void Stop();
 
   // send grad
   void Send(const std::string& var_name, const framework::Scope& scope);
@@ -181,8 +182,8 @@ class Communicator {
       send_varname_to_queue_;
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
-  std::unique_ptr<std::thread> send_thread_;
-  std::unique_ptr<std::thread> recv_thread_;
+  std::unique_ptr<std::thread> send_thread_{nullptr};
+  std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
@@ -193,25 +194,21 @@ class Communicator {
  public:
   static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
-    InitImpl(send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
-  }
-
-  static Communicator* GetInstance();
-
- private:
-  // Init is called by GetInstance.
-  static void InitImpl(const RpcCtxMap& send_varname_to_ctx,
-                       const RpcCtxMap& recv_varname_to_ctx,
-                       Scope* recv_scope) {
     if (communicator_ == nullptr) {
       communicator_.reset(new Communicator(send_varname_to_ctx,
                                            recv_varname_to_ctx, recv_scope));
     }
   }
 
+  static void Init(const paddle::framework::ProgramDesc& program,
+                   Scope* param_scope);
+
+  static Communicator* GetInstance();
+
+  static std::shared_ptr<Communicator> GetInstantcePtr();
+
  private:
-  static std::once_flag init_flag_;
-  static std::unique_ptr<Communicator> communicator_;
+  static std::shared_ptr<Communicator> communicator_;
 };
 
 }  // namespace distributed

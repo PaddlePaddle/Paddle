@@ -132,10 +132,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+        optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
         mp_optimizer = fluid.contrib.mixed_precision.decorate(
-            optimizer=optimizer, init_loss_scaling=8.0)
+            optimizer=optimizer,
+            init_loss_scaling=8.0,
+            use_dynamic_loss_scaling=True)
 
         scaled_loss, _, _ = mp_optimizer.minimize(avg_cost)
 

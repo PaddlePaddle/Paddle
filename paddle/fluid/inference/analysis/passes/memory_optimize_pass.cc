@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <map>
 #include <string>
@@ -37,6 +38,14 @@ using framework::ir::Graph;
 using framework::ir::Node;
 using framework::ir::TopologyVarientSort;
 using space_table_t = MemoryOptimizePass::space_table_t;
+
+typedef struct {
+  std::string name;
+  size_t size;
+  int cluster;
+  std::pair<int, int> lifetime;
+  std::unordered_set<std::string> adj;
+} MemNode;
 
 // Collect the lifecycles of the tensors.
 // Traverse the graph in topological order.
@@ -93,6 +102,89 @@ int DataTypeToSpace(framework::proto::VarType_Type type) {
       return sizeof(int64_t);
     default:
       PADDLE_THROW("Unknown data type");
+  }
+}
+
+void MemoryOptimizePass::CollectVarMemorySize(
+    space_table_t* space_table) const {
+  const int fake_batch_size = 1;
+  // Collect tensors from graph.
+  for (auto* node : graph_->Nodes()) {
+    if (node->IsVar() &&
+        node->Var()->GetType() ==
+            framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
+      // Parameters will not be reused.
+      if (node->Var()->Persistable()) continue;
+      auto shape = node->Var()->GetShape();
+      for (auto& v : shape) {
+        if (v < 0) v = fake_batch_size;
+      }
+
+      int size = std::accumulate(shape.begin(), shape.end(), 1,
+                                 std::multiplies<int>());
+      (*space_table)[node->Var()->Name()] =
+          size * DataTypeToSpace(node->Var()->GetDataType());
+    }
+  }
+}
+
+void MakeSimpleReusePlan(
+    const std::unordered_map<std::string, std::pair<int, int>>& lifecycles,
+    const std::unordered_map<std::string, size_t>& space_table,
+    std::unordered_map<std::string, std::string>* node2cluster,
+    std::unordered_map<std::string, int>* cluster_size) {
+  std::vector<MemNode> mem_nodes;
+  for (auto& data : lifecycles) {
+    MemNode temp_node;
+    temp_node.name = data.first;
+    PADDLE_ENFORCE(
+        space_table.count(data.first),
+        "%s variable should be in the spacetable during memory optimize",
+        data.first);
+    temp_node.size = space_table.at(data.first);
+    temp_node.cluster = -1;
+    temp_node.lifetime = data.second;
+    mem_nodes.push_back(temp_node);
+  }
+  auto overlap = [](std::pair<int, int> a, std::pair<int, int> b) -> bool {
+    return b.second >= a.first && a.second >= b.first;
+  };
+  // If the lifetime of two nodes is overwritten, we set them as adjacent nodes.
+  for (size_t i = 0; i < mem_nodes.size(); i++) {
+    for (size_t j = i + 1; j < mem_nodes.size(); j++) {
+      if (overlap(mem_nodes[i].lifetime, mem_nodes[j].lifetime)) {
+        mem_nodes[i].adj.insert(mem_nodes[j].name);
+        mem_nodes[j].adj.insert(mem_nodes[i].name);
+      }
+    }
+  }
+
+  // Sort the nodes according to the node memory size.
+  auto sort_func = [](MemNode a, MemNode b) { return a.size > b.size; };
+  std::sort(mem_nodes.begin(), mem_nodes.end(), sort_func);
+
+  // Generating Memory Reuse Strategy Based on Greedy Way
+  for (size_t i = 0; i < mem_nodes.size(); i++) {
+    if (mem_nodes[i].cluster >= 0) continue;
+    int cluster_index = cluster_size->size();
+    mem_nodes[i].cluster = cluster_index;
+    (*cluster_size)[mem_nodes[i].name] = mem_nodes[i].size;
+    (*node2cluster)[mem_nodes[i].name] = mem_nodes[i].name;
+    std::unordered_set<std::string> cluster_adj = mem_nodes[i].adj;
+    for (size_t j = i + 1; j < mem_nodes.size(); j++) {
+      if (mem_nodes[j].cluster < 0 &&
+          (cluster_adj.find(mem_nodes[j].name) == cluster_adj.end())) {
+        (*node2cluster)[mem_nodes[j].name] = mem_nodes[i].name;
+        mem_nodes[j].cluster = cluster_index;
+        for (auto& n : mem_nodes[j].adj) {
+          cluster_adj.insert(n);
+        }
+      }
+    }
+  }
+  for (auto& cluster : *cluster_size) {
+    LOG(INFO) << "Cluster name : " << cluster.first
+              << "  size: " << cluster.second;
   }
 }
 
@@ -377,6 +469,17 @@ void UpdateOpDescsByReuse(
         }
       }
 
+      // modify the graph
+      for (auto input_node : node->inputs) {
+        PADDLE_ENFORCE(input_node->IsVar());
+        std::string input_node_name = input_node->Name();
+        if (reuse_table.count(input_node_name) &&
+            reuse_table.at(input_node_name) != input_node_name) {
+          auto name = reuse_table.at(input_node_name);
+          input_node->RenameVar(name);
+        }
+      }
+
       for (auto argument : node->Op()->Outputs()) {
         for (const auto& x : argument.second) {
           auto name = x;
@@ -385,6 +488,17 @@ void UpdateOpDescsByReuse(
           }
           out_args[argument.first].push_back(name);
           VLOG(4) << node->Name() << " output " << x << " -> " << name;
+        }
+      }
+
+      // modify the graph
+      for (auto out_node : node->outputs) {
+        PADDLE_ENFORCE(out_node->IsVar());
+        std::string out_node_name = out_node->Name();
+        if (reuse_table.count(out_node_name) &&
+            reuse_table.at(out_node_name) != out_node_name) {
+          auto name = reuse_table.at(out_node_name);
+          out_node->RenameVar(name);
         }
       }
 
@@ -589,12 +703,24 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   VLOG(3) << "Load memory cache from " << path;
   std::vector<std::map<std::string, std::vector<int>>> batches;
 
-  if (argument->static_memory_optim() && inference::IsFileExists(path)) {
+  if (!(argument->static_memory_optim() && inference::IsFileExists(path))) {
+    string::PrettyLogInfo("--- Performing dynamic memory optimize");
+    // batches = FakeBatchVarShapes(argument->main_program());
+    int sort_kind = 0;
+    std::unordered_map<std::string, lifecycle_t> lifecycles;
+    space_table_t space_table;
+    std::unordered_map<std::string, std::string> node2cluster;
+    std::unordered_map<std::string, int> cluster_size;
+
+    CollectLifeCycle(&lifecycles, sort_kind);
+    CollectVarMemorySize(&space_table);
+    MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
+    UpdateOpDescsByReuse(graph_, node2cluster, sort_kind);
+    return;
+
+  } else {
     string::PrettyLogInfo("--- Performing static memory optimize");
     batches = DeseralizeBatchVarShapes(path);
-  } else {
-    string::PrettyLogInfo("--- Performing dynamic memory optimize");
-    batches = FakeBatchVarShapes(argument->main_program());
   }
   auto var_batch_ave_size = GetBatchAverageSize(batches);
 

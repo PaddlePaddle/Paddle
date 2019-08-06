@@ -79,6 +79,8 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(concat_axis));
   platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
+  platform::MKLDNNHandler::AppendKey(&key,
+                                     std::to_string(multi_input[0]->format()));
   return key;
 }
 

@@ -167,8 +167,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
     }
-    auto buf = paddle::memory::Alloc(place_, num_bytes,
-                                     memory::Allocator::kScratchpad);
+    auto buf = paddle::memory::Alloc(place_, num_bytes);
     void* retv = buf->ptr();
     {
       std::lock_guard<std::mutex> lock(mtx_);
@@ -232,8 +231,7 @@ void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
     PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
     workspace_.reset();
   }
-  workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
-                                     paddle::memory::Allocator::kScratchpad);
+  workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
@@ -268,12 +266,14 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
-                          << (cudnn_dso_ver % 100) / 10 << ".";
+                          << (cudnn_dso_ver % 1000) / 100 << ".";
 
   {
     // Check CUDA/CUDNN version compatiblity
-    auto local_cuda_version = runtime_version_ / 100;
-    auto compile_cuda_version = CUDA_VERSION / 100;
+    auto local_cuda_version =
+        (driver_version_ / 1000) * 10 + (driver_version_ % 100) / 10;
+    auto compile_cuda_version =
+        (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
           << "WARNING: device: " << place_.device
@@ -316,7 +316,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
 #if !defined(_WIN32)
-  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  if (nccl_comm_) {
+    PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  }
 #endif
 }
 

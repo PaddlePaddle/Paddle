@@ -11,6 +11,7 @@
 
 #pragma once
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -57,7 +58,17 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  for (int k = 0; k < out_h; k++) {  // loop for images
+
+  std::vector<int> vy_n, vy_s;
+  std::vector<float> vd_n, vd_s;
+  vy_n.reserve(out_h);
+  vy_s.reserve(out_h);
+  vd_n.reserve(out_h);
+  vd_s.reserve(out_h);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int k = 0; k < out_h; k++) {
     int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
                          : static_cast<int>(ratio_h * k);
     y_n = (y_n > 0) ? y_n : 0;
@@ -65,24 +76,53 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
     float d_n =
         align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
+    {
+      vy_n[k] = y_n;
+      vy_s[k] = y_s;
+      vd_n[k] = d_n;
+      vd_s[k] = d_s;
+    }
+  }
 
-    for (int l = 0; l < out_w; l++) {
-      int x_w = (align_mode == 0 && !align_corners)
-                    ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                    : static_cast<int>(ratio_w * l);
-      x_w = (x_w > 0) ? x_w : 0;
-      int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float d_w =
-          align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
-      float d_e = 1.f - d_w;
+  std::vector<int> vx_w, vx_e;
+  std::vector<float> vd_w, vd_e;
+  vx_w.reserve(out_w);
+  vx_e.reserve(out_w);
+  vd_w.reserve(out_w);
+  vd_e.reserve(out_w);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int l = 0; l < out_w; l++) {
+    int x_w = (align_mode == 0 && !align_corners)
+                  ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
+                  : static_cast<int>(ratio_w * l);
+    x_w = (x_w > 0) ? x_w : 0;
+    int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
+    float d_w =
+        align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
+    float d_e = 1.f - d_w;
+    {
+      vx_w[l] = x_w;
+      vx_e[l] = x_e;
+      vd_w[l] = d_w;
+      vd_e[l] = d_e;
+    }
+  }
 
-      for (int i = 0; i < n; i++) {    // loop for batches
-        for (int j = 0; j < c; j++) {  // loop for channels
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(4)
+#endif
+  for (int i = 0; i < n; i++) {          // loop for batches
+    for (int j = 0; j < c; j++) {        // loop for channels
+      for (int k = 0; k < out_h; k++) {  // loop for images
+        for (int l = 0; l < out_w; l++) {
           // bilinear interpolation
-          output_t(i, j, k, l) = input_t(i, j, y_n, x_w) * d_s * d_e +
-                                 input_t(i, j, y_s, x_w) * d_n * d_e +
-                                 input_t(i, j, y_n, x_e) * d_s * d_w +
-                                 input_t(i, j, y_s, x_e) * d_n * d_w;
+          T out_t = input_t(i, j, vy_n[k], vx_w[l]) * vd_s[k] * vd_e[l] +
+                    input_t(i, j, vy_s[k], vx_w[l]) * vd_n[k] * vd_e[l] +
+                    input_t(i, j, vy_n[k], vx_e[l]) * vd_s[k] * vd_w[l] +
+                    input_t(i, j, vy_s[k], vx_e[l]) * vd_n[k] * vd_w[l];
+          output_t(i, j, k, l) = out_t;
         }
       }
     }

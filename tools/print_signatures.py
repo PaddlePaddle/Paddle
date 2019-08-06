@@ -28,7 +28,7 @@ import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.dygraph"}
+experimental_namespace = {"paddle.fluid.dygraph", "paddle.fluid.LoDTensorset"}
 
 
 def md5(doc):
@@ -38,6 +38,8 @@ def md5(doc):
 
 
 def visit_member(parent_name, member):
+    if parent_name + member.__name__ in experimental_namespace:
+        return
     cur_name = ".".join([parent_name, member.__name__])
     if inspect.isclass(member):
         for name, value in inspect.getmembers(member):

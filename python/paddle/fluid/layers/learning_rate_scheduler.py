@@ -124,14 +124,14 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
-                learning_rate=fluid.layers.exponential_decay(
-                    learning_rate=base_lr,
-                    decay_steps=10000,
-                    decay_rate=0.5,
-                    staircase=True))
-          sgd_optimizer.minimize(avg_cost)
+	      learning_rate=fluid.layers.exponential_decay(
+		    learning_rate=base_lr,
+		    decay_steps=10000,
+		    decay_rate=0.5,
+		    staircase=True))
 
     """
     with default_main_program()._lr_schedule_guard():
@@ -167,6 +167,19 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     Returns:
         The decayed learning rate
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          base_lr = 0.1
+          sgd_optimizer = fluid.optimizer.SGD(
+	      learning_rate=fluid.layers.natural_exp_decay(
+		    learning_rate=base_lr,
+		    decay_steps=10000,
+		    decay_rate=0.5,
+		    staircase=True))
+
     """
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
@@ -210,14 +223,14 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
-                learning_rate=fluid.layers.inverse_time_decay(
-                    learning_rate=base_lr,
-                    decay_steps=10000,
-                    decay_rate=0.5,
-                    staircase=True))
-          sgd_optimizer.minimize(avg_cost)
+	      learning_rate=fluid.layers.natural_exp_decay(
+		    learning_rate=base_lr,
+		    decay_steps=10000,
+		    decay_rate=0.5,
+		    staircase=True))
     """
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():

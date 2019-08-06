@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 
 import sys
-from .optimizer_factory import *
+from optimizer_factory import *
 from google.protobuf import text_format
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
-from ...base.fleet_base import Fleet
-from ...base.fleet_base import Mode
-from ...base.role_maker import MPISymetricRoleMaker
-from ...base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class PSLib(Fleet):
@@ -33,8 +33,8 @@ class PSLib(Fleet):
         self._main_programs = []
         self._scopes = []
 
-    def init(self, executor, role_maker=None):
-        super(PSLib, self).init(executor, MPISymetricRoleMaker())
+    def init(self, role_maker=None):
+        super(PSLib, self).init(MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
 
     def init_worker(self):
@@ -106,14 +106,33 @@ class PSLib(Fleet):
             raise NameError(
                 "You should run DistributedOptimizer.minimize() first")
 
-    def init_server(self, model_dir=None):
-        pass
+    def init_server(self, model_dir=None, **kwargs):
+        """
+        init_server() will be called by user. It will load model from model_dir.
+
+        Args:
+            model_dir(str): load model path, can be local or hdfs/afs path.
+            kwargs: user-defined attributes, currently support following:
+                model(int): load model mode.
+                            0 is for load whole model,
+                            1 is for load delta model (load diff),
+                            default is 0.
+
+        Example:
+            >>> fleet.init_server("/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_model(model_dir, mode)
+        self._role_maker._barrier_worker()
 
     def run_server(self):
         """
          init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
              should call init_pserver() to initialize global information about parameter server
-         """
+        """
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -150,23 +169,12 @@ class PSLib(Fleet):
         self._role_maker._barrier_all()
         self._role_maker._finalize()
 
-    def stop(self):
-        """
-        stop(): will be called after a user finishes his/her training task. Fleet instance will be
-            destroyed when stop() is called.
-        """
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.stop_server()
-        self._role_maker._barrier_worker()
-        self._role_maker._barrier_all()
-        self._role_maker._finalize()
-
-    def distributed_optimizer(self, optimizer, strategy=None):
+    def distributed_optimizer(self, optimizer, strategy={}):
         self._optimizer = DownpourOptimizer(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
+                             executor,
                              dirname,
                              feeded_var_names=None,
                              target_vars=None,
@@ -177,8 +185,81 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
-    def save_persistables(self, dirname, main_program=None):
-        self._fleet_ptr.save_model(dirname)
+    def save_persistables(self, executor, dirname, main_program=None, **kwargs):
+        """
+        save presistable parameters,
+        when using fleet, it will save sparse and dense feature
+
+        Args:
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+
+        Example:
+            >>> fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model(dirname, mode)
+        self._role_maker._barrier_worker()
+
+    def shrink_sparse_table(self):
+        """
+        shrink cvm of all sparse embedding in pserver, the decay rate
+        is defined as "show_click_decay_rate" in fleet_desc.prototxt
+
+        Example:
+            >>> fleet.shrink_sparse_table()
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
+                self._fleet_ptr.shrink_sparse_table(i.table_id)
+        self._role_maker._barrier_worker()
+
+    def shrink_dense_table(self, decay, scope=None, table_id=None):
+        """
+        shrink all dense params in pserver by multiplying by decay
+
+        Args:
+            decay(float): the decay rate, usually range in (0, 1)
+            scope(Scope): Scope object, default is fluid.global_scope()
+            table_id(int): table id of shrinking dense table. None means shrink all,
+                           you should specify it when using multiple scopes,
+                           default is None.
+
+        Example:
+            >>> fleet.shrink_dense_table(0.98, myscope1, 1)
+            >>> fleet.shrink_dense_table(0.98, myscope1, 2)
+            >>> fleet.shrink_dense_table(0.98, myscope2, 3)
+
+        """
+        if scope is None:
+            scope = fluid.global_scope()
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
+                if table_id is not None and table_id != i.table_id:
+                    continue
+                var_list = [var for var in i.dense_variable_name]
+                skip = False
+                for var in var_list:
+                    if scope.find_var(var) is None:
+                        skip = True
+                        break
+                if skip:
+                    continue
+                self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list,
+                                                   decay)
+        self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
         """
@@ -273,7 +354,8 @@ class DownpourOptimizer(DistributedOptimizer):
                           losses,
                           startup_programs,
                           parameter_list,
-                          no_grad_set)
+                          no_grad_set,
+                          self._strategy)
 
         fleet._set_opt_info(opt_info)
 

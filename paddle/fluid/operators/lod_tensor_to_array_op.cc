@@ -131,9 +131,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
     }
 
-    auto &outputs = *const_cast<framework::Scope &>(scope)
-                         .Var()
-                         ->GetMutable<std::map<size_t, framework::Tensor>>();
+    std::map<size_t, framework::Tensor> outputs;
 
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];

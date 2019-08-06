@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid.layers import detection
 from paddle.fluid.framework import Program, program_guard
 import unittest
 
@@ -349,7 +350,7 @@ class TestDetectionMAP(unittest.TestCase):
                 append_batch_size=False,
                 dtype='float32')
 
-            map_out = layers.detection_map(detect_res, label, 21)
+            map_out = detection.detection_map(detect_res, label, 21)
             self.assertIsNotNone(map_out)
             self.assertEqual(map_out.shape, (1, ))
         print(str(program))
@@ -520,6 +521,32 @@ class TestMulticlassNMS(unittest.TestCase):
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
             output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
             self.assertIsNotNone(output)
+
+
+class TestCollectFpnPropsals(unittest.TestCase):
+    def test_collect_fpn_proposals(self):
+        program = Program()
+        with program_guard(program):
+            multi_bboxes = []
+            multi_scores = []
+            for i in range(4):
+                bboxes = layers.data(
+                    name='rois' + str(i),
+                    shape=[10, 4],
+                    dtype='float32',
+                    lod_level=1,
+                    append_batch_size=False)
+                scores = layers.data(
+                    name='scores' + str(i),
+                    shape=[10, 1],
+                    dtype='float32',
+                    lod_level=1,
+                    append_batch_size=False)
+                multi_bboxes.append(bboxes)
+                multi_scores.append(scores)
+            fpn_rois = layers.collect_fpn_proposals(multi_bboxes, multi_scores,
+                                                    2, 5, 10)
+            self.assertIsNotNone(fpn_rois)
 
 
 class TestDistributeFpnProposals(unittest.TestCase):

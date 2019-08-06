@@ -33,7 +33,8 @@ def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
 
     if out is None:
         out = helper.create_variable(
-            name=unique_name.generate(".".join([x.name, 'tmp'])),
+            name=unique_name.generate_with_ignorable_key(".".join(
+                [x.name, 'tmp'])),
             shape=x.shape,
             dtype=x.dtype,
             type=x.type,
@@ -46,3 +47,14 @@ def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
         attrs={"reduce_type": red_typ_int,
                "sync_mode": sync_mode})
     return out
+
+
+def _broadcast(x, root, sync_mode=False):
+    helper = LayerHelper("broadcast", **locals())
+    helper.append_op(
+        type='broadcast',
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={"sync_mode": sync_mode,
+               "root": root})
+    return x

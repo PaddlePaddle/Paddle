@@ -53,10 +53,8 @@ if (WIN32)
     safe_set_static_flag()
     add_definitions(-DSTATIC_LIB)
   endif()
-  set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-  set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif()
 message("flags" ${CMAKE_CXX_FLAGS})
 
@@ -125,11 +123,8 @@ if (NOT WIN32)
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
-      ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
-      snappystream ${EXTERNAL_LIB})
-  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  set(DEPS ${DEPS} libcmt ${os_dependency_modules})
+      glog gflags_static protobuf snappy zlibstatic xxhash snappystream ${EXTERNAL_LIB})
+  set(DEPS ${DEPS} libcmt shlwapi.lib)
 endif(NOT WIN32)
 
 if(WITH_GPU)

@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
@@ -144,6 +144,24 @@ class TestVariable(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             self._test_slice(core.CUDAPlace(0))
+
+    def _tostring(self):
+        b = default_main_program().current_block()
+        w = b.create_var(dtype="float64", lod_level=0)
+        print(w)
+        self.assertTrue(isinstance(str(w), str))
+
+        if core.is_compiled_with_cuda():
+            wc = b.create_var(dtype="int", lod_level=0)
+            print(wc)
+            self.assertTrue(isinstance(str(wc), str))
+
+    def test_tostring(self):
+        with fluid.dygraph.guard():
+            self._tostring()
+
+        with fluid.program_guard(default_main_program()):
+            self._tostring()
 
 
 if __name__ == '__main__':

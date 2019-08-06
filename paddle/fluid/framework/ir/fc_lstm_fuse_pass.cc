@@ -100,11 +100,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     op_desc.SetAttr("use_seq", true);
 
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+    auto& scope = graph->Get<Scope>(kParamScopeAttr);
 #define OP_SET_OUT(x)                            \
   const std::string x = patterns::UniqueKey(#x); \
   op_desc.SetOutput(#x, {x});                    \
-  scope->Var(x)->GetMutable<LoDTensor>()
+  scope.Var(x)->GetMutable<LoDTensor>()
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);

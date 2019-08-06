@@ -33,7 +33,6 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     auto* x_t = ctx.Input<LoDTensor>("X");
     auto* len_t = ctx.Input<LoDTensor>("Length");
     auto* out_t = ctx.Output<LoDTensor>("Out");
-    out_t->mutable_data<T>(ctx.GetPlace());
 
     const int64_t* seq_len_ptr = nullptr;
     if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -66,6 +65,9 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
       }
     }
     out_t->Resize(framework::make_ddim(out_dims_vec));
+
+    // after set the lod of output, allocate the memory
+    out_t->mutable_data<T>(ctx.GetPlace());
 
     int64_t padded_length = x_t->dims()[1];
     math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(

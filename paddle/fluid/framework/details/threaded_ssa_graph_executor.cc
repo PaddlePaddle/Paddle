@@ -53,74 +53,84 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
+
   VLOG(10) << "ThreadedSSAGraphExecutor::Run";
   std::shared_ptr<BlockingQueue<VarHandleBase *>> ready_vars(
       new BlockingQueue<VarHandleBase *>);
   auto &pending_ops = op_deps->pending_ops_;
   auto &pending_vars = op_deps->pending_vars_;
   auto &ready_ops = op_deps->ready_ops_;
-
-  // For ops (e.g. nccl_all_reduce) that need to coordinate multiple
-  // streams from multiple GPUs, it's faster to buffer them and schedule
-  // together since we currently cannot overlap computation and memcpy streams.
-  // Should revisit it if overlapping is available.
-  std::unordered_set<OpHandleBase *> delayed_ops;
+  size_t num_ops = op_deps->num_ops_;
 
   // Step 2. Insert FetchOps
-  std::vector<FetchOpHandle *> fetch_ops;
+  std::vector<OpHandleBase *> fetch_ops;
   std::unordered_set<VarHandleBase *> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
                  &pending_ops, &pending_vars, &fetch_data);
 
-  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
-    for (auto *op : set) {
-      RunOp(ready_vars, op);
-    }
-    set.clear();
-  };
-  // Clean run context
-  run_op_futures_.clear();
   exception_holder_.Clear();
   event.reset(nullptr);
-  // Step 3. Execution
-  while (!pending_vars.empty()) {
-    // 1. Run All Ready ops
-    // Keep loop until all vars are ready.
-    run_all_ops(ready_ops);
 
-    // 2. Find ready variable
-    bool timeout;
-    auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
-    if (timeout) {
-      if (exception_holder_.IsCaught()) {
-        VLOG(3) << "caught exception " << exception_holder_.Type()
-                << ", rethrow it";
+  // Step 3. Execution
+  if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
+    // If the num_threads is 1, we can record the order of operator's
+    // execution in the first iteration, and in subsequent iterations,
+    // run the recorded operators directly. This strategy could make the
+    // execution faster.
+    VLOG(3) << "Run the traced ops.";
+    RunTracedOps(traced_ops_);
+    RunTracedOps(fetch_ops);
+    if (exception_holder_.IsCaught()) {
+      ExecutionFinal(&fetch_ops);
+    }
+  } else {
+    traced_ops_.clear();
+    auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
+      for (auto *op : set) {
+        RunOp(ready_vars, op);
+      }
+      set.clear();
+    };
+    // Clean run context
+    run_op_futures_.clear();
+
+    while (!pending_vars.empty()) {
+      // 1. Run All Ready ops
+      // Keep loop until all vars are ready.
+      run_all_ops(ready_ops);
+
+      // 2. Find ready variable
+      bool timeout;
+      auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
+      if (timeout) {
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
-        ClearFetchOp(graph_, &fetch_ops);
-        exception_holder_.ReThrow();
-      } else {
-        continue;
+        if (exception_holder_.IsCaught()) {
+          ExecutionFinal(&fetch_ops);
+        } else {
+          continue;
+        }
       }
-    }
 
-    // 3. Remove the dependency of ready_var.
-    // Find the ready_ops after the ready_var.
-    for (auto ready_var : cur_ready_vars) {
-      pending_vars.erase(ready_var);
-      for (auto *op : ready_var->PendingOps()) {
-        auto &deps = pending_ops[op];
-        --deps;
-        if (deps == 0) {
-          ready_ops.insert(op);
+      // 3. Remove the dependency of ready_var.
+      // Find the ready_ops after the ready_var.
+      for (auto ready_var : cur_ready_vars) {
+        pending_vars.erase(ready_var);
+        for (auto *op : ready_var->PendingOps()) {
+          auto &deps = pending_ops[op];
+          --deps;
+          if (deps == 0) {
+            ready_ops.insert(op);
+          }
         }
       }
     }
+    PADDLE_ENFORCE(ready_ops.empty());
   }
-  PADDLE_ENFORCE(ready_ops.empty());
+
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
 
@@ -137,7 +147,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
-    std::vector<FetchOpHandle *> *fetch_ops,
+    std::vector<OpHandleBase *> *fetch_ops,
     std::unordered_set<VarHandleBase *> *fetch_dependencies,
     std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
@@ -243,6 +253,9 @@ void ThreadedSSAGraphExecutor::PrepareOpDeps() {
       InsertPendingOp(&pending_ops, op);
     }
   }
+  op_deps_->num_ops_ = ready_ops.size() + pending_ops.size();
+  PADDLE_ENFORCE_GT(op_deps_->num_ops_, 0, "The graph doesn't have operators.");
+
   for (auto ready_var : ready_vars) {
     pending_vars.erase(ready_var);
     for (auto *op : ready_var->PendingOps()) {
@@ -264,6 +277,7 @@ void ThreadedSSAGraphExecutor::CopyOpDeps() {
                                   op_deps_->pending_vars_.end());
     op_deps->ready_ops_.insert(op_deps_->ready_ops_.begin(),
                                op_deps_->ready_ops_.end());
+    op_deps->num_ops_ = op_deps_->num_ops_;
     return std::unique_ptr<OpDependentData>(op_deps);
   });
 }
@@ -272,24 +286,58 @@ void ThreadedSSAGraphExecutor::RunOp(
     const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
     details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
+    RunOpSync(op);
     try {
-      if (VLOG_IS_ON(10)) {
-        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-      }
-      if (LIKELY(!strategy_.dry_run_)) {
-        op->Run(strategy_.use_cuda_);
-      }
-      VLOG(10) << op << " " << op->Name() << " Done ";
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }
   };
+
   if (pool_) {
     run_op_futures_.emplace_back(pool_->enqueue(op_run));
   } else {
     op_run();
+  }
+
+  RecordOps(op);
+}
+
+void ThreadedSSAGraphExecutor::RunTracedOps(
+    const std::vector<OpHandleBase *> &traced_ops) {
+  for (auto &op : traced_ops) {
+    if (exception_holder_.IsCaught()) {
+      return;
+    }
+    RunOpSync(op);
+  }
+}
+
+void ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+  try {
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+    }
+    if (LIKELY(!strategy_.dry_run_)) {
+      op->Run(strategy_.use_cuda_);
+    }
+    VLOG(10) << op << " " << op->Name() << " Done ";
+  } catch (...) {
+    exception_holder_.Catch(std::current_exception());
+  }
+}
+
+void ThreadedSSAGraphExecutor::ExecutionFinal(
+    std::vector<OpHandleBase *> *fetch_ops) {
+  VLOG(3) << "caught exception " << exception_holder_.Type() << ", rethrow it";
+  ClearFetchOp(graph_, fetch_ops);
+  exception_holder_.ReThrow();
+}
+
+void ThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+    traced_ops_.emplace_back(op);
   }
 }
 }  // namespace details

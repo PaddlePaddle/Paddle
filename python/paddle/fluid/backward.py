@@ -22,7 +22,7 @@ import six
 from .. import compat as cpt
 from . import unique_name
 
-__all__ = ['append_backward']
+__all__ = ['append_backward', 'gradients']
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -142,6 +142,7 @@ def _addup_repetitive_outputs_(op_descs):
     pending_sum_ops = []
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
+    renamed_var_start_idx = collections.defaultdict(list)
     for idx, op_desc in enumerate(op_descs):
         for var_name in op_desc.input_arg_names():
             if len(renamed_vars[var_name]) > 1:
@@ -159,6 +160,7 @@ def _addup_repetitive_outputs_(op_descs):
                 if len(renamed_vars[var_name]) == 0:
                     # it's the first time we get the variable
                     renamed_vars[var_name] = [var_name]
+                    renamed_var_start_idx[var_name] = idx
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = var_name + "@RENAME@" + \
@@ -166,7 +168,12 @@ def _addup_repetitive_outputs_(op_descs):
                         var_rename_count[var_name] += 1
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
-                        _rename_arg_(op_descs, var_name, new_name, 0, idx)
+                        # before change: _rename_arg_(op_descs, var_name,
+                        #                             new_name, 0, idx)
+                        # rename arg from idx of the first appearance
+                        # in backward, not always from 0
+                        _rename_arg_(op_descs, var_name, new_name,
+                                     renamed_var_start_idx[var_name], idx)
                         _rename_arg_(pending_sum_ops, var_name, new_name)
 
                         for p in op_desc.output_names()[:param_idx]:
@@ -232,15 +239,8 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
         for arg in op_desc.input_arg_names():
             if core.grad_var_suffix() in arg and arg in no_grad_set:
                 x_in = _strip_grad_suffix_(arg)
-                x_in_var_desc = op_desc.block().find_var_recursive(
-                    cpt.to_bytes(x_in))
-                assert x_in_var_desc is not None, "Variable {} not found".format(
-                    x_in)
-                dtype = x_in_var_desc.dtype()
-
-                to_insert.append(
-                    (_create_op_desc_("fill_zeros_like2", {"X": [x_in]},
-                                      {"Out": [arg]}, {"dtype": dtype}), idx))
+                to_insert.append((_create_op_desc_(
+                    "fill_zeros_like", {"X": [x_in]}, {"Out": [arg]}, {}), idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
@@ -261,7 +261,8 @@ def _append_backward_ops_(block,
                           target_block,
                           no_grad_dict,
                           grad_to_var,
-                          callbacks=None):
+                          callbacks=None,
+                          input_grad_names_set=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -293,8 +294,13 @@ def _append_backward_ops_(block,
             sub_block = program.block(op._block_attr_id("sub_block"))
             grad_sub_block = program._create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
+            # see follwing comments for why set None here.
+            pre_input_grad_names_set = copy.copy(input_grad_names_set)
+            input_grad_names_set = None
             _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
-                                  no_grad_dict, grad_to_var, callbacks)
+                                  no_grad_dict, grad_to_var, callbacks,
+                                  input_grad_names_set)
+            input_grad_names_set = pre_input_grad_names_set
 
             program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
@@ -303,8 +309,33 @@ def _append_backward_ops_(block,
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
 
-        grad_op_descs.extend(grad_op_desc)
-        grad_to_var.update(op_grad_to_var)
+        # If input_grad_names_set is not None, extend grad_op_descs only when
+        # any input grad in outputs of previous grad ops.
+        # But this strategy is not suited for while op for some control flow,
+        # for example, for while op, the grads maybe generated in next loop.
+        if input_grad_names_set is not None:
+            is_append_grad = False
+            for op_desc in grad_op_desc:
+                input_grad_names = [
+                    name for name in op_desc.input_arg_names()
+                    if name.find(core.grad_var_suffix()) != -1
+                ]
+                # some code of gradient ops, like increment, are not very
+                # standard, there is no @GRAD in these ops' inputs.
+                if len(input_grad_names) == 0:
+                    is_append_grad = True
+                    break
+
+                if _some_in_set_(input_grad_names, input_grad_names_set):
+                    grad_op_descs.append(op_desc)
+                    is_append_grad = True
+                    for name in op_desc.output_arg_names():
+                        input_grad_names_set.add(name)
+            if is_append_grad:
+                grad_to_var.update(op_grad_to_var)
+        else:
+            grad_op_descs.extend(grad_op_desc)
+            grad_to_var.update(op_grad_to_var)
 
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
 
@@ -488,6 +519,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         isinstance(callbacks, list)
 
     program = loss.block.program
+    program._appending_grad_times += 1
+
     if no_grad_set is None:
         no_grad_set = set()
     no_grad_set = copy.copy(no_grad_set)
@@ -518,10 +551,23 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
     op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
+
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
 
-    _append_backward_ops_(root_block, op_path, root_block, no_grad_dict,
-                          grad_to_var, callbacks)
+    input_grad_names_set = None
+    # For double backward, input_grad_names is used for filter
+    # some non-used gradients op.
+    if program._appending_grad_times > 1:
+        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+
+    _append_backward_ops_(
+        root_block,
+        op_path,
+        root_block,
+        no_grad_dict,
+        grad_to_var,
+        callbacks,
+        input_grad_names_set=input_grad_names_set)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
@@ -625,17 +671,20 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
 
 def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    Backpropagate the graidents of targets to inputs.
+    Backpropagate the gradients of targets to inputs.
 
     Args:
         targets(Variable|list[Variable]): The target variables
         inputs(Variable|list[Variable]): The input variables
+        target_gradients (Variable|list[Variable]|None): The gradient variables
+            of targets which has the same shape with targets, If None, ones will
+            be created for them.
         no_grad_set(set[string]): The names of variables that have no gradients
             in Block 0. All variables with `stop_gradient=True` from all blocks
             will be automatically added.
 
     Return:
-        (list[Variable]): list of gradients for inputs
+        (list[Variable]): A list of gradients for inputs
         If an input does not affect targets, the corresponding gradient variable
         will be None
     """
@@ -645,6 +694,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     block = targets[0].block
     prog = block.program
+    # increase appending gradients times
+    prog._appending_grad_times += 1
     block_idx = block.idx
 
     if not target_gradients:
@@ -662,6 +713,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     fwd_op_num = block.desc.op_size()
 
+    input_grad_names_set = set()
+
     target_grad_map = {}
     for i, grad in enumerate(target_gradients):
         target = targets[i]
@@ -677,6 +730,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                                            'output_dim_idx': 0
                                        })
             block.desc.append_op().copy_from(op_desc)
+            input_grad_names_set.add(grad_name)
         else:
             if target.block.idx != block_idx or target.block.program != prog:
                 raise ValueError("all targets must be in the same block")
@@ -685,6 +739,12 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                     "The shapes of target and grad are different: %s %s" % (
                         target.name, grad.name))
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
+            input_grad_names_set.add(grad.name)
+
+    # For double backward, input_grad_names is used for filter
+    # some non-used gradients op.
+    if prog._appending_grad_times == 1:
+        input_grad_names_set = None
 
     for input in inputs:
         if input.block.program != prog:
@@ -695,7 +755,13 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
-    _append_backward_ops_(block, op_path, block, no_grad_dict, grad_to_var)
+    _append_backward_ops_(
+        block,
+        op_path,
+        block,
+        no_grad_dict,
+        grad_to_var,
+        input_grad_names_set=input_grad_names_set)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
@@ -719,3 +785,40 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         return grad_vars[0]
     else:
         return grad_vars
+
+
+def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
+    """
+    Backpropagate the gradients of targets to inputs.
+
+    Args:
+        targets (Variable|list[Variable]): The target variables.
+        inputs (Variable|list[Variable]): The input variables.
+        target_gradients (Variable|list[Variable]|None): The gradient variables
+            of targets which has the same shape with targets, If None, ones will
+            be created for them.
+        no_grad_set (set[string]): The names of variables that have no gradients
+            in Block 0. All variables with `stop_gradient=True` from all blocks
+            will be automatically added.
+
+    Return:
+        (list[Variable]): A list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient variable
+        will be None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[2,8,8], dtype='float32')
+            x.stop_gradient=False
+            y = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
+            y = fluid.layers.relu(y)
+            y = fluid.layers.conv2d(y, 4, 1, bias_attr=False)
+            y = fluid.layers.relu(y)
+            z = fluid.gradients([y], x)
+            print(z)
+    """
+    outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
+    return _as_list(outs)

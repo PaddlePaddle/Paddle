@@ -17,9 +17,9 @@ import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
 
-from ..base.fleet_base import Fleet
-from ..base.fleet_base import Mode
-from ..base.fleet_base import DistributedOptimizer
+from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 
 class Collective(Fleet):
@@ -47,17 +47,12 @@ class Collective(Fleet):
         logging.warn(
             "You should not call 'stop_worker' method for collective mode.")
 
-    def stop(self):
-        """
-        stop(): will be called after a user finishes his/her training task.
-        """
-        logging.warn("You should not call 'stop' method for collective mode.")
-
     def distributed_optimizer(self, optimizer, strategy=None):
         self._optimizer = CollectiveOptimizer(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
+                             executor,
                              dirname,
                              feeded_var_names=None,
                              target_vars=None,
@@ -67,7 +62,7 @@ class Collective(Fleet):
                                 self._executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, dirname, main_program=None):
+    def save_persistables(self, executor, dirname, main_program=None):
         io.save_persistables(self._executor, dirname, main_program, None)
 
 
