@@ -108,7 +108,7 @@ class DataFeed {
     mutex_for_pick_file_ = mutex;
   }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
-  virtual const std::vector<std::string>& GetInsIdVec() {
+  virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
   virtual int GetCurBatchSize() {
