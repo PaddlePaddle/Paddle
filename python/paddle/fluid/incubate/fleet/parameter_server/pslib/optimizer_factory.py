@@ -167,6 +167,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True
+        opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

@@ -44,12 +44,12 @@ class SlimGraphExecutor(object):
         feed = None
         if data is not None:
             feeder = DataFeeder(
-                feed_list=graph.in_nodes.values(),
+                feed_list=list(graph.in_nodes.values()),
                 place=self.place,
                 program=graph.program)
             feed = feeder.feed(data)
 
-        fetch_list = graph.out_nodes.values()
+        fetch_list = list(graph.out_nodes.values())
         program = graph.compiled_graph if graph.compiled_graph else graph.program
         results = self.exe.run(program,
                                scope=scope,
