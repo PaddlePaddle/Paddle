@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 
-#include <cuda_runtime.h>
-
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocation.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -39,15 +37,18 @@ CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
   }
 }
 
+void CUDADeviceContextAllocator::SetComputeStream(cudaStream_t compute_stream) {
+  compute_stream_ = compute_stream;
+}
+
 Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
-  std::lock_guard<std::mutex> lock(mtx_);
   platform::CUDADeviceGuard guard(place_.device);
   auto allocation =
       new CUDADeviceContextAllocation(memory::Alloc(place_, size));
   // Wait for the event on default stream
-  PADDLE_ENFORCE(cudaSuccess == cudaEventRecord(event_));
+  PADDLE_ENFORCE(cudaSuccess == cudaEventRecord(event_, compute_stream_));
   PADDLE_ENFORCE(cudaSuccess ==
-                 cudaStreamWaitEvent(/* stream = */ 0, event_, 0));
+                 cudaStreamWaitEvent(compute_stream_, event_, 0));
   return allocation;
 }
 

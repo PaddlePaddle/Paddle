@@ -200,9 +200,9 @@ class CudnnWorkspaceHandle {
     if (required_workspace_bytes > WorkspaceSize()) {
       ReallocWorkspace(required_workspace_bytes);
     }
-    VLOG(2) << "Cudnn workspace size: "
+    VLOG(2) << "Cudnn workspace size at RunFunc: "
             << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    cudnn_func(allocation_->ptr());
+    cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
   }
 
   /*! \brief Thread which call RunFuncSync() would release gpu memory after
@@ -212,13 +212,8 @@ class CudnnWorkspaceHandle {
   template <typename Callback>
   inline void RunFuncSync(Callback&& cudnn_func,
                           size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
-    }
-    VLOG(2) << "Cudnn workspace size: "
-            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    cudnn_func(allocation_->ptr());
-    // ResetWorkspace();
+    RunFunc(cudnn_func, required_workspace_bytes);
+    ResetWorkspace();
   }
 
   inline void ReallocWorkspace(size_t required_workspace_bytes) {

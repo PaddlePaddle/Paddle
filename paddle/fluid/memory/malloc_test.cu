@@ -16,7 +16,6 @@
 #include <cuda_runtime.h>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -48,7 +47,6 @@ void CheckKernelOutput(float *x, int n) {
 TEST(Malloc, CUDADeviceContextMultiStream) {
   auto place = platform::CUDAPlace(0);
 
-  allocation::CUDADeviceContextAllocator allocator(place);
   EXPECT_TRUE(cudaSuccess == cudaSetDevice(0));
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
@@ -65,7 +63,6 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
 
     paddle::platform::CUDADeviceContext dev_ctx(place);
     AllocationPtr allocation_ptr = Alloc(dev_ctx, N * sizeof(float));
-    VLOG(4) << "Get ptr";
     EXPECT_EQ(allocation_ptr->size(), N * sizeof(float));
     data[i] = reinterpret_cast<float *>(allocation_ptr->ptr());
 
@@ -84,5 +81,10 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   EXPECT_TRUE(cudaSuccess == cudaDeviceReset());
 }
 
+TEST(Malloc, AllocZero) {
+  auto place = platform::CUDAPlace(0);
+  AllocationPtr allocation_ptr = Alloc(place, 0);
+  EXPECT_EQ(allocation_ptr->size(), 0);
+}
 }  // namespace memory
 }  // namespace paddle

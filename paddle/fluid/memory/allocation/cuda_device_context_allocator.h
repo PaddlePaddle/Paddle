@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#
+
+#include <cuda_runtime.h>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -27,6 +29,8 @@ class CUDADeviceContextAllocator : public Allocator {
   explicit CUDADeviceContextAllocator(platform::CUDAPlace place);
   ~CUDADeviceContextAllocator();
 
+  void SetComputeStream(cudaStream_t compute_stream);
+
  protected:
   Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(Allocation *allocation) override;
@@ -34,7 +38,7 @@ class CUDADeviceContextAllocator : public Allocator {
  private:
   platform::CUDAPlace place_;
   cudaEvent_t event_;
-  std::mutex mtx_;
+  cudaStream_t compute_stream_{nullptr};
 };
 
 }  // namespace allocation

@@ -123,19 +123,18 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    /*
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
     }
     auto buf = memory::Alloc(place_, num_bytes);
+    VLOG(4) << "Eigen allocated at " << buf->ptr() << ", size" << buf->size()
+            << " requested " << num_bytes;
     void* retv = buf->ptr();
     {
       std::lock_guard<std::mutex> lock(mtx_);
       allocations_.emplace(retv, std::move(buf));
     }
     return retv;
-    */
-    return nullptr;
   }
 
   void deallocate(void* buffer) const override {
@@ -271,13 +270,13 @@ void CUDADeviceContext::Wait() const {
   cudaError_t e_sync = cudaStreamSynchronize(stream_);
   if (e_sync != 0) {
     LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
-               << " errno:" << e_sync;
+               << " errno: " << e_sync;
   }
 
   cudaError_t e_get = cudaGetLastError();
   if (e_get != 0) {
     LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-               << " errno:" << e_get;
+               << " errno: " << e_get;
   }
 }
 
