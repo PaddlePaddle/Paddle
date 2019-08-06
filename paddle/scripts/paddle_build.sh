@@ -504,7 +504,7 @@ function assert_api_spec_approvals() {
 
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
     git_change_files=`git diff --name-only upstream/$BRANCH | wc -l`
-    git_change_log=`git diff --name-only upstream/$BRANCH --numstat`
+    git_change_log=`git diff --numstat`
 
     echo $git_change_files
     echo $git_change_log
