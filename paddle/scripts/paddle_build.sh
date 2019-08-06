@@ -527,7 +527,7 @@ function assert_api_spec_approvals() {
             if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
               echo "You must have two RD (wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change! ${API_FILE} for the management reason of API interface and API document."
             elif [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
-              echo "You must have one RD approval for the api change! ${API_FILE} for the management of grad_op memory optimization."
+              echo "You must have sneaxiy approval for the api change! ${API_FILE} for the management of grad_op memory optimization."
             elif [ "${API_FILE}" == "CMakeLists.txt" ];then
               echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE} for the management reason of the Compilation parameter."
             elif [ "${API_FILE}" == "python/requirements.txt" ];then
