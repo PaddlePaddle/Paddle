@@ -1315,7 +1315,8 @@ class TestBook(LayerTest):
         try:
             with program_guard(fluid.default_main_program(),
                                fluid.default_startup_program()):
-                x = self._get_data(name='x2', shape=[3, 9, 6, 7], dtype="float32")
+                x = self._get_data(
+                    name='x2', shape=[3, 9, 6, 7], dtype="float32")
                 output = layers.resize_nearest(x, out_shape=[12, 12, 12])
         except ValueError:
             pass
@@ -1345,7 +1346,8 @@ class TestBook(LayerTest):
         try:
             with program_guard(fluid.default_main_program(),
                                fluid.default_startup_program()):
-                x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
+                x = self._get_data(
+                    name='x', shape=[3, 9, 6, 7], dtype="float32")
                 output = layers.resize_trilinear(x, out_shape=[12, 12])
         except ValueError:
             pass
