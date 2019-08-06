@@ -758,7 +758,7 @@ void DownpourWorker::TrainFiles() {
           ars[i] += print_lod_tensor(tensor, bound.first, bound.second);
         }
       }
-      //#pragma omp parallel for
+      // #pragma omp parallel for
       for (size_t i = 0; i < ars.size(); i++) {
         if (ars[i].length() == 0) {
           continue;
