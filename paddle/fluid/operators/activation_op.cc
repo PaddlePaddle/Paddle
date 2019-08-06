@@ -592,11 +592,11 @@ class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of HardSwish operator");
     AddOutput("Out", "Output of HardSwish operator");
-    AddAttr<float>("threshold", "The threshold value of Relu6")
+    AddAttr<float>("threshold", "The threshold parameter of HardSwish operator")
         .SetDefault(6.0f);
-    AddAttr<float>("scale", "The scale parameter for the input")
+    AddAttr<float>("scale", "The scale parameter of HardSwish operator")
         .SetDefault(6.0f);
-    AddAttr<float>("offset", "The offset parameter for the input")
+    AddAttr<float>("offset", "The offset parameter of HardSwish operator")
         .SetDefault(3.0f);
     AddComment(R"DOC(
 HardSwish Activation Operator.

@@ -12820,14 +12820,14 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     ${comment}
     Args:
         x(Varaible): Input of HardSwish operator.
-        threshold(float): The threshold value of Relu6. Default:threshold=6.0
-        scale(float): The scale parameter for the input. Default:scale=6.0
-        offset(float): The offset parameter for the input. Default:offset=3.0
+        threshold(float): The threshold parameter of HardSwish operator. Default:threshold=6.0
+        scale(float): The scale parameter of HardSwish operator. Default:scale=6.0
+        offset(float): The offset parameter of HardSwish operator. Default:offset=3.0
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
     Returns:
-        Variable: Output of HardSwish operator.
+        Variable: The output tensor with the same shape as input.
 
     Examples:
 
