@@ -87,8 +87,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
 }
 
 template <typename T>
-std::string PrintLodTensorType(LoDTensor* tensor, int64_t start,
-                                  int64_t end) {
+std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -102,7 +101,7 @@ std::string PrintLodTensorType(LoDTensor* tensor, int64_t start,
 }
 
 std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
-                                      int64_t end) {
+                                  int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
