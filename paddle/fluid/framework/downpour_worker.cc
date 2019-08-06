@@ -87,7 +87,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
 }
 
 template <typename T>
-std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start,
+std::string PrintLodTensorType(LoDTensor* tensor, int64_t start,
                                   int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -101,7 +101,7 @@ std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start,
+std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
                                       int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -115,14 +115,14 @@ std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string print_lod_tensor(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
   std::string out_val;
   if (tensor->type() == proto::VarType::FP32) {
-    out_val = print_lod_tensor_type<float>(tensor, start, end);
+    out_val = PrintLodTensorType<float>(tensor, start, end);
   } else if (tensor->type() == proto::VarType::INT64) {
-    out_val = print_lod_tensor_int_type(tensor, start, end);
+    out_val = PrintLodTensorIntType(tensor, start, end);
   } else if (tensor->type() == proto::VarType::FP64) {
-    out_val = print_lod_tensor_type<double>(tensor, start, end);
+    out_val = PrintLodTensorType<double>(tensor, start, end);
   } else {
     out_val = "unsupported type";
   }
@@ -139,7 +139,7 @@ std::pair<int64_t, int64_t> get_tensor_bound(LoDTensor* tensor, int index) {
   }
 }
 
-bool check_valid_output(LoDTensor* tensor, int batch_size) {
+bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
@@ -749,13 +749,13 @@ void DownpourWorker::TrainFiles() {
           continue;
         }
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
-        if (!check_valid_output(tensor, batch_size)) {
+        if (!CheckValidOutput(tensor, batch_size)) {
           continue;
         }
         for (int i = 0; i < batch_size; ++i) {
           ars[i] = ars[i] + " " + field + ":";
           auto bound = get_tensor_bound(tensor, i);
-          ars[i] += print_lod_tensor(tensor, bound.first, bound.second);
+          ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
         }
       }
       // #pragma omp parallel for
