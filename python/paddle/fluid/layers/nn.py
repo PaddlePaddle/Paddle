@@ -1261,7 +1261,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input, label, param_attr=None):
+def linear_chain_crf(input, label, param_attr=None, Length=None):
     """
     Linear Chain CRF.
 
@@ -1271,6 +1271,7 @@ def linear_chain_crf(input, label, param_attr=None):
         input(${emission_type}): ${emission_comment}
         input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
+        Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
@@ -1282,14 +1283,29 @@ def linear_chain_crf(input, label, param_attr=None):
         .. code-block:: python
 
              import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
+             #using LodTensor
+             emission = fluid.layers.data(name='emission', shape=[10], dtype='float32', lod_level=1)
+             label = fluid.layers.data(name='Label', shape=[1], dtype='int', lod_level=1)
              crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
+             input=emission,
+             label=label,
+             param_attr=fluid.ParamAttr(
+                 name='crfw',
+                 learning_rate=0.01)) 
+            
+             #using padding
+             emission = fluid.layers.data(name='emission', shape=[10], dtype='float32')
+             label = fluid.layers.data(name='Label', shape=[1], dtype='int')
+             label_length = fluid.layers.data(name='Length', shape=[1], dtype='int')
+             crf_cost = fluid.layers.linear_chain_crf(
+             input=emission,
+             label=label,
+             Length=label_length,
+             param_attr=fluid.ParamAttr(
+                 name='crfw',
+                 learning_rate=0.01))
+             
+             
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -1306,11 +1322,16 @@ def linear_chain_crf(input, label, param_attr=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    this_inputs = {
+        "Emission": [input],
+        "Transition": transition,
+        "Label": [label]
+    }
+    if Length:
+        this_inputs['Length'] = [Length]
     helper.append_op(
         type='linear_chain_crf',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=this_inputs,
         outputs={
             "Alpha": [alpha],
             "EmissionExps": [emission_exps],
@@ -1470,7 +1491,7 @@ def dropout(x,
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed,
+            'seed': seed if seed is not None else 0,
             'dropout_implementation': dropout_implementation,
         })
     return out
@@ -3690,7 +3711,7 @@ def conv2d_transpose(input,
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
-    `therein <https://ieeexplore.ieee.org/document/5539957>`_.
+    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -3728,15 +3749,8 @@ def conv2d_transpose(input,
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
-
-    Note:
-          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
-          conv2d_transpose can compute the kernel size automatically.
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
@@ -3889,7 +3903,7 @@ def conv3d_transpose(input,
     is the width of the feature. Parameters(dilations, strides, paddings) are
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <https://ieeexplore.ieee.org/document/5539957>`_.
+    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.

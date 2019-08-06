@@ -23,18 +23,24 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Emission",
-             "(LoDTensor, default LoDTensor<float>) "
-             "A 2-D LoDTensor with shape [N x D], where N is the size of the "
+             "(Tensor, Tensor<float> or LoDTensor<float>) "
+             "A 2-D Tensor with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. ");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
-    AddInput("Label",
-             "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
-             "[N x 1], where N is the total element number in a mini-batch. "
-             "The ground truth.");
+    AddInput(
+        "Label",
+        "(Tensor, Tensor<int64_t> or LoDTensor<int64_t>) A Tensor with shape "
+        "[N x 1], where N is the total element number in a mini-batch. "
+        "The ground truth.");
+    AddInput("Length",
+             "(Tensor, default Tensor<int64_t>) A Tensor with shape "
+             "[M x 1], where M is the sequence num in a mini-batch. "
+             "The ground truth.")
+        .AsDispensable();
     AddOutput(
         "Alpha",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
@@ -135,7 +141,6 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Transition"),
                    "Input(Transition) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-
     PADDLE_ENFORCE(ctx->HasOutput("Alpha"),
                    "Output(Alpha) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("EmissionExps"),
@@ -153,6 +158,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
                       "The Input(Transition) should be a 2-D tensor.");
+
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (transition_dims[0] <= 0 || transition_dims[1] <= 0)) {
@@ -243,7 +249,6 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
         ctx, emission_exps_dims[0], label_dims[0],
         "The height of Input(EmissionExps) and the height of Input(Label) "
         "should be the same.");
-
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
       ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
