@@ -7512,7 +7512,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
@@ -7568,7 +7572,11 @@ def roi_align(input,
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates. 
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
