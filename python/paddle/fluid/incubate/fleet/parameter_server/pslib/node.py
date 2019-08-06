@@ -137,15 +137,10 @@ class DownpourServer(Server):
                     'sparse_base_threshold', 0.2)
                 table.accessor.downpour_accessor_param.delta_threshold = strategy.get(
                     'sparse_delta_threshold', 0.15)
-                if accessor_class == 'DownpourFeatureValueAccessor':
-                    table.accessor.downpour_accessor_param.delta_keep_days = strategy.get(
-                        'sparse_delta_keep_days', 31)
-                if accessor_class == 'DownpourCtrAccessor':
-                    table.accessor.downpour_accessor_param.delta_keep_days = strategy.get(
-                        'sparse_delta_keep_days', 16)
-                    table.accessor.downpour_accessor_param.delete_after_unseen_days = strategy.get(
-                        'sparse_delete_after_unseen_days', 30)
-
+                table.accessor.downpour_accessor_param.delta_keep_days = strategy.get(
+                    'sparse_delta_keep_days', 16)
+                table.accessor.downpour_accessor_param.delete_after_unseen_days = strategy.get(
+                    'sparse_delete_after_unseen_days', 30)
                 table.accessor.downpour_accessor_param.show_click_decay_rate = strategy.get(
                     'sparse_show_click_decay_rate', 0.999)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(
