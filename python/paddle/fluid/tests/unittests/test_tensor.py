@@ -236,6 +236,26 @@ class TestTensor(unittest.TestCase):
             place = core.CUDAPlace(0)
             self.run_sliece_tensor(place)
 
+    def test_print_tensor(self):
+        scope = core.Scope()
+        var = scope.var("test_tensor")
+        place = core.CPUPlace()
+        tensor = var.get_tensor()
+        tensor._set_dims([10, 10])
+        tensor._alloc_int(place)
+        tensor_array = numpy.array(tensor)
+        self.assertEqual((10, 10), tensor_array.shape)
+        tensor_array[0, 0] = 1
+        tensor_array[2, 2] = 2
+        tensor.set(tensor_array, place)
+        print(tensor)
+        self.assertTrue(isinstance(str(tensor), str))
+
+        if core.is_compiled_with_cuda():
+            tensor.set(tensor_array, core.CUDAPlace(0))
+            print(tensor)
+            self.assertTrue(isinstance(str(tensor), str))
+
 
 if __name__ == '__main__':
     unittest.main()

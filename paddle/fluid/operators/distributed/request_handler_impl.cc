@@ -104,7 +104,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
   } else {
     if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
       if (enable_dc_asgd_) {
-        // NOTE: the format is determined by distributed_transpiler.py
+        // NOTE: the format is determined by distribute_transpiler.py
         std::string param_bak_name =
             string::Sprintf("%s.trainer_%d_bak", varname, trainer_id);
         VLOG(3) << "getting " << param_bak_name << " trainer_id " << trainer_id;

@@ -25,6 +25,7 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
+from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
 from . import core
@@ -35,9 +36,8 @@ __all__ = [
     'load_persistables', 'save_inference_model', 'load_inference_model'
 ] + reader.__all__
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def is_parameter(var):
@@ -144,27 +144,37 @@ def save_vars(executor,
     Examples:
         .. code-block:: python
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
+            import paddle.fluid as fluid
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            with fluid.program_guard(main_prog, startup_prog):
+                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+                b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+                hidden_w = fluid.layers.matmul(x=data, y=w)
+                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_prog)
 
+            param_path = "./my_paddle_model"
             # The first usage: using `main_program` to specify variables
             def name_has_fc(var):
                 res = "fc" in var.name
                 return res
-
-            prog = fluid.default_main_program()
-            fluid.io.save_vars(executor=exe, dirname=path, main_program=prog,
+            fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog,
                                vars=None, predicate = name_has_fc)
             # All variables in `main_program` whose name includes "fc" will be saved.
             # And variables are going to be saved separately.
 
 
             # The second usage: using `vars` to specify variables
-            var_list = [var_a, var_b, var_c]
+            var_list = [w, b]
+            path = "./my_paddle_vars"
             fluid.io.save_vars(executor=exe, dirname=path, vars=var_list,
                                filename="vars_file")
             # var_a, var_b and var_c will be saved. And they are going to be
-            # saved in the same file named 'var_file' in the path "./my_paddle_model".
+            # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
     if vars is None:
@@ -232,7 +242,9 @@ def save_params(executor, dirname, main_program=None, filename=None):
     NOTICE: Some variables are not Parameter while they are necessary for
     training. So you can NOT save and continue your training just by
     `save_params()` and `load_params()`. Please use `save_persistables()`
-    and `load_persistables()` instead.
+    and `load_persistables()` instead. If you want to save your model for
+    the inference, please use the `save_inference_model` API. You can refer
+    to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
         executor(Executor): The executor to run for saving parameters.
@@ -546,27 +558,40 @@ def load_vars(executor,
     Examples:
         .. code-block:: python
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
+            import paddle.fluid as fluid
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            with fluid.program_guard(main_prog, startup_prog):
+                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+                b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+                hidden_w = fluid.layers.matmul(x=data, y=w)
+                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_prog)
 
+            param_path = "./my_paddle_model"
             # The first usage: using `main_program` to specify variables
             def name_has_fc(var):
                 res = "fc" in var.name
                 return res
-
-            prog = fluid.default_main_program()
-            fluid.io.load_vars(executor=exe, dirname=path, main_program=prog,
+            fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog,
+                              vars=None, predicate=name_has_fc)
+            fluid.io.load_vars(executor=exe, dirname=param_path, main_program=main_prog,
                                vars=None, predicate=name_has_fc)
             # All variables in `main_program` whose name includes "fc" will be loaded.
             # And all the variables are supposed to have been saved in differnet files.
 
-
             # The second usage: using `vars` to specify variables
-            var_list = [var_a, var_b, var_c]
+            path = "./my_paddle_vars"
+            var_list = [w, b]
+            fluid.io.save_vars(executor=exe, dirname=path, vars=var_list,
+                               filename="vars_file")
             fluid.io.load_vars(executor=exe, dirname=path, vars=var_list,
                                filename="vars_file")
-            # var_a, var_b and var_c will be loaded. And they are supposed to haven
-            # been saved in the same file named 'var_file' in the path "./my_paddle_model".
+            # w and b will be loaded. And they are supposed to haven
+            # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
     if vars is None:
@@ -635,6 +660,9 @@ def load_params(executor, dirname, main_program=None, filename=None):
     training. So you can NOT save and continue your training just by
     `save_params()` and `load_params()`. Please use `save_persistables()`
     and `load_persistables()` instead.
+    If you want to load the pre-trained model structure and parameters
+    for the inference, please use the `load_inference_model` API. You can
+    refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
         executor(Executor): The executor to run for loading parameters.
@@ -879,10 +907,15 @@ def save_inference_model(dirname,
                          main_program=None,
                          model_filename=None,
                          params_filename=None,
-                         export_for_deployment=True):
+                         export_for_deployment=True,
+                         program_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
+    If you just want to save parameters of your trained model, please use the
+    `save_params` API. You can refer to :ref:`api_guide_model_save_reader_en` for
+    more details.
+
 
     Args:
         dirname(str): The directory path to save the inference model.
@@ -906,6 +939,7 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
+        program_only(bool): If True, It will save inference program only, and do not save params of Program.
 
     Returns:
         target_var_name_list(list): The fetch variables' name list
@@ -1039,6 +1073,12 @@ def save_inference_model(dirname,
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
 
+    if program_only:
+        warnings.warn(
+            "save_inference_model specified the param `program_only` to True, It will not save params of Program."
+        )
+        return target_var_name_list
+
     main_program._copy_dist_param_info_from(origin_program)
 
     if params_filename is not None:
@@ -1054,7 +1094,10 @@ def load_inference_model(dirname,
                          params_filename=None,
                          pserver_endpoints=None):
     """
-    Load inference model from a directory
+    Load inference model from a directory. By this API, you can get the model
+    structure(inference program) and model parameters. If you just want to load
+    parameters of the pre-trained model, please use the `load_params` API.
+    You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
         dirname(str): The directory path
@@ -1088,25 +1131,43 @@ def load_inference_model(dirname,
     Examples:
         .. code-block:: python
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            import paddle.fluid as fluid
+            import numpy as np
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            with fluid.program_guard(main_prog, startup_prog):
+                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
+                b = fluid.layers.create_parameter(shape=[200], dtype='float32')
+                hidden_w = fluid.layers.matmul(x=data, y=w)
+                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_prog)
             path = "./infer_model"
-            endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
-            [inference_program, feed_target_names, fetch_targets] =
-                fluid.io.load_inference_model(dirname=path, executor=exe)
+            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
+                         target_vars=[hidden_b], executor=exe, main_program=main_prog)
+            tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
+            [inference_program, feed_target_names, fetch_targets] = (
+                fluid.io.load_inference_model(dirname=path, executor=exe))
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
+            # endpoints is your pserver endpoints list, the above is just an example
+            endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
             # if we need lookup table, we will use:
-            fluid.io.load_inference_model(dirname=path, executor=exe, pserver_endpoints=endpoints)
+            [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (
+                fluid.io.load_inference_model(dirname=path,
+                                              executor=exe,
+                                              pserver_endpoints=endpoints))
 
             # In this example, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
-            # separate files in ""./infer_model".
+            # separate files in "./infer_model".
             # After getting inference program, feed target names and
             # fetch targets, we can use an Executor to run the inference
             # program to get the inference result.
-
     """
     load_dirname = os.path.normpath(dirname)
     if not os.path.isdir(load_dirname):

@@ -58,15 +58,8 @@ class PReluOpConverter : public OpConverter {
     engine_->weight_map[op_desc.Input("Alpha")[0]] =
         std::move(alpha_tensor_temp);
 
-    std::string layer_name = "prelu (Output: ";
     auto output_name = op_desc.Output("Out")[0];
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    layer_name += output_name;
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
-    layer->setName((layer_name + ")").c_str());
+    RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);
   }
 };
 

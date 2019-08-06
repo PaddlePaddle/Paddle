@@ -50,40 +50,48 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
 
       auto glambda = [&](const VariableNameMap& connections, bool is_output) {
         for (auto const& conn : connections) {
-          if (conn.second.size() == 0) continue;
-          auto& var_name = conn.second[0];
+          for (const auto& var_name : conn.second) {
+            // skip if scale already computed
+            if (scales_.find(var_name) != scales_.end()) return;
 
-          // skip if scale already computed
-          if (scales_.find(var_name) != scales_.end()) return;
+            auto* var = predictor_.sub_scope_->FindVar(var_name);
+            PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
+            PADDLE_ENFORCE(var->IsType<LoDTensor>(),
+                           "Only support lod tensor now.");
+            LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
 
-          auto* var = predictor_.sub_scope_->FindVar(var_name);
-          PADDLE_ENFORCE(var, "%s is not in the scope", var_name);
-          PADDLE_ENFORCE(var->IsType<LoDTensor>(),
-                         "Only support lod tensor now.");
-          LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
-
-          // force unsigned type if already know it
-          bool is_unsigned = false;
-          if (is_output && op->Type() == "conv2d") {
-            // output of conv2d with relu must be unsigned
-            is_unsigned = op->HasAttr("fuse_relu") &&
-                          boost::get<bool>(op->GetAttr("fuse_relu"));
-          } else if (is_output && op->Type() == "pool2d") {
-            // output of pool2d with unsigned input must be unsigned
-            auto input_var_name = op->Input("X")[0];
-            if (scales_.find(input_var_name) != scales_.end()) {
-              is_unsigned = scales_[input_var_name].first;
+            // force unsigned type if already know it
+            bool is_unsigned = false;
+            if (is_output && op->Type() == "conv2d") {
+              // output of conv2d with relu must be unsigned
+              is_unsigned = (op->HasAttr("fuse_relu") &&
+                             boost::get<bool>(op->GetAttr("fuse_relu"))) ||
+                            (op->HasAttr("fuse_brelu") &&
+                             boost::get<bool>(op->GetAttr("fuse_brelu")));
+            } else if (is_output && op->Type() == "relu") {
+              is_unsigned = true;
+            } else if (is_output &&
+                       (op->Type() == "pool2d" || op->Type() == "transpose2" ||
+                        op->Type() == "reshape2" || op->Type() == "concat")) {
+              // output of ops with unsigned input must be unsigned
+              is_unsigned = true;
+              for (auto input_var_name : op->Input("X")) {
+                PADDLE_ENFORCE(scales_.find(input_var_name) != scales_.end(),
+                               "Input scales must be calculated before the "
+                               "output scales to infer if output is unsigned.");
+                is_unsigned = is_unsigned && scales_[input_var_name].first;
+              }
             }
-          }
 
-          CalculateSingleScale(op->Type(), conn.first, var_name, *var_tensor,
-                               is_unsigned);
+            CalculateSingleScale(op->Type(), conn.first, var_name, *var_tensor,
+                                 is_unsigned);
+          }
         }
       };
 
-      // handle outputs first so unsigned outputs could be inferred
-      glambda(connections_out, true /* is_output */);
+      // handle inputs first to let is_unsigned be inferred for the outputs
       glambda(connections_in, false /* is_output */);
+      glambda(connections_out, true /* is_output */);
     }
   }
 
@@ -353,8 +361,9 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   arg.SetMainProgramNotOwned(predictor_.inference_program_.get());
   auto graph = std::unique_ptr<Graph>(new Graph(arg.main_program()));
   arg.SetMainGraph(graph.release());
-  arg.main_graph().Set(framework::ir::kParamScopeAttr,
-                       new framework::Scope*(arg.scope_ptr()));
+  auto* scope_ptr = arg.scope_ptr();
+  PADDLE_ENFORCE(scope_ptr);
+  arg.main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({

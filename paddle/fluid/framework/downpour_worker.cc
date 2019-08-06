@@ -63,6 +63,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
 
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
+  use_cvm_ = desc.use_cvm();
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -139,14 +140,25 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     LoD data_lod{tensor_lod};
     tensor_emb->set_lod(data_lod);
     for (int index = 0; index < len; ++index) {
-      if (ids[index] == 0u) {
-        memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+      if (use_cvm_) {
+        if (ids[index] == 0u) {
+          memcpy(ptr + table.emb_dim() * index, init_value.data(),
+                 sizeof(float) * table.emb_dim());
+          continue;
+        }
+        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
-        continue;
+        fea_idx++;
+      } else {
+        if (ids[index] == 0u) {
+          memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+                 sizeof(float) * table.emb_dim());
+          continue;
+        }
+        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
+               sizeof(float) * table.emb_dim());
+        fea_idx++;
       }
-      memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
-             sizeof(float) * table.emb_dim());
-      fea_idx++;
     }
   }
 }
@@ -197,9 +209,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto i : param_.sparse_table()) {
-        if (i.table_id() == tid) {
-          table = i;
+      for (auto j : param_.sparse_table()) {
+        if (j.table_id() == tid) {
+          table = j;
           break;
         }
       }
@@ -259,7 +271,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_);
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -367,9 +379,9 @@ void DownpourWorker::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto i : param_.sparse_table()) {
-        if (i.table_id() == tid) {
-          table = i;
+      for (auto j : param_.sparse_table()) {
+        if (j.table_id() == tid) {
+          table = j;
           break;
         }
       }
@@ -411,7 +423,7 @@ void DownpourWorker::TrainFiles() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_);
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_);
       }
     }
 

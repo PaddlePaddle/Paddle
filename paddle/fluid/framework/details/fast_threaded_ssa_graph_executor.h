@@ -60,6 +60,8 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ::ThreadPool pool_;
   ::ThreadPool prepare_pool_;
 
+  std::vector<OpHandleBase *> traced_ops_;
+
   bool RunOp(OpHandleBase *op,
              const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
              size_t *complete);
@@ -69,6 +71,22 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
                   const std::shared_ptr<BlockingQueue<size_t>> &complete_q);
 
   void PrepareAtomicOpDeps();
+
+  inline void RecordOps(OpHandleBase *op);
+
+  inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
+
+  inline void RunOpSync(OpHandleBase *op);
+
+  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
+
+  void InsertFetchOps(
+      const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+      std::unordered_map<std::string, std::vector<VarHandleBase *>>
+          *fetched_vars,
+      std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+      std::vector<OpHandleBase *> *fetch_ops,
+      std::vector<OpHandleBase *> *ready_fetch_ops);
 };
 }  // namespace details
 }  // namespace framework

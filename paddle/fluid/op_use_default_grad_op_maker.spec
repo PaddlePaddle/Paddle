@@ -29,7 +29,6 @@ prelu
 quantize
 rank_loss
 reduce_max
-reduce_mean
 reduce_min
 reduce_prod
 reduce_sum

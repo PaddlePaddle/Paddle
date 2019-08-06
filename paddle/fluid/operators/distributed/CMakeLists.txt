@@ -29,7 +29,7 @@ if(WITH_GRPC)
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
 
   cc_test(grpc_serde_test SRCS grpc/grpc_serde_test.cc 
-    DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
+    DEPS ${RPC_DEPS} scope profiler math_function)
 
 else()
   set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
@@ -47,12 +47,12 @@ else()
 
   set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
-      DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
+      DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_op)
 endif()
 
 
 cc_test(rpc_server_test SRCS rpc_server_test.cc
-    DEPS ${RPC_DEPS} executor proto_desc lookup_sparse_table_op SERIAL)
+    DEPS ${RPC_DEPS} executor proto_desc lookup_sparse_table_op)
 cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler scope)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 cc_library(parameter_send SRCS parameter_send.cc DEPS sendrecvop_rpc memory)
@@ -62,5 +62,5 @@ cc_test(communicator_test SRCS communicator_test.cc DEPS communicator)
 if(WITH_GPU)
     cc_test(collective_server_test SRCS collective_server_test.cc 
         DEPS sendrecvop_rpc executor ${RPC_DEPS}
-        selected_rows_functor  scope math_function SERIAL)
+        selected_rows_functor  scope math_function)
 endif()

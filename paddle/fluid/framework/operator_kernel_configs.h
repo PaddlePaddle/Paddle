@@ -103,7 +103,7 @@ TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     ++search_times_;
     return algo;
   }
-  TAlgorithm algo;
+  TAlgorithm algo{};
   int64_t min = static_cast<uint64_t>(INT_MAX);
   for (const auto& m : hash_) {
     if (m.first < min) {

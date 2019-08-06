@@ -95,6 +95,11 @@ class BlockingQueue {
     return q_.size();
   }
 
+  void Clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::deque<T>().swap(q_);
+  }
+
  private:
   std::mutex mutex_;
   std::condition_variable cv_;

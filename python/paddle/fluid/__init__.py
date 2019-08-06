@@ -39,6 +39,7 @@ from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
+from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
@@ -54,6 +55,7 @@ from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
+from . import dygraph_grad_clip
 from . import profiler
 from . import unique_name
 from . import recordio_writer
@@ -71,7 +73,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -93,6 +95,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'WeightNormParamAttr',
         'DataFeeder',
         'clip',
+        'dygraph_grad_clip',
         'profiler',
         'unique_name',
         'recordio_writer',
@@ -139,8 +142,8 @@ def __bootstrap__():
         'allocator_strategy', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
         'enable_parallel_graph', 'fuse_parameter_groups_size',
-        'multiple_of_cupti_buffer_size', 'enable_subgraph_optimize',
-        'fuse_parameter_memory_size', 'tracer_profile_fname'
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
+        'tracer_profile_fname', 'dygraph_debug'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -167,7 +170,7 @@ def __bootstrap__():
         # env for communicator
         read_env_flags.append('communicator_independent_recv_thread')
         read_env_flags.append('communicator_send_queue_size')
-        read_env_flags.append('communicator_max_send_grad_num_before_recv')
+        read_env_flags.append('communicator_min_send_grad_num_before_recv')
         read_env_flags.append('communicator_thread_pool_size')
         read_env_flags.append('communicator_max_merge_var_num')
         read_env_flags.append('communicator_fake_rpc')
@@ -182,8 +185,8 @@ def __bootstrap__():
             'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
-            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
+            'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
+            'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
             'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]

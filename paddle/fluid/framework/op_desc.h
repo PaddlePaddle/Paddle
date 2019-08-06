@@ -33,7 +33,7 @@ class OpDesc {
   OpDesc(const std::string &type, const VariableNameMap &inputs,
          const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  explicit OpDesc(const proto::OpDesc &desc, BlockDesc *block = nullptr);
+  OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
@@ -42,7 +42,6 @@ class OpDesc {
   void CopyFrom(const OpDesc &op_desc);
 
   proto::OpDesc *Proto();
-  const proto::OpDesc &ReadonlyProto() const { return desc_; }
 
   std::string Type() const { return desc_.type(); }
 

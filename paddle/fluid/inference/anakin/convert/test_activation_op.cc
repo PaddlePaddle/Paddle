@@ -77,32 +77,6 @@ TEST(swish_op, gpu) {
 }
 #endif
 
-/*
-TEST(sigm_op, cpu) {
-  platform::CPUPlace cpu_place;
-  platform::CPUDeviceContext ctx(cpu_place);
-  test_activation_op<::anakin::saber::X86>("sigmoid", ctx, false);
-}
-
-TEST(tanh_op, cpu) {
-  platform::CPUPlace cpu_place;
-  platform::CPUDeviceContext ctx(cpu_place);
-  test_activation_op<::anakin::saber::X86>("tanh", ctx, false);
-}
-
-TEST(relu6_op, cpu) {
-  platform::CPUPlace cpu_place;
-  platform::CPUDeviceContext ctx(cpu_place);
-  test_activation_op<::anakin::saber::X86>("relu6", ctx, false);
-}
-
-TEST(swish_op, cpu) {
-  platform::CPUPlace cpu_place;
-  platform::CPUDeviceContext ctx(cpu_place);
-  test_activation_op<::anakin::saber::X86>("swish", ctx, false);
-}
-*/
-
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
@@ -112,13 +86,7 @@ USE_OP(tanh);
 USE_OP(relu6);
 USE_OP(swish);
 
-USE_CPU_ANAKIN_CONVERTER(sigmoid);
-USE_CPU_ANAKIN_CONVERTER(tanh);
-USE_CPU_ANAKIN_CONVERTER(relu6);
-USE_CPU_ANAKIN_CONVERTER(swish);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(sigmoid);
 USE_ANAKIN_CONVERTER(tanh);
 USE_ANAKIN_CONVERTER(relu6);
 USE_ANAKIN_CONVERTER(swish);
-#endif

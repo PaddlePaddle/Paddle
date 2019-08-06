@@ -57,6 +57,8 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.fuse_bias = False
         self.bias_size = None
         self.fuse_relu = False
+        self.fuse_brelu = False
+        self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
         TestConv2dOp.setUp(self)
@@ -84,13 +86,36 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         if self.fuse_relu:
             output = np.maximum(output, 0).astype(self.dsttype)
 
+        if self.fuse_brelu:
+            output = np.minimum(
+                np.maximum(output, 0),
+                self.fuse_brelu_threshold).astype(self.dsttype)
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias
         self.attrs['fuse_relu'] = self.fuse_relu
+        self.attrs['fuse_brelu'] = self.fuse_brelu
+        self.attrs['fuse_brelu_threshold'] = self.fuse_brelu_threshold
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output
+
+
+class TestWithbreluFusion(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.fuse_brelu = True
+        self.fuse_brelu_threshold = 6.0
+        self.dsttype = np.float32
+
+    def test_check_grad(self):
+        pass
+
+    def test_check_grad_no_filter(self):
+        pass
+
+    def test_check_grad_no_input(self):
+        pass
 
 
 class TestWithFuse(TestConv2dMKLDNNOp):
