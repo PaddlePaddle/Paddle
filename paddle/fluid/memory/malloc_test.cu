@@ -54,38 +54,36 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   float *main_stream_data =
       reinterpret_cast<float *>(main_stream_alloc_ptr->ptr());
 
-  cudaStream_t streams[NUM_STREAMS];
   float *data[NUM_STREAMS];
   float *second_data[NUM_STREAMS];
+  platform::CUDADeviceContext *dev_ctx[NUM_STREAMS];
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
     // default stream
     kernel<<<1, 64>>>(main_stream_data, N);
 
-    paddle::platform::CUDADeviceContext dev_ctx(place);
-    AllocationPtr allocation_ptr = Alloc(dev_ctx, N * sizeof(float));
+    dev_ctx[i] = new platform::CUDADeviceContext(place);
+    AllocationPtr allocation_ptr = Alloc(*dev_ctx[i], N * sizeof(float));
     EXPECT_EQ(allocation_ptr->size(), N * sizeof(float));
     data[i] = reinterpret_cast<float *>(allocation_ptr->ptr());
 
     // multi-streams
-    streams[i] = dev_ctx.stream();
-    kernel<<<1, 64, 0, streams[i]>>>(data[i], N);
+    kernel<<<1, 64, 0, dev_ctx[i]->stream()>>>(data[i], N);
 
     // allocate and compute on same stream again
-    allocation_ptr = Alloc(dev_ctx, N * sizeof(float));
+    allocation_ptr = Alloc(*dev_ctx[i], N * sizeof(float));
     EXPECT_EQ(allocation_ptr->size(), N * sizeof(float));
     second_data[i] = reinterpret_cast<float *>(allocation_ptr->ptr());
-    kernel<<<1, 64, 0, streams[i]>>>(second_data[i], N);
+    kernel<<<1, 64, 0, dev_ctx[i]->stream()>>>(second_data[i], N);
   }
 
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
   CheckKernelOutput(main_stream_data, N);
   for (int i = 0; i < NUM_STREAMS; ++i) {
+    delete dev_ctx[i];
     CheckKernelOutput(data[i], N);
     CheckKernelOutput(second_data[i], N);
   }
-
-  EXPECT_TRUE(cudaSuccess == cudaDeviceReset());
 }
 
 TEST(Malloc, AllocZero) {
