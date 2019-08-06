@@ -307,7 +307,7 @@ paddle.fluid.layers.linspace (ArgSpec(args=['start', 'stop', 'num', 'dtype'], va
 paddle.fluid.layers.zeros_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', 'd88a23bcdc443719b3953593f7cef14a'))
 paddle.fluid.layers.ones_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '642afd126553337d6796600e886a6525'))
 paddle.fluid.layers.diag (ArgSpec(args=['diagonal'], varargs=None, keywords=None, defaults=None), ('document', '88a15e15f0098d549f07a01eaebf9ce3'))
-paddle.fluid.layers.eye (ArgSpec(args=['num_rows', 'num_columns', 'batch_shape', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 'float32')), ('document', 'd8d0f28f8255b94b97329f2721798848'))
+paddle.fluid.layers.eye (ArgSpec(args=['num_rows', 'num_columns', 'batch_shape', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 'float32')), ('document', '25389d1e239a5d1cda66298f908ec549'))
 paddle.fluid.layers.While ('paddle.fluid.layers.control_flow.While', ('document', '50110155608a00f43d3d3fd1be41dcb4'))
 paddle.fluid.layers.While.__init__ (ArgSpec(args=['self', 'cond', 'is_test', 'name'], varargs=None, keywords=None, defaults=(False, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.While.block (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
