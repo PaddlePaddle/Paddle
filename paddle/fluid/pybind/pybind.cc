@@ -1069,8 +1069,8 @@ All parameter, weight, gradient are variables in Paddle.
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
-      .def("move", [](LoDTensorArray &self, LoDTensorArray &dst) {
-        dst = std::move(self);
+      .def("_move", [](LoDTensorArray &self) -> LoDTensorArray {
+        return std::move(self);
       });
 
   m.def("IsInplace",
@@ -1653,10 +1653,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors,
-                     const std::string &fetched_var_name) {
+                     const std::vector<std::string> &fetch_tensors) {
         pybind11::gil_scoped_release release;
-        return self.Run(fetch_tensors, fetched_var_name);
+        return self.Run(fetch_tensors);
       });
 
   BindRecordIOWriter(&m);

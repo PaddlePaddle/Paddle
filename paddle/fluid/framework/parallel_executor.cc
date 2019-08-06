@@ -684,8 +684,7 @@ void ParallelExecutor::BCastParamsToDevices(
 }
 
 FeedFetchList ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors,
-    const std::string &fetched_var_name) {
+    const std::vector<std::string> &fetch_tensors) {
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
