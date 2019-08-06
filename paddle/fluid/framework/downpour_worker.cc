@@ -87,7 +87,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
 }
 
 template <typename T>
-std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start, 
+std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start,
                                   int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -101,7 +101,7 @@ std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start, 
+std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start,
                                       int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -731,7 +731,9 @@ void DownpourWorker::TrainFiles() {
       int batch_size = device_reader_->GetCurBatchSize();
       std::vector<std::string> ars(batch_size);
       int err_no = 0;
-      std::string path = string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, thread_id_);
+      std::string path =
+          string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
+                                mpi_rank_, thread_id_);
       thread_local std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, "");
       for (auto& ar : ars) {
         ar.clear();
