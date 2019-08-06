@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Fleet Utils"""
 
 import collections
 import json
@@ -796,9 +797,9 @@ class FleetUtil(object):
               fleet_util.pull_all_dense_params(my_scope, my_program)
 
         """
-	fleet._role_maker._barrier_worker()
-	if fleet._role_maker.is_first_worker():
-	    tables = fleet._dist_desc.trainer_param.dense_table
+        fleet._role_maker._barrier_worker()
+        if fleet._role_maker.is_first_worker():
+            tables = fleet._dist_desc.trainer_param.dense_table
             prog_id = str(id(program))
             prog_conf = fleet._opt_info['program_configs'][prog_id]
             prog_tables = {}
@@ -814,14 +815,13 @@ class FleetUtil(object):
                 for i in range(0, len(table.dense_variable_name)):
                     var_name = table.dense_variable_name[i]
                     if scope.find_var(var_name) is None:
-                        raise ValueError(
-                            "var " + var_name + " not found in scope "
-                            + "when pull dense")
+                        raise ValueError("var " + var_name +
+                                         " not found in scope " +
+                                         "when pull dense")
                     var_name_list.append(var_name)
                 fleet._fleet_ptr.pull_dense(scope,
-                                            int(table.table_id),
-                                            var_name_list)
-	self._role_maker._barrier_worker()
+                                            int(table.table_id), var_name_list)
+        self._role_maker._barrier_worker()
 
     def save_paddle_params(self,
                            executor,
