@@ -56,6 +56,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
 
   cudaStream_t streams[NUM_STREAMS];
   float *data[NUM_STREAMS];
+  float *second_data[NUM_STREAMS];
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
     // default stream
@@ -69,6 +70,12 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
     // multi-streams
     streams[i] = dev_ctx.stream();
     kernel<<<1, 64, 0, streams[i]>>>(data[i], N);
+
+    // allocate and compute on same stream again
+    allocation_ptr = Alloc(dev_ctx, N * sizeof(float));
+    EXPECT_EQ(allocation_ptr->size(), N * sizeof(float));
+    second_data[i] = reinterpret_cast<float *>(allocation_ptr->ptr());
+    kernel<<<1, 64, 0, streams[i]>>>(second_data[i], N);
   }
 
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
@@ -76,6 +83,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   for (int i = 0; i < NUM_STREAMS; ++i) {
     cudaStreamSynchronize(streams[i]);
     CheckKernelOutput(data[i], N);
+    CheckKernelOutput(second_data[i], N);
   }
 
   EXPECT_TRUE(cudaSuccess == cudaDeviceReset());
