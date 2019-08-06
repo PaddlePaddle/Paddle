@@ -18,6 +18,7 @@ import logging
 import os
 import multiprocessing
 import sys
+import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
@@ -611,17 +612,30 @@ class Executor(object):
         except Exception as e:
             if not isinstance(e, core.EOFException):
                 print("An exception was thrown!\n {}".format(str(e)))
-            raise e
+            six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache):
-
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
+        if program is None:
+            program = default_main_program()
+        if isinstance(program,Program) and \
+                        len(program.global_block().ops) == 0:
+            warnings.warn("The current program is empty.")
+
         if scope is None:
             scope = global_scope()
-        if fetch_list is None:
+
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
+        else:
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
@@ -679,9 +693,8 @@ class Executor(object):
             raise TypeError(
                 "feed requires dict as its Parameter. But you passed in %s" %
                 (type(feed)))
-        if program is None:
-            program = default_main_program()
 
+        assert program is not None, "The program should not be Empty"
         if not isinstance(program, Program):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
