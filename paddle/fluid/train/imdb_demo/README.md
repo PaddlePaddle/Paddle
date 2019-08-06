@@ -99,3 +99,5 @@ BOW:
 I also recorded the training speed of the C++ Trainer and the python training methods, C++ trainer is quicker on CNN model: 
 
 <img src="https://user-images.githubusercontent.com/23031310/62356444-af4ce800-b543-11e9-88c8-f3bde1321ea1.png" width="300">
+
+#TODO (mapingshuo): find the reason why C++ trainer is quicker on CNN model than python method.
