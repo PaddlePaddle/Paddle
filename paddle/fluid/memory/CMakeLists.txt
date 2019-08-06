@@ -1,7 +1,14 @@
 add_subdirectory(detail)
 add_subdirectory(allocation)
+
+if (WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+else ()
+    set(MKLDNN_CTX_DEPS)
+endif()
+
 cc_library(malloc SRCS malloc.cc DEPS
-    place enforce allocator_facade profiler)
+    place enforce allocator_facade profiler ${MKLDNN_CTX_DEPS})
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
 cc_library(memory
