@@ -433,6 +433,22 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
     return eltwise_bwd_p;
   }
 
+  static std::string GetHash(const memory::dims& input_dims,
+                             const mkldnn::algorithm algorithm,
+                             const mkldnn::memory::format fmt,
+                             const float alpha, const float beta,
+                             const std::string& suffix) {
+    std::string key;
+    key.reserve(platform::MKLDNNHandler::MaxKeyLength);
+    platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(algorithm));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(alpha));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(beta));
+    platform::MKLDNNHandler::AppendKey(&key, suffix);
+    return key;
+  }
+
  private:
   std::shared_ptr<mkldnn::eltwise_forward::primitive_desc> activation_pd_;
   std::shared_ptr<mkldnn::eltwise_backward::primitive_desc> activation_bwd_pd_;

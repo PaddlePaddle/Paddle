@@ -74,7 +74,8 @@ void Train() {
   float first_loss = 0.0;
   float last_loss = 0.0;
   for (int i = 0; i < 100; ++i) {
-    executor.Run(*train_program, &scope, 0, false, true);
+    executor.Run(*train_program, &scope, 0, false, true,
+                 {loss_name, "img", "label"});
     if (i == 0) {
       first_loss = loss_var->Get<framework::LoDTensor>().data<float>()[0];
     } else if (i == 99) {

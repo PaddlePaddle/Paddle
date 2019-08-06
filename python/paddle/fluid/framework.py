@@ -272,11 +272,15 @@ def name_scope(prefix=None):
               g = f - 1
     """
     # TODO(panyx0718): Only [0-9a-z].
-    assert prefix, "namescope prefix cannot be empty."
-    global _name_scope
-    _name_scope = _name_scope.child(prefix)
-    yield
-    _name_scope = _name_scope.parent()
+    # in dygraph we don't need namescope since it will cause mem leak
+    if not in_dygraph_mode():
+        assert prefix, "namescope prefix cannot be empty."
+        global _name_scope
+        _name_scope = _name_scope.child(prefix)
+        yield
+        _name_scope = _name_scope.parent()
+    else:
+        yield
 
 
 def _full_name_scope():
