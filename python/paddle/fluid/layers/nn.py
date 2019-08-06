@@ -8054,7 +8054,7 @@ def resize_trilinear(input,
     H-direction and W-direction in this op) on a rectilinear 3D grid. 
     The linear interpolation is performed on three directions.
 
-    For details of bilinear interpolation, please refer to Wikipedia:
+    For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation
 
     Align_corners and align_mode are optinal parameters,the calculation 
