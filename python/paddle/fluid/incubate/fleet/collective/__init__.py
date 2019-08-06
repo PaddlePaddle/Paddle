@@ -21,13 +21,18 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
-class LambConfig(Object):
+import os
+
+
+class LambConfig(object):
     def __init__(self):
         pass
 
-class DistFCConfig(Object):
+
+class DistFCConfig(object):
     def __init__(self):
         pass
+
 
 class Collective(Fleet):
     def __init__(self):
@@ -73,13 +78,21 @@ class Collective(Fleet):
     def save_persistables(self, executor, dirname, main_program=None):
         io.save_persistables(executor, dirname, main_program, None)
 
+    def node_num(self):
+        return self._role_maker._node_num
+
+    def node_id(self):
+        return self._role_maker._node_id
+
 
 fleet = Collective()
 
-class DistributedStrategy(fluid.BuildStratey):
+
+class DistributedStrategy(fluid.BuildStrategy):
     """
     Init function of DistributedStrategy
     """
+
     def __init__(self):
         super(DistributedStrategy, self).__init__()
         self.fuse_memory_size = -1
@@ -93,24 +106,31 @@ class DistributedStrategy(fluid.BuildStratey):
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
 
-        self._exec_strategy = fluid.ExecutionStrategy()
+        self.nccl_comm_num = 2
+
+        self.exec_strategy = fluid.ExecutionStrategy()
         sync_allreduce = os.getenv("FLAGS_sync_nccl_allreduce")
         if sync_allreduce == "0":
             self._exec_strategy.num_threads = self.nccl_comm_num + 1
             if sef.use_hierarchical_allreduce:
                 self._exec_strategy.num_threads = 2 * self.nccl_comm_num + 1
             if self._exec_strategy.num_threads > 4:
-                print(stderr, "WARNING: if you use use_hierarchical_allreduce or "
-                              "with multi nccl comm, please set FLAGS_sync_nccl_allreduce = 0")
+                print(
+                    stderr, "WARNING: if you use use_hierarchical_allreduce or "
+                    "with multi nccl comm, please set FLAGS_sync_nccl_allreduce = 0"
+                )
+
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
     """
     Collective Operator Base Class For Distributed Optimizer
     The class is invisible to a user
     """
+
     def __init__(self, optimizer, strategy=None):
         assert isinstance(
-            strategy,DistributedStrategy), "strategy must be DistributedStrategy"
+            strategy,
+            DistributedStrategy), "strategy must be DistributedStrategy"
         super(CollectiveOpBasedOptimizer, self).__init__(optimizer, strategy)
 
     def backward(self,
@@ -124,6 +144,7 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
 
     def apply_gradients(self, params_grads):
         return self._optimizer.apply_gradients(params_grads)
+
 
 class CollectiveOptimizer(DistributedOptimizer):
     """
@@ -157,22 +178,29 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     @staticmethod
     def _check_condition(name, **kwargs):
-        for k,v in kwargs.iterms():
+        for k, v in kwargs.iterms():
             if v is True:
                 assert False, "you can't use %s and %s together" % (name, k)
 
     @staticmethod
     def _check(main_program, optimizer, strategy):
+        """
+        Check the conflict condtions.
+        """
         if strategy.use_local_sgd:
-            _check_condition("use_local_sgd", use_dgc=main_program._enable_dgc,
-                   use_dist_fc=strategy.use_dist_fc,
-                   use_lamb=main_program._use_lamb)
+            _check_condition(
+                "use_local_sgd",
+                use_dgc=main_program._enable_dgc,
+                use_dist_fc=strategy.use_dist_fc,
+                use_lamb=main_program._use_lamb)
             assert strategy.local_sgd_config is not None, "DistributedStrategy.local_sgd_config should be set"
 
         if strategy.use_dist_fc:
-            _check_condition("use_dist_fc", use_dgc=main_program._enable_dgc,
-                   use_local_sgd=strategy.use_local_sgd,
-                   use_lamb=main_program._use_lamb)
+            _check_condition(
+                "use_dist_fc",
+                use_dgc=main_program._enable_dgc,
+                use_local_sgd=strategy.use_local_sgd,
+                use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
 
         if self._strategy.collective_mode=="local_sgd" \
@@ -181,13 +209,25 @@ class CollectiveOptimizer(DistributedOptimizer):
                 "local_sgd and grad_allreduce can be used under collective mode"
 
     def _transpile(self, startup_program, main_program):
+        """
+        Transpile the programs to distributed programs. And add the variables.
+        """
         if self._strategy.fuse_all_reduce_ops:
-            os.environ['FLAGS_fuse_parameter_memory_size'] = self.fuse_memory_size
-            os.environ['FLAGS_fuse_parameter_groups_size'] = self.fuse_layer_size
+            os.environ[
+                'FLAGS_fuse_parameter_memory_size'] = self.fuse_memory_size
+            os.environ[
+                'FLAGS_fuse_parameter_groups_size'] = self.fuse_layer_size
 
         worker_endpoints = fleet.worker_endpoints()
         trainer_id = fleet.worker_index()
         current_endpoint = fleet.worker_endpoints()[trainer_id]
+        worker_endpoints_env = ','.join(worker_endpoints)
+        trainers_num = len(worker_endpoints)
+
+        if self.print_config:
+            print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
+                  trainer_id:{}".format(worker_endpoints, trainers_num,
+                                        current_endpoint, trainer_id))
 
         # call transpiler
         config = dist_transpiler.DistributeTranspilerConfig()
@@ -201,12 +241,12 @@ class CollectiveOptimizer(DistributedOptimizer):
         t = dist_transpiler.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
-            trainers=','.join(worker_endpoints),
+            trainers=worker_endpoints_env,
             startup_program=startup_program,
             program=main_program,
             current_endpoint=current_endpoint)
 
-    def _try_to_compile(self,startup_program, main_program):
+    def _try_to_compile(self, startup_program, main_program):
         self._transpile(startup_program, main_program)
 
         if self._strategy.mode == "collective":
@@ -215,13 +255,14 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._strategy.num_trainers = fleet.worker_num()
         self._strategy.trainer_id = fleet.worker_index()
         self._strategy.trainers_endpoints = fleet.worker_endpoints()
+        self._strategy.enable_backward_optimizer_op_deps = True
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,
             build_strategy=self._strategy,
-            exec_strategy=self._exec_strategy,
+            exec_strategy=self._strategy._exec_strategy,
             share_vars_from=None)
 
     def minimize(self,
