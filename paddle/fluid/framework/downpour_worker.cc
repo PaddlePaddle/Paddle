@@ -86,8 +86,9 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   mpi_rank_ = desc.mpi_rank() / 2;
 }
 
-template<typename T>
-std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start, int64_t end) {
+template <typename T>
+std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start, 
+                                  int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -100,7 +101,8 @@ std::string print_lod_tensor_type(LoDTensor* tensor, int64_t start, int64_t end)
   return os.str();
 }
 
-std::string print_lod_tensor_int_type(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string print_lod_tensor_int_type(LoDTensor* tensor, 
+                                      int64_t start, int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -132,8 +134,7 @@ std::pair<int64_t, int64_t> get_tensor_bound(LoDTensor* tensor, int index) {
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
     return {lod[index] * dims[1], lod[index + 1] * dims[1]};
-  }
-  else {
+  } else {
     return {index * dims[1], (index + 1) * dims[1]};
   }
 }
