@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
@@ -51,17 +49,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     ResolveOptionConfliction();
 
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
-    // Note(zcd): record_skip_memory_opt_vars_pass should
-    // be the first pass.
-    AppendPass("record_skip_memory_opt_vars_pass");
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
-    // TODO(dev-paddle): memory optimize pass should be placed last.
-    AppendMemoryOptimizePasses();
+
     AppendMultiDevPass();
     AppendMultiGraphOptPasses();
 
@@ -83,7 +77,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Specifies the restrictions between different pass.
     if (strategy_.enable_parallel_graph_) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
-          << "Currently, fuse_all_optimizer_ops doesn't works under "
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
     }
@@ -101,6 +95,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
+    }
+    if (strategy_.async_mode_) {
+      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
+             "async mode.";
+      strategy_.fuse_all_optimizer_ops_ = false;
     }
   }
 
@@ -144,23 +144,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_adam_op_pass");
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
-    }
-  }
-
-  void AppendMemoryOptimizePasses() {  // Append Memory Optimize Pass
-    // TODO(zjl): refactor MemoryOptimizePass to fit
-    // new strategy, which does not need to set
-    // var.persistable = True
-    if (strategy_.use_legacy_memory_optimize_strategy_) {
-      AppendPassWithCheck(strategy_.enable_inplace_, "inplace_pass");
-    }
-    // NOTE(dzh): memory optimize should be a runtime pass.
-    // However, after multi_devices_pass, VarHandle, OpHandle is
-    // the de-fact IR, any reuse on Graph is meaningless.
-    // A side-effect of that, memory optimize cannot forsee the fetched vars
-    // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy_.use_legacy_memory_optimize_strategy_) {
-      AppendPassWithCheck(strategy_.memory_optimize_, "memory_optimize_pass");
     }
   }
 
@@ -330,9 +313,6 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         "GPU, skipped.";
         continue;
       }
-    } else if (pass->Type() == "inplace_pass") {
-      pass->Erase(ir::kUseCuda);
-      pass->Set<bool>(ir::kUseCuda, new bool(use_cuda));
     } else if (pass->Type() == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
@@ -365,12 +345,10 @@ USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
-USE_PASS(memory_optimize_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
 USE_PASS(backward_optimizer_op_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
-USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(coalesce_grad_tensor_pass);
 USE_PASS(graph_to_program_pass);
@@ -379,7 +357,6 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
-USE_PASS(record_skip_memory_opt_vars_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

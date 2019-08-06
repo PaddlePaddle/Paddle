@@ -76,7 +76,7 @@ class InplaceTestBase(unittest.TestCase):
 
         return all_vars_name
 
-    def test_single_card_fetch_var(self):
+    def check_single_card_fetch_var(self):
         if self.is_invalid_test():
             return
 
@@ -98,7 +98,7 @@ class InplaceTestBase(unittest.TestCase):
                 compiled_programs.append(compiled_prog)
 
         all_vars_name = self.get_all_vars(prog1)
-        repeated_var_names = all_vars_name * 4
+        repeated_var_names = all_vars_name * 2
         random.shuffle(repeated_var_names)  # add some random 
 
         for fetch_var in repeated_var_names:
@@ -116,7 +116,7 @@ class InplaceTestBase(unittest.TestCase):
 
                         self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
 
-    def test_multi_card_fetch_var(self):
+    def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
             return
 
@@ -144,7 +144,7 @@ class InplaceTestBase(unittest.TestCase):
                         places=places)
                 compiled_programs.append(compiled_program)
 
-        repeated_var_names = self.get_all_vars(prog1) * 4
+        repeated_var_names = self.get_all_vars(prog1) * 2
         random.shuffle(repeated_var_names)  # add some random 
 
         for fetch_var in repeated_var_names:
@@ -161,22 +161,28 @@ class InplaceTestBase(unittest.TestCase):
                     self.assertTrue(np.array_equal(fetch_vals[0], item))
 
 
+class CUDAInplaceTest(InplaceTestBase):
+    def initParameter(self):
+        self.use_cuda = True
+        self.fuse_all_optimizer_ops = False
+
+    def test_multi_card_fetch_var(self):
+        self.check_multi_card_fetch_var()
+
+    def test_single_card_fetch_var(self):
+        self.check_single_card_fetch_var()
+
+
 class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = False
 
+    def test_multi_card_fetch_var(self):
+        self.check_multi_card_fetch_var()
 
-class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
-    def initParameter(self):
-        self.use_cuda = True
-        self.fuse_all_optimizer_ops = True
-
-
-class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
-    def initParameter(self):
-        self.use_cuda = True
-        self.fuse_all_optimizer_ops = True
+    def test_single_card_fetch_var(self):
+        self.check_single_card_fetch_var()
 
 
 if __name__ == '__main__':

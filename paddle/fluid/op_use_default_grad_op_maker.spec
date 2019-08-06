@@ -42,3 +42,4 @@ tensor_array_to_tensor
 transpose
 unpool
 unsqueeze
+var_conv_2d
