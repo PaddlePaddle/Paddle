@@ -62,7 +62,7 @@ cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope d
 
 cc_library(eager_deletion_op_handle SRCS eager_deletion_op_handle.cc DEPS lod_tensor selected_rows reference_count_pass_helper)
 
-set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto sequential_execution_pass modify_op_lock_and_record_event_pass all_reduce_deps_pass reference_count_pass eager_deletion_pass memory_optimize_pass inplace_op_pass buffer_shared_inplace_op_pass buffer_shared_cross_op_memory_reuse_pass)
+set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto sequential_execution_pass modify_op_lock_and_record_event_pass all_reduce_deps_pass reference_count_pass eager_deletion_pass buffer_shared_inplace_op_pass buffer_shared_cross_op_memory_reuse_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
@@ -92,6 +92,6 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
         fuse_relu_depthwise_conv_pass
-        memory_optimize_pass lock_free_optimize_pass
+        lock_free_optimize_pass
         coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
-        fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass record_skip_memory_opt_vars_pass)
+        fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass)

@@ -41,5 +41,6 @@ class TrainerFactory(object):
                 trainer._set_use_cvm(opt_info["use_cvm"])
                 trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 trainer._set_dump_slot(opt_info["dump_slot"])
+                trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
             trainer._set_device_worker(device_worker)
         return trainer
