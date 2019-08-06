@@ -33,7 +33,7 @@ CUDADeviceContextAllocator::CUDADeviceContextAllocator(
 CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
   if (event_) {
     platform::CUDADeviceGuard guard(place_.device);
-    PADDLE_ENFORCE(cudaSuccess == cudaEventDestroy(event_));
+    cudaEventDestroy(event_);
   }
 }
 
@@ -42,6 +42,9 @@ void CUDADeviceContextAllocator::SetComputeStream(cudaStream_t compute_stream) {
 }
 
 Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      compute_stream_,
+      "Didn't set compute stream for CUDADeviceContextAllocator");
   platform::CUDADeviceGuard guard(place_.device);
   auto allocation =
       new CUDADeviceContextAllocation(memory::Alloc(place_, size));

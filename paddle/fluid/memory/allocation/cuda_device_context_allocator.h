@@ -37,7 +37,7 @@ class CUDADeviceContextAllocator : public Allocator {
 
  private:
   platform::CUDAPlace place_;
-  cudaEvent_t event_;
+  cudaEvent_t event_{nullptr};
   cudaStream_t compute_stream_{nullptr};
 };
 
