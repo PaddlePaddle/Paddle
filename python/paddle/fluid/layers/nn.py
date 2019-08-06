@@ -12853,7 +12853,6 @@ def var_conv_2d(input,
         .. code-block:: python
 
             import numpy as np
-
             from paddle.fluid import layers
 
             x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
