@@ -503,6 +503,12 @@ function assert_api_spec_approvals() {
                "paddle/fluid/operators/distributed/send_recv.proto.in")
 
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+    git_change_files=`git diff --name-only upstream/$BRANCH | wc -l`
+    git_change_log=`git diff --name-only upstream/$BRANCH --numstat`
+
+    echo $git_change_files
+    echo $git_change_log
+
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
