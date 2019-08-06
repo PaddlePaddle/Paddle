@@ -1042,7 +1042,7 @@ class FleetUtil(object):
                            prob_name="prob",
                            q_name="q",
                            pos_ins_num_name="pos",
-                           neg_ins_num_name="neg"):
+                           total_ins_num_name="total"):
         """
         get global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
@@ -1056,7 +1056,7 @@ class FleetUtil(object):
             prob_name(str): name of prob Variable
             q_name(str): name of q Variable
             pos_ins_num_name(str): name of pos ins num Variable
-            neg_ins_num_name(str): name of neg ins num Variable
+            total_ins_num_name(str): name of total ins num Variable
 
         Returns:
             [auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,
@@ -1075,7 +1075,7 @@ class FleetUtil(object):
                                                           local_prob.name,
                                                           local_q.name,
                                                           local_pos_ins.name,
-                                                          local_neg_ins.name)
+                                                          local_total_ins.name)
 
               # below is part of model
               label = fluid.layers.data(name="click", shape=[-1, 1],\
@@ -1092,7 +1092,7 @@ class FleetUtil(object):
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
-                  local_neg_ins = fluid.contrib.layers.ctr_metric_bundle(\
+                  local_total_ins = fluid.contrib.layers.ctr_metric_bundle(\
                       similarity_norm, label)
 
         """
@@ -1115,8 +1115,9 @@ class FleetUtil(object):
         elif scope.find_var(pos_ins_num_name) is None:
             self.rank0_print("not found pos_ins_num_name=%s" % pos_ins_num_name)
             return [None] * 9
-        elif scope.find_var(neg_ins_num_name) is None:
-            self.rank0_print("not found neg_ins_num_name=%s" % neg_ins_num_name)
+        elif scope.find_var(total_ins_num_name) is None:
+            self.rank0_print("not found total_ins_num_name=%s" % \
+                             total_ins_num_name)
             return [None] * 9
 
         # barrier worker to ensure all workers finished training
@@ -1160,8 +1161,8 @@ class FleetUtil(object):
         # note: get ins_num from auc bucket is not actual value,
         # so get it from metric op
         pos_ins_num = get_metric(pos_ins_num_name)
-        neg_ins_num = get_metric(neg_ins_num_name)
-        total_ins_num = pos_ins_num + neg_ins_num
+        total_ins_num = get_metric(total_ins_num_name)
+        neg_ins_num = total_ins_num - pos_ins_num
 
         mae = global_abserr / total_ins_num
         rmse = math.sqrt(global_sqrerr / total_ins_num)
@@ -1230,7 +1231,7 @@ class FleetUtil(object):
                              prob_name="prob",
                              q_name="q",
                              pos_ins_num_name="pos",
-                             neg_ins_num_name="neg",
+                             total_ins_num_name="total",
                              print_prefix=""):
         """
         print global metrics, including auc, bucket_error, mae, rmse,
@@ -1245,7 +1246,7 @@ class FleetUtil(object):
             prob_name(str): name of prob Variable
             q_name(str): name of q Variable
             pos_ins_num_name(str): name of pos ins num Variable
-            neg_ins_num_name(str): name of neg ins num Variable
+            total_ins_num_name(str): name of total ins num Variable
             print_prefix(str): print prefix
 
         Examples:
@@ -1261,7 +1262,7 @@ class FleetUtil(object):
                                               local_prob.name,
                                               local_q.name,
                                               local_pos_ins.name,
-                                              local_neg_ins.name)
+                                              local_total_ins.name)
 
               # below is part of model
               label = fluid.layers.data(name="click", shape=[-1, 1],\
@@ -1278,7 +1279,7 @@ class FleetUtil(object):
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \
-                  local_neg_ins = fluid.contrib.layers.ctr_metric_bundle(\
+                  local_total_ins = fluid.contrib.layers.ctr_metric_bundle(\
                       similarity_norm, label)
 
         """
@@ -1301,14 +1302,15 @@ class FleetUtil(object):
         elif scope.find_var(pos_ins_num_name) is None:
             self.rank0_print("not found pos_ins_num_name=%s" % pos_ins_num_name)
             return
-        elif scope.find_var(neg_ins_num_name) is None:
-            self.rank0_print("not found neg_ins_num_name=%s" % neg_ins_num_name)
+        elif scope.find_var(total_ins_num_name) is None:
+            self.rank0_print("not found total_ins_num_name=%s" % \
+                             total_ins_num_name)
             return
 
         auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,\
             mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
-            prob_name, q_name, pos_ins_num_name, neg_ins_num_name)
+            prob_name, q_name, pos_ins_num_name, total_ins_num_name)
         self.rank0_print("%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
                          "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
                          "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
