@@ -1558,7 +1558,7 @@ def dropout(x,
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed,
+            'seed': seed if seed is not None else 0,
             'dropout_implementation': dropout_implementation,
         })
     return out
@@ -5811,40 +5811,40 @@ def nce(input,
         .. code-block:: python
 
 
-	    import paddle.fluid as fluid
-        import numpy as np
+            import paddle.fluid as fluid
+            import numpy as np
 
-	    window_size = 5
-	    words = []
-	    for i in xrange(window_size):
-		words.append(fluid.layers.data(
-		    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(fluid.layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
-	    dict_size = 10000
-	    label_word = int(window_size / 2) + 1
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
 
-	    embs = []
-	    for i in xrange(window_size):
-		if i == label_word:
-		    continue
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
 
-		emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
-				   param_attr='embed', is_sparse=True)
-		embs.append(emb)
+                emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
+                                   param_attr='embed', is_sparse=True)
+                embs.append(emb)
 
-	    embs = fluid.layers.concat(input=embs, axis=1)
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=dict_size, param_attr='nce.w_0',
-		      bias_attr='nce.b_0')
+            embs = fluid.layers.concat(input=embs, axis=1)
+            loss = fluid.layers.nce(input=embs, label=words[label_word],
+                      num_total_classes=dict_size, param_attr='nce.w_0',
+                      bias_attr='nce.b_0')
 
-	    #or use custom distribution
-	    dist = np.array([0.05,0.5,0.1,0.3,0.05])
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=5, param_attr='nce.w_1',
-		      bias_attr='nce.b_1',
-		      num_neg_samples=3,
-		      sampler="custom_dist",
-		      custom_dist=dist)
+             #or use custom distribution
+             dist = np.array([0.05,0.5,0.1,0.3,0.05])
+             loss = fluid.layers.nce(input=embs, label=words[label_word],
+                       num_total_classes=5, param_attr='nce.w_1',
+                       bias_attr='nce.b_1',
+                       num_neg_samples=3,
+                       sampler="custom_dist",
+                       custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -7300,9 +7300,9 @@ def pad(x, paddings, pad_value=0., name=None):
     padded width is specified by :attr:`paddings`.
 
     Specifically, the number of values padded before the contents of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    in dimension :attr:`i` is indicated by :attr:`paddings[2i]`, and the number
     of values padded after the contents of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[i+1]`.
+    indicated by :attr:`paddings[2i+1]`.
 
     See below for an example.
 
