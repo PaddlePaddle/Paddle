@@ -220,7 +220,8 @@ class PSLib(Fleet):
             dirname(str): save path. It can be hdfs/afs path or local path
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
-                mode(int): currently no use, will pass a default value 0 
+                mode(int): define for feature extension in the future,
+                           currently no use, will pass a default value 0 
 
         Example:
             .. code-block:: python
