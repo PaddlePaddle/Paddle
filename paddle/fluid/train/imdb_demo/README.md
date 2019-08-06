@@ -19,6 +19,7 @@ see: [IMDB Dataset of 50K Movie Reviews | Kaggle](https://www.kaggle.com/lakshmi
 ### build
 
 ```shell
+    mkdir build
     cd build
     rm -rf *
     PADDLE_LIB=path/to/your/fluid_inference_install_dir/
