@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import logging
 import six
 import sys
 from collections import defaultdict, MutableSet
@@ -550,8 +551,14 @@ def memory_optimize(input_program,
             fluid.memory_optimize(main_prog)
 
     """
-    sys.stderr.write('memory_optimize is deprecated. '
-                     'Use CompiledProgram and Executor\n')
+    logging.warn(
+        'Caution! paddle.fluid.memory_optimize() is deprecated '
+        'and not maintained any more, since it is not stable!\n'
+        'Please use the newest and stable memory optimization strategies!\n'
+        ' 1. Enable garbage collection strategy by exporting environment '
+        'variable FLAGS_eager_delete_tensor_gb=0\n'
+        ' 2. Set build_strategy.enable_inplace=True (True is the default '
+        'value) when using CompiledProgram or ParallelExecutor.\n')
 
     def to_name_str(var):
         if isinstance(var, Variable):

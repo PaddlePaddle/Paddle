@@ -109,7 +109,7 @@ if(WITH_MKL)
 else()
   set(MATH_LIB ${PADDLE_LIB_THIRD_PARTY_PATH}openblas/lib/libopenblas${CMAKE_STATIC_LIBRARY_SUFFIX})
   if(WIN32)
-    set(MATH_DLL ${PADDLE_LIB_THIRD_PARTY_PATH}openblas/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(MATH_DLL ${PADDLE_LIB_THIRD_PARTY_PATH}openblas/lib/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 endif()
 
@@ -157,7 +157,7 @@ if(WIN32)
           )
     else()
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${MATH_DLL}/openblas.dll ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MATH_DLL} ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
             )
     endif()
 endif()
