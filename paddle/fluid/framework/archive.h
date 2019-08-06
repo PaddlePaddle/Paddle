@@ -311,7 +311,7 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
     *this >> x;
     return x;
   }
-  
+
   template <class... ARGS>
   void printf(const char* fmt, ARGS&&... args) {
     size_t temp = Limit() - Finish();
