@@ -780,6 +780,49 @@ class FleetUtil(object):
         self.rank0_error("save_cache_model done")
         return key_num
 
+    def pull_all_dense_params(self, scope, program):
+        """
+        pull all dense params in trainer of rank 0
+
+        Args:
+            scope(Scope): fluid Scope
+            program(Program): fluid Program
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              fleet_util.pull_all_dense_params(my_scope, my_program)
+
+        """
+	fleet._role_maker._barrier_worker()
+	if fleet._role_maker.is_first_worker():
+	    tables = fleet._dist_desc.trainer_param.dense_table
+            prog_id = str(id(program))
+            prog_conf = fleet._opt_info['program_configs'][prog_id]
+            prog_tables = {}
+            for key in prog_conf:
+                if "dense" not in key:
+                    continue
+                for table_id in prog_conf[key]:
+                    prog_tables[int(table_id)] = 0
+            for table in tables:
+                if int(table.table_id) not in prog_tables:
+                    continue
+                var_name_list = []
+                for i in range(0, len(table.dense_variable_name)):
+                    var_name = table.dense_variable_name[i]
+                    if scope.find_var(var_name) is None:
+                        raise ValueError(
+                            "var " + var_name + " not found in scope "
+                            + "when pull dense")
+                    var_name_list.append(var_name)
+                fleet._fleet_ptr.pull_dense(scope,
+                                            int(table.table_id),
+                                            var_name_list)
+	self._role_maker._barrier_worker()
+
     def save_paddle_params(self,
                            executor,
                            scope,
@@ -850,6 +893,8 @@ class FleetUtil(object):
         """
         day = str(day)
         pass_id = str(pass_id)
+        # pull dense before save
+        self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
             if save_combine:
                 fluid.io.save_vars(
@@ -1174,7 +1219,8 @@ class FleetUtil(object):
                              sqrerr_name="sqrerr",
                              abserr_name="abserr",
                              prob_name="prob",
-                             q_name="q"):
+                             q_name="q",
+                             print_prefix=""):
         """
         print global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
@@ -1187,6 +1233,7 @@ class FleetUtil(object):
             abserr_name(str): name of abserr Variable
             prob_name(str): name of prob Variable
             q_name(str): name of q Variable
+            print_prefix(str): print prefix
 
         Examples:
             .. code-block:: python
@@ -1240,9 +1287,9 @@ class FleetUtil(object):
             mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
             prob_name, q_name)
-        self.rank0_print("global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f RMSE=%.6f "
-                         "Actural_CTR=%.6f Predicted_CTR=%.6f COPC=%.6f  "
-                         "MEAN Q_VALUE=%.6f Ins number=%s" %
-                         (auc, bucket_error, mae, rmse, actual_ctr,
-                          predicted_ctr, copc, mean_predict_qvalue,
+        self.rank0_print("%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+                         "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+                         "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+                         (print_prefix, auc, bucket_error, mae, rmse,
+                          actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
                           total_ins_num))
