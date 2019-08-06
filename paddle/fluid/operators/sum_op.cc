@@ -238,13 +238,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
   }
 };
 
-class SumInplace : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const override {
-    return {{"X", "Out"}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(SumInplace, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
