@@ -23,22 +23,24 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Emission",
-             "(LoDTensor, default LoDTensor<float>) "
-             "A 2-D LoDTensor with shape [N x D], where N is the size of the "
+             "(Tensor, Tensor<float> or LoDTensor<float>) "
+             "A 2-D Tensor with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. ");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
-    AddInput("Label",
-             "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
-             "[N x 1], where N is the total element number in a mini-batch. "
-             "The ground truth.");
+    AddInput(
+        "Label",
+        "(Tensor, Tensor<int64_t> or LoDTensor<int64_t>) A Tensor with shape "
+        "[N x 1], where N is the total element number in a mini-batch. "
+        "The ground truth.");
     AddInput("Length",
-             "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
-             "[N x 1], where N is the total element number in a mini-batch. "
-             "The ground truth.").AsDispensable();
+             "(Tensor, default Tensor<int64_t>) A Tensor with shape "
+             "[M x 1], where M is the sequence num in a mini-batch. "
+             "The ground truth.")
+        .AsDispensable();
     AddOutput(
         "Alpha",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
@@ -155,8 +157,8 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
 
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
-                      "The Input(Transition) should be a 2-D tensor.");     
-      
+                      "The Input(Transition) should be a 2-D tensor.");
+
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (transition_dims[0] <= 0 || transition_dims[1] <= 0)) {
@@ -180,8 +182,8 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     PADDLE_INFERSHAPE_ENFORCE_EQ(
         ctx, emission_dims[0], label_dims[0],
         "The height of Input(Emission) and the height of Input(Label) "
-        "should be the same.");      
-      
+        "should be the same.");
+
     ctx->SetOutputDim("Alpha", emission_dims);
     ctx->SetOutputDim("EmissionExps", emission_dims);
     ctx->SetOutputDim("TransitionExps", transition_dims);

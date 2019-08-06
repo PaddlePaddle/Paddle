@@ -1261,7 +1261,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input,label, param_attr=None, Length=None):
+def linear_chain_crf(input, label, param_attr=None, Length=None):
     """
     Linear Chain CRF.
 
@@ -1271,6 +1271,7 @@ def linear_chain_crf(input,label, param_attr=None, Length=None):
         input(${emission_type}): ${emission_comment}
         input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
+        Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
@@ -1282,14 +1283,29 @@ def linear_chain_crf(input,label, param_attr=None, Length=None):
         .. code-block:: python
 
              import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
+             #using LodTensor
+             emission = fluid.layers.data(name='emission', shape=[10], dtype='float32', lod_level=1)
+             label = fluid.layers.data(name='Label', shape=[1], dtype='int', lod_level=1)
              crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
+             input=emission,
+             label=label,
+             param_attr=fluid.ParamAttr(
+                 name='crfw',
+                 learning_rate=0.01)) 
+            
+             #using padding
+             emission = fluid.layers.data(name='emission', shape=[10], dtype='float32')
+             label = fluid.layers.data(name='Label', shape=[1], dtype='int')
+             label_length = fluid.layers.data(name='Length', shape=[1], dtype='int')
+             crf_cost = fluid.layers.linear_chain_crf(
+             input=emission,
+             label=label,
+             Length=label_length,
+             param_attr=fluid.ParamAttr(
+                 name='crfw',
+                 learning_rate=0.01))
+             
+             
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -1306,9 +1322,11 @@ def linear_chain_crf(input,label, param_attr=None, Length=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
-    this_inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": [label]}
+    this_inputs = {
+        "Emission": [input],
+        "Transition": transition,
+        "Label": [label]
+    }
     if Length:
         this_inputs['Length'] = [Length]
     helper.append_op(
