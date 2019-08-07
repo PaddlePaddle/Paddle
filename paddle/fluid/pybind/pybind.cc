@@ -1069,9 +1069,16 @@ All parameter, weight, gradient are variables in Paddle.
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
-      .def("_move", [](LoDTensorArray &self) -> LoDTensorArray {
-        return std::move(self);
-      });
+      .def("_move_to_list",
+           [](LoDTensorArray &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               res[i] = py::cast(std::move(self[i]));
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership);
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
