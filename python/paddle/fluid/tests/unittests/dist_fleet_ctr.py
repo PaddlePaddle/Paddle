@@ -154,7 +154,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         model_dir = tempfile.mkdtemp()
         fleet.save_inference_model(
             exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
-        feasign = fleet.save_cache_model(exe, model_dir, None) 
+        feasign = fleet.save_cache_model(exe, model_dir, None)
         self.check_model_right(model_dir)
         shutil.rmtree(model_dir)
         fleet.stop_worker()
