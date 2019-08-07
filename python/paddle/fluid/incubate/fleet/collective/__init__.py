@@ -41,8 +41,8 @@ class Collective(Fleet):
         super(Collective, self).__init__(Mode.COLLECTIVE)
         self._local_ip = 0
 
-        self.origin_program = None
         self.startup_program = None
+        self.origin_program = None
         self.main_program = None
 
     def init_worker(self):
@@ -292,8 +292,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         need to care about how to startup a pserver node.
         """
         main_program = loss.block.program
-        fleet.origin_program = main_program.clone()
-        fleet.main_program = main_program
         if startup_program is None:
             startup_program = fluid.default_startup_program()
         fleet.startup_program = startup_program
@@ -308,7 +306,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
-        print("try to compile")
+        #print("try to compile")
+        fleet.origin_program = main_program
         fleet.main_program = self._try_to_compile(startup_program, main_program)
 
         return optimize_ops, param_grads
