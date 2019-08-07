@@ -40,13 +40,11 @@ int main(int argc, char** argv) {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  envs.push_back("use_pinned_memory");
   envs.push_back("fraction_of_gpu_memory_to_use");
   envs.push_back("initial_gpu_memory_in_mb");
   envs.push_back("reallocate_gpu_memory_in_mb");
   envs.push_back("allocator_strategy");
 #elif __clang__
-  envs.push_back("use_pinned_memory");
   envs.push_back("use_mkldnn");
   envs.push_back("initial_cpu_memory_in_mb");
   envs.push_back("allocator_strategy");
@@ -59,6 +57,7 @@ int main(int argc, char** argv) {
   envs.push_back("initial_cpu_memory_in_mb");
   envs.push_back("allocator_strategy");
 
+  undefok.push_back("use_pinned_memory");
   undefok.push_back("use_mkldnn");
   undefok.push_back("initial_cpu_memory_in_mb");
 #endif
