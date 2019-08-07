@@ -157,5 +157,56 @@ class TestLinearChainCrfOp(OpTest):
             ["Emission"], "LogLikelihood", no_grad_set=set("Transition"))
 
 
+class TestLinearChainCrfPaddingTensor(OpTest):
+    def set_test_data(self):
+        # Fix the unittest by: add padding tensor in inputs 
+
+        SEQ_NUM = 3
+        TAG_NUM = 17
+        MAX_SEQ_LEN = 5
+
+        sequence_lens = []
+        seq_start_pos = [0]
+        for i in range(SEQ_NUM):
+            sequence_lens.append(random.randint(0, MAX_SEQ_LEN))
+            seq_start_pos.append(seq_start_pos[-1] + sequence_lens[-1])
+        emission = np.random.uniform(
+            -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
+        emission_row_max = np.amax(emission, axis=1, keepdims=True)
+        emission_exps = np.exp(emission - emission_row_max)
+
+        transition = np.random.uniform(-0.5, 0.5,
+                                       [TAG_NUM + 2, TAG_NUM]).astype("float64")
+        transition_exps = np.exp(transition)
+
+        labels = np.random.randint(
+            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
+
+        self.inputs = {
+            "Emission": emission,
+            "Transition": transition,
+            "Label": labels,
+            "Length": sequence_lens
+        }
+        crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
+                                    emission_exps, transition, transition_exps,
+                                    labels)
+        alpha, log_likelihood = crf.crf_forward_compute()
+
+        self.outputs = {
+            "Alpha": alpha,
+            "EmissionExps": emission_exps,
+            "TransitionExps": transition_exps,
+            "LogLikelihood": log_likelihood
+        }
+
+    def setUp(self):
+        self.op_type = "linear_chain_crf"
+        self.set_test_data()
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == "__main__":
     unittest.main()

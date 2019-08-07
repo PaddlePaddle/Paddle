@@ -38,8 +38,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The ground truth.");
     AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
-             "[M x 1], where M is the sequence num in a mini-batch. "
-             "The ground truth.")
+             "[M x 1], where M is the sequence number in a mini-batch.")
         .AsDispensable();
     AddOutput(
         "Alpha",
