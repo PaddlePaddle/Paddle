@@ -383,9 +383,32 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
                 self._worker_endpoints = self._worker_endpoints.split(",")
                 self._trainers_num = len(self._worker_endpoints)
-                self._node_num = int(os.getenv("PADDLE_NODE_NUM"))
-                self._node_id = int(os.getenv("PADDLE_NODE_ID"))
+
+                self._node_ips = self._get_node_ips_from_endpoints(
+                    self._worker_endpoints)
+                self._node_ip = self._current_endpoint.split(":")[0].strip()
+
+                self._node_num = len(self._node_ips)
+                self._node_id = self._node_ips.index(self._node_ip)
+                print("node_num:", self._node_num, "node_id:", self._node_id,
+                      "node_ip:", self._node_ip)
             self._role_is_generated = True
+
+    def _get_node_ips_from_endpoints(self, endpoints):
+        ss = set()
+        ips = []
+        for ep in endpoints:
+            ip = ep.split(":")[0].strip()
+            if ip not in ss:
+                #print("endpoint:", ep, "ip:", ep.split(":")[0])
+                ss.add(ip)
+
+                ips.append(ip)
+            else:
+                continue
+
+        print("ips:", ips)
+        return ips
 
     def get_pserver_endpoints(self):
         if not self._role_is_generated:

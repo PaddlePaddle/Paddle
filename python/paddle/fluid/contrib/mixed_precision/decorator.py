@@ -232,7 +232,6 @@ def decorate(optimizer,
 	
             scaled_loss, _, _ = mp_optimizer.minimize(loss)
     """
-
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
     mp_optimizer = OptimizerWithMixedPrecison(

@@ -63,7 +63,6 @@ class Fleet(object):
         """
         return self._role_maker.is_first_worker()
 
-    @property
     def worker_index(self):
         """
         Get current worker index.
@@ -73,7 +72,6 @@ class Fleet(object):
         """
         return self._role_maker.worker_index()
 
-    @property
     def worker_num(self):
         """
         Get current total worker number.

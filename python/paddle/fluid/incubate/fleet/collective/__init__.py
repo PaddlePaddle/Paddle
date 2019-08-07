@@ -21,6 +21,8 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
+from paddle.fluid import compiler
+
 import os
 
 
@@ -176,19 +178,17 @@ class CollectiveOptimizer(DistributedOptimizer):
     def apply_gradients(self, params_grads):
         return self._optimizer.apply_gradients(params_grads)
 
-    @staticmethod
-    def _check_condition(name, **kwargs):
+    def _check_condition(self, name, **kwargs):
         for k, v in kwargs.iterms():
             if v is True:
                 assert False, "you can't use %s and %s together" % (name, k)
 
-    @staticmethod
-    def _check(main_program, optimizer, strategy):
+    def _check_collective_mode(self, main_program, optimizer, strategy):
         """
         Check the conflict condtions.
         """
         if strategy.use_local_sgd:
-            _check_condition(
+            self._check_condition(
                 "use_local_sgd",
                 use_dgc=main_program._enable_dgc,
                 use_dist_fc=strategy.use_dist_fc,
@@ -196,7 +196,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             assert strategy.local_sgd_config is not None, "DistributedStrategy.local_sgd_config should be set"
 
         if strategy.use_dist_fc:
-            _check_condition(
+            self._check_condition(
                 "use_dist_fc",
                 use_dgc=main_program._enable_dgc,
                 use_local_sgd=strategy.use_local_sgd,
@@ -222,10 +222,10 @@ class CollectiveOptimizer(DistributedOptimizer):
         trainer_id = fleet.worker_index()
         current_endpoint = fleet.worker_endpoints()[trainer_id]
         worker_endpoints_env = ','.join(worker_endpoints)
-        trainers_num = len(worker_endpoints)
+        trainers_num = fleet.worker_num()
 
-        if self.print_config:
-            print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
+        #if self.print_config:
+        print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
                   trainer_id:{}".format(worker_endpoints, trainers_num,
                                         current_endpoint, trainer_id))
 
@@ -235,8 +235,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         config.collective_mode = self._strategy.collective_mode
 
         config.nccl_comm_num = self._strategy.nccl_comm_num
-        config.use_hierarchical_allreduce = self._strategy._use_hierarchical_allreduce
-        config.hierarchical_allreduce_inter_nranks = self._strategy._hierarchical_allreduce_inter_nranks
+        config.use_hierarchical_allreduce = self._strategy.use_hierarchical_allreduce
+        config.hierarchical_allreduce_inter_nranks = self._strategy.hierarchical_allreduce_inter_nranks
 
         t = dist_transpiler.DistributeTranspiler(config=config)
         t.transpile(
@@ -262,7 +262,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,
             build_strategy=self._strategy,
-            exec_strategy=self._strategy._exec_strategy,
+            exec_strategy=self._strategy.exec_strategy,
             share_vars_from=None)
 
     def minimize(self,
@@ -290,16 +290,19 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._origin_program = main_program.clone()
         self.main_program = main_program
         if startup_program is None:
-            startup_program = fluid.default_startup_program
+            startup_program = fluid.default_startup_program()
         self.startup_program = startup_program
+
+        #print("start_program:", startup_program)
 
         self._loss = loss
 
-        _check(main_program, self._optimizer, self._strategy)
-
-        self._try_to_compile(startup_program, main_program)
+        self._check_collective_mode(main_program, self._optimizer,
+                                    self._strategy)
 
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
+
+        self._try_to_compile(startup_program, main_program)
 
         return optimize_ops, param_grads

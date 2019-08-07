@@ -180,9 +180,7 @@ def start_procs(args):
             "PADDLE_CURRENT_ENDPOINT":
             "%s:%d" % (current_node_ip, args.started_port + i),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
-            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints,
-            "PADDLE_NODE_NUM": "%d" % num_nodes,
-            "PADDLE_NODE_ID": "%d" % node_id
+            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
 
         cmd = [sys.executable, "-u", args.training_script

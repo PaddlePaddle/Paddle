@@ -431,7 +431,7 @@ class DistributeTranspiler(object):
                 trainers_num = len(self.origin_program._trainers_endpoints)
                 # selected automaticly
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
-                    self.config.hierarchical_allreduce_inter_nranks = fluid.core.get_cuda_device_count(
+                    self.config.hierarchical_allreduce_inter_nranks = core.get_cuda_device_count(
                     )
 
                 assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \
