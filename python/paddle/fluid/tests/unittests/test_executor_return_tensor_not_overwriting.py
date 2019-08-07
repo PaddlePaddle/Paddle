@@ -16,10 +16,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
-class TestFetchList(OpTest):
+class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
     def setUp(self):
         pass
 
@@ -51,17 +52,58 @@ class TestFetchList(OpTest):
         outs, fetch_list = self._calc_output(place, parallel=parallel)
         return outs
 
-    def test_fetch_list(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "elementwise_add") and core.op_support_gpu("elementwise_mul"):
-            places.append(core.CUDAPlace(0))
+    def test_executor_run_twice(self):
+        places = [fluid.CPUPlace()]
+        if fluid.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
 
         for place in places:
             for parallel in [True, False]:
                 add_out = self.calc_add_out(place, parallel)
                 add_out1 = np.array(add_out[0])
                 mul_out = self.calc_mul_out(place, parallel)
+                add_out2 = np.array(add_out[0])
+                self.assertTrue(np.array_equal(add_out1, add_out2))
+
+
+class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def calc_add_out(self, place=None, parallel=None):
+        x = fluid.layers.ones(shape=[3, 3], dtype='float32')
+        y = fluid.layers.ones(shape=[3, 3], dtype='float32')
+        out = fluid.layers.elementwise_add(x=x, y=y)
+        program = fluid.default_main_program()
+        if parallel:
+            program = fluid.CompiledProgram(program).with_data_parallel(
+                places=place)
+        exe = fluid.Executor(place)
+        out = exe.run(program, fetch_list=[out], return_numpy=False)
+        return out
+
+    def calc_sub_out(self, place=None, parallel=None):
+        x = fluid.layers.ones(shape=[2, 2], dtype='float32')
+        y = fluid.layers.ones(shape=[2, 2], dtype='float32')
+        out = fluid.layers.elementwise_sub(x=x, y=y)
+        program = fluid.default_main_program()
+        if parallel:
+            program = fluid.CompiledProgram(program).with_data_parallel(
+                places=place)
+        exe = fluid.Executor(place)
+        out = exe.run(program, fetch_list=[out], return_numpy=False)
+        return out
+
+    def test_executor_run_twice(self):
+        places = [fluid.CPUPlace()]
+        if fluid.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+
+        for place in places:
+            for parallel in [True, False]:
+                add_out = self.calc_add_out(place, parallel)
+                add_out1 = np.array(add_out[0])
+                sub_out = self.calc_sub_out(place, parallel)
                 add_out2 = np.array(add_out[0])
                 self.assertTrue(np.array_equal(add_out1, add_out2))
 
