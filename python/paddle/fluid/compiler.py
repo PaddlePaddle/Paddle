@@ -104,17 +104,9 @@ class CompiledProgram(object):
             build the graph with the specified options.
             For more information, please refer to fluid.BuildStrategy.
             Default None.
-        exec_strategy(ExecutionStrategy): exec_strategy is used to
-            to select the a way to execute the graph, for example how many
-            threads are used, how many iterations to clean up the temp
-            variables. For more information, please refer
-            to fluid.ExecutionStrategy. Default None.
     """
 
-    def __init__(self,
-                 program_or_graph,
-                 build_strategy=None,
-                 exec_strategy=None):
+    def __init__(self, program_or_graph, build_strategy=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
             # don't not create a new program here.
@@ -136,7 +128,7 @@ class CompiledProgram(object):
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
-        self._exec_strategy = exec_strategy
+        self._exec_strategy = None
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -286,6 +278,11 @@ class CompiledProgram(object):
                 self._exec_strategy.num_threads = len(places) * 4
             else:
                 self._exec_strategy.num_threads = len(places) * 2
+
+        if self._build_strategy.num_trainers > 1:
+            assert self._is_data_parallel, \
+                "If you use multi-trainer to train the model, you should use "\
+                "the data parallel model, i.e. calling with_data_parallel function."
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
