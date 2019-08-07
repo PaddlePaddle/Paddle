@@ -78,7 +78,7 @@ def ctr_metric_bundle(input, label):
     local_pos_num = helper.create_global_variable(
         persistable=True, dtype='float32', shape=[1])
     local_ins_num = helper.create_global_variable(
-        persistable=True, dtype='int', shape=[1])
+        persistable=True, dtype='float32', shape=[1])
 
     tmp_res_elesub = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[-1])
@@ -98,7 +98,7 @@ def ctr_metric_bundle(input, label):
     batch_pos_num = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[1])
     batch_ins_num = helper.create_global_variable(
-        persistable=False, dtype='int', shape=[1])
+        persistable=False, dtype='float32', shape=[1])
     for var in [
             local_abserr, batch_abserr, local_sqrerr, batch_sqrerr, local_prob,
             batch_prob, local_q, batch_q, batch_pos_num, batch_ins_num,
@@ -172,7 +172,7 @@ def ctr_metric_bundle(input, label):
         attrs={
             'shape': [-1, 1],
             'dtype': tmp_ones.dtype,
-            'value': int(1),
+            'value': float(1.0),
         })
     helper.append_op(
         type="reduce_sum", inputs={"X": [tmp_ones]},
