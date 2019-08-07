@@ -405,7 +405,7 @@ paddle.fluid.layers.collect_fpn_proposals (ArgSpec(args=['multi_rois', 'multi_sc
 paddle.fluid.layers.accuracy (ArgSpec(args=['input', 'label', 'k', 'correct', 'total'], varargs=None, keywords=None, defaults=(1, None, None)), ('document', 'ef799022a6040597462ae2b3d2f1c407'))
 paddle.fluid.layers.auc (ArgSpec(args=['input', 'label', 'curve', 'num_thresholds', 'topk', 'slide_steps'], varargs=None, keywords=None, defaults=('ROC', 4095, 1, 1)), ('document', '34b4575807f955f7e8698b8dead23858'))
 paddle.fluid.layers.exponential_decay (ArgSpec(args=['learning_rate', 'decay_steps', 'decay_rate', 'staircase'], varargs=None, keywords=None, defaults=(False,)), ('document', 'eaf430c5a0380fb11bfe9a8922cd6295'))
-paddle.fluid.layers.natural_exp_decay (ArgSpec(args=['learning_rate', 'decay_steps', 'decay_rate', 'staircase'], varargs=None, keywords=None, defaults=(False,)), ('document', '63a9e96d446d7de1289f30b832bce36a'))
+paddle.fluid.layers.natural_exp_decay (ArgSpec(args=['learning_rate', 'decay_steps', 'decay_rate', 'staircase'], varargs=None, keywords=None, defaults=(False,)), ('document', 'aa3146f64d5d508e4e50687603aa7b15'))
 paddle.fluid.layers.inverse_time_decay (ArgSpec(args=['learning_rate', 'decay_steps', 'decay_rate', 'staircase'], varargs=None, keywords=None, defaults=(False,)), ('document', 'ea37a3a8a0b3ce2254e7bc49a0951dbe'))
 paddle.fluid.layers.polynomial_decay (ArgSpec(args=['learning_rate', 'decay_steps', 'end_learning_rate', 'power', 'cycle'], varargs=None, keywords=None, defaults=(0.0001, 1.0, False)), ('document', 'a343254c36c2e89512cd8cd8a1960ead'))
 paddle.fluid.layers.piecewise_decay (ArgSpec(args=['boundaries', 'values'], varargs=None, keywords=None, defaults=None), ('document', 'd9f654117542c6b702963dda107a247f'))
