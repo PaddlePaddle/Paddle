@@ -503,12 +503,22 @@ function assert_api_spec_approvals() {
                "paddle/fluid/operators/distributed/send_recv.proto.in")
 
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+    git_files=`git diff --numstat upstream/$BRANCH| wc -l`
+    git_count=`git diff --numstat upstream/$BRANCH| awk '{sum+=$1}END{print sum}'`
+    
+    if [[ "$git_files" > 19 || "$git_count" > 999 ]];then
+      APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 5086632`
+      if [ "${APPROVALS}" == "FALSE" ]; then
+        echo "You must have Dianhai approval for change 20+ files or add than 1000+ lines of content"
+      fi
+    fi    
+
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,xsrobin 50069408,qingqing01 7845005,junjun315 3124479,shanyi15 35982308,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560. 
+          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,xsrobin 50069408,qingqing01 7845005,junjun315 3124479,shanyi15 35982308,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 5086632. 
           if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560 ` 
           elif [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
