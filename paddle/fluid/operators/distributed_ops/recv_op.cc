@@ -74,9 +74,9 @@ class RecvOp : public framework::OperatorBase {
               rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
         }
         for (size_t i = 0; i < rets.size(); i++) {
-          VLOG(7) << "before sync_recv " << ins[i] << "from " << epmap[i];
+          VLOG(7) << "before sync_recv " << outs[i] << "from " << epmap[i];
           PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          VLOG(7) << "after sync_recv " << ins[i] << "from " << epmap[i];
+          VLOG(7) << "after sync_recv " << outs[i] << "from " << epmap[i];
         }
       } else {
         std::vector<distributed::VarHandlePtr> rets;
