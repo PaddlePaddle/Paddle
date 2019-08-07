@@ -27,12 +27,6 @@ see: [IMDB Dataset of 50K Movie Reviews | Kaggle](https://www.kaggle.com/lakshmi
     make
 ```
 
-### generate data protobuf description
-
-```
-    python generate_data_proto.py
-```
-
 ### generate program description
 
 ```

@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ DEFINE_string(main_program_file, "", "main program description");
 DEFINE_string(loss_name, "mean_0.tmp_0",
               "loss tensor name in the main program");
 DEFINE_string(save_dir, "cnn_model", "directory to save trained models");
+DEFINE_int32(epoch_num, 30, "number of epochs to run when training");
 
 namespace paddle {
 namespace train {
@@ -79,13 +80,14 @@ bool IsPersistable(const paddle::framework::VarDesc* var) {
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  std::cout << "filelist: " << FLAGS_filelist << std::endl;
-  std::cout << "data_proto_desc: " << FLAGS_data_proto_desc << std::endl;
-  std::cout << "startup_program_file: " << FLAGS_startup_program_file
+  std::cerr << "filelist: " << FLAGS_filelist << std::endl;
+  std::cerr << "data_proto_desc: " << FLAGS_data_proto_desc << std::endl;
+  std::cerr << "startup_program_file: " << FLAGS_startup_program_file
             << std::endl;
-  std::cout << "main_program_file: " << FLAGS_main_program_file << std::endl;
-  std::cout << "loss_name: " << FLAGS_loss_name << std::endl;
-  std::cout << "save_dir: " << FLAGS_save_dir << std::endl;
+  std::cerr << "main_program_file: " << FLAGS_main_program_file << std::endl;
+  std::cerr << "loss_name: " << FLAGS_loss_name << std::endl;
+  std::cerr << "save_dir: " << FLAGS_save_dir << std::endl;
+  std::cerr << "epoch_num: " << FLAGS_epoch_num << std::endl;
 
   std::string filelist = std::string(FLAGS_filelist);
   std::vector<std::string> file_vec;
@@ -96,7 +98,7 @@ int main(int argc, char* argv[]) {
       file_vec.push_back(filename);
     }
   }
-
+  PADDLE_ENFORCE_GE(file_vec.size(), 1, "At least one file to train");
   paddle::framework::InitDevices(false);
   const auto cpu_place = paddle::platform::CPUPlace();
   paddle::framework::Executor executor(cpu_place);
@@ -127,7 +129,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  int epoch_num = 30;
+  int epoch_num = FLAGS_epoch_num;
   std::string loss_name = FLAGS_loss_name;
   auto loss_var = scope.Var(loss_name);
 
@@ -145,21 +147,21 @@ int main(int argc, char* argv[]) {
     dataset_ptr->CreateReaders();
     const std::vector<paddle::framework::DataFeed*> readers =
         dataset_ptr->GetReaders();
+    PADDLE_ENFORCE_EQ(readers.size(), 1,
+                      "readers num should be equal to thread num");
     const std::vector<std::string>& input_feed_names =
         readers[0]->GetUseSlotAlias();
     for (auto name : input_feed_names) {
       readers[0]->AddFeedVar(scope.Var(name), name);
     }
     VLOG(3) << "get reader done";
-
     readers[0]->Start();
     VLOG(3) << "start a reader";
-    PADDLE_ENFORCE_EQ(readers.size(), 1,
-                      "readers num should be equal to thread num");
     VLOG(3) << "readers size: " << readers.size();
 
     int step = 0;
     std::vector<float> loss_vec;
+
     while (readers[0]->Next() > 0) {
       executor.Run(*main_program, &scope, 0, false, true);
       loss_vec.push_back(

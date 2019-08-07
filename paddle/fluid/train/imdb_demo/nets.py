@@ -55,8 +55,8 @@ def cnn_net(data,
     """
     conv net
     """
-    #emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim], is_sparse=True)
-    emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+    emb = fluid.layers.embedding(
+        input=data, size=[dict_dim, emb_dim], is_sparse=True)
     conv_3 = fluid.nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
