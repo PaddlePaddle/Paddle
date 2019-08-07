@@ -190,7 +190,7 @@ class TestCRFDecodingOp5(OpTest):
         for i, l in enumerate(length):
             padded[i, 0:l] = data[offset:offset + l]
             offset += l
-        return padded
+        return np.squeeze(padded)
 
     def set_test_data(self):
         SEQ_NUM = 3

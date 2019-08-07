@@ -44,16 +44,25 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       auto* length = ctx.Input<Tensor>("Length");
       const size_t seq_num = length->numel();
       const int64_t* length_data = length->data<int64_t>();
-      int offset = 0;
+      auto in_dims = emission_weights->dims();
+
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      framework::Tensor emission_weights_tmp =
+          ctx.AllocateTmpTensor<T, DeviceContext>(emission_weights->dims(),
+                                                  dev_ctx);
+      emission_weights_tmp.ShareDataWith(*emission_weights);
+      emission_weights_tmp.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+
+      decoded_path->Resize({in_dims[0] * in_dims[1], 1});
       for (size_t i = 0; i < seq_num; ++i) {
         if (length_data[i] == 0) continue;
-        int start_pos = offset;
-        int end_pos = offset + static_cast<int>(length_data[i]);
+        int start_pos = i * in_dims[1];
+        int end_pos = start_pos + static_cast<int>(length_data[i]);
         Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
-        Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
-               &decoded_path_one_seq);
+        Decode(emission_weights_tmp.Slice(start_pos, end_pos),
+               *transition_weights, &decoded_path_one_seq);
       }
-
+      decoded_path->Resize({in_dims[0], in_dims[1]});
     } else {
       PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
                         "The Input(Emission) should be a sequence.");

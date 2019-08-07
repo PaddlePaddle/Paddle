@@ -19,14 +19,14 @@ namespace operators {
 class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Emission",
-             "(Tensor<float>/LoDTensor<float>). For a LoDTensor input, its "
-             "shape is [N x D] where N is the total sequence length of the "
-             "mini-batch and D is the total tag number. While for a tensor "
-             "input, its shape is [B X S X D] with B the batch size and S the "
-             "sequence length of each sample after padding. This input is the "
-             "unscaled "
-             "emission weight matrix of the linear_chain_crf operator.");
+    AddInput(
+        "Emission",
+        "(Tensor<float>/LoDTensor<float>). For a LoDTensor input, its "
+        "shape is [N x D] where N is the total sequence length of the "
+        "mini-batch and D is the total tag number. While for a tensor "
+        "input, its shape is [B X S X D] with B the batch size and S the "
+        "sequence length of each sample after padding. This input is the "
+        "unscaled emission weight matrix of the linear_chain_crf operator.");
     AddInput(
         "Transition",
         "(Tensor<float>). A Tensor with shape [(D + 2) x D]. "
