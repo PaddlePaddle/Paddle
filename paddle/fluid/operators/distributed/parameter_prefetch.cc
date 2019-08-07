@@ -78,6 +78,51 @@ static void SplitIdsIntoMultipleVarsBySection(
   }
 }
 
+static void MergeMultipleVarsIntoMap(
+    const std::vector<int64_t>& ids_vector,
+    const std::vector<std::string>& out_var_names,
+    const std::vector<int64_t>& height_section,
+    const std::vector<std::vector<int64_t>>& splited_ids,
+    const framework::ExecutionContext& context, framework::Scope* scope,
+    std::unordered_map<int64_t, T>* recved_vec_map) {
+  PADDLE_ENFORCE_EQ(out_var_names.size(), height_section.size(), "");
+
+  auto abs_sections = ToAbsoluteSection(height_section);
+  std::unordered_map<int64_t, std::vector<size_t>> id_to_offset;
+  for (size_t i = 0; i < ids_vector.size(); ++i) {
+    id_to_offset[ids_vector[i]].push_back(i);
+  }
+
+  for (size_t section_idx = 0; section_idx < out_var_names.size();
+       ++section_idx) {
+    auto& ids_in_this_section = splited_ids[section_idx];
+    if (!ids_in_this_section.empty()) {
+      auto& prefetch_out_var =
+          scope->Var(out_var_names[section_idx])->Get<framework::LoDTensor>();
+      const auto* out_var_data = prefetch_out_var.data<float>();
+      auto& dims = prefetch_out_var.dims();
+
+      PADDLE_ENFORCE_EQ(dims.size(), 2, "");
+      PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0]);
+
+      auto row_numel = dims[1];
+
+      for (int64_t i = 0; i < dims[0]; ++i) {
+        auto id = ids_in_this_section[i];
+        auto origin_id = id + abs_sections[section_idx];
+        auto& offsets = id_to_offset[origin_id];
+        for (auto& offset : offsets) {
+          memory::Copy(cpu_place, out_tensor_data + offset * row_numel,
+                       cpu_place, out_var_data + i * row_numel,
+                       sizeof(float) * row_numel);
+        }
+      }
+    } else {
+      VLOG(3) << "ids in this section is empty";
+    }
+  }
+}
+
 static void MergeMultipleVarsIntoOneBySection(
     const std::string& id_name, const std::vector<int64_t>& ids_vector,
     const std::string& out_name, const std::vector<std::string>& out_var_names,
@@ -234,6 +279,65 @@ void prefetch(const std::string& id_name, const std::string& out_name,
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
                                     context, local_scope.get(), &actual_ctx);
+}
+
+typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
+
+template <typename T>
+void prefetch_core(const std::vector<int64_t>& ids,
+                   const TableAndEndpoints& tables,
+                   const std::vector<int64_t>& height_sections,
+                   const framework::ExecutionContext& context,
+                   std::unordered_map<int64_t, T>* recved_vec_map) {
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
+
+  std::vector<std::string> in_var_names;
+  std::vector<std::string> out_var_names;
+  for (size_t i = 0; i < tables.size(); ++i) {
+    in_var_names.push_back("prefetch_send@" + tables[i].second);
+    out_var_names.push_back("prefetch_recv@" + tables[i].second);
+  }
+
+  auto splited_ids = SplitIds(ids_vector, height_sections);
+  SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
+                                    local_scope.get());
+
+  // create output var in local scope
+  for (auto& name : out_var_names) {
+    local_scope->Var(name)->GetMutable<framework::LoDTensor>();
+  }
+
+  std::vector<distributed::VarHandlePtr> rets;
+  for (size_t i = 0; i < in_var_names.size(); i++) {
+    if (NeedSend(*local_scope.get(), in_var_names[i])) {
+      VLOG(3) << "sending " << in_var_names[i] << " to " << tables[i].second
+              << " to get " << out_var_names[i] << " back";
+      rets.push_back(rpc_client->AsyncPrefetchVar(
+          tables[i].second, cpu_ctx, *local_scope.get(), in_var_names[i],
+          out_var_names[i], table_names[i]));
+    } else {
+      VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
+    }
+  }
+
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+  }
+
+  MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
+                                    out_var_names, height_sections, splited_ids,
+                                    context, local_scope.get(), &actual_ctx);
+}
+
+template <typename T>
+void multi_prefetch(const std::vector<std::string>& id_names,
+                    const std::vector<std::string>& out_names,
+                    const std::string& reconstruct_var_name,
+                    const std::vector<std::string>& table_names,
+                    const std::vector<std::string>& endpoints,
+                    const std::vector<int64_t>& height_sections,
+                    const framework::ExecutionContext& context) {
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 }
 
 };  // namespace distributed
