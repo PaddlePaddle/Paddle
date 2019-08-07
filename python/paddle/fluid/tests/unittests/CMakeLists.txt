@@ -74,6 +74,11 @@ if(NOT WITH_MKLML)
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
 
+if(NOT WITH_MKL)
+  list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
+endif(NOT WITH_MKL)
+
+
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
     LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)

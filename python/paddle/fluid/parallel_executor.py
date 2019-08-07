@@ -180,7 +180,7 @@ class ParallelExecutor(object):
 
         The feed parameter can be a dict or a list. If feed is a dict, the
         feed data will be split into multiple devices. If feed is a list, we
-        assume the data has been splitted into multiple devices, the each
+        assume the data has been split into multiple devices, the each
         element in the list will be copied to each device directly.
 
         Examples:
@@ -212,7 +212,6 @@ class ParallelExecutor(object):
                   loss = fluid.layers.mean(hidden)
                   fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-              startup_program.random_seed=1
               exe.run(startup_program)
 
               train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
@@ -239,7 +238,7 @@ class ParallelExecutor(object):
         Args:
             fetch_list(list): The fetched variable names
             feed(list|dict|None): The feed variables. If the feed is a dict,
-                tensors in that dict will be splitted into each devices. If
+                tensors in that dict will be split into each devices. If
                 the feed is a list, each element of the list will be copied
                 to each device. Default None.
             feed_dict: Alias for feed parameter, for backward compatibility.
