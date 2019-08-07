@@ -41,6 +41,10 @@ class Collective(Fleet):
         super(Collective, self).__init__(Mode.COLLECTIVE)
         self._local_ip = 0
 
+        self.origin_program = None
+        self.startup_program = None
+        self.main_program = None
+
     def init_worker(self):
         logging.warn(
             "You should not call 'init_worker' method for collective mode.")
@@ -162,10 +166,6 @@ class CollectiveOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
 
-        self._origin_program = None
-        self.startup_program = None
-        self.main_program = None
-
     def backward(self,
                  loss,
                  startup_program=None,
@@ -249,8 +249,9 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _try_to_compile(self, startup_program, main_program):
         self._transpile(startup_program, main_program)
 
+        print("strategy mode:", self._strategy.mode)
         if self._strategy.mode == "collective":
-            return
+            return main_program
 
         self._strategy.num_trainers = fleet.worker_num()
         self._strategy.trainer_id = fleet.worker_index()
@@ -259,11 +260,15 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
+        print("stratetegy:", self._strategy)
+
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,
             build_strategy=self._strategy,
             exec_strategy=self._strategy.exec_strategy,
             share_vars_from=None)
+
+        return self._compiled_program
 
     def minimize(self,
                  loss,
@@ -287,11 +292,11 @@ class CollectiveOptimizer(DistributedOptimizer):
         need to care about how to startup a pserver node.
         """
         main_program = loss.block.program
-        self._origin_program = main_program.clone()
-        self.main_program = main_program
+        fleet.origin_program = main_program.clone()
+        fleet.main_program = main_program
         if startup_program is None:
             startup_program = fluid.default_startup_program()
-        self.startup_program = startup_program
+        fleet.startup_program = startup_program
 
         #print("start_program:", startup_program)
 
@@ -303,6 +308,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
-        self._try_to_compile(startup_program, main_program)
+        print("try to compile")
+        fleet.main_program = self._try_to_compile(startup_program, main_program)
 
         return optimize_ops, param_grads
