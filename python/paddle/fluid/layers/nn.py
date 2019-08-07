@@ -37,6 +37,7 @@ from ..dygraph import layers
 
 __all__ = [
     'fc',
+    'center_loss',
     'embedding',
     'dynamic_lstm',
     'dynamic_lstmp',
@@ -107,6 +108,7 @@ __all__ = [
     'squeeze',
     'unsqueeze',
     'lod_reset',
+    'lod_append',
     'lrn',
     'pad',
     'pad_constant_like',
@@ -146,6 +148,7 @@ __all__ = [
     'unstack',
     'sequence_enumerate',
     'unique',
+    'unique_with_counts',
     'expand',
     'sequence_concat',
     'scale',
@@ -207,6 +210,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'var_conv_2d',
     'shard_index',
 ]
 
@@ -351,6 +355,92 @@ def fc(input,
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
+
+
+def center_loss(input,
+                label,
+                num_classes,
+                alpha,
+                param_attr,
+                update_center=True):
+    """
+    **Center loss Cost layer**
+    
+    This layer accepts input (deep features,the output of the last hidden layer)
+    and target label and return the center loss cost
+    
+    For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
+    
+    .. math::
+
+        Out = \\frac{1}{2}(X - Y)^2
+
+    Args:
+        input (Variable): a 2-D tensor with shape[N x M].
+        label (Variable): the groud truth which is a 2-D tensor
+                         with shape[N x 1],where N is the batch size.
+        num_classes (int): the number of classification categories.
+        alpha (float|Variable): learning rate of centers.
+        param_attr (ParamAttr): Attribute initializer of centers. 
+        update_center (bool): whether to update value of center.
+
+    Returns:
+        Variable: 2-D tensor with shape [N * 1] 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid 
+
+          input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
+          label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
+          num_classes = 1000
+          alpha = 0.01
+          param_attr = fluid.initializer.Xavier(uniform=False)
+          center_loss=fluid.layers.center_loss(input=input,
+                 label=label,
+                 num_classes=1000,
+                 alpha=alpha,
+                 param_attr=fluid.initializer.Xavier(uniform=False),
+                 update_center=True)
+    """
+    helper = LayerHelper('center_loss', **locals())
+    dtype = helper.input_dtype()
+    centers_shape = [num_classes, input.shape[1]]
+    centers_param = helper.create_parameter(
+        attr=param_attr, shape=centers_shape, dtype=dtype)
+    centers_param.stop_gradient = True
+    if isinstance(alpha, Variable):
+        alpha_param = alpha
+    else:
+        assert isinstance(alpha, float)
+        alpha_param = helper.create_variable(
+            name="centerloss_alpha",
+            shape=[1],
+            dtype="float32",
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=True,
+            stop_gradient=True,
+            initializer=Constant(alpha))
+
+    centersdiff = helper.create_variable_for_type_inference(dtype=input.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='center_loss',
+        inputs={
+            'X': [input],
+            'Label': [label],
+            'Centers': [centers_param],
+            'CenterUpdateRate': [alpha_param]
+        },
+        outputs={
+            'SampleCenterDiff': [centersdiff],
+            'Loss': [loss],
+            'CentersOut': [centers_param]
+        },
+        attrs={'cluster_num': num_classes,
+               'need_update': update_center})
+    return loss
 
 
 def embedding(input,
@@ -3689,7 +3779,7 @@ def conv2d_transpose(input,
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
-    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -3727,8 +3817,15 @@ def conv2d_transpose(input,
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
+
+    Note:
+          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
+          conv2d_transpose can compute the kernel size automatically.
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
@@ -3881,7 +3978,7 @@ def conv3d_transpose(input,
     is the width of the feature. Parameters(dilations, strides, paddings) are
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    explanation and references `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -5199,7 +5296,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor variable.
+        Variable: The product Tensor (or LoDTensor) variable.
 
     Examples:
         .. code-block:: python
@@ -5715,40 +5812,40 @@ def nce(input,
         .. code-block:: python
 
 
-	    import paddle.fluid as fluid
-        import numpy as np
+            import paddle.fluid as fluid
+            import numpy as np
 
-	    window_size = 5
-	    words = []
-	    for i in xrange(window_size):
-		words.append(fluid.layers.data(
-		    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(fluid.layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
-	    dict_size = 10000
-	    label_word = int(window_size / 2) + 1
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
 
-	    embs = []
-	    for i in xrange(window_size):
-		if i == label_word:
-		    continue
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
 
-		emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
-				   param_attr='embed', is_sparse=True)
-		embs.append(emb)
+                emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
+                                   param_attr='embed', is_sparse=True)
+                embs.append(emb)
 
-	    embs = fluid.layers.concat(input=embs, axis=1)
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=dict_size, param_attr='nce.w_0',
-		      bias_attr='nce.b_0')
+            embs = fluid.layers.concat(input=embs, axis=1)
+            loss = fluid.layers.nce(input=embs, label=words[label_word],
+                      num_total_classes=dict_size, param_attr='nce.w_0',
+                      bias_attr='nce.b_0')
 
-	    #or use custom distribution
-	    dist = np.array([0.05,0.5,0.1,0.3,0.05])
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=5, param_attr='nce.w_1',
-		      bias_attr='nce.b_1',
-		      num_neg_samples=3,
-		      sampler="custom_dist",
-		      custom_dist=dist)
+             #or use custom distribution
+             dist = np.array([0.05,0.5,0.1,0.3,0.05])
+             loss = fluid.layers.nce(input=embs, label=words[label_word],
+                       num_total_classes=5, param_attr='nce.w_1',
+                       bias_attr='nce.b_1',
+                       num_neg_samples=3,
+                       sampler="custom_dist",
+                       custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -6980,7 +7077,7 @@ def lod_reset(x, y=None, target_lod=None):
     considered as target LoD first, otherwise :attr:`y.data` would be
     considered as target LoD. If :attr:`y` is not provided, target LoD should
     be specified by :attr:`target_lod`. If target LoD is specified by
-    :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
+    :attr:`y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
@@ -7032,7 +7129,7 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LodTensor.
+        x (Variable): Input variable which could be a Tensor or LoDTensor.
         y (Variable|None): If provided, output's LoD would be derived
                            from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
@@ -7065,8 +7162,65 @@ def lod_reset(x, y=None, target_lod=None):
             attrs={'target_lod': target_lod},
             outputs={'Out': out})
     else:
-        raise ValueError("y and target_lod should not be both None.")
+        raise ValueError("y and target_lod should not be both none.")
+    return out
 
+
+def lod_append(x, level):
+    """
+    Append level to LoD of :attr:`x`.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            given a 1-level LoDTensor x:
+                x.lod =  [[ 2,           3,                   1 ]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+            level: [1, 1, 1, 1, 1, 1, 1]
+
+            then we get a 2-level LoDTensor:
+                x.lod =  [[ 2, 3, 1 ], [1, 1, 1, 1, 1, 1]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+    Args:
+        x (Variable): Input variable which could be a tensor or LoDTensor.
+        level (list|tuple|Variable): The LoD level to be appended into LoD of x.
+
+    Returns:
+        Variable: Output variable with new LoD level.
+
+    Raises:
+        ValueError: If :attr:`y` is None or and :attr:`level` is not Iterator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
+            out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
+    """
+    from collections import Iterable
+    if x is None:
+        raise ValueError("Input(x) can't be None.")
+    if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
+        raise ValueError("Input(level) must be list, tuple or Variable.")
+
+    helper = LayerHelper("lod_append", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    inputs = {'X': x}
+    attrs = {'append': True}
+
+    if isinstance(level, Variable):
+        inputs['Y'] = level
+    else:
+        attrs['target_lod'] = level
+    helper.append_op(
+        type="lod_reset", inputs=inputs, attrs=attrs, outputs={'Out': out})
     return out
 
 
@@ -7147,9 +7301,9 @@ def pad(x, paddings, pad_value=0., name=None):
     padded width is specified by :attr:`paddings`.
 
     Specifically, the number of values padded before the contents of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    in dimension :attr:`i` is indicated by :attr:`paddings[2i]`, and the number
     of values padded after the contents of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[i+1]`.
+    indicated by :attr:`paddings[2i+1]`.
 
     See below for an example.
 
@@ -9537,7 +9691,8 @@ def expand(x, expand_times, name=None):
                     new_expand_times.append(ele)
                 else:
                     assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(dtype)
+                    temp_out = helper.create_variable_for_type_inference(
+                        "int32")
                     fill_constant(
                         [1], 'int32', ele, force_cpu=True, out=temp_out)
                     new_expand_times.append(temp_out)
@@ -10147,9 +10302,9 @@ def logical_and(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_and(x=left, y=right)
     """
 
@@ -10176,9 +10331,9 @@ def logical_or(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_or(x=left, y=right)
     """
 
@@ -10205,9 +10360,9 @@ def logical_xor(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_xor(x=left, y=right)
     """
 
@@ -10233,7 +10388,7 @@ def logical_not(x, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             result = fluid.layers.logical_not(x=left)
     """
 
@@ -12125,6 +12280,58 @@ def unique(x, dtype='int32'):
     return out, index
 
 
+def unique_with_counts(x, dtype='int32'):
+    """
+    **unique** 
+
+    Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
+
+    Args:
+        x(Variable): A 1-D input tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
+
+    Returns:
+        tuple: (out, index, count). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
+            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor, \
+            `count` is count of unqiue element in the `x`.
+
+    Examples:
+        .. code-block:: python
+
+             import numpy as np
+             import paddle.fluid as fluid
+             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
+             out, index, count = fluid.layers.unique_with_counts(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
+                                                        # count is [1, 3, 1, 1]
+    """
+    if not (dtype == 'int32' or dtype == 'int64'):
+        raise TypeError(
+            "Op unique_with_counts, index dtype must be int32 or int64")
+
+    if x is None or len(x.shape) != 1:
+        raise ValueError(
+            "Op unique_with_counts, x must not be null and size of dim must be 1"
+        )
+
+    helper = LayerHelper("unique_with_counts", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    index = helper.create_variable_for_type_inference(dtype)
+
+    count = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='unique_with_counts',
+        inputs={'X': x},
+        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
+        outputs={'Out': [out],
+                 'Index': [index],
+                 'Count': [count]})
+
+    return out, index, count
+
+
 def deformable_conv(input,
                     offset,
                     mask,
@@ -12521,6 +12728,121 @@ def deformable_roi_pooling(input,
             "trans_std": trans_std
         })
     return output
+
+
+def var_conv_2d(input,
+                row,
+                col,
+                input_channel,
+                output_channel,
+                filter_size,
+                stride=1,
+                param_attr=None,
+                act=None,
+                dtype='float32',
+                name=None):
+    """
+    The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
+    row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
+    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    padding. Besides, input.dims[1] should be 1. 
+
+    .. code-block:: text
+            
+            If input_channel is 2 and given row lodTensor and col lodTensor as follows:
+                row.lod = [[5, 4]]
+                col.lod = [[6, 7]]
+            input is a lodTensor: 
+                input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
+                input.dims = [116, 1]	# where 116 = 60 + 56
+            
+            If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
+                output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
+                output.dims = [174, 1]  # where 174 = 90 + 84
+
+    Args:
+        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row shoud be 1-level LodTensor to provide height information.
+        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input_channel (int): The number of input channel.
+        output_channel (int): The number of output channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None
+        dtype ('float32'): The data type of parameter and output.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None
+
+    Returns:
+        Variable: Output variable with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
+            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+            out = layers.var_conv_2d(input=x_lod_tensor, 
+                                     row=row_lod_tensor,
+                                     col=col_lod_tensor,
+                                     input_channel=3,
+                                     output_channel=5,
+                                     filter_size=[3, 3],
+                                     stride=1)
+    """
+    helper = LayerHelper('var_conv_2d', **locals())
+    x_shape = list(input.shape)
+    assert len(x_shape) == 2
+
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+
+    filter_shape = [
+        int(output_channel),
+        int(input_channel) * filter_size[0] * filter_size[1]
+    ]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype, )
+
+    conv_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+
+    helper.append_op(
+        type='var_conv_2d',
+        inputs={
+            'X': input,
+            'ROW': row,
+            'COLUMN': col,
+            'W': filter_param,
+        },
+        outputs={"Out": conv_res,
+                 "Col": tmp_res},
+        attrs={
+            'InputChannel': input_channel,
+            'OutputChannel': output_channel,
+            'StrideH': stride[0],
+            'StrideW': stride[1],
+            'KernelH': filter_size[0],
+            'KernelW': filter_size[1],
+        })
+
+    return helper.append_activation(conv_res)
 
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
