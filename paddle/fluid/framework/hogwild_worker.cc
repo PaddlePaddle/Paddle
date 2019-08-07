@@ -48,11 +48,18 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_, "root_scope should be set before creating thread scope");
 
-  thread_scope_ = &root_scope_->NewScope();
+  stat_scope_ = &root_scope_->NewScope();
+  thread_scope_ = &stat_scope_->NewScope();
+
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
-      auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
+      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end()) {
+        auto* ptr = stat_scope_->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+      } else {
+        auto* ptr = root_scope_->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+      }
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());

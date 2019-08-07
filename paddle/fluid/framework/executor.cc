@@ -139,9 +139,9 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   }
 }
 
-void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                              Dataset* dataset,
-                              const std::string& trainer_desc_str) {
+std::shared_ptr<TrainerBase> PrepareTrainer(
+    const ProgramDesc& main_program, Scope* scope, Dataset* dataset,
+    const std::string& trainer_desc_str) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
@@ -161,6 +161,13 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
   trainer->InitTrainerEnv(main_program, place_);
   VLOG(3) << "Try to init other environment";
   trainer->InitOtherEnv(main_program);
+  return trainer;
+}
+
+void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
+                              Dataset* dataset,
+                              const std::string& trainer_desc_str) {
+  trainer = PrepareTrainer(main_program, scope, dataset, trainer_desc_str);
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
@@ -393,6 +400,10 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   }
   return result;
 }
+
+void Executor::RunTrainer(TrainerBase* trainer) { trainer->Run(); }
+
+void Executor::FinishTrainer(TrainerBase* trainer) { trainer->Finalize(); }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,

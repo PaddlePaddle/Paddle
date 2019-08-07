@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -120,6 +121,13 @@ class Executor {
 
   void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
                       Dataset* dataset, const std::string& trainer_desc_str);
+
+  std::unique_ptr<TrainerBase> PrepareTrainer(
+      const ProgramDesc& main_program, Scope* scope, Dataset* dataset,
+      const std::string& trainer_desc_str);
+
+  void RunTrainer(TrainerBase* trainer);
+  void FinishTrainer(TrainerBase* trainer);
 
  private:
   const platform::Place place_;

@@ -73,6 +73,9 @@ void MultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
+  // join stat variables here
+  // and create persistable var here in root_scope
+  // (TODO) xuefeng
   root_scope_->DropKids();
 }
 
