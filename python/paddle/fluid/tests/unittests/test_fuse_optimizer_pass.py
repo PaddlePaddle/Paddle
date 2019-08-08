@@ -151,7 +151,7 @@ class TestPassConflictBase(TestFuseAdamOps):
             feed_dict=feed_dict,
             get_data_from_feeder=get_data_from_feeder,
             use_cuda=use_cuda,
-            fuse_all_optimizer_ops=False,
+            fuse_all_optimizer_ops=True,
             memory_opt=False,  # avoid the gradient's name changed in Python side.
             optimizer=optimizer,
             enable_sequential_execution=True)
