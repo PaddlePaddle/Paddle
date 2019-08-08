@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import six
 
-from .framework import Parameter, dtype_is_floating, in_dygraph_mode
+from .framework import Parameter, dtype_is_floating, in_dygraph_mode,OpProtoHolder
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
@@ -173,3 +173,9 @@ class LayerHelper(LayerHelperBase):
         if not isinstance(param, cls):
             raise TypeError("The input {0} parameter of method {1} must be {2}",
                             param_name, self.layer_type, cls.__name__)
+
+
+class DynLoadLayerHelper(LayerHelper):
+    def __init__(self, layer_type, **kwargs):
+        super(DynLoadLayerHelper, self).__init__(layer_type=layer_type, **kwargs)
+        OpProtoHolder.instance().update_op_proto()

@@ -194,9 +194,20 @@ if (NOT WIN32)
 endif (NOT WIN32)
 
 copy(framework_lib DEPS ${framework_lib_deps}
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
-        ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h 
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet
+        SRCS ${src_dir}/${module}/*.h
+             ${src_dir}/${module}/details/*.h
+             ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+             ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h
+             ${src_dir}/${module}/ir/memory_optimize_pass/*.h
+             ${src_dir}/${module}/ir/*.h
+             ${src_dir}/${module}/fleet/*.h
+        DSTS ${dst_dir}/${module}
+             ${dst_dir}/${module}/details
+             ${dst_dir}/${module}
+             ${dst_dir}/${module}
+             ${dst_dir}/${module}/ir/memory_optimize_pass
+             ${dst_dir}/${module}/ir
+             ${dst_dir}/${module}/fleet
         )
 
 set(module "memory")
@@ -206,6 +217,7 @@ copy(memory_lib
         )
 
 set(inference_deps paddle_fluid_shared paddle_fluid)
+set(framework_lib_deps fluid_framework_shared fluid_framework)
 
 set(module "inference/api")
 
@@ -224,14 +236,22 @@ endif ()
 set(module "inference")
 if(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
+    set(fluid_framework_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libfluid_framework.*)
 else(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(fluid_framework_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libfluid_framework.*)
 endif(WIN32)
 copy(inference_lib DEPS ${inference_deps}
-  SRCS ${src_dir}/${module}/*.h ${paddle_fluid_lib}
+  SRCS ${src_dir}/${module}/*.h
+       ${paddle_fluid_lib}
        ${src_dir}/${module}/api/paddle_*.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+  DSTS ${dst_dir}/${module}
+       ${dst_dir}/${module}
+       ${dst_dir}/${module}
         )
+
+# copy fluid_framework
+copy(fluid_framework_libs DEPS ${framework_lib_deps} SRCS ${fluid_framework_lib} DSTS ${dst_dir}/${module})
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto

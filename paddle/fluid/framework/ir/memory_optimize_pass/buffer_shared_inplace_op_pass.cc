@@ -59,7 +59,7 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
       const framework::OpDesc *op_desc = op->Node()->Op();
       PADDLE_ENFORCE_NOT_NULL(op_desc);
 
-      auto &infer_inplace = OpInfoMap::Instance().Get(op_type).infer_inplace_;
+      auto &infer_inplace = OpInfoMap::Instance()->Get(op_type).infer_inplace_;
       if (!infer_inplace) {
         continue;
       }
@@ -81,7 +81,7 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
     auto *op_desc = op->Node()->Op();
 
     auto in_to_outs =
-        OpInfoMap::Instance().Get(op_type).infer_inplace_(*op_desc, use_cuda);
+        OpInfoMap::Instance()->Get(op_type).infer_inplace_(*op_desc, use_cuda);
     for (auto &pair : in_to_outs) {
       auto &in_param = pair.first;
       auto &in_args = op_desc->Input(in_param);

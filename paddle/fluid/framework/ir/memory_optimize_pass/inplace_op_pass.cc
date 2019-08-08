@@ -326,7 +326,7 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
       continue;
     }
 
-    auto &infer_inplace = OpInfoMap::Instance().Get(op_type).infer_inplace_;
+    auto &infer_inplace = OpInfoMap::Instance()->Get(op_type).infer_inplace_;
 
     if (!infer_inplace) {
       continue;

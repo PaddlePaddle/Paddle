@@ -79,7 +79,7 @@ struct OpInfo {
 
 class OpInfoMap {
  public:
-  static OpInfoMap& Instance();
+  static OpInfoMap* Instance();
 
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();

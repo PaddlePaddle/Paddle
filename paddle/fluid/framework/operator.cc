@@ -335,7 +335,7 @@ OperatorBase::OperatorBase(const std::string& type,
       outputs_(outputs),
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
-      info_(OpInfoMap::Instance().GetNullable(type)) {
+      info_(OpInfoMap::Instance()->GetNullable(type)) {
   GenerateTemporaryNames();
   CheckAllInputOutputSet();
 }

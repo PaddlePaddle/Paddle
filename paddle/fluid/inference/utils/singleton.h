@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -47,6 +48,7 @@ struct Registry {
   template <typename ItemChild>
   void Register(const std::string& name) {
     PADDLE_ENFORCE_EQ(items_.count(name), 0);
+    VLOG(1) << "Infer Registrar " << name;
     items_[name] = new ItemChild;
   }
 

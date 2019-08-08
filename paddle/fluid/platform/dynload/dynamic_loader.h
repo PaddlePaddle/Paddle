@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -32,6 +34,7 @@ void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+void* GetOpDsoHandle(const std::string& dso_name);
 
 }  // namespace dynload
 }  // namespace platform

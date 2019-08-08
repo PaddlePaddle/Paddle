@@ -38,9 +38,9 @@ void OpTester::Init(const std::string &filename) {
 void OpTester::Init(const OpTesterConfig &config) {
   config_ = config;
 
-  auto &op_desc_info = framework::OpInfoMap::Instance();
+  auto *op_desc_info = framework::OpInfoMap::Instance();
   // Initialize the OpDesc
-  if (op_desc_info.Has(config_.op_type)) {
+  if (op_desc_info->Has(config_.op_type)) {
     type_ = config_.op_type;
 
     CreateOpDesc();
@@ -112,7 +112,7 @@ void OpTester::RunImpl() {
 std::vector<std::string> OpTester::GetOpProtoInputNames() {
   std::vector<std::string> input_names;
   const framework::proto::OpProto &proto =
-      framework::OpInfoMap::Instance().Get(type_).Proto();
+      framework::OpInfoMap::Instance()->Get(type_).Proto();
   for (int i = 0; i != proto.inputs_size(); ++i) {
     const auto &input = proto.inputs(i);
     input_names.push_back(input.name());
@@ -123,7 +123,7 @@ std::vector<std::string> OpTester::GetOpProtoInputNames() {
 std::vector<std::string> OpTester::GetOpProtoOutputNames() {
   std::vector<std::string> output_names;
   const framework::proto::OpProto &proto =
-      framework::OpInfoMap::Instance().Get(type_).Proto();
+      framework::OpInfoMap::Instance()->Get(type_).Proto();
   for (int i = 0; i != proto.outputs_size(); ++i) {
     const auto &output = proto.outputs(i);
     output_names.push_back(output.name());
@@ -135,7 +135,7 @@ std::unordered_map<std::string, framework::proto::AttrType>
 OpTester::GetOpProtoAttrNames() {
   std::unordered_map<std::string, framework::proto::AttrType> attr_types;
   const framework::proto::OpProto &proto =
-      framework::OpInfoMap::Instance().Get(type_).Proto();
+      framework::OpInfoMap::Instance()->Get(type_).Proto();
   const std::vector<std::string> skipped_attrs = {
       framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
       framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),

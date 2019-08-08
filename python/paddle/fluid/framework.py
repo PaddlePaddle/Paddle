@@ -958,8 +958,10 @@ class OpProtoHolder(object):
             self.__class__,
             '_instance'), 'Please use `instance()` to get OpProtoHolder object!'
         op_protos = get_all_op_protos()
+        print("Op Num ", len(op_protos))
         self.op_proto_map = {}
         for proto in op_protos:
+            print("Op ", proto.type)
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
@@ -974,6 +976,12 @@ class OpProtoHolder(object):
         if type not in self.op_proto_map:
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
+
+    def update_op_proto(self):
+        op_protos = get_all_op_protos()
+        for proto in op_protos:
+            if proto.type not in self.op_proto_map:
+                self.op_proto_map[proto.type] = proto
 
     @staticmethod
     def generated_op_attr_names():

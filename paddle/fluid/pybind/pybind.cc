@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/framework/load_op.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -173,7 +174,7 @@ PYBIND11_MODULE(core_noavx, m) {
       });
 
   m.def("_get_use_default_grad_op_desc_maker_ops",
-        [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
+        [] { return OpInfoMap::Instance()->GetUseDefaultGradOpDescMakerOps(); });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
@@ -688,7 +689,7 @@ All parameter, weight, gradient are variables in Paddle.
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
-    for (auto &iter : OpInfoMap::Instance().map()) {
+    for (auto &iter : OpInfoMap::Instance()->map()) {
       auto &info = iter.second;
       if (info.HasOpProtoAndChecker()) {
         std::string str;
@@ -707,7 +708,7 @@ All parameter, weight, gradient are variables in Paddle.
         std::unordered_map<std::string, std::string> grad_to_var;
         std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
             framework::OpInfoMap::Instance()
-                .Get(op_desc.Type())
+                ->Get(op_desc.Type())
                 .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
                                grad_sub_block);
         std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
@@ -988,6 +989,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_dgc", framework::InitDGC);
+  m.def("load_op", framework::LoadOpLib);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 

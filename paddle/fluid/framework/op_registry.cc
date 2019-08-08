@@ -22,7 +22,7 @@ namespace framework {
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
     const VariableNameMap& outputs, AttributeMap attrs) {
-  auto& info = OpInfoMap::Instance().Get(type);
+  auto& info = OpInfoMap::Instance()->Get(type);
   if (info.Checker() != nullptr) {
     info.Checker()->Check(&attrs);
   }

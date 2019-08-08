@@ -49,6 +49,8 @@ DEFINE_string(
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
+DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -129,6 +131,7 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
   } else {
     // search xxx.so from custom path
     dlPath = join(search_root, dso_name);
+    LOG(ERROR) << "dlPath " << dlPath << ", start to dlopen";
     dso_handle = dlopen(dlPath.c_str(), dynload_flags);
 #if !defined(_WIN32)
     auto errorno = dlerror();
@@ -136,6 +139,7 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     auto errorno = GetLastError();
 #endif  // !_WIN32
     // if not found, search from default path
+    LOG(ERROR) << "dso_handle " << dso_handle;
     if (nullptr == dso_handle) {
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
                    << errorno << ")";
@@ -163,10 +167,13 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
   auto errorno = GetLastError();
 #endif  // !_WIN32
   if (throw_on_error) {
+    LOG(ERROR) << "throw_on_error throw_on_error " << dlPath;
     PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, errorno);
   } else if (nullptr == dso_handle) {
+    LOG(ERROR) << "nullptr == dso_handle " << dlPath;
     LOG(WARNING) << string::Sprintf(error_msg, dlPath, errorno);
   }
+  LOG(ERROR) << "Finnal";
 
   return dso_handle;
 }
@@ -250,6 +257,16 @@ void* GetMKLMLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
+#endif
+}
+
+void* GetOpDsoHandle(const std::string& dso_name) {
+#if defined(__APPLE__) || defined(__OSX__)
+    PADDLE_THROW("Do not support Apple.");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+    PADDLE_THROW("Do not support Windows.");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
 #endif
 }
 
