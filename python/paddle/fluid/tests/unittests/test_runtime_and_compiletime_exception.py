@@ -40,7 +40,7 @@ class TestRunTimeException(OpTest):
 
 
 class TestCompileTimeException(OpTest):
-    def test_run_time_exception(self):
+    def test_compile_time_exception(self):
         self.assertRaises(core.EnforceNotMet, self.build_model)
 
     def build_model(self):
