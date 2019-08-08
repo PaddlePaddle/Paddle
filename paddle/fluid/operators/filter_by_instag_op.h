@@ -68,7 +68,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto x2_lods = x2->lod()[0];
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
-        std::cout << "X1_dim 0: " << x1->dims()[0] << std::endl;
         for (size_t i = 0; i < x1->dims()[0]; i++) {
             x1_lods.push_back(i + 1);
         }
