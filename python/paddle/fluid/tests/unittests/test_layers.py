@@ -887,10 +887,21 @@ class TestLayer(LayerTest):
             eye_tensor_rlt2 = layers.eye(num_rows=3,
                                          num_columns=2,
                                          batch_shape=[4, 3])
+            diag_tensor = layers.eye(20)
 
         self.assertTrue(np.allclose(eye_tensor.numpy(), np_eye))
         self.assertTrue(np.allclose(eye_tensor_rlt1.numpy(), stack_rlt1))
         self.assertTrue(np.allclose(eye_tensor_rlt2.numpy(), stack_rlt2))
+        self.assertTrue(np.allclose(diag_tensor.numpy(), np.eye(20)))
+
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3.1)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, num_columns=2.2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=[-1])
 
 
 class TestBook(LayerTest):
