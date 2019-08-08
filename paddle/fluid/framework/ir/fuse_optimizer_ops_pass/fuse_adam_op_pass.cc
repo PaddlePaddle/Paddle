@@ -51,36 +51,38 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
 
   void RemoveCycleDepsBetweenOpNodes(Graph *graph, const Node *fused_scale1,
                                      const Node *fused_scale2) const {
-    std::unordered_set<Node *> not_useful_nodes;
+    std::unordered_set<Node *> not_need_ctrl_var_nodes;
     std::unordered_set<Node *> fused_scale2_in_nodes;
     fused_scale2_in_nodes.insert(fused_scale2->inputs.begin(),
                                  fused_scale2->inputs.end());
     for (auto &out_node : fused_scale1->outputs) {
       if (fused_scale2_in_nodes.count(out_node)) {
-        PADDLE_ENFORCE(out_node->IsCtrlVar());
-        PADDLE_ENFORCE_EQ(out_node->outputs.size(), 1);
-        not_useful_nodes.insert(out_node);
+        PADDLE_ENFORCE(out_node->IsCtrlVar(),
+                       "The dependency var only should be ctrl var.");
+        not_need_ctrl_var_nodes.insert(out_node);
       }
     }
 
-    for (auto &node : not_useful_nodes) {
+    for (auto &node : not_need_ctrl_var_nodes) {
+      // remove this node from the input op node.
       PADDLE_ENFORCE(!node->inputs.empty());
       auto op_node = node->inputs.front();
       PADDLE_ENFORCE(op_node->IsOp());
-      auto &op_outputs = op_node->outputs;
-      op_outputs.erase(remove_if(op_outputs.begin(), op_outputs.end(),
-                                 [&node](const Node *op_out_node) {
-                                   return op_out_node == node;
-                                 }),
-                       op_outputs.end());
+      op_node->outputs.erase(
+          remove_if(
+              op_node->outputs.begin(), op_node->outputs.end(),
+              [&node](const Node *op_out_node) { return op_out_node == node; }),
+          op_node->outputs.end());
+
+      // remove this node from the output op nodes.
       for (auto &out_op_node : node->outputs) {
-        auto &op_inputs = out_op_node->inputs;
-        op_inputs.erase(remove_if(op_inputs.begin(), op_inputs.end(),
-                                  [&node](const Node *op_in_node) {
-                                    return op_in_node == node;
-                                  }),
-                        op_inputs.end());
+        out_op_node->inputs.erase(
+            remove_if(
+                out_op_node->inputs.begin(), out_op_node->inputs.end(),
+                [&node](const Node *op_in_node) { return op_in_node == node; }),
+            out_op_node->inputs.end());
       }
+
       graph->RemoveNode(node);
     }
   }

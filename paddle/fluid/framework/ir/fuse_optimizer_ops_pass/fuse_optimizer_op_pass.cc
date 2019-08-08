@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include <algorithm>
+#include <set>
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -59,6 +60,15 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     }
     return;
   }
+
+  // There should not have no-ctr-var between the op_nodes that link the op_node
+  // of op_nodes.
+  if (HasVarDepsBetweenOps(topo_nodes, opt_nodes)) {
+    VLOG(6) << "There are interdependent variables among these optimization "
+               "operators, which can not be handled well at present.";
+    return;
+  }
+
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
   if (!result.Has(details::kProgramDescs)) {
@@ -166,6 +176,44 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   for (auto &opt_op : opt_nodes) {
     graph->RemoveNode(opt_op);
   }
+}
+
+bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
+    const std::vector<Node *> &topo_nodes,
+    const std::vector<Node *> &opt_nodes) const {
+  std::unordered_map<Node *, std::unordered_set<Node *>> preceding_ops;
+  std::unordered_map<Node *, std::unordered_set<Node *>> pending_ops;
+  for (auto &op : topo_nodes) {
+    preceding_ops[op];
+    pending_ops[op];
+    for (auto &var : op->outputs) {
+      if (var->IsCtrlVar()) continue;
+      for (auto &pending_op : var->outputs) {
+        preceding_ops[pending_op].insert(op);
+        pending_ops[op].insert(pending_op);
+      }
+    }
+  }
+
+  std::unordered_set<Node *> opt_node_set(opt_nodes.begin(), opt_nodes.end());
+  auto has_var_deps = [](const std::unordered_set<Node *> &op_set1,
+                         const std::unordered_set<Node *> &op_set2) -> bool {
+    std::set<Node *> intersect_ops;
+    set_intersection(op_set1.begin(), op_set1.end(), op_set2.begin(),
+                     op_set2.end(),
+                     inserter(intersect_ops, intersect_ops.begin()));
+    return !intersect_ops.empty();
+  };
+
+  for (auto opt_node : opt_node_set) {
+    if (has_var_deps(preceding_ops.at(opt_node), opt_node_set)) {
+      return true;
+    }
+    if (has_var_deps(pending_ops.at(opt_node), opt_node_set)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FuseOptimizerOpPass::GradientsFilter(
@@ -358,8 +406,6 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
     }
   }
 
-  // There should not have no-ctr-var between the op_nodes that link the op_node
-  // of op_nodes.
   // Remove the dependence vars between op_nodes.
   std::unordered_set<ir::Node *> out_dep_vars;
   std::unordered_set<ir::Node *> not_useful_vars;

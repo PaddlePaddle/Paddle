@@ -92,6 +92,9 @@ class FuseOptimizerOpPass : public ir::Pass {
                            *aux_var_set) const;
 
   bool IsLoDTensorType(const proto::VarType::Type &type) const;
+
+  bool HasVarDepsBetweenOps(const std::vector<Node *> &topo_nodes,
+                            const std::vector<Node *> &opt_nodes) const;
 };
 
 }  // namespace ir
