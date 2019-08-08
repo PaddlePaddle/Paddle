@@ -128,6 +128,7 @@ class DataFeed {
   // This function is used to pick one file from the global filelist(thread
   // safe).
   virtual bool PickOneFile(std::string* filename);
+  virtual void CopyToFeedTensor(void* dst, const void* src, size_t size);
 
   std::vector<std::string> filelist_;
   size_t* file_idx_;
