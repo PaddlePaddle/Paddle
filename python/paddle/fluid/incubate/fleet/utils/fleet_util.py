@@ -821,7 +821,7 @@ class FleetUtil(object):
                     var_name_list.append(var_name)
                 fleet._fleet_ptr.pull_dense(scope,
                                             int(table.table_id), var_name_list)
-        self._role_maker._barrier_worker()
+        fleet._role_maker._barrier_worker()
 
     def save_paddle_params(self,
                            executor,
@@ -896,16 +896,13 @@ class FleetUtil(object):
         # pull dense before save
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
-            if save_combine:
-                fluid.io.save_vars(
-                    executor, model_name, program, vars=var_names)
-            else:
-                fluid.io.save_vars(
-                    executor,
-                    "./",
-                    program,
-                    vars=var_names,
-                    filename=model_name)
+            vars = [program.global_block().var(i) for i in var_names]
+            with fluid.scope_guard(scope):
+                if save_combine:
+                    fluid.io.save_vars(
+                        executor, "./", program, vars=vars, filename=model_name)
+                else:
+                    fluid.io.save_vars(executor, model_name, program, vars=vars)
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
@@ -916,9 +913,9 @@ class FleetUtil(object):
             if pass_id == "-1":
                 dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
             else:
-                dest = "%s/%s/delta-%d/dnn_plugin/" % (output_path, day,
+                dest = "%s/%s/delta-%s/dnn_plugin/" % (output_path, day,
                                                        pass_id)
-            if not client.is_exist():
+            if not client.is_exist(dest):
                 client.makedirs(dest)
 
             client.upload(dest, model_name)
@@ -1219,7 +1216,7 @@ class FleetUtil(object):
 
         return [
             auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,
-            mean_predict_qvalue, total_ins_num
+            mean_predict_qvalue, int(total_ins_num)
         ]
 
     def print_global_metrics(self,
