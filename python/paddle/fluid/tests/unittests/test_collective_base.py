@@ -100,7 +100,8 @@ class TestCollectiveRunnerBase(object):
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
-        nranks = 2
+        nranks = len(endpoints)
+        assert nranks == 2, "nranks (%d) must equal to 2." % nranks
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
         result = self.get_model(train_prog, startup_prog)
@@ -193,7 +194,7 @@ class TestDistBase(unittest.TestCase):
             env=env0)
 
         tr1_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
+            tr1_cmd.strip().split(),
             stdout=subprocess.PIPE,
             stderr=tr1_pipe,
             env=env1)
