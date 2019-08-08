@@ -52,8 +52,8 @@ static std::string to_string_with_precision(const T& v, const int n = 6) {
   return ss.str();
 }
 
-static std::string Join(const std::vector<std::string>& vec,
-                        const std::string& delim) {
+template <typename T>
+std::string Join(const std::vector<T>& vec, const std::string& delim) {
   if (vec.empty()) return "";
 
   std::stringstream ss;
@@ -72,6 +72,23 @@ static std::string Repr(const std::vector<std::string>& v) {
   std::transform(v.begin(), v.end(), std::back_inserter(tmp),
                  [](const std::string& x) { return Repr(x); });
   return "{" + Join(tmp, ",") + "}";
+}
+
+static std::vector<std::string> Split(const std::string& original,
+                                      const std::string& separator) {
+  std::vector<std::string> results;
+  std::string::size_type pos1, pos2;
+  pos2 = original.find(separator);
+  pos1 = 0;
+  while (std::string::npos != pos2) {
+    results.push_back(original.substr(pos1, pos2 - pos1));
+    pos1 = pos2 + separator.size();
+    pos2 = original.find(separator, pos1);
+  }
+  if (pos1 != original.length()) {
+    results.push_back(original.substr(pos1));
+  }
+  return results;
 }
 
 }  // namespace lite

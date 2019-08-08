@@ -21,7 +21,6 @@
 #endif
 #include <algorithm>
 #include <chrono>  // NOLINT
-#include <functional>
 #include <iterator>
 #include <numeric>
 #include <sstream>
@@ -64,12 +63,9 @@ static int GetUniqueId() {
 }
 
 static void split(const std::string &str, char sep,
-                  std::vector<std::string> *pieces, bool ignore_null = true) {
+                  std::vector<std::string> *pieces) {
   pieces->clear();
   if (str.empty()) {
-    if (!ignore_null) {
-      pieces->push_back(str);
-    }
     return;
   }
   size_t pos = 0;
@@ -83,63 +79,26 @@ static void split(const std::string &str, char sep,
     pieces->push_back(str.substr(pos));
   }
 }
-
-template <typename T>
-static T convert(const std::string &item,
-                 std::function<T(const std::string &item)> func) {
-  T res;
-  try {
-    res = func(item);
-  } catch (std::invalid_argument &e) {
-    std::string message =
-        "invalid_argument exception when try to convert : " + item;
-    LOG(ERROR) << message;
-    PADDLE_THROW(message);
-  } catch (std::out_of_range &e) {
-    std::string message =
-        "out_of_range exception when try to convert : " + item;
-    LOG(ERROR) << message;
-    PADDLE_THROW(message);
-  } catch (...) {
-    std::string message = "unexpected exception when try to convert " + item;
-    LOG(ERROR) << message;
-    PADDLE_THROW(message);
-  }
-  return res;
-}
-
 static void split_to_float(const std::string &str, char sep,
                            std::vector<float> *fs) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*fs),
-                 [](const std::string &v) {
-                   return convert<float>(v, [](const std::string &item) {
-                     return std::stof(item);
-                   });
-                 });
+                 [](const std::string &v) { return std::stof(v); });
 }
 static void split_to_int64(const std::string &str, char sep,
                            std::vector<int64_t> *is) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
-                 [](const std::string &v) {
-                   return convert<int64_t>(v, [](const std::string &item) {
-                     return std::stoll(item);
-                   });
-                 });
+                 [](const std::string &v) { return std::stoi(v); });
 }
 static void split_to_int(const std::string &str, char sep,
                          std::vector<int> *is) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
-                 [](const std::string &v) {
-                   return convert<int>(v, [](const std::string &item) {
-                     return std::stoi(item);
-                   });
-                 });
+                 [](const std::string &v) { return std::stoi(v); });
 }
 template <typename T>
 std::string to_string(const std::vector<T> &vec) {

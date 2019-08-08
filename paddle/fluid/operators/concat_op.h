@@ -23,22 +23,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
-  if (axis < 0) {
-    axis = axis + rank;
-  }
-  return axis > 0 ? axis : 0;
-}
-
 template <typename DeviceContext, typename T>
 class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    PADDLE_ENFORCE(ins[0], "The input should not be null.");
-    auto axis = ComputeAxis(static_cast<int64_t>(ctx.Attr<int>("axis")),
-                            static_cast<int64_t>(ins[0]->dims().size()));
+    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
@@ -92,9 +83,8 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-    PADDLE_ENFORCE(ins[0], "The input should not be null.");
-    auto axis = ComputeAxis(static_cast<int64_t>(ctx.Attr<int>("axis")),
-                            static_cast<int64_t>(ins[0]->dims().size()));
+
+    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
 
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor*> outputs;

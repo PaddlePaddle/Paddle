@@ -19,7 +19,6 @@
 #include <memory>
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
-#include <utility>
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
 
@@ -61,7 +60,7 @@ class AutoIncrementAllocator : public Allocator {
   std::shared_ptr<Allocator> CreateNewAllocator();
 
  protected:
-  Allocation* AllocateImpl(size_t size) override;
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   AllocatorCreator creator_;

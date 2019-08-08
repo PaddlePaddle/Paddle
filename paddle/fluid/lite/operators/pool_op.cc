@@ -19,6 +19,27 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+bool PoolOpLite::CheckShape() const {
+  CHECK_OR_FALSE(param_.x);
+  CHECK_OR_FALSE(param_.output);
+
+  const auto& x_dims = param_.x->dims();
+  const auto& ksize = param_.ksize;
+  const auto& strides = param_.strides;
+  const auto& paddings = param_.paddings;
+
+  // "Pooling intput should be 4-D or 5-D tensor."
+  CHECK_OR_FALSE(x_dims.size() == 4 || x_dims.size() == 5);
+  // Input size and pooling size should be consistent.
+  CHECK_OR_FALSE(x_dims.size() - ksize.size() == 2U);
+  // Strides size and pooling size should be the same.
+  CHECK_OR_FALSE(ksize.size() == strides.size());
+  // Paddings size and pooling size should be the same.
+  CHECK_OR_FALSE(ksize.size() == paddings.size());
+
+  return true;
+}
+
 int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
                    bool ceil_mode) {
   int output_size;
@@ -28,46 +49,35 @@ int PoolOutputSize(int input_size, int filter_size, int padding, int stride,
     output_size =
         (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
   }
-  CHECK_OR_FALSE(output_size > 0);
   return output_size;
 }
 
-bool PoolOpLite::CheckShape() const {
-  CHECK_OR_FALSE(param_.x);
-  CHECK_OR_FALSE(param_.output);
-  return true;
-}
-
 bool PoolOpLite::InferShape() const {
-  const auto input_dims = param_.x->dims();
-  CHECK_OR_FALSE(input_dims.size() == 4 || input_dims.size() == 5);
-
+  const auto x_dims = param_.x->dims();
+  std::vector<int>& ksize = param_.ksize;
   if (param_.global_pooling) {
-    param_.ksize.resize(static_cast<size_t>(input_dims.size()) - 2);
-    for (size_t i = 0; i < param_.ksize.size(); ++i) {
+    ksize.resize(static_cast<size_t>(x_dims.size()) - 2);
+    for (size_t i = 0; i < ksize.size(); ++i) {
       param_.paddings[i] = 0;
-      param_.ksize[i] = static_cast<int>(input_dims[i + 2]);
+      ksize[i] = static_cast<int>(x_dims[i + 2]);
     }
   }
 
-  CHECK_OR_FALSE(input_dims.size() - param_.ksize.size() == 2U);
-  CHECK_EQ_OR_FALSE(param_.ksize.size(), param_.strides.size());
-  CHECK_EQ_OR_FALSE(param_.ksize.size(), param_.paddings.size());
-
-  std::vector<int64_t> output_shape({input_dims[0], input_dims[1]});
+  std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
   if (param_.adaptive) {
     output_shape.insert(output_shape.end(), param_.ksize.begin(),
                         param_.ksize.end());
   } else {
     for (size_t i = 0; i < param_.ksize.size(); ++i) {
       output_shape.push_back(
-          PoolOutputSize(input_dims[i + 2], param_.ksize[i], param_.paddings[i],
+          PoolOutputSize(x_dims[i + 2], param_.ksize[i], param_.paddings[i],
                          param_.strides[i], param_.ceil_mode));
     }
   }
-  // share LoD
-  // param_.output->set_lod(param_.input->lod());
   param_.output->Resize(lite::DDim(output_shape));
+
+  // ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  // ctx->ShareLoD("X", "Out");
   return true;
 }
 

@@ -14,7 +14,6 @@
 
 #pragma once
 #include <functional>
-#include <memory>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -29,10 +28,13 @@ namespace allocation {
 // For example:
 //
 // auto* cond_allocator = new ConditionalAllocator();
-// cond_allocator->AddAllocator([](size_t size){
+// cond_allocator->AddAllocator([](size_t size, Attr attr){
 //   // if size > 10
 //   return size > 10;
-// }, allocator_b).AddAllocator([](size_t size){
+// }, allocator_a).AddAllocator([](size_t size, Attr attr){
+//   // elif attr is kDefault
+//   return attr == kDefault;
+// }, allocator_b).AddAllocator([](size_t size, Attr attr){
 //   // else
 //   return true;
 // }, allocator_c);
@@ -40,17 +42,17 @@ class ConditionalAllocator : public Allocator {
  public:
   ConditionalAllocator() = default;
 
-  ConditionalAllocator& AddAllocator(std::function<bool(size_t)> func,
+  ConditionalAllocator& AddAllocator(std::function<bool(size_t, Attr)> func,
                                      std::shared_ptr<Allocator> allocator);
 
   bool IsAllocThreadSafe() const override;
 
  protected:
-  Allocation* AllocateImpl(size_t size) override;
+  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
   using AllocatorWithCond =
-      std::pair<std::function<bool(size_t)>, std::shared_ptr<Allocator>>;
+      std::pair<std::function<bool(size_t, Attr)>, std::shared_ptr<Allocator>>;
   std::vector<AllocatorWithCond> underlying_allocators_;
 };
 

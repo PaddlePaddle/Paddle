@@ -38,10 +38,6 @@ namespace operators {
 
 static ngraph::Shape Ddim2Shape(const framework::DDim& dims) {
   ngraph::Shape sp;
-  if (dims.size() == 1 && dims[0] == 0) {
-    sp.emplace_back(0);
-    return sp;
-  }
   for (int i = 0; i < dims.size(); ++i) {
     int k = dims[i];
     k = k == 0 ? 1 : k;
@@ -65,7 +61,6 @@ static std::map<framework::proto::VarType::Type, ngraph::element::Type>
         {framework::proto::VarType::FP64, ngraph::element::f64},
         {framework::proto::VarType::INT32, ngraph::element::i32},
         {framework::proto::VarType::INT64, ngraph::element::i64},
-        {framework::proto::VarType::UINT8, ngraph::element::u8},
         {framework::proto::VarType::BOOL, ngraph::element::boolean}};
 
 static std::map<ngraph::element::Type, framework::proto::VarType::Type>
@@ -74,7 +69,6 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
         {ngraph::element::f64, framework::proto::VarType::FP64},
         {ngraph::element::i32, framework::proto::VarType::INT32},
         {ngraph::element::i64, framework::proto::VarType::INT64},
-        {ngraph::element::u8, framework::proto::VarType::UINT8},
         {ngraph::element::boolean, framework::proto::VarType::BOOL}};
 
 std::vector<std::string> NgraphEngine::feed_vars = {};
@@ -138,11 +132,12 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
   int pivot = left;
   while (pivot < right) {
     auto op_type = ops->at(pivot)->Type();
-    if (!NgraphBridge::isSupported(ops->at(pivot))) {
+    if (NgraphBridge::isRegister(op_type)) {
       ++pivot;
     } else {
       int start = pivot, end = start;
-      while (pivot < right && (NgraphBridge::isSupported(ops->at(pivot)))) {
+      while (pivot < right &&
+             (!NgraphBridge::isRegister(ops->at(pivot)->Type()))) {
         ++pivot;
         ++end;
       }
@@ -161,8 +156,6 @@ static void SubstituteNgraphOp(
   ng_op_desc.SetAttr("interval", interval);
   ng_op_desc.SetAttr("engine_key", engine_key);
   ng_op_desc.SetAttr("graph", block_str);
-  ng_op_desc.SetInput("Xs", std::vector<std::string>(0));
-  ng_op_desc.SetOutput("Ys", std::vector<std::string>(0));
 
   ops->erase(ops->begin() + interval[0], ops->begin() + interval[1]);
   ops->insert(ops->begin() + interval[0],
@@ -228,36 +221,20 @@ NgraphEngine::NgraphEngine(const framework::Scope& scope,
                            const platform::Place& place,
                            const framework::ExecutionContext& ctx)
     : scope_(scope), place_(place) {
+  std::string serialized_graph = ctx.Attr<std::string>("graph");
+  auto interval = ctx.Attr<std::vector<int>>("interval");
+  std::string engine_key = ctx.Attr<std::string>("engine_key");
+
   var_in_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
   var_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
-  GetNgFunction(ctx);
+  GetNgFunction(engine_key, interval);
 }
 
-void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
-  auto interval = ctx.Attr<std::vector<int>>("interval");
-  std::string serialized_graph = ctx.Attr<std::string>("graph");
-
-  auto input_vars = ctx.Inputs("Xs");
-  if (!input_vars.empty()) {
-    feed_vars = input_vars;
-    var_in_ = input_vars;
-  }
-  auto output_vars = ctx.Outputs("Ys");
-  if (!output_vars.empty()) {
-    var_out_ = output_vars;
-  }
-
-  framework::proto::BlockDesc block_proto;
-  if (!serialized_graph.empty()) block_proto.ParseFromString(serialized_graph);
-  framework::BlockDesc block_desc(nullptr, &block_proto);
-  if (!serialized_graph.empty()) {
-    NgraphEngine::p_bdesc = &block_desc;
-  }
-
+void NgraphEngine::Prepare(const std::vector<int>& interval) {
   bool has_fetch = false, is_full = false;
   for (auto& var : p_bdesc->AllVars()) {
     if (!(var->GetType() == framework::proto::VarType::SELECTED_ROWS ||
@@ -337,15 +314,7 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
     op_state_ = OpState::UNKNOWN;
   }
 
-  if (var_in_.empty() && var_out_.empty()) {
-    BuildNgIO(ops_desc, interval);
-  }
-  for (size_t i = 0; i < var_in_.size(); ++i) {
-    auto var_name = var_in_[i];
-    if (persistables_.find(var_name) == persistables_.end()) {
-      var_in_updates_.emplace_back(i);
-    }
-  }
+  BuildNgIO(ops_desc, interval);
 }
 
 void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
@@ -421,14 +390,12 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
       }
     }
   }
-  // remove output duplicates
-  std::unordered_set<std::string> var_out_set;
-  for (int i = static_cast<int>(var_out_.size()) - 1; i >= 0; --i) {
-    std::string var_name = var_out_.at(i);
-    if (var_out_set.count(var_name)) {
-      var_out_.erase(var_out_.begin() + i);
+
+  for (size_t i = 0; i < var_in_.size(); ++i) {
+    auto var_name = var_in_[i];
+    if (persistables_.find(var_name) == persistables_.end()) {
+      var_in_updates_.emplace_back(i);
     }
-    var_out_set.insert(var_name);
   }
 }
 
@@ -465,17 +432,26 @@ void NgraphEngine::BuildNgNodes() {
       }
     }
   }
+
   NgraphBridge ngb(var_node_map_);
   for (auto& op : fused_ops_) {
     ngb.BuildNgNode(op);
   }
 }
 
-std::shared_ptr<ngraph::Function> NgraphEngine::BuildNgFunction(
-    const framework::ExecutionContext& ctx) {
-  Prepare(ctx);
+void NgraphEngine::RunInferShape() {
+  for (auto& op : fused_ops_) {
+    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+    op->RuntimeInferShape(scope_, place_, ctx);
+  }
+}
+
+void NgraphEngine::BuildNgFunction(const std::vector<int>& interval) {
+  Prepare(interval);
+  RunInferShape();
   GetNgInputShape();
   BuildNgNodes();
+  ngraph_function_ = nullptr;
   ngraph::NodeVector func_outputs;
   ngraph::ParameterVector func_inputs;
 
@@ -490,105 +466,93 @@ std::shared_ptr<ngraph::Function> NgraphEngine::BuildNgFunction(
     func_inputs.emplace_back(prm);
   }
 
-  return std::make_shared<ngraph::Function>(func_outputs, func_inputs);
+  ngraph_function_ =
+      std::make_shared<ngraph::Function>(func_outputs, func_inputs);
 }
 
-void NgraphEngine::ClearNgCache() {
-  auto it = engine_cache.begin();
-  while (it != engine_cache.end()) {
-    auto ng_engine = it->second;
-    backend_->remove_compiled_function(ng_engine.ngraph_handle);
-    ++it;
-  }
-  engine_cache.clear();
-  auto it_tensor = t_in_cache_.begin();
-  while (it_tensor != t_in_cache_.end()) {
-    auto t_vec = it_tensor->second;
-    for (auto t_in : t_vec) {
-      t_in.reset();
-    }
-    ++it_tensor;
-  }
-  t_in_cache_.clear();
-}
-
-void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
-  auto interval = ctx.Attr<std::vector<int>>("interval");
-  std::string engine_key = ctx.Attr<std::string>("engine_key");
-
-  // set to flase, to debug cache or recompile everytime.
+void NgraphEngine::GetNgFunction(std::string engine_key,
+                                 const std::vector<int>& interval) {
   bool use_cache = true;
-  if (!use_cache) ClearNgCache();
-
-  this->func_cache_key_ = "";
-  for (int i = 0; i < static_cast<int>(feed_vars.size()); ++i) {
-    auto* var = scope_.FindVar(feed_vars[i]);
-    if (var && var->IsType<framework::LoDTensor>()) {
-      auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-      auto dims = tensor_pd->dims();
-      for (int j = 0; j < dims.size(); ++j) {
-        func_cache_key_ += std::to_string(dims[j]);
+  if (use_cache) {
+    this->func_cache_key_ = "";
+    for (int i = 0; i < std::min(static_cast<int>(feed_vars.size()), 10); ++i) {
+      auto* var = scope_.FindVar(feed_vars[i]);
+      if (var && var->IsType<framework::LoDTensor>()) {
+        auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+        auto dims = tensor_pd->dims();
+        for (int j = 0; j < dims.size(); ++j) {
+          func_cache_key_ += std::to_string(dims[j]);
+        }
       }
     }
-  }
-  func_cache_key_ += std::to_string(interval[0]) + "_" +
-                     std::to_string(interval[1]) + engine_key;
-  func_cache_key_ = std::to_string(std::hash<std::string>()(func_cache_key_));
+    func_cache_key_ += std::to_string(interval[0]) + "_" +
+                       std::to_string(interval[1]) + engine_key;
+    func_cache_key_ = std::to_string(std::hash<std::string>()(func_cache_key_));
 
-  if (engine_cache.find(func_cache_key_) != engine_cache.end()) {
-    if (engine_cache[func_cache_key_].persistables.size() == 0) {
-      ClearNgCache();
-    } else {
-      auto var_name = engine_cache[func_cache_key_].persistables.begin();
-      framework::Variable* var = scope_.FindVar(*var_name);
-      if (var != pre_var_ptr) {
-        ClearNgCache();
+    if (engine_cache.find(func_cache_key_) != engine_cache.end()) {
+      if (engine_cache[func_cache_key_].persistables.size() == 0) {
+        engine_cache.clear();
+        t_in_cache_.clear();
+      } else {
+        auto var_name = engine_cache[func_cache_key_].persistables.begin();
+        framework::Variable* var = scope_.FindVar(*var_name);
+        if (var != pre_var_ptr) {
+          engine_cache.clear();
+          t_in_cache_.clear();
+        }
+        pre_var_ptr = var;
       }
-      pre_var_ptr = var;
     }
-  }
 
-  if (engine_cache.find(func_cache_key_) == engine_cache.end()) {
-    if (engine_cache.size() > 5) ClearNgCache();
-    auto func = BuildNgFunction(ctx);
-    // Due to optimization backend may produce results in other layouts,
-    // make sure we get default layout for results.
-    for (auto& r : func->get_results()) {
-      r->set_needs_default_layout(true);
+    if (engine_cache.find(func_cache_key_) == engine_cache.end()) {
+      BuildNgFunction(interval);
+      engine_cache[func_cache_key_].ngraph_function = this->ngraph_function_;
+      engine_cache[func_cache_key_].persistables = this->persistables_;
+      engine_cache[func_cache_key_].var_in_updates = this->var_in_updates_;
+      engine_cache[func_cache_key_].var_in = this->var_in_;
+      engine_cache[func_cache_key_].var_out = this->var_out_;
+      engine_cache[func_cache_key_].is_test = this->is_test_;
     }
-    engine_cache[func_cache_key_].ngraph_handle = backend_->compile(func);
-    engine_cache[func_cache_key_].persistables = this->persistables_;
-    engine_cache[func_cache_key_].var_in_updates = this->var_in_updates_;
-    engine_cache[func_cache_key_].var_in = this->var_in_;
-    engine_cache[func_cache_key_].var_out = this->var_out_;
-    engine_cache[func_cache_key_].is_test = this->is_test_;
+  } else {
+    BuildNgFunction(interval);
   }
 }
 
 void NgraphEngine::Run(const framework::Scope& scope,
                        const platform::Place& place) const {
-  std::shared_ptr<ngraph::runtime::Executable> ng_handle;
+  std::shared_ptr<ngraph::Function> ng_func;
   const std::set<std::string>* p_persistables;
   const std::vector<size_t>* p_var_in_updates;
   const std::vector<std::string>* p_var_in;
   const std::vector<std::string>* p_var_out;
   bool is_test;
 
-  PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
-                 "Cannot find cached data to run ngraph function");
-  ng_handle = engine_cache[func_cache_key_].ngraph_handle;
-  p_persistables = &(engine_cache[func_cache_key_].persistables);
-  p_var_in_updates = &(engine_cache[func_cache_key_].var_in_updates);
-  p_var_in = &(engine_cache[func_cache_key_].var_in);
-  p_var_out = &(engine_cache[func_cache_key_].var_out);
-  is_test = engine_cache[func_cache_key_].is_test;
+  bool use_cache = true;
+  if (use_cache) {
+    PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
+                   "Cannot find cached data to run ngraph function");
+    ng_func = engine_cache[func_cache_key_].ngraph_function;
+    p_persistables = &(engine_cache[func_cache_key_].persistables);
+    p_var_in_updates = &(engine_cache[func_cache_key_].var_in_updates);
+    p_var_in = &(engine_cache[func_cache_key_].var_in);
+    p_var_out = &(engine_cache[func_cache_key_].var_out);
+    is_test = engine_cache[func_cache_key_].is_test;
+  } else {
+    ng_func = ngraph_function_;
+    p_persistables = &this->persistables_;
+    p_var_in_updates = &this->var_in_updates_;
+    p_var_in = &this->var_in_;
+    p_var_out = &this->var_out_;
+    is_test = this->is_test_;
+  }
 
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>>* p_t_in;
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_in = {};
 
-  auto m_parameters = ng_handle->get_parameters();
-  auto m_results = ng_handle->get_results();
-  if (is_test && t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
+  auto m_parameters = ng_func->get_parameters();
+  auto m_results = ng_func->get_results();
+  if (is_test && use_cache &&
+      t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
     p_t_in = &(t_in_cache_[func_cache_key_]);
     for (size_t i = 0; i < p_var_in_updates->size(); ++i) {
       int index = p_var_in_updates->at(i);
@@ -607,7 +571,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
       }
     }
   } else {
-    if (is_test) {
+    if (is_test && use_cache) {
       p_t_in = &(t_in_cache_[func_cache_key_]);
     } else {
       p_t_in = &t_in;
@@ -637,21 +601,6 @@ void NgraphEngine::Run(const framework::Scope& scope,
     }
   }
 
-  for (auto& op : fused_ops_) {
-    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
-    if (op->Type() == "reshape2_grad") {
-      auto xshape_name = op->Inputs().at("XShape").at(0);
-      auto* xshape_var = scope_.FindVar(xshape_name);
-      auto* xshape_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*xshape_var);
-      auto& xshape_ddim = xshape_tensor->dims();
-      auto xgrad_name = op->Outputs().at(framework::GradVarName("X")).at(0);
-      auto* xgrad_var = scope_.FindVar(xgrad_name);
-      xgrad_var->GetMutable<framework::LoDTensor>()->Resize(xshape_ddim);
-    } else {
-      op->RuntimeInferShape(scope_, place_, ctx);
-    }
-  }
-
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out = {};
   for (size_t i = 0; i < p_var_out->size(); ++i) {
     auto vo = p_var_out->at(i);
@@ -670,7 +619,8 @@ void NgraphEngine::Run(const framework::Scope& scope,
     }
   }
 
-  ng_handle->call(t_out, *p_t_in);
+  auto handle = backend_->compile(ng_func);
+  handle->call_with_validate(t_out, *p_t_in);
 }  // NgraphEngine::Run
 }  // namespace operators
 }  // namespace paddle

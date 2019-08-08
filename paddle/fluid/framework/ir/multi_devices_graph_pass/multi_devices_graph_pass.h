@@ -96,8 +96,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
                          size_t device_id) const;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
-  mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};
+  mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
   mutable std::string loss_var_name_;
@@ -131,7 +130,7 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
   bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const override {
     if (node->Op()->Type() == "recv") {
       VLOG(1) << "set recv op do_not_run to true";
-      node->Op()->SetAttr("do_not_run", 1);
+      node->Op()->SetAttr("do_not_run", true);
       node->Op()->Flush();
     } else if (node->Name() == "lookup_table" || node->Name() == "nce" ||
                node->Name() == "hierarchical_sigmoid") {

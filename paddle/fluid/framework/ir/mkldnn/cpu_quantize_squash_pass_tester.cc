@@ -102,7 +102,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
+  tensor->mutable_data(place, proto::VarType::FP32,
+                       ::paddle::memory::Allocator::kDefault, 1);
 }
 
 void MainTest(const ProgramDesc& prog, int removed_nodes_num) {
@@ -118,7 +119,7 @@ void MainTest(const ProgramDesc& prog, int removed_nodes_num) {
     InitTensorHolder(&scope, place, v.c_str());
   }
 
-  graph->SetNotOwned(kParamScopeAttr, &scope);
+  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
 
   auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
 

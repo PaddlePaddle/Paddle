@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include <unordered_map>
 
 namespace paddle {
 namespace framework {
@@ -26,8 +25,7 @@ void FusePassBase::Init(const std::string& repr, Graph* graph) const {
 
 Scope* FusePassBase::param_scope() const {
   PADDLE_ENFORCE(graph_->Has(kParamScopeAttr));
-  auto& scope = graph_->Get<framework::Scope>(kParamScopeAttr);
-  return &scope;
+  return graph_->Get<framework::Scope*>(kParamScopeAttr);
 }
 
 void FusePassBase::AddStatis(int count_of_fused) const {
@@ -57,7 +55,7 @@ FuseOptions FusePassBase::FindFuseOption(const Node& node1,
 #else
   return FUSE_NATIVE;
 #endif
-}
+};
 
 }  // namespace ir
 }  // namespace framework

@@ -25,11 +25,11 @@ class IoCopyKernelPickPass : public StmtPass {
     for (auto& node : graph->mutable_nodes()) {
       if (!node.IsStmt()) continue;
       auto& inst = node.AsStmt();
-      if (inst.op_type != "io_copy") continue;
+      if (inst.op_type() != "io_copy") continue;
 
       LOG(INFO) << "....> picking a IO COPY kernel";
 
-      auto& kernels = node.AsStmt().valid_kernels;
+      auto& kernels = node.AsStmt().kernels();
       CHECK(!kernels.empty()) << "No valid kernels found for IoCopy Op";
       const auto* inty = node.inlinks.front()->AsArg().type;
       const auto* outy = node.outlinks.front()->AsArg().type;

@@ -20,7 +20,7 @@ namespace lite {
 namespace mir {
 
 void FuseBase::PerformPatternMatcher(SSAGraph *graph) {
-  LOG(INFO) << "\n" << matcher_.pattern().DotString();
+  VLOG(4) << "\n" << matcher_.pattern().DotString();
   // Get subgraphs and record the mir::Node pointers for each PMNode.
   auto handler = [&](const PatternMatcher::subgraph_t &subgraph, SSAGraph *g) {
     // get all the reigistered nodes.
@@ -41,17 +41,15 @@ void FuseBase::DeleteInterNodes(SSAGraph *graph) {
     }
   }
 
-  LOG(INFO) << "keys.size " << keys.size();
-
+  VLOG(4) << "keys: " << key2nodes_.size();
   std::unordered_set<const Node *> nodes2rm;
   for (auto &matched : key2nodes_) {
-    LOG(INFO) << "get matched " << matched.size();
     for (const auto &key : keys) {
       nodes2rm.insert(matched.at(key));
     }
   }
 
-  LOG(INFO) << "clean nodes " << nodes2rm.size();
+  VLOG(3) << "clean nodes " << nodes2rm.size();
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 

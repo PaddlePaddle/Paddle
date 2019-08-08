@@ -20,13 +20,19 @@ namespace memory {
 namespace allocation {
 
 // Allocator uses `cudaHostAlloc`
+class CPUPinnedAllocation : public Allocation {
+ public:
+  CPUPinnedAllocation(void *ptr, size_t size)
+      : Allocation(ptr, size, platform::CUDAPinnedPlace()) {}
+};
+
 class CPUPinnedAllocator : public Allocator {
  public:
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size) override;
+  void Free(Allocation *allocation) override;
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 };
 
 }  // namespace allocation

@@ -200,9 +200,8 @@ void profile(bool use_mkldnn = false) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
-                                               "relu", "fc"};
+                                               "relu"};
     cfg.SetMKLDNNOp(op_list);
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -252,7 +251,6 @@ void compare(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
                                                "relu"};
     cfg.SetMKLDNNOp(op_list);
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -323,6 +321,7 @@ TEST(Analyzer_dam, compare_determine) {
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
 }
+
 // Save optim model
 TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;

@@ -65,6 +65,8 @@ class Buffer {
     TargetCopy(target_, data_, other.data_, nbytes);
   }
 
+  ~Buffer() { Free(); }
+
  private:
   // memory it actually malloced.
   size_t space_{0};

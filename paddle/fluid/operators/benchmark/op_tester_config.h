@@ -35,8 +35,7 @@ struct OpInputConfig {
 
   std::string name;
   std::string dtype{"fp32"};  // int32/int, int64/long, fp32/float, fp64/double
-  std::string initializer{"random"};  // random, natural, zeros, file
-  std::string filename{""};
+  std::string initializer{"random"};  // random, natural
   std::vector<int64_t> dims;
   std::vector<std::vector<size_t>> lod;
 };

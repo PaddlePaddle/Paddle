@@ -20,7 +20,7 @@
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
-#include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
+#include "paddle/fluid/lite/core/mir/type_target_cast_pass.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
@@ -43,30 +43,46 @@ class Optimizer {
     CHECK(!graph_) << "duplicate optimize found";
     graph_.reset(new mir::SSAGraph);
     graph_->Build(program, valid_places);
+    graph_->SetValidPlaces(valid_places);
+
     SpecifyKernelPickTactic(kernel_pick_factor);
     InitTargetTypeTransformPass();
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
     if (passes.empty()) {
-      RunPasses(std::vector<std::string>{{
-          "lite_conv_bn_fuse_pass",                   //
-          "lite_conv_elementwise_add_act_fuse_pass",  //
-          "lite_fc_fuse_pass",                        //
-          "static_kernel_pick_pass",                  //
-          "variable_place_inference_pass",            //
-          "argument_type_display_pass",               //
-          "type_target_transform_pass",               //
-          "argument_type_display_pass",               //
-          "variable_place_inference_pass",            //
-          "argument_type_display_pass",               //
-          "io_copy_kernel_pick_pass",                 //
-          "variable_place_inference_pass",            //
-          "runtime_context_assign_pass",              //
-      }});
+      RunPasses(std::vector<std::string>{
+          {"lite_quant_dequant_fuse_pass",  //
+           "lite_conv_bn_fuse_pass",        //
+// This pass is disabled to force some opencl kernels selected for final
+// running, otherwise, they will be fused to ARM fusion kernels, and the OpenCL
+// devices will be discarded.
+// TODO(Superjomn) Refine the fusion related design to select fusion kernels for
+// devices automatically.
+#ifndef LITE_WITH_OPENCL
+           "lite_conv_elementwise_add_activation_fuse_pass",  //
+#endif
+           "lite_fc_fuse_pass",              //
+           "identity_scale_eliminate_pass",  //
+#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+#ifndef LITE_WITH_OPENCL
+           "lite_elementwise_add_activation_fuse_pass",  //
+#endif
+#endif
+           "static_kernel_pick_pass",        //
+           "variable_place_inference_pass",  //
+           "argument_type_display_pass",     //
+           "type_target_cast_pass",          //
+           "variable_place_inference_pass",  //
+           "argument_type_display_pass",     //
+           "io_copy_kernel_pick_pass",       //
+           "variable_place_inference_pass",  //
+           "type_precision_cast_pass",       //
+           "argument_type_display_pass",     //
+           "trans_weight_pass",              //
+           "runtime_context_assign_pass",    //
+           "graph_visualze"}});
     } else {
       RunPasses(passes);
     }
-#endif
     exec_scope_ = program.exec_scope();
   }
 
@@ -93,7 +109,7 @@ class Optimizer {
   void InitTargetTypeTransformPass() {
     auto* pass =
         mir::PassManager::Global().LookUp<mir::TypeTargetTransformPass>(
-            "type_target_transform_pass");
+            "type_target_cast_pass");
     CHECK(pass);
     CHECK(!valid_places_.empty());
     LOG(INFO) << "valid_places.size " << valid_places_.size();
@@ -121,7 +137,7 @@ class Optimizer {
     for (auto& x : passes) {
       LOG(INFO) << "== Running pass " << x;
       auto* pass = mir::PassManager::Global().LookUp(x);
-      CHECK(pass);
+      CHECK(pass) << "Can not find pass: " << x;
       pass->Apply(graph_);
     }
   }

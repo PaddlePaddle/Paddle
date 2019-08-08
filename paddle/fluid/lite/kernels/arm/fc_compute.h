@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
+#include "paddle/fluid/lite/arm/math/type_trans.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
 
@@ -25,12 +27,40 @@ class FcCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
  public:
   using param_t = operators::FcParam;
 
+  void PrepareForRun() override;
+
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
+  ~FcCompute() override {
+    if (transed_weight_) {
+      delete transed_weight_;
+    }
+  };
 
-  virtual ~FcCompute() = default;
+ private:
+  lite::Tensor* transed_weight_{nullptr};
+  int m_, n_, k_;
+};
+
+template <PrecisionType Ptype_out>
+class FcComputeInt8 : public KernelLite<TARGET(kARM), PRECISION(kInt8)> {
+ public:
+  using param_t = operators::FcParam;
+
+  void PrepareForRun() override;
+
+  void Run() override;
+
+  ~FcComputeInt8() override {
+    if (transed_weight_) {
+      delete transed_weight_;
+    }
+  };
+
+ private:
+  lite::Tensor* transed_weight_{nullptr};
+  Tensor* tmp_int32_out_{nullptr};
+  int m_, n_, k_;
 };
 
 }  // namespace arm

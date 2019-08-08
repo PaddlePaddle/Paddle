@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant
+from .tensor import concat, assign
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -201,10 +201,6 @@ __all__ = [
     'fsp_matrix',
     'continuous_value_model',
     'where',
-    'sign',
-    'deformable_conv',
-    'unfold',
-    'deformable_roi_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -388,9 +384,9 @@ def embedding(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
-          emb = fluid.layers.embedding(input=data, size=[128, 64])    
+          dict_size = len(dataset.ids)
+          data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
+          fc = fluid.layers.embedding(input=data, size=[dict_size, 16])
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -486,18 +482,10 @@ def dynamic_lstm(input,
 
     Examples:
         .. code-block:: python
-            
-            emb_dim = 256
-            vocab_size = 10000
+
             hidden_dim = 512
-            
-            data = fluid.layers.data(name='x', shape=[1],
-                         dtype='int32', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
-
-            forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
+            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
                                            bias_attr=False)
-
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
@@ -636,23 +624,20 @@ def lstm(input,
 
     Examples:
         .. code-block:: python
-            
-            emb_dim = 256
-            vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
-                         dtype='int32')
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+
+            input = embedding
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
             input_size = 100
             hidden_size = 150
             num_layers = 1
-            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
-                    max_len, hidden_size, num_layers, \
-                    dropout_prob=dropout_prob)
+            init_hidden1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
+            init_cell1 = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0, stop_grad=False)
+
+            rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
+                    max_len, dropout_prob, input_size, hidden_size, \
+                    num_layers)
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
@@ -1055,8 +1040,6 @@ def dynamic_gru(input,
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
             dict_dim, emb_dim = 128, 64
             data = fluid.layers.data(name='sequence', shape=[1],
                                      dtype='int32', lod_level=1)
@@ -1194,17 +1177,10 @@ def gru_unit(input,
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
-            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
-            hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            pre_hidden = fluid.layers.data(
-                name='pre_hidden', shape=[hidden_dim], dtype='float32')
-            hidden = fluid.layers.gru_unit(
-                input=x, hidden=pre_hidden, size=hidden_dim * 3)
+             # assuming we have x_t_data and prev_hidden of size=10
+             x_t = fluid.layers.fc(input=x_t_data, size=30)
+             hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
+                                                    hidden = prev_hidden)
 
     """
     activation_dict = dict(
@@ -1267,19 +1243,6 @@ def linear_chain_crf(input, label, param_attr=None):
         output(${emission_exps_type}): ${emission_exps_comment} \n
         output(${transition_exps_type}): ${transition_exps_comment} \n
         output(${log_likelihood_type}): ${log_likelihood_comment}
-
-    Examples:
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
-             crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
@@ -1567,16 +1530,14 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def bpr_loss(input, label, name=None):
     """
-    **Bayesian Personalized Ranking Loss Operator**
+    Bayesian Personalized Ranking Loss Operator.
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
     The loss at a given point in one session is defined as:
-
-    .. math::
-        Y[i] = 1/(N[i] - 1) * \sum_j{\log(\sigma(X[i, Label[i]]-X[i, j]))}
+    $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
 
     Learn more details by reading paper <session-based recommendations with recurrent
-    neural networks>.
+    neural networks>(https://arxiv.org/abs/1511.06939)
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
@@ -1592,15 +1553,9 @@ def bpr_loss(input, label, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-
-          neg_size = 10
-          label = fluid.layers.data(
-                    name="label", shape=[1], dtype="int64")
-          predict = fluid.layers.data(
-                    name="predict", shape=[neg_size + 1], dtype="float32")
           cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
+
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -1747,21 +1702,10 @@ def chunk_eval(input,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            dict_size = 10000
-            label_dict_len = 7
-            sequence = fluid.layers.data(
-                name='id', shape=[1], lod_level=1, dtype='int64')
-            embedding = fluid.layers.embedding(
-                input=sequence, size=[dict_size, 512])
-            hidden = fluid.layers.fc(input=embedding, size=512)
-            label = fluid.layers.data(
-                name='label', shape=[1], lod_level=1, dtype='int32')
             crf = fluid.layers.linear_chain_crf(
-                input=hidden, label=label, param_attr=fluid.ParamAttr(name="crfw"))
+                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
             crf_decode = fluid.layers.crf_decoding(
-                input=hidden, param_attr=fluid.ParamAttr(name="crfw"))
+                input=hidden, param_attr=ParamAttr(name="crfw"))
             fluid.layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -1837,13 +1781,6 @@ def sequence_conv(input,
 
     Returns:
         Variable: output of sequence_conv
-
-    Examples:
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
-             x_conved = fluid.layers.sequence_conv(x,2)
     """
 
     assert not in_dygraph_mode(), (
@@ -1964,8 +1901,6 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
              fc = fluid.layers.fc(input=x, size=10)
              # perform softmax in the second dimension
              softmax = fluid.layers.softmax(input=fc, axis=1)
@@ -2237,7 +2172,7 @@ def conv3d(input,
 
     Args:
         input (Variable): The input image with [N, C, D, H, W] format.
-        num_filters(int): The number of filter. It is as same as the output
+            num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
@@ -2348,7 +2283,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
+def sequence_pool(input, pool_type, is_test=False):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -2363,32 +2298,29 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor and **pad_value** = 0.0:
-         x.lod = [[2, 3, 2, 0]]
+       x is a 1-level LoDTensor:
+         x.lod = [[2, 3, 2]]
          x.data = [1, 3, 2, 4, 6, 5, 1]
          x.dims = [7, 1]
 
        then output is a Tensor:
-         out.dim = [4, 1]
+         out.dim = [3, 1]
          with condition len(x.lod[-1]) == out.dims[0]
 
        for different pool_type:
-         average: out.data = [2, 4, 3, 0.0], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-         sum    : out.data = [4, 12, 6, 0.0], where 4=1+3, 12=2+4+6, 6=5+1
-         sqrt   : out.data = [2.82, 6.93, 4.24, 0.0], where 2.82=(1+3)/sqrt(2),
+         average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+         sum    : out.data = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
+         sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-         max    : out.data = [3, 6, 5, 0.0], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         last   : out.data = [3, 6, 1, 0.0], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         first  : out.data = [1, 2, 5, 0.0], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
-
-         and all above 0.0 = **pad_value**.
+         max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         last   : out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         first  : out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
 
     Args:
-        input (variable): The input variable which is a LoDTensor.
+        input(variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
-        is_test (bool): Used to distinguish training from scoring mode. Default False.
-        pad_value (float): Used to pad the pooling result for empty input sequence.
+        is_test(bool, Default False): Used distinguish training from scoring mode.
 
     Returns:
         The sequence pooling variable which is a Tensor.
@@ -2396,8 +2328,6 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     Examples:
 
         .. code-block:: python
-
-             import paddle.fluid as fluid
 
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
@@ -2420,11 +2350,8 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
         inputs={"X": input},
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
-        attrs={
-            "pooltype": pool_type.upper(),
-            "is_test": is_test,
-            "pad_value": pad_value
-        })
+        attrs={"pooltype": pool_type.upper(),
+               "is_test": is_test})
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -2450,10 +2377,7 @@ def sequence_concat(input, name=None):
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
-           x = fluid.layers.data(name='x', shape=[10], dtype='float32')
-           y = fluid.layers.data(name='y', shape=[10], dtype='float32')
-           out = fluid.layers.sequence_concat(input=[x, y])
+           out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -2982,12 +2906,9 @@ def adaptive_pool3d(input,
           #                 output[:, :, i, j, k] =
           #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
           #
-
-          import paddle.fluid as fluid
-
           data = fluid.layers.data(
-              name='data', shape=[3, 32, 32, 32], dtype='float32')
-          pool_out = fluid.layers.adaptive_pool3d(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out, mask = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3, 3],
                             pool_type='avg')
@@ -3098,24 +3019,18 @@ def batch_norm(input,
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized 
-	     with Xavier. Default: None.
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
-	     Default: None.
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
-            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
-            will save global mean with the string.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
-            will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -3276,11 +3191,9 @@ def data_norm(input,
     Examples:
 
         .. code-block:: python
-            
-            import paddle.fluid as fluid
 
-            hidden1 = fluid.layers.data(name="hidden1", shape=[200])
-            hidden2 = fluid.layers.data_norm(name="hidden2", input=hidden1)
+            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.data_norm(input=hidden1)
     """
     helper = LayerHelper('data_norm', **locals())
     dtype = helper.input_dtype()
@@ -3586,13 +3499,10 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         Variable: A tensor variable of weight parameters after spectral normalization.
 
     Examples:
-       .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
-                                       append_batch_size=False, dtype='float32')
-            x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
+        >>> weight = fluid.layers.data(name='weight', shape=[8, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.spectral_norm(weight=data, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
     dtype = weight.dtype
@@ -4054,8 +3964,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Examples:
         .. code-block:: python
-	
-            import paddle.fluid.layers as layers
+
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
                              dtype='float32', lod_level=1)
@@ -4123,7 +4032,6 @@ def sequence_expand_as(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import paddle.fluid.layers as layers
 
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
@@ -4341,25 +4249,16 @@ def beam_search(pre_ids,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
             # Suppose `probs` contains predicted results from the computation
             # cell and `pre_ids` and `pre_scores` is the output of beam_search
             # at previous step.
-            beam_size = 4
-            end_id = 1
-            pre_ids = fluid.layers.data(
-                name='pre_id', shape=[1], lod_level=2, dtype='int64')
-            pre_scores = fluid.layers.data(
-                name='pre_scores', shape=[1], lod_level=2, dtype='float32')
-            probs = fluid.layers.data(
-                name='probs', shape=[10000], dtype='float32')
-            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
-            accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+            topk_scores, topk_indices = layers.topk(probs, k=beam_size)
+            accu_scores = layers.elementwise_add(
+                x=layers.log(x=topk_scores)),
+                y=layers.reshape(
+                    pre_scores, shape=[-1]),
                 axis=0)
-            selected_ids, selected_scores = fluid.layers.beam_search(
+            selected_ids, selected_scores = layers.beam_search(
                 pre_ids=pre_ids,
                 pre_scores=pre_scores,
                 ids=topk_indices,
@@ -4433,13 +4332,9 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
-            ids = fluid.layers.create_array(dtype='int64')
-            scores = fluid.layers.create_array(dtype='float32')
-            finished_ids, finished_scores = fluid.layers.beam_search_decode(
+            finished_ids, finished_scores = layers.beam_search_decode(
                 ids, scores, beam_size=5, end_id=0)
     """
     helper = LayerHelper('beam_search_decode', **locals())
@@ -4499,7 +4394,7 @@ def lstm_unit(x_t,
 
             i_t = \sigma(L_{i_t})
 
-    This layer has two outputs including :math:`h_t` and :math:`c_t`.
+    This layer has two outputs including :math:`h_t` and :math:`o_t`.
 
     Args:
         x_t (Variable): The input value of current step, a 2-D tensor with shape
@@ -4537,19 +4432,12 @@ def lstm_unit(x_t,
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            dict_dim, emb_dim, hidden_dim = 128, 64, 512
-            data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
-            x = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
-            pre_hidden = fluid.layers.data(
-                name='pre_hidden', shape=[hidden_dim], dtype='float32')
-            pre_cell = fluid.layers.data(
-                name='pre_cell', shape=[hidden_dim], dtype='float32')
-            hidden = fluid.layers.lstm_unit(
-                x_t=x,
-                hidden_t_prev=pre_hidden,
-                cell_t_prev=pre_cell)
+             x_t = fluid.layers.fc(input=x_t_data, size=10)
+             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=30)
+             prev_cell = fluid.layers.fc(input=prev_cell_data, size=30)
+             hidden_value, cell_value = fluid.layers.lstm_unit(x_t=x_t,
+                                                    hidden_t_prev=prev_hidden,
+                                                    cell_t_prev=prev_cell)
     """
     helper = LayerHelper('lstm_unit', **locals())
 
@@ -4618,24 +4506,21 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
             fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
 
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
-            fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
+            fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
+            fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
 
     """
     helper = LayerHelper('reduce_sum', **locals())
@@ -4678,24 +4563,22 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
-            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+            fluid.layers.reduce_mean(
+                x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
 
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
-            fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
+            fluid.layers.reduce_mean(x, dim=[1, 2]) # [2.5, 6.5]
+            fluid.layers.reduce_mean(x, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4736,24 +4619,21 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_max(x)  # [0.9]
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
             fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
 
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
-            fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
+            fluid.layers.reduce_max(x, dim=[1, 2]) # [4.0, 8.0]
+            fluid.layers.reduce_max(x, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4794,24 +4674,21 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_min(x)  # [0.1]
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
             fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
 
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
-            fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
+            fluid.layers.reduce_min(x, dim=[1, 2]) # [1.0, 5.0]
+            fluid.layers.reduce_min(x, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -4852,25 +4729,22 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
             fluid.layers.reduce_prod(x, dim=1,
                                      keep_dim=True)  # [[0.027], [0.0084]]
 
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
-            fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
+            fluid.layers.reduce_prod(x, dim=[1, 2]) # [24.0, 1680.0]
+            fluid.layers.reduce_prod(x, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -5011,21 +4885,16 @@ def split(input, num_or_sections, dim=-1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            # input is a variable which shape is [-1, 3, 9, 5]
-            input = fluid.layers.data(
-                 name="input", shape=[3, 9, 5], dtype="float32")
-
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=2)
-            # x0.shape [-1, 3, 3, 5]
-            # x1.shape [-1, 3, 3, 5]
-            # x2.shape [-1, 3, 3, 5]
-
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
-            # x0.shape [-1, 3, 2, 5]
-            # x1.shape [-1, 3, 3, 5]
-            # x2.shape [-1, 3, 4, 5]
+            # x is a Tensor variable with shape [3, 9, 5]:
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
+            x0.shape  # [3, 3, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 3, 5]
+            x0, x1, x2 = fluid.layers.split(
+                x, num_or_sections=[2, 3, 4], dim=1)
+            x0.shape  # [3, 2, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 4, 5]
     """
     helper = LayerHelper('split', **locals())
     input_shape = input.shape
@@ -5155,29 +5024,25 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+            fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
 
             # x: [B, M, K], y: [B, K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
 
             # x: [B, M, K], y: [K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
 
             # x: [M, K], y: [K, N]
-            # fluid.layers.matmul(x, y)  # out: [M, N]
+            fluid.layers.matmul(x, y)  # out: [M, N]
 
             # x: [B, M, K], y: [K]
-            # fluid.layers.matmul(x, y)  # out: [B, M]
+            fluid.layers.matmul(x, y)  # out: [B, M]
 
             # x: [K], y: [K]
-            # fluid.layers.matmul(x, y)  # out: [1]
+            fluid.layers.matmul(x, y)  # out: [1]
 
             # x: [M], y: [N]
-            # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
-
-            x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
-            out = fluid.layers.matmul(x, y, True, True)
+            fluid.layers.matmul(x, y, True, True)  # out: [M, N]
     """
 
     def __check_input(x, y):
@@ -5277,8 +5142,6 @@ def topk(input, k, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid.layers as layers
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     helper = LayerHelper("top_k", **locals())
@@ -5303,7 +5166,7 @@ def topk(input, k, name=None):
 
 def edit_distance(input, label, normalized=True, ignored_tokens=None):
     """
-    Edit distance operator computes the edit distances between a batch of
+    EditDistance operator computes the edit distances between a batch of
     hypothesis strings and their references. Edit distance, also called
     Levenshtein distance, measures how dissimilar two strings are by counting
     the minimum number of operations to transform one string into anthor.
@@ -5339,28 +5202,9 @@ def edit_distance(input, label, normalized=True, ignored_tokens=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost, _ = fluid.layers.edit_distance(input=x, label=y)
-
-            cpu = fluid.core.CPUPlace()
-            exe = fluid.Executor(cpu)
-            exe.run(fluid.default_startup_program())
-
-            import numpy
-            x_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
-            y_ = numpy.random.randint(5, size=(2, 1)).astype('int64')
-
-            print(x_)
-            print(y_)
-
-            x = fluid.create_lod_tensor(x_, [[2]], cpu)
-            y = fluid.create_lod_tensor(y_, [[2]], cpu)
-
-            outs = exe.run(feed={'x':x, 'y':y}, fetch_list=[cost.name])
-
-            print(outs)
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            cost = fluid.layers.edit_distance(input=x,label=y)
     """
     helper = LayerHelper("edit_distance", **locals())
 
@@ -5515,11 +5359,8 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            label = fluid.layers.data(name='label', shape=[11, 8],
-                                      dtype='float32', lod_level=1)
-            predict = fluid.layers.data(name='predict', shape=[11, 1],
-                                        dtype='float32')
+            label = fluid.layers.data(shape=[11, 8], dtype='float32', lod_level=1)
+            predict = fluid.layers.data(shape=[11, 1], dtype='float32')
             cost = fluid.layers.warpctc(input=predict, label=label)
 
     """
@@ -5585,9 +5426,8 @@ def sequence_reshape(input, new_dim):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 6], append_batch_size=False, dtype='float32', lod_level=1)
-            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
+            x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
+            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -5889,7 +5729,6 @@ def hsigmoid(input,
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='int64')
             out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
@@ -5995,16 +5834,15 @@ def transpose(x, perm, name=None):
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
-            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
-            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
+            x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
 
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
-            "Its length should be equal to Input(input)'s rank.")
+            "It's length shoud be equal to Input(input)'s rank.")
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
@@ -6134,12 +5972,8 @@ def im2sequence(input,
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32],
-                                     dtype='float32')
             output = fluid.layers.im2sequence(
-                input=data, stride=[1, 1], filter_size=[2, 2])
-
+                input=layer, stride=[1, 1], filter_size=[2, 2])
 
     """
     assert not in_dygraph_mode(), (
@@ -6155,7 +5989,7 @@ def im2sequence(input,
         padding.append(padding[0])
         padding.append(padding[1])
     inputs = {"X": input}
-    attrs = {"kernels": filter_size, "strides": stride, "paddings": padding}
+    attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
     if input_image_size:
         if isinstance(out_stride, int):
             out_stride = [out_stride, out_stride]
@@ -6462,13 +6296,11 @@ def sampled_softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            input = fluid.layers.data(name='data', shape=[256], dtype='float32')
+            logits = fluid.layers.data(name='data', shape=[256], dtype='float32')
             label = fluid.layers.data(name='label', shape=[5], dtype='int64')
-            fc = fluid.layers.fc(input=input, size=100)
+            fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.sampled_softmax_with_cross_entropy(
-                      logits=fc, label=label, num_samples=25)
+                logits=fc, label=label, num_samples=25)
     """
     helper = LayerHelper('sample_logits', **locals())
     samples = helper.create_variable_for_type_inference(dtype='int64')
@@ -6599,25 +6431,11 @@ def one_hot(input, depth):
             one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
-
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
-
-    if in_dygraph_mode():
-        inputs = {'X': input}
-        attrs = {'depth': depth}
-    else:
-        if not isinstance(depth, Variable):
-            # user attribute 
-            inputs = {'X': input}
-            attrs = {'depth': depth}
-        else:
-            depth.stop_gradient = True
-            inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {}
     helper.append_op(
         type="one_hot",
-        inputs=inputs,
-        attrs=attrs,
+        inputs={'X': input},
+        attrs={'depth': depth},
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
@@ -6739,7 +6557,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python list or tuple.")
-
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -6748,12 +6565,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     # Validate the shape
     unk_dim_idx = -1
-    contain_var = False
     for dim_idx, dim_size in enumerate(shape):
-        if isinstance(dim_size, Variable):
-            contain_var = True
-            continue
-
         if dim_size == -1:
             assert unk_dim_idx == -1, (
                 "Only one dimension in shape can be unknown.")
@@ -6767,35 +6579,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
-    if in_dygraph_mode():
-        inputs = {'X': x}
-        attrs = {'shape': shape}
-    else:
-        if contain_var:
-            new_shape_tensor = []
-            for dim in shape:
-                if isinstance(dim, Variable):
-                    dim.stop_gradient = True
-                    new_shape_tensor.append(dim)
-                else:
-                    assert (isinstance(dim, int))
-                    temp_out = helper.create_variable_for_type_inference(
-                        'int32')
-                    fill_constant(
-                        [1], 'int32', dim, force_cpu=True, out=temp_out)
-                    new_shape_tensor.append(temp_out)
-            inputs['ShapeTensor'] = new_shape_tensor
-            attrs = {}
-
-        else:
-            attrs = {'shape': shape}
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
-        attrs=attrs,
+        attrs={"shape": shape},
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -6842,9 +6632,8 @@ def squeeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid.layers as layers
             x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.squeeze(input=x, axes=[1])
+            y = layers.sequeeze(input=x, axes=[1])
     """
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
@@ -6885,9 +6674,8 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10])
-            y = fluid.layers.unsqueeze(input=x, axes=[1])
+            x = layers.data(name='x', shape=[5, 10])
+            y = layers.unsequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6976,9 +6764,9 @@ def lod_reset(x, y=None, target_lod=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[10])
-            y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
-            out = fluid.layers.lod_reset(x=x, y=y)
+            x = layers.data(name='x', shape=[10])
+            y = layers.data(name='y', shape=[10, 20], lod_level=2)
+            out = layers.lod_reset(x=x, y=y)
     """
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -7256,8 +7044,6 @@ def label_smooth(label,
 
     Examples:
         .. code-block:: python
-            
-            import paddle.fluid.layers as layers
 
             label = layers.data(name="label", shape=[1], dtype="float32")
             one_hot_label = layers.one_hot(input=label, depth=10)
@@ -7296,19 +7082,7 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            x = fluid.layers.data(
-                name='x', shape=[8, 112, 112], dtype='float32')
-            rois = fluid.layers.data(
-                name='roi', shape=[4], lod_level=1, dtype='float32')
-            pool_out = fluid.layers.roi_pool(
-                input=x,
-                rois=rois,
-                pooled_height=7,
-                pooled_width=7,
-                spatial_scale=1.0)
-
+            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -7882,7 +7656,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
-def gather(input, index, overwrite=True):
+def gather(input, index):
     """
     **Gather Layer**
 
@@ -7913,12 +7687,6 @@ def gather(input, index, overwrite=True):
     Args:
         input (Variable): The source input with rank>=1.
         index (Variable): The index input with rank=1.
-        overwrite (bool): The mode that updating the grad when has same index.
-            If True, use the overwrite mode to update the grad of the same index,
-	    if False, use the accumulate mode to update the grad of the same index. 
-	    Default value is True.
-	    
-
 
     Returns:
         output (Variable): The output is a tensor with the same rank as input.
@@ -7938,12 +7706,11 @@ def gather(input, index, overwrite=True):
         type="gather",
         inputs={"X": input,
                 "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite})
+        outputs={"Out": out})
     return out
 
 
-def scatter(input, index, updates, name=None, overwrite=True):
+def scatter(input, index, updates, name=None):
     """
     **Scatter Layer**
 
@@ -7961,10 +7728,6 @@ def scatter(input, index, updates, name=None, overwrite=True):
                           int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter op.
         name (str|None): The output variable name. Default None.
-        overwrite (bool): The mode that updating the output when has same index.
-            If True, use the overwrite mode to update the output of the same index,
-	    if False, use the accumulate mode to update the output of the same index. 
-	    Default value is True.You can set overwrite=False to implement scatter_add.
 
     Returns:
         output (Variable): The output is a tensor with the same shape as input.
@@ -7973,13 +7736,8 @@ def scatter(input, index, updates, name=None, overwrite=True):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            input = fluid.layers.data(name='data', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[3], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
-
             output = fluid.layers.scatter(input, index, updates)
+
     """
     helper = LayerHelper('scatter', **locals())
     dtype = helper.input_dtype()
@@ -7989,7 +7747,6 @@ def scatter(input, index, updates, name=None, overwrite=True):
         inputs={"X": input,
                 "Ids": index,
                 "Updates": updates},
-        attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
 
@@ -8043,12 +7800,7 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
-	
-            import paddle.fluid.layers as layers
 
-            input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
-            index = layers.data( name='index', shape=[1], dtype='int32')
-            updates = layers.data( name='updates', shape=[1], dtype='float32')
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
@@ -8128,7 +7880,6 @@ def log(x, name=None):
 
         .. code-block:: python
 
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.log(x)
     """
     helper = LayerHelper('log', **locals())
@@ -8195,12 +7946,8 @@ def selu(x, scale=None, alpha=None, name=None):
     Examples:
 
         .. code-block:: python
-             
-            import paddle.fluid as fluid
-          
-            input = fluid.layers.data(
-                 name="input", shape=[3, 9, 5], dtype="float32")
-            output = fluid.layers.selu(input)
+
+            output = fluid.layers.selu(x)
     """
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -8250,11 +7997,7 @@ def mean_iou(input, label, num_classes):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            predict = fluid.layers.data(name='predict', shape=[3, 32, 32])
-            label = fluid.layers.data(name='label', shape=[1])
-            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label,
-                                                          num_classes=5)
+            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label, num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
     dtype = helper.input_dtype()
@@ -8539,9 +8282,9 @@ def rank_loss(label, left, right, name=None):
 
         .. code-block:: python
 
-            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
-            left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
-            right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
             out = fluid.layers.rank_loss(label, left, right)
 
     """
@@ -8688,11 +8431,8 @@ def pad2d(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32],
-                                   dtype='float32')
-          result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
-                                      mode='reflect')
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
     """
 
     helper = LayerHelper('pad2d', **locals())
@@ -8790,7 +8530,6 @@ def pow(x, factor=1.0, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.pow(x, factor=2.0)
     """
@@ -8854,7 +8593,6 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
             y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
     """
@@ -8906,19 +8644,14 @@ def prelu(x, mode, param_attr=None, name=None):
     .. math::
         y = \max(0, x) + \\alpha * \min(0, x)
 
-    There are three modes for the activation:
-
-    .. code-block:: text
-
-        all: All elements share same alpha.
-        channel: Elements in same channel share same alpha.
-        element: All elements do not share alpha. Each element has its own alpha.
-
     Args:
         x (Variable): The input tensor.
-        mode (string): The mode for weight sharing. 
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha), it can be create by ParamAttr.
+          weight (alpha).
+        mode (string): The mode for weight sharing. It supports all, channel
+          and element. all: all elements share same weight
+          channel:elements in a channel share same weight
+          element:each element has a weight
         name(str|None): A name for this layer(optional). If set None, the layer
           will be named automatically.
 
@@ -8929,13 +8662,9 @@ def prelu(x, mode, param_attr=None, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            from paddle.fluid.param_attr import ParamAttr
-            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
+            x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
             mode = 'channel'
-            output = fluid.layers.prelu(
-                     x,mode,param_attr=ParamAttr(name='alpha'))
-
+            output = fluid.layers.prelu(x,mode)
     """
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
@@ -9036,11 +8765,9 @@ def soft_relu(x, threshold=40.0, name=None):
 
     Examples:
 
-        .. code-block:: python 
- 
-            import paddle.fluid as fluid
-   
-            x = fluid.layers.data(name="x", shape=[3,16,16], dtype="float32")
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
             y = fluid.layers.soft_relu(x, threshold=20.0)
     """
     helper = LayerHelper('soft_relu', **locals())
@@ -9167,7 +8894,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(shape[-1, 1], dtype='int32', lod_level=1)
+            x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -9209,14 +8936,6 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Returns:
         Variable: The output sequence mask.
-
-    Examples:
-        .. code-block:: python
-	
-            import paddle.fluid.layers as layers
-
-            x = fluid.layers.data(name='x', shape=[10], dtype='float32', lod_level=1)
-            mask = layers.sequence_mask(x=x)
 
     """
     assert not in_dygraph_mode(), (
@@ -9301,14 +9020,6 @@ def stack(x, axis=0):
     Returns:
         Variable: The stacked variable.
 
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
-            x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
-            data = layers.stack([x1,x2])
-
     """
 
     helper = LayerHelper('stack', **locals())
@@ -9344,12 +9055,6 @@ def unstack(x, axis=0, num=None):
     Returns:
         list(Variable): The unstacked variables.
 
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
-            y = fluid.layers.unstack(x, axis=1)
     """
 
     helper = LayerHelper('unstack', **locals())
@@ -9414,39 +9119,11 @@ def expand(x, expand_times, name=None):
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    # check expand_times have tensor
-
-    if in_dygraph_mode():
-        inputs = {'X': x}
-        attrs = {'expand_times': expand_times}
-    else:
-
-        def contain_tensor(expand_times):
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    return True
-            return False
-
-        if contain_tensor(expand_times):
-            new_expand_times = []
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    ele.stop_gradient = True
-                    new_expand_times.append(ele)
-                else:
-                    assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(dtype)
-                    fill_constant(
-                        [1], 'int32', ele, force_cpu=True, out=temp_out)
-                    new_expand_times.append(temp_out)
-            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
-            attrs = {}
-        else:
-            inputs = {'X': x}
-            attrs = {'expand_times': expand_times}
-
     helper.append_op(
-        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        type='expand',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'expand_times': expand_times})
     return out
 
 
@@ -9479,8 +9156,6 @@ def uniform_random_batch_size_like(input,
 
     Examples:
         .. code-block:: python
-
-            import paddle.fluid.layers as layers 
 
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             out = layers.uniform_random_batch_size_like(input, [-1, 11])
@@ -9524,7 +9199,6 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid.layers as layers
             out = layers.gaussian_random(shape=[20, 30])
     """
 
@@ -9654,10 +9328,8 @@ def sum(x):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid.layers as layers
-            input0 = layers.data(name="input0", shape=[13, 11], dtype='float32')
-            input1 = layers.data(name="input1", shape=[13, 11], dtype='float32')
-            out = layers.sum([input0,input1])
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.sum(input)
     """
 
     helper = LayerHelper('sum', **locals())
@@ -9675,39 +9347,8 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    Slice Operator.
+    ${comment}
 
-    Produces a slice of the input tensor along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
-    end dimension for each axis in the list of axes, it uses this information
-    to slice the input data tensor. If a negative value is passed for any of
-    the start or end indices, it represents number of elements before the end
-    of that dimension. If the value passed to start or end is larger than
-    the n (the number of elements in this dimension), it represents n.
-    For slicing to the end of a dimension with unknown size, it is recommended
-    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
-    Following examples will explain how slice works:
-
-    .. code-block:: text
-
-        Case1:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [1, 0]
-                ends = [2, 3]
-            Then:
-                result = [ [5, 6, 7], ]
-        
-        Case2:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [0, 1]
-                ends = [-1, 1000]
-            Then:
-                result = [ [2, 3, 4], ]
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
@@ -9720,16 +9361,14 @@ def slice(input, axes, starts, ends):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
- 
             starts = [1, 0, 2]
             ends = [3, 3, 4]
             axes = [0, 1, 2]
 
-            input = fluid.layers.data(
+            input = layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
     """
 
     helper = LayerHelper('slice', **locals())
@@ -9761,11 +9400,9 @@ def shape(input):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            input = fluid.layers.data(
+            input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
-            out = fluid.layers.shape(input)
+            out = layers.shape(input)
     """
 
     helper = LayerHelper('shape', **locals())
@@ -9846,14 +9483,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.layers.data(name="X", shape=[1, 2, 5, 5], dtype='float32')
-            y = fluid.layers.scale(x, scale = 2.0, bias = 1.0)
     """
 
     helper = LayerHelper('scale', **locals())
@@ -9929,43 +9558,6 @@ for func in [
             "act (basestring|None): Activation applied to the output.",
             "name (basestring|None): Name of the output."
         ])
-    func.__doc__ = func.__doc__ + """
-
-Examples:
-  .. code-block:: python
-    
-    import paddle.fluid as fluid
-    # example 1: shape(x) = (2, 3, 4, 5), shape(y) = (2, 3, 4, 5)
-    x0 = fluid.layers.data(name="x0", shape=[2, 3, 4, 5], dtype='float32')
-    y0 = fluid.layers.data(name="y0", shape=[2, 3, 4, 5], dtype='float32')
-    z0 = fluid.layers.%s(x0, y0)
-
-    # example 2: shape(X) = (2, 3, 4, 5), shape(Y) = (5)
-    x1 = fluid.layers.data(name="x1", shape=[2, 3, 4, 5], dtype='float32')
-    y1 = fluid.layers.data(name="y1", shape=[5], dtype='float32')
-    z1 = fluid.layers.%s(x1, y1)
-
-    # example 3: shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
-    x2 = fluid.layers.data(name="x2", shape=[2, 3, 4, 5], dtype='float32')
-    y2 = fluid.layers.data(name="y2", shape=[4, 5], dtype='float32')
-    z2 = fluid.layers.%s(x2, y2, axis=2)
-
-    # example 4: shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
-    x3 = fluid.layers.data(name="x3", shape=[2, 3, 4, 5], dtype='float32')
-    y3 = fluid.layers.data(name="y3", shape=[3, 4], dtype='float32')
-    z3 = fluid.layers.%s(x3, y3, axis=1)
-
-    # example 5: shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
-    x4 = fluid.layers.data(name="x4", shape=[2, 3, 4, 5], dtype='float32')
-    y4 = fluid.layers.data(name="y4", shape=[2], dtype='float32')
-    z4 = fluid.layers.%s(x4, y4, axis=0)
-
-    # example 6: shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
-    x5 = fluid.layers.data(name="x5", shape=[2, 3, 4, 5], dtype='float32')
-    y5 = fluid.layers.data(name="y5", shape=[2], dtype='float32')
-    z5 = fluid.layers.%s(x5, y5, axis=0)
-    """ % (func.__name__, func.__name__, func.__name__, func.__name__,
-           func.__name__, func.__name__)
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
@@ -10126,8 +9718,7 @@ def clip(x, min, max, name=None):
     helper = LayerHelper("clip", **locals())
 
     if name is None:
-        name = unique_name.generate_with_ignorable_key(".".join(
-            [helper.name, 'tmp']))
+        name = unique_name.generate(".".join([helper.name, 'tmp']))
 
     out = helper.create_variable(
         type=x.type, name=name, dtype=x.dtype, persistable=False)
@@ -10166,8 +9757,7 @@ def clip_by_norm(x, max_norm, name=None):
     helper = LayerHelper("clip_by_norm", **locals())
 
     if name is None:
-        name = unique_name.generate_with_ignorable_key(".".join(
-            [helper.name, 'tmp']))
+        name = unique_name.generate(".".join([helper.name, 'tmp']))
 
     out = helper.create_variable(
         type=x.type, name=name, dtype=x.dtype, persistable=False)
@@ -10192,13 +9782,6 @@ def mean(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            input = fluid.layers.data(
-                name='data', shape=[2, 3], dtype='float32')
-            mean = fluid.layers.mean(input)
     """
 
     helper = LayerHelper("mean", **locals())
@@ -10226,15 +9809,6 @@ def merge_selected_rows(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            b = fluid.default_main_program().global_block()
-            var = b.create_var(
-                name="X", dtype="float32", persistable=True,
-                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
-            y = fluid.layers.merge_selected_rows(var)
     """
 
     helper = LayerHelper("merge_selected_rows", **locals())
@@ -10261,18 +9835,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-            
-            import paddle.fluid as fluid
-            dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
-            dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
-            output = fluid.layers.mul(dataX, dataY,
-                                      x_num_col_dims = 1,
-                                      y_num_col_dims = 1)
-            
-
     """
 
     helper = LayerHelper("mul", **locals())
@@ -10419,9 +9981,6 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
-	
-            import paddle.fluid as fluid
-            import numpy as np
 
             data = fluid.layers.data(
                 name='data', shape=[1, 4, 2, 2], dtype='float32', append_batch_size=False)
@@ -10433,7 +9992,6 @@ def space_to_depth(x, blocksize, name=None):
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
                           fetch_list=[space_to_depthed])
-
     """
 
     helper = LayerHelper("space_to_depth", **locals())
@@ -10467,13 +10025,6 @@ def sequence_reverse(x, name=None):
 
     Returns:
         out(${y_type}): ${y_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 6], dtype='float32')
-            x_reversed = fluid.layers.sequence_reverse(x)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -10520,20 +10071,6 @@ def affine_channel(x,
 
     Returns:
         out (Variable): A tensor of the same shape and data layout with x.
-
-    Examples:
-        .. code-block:: python
-            
-            import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32],
-                                     dtype='float32')
-            input_scale = fluid.layers.create_parameter(shape=[3],
-                                     dtype="float32")
-            input_bias = fluid.layers.create_parameter(shape=[3],
-                                     dtype="float32")
-            out = fluid.layers.affine_channel(data,scale=input_scale,
-                                     bias=input_bias)
-
     """
     helper = LayerHelper("affine_channel", **locals())
 
@@ -10682,8 +10219,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 2]
         input.data = [
-            [[1, 2],
-             [3, 4]],
+            [[1], [2]],
+            [[3], [4]],
         ]
 
         input.lod = [[0, 2]]
@@ -10700,8 +10237,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
         # shape [2, 4]
         output.data = [
-            [[9662, 9217, 1129, 8487],
-             [8310, 1327, 1654, 4567]],
+            [[9662], [9217], [1129], [8487]],
+            [[8310], [1327], [1654], [4567]],
         ]
 
         output.lod = [[0, 2]]
@@ -10720,24 +10257,8 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import numpy as np
-
-            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=1, hash_size=1000)
-
-            place = fluid.core.CPUPlace()
-            exece = fluid.Executor(place)
-            exece.run(fluid.default_startup_program()) 
-
-            # Init Tensor
-            tensor = fluid.core.LoDTensor() 
-            tensor.set(np.random.randint(0, 10, (3, 1)).astype("int32"), place)
-            # Set LoD
-            tensor.set_recursive_sequence_lengths([[1, 1, 1]])
-
-            out = exece.run(feed={'titles': tensor}, fetch_list=[hash_r], return_numpy=False)
+           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
+           out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
@@ -10815,11 +10336,9 @@ def grid_sampler(x, grid, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            x = fluid.layers.data(name='x', shape=[10, 32, 32], dtype='float32')
-            theta = fluid.layers.data(name='theta', shape=[2, 3], dtype='float32')
-            grid = fluid.layers.affine_grid(theta=theta, out_shape=[3, 10, 32, 32])
+            x = fluid.layers.data(name='x', shape=[3, 10, 32, 32], dtype='float32')
+            theta = fluid.layers.data(name='theta', shape=[3, 2, 3], dtype='float32')
+            grid = fluid.layers.affine_grid(input=theta, size=[3, 10, 32, 32]})
             out = fluid.layers.grid_sampler(x=x, grid=grid)
 
     """
@@ -10913,16 +10432,8 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
-          
-          import paddle.fluid as fluid
 
-          batch_size = 64
-          label = fluid.layers.data(
-                    name="label", shape=[batch_size, 1], dtype="int64", append_batch_size=False)
-          similarity = fluid.layers.data(
-                    name="similarity", shape=[batch_size, 1], dtype="float32", append_batch_size=False)
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
-
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
     out = helper.create_variable(dtype=input.dtype)
@@ -10966,15 +10477,7 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-
-          tensor = fluid.layers.data(
-              name='tensor',
-              shape=[32, 64, 512],
-              dtype='float32',
-              append_batch_size=False)
-          position_tensor = fluid.layers.add_position_encoding(
-              input=tensor, alpha=1.0, beta=1.0)
+          position_tensor = fluid.layers.add_position_encoding(input=tensor)
 
     """
     helper = LayerHelper('add_position_encoding', **locals())
@@ -11076,14 +10579,6 @@ def get_tensor_from_selected_rows(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-	    
-            import paddle.fluid as fluid
-            b = fluid.default_main_program().global_block()
-            input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
-            out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
@@ -11521,15 +11016,8 @@ def huber_loss(input, label, delta):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            predict = fluid.layers.fc(input=x, size=1)
-            label = fluid.layers.data(
-                name='label', shape=[1], dtype='float32')
-            loss = fluid.layers.huber_loss(
-                input=predict, label=label, delta=1.0)
-
+            predictions = fluid.layers.softmax(x)
+            loss = fluid.layers.huber_loss(input=predictions, label=label, 1.0)
     """
     helper = LayerHelper('huber_loss', **locals())
     residual = helper.create_variable_for_type_inference(
@@ -11793,12 +11281,8 @@ def fsp_matrix(x, y):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32])
-            feature_map_0 = fluid.layers.conv2d(data, num_filters=2,
-                                                filter_size=3)
-            feature_map_1 = fluid.layers.conv2d(feature_map_0, num_filters=2,
-                                                filter_size=1)
+            feature_map_0 = fluid.layers.conv2d(x)
+            feature_map_1 = fluid.layers.conv2d(feature_map_0)
             loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
 
     """
@@ -11827,7 +11311,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
                           if don't use cvm, the output dim is input dim - 2(remove show and click)
-                          (cvm op is a customized op, which input is a sequence has embed_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
 
     Returns:
 
@@ -11893,430 +11377,3 @@ def where(condition):
     helper.append_op(
         type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
     return out
-
-
-def sign(x):
-    """
-    **sign**
-
-    This function returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
-
-    Args:
-        x(Variable|numpy.ndarray): The input tensor.
-
-    Returns:
-        Variable: The output sign tensor with identical shape and dtype to `x`.
-
-    Examples:
-        .. code-block:: python
-
-          # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2])) 
-    """
-
-    helper = LayerHelper("sign", **locals())
-
-    if not isinstance(x, Variable):
-        x = assign(x)
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
-
-    return out
-
-
-def deformable_conv(input,
-                    offset,
-                    mask,
-                    num_filters,
-                    filter_size,
-                    stride=1,
-                    padding=0,
-                    dilation=1,
-                    groups=None,
-                    deformable_groups=None,
-                    im2col_step=None,
-                    param_attr=None,
-                    bias_attr=None,
-                    name=None):
-    """
-    **Deformable Convolution Layer**
-
-    Compute 2-D deformable convolution on 4-D input.
-    Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-    
-    .. math::
-
-        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
-    
-    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, respectively.
-    Refer to `Deformable ConvNets v2: More Deformable, Better Results
-    <https://arxiv.org/abs/1811.11168v2>`_ .
-    
-    Example:
-        - Input:
-
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-
-          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
-
-          Offset shape: :math:`(N, 2 * deformable\_groups * H_f * H_w, H_{in}, W_{in})`
-
-          Mask shape: :math:`(N, deformable\_groups * H_f * H_w, H_{in}, W_{in})`
-
-        - Output:
-
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-
-        Where
-
-        .. math::
-
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
-
-    Args:
-        input (Variable): The input image with [N, C, H, W] format.
-        offset (Variable): The input coord offset of deformable convolution layer.
-        Mask (Variable): The input mask of deformable covolution layer.
-        num_filters(int): The number of filter. It is as same as the output
-            image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
-        stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups (int): The groups number of the deformable conv layer. According to
-            grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
-            the first half of the filters is only connected to the first half
-            of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
-        deformable_groups (int): The number of deformable group partitions.
-            Default: deformable_groups = 1.
-        im2col_step (int): Maximum number of images per im2col computation; 
-            The total batch size should be divisable by this value or smaller
-            than this value; if you face out of memory problem, you can try
-            to use a smaller value here.
-            Default: im2col_step = 64.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-            of deformable conv. If it is set to None or one attribute of ParamAttr,
-            deformable conv will create ParamAttr as param_attr.
-            If the Initializer of the param_attr is not set, the parameter is
-            initialized with :math:`Normal(0.0, std)`, and the 
-            :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of
-            deformable conv layer. If it is set to False, no bias will be added
-            to the output units. If it is set to None or one attribute of ParamAttr, conv2d
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None
-    Returns:
-        Variable: The tensor variable storing the deformable convolution \
-                  result.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
-    Examples:
-        .. code-block:: python
-
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
-          mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
-          out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                             num_filters=2, filter_size=3, padding=1)
-    """
-
-    num_channels = input.shape[1]
-    assert param_attr is not False, "param_attr should not be False here."
-
-    helper = LayerHelper('deformable_conv', **locals())
-    dtype = helper.input_dtype()
-
-    if not isinstance(input, Variable):
-        raise TypeError("Input of deformable_conv must be Variable")
-    if not isinstance(offset, Variable):
-        raise TypeError("Input Offset of deformable_conv must be Variable")
-    if not isinstance(mask, Variable):
-        raise TypeError("Input Mask of deformable_conv must be Variable")
-
-    if groups is None:
-        num_filter_channels = num_channels
-    else:
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels // groups
-
-    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
-
-    input_shape = input.shape
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
-
-    def _get_default_param_initializer():
-        filter_elem_num = filter_size[0] * filter_size[1] * num_channels
-        std = (2.0 / filter_elem_num)**0.5
-        return Normal(0.0, std, 0)
-
-    filter_param = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=filter_shape,
-        dtype=dtype,
-        default_initializer=_get_default_param_initializer())
-
-    pre_bias = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='deformable_conv',
-        inputs={
-            'Input': input,
-            'Filter': filter_param,
-            'Offset': offset,
-            'Mask': mask,
-        },
-        outputs={"Output": pre_bias},
-        attrs={
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'deformable_groups': deformable_groups,
-            'im2col_step': im2col_step,
-        })
-
-    output = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
-    return output
-
-
-def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
-    """
-
-    This function returns a col buffer of sliding local blocks of input x, also known
-    as im2col for batched 2D image tensors. For each block under the convolution filter,
-    all element will be rearranged as a column. While the convolution filter silding over
-    the input feature map, a series of such columns will be formed.
-
-    For each input :math:`X` with shape [N, C, H, W], the output shape [N, Cout, Lout]
-    can be calculated as following.
-
-    .. math::
-
-        dkernel[0] &= dilations[0] \\times (kernel\_sizes[0] - 1) + 1
-
-        dkernel[1] &= dilations[1] \\times (kernel\_sizes[1] - 1) + 1
-
-        hout &= \\frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
-
-        wout &= \\frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
-
-        Cout &= C \\times kernel\_sizes[0] \\times kernel\_sizes[1]
-
-        Lout &= hout \\times wout
-
-
-    Args:
-        x(Varaible):              The input tensor of format [N, C, H, W].
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
-                                  or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
-                                  For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
-                                  [padding_top, padding_left, padding_bottom, padding_right]
-                                  or [padding_h, padding_w] or an integer padding.
-                                  If [padding_h, padding_w] was given, it will expanded to
-                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
-                                  padding was given, [padding, padding, padding, padding] will
-                                  be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, shold be
-                                  [dilation_h, dilation_w], or an integer dialtion treated as
-                                  [dilation, dilation]. For default, it will be [1, 1].
-
-    
-    Returns:
-        Variable: The tensor variable corresponding to the sliding local blocks. The output shape is [N, Cout, Lout] as decribled above. Cout is the  total number of values within each block, and Lout is the total number of such blocks.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name = 'data', shape = [3, 224, 224], dtype = 'float32')
-            y = fluid.layers.unfold(x, [3, 3], 1, 1, 1)
-    """
-
-    helper = LayerHelper("unfold", **locals())
-
-    assert len(x.shape) == 4, \
-            "input should be the format of [N, C, H, W]"
-
-    if isinstance(kernel_sizes, int):
-        kernel_sizes = [kernel_sizes, kernel_sizes]
-    else:
-        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
-            "kernel_sizes should either be an integer or a list of two integers"
-
-    if isinstance(strides, int):
-        strides = [strides, strides]
-    else:
-        assert isinstance(strides, list) and (len(strides) == 2), \
-            "strides should either be an integer or a list of two integers"
-
-    if isinstance(dilations, int):
-        dilations = [dilations, dilations]
-    else:
-        assert isinstance(dilations, list) and (len(dilations) == 2), \
-            "dilations should either be an integer or a list of two integers"
-
-    if isinstance(paddings, int):
-        paddings = [paddings] * 4
-    elif isinstance(paddings, list):
-        if len(paddings) == 2:
-            paddings = paddings * 2
-        elif len(paddings) == 4:
-            pass
-        else:
-            raise ValueError(
-                "paddings should either be an integer or a list of 2 or 4 integers"
-            )
-    else:
-        raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list"
-            "of 2 or 4 integers")
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="unfold",
-        inputs={"X": x},
-        outputs={"Y": out},
-        attrs={
-            "kernel_sizes": kernel_sizes,
-            "strides": strides,
-            "paddings": paddings,
-            "dilations": dilations
-        })
-    return out
-
-
-def deformable_roi_pooling(input,
-                           rois,
-                           trans,
-                           no_trans=False,
-                           spatial_scale=1.0,
-                           group_size=[1, 1],
-                           pooled_height=1,
-                           pooled_width=1,
-                           part_size=None,
-                           sample_per_part=1,
-                           trans_std=0.1,
-                           position_sensitive=False,
-                           name=None):
-    """
-    Deformable PSROI Pooling Layer
-    
-    Args:
-       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
-                        [N,C,H,W]. Where N is batch size,C is number of input channels,H 
-                        is height of the feature, and W is the width of the feature.
-       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                        the top left coordinates, and (x2, y2) is the bottom
-                        right coordinates.
-       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
-                         N is number of ROIs, C is number of channels, which indicate the offset distance 
-                         in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
-                          value is True or False. Default: False.
-       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
-                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
-                         is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
-                         chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
-       pooled_height (integer): The pooled output height. Default: 1.
-       pooled_width (integer): The pooled output width. Default: 1.
-       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
-                        if None, default value is [pooled_height, pooled_width].
-       sample_per_part (integer): The number of samples in each bin. Default: 1.
-       trans_std (float): Coefficient of offset. Default: 0.1.
-       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not. Default: False.
-       name (str): Name of layer. Default: None.
-    Returns:
-        Variable: The tensor variable storing the deformable psroi pooling \
-                  result.
-
-
-    Examples:
-      .. code-block:: python
-
-        input = fluid.layers.data(name="input",
-                                  shape=[2, 192, 64, 64], 
-                                  dtype='float32', 
-                                  append_batch_size=False)                   
-        rois = fluid.layers.data(name="rois",
-                                 shape=[4],
-                                 dtype='float32', 
-                                 lod_level=1)
-        trans = fluid.layers.data(name="trans",
-                                  shape=[2, 384, 64, 64], 
-                                  dtype='float32', 
-                                  append_batch_size=False) 
-        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
-                                                     rois=rois, 
-                                                     trans=trans, 
-                                                     no_trans=False,
-                                                     spatial_scale=1.0, 
-                                                     group_size=(1, 1),
-                                                     pooled_height=8,
-                                                     pooled_width=8,
-                                                     part_size=(8, 8),
-                                                     sample_per_part=4, 
-                                                     trans_std=0.1,
-                                                     position_sensitive=False)
-    """
-
-    input_channels = input.shape[1]
-    if position_sensitive == False:
-        output_channels = input_channels
-    else:
-        output_channels = input_channels / pooled_height / pooled_width
-
-    if part_size is None:
-        part_height = pooled_height
-        part_width = pooled_width
-        part_size = [part_height, part_width]
-    part_size = utils.convert_to_list(part_size, 2, 'part_size')
-    group_size = utils.convert_to_list(group_size, 2, 'group_size')
-    helper = LayerHelper('deformable_psroi_pooling', **locals())
-    dtype = helper.input_dtype()
-    output = helper.create_variable_for_type_inference(dtype)
-    top_count = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type="deformable_psroi_pooling",
-        inputs={"Input": input,
-                "ROIs": rois,
-                "Trans": trans},
-        outputs={"Output": output,
-                 "TopCount": top_count},
-        attrs={
-            "no_trans": no_trans,
-            "spatial_scale": spatial_scale,
-            "output_dim": output_channels,
-            "group_size": group_size,
-            "pooled_height": pooled_height,
-            "pooled_width": pooled_width,
-            "part_size": part_size,
-            "sample_per_part": sample_per_part,
-            "trans_std": trans_std
-        })
-    return output

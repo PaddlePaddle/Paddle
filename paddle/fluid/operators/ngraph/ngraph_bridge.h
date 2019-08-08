@@ -39,8 +39,6 @@ class NgraphBridge {
 
   static bool isRegister(const std::string& str);
 
-  static bool isSupported(const std::unique_ptr<framework::OperatorBase>& op);
-
  private:
   std::shared_ptr<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>

@@ -40,26 +40,25 @@ template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_floating_point<T>::value &&
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add_same_dims(const framework::ExecutionContext &ctx,
-                          const framework::Tensor *x,
-                          const framework::Tensor *y, framework::Tensor *z) {
+elementwise_add(const framework::ExecutionContext &ctx,
+                const framework::Tensor *x, const framework::Tensor *y,
+                framework::Tensor *z) {
+  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
-  blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  blas.VADD(x->numel(), eigen_x.data(), eigen_y.data(), eigen_z.data());
 }
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     !std::is_floating_point<T>::value ||
     !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add_same_dims(const framework::ExecutionContext &ctx,
-                          const framework::Tensor *x,
-                          const framework::Tensor *y, framework::Tensor *z) {
-  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-
-  auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
-  eigen_z.device(place) = eigen_x + eigen_y;
+elementwise_add(const framework::ExecutionContext &ctx,
+                const framework::Tensor *x, const framework::Tensor *y,
+                framework::Tensor *z) {
+  default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
 }
 
 template <typename DeviceContext, typename T>
@@ -74,7 +73,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
 
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
-      elementwise_add_same_dims<DeviceContext, T>(ctx, x, y, z);
+      elementwise_add<DeviceContext, T>(ctx, x, y, z);
     } else {
       default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
     }
@@ -157,32 +156,6 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     } else {
       default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
                                                      dy);
-    }
-  }
-};
-
-template <typename DeviceContext, typename T>
-class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    using Tensor = framework::Tensor;
-
-    auto *y = ctx.Input<Tensor>("Y");
-    auto *dout = ctx.Input<Tensor>("DOut");
-    auto *ddx = ctx.Input<Tensor>("DDX");
-    auto *ddy = ctx.Input<Tensor>("DDY");
-
-    auto *ddout = ctx.Output<Tensor>("DDOut");
-
-    // ddOut = ddx + ddy
-    if (ddout) {
-      Tensor ddx_safe, ddy_safe;
-      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, dout, ddx, &ddx_safe);
-      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
-
-      ddout->mutable_data<T>(ctx.GetPlace());
-      default_elementwise_add<DeviceContext, T>(ctx, &ddx_safe, &ddy_safe,
-                                                ddout);
     }
   }
 };

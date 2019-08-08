@@ -78,10 +78,7 @@ def reader_creator(image_filename, label_filename, buffer_size):
                         buffer_size, rows * cols)).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
-                    images = images / 255.0
-                    images = images * 2.0
-                    images = images - 1.0
-
+                    images = images / 255.0 * 2.0 - 1.0
                     for i in range(buffer_size):
                         yield images[i, :], int(labels[i])
 
@@ -93,7 +90,7 @@ def train():
     MNIST training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [-1, 1] and label in [0, 9].
+    [0, 1] and label in [0, 9].
 
     :return: Training reader creator
     :rtype: callable
@@ -110,7 +107,7 @@ def test():
     MNIST test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [-1, 1] and label in [0, 9].
+    [0, 1] and label in [0, 9].
 
     :return: Test reader creator.
     :rtype: callable

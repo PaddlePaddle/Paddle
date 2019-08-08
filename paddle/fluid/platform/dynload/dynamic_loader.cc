@@ -107,8 +107,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 
   if (nullptr == dso_handle) {
     LOG(WARNING) << "Can not find library: " << dso_path
-                 << ". The process maybe hang. Please try to add the lib path "
-                    "to LD_LIBRARY_PATH.";
+                 << ". Please try to add the lib path to LD_LIBRARY_PATH.";
   }
   return dso_handle;
 }

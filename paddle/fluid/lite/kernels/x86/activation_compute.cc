@@ -93,6 +93,25 @@ class SquareGradCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
   virtual ~SquareGradCompute() = default;
 };
 
+template <typename T>
+class SoftsignCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
+ public:
+  using param_t = operators::ActivationParam;
+
+  void Run() override {
+    auto& context = ctx_->As<X86Context>();
+    auto& param = *param_.get_mutable<operators::ActivationParam>();
+    CHECK(context.x86_device_context());
+    param.Out->template mutable_data<T>();
+
+    Activate<paddle::operators::SoftsignFunctor<T>>(
+        *context.x86_device_context(), &param.X->raw_tensor(),
+        &param.Out->raw_tensor());
+  }
+
+  virtual ~SoftsignCompute() = default;
+};
+
 }  // namespace x86
 }  // namespace kernels
 }  // namespace lite
@@ -113,4 +132,10 @@ REGISTER_LITE_KERNEL(square_grad, kX86, kFloat, kNCHW,
                {LiteType::GetTensorTy(TARGET(kX86))})
     .BindOutput(paddle::framework::GradVarName("X"),
                 {LiteType::GetTensorTy(TARGET(kX86))})
+    .Finalize();
+
+REGISTER_LITE_KERNEL(softsign, kX86, kFloat, kNCHW,
+                     paddle::lite::kernels::x86::SoftsignCompute<float>, def)
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kX86))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kX86))})
     .Finalize();

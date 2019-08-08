@@ -30,6 +30,7 @@
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/model_parser/pb/op_desc.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
@@ -139,14 +140,13 @@ struct PMNode {
 
   template <typename T>
   PMNode* assert_op_attr(const std::string& attr_name, const T& attr) {
-    asserts_.emplace_back([=](Node* x) {
+    asserts_.push_back([=](const Node* x) {
       if (x && x->IsStmt()) {
         auto* op_info = x->stmt()->op_info();
         return op_info->HasAttr(attr_name) &&
                op_info->GetAttr<T>(attr_name) == attr;
-      } else {
-        return false;
       }
+      return false;
     });
     return this;
   }
@@ -229,7 +229,7 @@ class PMPattern {
   FRIEND_TEST(PMPattern, NewNode);
 #endif
 
-  static std::string NewID() { return "pmnode-" + std::to_string(id_++); }
+  static std::string NewID() { return string_format("pmnode-%d", id_++); }
 
   std::vector<std::unique_ptr<PMNode>> nodes_;
   std::vector<edge_t> edges_;

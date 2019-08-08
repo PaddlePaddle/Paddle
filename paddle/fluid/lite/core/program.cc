@@ -64,6 +64,7 @@ void RuntimeProgram::SaveParams(const std::string &dir,
 
 void Program::Build(const framework::proto::ProgramDesc &program) {
   CHECK(ops_.empty()) << "Executor duplicate Build found";
+
   // Create operators.
   for (const auto &proto_op_desc : program.blocks(0).ops()) {
     lite::OpDesc op_desc_dummy(proto_op_desc);
@@ -72,7 +73,7 @@ void Program::Build(const framework::proto::ProgramDesc &program) {
     auto op_type = op_desc.Type();
     // if (op_type == "feed" || op_type == "fetch") continue;
     VLOG(4) << "create Op [" << op_type << "]";
-    LOG(INFO) << "create Op [" << op_type << "]";
+     LOG(INFO) << "create Op [" << op_type << "]";
     auto op = LiteOpRegistry::Global().Create(op_type);
     CHECK(op) << "no Op found for " << op_type;
     ops_.emplace_back(std::move(op));
@@ -98,6 +99,7 @@ void Program::PrepareWorkspace(const framework::proto::ProgramDesc &program) {
     } else {
       if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
       weights_.push_back(var_desc.Name());
+      if (var_desc.Persistable()) scope_->Var(var_desc.Name());
     }
   }
 }

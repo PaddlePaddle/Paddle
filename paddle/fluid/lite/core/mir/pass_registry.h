@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include "paddle/fluid/lite/api/paddle_lite_factory_helper.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 
 namespace paddle {
@@ -24,7 +25,7 @@ namespace mir {
 class PassRegistry {
  public:
   PassRegistry(const std::string& name, mir::Pass* pass) {
-    VLOG(2) << "Registry add MIR pass " << name;
+    // VLOG(2) << "Registry add MIR pass " << name;
     PassManager::Global().AddNewPass(name, pass);
   }
 
@@ -41,8 +42,3 @@ class PassRegistry {
   bool mir_pass_registry##name__##_fake() {                               \
     return mir_pass_registry##name__.Touch();                             \
   }
-
-#define USE_MIR_PASS(name__)                                   \
-  extern bool mir_pass_registry##name__##_fake();              \
-  static bool mir_pass_usage##name__ __attribute__((unused)) = \
-      mir_pass_registry##name__##_fake();

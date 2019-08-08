@@ -200,12 +200,12 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     platform::GpuMemoryUsage(&avail, &total);
     LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
                << " in GPU " << place.device << ", available "
-               << string::HumanReadableSize(avail) << ", total "
-               << string::HumanReadableSize(total) << ", GpuMinChunkSize "
+               << string::HumanReadableSize(avail) << "total " << total
+               << "GpuMinChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
-               << ", GpuMaxChunkSize "
+               << "GpuMaxChunkSize "
                << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
-               << ", GPU memory used: "
+               << "GPU memory used: "
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
   } else {
     if (FLAGS_benchmark) {
@@ -339,7 +339,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 LegacyMemMonitor GPUMemMonitor;
 
-Allocation *LegacyAllocator::AllocateImpl(size_t size) {
+Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
@@ -347,7 +347,7 @@ Allocation *LegacyAllocator::AllocateImpl(size_t size) {
   return tmp_alloc;
 }
 
-void LegacyAllocator::FreeImpl(Allocation *allocation) {
+void LegacyAllocator::Free(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());

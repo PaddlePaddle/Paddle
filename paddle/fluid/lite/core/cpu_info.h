@@ -14,23 +14,11 @@
 
 #pragma once
 
+#include <cstdarg>
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/lite_tensor.h"
 #include "paddle/fluid/lite/utils/cp_logging.h"
-
-#ifdef LITE_WITH_LINUX
-#include <sys/syscall.h>
-#include <unistd.h>
-#endif
-
-#if __APPLE__
-#include "TargetConditionals.h"
-#if TARGET_OS_IPHONE
-#include <mach/machine.h>
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#endif  // TARGET_OS_IPHONE
-#endif  // __APPLE__
 
 namespace paddle {
 namespace lite {
@@ -60,16 +48,41 @@ typedef enum {
 
 class DeviceInfo {
  public:
-  int idx_;
-  int max_freq_;
-  int min_freq_;
-  int generate_arch_;
-  int compute_core_num_;
-  int max_memory_;
-  int sharemem_size_;
+  static DeviceInfo& Global() {
+    static auto* x = new DeviceInfo;
+    return *x;
+  }
 
-  std::string device_name_;
-  std::string compute_ability_;
+  static int Init() {
+    static int ret = Global().Setup();
+    return ret;
+  }
+
+  int Setup();
+
+  void SetRunMode(PowerMode mode, int thread_num);
+  void SetCache(int l1size, int l2size, int l3size);
+  void SetArch(ARMArch arch) { arch_ = arch; }
+
+  PowerMode mode() const { return mode_; }
+  int threads() const { return active_ids_.size(); }
+  ARMArch arch() const { return arch_; }
+  int l1_cache_size() const { return L1_cache_[active_ids_[0]]; }
+  int l2_cache_size() const { return L2_cache_[active_ids_[0]]; }
+  int l3_cache_size() const { return L3_cache_[active_ids_[0]]; }
+
+  template <typename T>
+  T* workspace_data() {
+    return reinterpret_cast<T*>(workspace_.mutable_data<float>());
+  }
+  bool ExtendWorkspace(DDimLite dims);
+
+ private:
+  int core_num_;
+  std::vector<int> max_freqs_;
+  std::vector<int> min_freqs_;
+  int mem_size_;
+  std::string dev_name_;
 
   std::vector<int> L1_cache_;
   std::vector<int> L2_cache_;
@@ -80,44 +93,28 @@ class DeviceInfo {
   std::vector<int> cluster_ids_;
   std::vector<ARMArch> archs_;
 
-  static DeviceInfo& Global() {
-    static auto* x = new DeviceInfo;
-    return *x;
-  }
+  ARMArch arch_;
+  // LITE_POWER_HIGH stands for using big cores,
+  // LITE_POWER_LOW stands for using small core,
+  // LITE_POWER_FULL stands for using all cores
+  PowerMode mode_;
+  std::vector<int> active_ids_;
+  TensorLite workspace_;
+  int64_t count_{0};
 
-  static void Init() {
-    auto& info = Global();
-    InitInternal(&info);
-  }
+  void SetCacheInfo(int cache_id, int argc, ...);
+  void SetArchInfo(int argc, ...);
+  bool SetCPUInfoByName();
+  void SetCPUInfoByProb();
+  void RequestPowerFullMode(const int thread_num);
+  void RequestPowerHighMode(const int thread_num);
+  void RequestPowerLowMode(const int thread_num);
+  void RequestPowerNoBindMode(const int thread_num);
+  void RequestPowerRandHighMode(const int shift_num, const int thread_num);
+  void RequestPowerRandLowMode(const int shift_num, const int thread_num);
 
- private:
   DeviceInfo() = default;
-  static void InitInternal(DeviceInfo* dev);
 };
-
-size_t arm_get_meminfo();
-
-int arm_get_cpucount();
-
-void arm_get_cpu_arch(std::vector<ARMArch>* archs);
-
-bool get_cpu_info_from_name(DeviceInfo* cpu_info, std::string hardware_name);
-
-#ifdef LITE_WITH_LINUX
-
-void set_default_cache(DeviceInfo* dev);
-
-std::string arm_get_cpu_name();
-
-int get_max_freq_khz(int cpuid);
-
-int arm_sort_cpuid_by_max_frequency(int cpu_count, std::vector<int>* cpuids,
-                                    const std::vector<int>& cpu_freq,
-                                    std::vector<int>* cluster_ids);
-int check_online(const std::vector<int>& core_ids);
-int set_sched_affinity(const std::vector<int>& cpuids);
-
-#endif  // LITE_WITH_LINUX
 
 #endif  // LITE_WITH_ARM
 

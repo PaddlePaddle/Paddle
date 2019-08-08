@@ -32,7 +32,7 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
   SparseAllReduceOpHandle(ir::Node *node,
                           const std::vector<Scope *> &local_scopes,
                           const std::vector<platform::Place> &places,
-                          const platform::NCCLCommunicator *ctxs,
+                          const platform::NCCLContextMap *ctxs,
                           bool is_encoded = false, int nranks = -1);
   std::string Name() const override;
 

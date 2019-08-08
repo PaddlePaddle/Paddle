@@ -122,9 +122,8 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
                               const std::string& trainer_desc_str) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
-  bool success = trainer_desc.ParseFromString(trainer_desc_str);
-  PADDLE_ENFORCE(success, "Fail to parse TrainerDesc from string:\n%s",
-                 trainer_desc_str.c_str());
+  google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
+                                                &trainer_desc);
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
@@ -245,12 +244,6 @@ static bool has_fetch_operators(
   return fetch_count > 0;
 }
 
-std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
-    const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
-  return Prepare(program, block_id, skip_ref_cnt_vars, force_disable_gc);
-}
-
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>* feed_targets,
                    std::map<std::string, LoDTensor*>* fetch_targets,
@@ -335,7 +328,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 #ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph && ctx->block_id_ == 0) {
+  if (FLAGS_use_ngraph) {
     paddle::operators::NgraphEngine::FuseNgraphOps(
         ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
   }
@@ -375,7 +368,6 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
                                   bool keep_kids) {
-  platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
   if (create_vars) {
@@ -415,6 +407,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
+
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }

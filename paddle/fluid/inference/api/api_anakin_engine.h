@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <vector>
 
 #include "framework/core/net/net.h"
@@ -31,18 +30,13 @@ limitations under the License. */
 namespace paddle {
 
 using contrib::AnakinConfig;
-using anakin::Precision;
-using anakin::OpRunType;
 
-template <typename T, Precision P, OpRunType R>
+template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
-  PaddleInferenceAnakinPredictor() = default;
+  PaddleInferenceAnakinPredictor() {}
 
-  explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config)
-      : config_(config) {
-    this->InitPredictor();
-  }
+  explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
   // NOTE Unlike the native engine, the buffers of anakin engine's output_data
   // should be allocated first.
@@ -51,45 +45,21 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
            int batch_size = -1) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
-  virtual bool ResetConfig(const AnakinConfig& config);
-  virtual anakin::Net<T, P, R>& ResetExecuter(
-      std::shared_ptr<anakin::graph::Graph<T, P>> graph_p);
-  void InitPredictor();
+
+  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
+  get_executer();
 
   ~PaddleInferenceAnakinPredictor() override;
 
- protected:
-  void InitEnv();
-  void InitGraph();
-  virtual void OptimizeGraph();
-  virtual void InitNet();
-  virtual void SetContext();
-  virtual void Predict();
-  static std::mutex mutex_;
-  AnakinConfig config_;
-  std::shared_ptr<anakin::Context<T>> ctx_p_;
-  std::shared_ptr<anakin::graph::Graph<T, P>> graph_p_;
-  anakin::Net<T, P, R>* executor_p_{nullptr};
-
  private:
-  bool RunImpl(const std::vector<PaddleTensor>& inputs,
-               std::vector<PaddleTensor>* output_data);
-  static std::once_flag init_anakin_;
+  bool Init(const AnakinConfig& config);
+
+  anakin::graph::Graph<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+      graph_;
+  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>*
+      executor_p_{nullptr};
+  AnakinConfig config_;
+  int max_batch_size_{0};
 };
 
-#ifdef ANAKIN_MLU_PLACE
-template <Precision P, OpRunType R>
-class PaddleInferenceAnakinMLUPredictor final
-    : public PaddleInferenceAnakinPredictor<anakin::MLU, P, R> {
- public:
-  explicit PaddleInferenceAnakinMLUPredictor(const AnakinConfig& config) {
-    this->ResetConfig(config);
-    this->InitPredictor();
-  }
-  void SetContext() override;
-  void OptimizeGraph() override;
-  void InitNet() override;
-  void Predict() override;
-};
-#endif
 }  // namespace paddle

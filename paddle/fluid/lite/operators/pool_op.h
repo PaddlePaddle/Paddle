@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/scope.h"
@@ -35,25 +37,41 @@ class PoolOpLite : public OpLite {
 
   bool InferShape() const override;
 
-  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const cpp::OpDesc &op_desc, lite::Scope *scope) override {
-    auto input = op_desc.Input("X").front();
+    auto x = op_desc.Input("X").front();
     auto out = op_desc.Output("Out").front();
 
-    param_.x = scope->FindVar(input)->GetMutable<Tensor>();
-    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
+    CHECK(scope->FindVar(x));
+    CHECK(scope->FindVar(out));
+    param_.x = scope->FindVar(x)->GetMutable<lite::Tensor>();
+    param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
+
     param_.pooling_type = op_desc.GetAttr<std::string>("pooling_type");
     param_.ksize = op_desc.GetAttr<std::vector<int>>("ksize");
+    param_.global_pooling = op_desc.GetAttr<bool>("global_pooling");
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
-    param_.ceil_mode = op_desc.GetAttr<bool>("ceil_mode");
-    param_.adaptive = op_desc.GetAttr<bool>("adaptive");
-    param_.global_pooling = op_desc.GetAttr<bool>("global_pooling");
+
+    if (op_desc.HasAttr("exclusive")) {
+      param_.exclusive = op_desc.GetAttr<bool>("exclusive");
+    }
+    if (op_desc.HasAttr("adaptive")) {
+      param_.adaptive = op_desc.GetAttr<bool>("adaptive");
+    }
+    if (op_desc.HasAttr("ceil_mode")) {
+      param_.ceil_mode = op_desc.GetAttr<bool>("ceil_mode");
+    }
+    if (op_desc.HasAttr("use_quantizer")) {
+      param_.use_quantizer = op_desc.GetAttr<bool>("use_quantizer");
+    }
+    // param_.data_format = op_desc.GetAttr<bool>("data_format");
     return true;
   }
 
-  std::string DebugString() const override { return "pool"; }
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
+  std::string DebugString() const override { return "pool2d"; }
 
  private:
   mutable PoolParam param_;

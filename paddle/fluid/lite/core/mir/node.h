@@ -41,32 +41,40 @@ class Node {
     kUnk,
   };
 
-  struct Stmt {
-    std::string op_type;
+  class Stmt {
     // The kernel instances this Statement contains.
-    std::vector<std::unique_ptr<KernelBase>> valid_kernels;
+    std::vector<std::unique_ptr<KernelBase>> valid_kernels_;
     // TODO(Superjomn) make this a shared_ptr for resource safety.
-    std::shared_ptr<OpLite> op;  // we hold op to run InferShape
+    std::shared_ptr<OpLite> op_;  // we hold op to run InferShape
 
-    const OpInfo* op_info() {
-      CHECK(op);
-      return op->op_info();
+   public:
+    // Refresh the operator and kernels with the latest OpInfo.
+    void ResetOp(const cpp::OpDesc& op_desc,
+                 const std::vector<Place>& valid_places,
+                 lite::Scope* scope = nullptr);
+
+    std::string op_type() const { return op_info()->Type(); }
+    const OpInfo* op_info() const;
+    OpInfo* mutable_op_info();
+
+    void SetKernels(std::vector<std::unique_ptr<KernelBase>>&& kernels) {
+      valid_kernels_ = std::move(kernels);
+    }
+    std::vector<std::unique_ptr<KernelBase>>& kernels() {
+      return valid_kernels_;
     }
 
-    Place place() const {
-      CHECK(!valid_kernels.empty());
-      return valid_kernels.front()->place();
-    }
+    void SetOp(const std::shared_ptr<OpLite>& op) { op_ = op; }
+    const std::shared_ptr<OpLite> op() const { return op_; }
 
-    KernelBase& picked_kernel() {
-      CHECK(!valid_kernels.empty()) << "no kernel for " << op_type;
-      return *valid_kernels.front();
-    }
+    Place place() const;
 
-    friend std::ostream& operator<<(std::ostream& os, const Stmt& other) {
-      os << "Statement " << other.op_type << " " << other.place();
-      return os;
-    }
+    KernelBase& picked_kernel();
+
+    friend std::ostream& operator<<(std::ostream& os, const Stmt& other);
+
+    // Description.
+    std::string desc;
   };
 
   struct Arg {
@@ -78,26 +86,16 @@ class Node {
     bool is_weight{false};
   };
 
-  Arg& AsArg(const std::string& name, int id) {
-    auto& x = AsArg();
-    x.name = name;
-    x.id = id;
-    return x;
-  }
+  Arg& AsArg(const std::string& name, int id);
 
-  Arg& AsArg(const std::string& name) {
-    auto& x = AsArg();
-    x.name = name;
-    return x;
-  }
+  Arg& AsArg(const std::string& name);
 
   Stmt& AsStmt(const std::string& op_type,
                std::vector<std::unique_ptr<KernelBase>>&& kernels,
                const std::shared_ptr<OpLite>& op) {
     auto& x = AsStmt();
-    x.op_type = op_type;
-    x.op = op;
-    x.valid_kernels = std::move(kernels);
+    x.SetOp(op);
+    x.SetKernels(std::move(kernels));
     return x;
   }
 
@@ -142,7 +140,7 @@ class Node {
     }
     if (other.IsStmt()) {
       auto& arg = other.AsStmt();
-      os << "Statement " << arg.op_type;
+      os << "Statement " << arg.op_type();
     }
     return os;
   }

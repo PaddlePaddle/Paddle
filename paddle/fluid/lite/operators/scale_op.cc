@@ -26,6 +26,7 @@ bool ScaleOp::CheckShape() const {
 
 bool ScaleOp::InferShape() const {
   param_.output->Resize(param_.x->dims());
+  param_.output->raw_tensor().set_lod(param_.x->lod());
   return true;
 }
 

@@ -111,6 +111,15 @@ void Module::AddOpDescHelper(const std::string &op_id,
         return std::to_string(desc.GetAttr<bool>(name));
       case AttrType::STRING:
         return "\"" + desc.GetAttr<std::string>(name) + "\"";
+      case AttrType::FLOATS: {
+        auto vals = desc.GetAttr<std::vector<float>>(name);
+        return "{" + Join(vals, ",") + "}";
+      }
+      case AttrType::INTS: {
+        auto vals = desc.GetAttr<std::vector<int>>(name);
+        return "{" + Join(vals, ",") + "}";
+      }
+
       case AttrType::STRINGS: {
         std::vector<std::string> tmp;
         auto vals = desc.GetAttr<std::vector<std::string>>(name);
@@ -137,8 +146,12 @@ void Module::AddOpDescHelper(const std::string &op_id,
         return "bool";
       case AttrType::STRING:
         return "std::string";
+      case AttrType::FLOATS:
+        return "std::vector<float>";
       case AttrType::STRINGS:
         return "std::vector<std::string>";
+      case AttrType::INTS:
+        return "std::vector<int>";
       default:
         LOG(FATAL) << "Unsupported attribute type: " << static_cast<int>(type);
     }
@@ -159,6 +172,8 @@ void Module::AddOpDescHelper(const std::string &op_id,
 void Module::AddOp(const cpp::OpDesc &op) {
   auto op_name = OpUniqueName();
   AddOpDescHelper(op_name, op);
+
+  LOG(INFO) << "add op " << op_name;
 
   Line(string_format("// Create Op: %s", op.Type().c_str()));
 

@@ -24,31 +24,49 @@ bool ConvOpLite::CheckShape() const {
   CHECK_OR_FALSE(param_.x);
   CHECK_OR_FALSE(param_.output);
   CHECK_OR_FALSE(param_.filter);
+  // bias is optional.
+
+  const auto in_dims = param_.x->dims();
+  const auto filter_dims = param_.filter->dims();
+
+  CHECK_OR_FALSE(in_dims.size() == 4 || in_dims.size() == 5);
+
+  CHECK_EQ_OR_FALSE(in_dims.size(), filter_dims.size());
+  CHECK_OR_FALSE(in_dims.size() - param_.strides.size() == 2U);
+  CHECK_EQ_OR_FALSE(param_.paddings.size(), param_.strides.size());
+
+  CHECK_EQ_OR_FALSE(in_dims[1], filter_dims[1] * param_.groups);
+  CHECK_EQ_OR_FALSE(filter_dims[0] % param_.groups, 0);
+  CHECK_EQ_OR_FALSE(filter_dims.size(), 4UL);
+
   return true;
 }
 
-bool ConvOpLite::InferShape() const {
-  auto in_dims = param_.x->dims();
-  auto filter_dims = param_.filter->dims();
-  std::vector<int> strides = param_.strides;
-  std::vector<int> paddings = param_.paddings;
-  int groups = param_.groups;
-  std::vector<int> dilations = param_.dilations;
+inline int ConvOutputSize(int input_size, int filter_size, int dilation,
+                          int padding, int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
+  CHECK_GT_OR_FALSE(output_size, 0);
 
-  CHECK_OR_FALSE(in_dims.size() == 4 || in_dims.size() == 5);
-  CHECK_EQ_OR_FALSE(in_dims.size(), filter_dims.size());
-  CHECK_OR_FALSE(in_dims.size() - strides.size() == 2U);
-  CHECK_EQ_OR_FALSE(paddings.size(), strides.size());
-  CHECK_EQ_OR_FALSE(in_dims[1], filter_dims[1] * groups);
-  CHECK_EQ_OR_FALSE(filter_dims[0] % groups, 0);
+  return output_size;
+}
+
+bool ConvOpLite::InferShape() const {
+  const auto in_dims = param_.x->dims();
+  const auto filter_dims = param_.filter->dims();
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
-  for (size_t i = 0; i < strides.size(); ++i) {
-    output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                          dilations[i], paddings[i],
-                                          strides[i]));
+  for (size_t i = 0; i < param_.strides.size(); ++i) {
+    output_shape.push_back(
+        ConvOutputSize(in_dims[i + 2], filter_dims[i + 2], param_.dilations[i],
+                       param_.paddings[i], param_.strides[i]));
   }
+
+  // Set output dims
   param_.output->Resize(lite::DDim(output_shape));
+
+  // share LoD
+  // param_.output->set_lod(param_.x->lod());
   return true;
 }
 

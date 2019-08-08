@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"

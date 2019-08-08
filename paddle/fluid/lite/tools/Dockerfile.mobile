@@ -33,13 +33,18 @@ RUN apt-get install -y --no-install-recommends \
         vim \
         wget
 
+# timezone
+RUN apt install tzdata
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/timezone && echo 'Asia/Shanghai' >/etc/timezone
+
 # for android simulator
 RUN apt-get install -y --no-install-recommends \
         libc6-i386 \
         lib32stdc++6 \
         redir \
         iptables \
-        openjdk-8-jre
+        openjdk-8-jre \
+        default-jdk
 
 # for cmake 3.10
 RUN curl -O https://mms-res.cdn.bcebos.com/cmake-3.10.3-Linux-x86_64.tar.gz && \
@@ -88,3 +93,4 @@ RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wheel
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pre-commit
 RUN apt-get autoremove -y && apt-get clean
 RUN rm -rf /sdk-tools-linux-4333796.zip /tmp/android-ndk-r17c-linux-x86_64.zip /cmake-3.10.3-Linux-x86_64.tar.gz
+ 

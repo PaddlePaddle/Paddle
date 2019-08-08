@@ -38,9 +38,6 @@ from .checkpoint import *
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
 
-from . import backward_strategy
-from .backward_strategy import *
-
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
@@ -50,4 +47,3 @@ __all__ += profiler.__all__
 __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
-__all__ += backward_strategy.__all__

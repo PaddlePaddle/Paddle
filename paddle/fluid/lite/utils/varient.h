@@ -20,6 +20,7 @@
 #include <typeinfo>
 #include <utility>
 #include "paddle/fluid/lite/utils/cp_logging.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 // This is an equivalent implementation of boost::any. We implement this to
 // avoid including the whole boost library and keep the inference library small.
@@ -116,9 +117,9 @@ struct variant {
     if (type_id == typeid(T).hash_code())
       return *reinterpret_cast<const T*>(&data);
     else
-      throw std::invalid_argument("unmatched type");
-    // LOG(FATAL) << "unmatched type get, should be " << type_id << " but get "
-    //            << typeid(T).name();
+      throw std::invalid_argument(
+          string_format("unmatched type, store as %d, but want to get %s",
+                        type_id, typeid(T).name()));
     return *reinterpret_cast<const T*>(&data);
   }
 

@@ -34,6 +34,8 @@ class Tensor {
   template <typename T>
   T *mutable_data();
 
+  ddim_t shape() const;
+
  private:
   const void *raw_tensor_;
   void *raw_mutable_tensor_{};

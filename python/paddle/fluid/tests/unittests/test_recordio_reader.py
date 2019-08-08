@@ -86,7 +86,3 @@ class TestRecordIO(unittest.TestCase):
     def test_double_buffer_reader(self):
         self.test_main(decorator_callback=lambda reader: fluid.layers.io.double_buffer(reader,
                                                                                        place='cuda:0' if fluid.core.is_compiled_with_cuda() else 'cpu'))
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -22,13 +22,10 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["conv2d"]["Filter"] = ScaleAlgo::MAX_CH;
   rules_["conv2d"]["Bias"] = ScaleAlgo::NONE;  // do not compute scale
   rules_["conv2d"]["ResidualData"] = ScaleAlgo::KL;
-  rules_["conv2d"]["Output"] = ScaleAlgo::KL;
+  rules_["conv2d"]["Output"] = ScaleAlgo::KL;  // do not compute scale
 
   rules_["pool2d"]["X"] = ScaleAlgo::KL;
-  rules_["pool2d"]["Out"] = ScaleAlgo::KL;
-
-  rules_["concat"]["X"] = ScaleAlgo::KL;
-  rules_["concat"]["Out"] = ScaleAlgo::KL;
+  rules_["pool2d"]["Out"] = ScaleAlgo::KL;  // do not compute scale
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(
