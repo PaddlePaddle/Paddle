@@ -377,7 +377,7 @@ class FleetUtil(object):
             suffix_name = "/%s/%s/" % (day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
         else:
-            suffix_name = "/%s/batch_model/" % day
+            suffix_name = "/%s/0/" % day
             model_path = output_path.rstrip("/") + suffix_name
 
         if fleet.worker_index() == 0:
@@ -669,7 +669,7 @@ class FleetUtil(object):
 
         """
         day = str(day)
-        suffix_name = "/%s/batch_model/" % day
+        suffix_name = "/%s/0/" % day
         model_path = output_path + suffix_name
         self.rank0_error("going to save_model %s" % model_path)
         fleet.save_persistables(None, model_path, mode=3)
