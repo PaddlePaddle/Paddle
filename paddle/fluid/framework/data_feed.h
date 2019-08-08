@@ -111,6 +111,10 @@ class DataFeed {
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
+  virtual void SetPlace(const paddle::platform::Place& place) {
+    place_ = place;
+  }
+  virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -158,6 +162,7 @@ class DataFeed {
   bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
+  platform::Place place_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
