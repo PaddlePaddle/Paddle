@@ -880,7 +880,11 @@ class TestLayer(LayerTest):
                 feed={'t': np.ones(
                     [3, 3], dtype='float32')}, fetch_list=[ret])[0]
 
-        self.assertTrue(np.allclose(static_ret))
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.hard_swish(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
 
 class TestBook(LayerTest):
