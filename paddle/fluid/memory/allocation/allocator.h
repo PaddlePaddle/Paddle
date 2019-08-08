@@ -161,6 +161,9 @@ class Allocator {
   using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
 
   // Allocate an allocation.
+  // size may be 0, but it would be too complex if we handle size == 0
+  // in each Allocator. So we handle size == 0 inside AllocatorFacade
+  // in our design.
   inline AllocationPtr Allocate(size_t size) {
     auto ptr = AllocateImpl(size);
     ptr->RegisterDecoratedAllocator(this);
@@ -183,6 +186,17 @@ class Allocator {
 
 using AllocationDeleter = Allocator::AllocationDeleter;
 using AllocationPtr = Allocator::AllocationPtr;
+
+inline size_t AlignedSize(size_t size, size_t alignment) {
+  auto remaining = size % alignment;
+  return remaining == 0 ? size : size + alignment - remaining;
+}
+
+inline size_t AlignedPtrOffset(const void* ptr, size_t alignment) {
+  auto ptr_addr = reinterpret_cast<uintptr_t>(ptr);
+  auto diff = ptr_addr % alignment;
+  return diff == 0 ? 0 : alignment - diff;
+}
 
 }  // namespace allocation
 }  // namespace memory

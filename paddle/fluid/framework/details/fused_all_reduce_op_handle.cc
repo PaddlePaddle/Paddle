@@ -17,25 +17,13 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
 namespace paddle {
 namespace framework {
 namespace details {
-
-// Note(zcd): Addresses should be aligned, otherwise, the results may have
-// diff.
-static size_t Alignment(size_t size, const platform::Place &place) {
-  // Allow to allocate the minimum chunk size is 4 KB.
-  size_t alignment = 1 << 12;
-  if (platform::is_gpu_place(place)) {
-    // Allow to allocate the minimum chunk size is 256 B.
-    alignment = 1 << 8;
-  }
-  size_t remaining = size % alignment;
-  return remaining == 0 ? size : size + (alignment - remaining);
-}
 
 typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
     GradientAndLoDTensor;
@@ -121,7 +109,7 @@ void FusedAllReduceOpHandle::RunImpl() {
     for (size_t k = 1; k < g_tensor.size(); ++k) {
       const void *cur_address = g_tensor.at(k - 1).second->data<void>();
       int64_t len = g_tensor.at(k - 1).second->numel();
-      auto offset = Alignment(len * size_of_dtype, places_[0]);
+      auto offset = platform::Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
       const void *next_address = g_tensor.at(k).second->data<void>();
@@ -185,9 +173,7 @@ void FusedAllReduceOpHandle::RunImpl() {
   } else {
     // Special handle CPU only Operator's gradient. Like CRF
     auto grad_name = grads_tensor.at(0).at(0).first;
-    auto &trg = *this->local_scopes_[0]
-                     ->FindVar(kLocalExecScopeName)
-                     ->Get<Scope *>()
+    auto &trg = *this->local_exec_scopes_[0]
                      ->FindVar(grad_name)
                      ->GetMutable<framework::LoDTensor>();
 
@@ -195,9 +181,8 @@ void FusedAllReduceOpHandle::RunImpl() {
     ReduceBufferData func(lod_tensor_data, trg.data<void>(), numel);
     VisitDataType(trg.type(), func);
 
-    for (size_t i = 1; i < local_scopes_.size(); ++i) {
-      auto &scope =
-          *local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    for (size_t i = 1; i < local_exec_scopes_.size(); ++i) {
+      auto &scope = *local_exec_scopes_[i];
       auto &p = places_[i];
       auto *var = scope.FindVar(grad_name);
       auto *dev_ctx = dev_ctxes_.at(p);
@@ -215,8 +200,7 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     const size_t &scope_idx, const std::vector<VarHandle *> &in_var_handles,
     const std::vector<VarHandle *> &out_var_handles,
     std::vector<std::pair<std::string, const LoDTensor *>> *grad_tensor) const {
-  auto *local_scope =
-      local_scopes_.at(scope_idx)->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto *local_scope = local_exec_scopes_[scope_idx];
   size_t place_num = places_.size();
 
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
@@ -245,8 +229,8 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
     // Get element number
     int64_t len = grad_tensor.at(i).second->numel();
     PADDLE_ENFORCE_GT(len, 0);
-    //    Alignment(len)
-    *numel += Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
+    *numel +=
+        platform::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
   }
 }
 

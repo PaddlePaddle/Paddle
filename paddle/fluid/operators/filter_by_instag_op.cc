@@ -30,7 +30,7 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("LossWeight"),
-            "Output(LossWeight) shoudl not be null.");
+                   "Output(LossWeight) shoudl not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Map"), "Output(Map) should be not null.");
 
     auto x1_dims = ctx->GetInputDim("X1");  // batch_size * vec
@@ -81,7 +81,7 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
                    "Grad Input(Out) should be not null");
     PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) should be not null");
     PADDLE_ENFORCE(ctx->HasInput("LossWeight"),
-            "Input(LossWeight) should be not null");
+                   "Input(LossWeight) should be not null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X1")),
                    "Grad Output(X1) should be not null");
 
@@ -122,7 +122,8 @@ class FilterByInstagGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(filter_by_instag, ops::FilterByInstagOp,
-        ops::FilterByInstagOpMaker, ops::FilterByInstagGradOpDescMaker);
+                  ops::FilterByInstagOpMaker,
+                  ops::FilterByInstagGradOpDescMaker);
 
 REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
 
@@ -132,7 +133,7 @@ REGISTER_OP_CPU_KERNEL(filter_by_instag, ops::FilterByInstagKernel<float>,
                        ops::FilterByInstagKernel<int64_t>);
 
 REGISTER_OP_CPU_KERNEL(filter_by_instag_grad,
-        ops::FilterByInstagGradKernel<float>,
-        ops::FilterByInstagGradKernel<double>,
-        ops::FilterByInstagGradKernel<int32_t>,
-        ops::FilterByInstagGradKernel<int64_t>);
+                       ops::FilterByInstagGradKernel<float>,
+                       ops::FilterByInstagGradKernel<double>,
+                       ops::FilterByInstagGradKernel<int32_t>,
+                       ops::FilterByInstagGradKernel<int64_t>);

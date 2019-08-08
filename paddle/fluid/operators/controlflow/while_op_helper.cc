@@ -13,108 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+
 #include <string>
 #include <unordered_set>
 #include <utility>
+
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/controlflow/op_variant.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
-
-// OpVariant is a wrapper class of OpDesc and OperatorBase
-// So that API would be the same.
-class OpVariant {
-  struct InputsVisitor
-      : public boost::static_visitor<const framework::VariableNameMap *> {
-    template <typename OpType>
-    const framework::VariableNameMap *operator()(const OpType *op) const {
-      return &(op->Inputs());
-    }
-  };
-
-  struct OutputsVisitor
-      : public boost::static_visitor<const framework::VariableNameMap *> {
-    template <typename OpType>
-    const framework::VariableNameMap *operator()(const OpType *op) const {
-      return &(op->Outputs());
-    }
-  };
-
-  struct AttributeMapVisitor
-      : public boost::static_visitor<const framework::AttributeMap *> {
-    const framework::AttributeMap *operator()(
-        const framework::OpDesc *op) const {
-      return &(op->GetAttrMap());
-    }
-
-    const framework::AttributeMap *operator()(
-        const framework::OperatorBase *op) const {
-      return &(op->Attrs());
-    }
-  };
-
-  struct RawPointerVisitor : public boost::static_visitor<const void *> {
-    template <typename OpType>
-    const void *operator()(const OpType *op) const {
-      return op;
-    }
-  };
-
- public:
-  OpVariant(const framework::OperatorBase *op) : op_(op) {}  // NOLINT
-
-  OpVariant(const framework::OpDesc *op) : op_(op) {}  // NOLINT
-
-  const framework::VariableNameMap &Inputs() const {
-    return *boost::apply_visitor(InputsVisitor(), op_);
-  }
-
-  const framework::VariableNameMap &Outputs() const {
-    return *boost::apply_visitor(OutputsVisitor(), op_);
-  }
-
-  const framework::AttributeMap &Attrs() const {
-    return *boost::apply_visitor(AttributeMapVisitor(), op_);
-  }
-
-  template <typename AttrType>
-  const AttrType &Attr(const std::string &name) const {
-    auto &attrs = Attrs();
-    auto it = attrs.find(name);
-    PADDLE_ENFORCE(it != attrs.end(), "Cannot find attribute %s", name);
-    return boost::get<AttrType>(it->second);
-  }
-
-  bool operator==(const OpVariant &other) const {
-    return RawPointer() == other.RawPointer();
-  }
-
-  const void *RawPointer() const {
-    return boost::apply_visitor(RawPointerVisitor(), op_);
-  }
-
-  int which() const { return static_cast<int>(op_.which()); }
-
-  struct Hasher {
-    size_t operator()(const OpVariant &op) const {
-      return reinterpret_cast<size_t>(op.RawPointer());
-    }
-  };
-
- private:
-  const boost::variant<const framework::OperatorBase *,
-                       const framework::OpDesc *>
-      op_;
-};
-
-static std::string GetDebugString(const std::vector<std::string> &names) {
-  if (names.empty()) return "";
-  std::string ret = names[0];
-  for (size_t i = 1; i < names.size(); ++i) {
-    ret += (" " + names[i]);
-  }
-  return ret;
-}
 
 // Set skip variables of while_op and while_grad_op
 // These variables should be skipped when eager deletion enables.
@@ -124,7 +33,7 @@ static std::string GetDebugString(const std::vector<std::string> &names) {
 static void SetSkipVars(const OpVariant &op, std::vector<std::string> attr) {
   auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
   VLOG(2) << "Prepare to skip " << attr.size()
-          << " var(s): " << GetDebugString(attr);
+          << " var(s): " << string::join_strings(attr, ' ');
   attrs[kSkipEagerDeletionVars] = std::move(attr);
 }
 

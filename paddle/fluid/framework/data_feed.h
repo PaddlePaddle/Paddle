@@ -33,11 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -104,6 +102,8 @@ class DataFeed {
   virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
   virtual void SetThreadNum(int thread_num) {}
+  // This function will do nothing at default
+  virtual void SetParseInsId(bool parse_ins_id) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -198,7 +198,7 @@ class PrivateQueueDataFeed : public DataFeed {
   size_t queue_size_;
   string::LineFileReader reader_;
   // The queue for store parsed data
-  std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
+  std::shared_ptr<paddle::framework::ChannelObject<T>> queue_;
 };
 
 template <typename T>
@@ -214,6 +214,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetConsumeChannel(void* channel);
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
+  virtual void SetParseInsId(bool parse_ins_id);
   virtual void LoadIntoMemory();
 
  protected:
@@ -223,6 +224,7 @@ class InMemoryDataFeed : public DataFeed {
 
   int thread_id_;
   int thread_num_;
+  bool parse_ins_id_;
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;

@@ -68,11 +68,11 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto x2_lods = x2->lod()[0];
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
-        for (size_t i = 0; i < x1->dims()[0]; i++) {
-            x1_lods.push_back(i + 1);
-        }
+      for (size_t i = 0; i < x1->dims()[0]; i++) {
+        x1_lods.push_back(i + 1);
+      }
     } else {
-        x1_lods = context.Input<LoDTensor>("X1")->lod()[0];
+      x1_lods = context.Input<LoDTensor>("X1")->lod()[0];
     }
 
     std::unordered_map<int64_t, int64_t> mmap_aux;
@@ -96,7 +96,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // Dim [local fc count, batch size, embedding size]
     LoDTensor* out = context.Output<LoDTensor>("Out");
     LoDTensor* map = context.Output<LoDTensor>("Map");
-    LoDTensor *loss_weight = context.Output<LoDTensor>("LossWeight");
+    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
     // expected auto = const T
     auto* x1_data = x1->data<T>();
     // expected auto = T
@@ -106,7 +106,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 3}));
       loss_weight->Resize(
-              framework::make_ddim({(int64_t)ins_after_filter.size(), 1}));
+          framework::make_ddim({(int64_t)ins_after_filter.size(), 1}));
     } else {
       out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({1, 3}));
@@ -133,9 +133,9 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-      memset(out_data, 0, out->numel()  * sizeof(T));
+      memset(out_data, 0, out->numel() * sizeof(T));
       for (size_t i = 0; i < loss_weight->numel(); i++) {
-          loss_weight_data[i] = 1;
+        loss_weight_data[i] = 1;
       }
       for (size_t i = 0; i < ins_after_filter.size(); i++) {
         size_t pos = out_lods[i];
