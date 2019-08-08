@@ -113,6 +113,11 @@ class Blas {
   template <typename T>
   void GEMM_FREE(T* data) const;
 
+  template <typename T>
+  void COOGEMV(const char* transa, const int* m, const T* val,
+               const int* rowind, const int* colind, const int* nnz, const T* x,
+               T* y) const;
+
 #if !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void MatMulWithHead(const framework::Tensor& mat_a,
@@ -237,6 +242,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void GEMM_FREE(ARGS... args) const {
     Base()->template GEMM_FREE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void COOGEMV(ARGS... args) const {
+    Base()->template COOGEMV<T>(args...);
   }
 
 #if !defined(PADDLE_WITH_CUDA)

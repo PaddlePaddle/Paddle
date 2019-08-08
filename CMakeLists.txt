@@ -41,6 +41,8 @@ if(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
 endif(WIN32)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
+
 find_package(CUDA QUIET)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)

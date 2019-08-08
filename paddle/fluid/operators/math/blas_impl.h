@@ -128,6 +128,11 @@ struct CBlas<float> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmsErf(args...);
   }
+
+  template <typename... ARGS>
+  static void COOGEMV(ARGS... args) {
+    platform::dynload::mkl_cspblas_scoogemv(args...);
+  }
 };
 
 template <>
@@ -232,6 +237,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VMERF(ARGS... args) {
     platform::dynload::vmdErf(args...);
+  }
+
+  template <typename... ARGS>
+  static void COOGEMV(ARGS... args) {
+    platform::dynload::mkl_cspblas_dcoogemv(args...);
   }
 };
 
@@ -747,6 +757,18 @@ void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
   }
 #endif
 }
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::COOGEMV(const char *transa, const int *m,
+                                               const T *val, const int *rowind,
+                                               const int *colind,
+                                               const int *nnz, const T *x,
+                                               T *y) const {
+  CBlas<T>::COOGEMV(transa, m, val, rowind, colind, nnz, x, y);
+}
+#endif
 
 }  // namespace math
 }  // namespace operators
