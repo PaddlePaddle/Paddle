@@ -346,13 +346,11 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
   std::unordered_set<ir::Node *> inputs;
   std::unordered_set<ir::Node *> outputs;
   for (auto opt_op : op_nodes) {
-    // set inputs
     inputs.insert(opt_op->inputs.begin(), opt_op->inputs.end());
     for (auto &input : opt_op->inputs) {
       replace(input->outputs.begin(), input->outputs.end(), opt_op,
               fused_opt_node);
     }
-    // set outputs
     outputs.insert(opt_op->outputs.begin(), opt_op->outputs.end());
     for (auto &output : opt_op->outputs) {
       replace(output->inputs.begin(), output->inputs.end(), opt_op,
@@ -360,35 +358,68 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
     }
   }
 
+  // There should not have no-ctr-var between the op_nodes that link the op_node
+  // of op_nodes.
   // Remove the dependence vars between op_nodes.
-  std::unordered_set<ir::Node *> all_var_nodes;
-  all_var_nodes.insert(inputs.begin(), inputs.end());
-  all_var_nodes.insert(outputs.begin(), outputs.end());
-  std::unordered_set<ir::Node *> deps_var_nodes;
-  for (auto &var_node : all_var_nodes) {
-    std::unordered_set<ir::Node *> var_node_inputs;
-    var_node_inputs.insert(var_node->inputs.begin(), var_node->inputs.end());
-    for (auto &var_node_output : var_node->outputs) {
-      if (var_node_inputs.count(var_node_output)) {
-        deps_var_nodes.insert(var_node);
+  std::unordered_set<ir::Node *> out_dep_vars;
+  std::unordered_set<ir::Node *> not_useful_vars;
+
+  auto deal_with_ctrl_vars = [&out_dep_vars, &not_useful_vars,
+                              &fused_opt_node](ir::Node *ctr_var_node) {
+    PADDLE_ENFORCE_EQ(ctr_var_node->inputs.size(), 1);
+    if (ctr_var_node->inputs.front() == fused_opt_node) {
+      PADDLE_ENFORCE_GT(ctr_var_node->outputs.size(), 0);
+      auto output_ops = ctr_var_node->outputs;
+      output_ops.erase(std::remove_if(output_ops.begin(), output_ops.end(),
+                                      [&fused_opt_node](const ir::Node *node) {
+                                        return node == fused_opt_node;
+                                      }),
+                       output_ops.end());
+      if (!output_ops.empty()) {
+        out_dep_vars.insert(ctr_var_node);
       }
+      not_useful_vars.insert(ctr_var_node);
+    }
+  };
+
+  for (auto *in_node : inputs) {
+    if (in_node->IsCtrlVar()) {
+      deal_with_ctrl_vars(in_node);
     }
   }
 
-  for (auto &deps_var_node : deps_var_nodes) {
-    if (inputs.count(deps_var_node)) {
-      inputs.erase(deps_var_node);
+  for (auto *out_node : outputs) {
+    if (out_node->IsCtrlVar()) {
+      deal_with_ctrl_vars(out_node);
     }
-    if (outputs.count(deps_var_node)) {
-      outputs.erase(deps_var_node);
-    }
-    graph->RemoveNode(deps_var_node);
   }
 
+  for (auto &node : not_useful_vars) {
+    if (inputs.count(node)) {
+      inputs.erase(node);
+    }
+    if (outputs.count(node)) {
+      outputs.erase(node);
+    }
+  }
+
+  for (auto &dep_var : out_dep_vars) {
+    if (not_useful_vars.count(dep_var)) {
+      not_useful_vars.erase(dep_var);
+    }
+    dep_var->inputs.clear();
+    dep_var->inputs.emplace_back(fused_opt_node);
+  }
+
+  outputs.insert(out_dep_vars.begin(), out_dep_vars.end());
   fused_opt_node->inputs.insert(fused_opt_node->inputs.begin(), inputs.begin(),
                                 inputs.end());
   fused_opt_node->outputs.insert(fused_opt_node->outputs.begin(),
                                  outputs.begin(), outputs.end());
+
+  for (auto &ctrl_var_node : not_useful_vars) {
+    graph->RemoveNode(ctrl_var_node);
+  }
 }
 }  // namespace ir
 }  // namespace framework
