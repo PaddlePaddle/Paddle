@@ -31,6 +31,20 @@ class DropoutOpConverter : public OpConverter {
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     float dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
 
+    std::string downgrade_in_infer = "";
+    if (op_desc.HasAttr("dropout_implementation")) {
+      downgrade_in_infer =
+          boost::get<std::string>(op_desc.GetAttr("dropout_implementation"));
+    }
+
+    if (!downgrade_in_infer.empty() &&
+        downgrade_in_infer == "upscale_in_train") {
+      auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
+      auto output_name = op_desc.Output("Out")[0];
+      RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+      return;
+    }
+
     platform::CPUPlace cpu_place;
     std::unique_ptr<framework::LoDTensor> weight_tensor(
         new framework::LoDTensor());

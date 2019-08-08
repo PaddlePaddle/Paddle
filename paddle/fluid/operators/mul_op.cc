@@ -144,13 +144,17 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<float>("scale_x",
-                   "scale_x to used for int8 input data x."
-                   "Only used with MKL-DNN INT8")
+    AddAttr<float>(
+        "scale_x",
+        "scale_x to be used for int8 mul input data x. scale_x has the"
+        "same purpose as scale_in in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
         .SetDefault(1.0f);
-    AddAttr<std::vector<float>>("scale_y",
-                                "scale_y to used for int8 input data y."
-                                "Only used with MKL-DNN INT8")
+    AddAttr<std::vector<float>>(
+        "scale_y",
+        "scale_y to be used for int8 mul input data y. scale_y has the"
+        "same purpose as scale_weights in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
         .SetDefault({1.0f});
     AddAttr<float>("scale_out",
                    "scale_out to be used for int8 output data."
