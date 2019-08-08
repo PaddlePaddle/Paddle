@@ -23,9 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/operator_call_stack.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -190,6 +190,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
+    throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
