@@ -327,19 +327,11 @@ class OpTest(unittest.TestCase):
 
         if parallel:
             use_cuda = False
-            if isinstance(place, fluid.CUDAPlace(0)):
+            if isinstance(place, fluid.CUDAPlace):
                 use_cuda = True
-            if loss:
-                executor = fluid.ParallelExecutor(
-                    use_cuda=use_cuda,
-                    loss_name=loss.name,
-                    main_program=program)
-            else:
-                executor = fluid.ParallelExecutor(
-                    use_cuda=use_cuda, main_program=program)
-        else:
-            executor = Executor(place)
-
+            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
+                loss_name=loss.name if loss else None, places=place)
+            program = compiled_prog
         fetch_list = getattr(self, "fetch_list", [])
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
@@ -359,6 +351,7 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = list(map(block.var, fetch_list))
+        executor = Executor(place)
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
@@ -657,12 +650,12 @@ class OpTest(unittest.TestCase):
         fetch_list = [g for p, g in param_grad_list]
         if parallel:
             use_cuda = False
-            if isinstance(place, fluid.CUDAPlace(0)):
+            if isinstance(place, fluid.CUDAPlace):
                 use_cuda = True
-            executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=prog)
-        else:
-            executor = Executor(place)
+            compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
+                loss_name=loss.name, places=place)
+            prog = compiled_prog
+        executor = fluid.Executor(place)
         return list(
             map(np.array,
                 executor.run(prog, feed_dict, fetch_list, return_numpy=False)))

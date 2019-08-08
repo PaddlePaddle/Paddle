@@ -20,7 +20,11 @@ namespace tensorrt {
 
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
-  SimpleOpTypeSetTeller() {}
+  SimpleOpTypeSetTeller() {
+#if IS_TRT_VERSION_GE(5130)
+    teller_set.insert("relu6");
+#endif
+  }
 
   bool operator()(const std::string& op_type,
                   const framework::OpDesc& desc) override {
@@ -28,11 +32,27 @@ struct SimpleOpTypeSetTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> teller_set{
-      {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
-       "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-       "elementwise_add", "elementwise_mul", "dropout", "prelu",
-       "conv2d_transpose", "leaky_relu", "fc"}};
+  std::unordered_set<std::string> teller_set{{"mul",
+                                              "conv2d",
+                                              "pool2d",
+                                              "relu",
+                                              "softmax",
+                                              "sigmoid",
+                                              "depthwise_conv2d",
+                                              "batch_norm",
+                                              "concat",
+                                              "tanh",
+                                              "pad",
+                                              "elementwise_add",
+                                              "elementwise_mul",
+                                              "dropout",
+                                              "prelu",
+                                              "conv2d_transpose",
+                                              "leaky_relu",
+                                              "fc",
+                                              "shuffle_channel",
+                                              "swish",
+                                              "split"}};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {

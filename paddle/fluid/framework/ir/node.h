@@ -49,7 +49,7 @@ class Node {
  public:
   virtual ~Node() {
     if (!wrapper_.empty()) {
-      VLOG(4) << "ir::Node deleting a wrapper node " << Name();
+      VLOG(10) << "ir::Node deleting a wrapper node " << Name();
       wrapper_deleter_();
     }
   }
@@ -99,7 +99,7 @@ class Node {
 
   // Test if the Node is wrapped by type T.
   template <typename T>
-  bool IsWrappedBy() {
+  bool IsWrappedBy() const {
     return std::type_index(typeid(T)) == wrapper_type_;
   }
 

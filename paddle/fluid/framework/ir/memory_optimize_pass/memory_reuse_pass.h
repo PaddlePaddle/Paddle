@@ -81,18 +81,26 @@ class MemoryReusePass : public Pass {
   bool TryReuseVar(details::VarHandle *in_var,
                    details::VarHandle *out_var) const;
 
-  std::unordered_set<ir::Node *> FindNodesByName(
-      const std::string &name, const std::vector<ir::Node *> &nodes) const;
+  bool IsInVarReusable(const details::VarHandle &in_var) const;
+
+  bool IsOutVarReusable(const details::VarHandle &out_var) const;
+
+  std::unordered_set<Node *> FindNodesByName(
+      const std::string &name, const std::vector<Node *> &nodes) const;
 
   size_t ScopeNum() const { return all_vars_->size(); }
 
+  int64_t GetMemorySize(const details::VarHandle &var) const;
+
  private:
-  VarDesc *GetVarDesc(details::VarHandle *var) const;
+  VarDesc *GetVarDesc(const details::VarHandle &var) const;
 
-  bool IsVarsReusable(details::VarHandle *in_var,
-                      details::VarHandle *out_var) const;
+  bool IsVarPairReusable(const details::VarHandle &in_var,
+                         const details::VarHandle &out_var) const;
 
-  bool IsVarAlreadyReused(details::VarHandle *var) const;
+  bool IsInVarAlreadyReused(const details::VarHandle &in_var) const;
+
+  bool IsOutVarAlreadyReused(const details::VarHandle &out_var) const;
 
   details::ShareTensorBufferOpHandle *InsertShareTensorBufferOpHandleToGraph(
       details::ComputationOpHandle *op) const;
@@ -110,15 +118,19 @@ class MemoryReusePass : public Pass {
 
  private:
   mutable Graph *graph_;
+  mutable bool use_cuda_;
+
   mutable details::GraphVars *all_vars_;
   mutable MemOptVarInfoMapList *var_infos_;
+
   mutable std::vector<LastLiveOpsOfVars> *last_live_ops_of_vars_;
 
   mutable std::unordered_map<details::ComputationOpHandle *,
                              details::ShareTensorBufferOpHandle *>
       ops_;
 
-  mutable std::vector<std::unordered_set<std::string>> reused_var_names_;
+  mutable std::vector<std::unordered_set<std::string>> reused_in_var_names_;
+  mutable std::vector<std::unordered_set<std::string>> reused_out_var_names_;
 
   mutable std::vector<std::unordered_map<std::string, VarDesc *>> var_descs_;
 };

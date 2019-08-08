@@ -1793,6 +1793,14 @@ class TestBook(LayerTest):
             self.assertTrue(z.lod_level == 1)
             return z
 
+    def test_lod_append(self):
+        with self.static_graph():
+            x = layers.data(
+                name='x', shape=[6, 10], dtype='float32', lod_level=1)
+            y = layers.lod_append(x, [1, 1, 1, 1, 1, 1])
+            self.assertTrue(y.lod_level == 1)
+            return y
+
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")

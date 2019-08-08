@@ -27,8 +27,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include <algorithm>
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -156,7 +158,11 @@ void FleetWrapper::PullSparseVarsSync(
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
     Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
@@ -258,7 +264,8 @@ void FleetWrapper::PushDenseVarsSync(
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* push_sparse_status) {
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    float scale_datanorm, int batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
@@ -266,6 +273,20 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
+    if (scale_datanorm >= 0) {
+      if (t.find(".batch_size@GRAD") != std::string::npos ||
+          t.find(".batch_sum@GRAD") != std::string::npos) {
+        Eigen::Map<Eigen::MatrixXf> mat(g, 1, count);
+        float scale = 1.0 / batch_size;
+        mat *= scale;
+      } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
+        VLOG(3) << "epsilon: " << scale_datanorm;
+        for (int i = 0; i < count; ++i) {
+          g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
+                 batch_size * scale_datanorm;
+        }
+      }
+    }
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
@@ -282,38 +303,54 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    const int batch_size, const bool use_cvm) {
+    const int batch_size, const bool use_cvm, const bool dump_slot) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
+  int slot_offset = 0;
   int grad_dim = emb_dim;
+  int show_index = 0;
+  int click_index = 1;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
   }
+  if (dump_slot) {
+    slot_offset = 1;
+    show_index = 1;
+    click_index = 2;
+  }
   CHECK_GE(grad_dim, 0);
+
+  push_values->resize(fea_keys.size() + 1);
+  for (auto& t : *push_values) {
+    t.resize(emb_dim + offset + slot_offset);
+  }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
-    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
-    if (g_tensor == NULL) {
-      LOG(ERROR) << "var[" << sparse_key_names[i] << "] not found";
-      exit(-1);
-    }
-    float* g = g_tensor->data<float>();
     Variable* var = scope.FindVar(sparse_key_names[i]);
-    CHECK(var != nullptr) << "var[" << sparse_key_names[i] << "] not found";
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    if (tensor == NULL) {
-      LOG(ERROR) << "var[" << sparse_key_names[i] << "] not found";
+    if (tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
-    push_values->resize(fea_keys.size() + 1);
-    for (auto& t : *push_values) {
-      t.resize(emb_dim + offset);
+    int slot = 0;
+    if (dump_slot) {
+      slot = boost::lexical_cast<int>(sparse_key_names[i]);
     }
+    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
+    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    if (g_tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
+      exit(-1);
+    }
+    float* g = g_tensor->data<float>();
+
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
       Eigen::Map<
@@ -328,14 +365,19 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
+
       if (use_cvm) {
-        memcpy((*push_values)[fea_idx].data() + offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
       } else {
-        memcpy((*push_values)[fea_idx].data() + offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
-        (*push_values)[fea_idx][0] = 1.0f;
-        (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
+        (*push_values)[fea_idx][show_index] = 1.0f;
+        (*push_values)[fea_idx][click_index] =
+            static_cast<float>(fea_labels[fea_idx]);
+      }
+      if (dump_slot) {
+        (*push_values)[fea_idx][0] = static_cast<float>(slot);
       }
       g += emb_dim;
       fea_idx++;
@@ -355,6 +397,79 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
+void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
+                                       std::vector<std::string> var_list,
+                                       std::string model_path,
+                                       std::string model_proto_file,
+                                       bool load_combine) {
+  // load ProgramDesc from model file
+  auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
+    std::string contents;
+    std::ifstream fin(filename, std::ios::in | std::ios::binary);
+    fin.seekg(0, std::ios::end);
+    contents.resize(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    fin.read(&contents[0], contents.size());
+    fin.close();
+    ProgramDesc program_desc(contents);
+    return program_desc;
+  };
+  const ProgramDesc old_program = read_proto_func(model_proto_file);
+  Scope* old_scope = new Scope();
+  auto& old_block = old_program.Block(0);
+  auto place = platform::CPUPlace();
+  std::vector<std::string> old_param_list;
+
+  for (auto& t : var_list) {
+    VarDesc* old_var_desc = old_block.FindVar(t);
+    if (old_var_desc == nullptr) {
+      continue;
+    }
+    // init variable in scope
+    Variable* old_var = old_scope->Var(old_var_desc->Name());
+    InitializeVariable(old_var, old_var_desc->GetType());
+    old_param_list.push_back(t);
+    if (load_combine) {
+      continue;
+    }
+    // load variable from model
+    paddle::framework::AttributeMap attrs;
+    attrs.insert({"file_path", model_path + "/" + old_var_desc->Name()});
+    auto load_op = paddle::framework::OpRegistry::CreateOp(
+        "load", {}, {{"Out", {old_var_desc->Name()}}}, attrs);
+    load_op->Run(*old_scope, place);
+  }
+
+  if (load_combine) {
+    std::sort(old_param_list.begin(), old_param_list.end());
+    paddle::framework::AttributeMap attrs;
+    attrs.insert({"file_path", model_path});
+    auto load_op = paddle::framework::OpRegistry::CreateOp(
+        "load_combine", {}, {{"Out", old_param_list}}, attrs);
+    load_op->Run(*old_scope, place);
+  }
+
+  for (auto& t : old_param_list) {
+    Variable* old_var = old_scope->Var(t);
+    // old model data, here we assume data type is float
+    LoDTensor* old_tensor = old_var->GetMutable<LoDTensor>();
+    float* old_data = old_tensor->data<float>();
+    // new model data, here we assume data type is float
+    Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    float* data = tensor->data<float>();
+    // copy from old data to new data
+    if (old_tensor->numel() > tensor->numel()) {
+      memcpy(data, old_data, tensor->numel() * sizeof(float));
+    } else {
+      memcpy(data, old_data, old_tensor->numel() * sizeof(float));
+    }
+  }
+  delete old_scope;
+  PushDenseParamSync(scope, table_id, old_param_list);
+}
+
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->load(path, std::to_string(mode));
@@ -362,6 +477,21 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
     exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
+                                     const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "load model of table id: " << table_id
+               << ", from path: " << path << " failed";
   }
 #else
   VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
@@ -391,20 +521,40 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 #endif
 }
 
+void FleetWrapper::ClearModel() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->clear();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
                                     std::vector<std::string> var_list,
-                                    float decay) {
+                                    float decay, int emb_dim) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (std::string& name : var_list) {
     if (name.find("batch_sum") != std::string::npos) {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      VLOG(3) << "prepare shrink dense batch_sum";
+      VLOG(0) << "prepare shrink dense batch_sum";
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
-      Eigen::Map<Eigen::MatrixXf> mat(g, 1, tensor->numel());
-      mat *= decay;
+
+      // show_batch_sum += N * log(decay)
+      std::string size_name = name;
+      size_name.replace(size_name.find("batch_sum"), size_name.length(),
+                        "batch_size");
+      Variable* var_size = scope->FindVar(size_name);
+      CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
+      VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
+      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+
+      for (int k = 0; k < tensor->numel(); k += emb_dim) {
+        g[k] = g[k] + g_size[k] * log(decay);
+      }
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     } else {

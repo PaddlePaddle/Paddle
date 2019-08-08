@@ -61,16 +61,13 @@ class TestSoftmaxWithXe(unittest.TestCase):
 
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = inplace
-                if inplace:
-                    build_strategy._use_legacy_memory_optimize_strategy = True
                 prog = fluid.CompiledProgram(fluid.default_main_program(
                 )).with_data_parallel(
                     build_strategy=build_strategy, places=place)
 
-                if inplace:
-                    fetch_list = [z_d.name, x_d.name]
-                else:
-                    fetch_list = [z_d.name, s_d.name]
+                fetch_list = [z_d.name, s_d.name]
+
+                print('Inplace is {}'.format("ON" if inplace else "OFF"))
 
                 z, s = exe.run(prog,
                                feed={x_d.name: x,
