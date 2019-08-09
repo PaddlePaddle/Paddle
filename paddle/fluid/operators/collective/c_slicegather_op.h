@@ -62,7 +62,7 @@ class CSliceGatherOpKernel : public framework::OpKernel<T> {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &compute_ctx = static_cast<const platform::CUDADeviceContext &>(
-        pool->Get(ctx.GetPlace()));
+        *pool.Get(ctx.GetPlace()));
 
     for (int i = 0; i < nccl_nranks; ++i) {
       const T *send_buff = in_tensor->data<T>() + shard_numel * i;
