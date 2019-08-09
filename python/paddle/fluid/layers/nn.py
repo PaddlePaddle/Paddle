@@ -5635,7 +5635,13 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
+def warpctc(input,
+            label,
+            blank=0,
+            norm_by_times=False,
+            use_cudnn=False,
+            input_length=None,
+            label_length=None):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -5646,13 +5652,18 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
 
     Args:
        input (Variable): The unscaled probabilities of variable-length sequences,
-         which is a 2-D Tensor with LoD information.
-         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
+         information. When it is a 2-D LodTensor, it's shape is 
+         [Lp, num_classes + 1], where Lp is the sum of all input
          sequences' length and num_classes is the true number of classes.
-         (not including the blank label).
+         (not including the blank label). When it is a 3-D Tensor, it's shape 
+         is [max_logit_length, batch_size, num_classes + 1],
+         where max_logit_length is the length of the longest
+         input logit sequence.
        label (Variable): The ground truth of variable-length sequence,
-         which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
-         where Lg is th sum of all labels' length.
+         which is a 2-D Tensor with LoD information or a 2-D Tensor without
+         LoD information. When it is a 2-D LoDTensor or 2-D Tensor, 
+         it is of the shape [Lg, 1], where Lg is th sum of all labels' length.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
@@ -5661,6 +5672,10 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
        use_cudnn (bool, default false): Whether to use cudnn.
+       input_length(Variable): The length for each input sequence if it is 
+       of Tensor type, it should have shape `[batch_size]` and dtype int64.
+       label_length(Variable): The length for each label sequence if it is
+       of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -5669,22 +5684,45 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
     Examples:
 
         .. code-block:: python
-
+            # using LoDTensor
             import paddle.fluid as fluid
-            label = fluid.layers.data(name='label', shape=[11, 8],
+            import numpy as np
+            num_classes = 8
+            label = fluid.layers.data(name='label', shape=[12, 1],
                                       dtype='float32', lod_level=1)
-            predict = fluid.layers.data(name='predict', shape=[11, 1],
-                                        dtype='float32')
+            predict = fluid.layers.data(name='predict', 
+                                        shape=[11, num_classes],
+                                        dtype='float32',lod_level=1)
             cost = fluid.layers.warpctc(input=predict, label=label)
+
+            # using Tensor
+            input_length = fluid.layers.data(name='logits_length', shape=[11],
+                                         dtype='int64')
+            label_length = fluid.layers.data(name='labels_length', shape=[12],
+                                         dtype='int64')
+            label = fluid.layers.data(name='label', shape=[12, 1],
+                                      dtype='float32')
+            max_seq_length = 4 # length of the longest logit sequence
+            batch_size = 4 # number of logit sequences
+            predict = fluid.layers.data(name='predict', 
+                                        shape=[max_seq_length, batch_size, num_classes],
+                                        dtype='float32')
+            cost = fluid.layers.warpctc(input=predict,label=label,
+                                        input_length=input_length,
+                                        label_length=label_length)
 
     """
     helper = LayerHelper('warpctc', **locals())
+    this_inputs = {'Logits': [input], "Label": [label]}
+    if input_length and label_length:
+        this_inputs['LogitsLength'] = [input_length]
+        this_inputs['LabelLength'] = [label_length]
+
     loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='warpctc',
-        inputs={'Logits': [input],
-                'Label': [label]},
+        inputs=this_inputs,
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
         attrs={
