@@ -53,26 +53,6 @@ thread is managing one GPU device.
   }
 };
 
-class CSliceGatherOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    auto in_out_g = framework::GradVarName("Out");
-    auto out_x_g = framework::GradVarName("X");
-    int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE(ctx->HasInput(in_out_g),
-                   "Input(GRAD@Out) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(out_x_g),
-                   "output(GRAD@X) should not be null.");
-    auto in_dim = ctx->GetInputDim(in_out_g);
-    in_dim[0] = in_dim[0] * nranks;
-    in_dim[1] = in_dim[1] / nranks;
-    ctx->SetOutputDim(out_x_g, in_dim);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -81,7 +61,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_slicegather, ops::CSliceGatherOp, ops::CSliceGatherOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<false>);
-REGISTER_OPERATOR(c_slicegather_grad, ops::CSliceGatherOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     c_slicegather, ops::CSliceGatherOpKernel<plat::CPUDeviceContext, float>,

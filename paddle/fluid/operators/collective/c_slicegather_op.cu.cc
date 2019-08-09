@@ -23,5 +23,3 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CSliceGatherOpKernel<plat::CUDADeviceContext, int>,
     ops::CSliceGatherOpKernel<plat::CUDADeviceContext, int64_t>,
     ops::CSliceGatherOpKernel<plat::CUDADeviceContext, plat::float16>);
-
-REGISTER_OP_CUDA_KERNEL(c_slicegather_grad, ops::CSliceGatherGradKernel<float>);
