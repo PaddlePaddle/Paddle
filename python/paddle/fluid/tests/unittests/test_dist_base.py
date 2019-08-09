@@ -31,6 +31,9 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
+from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
 
@@ -95,6 +98,70 @@ class TestDistRunnerBase(object):
         my_print(type(self).__name__, "run pserver startup program done.")
         exe.run(pserver_prog)
         my_print(type(self).__name__, "run pserver main program done.")
+
+    def run_gpu_fleet_api_trainer(self, args):
+        assert args.update_method == "nccl2"
+
+        self.lr = args.lr
+
+        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy.num_threads = 1
+
+        dist_strategy = DistributedStrategy()
+        dist_strategy.exec_strategy = exec_strategy
+        dist_strategy.fuse_memory_size = 1  #MB
+        dist_strategy.fuse_laryer_size = 1
+
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+        my_print("fleet.node_num:",
+                 fleet.node_num(), "fleet.trainer_num:", fleet.trainer_num())
+
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+                self.get_model(batch_size=args.batch_size, dist_stategy=dist_strategy)
+
+        trainer_prog = fleet.main_program
+
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        my_print(type(self).__name__, "run worker startup program done.")
+
+        feed_var_list = [
+            var for var in trainer_prog.global_block().vars.values()
+            if var.is_data
+        ]
+
+        feeder = fluid.DataFeeder(feed_var_list, place)
+        reader_generator = train_reader()
+
+        def get_data():
+            origin_batch = next(reader_generator)
+            if args.update_method != "local" and args.use_reader_alloc:
+                new_batch = []
+                for offset, item in enumerate(origin_batch):
+                    if offset % 2 == args.trainer_id:
+                        new_batch.append(item)
+                return new_batch
+            else:
+                return origin_batch
+
+        my_print(type(self).__name__, "begin to train on trainer")
+        out_losses = []
+        for i in six.moves.xrange(RUN_STEP):
+            loss, = exe.run(binary,
+                            fetch_list=[avg_cost.name],
+                            feed=feeder.feed(get_data()))
+            out_losses.append(loss[0])
+            my_print(type(self).__name__, "run step %d finished" % i)
+        my_print(type(self).__name__, "trainer run finished")
+
+        if six.PY2:
+            print(pickle.dumps(out_losses))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
 
     def run_trainer(self, args):
         self.lr = args.lr
@@ -323,6 +390,7 @@ def runtime_main(test_class):
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
+    parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
@@ -350,6 +418,8 @@ def runtime_main(test_class):
     model = test_class()
     if args.role == "pserver" and args.update_method == "pserver":
         model.run_pserver(args)
+    elif args.gpu_fleet_api:
+        model.run_gpu_fleet_api_trainer(args)
     else:
         model.run_trainer(args)
 
@@ -404,6 +474,7 @@ class TestDistBase(unittest.TestCase):
         self._dygraph = False
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
+        self._gpu_fleet_api = False
         self._use_hallreduce = False
         self._setup_config()
         self._after_setup_config()
@@ -615,7 +686,9 @@ class TestDistBase(unittest.TestCase):
             env.update({
                 "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                "PADDLE_TRAINER_ID": "{}".format(trainer_id)
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1",
+                "PADDLE_CURRENT_ENDPOINT": "127.0.0.1"
             })
         else:
             env.update({'CPU_NUM': '1'})
@@ -634,6 +707,9 @@ class TestDistBase(unittest.TestCase):
 
         if self._enable_backward_deps:
             tr_cmd += " --enable_backward_deps"
+
+        if self._gpu_fleet_api:
+            tr_cmd += " --gpu_fleet_api"
 
         return tr_cmd, env
 

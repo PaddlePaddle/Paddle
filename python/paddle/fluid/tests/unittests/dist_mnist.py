@@ -73,7 +73,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2, use_dgc=False):
+    def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -104,7 +104,13 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
-        opt.minimize(avg_cost)
+
+        if dist_strategy:
+            opt = fleet.distributed_optimizer(optimizer, strategy=dist_strategy)
+            _, param_grads = dist_optimizer.minimize(avg_cost)
+        else:
+            opt.minimize(avg_cost)
+
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 
 
