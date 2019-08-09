@@ -35,7 +35,14 @@ class LeakyReluOpConverter : public OpConverter {
     PADDLE_ENFORCE(output_num == 1);
     // Get attrs
     float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
+    nvinfer1::ILayer* output_layer = nullptr;
 
+#if IS_TRT_VERSION_GE(5100)
+    nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Activation, *input, nvinfer1::ActivationType::kLEAKY_RELU);
+    layer->setAlpha(alpha);
+    output_layer = layer;
+#else
     platform::CPUPlace place;
     std::unique_ptr<framework::LoDTensor> alpha_tensor(
         new framework::LoDTensor());
@@ -65,7 +72,7 @@ class LeakyReluOpConverter : public OpConverter {
                              nvinfer1::ScaleMode::kUNIFORM, shift.get(),
                              sub_scale.get(), power.get());
     PADDLE_ENFORCE(nullptr != scale_relu_layer);
-    auto* output_layer =
+    output_layer =
         TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *(scale_layer->getOutput(0)),
                              *(scale_relu_layer->getOutput(0)),
                              nvinfer1::ElementWiseOperation::kSUM);
@@ -75,7 +82,7 @@ class LeakyReluOpConverter : public OpConverter {
     PADDLE_ENFORCE(engine_->weight_map.find(alpha_name) ==
                    engine_->weight_map.end());
     engine_->weight_map[alpha_name] = std::move(alpha_tensor);
-
+#endif
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(output_layer, "leaky_relu", {output_name},
                              test_mode);

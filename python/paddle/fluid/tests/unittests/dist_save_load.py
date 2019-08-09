@@ -124,7 +124,6 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
-        strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
 

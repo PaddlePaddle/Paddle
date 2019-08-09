@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -108,18 +109,13 @@ struct BuildStrategy {
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
-  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
-  // to open them by default, we need to solve the fetch variable issue
-  // TODO(liuwei1031): memory_optimize depends on kStaleProgramOpDescs,
-  // it is not appropriate, because kStaleProgramOpDescs will be removed in the
-  // near future.
-  bool memory_optimize_{false};
+  // By default, memory_optimize would be opened if gc is disabled, and
+  // be closed if gc is enabled.
+  // Users can forcely enable/disable memory_optimize by setting True/False.
+  boost::optional<bool> memory_optimize_{boost::none};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
-
-  // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
-  bool use_legacy_memory_optimize_strategy_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
