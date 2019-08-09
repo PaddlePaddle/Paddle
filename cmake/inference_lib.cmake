@@ -211,7 +211,7 @@ set(module "inference/api")
 
 if (TENSORRT_FOUND)
     copy(tensorrt_lib DEPS ${inference_deps} 
-        SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/libnvinfer*
+        SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/*nvinfer*
         DSTS ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/include ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/lib)
 endif ()
 
