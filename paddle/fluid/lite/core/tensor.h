@@ -21,6 +21,7 @@
  * looks the same.
  */
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
@@ -90,6 +91,18 @@ class DDimBase {
     return os;
   }
 
+  friend bool operator==(const DDimBase &a, const DDimBase &b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  friend bool operator!=(const DDimBase &a, const DDimBase &b) {
+    return !(a == b);
+  }
+
  private:
   DDimT *self() { return static_cast<DDimT *>(this); }
   const DDimT *const_self() const { return static_cast<const DDimT *>(this); }
@@ -153,6 +166,7 @@ class TensorBase {
   const void *raw_data() const { return const_self()->data(); }
 
   size_t data_size() const { return const_self()->dims().production(); }
+  size_t memory_size() const { return const_self()->memory_size(); }
 
   void ShareDataWith(const TensorBase &other) { self()->ShareDataWith(other); }
   void CopyDataFrom(const TensorBase &other) { self()->CopyDataFrom(other); }
@@ -173,6 +187,13 @@ class TensorBase {
     return static_cast<const TensorT *>(this);
   }
 };
+
+template <typename TensorT>
+bool TensorCompareWith(const TensorT &a, const TensorT &b) {
+  if (a.dims() != b.dims()) return false;
+  if (memcmp(a.raw_data(), b.raw_data(), a.data_size()) != 0) return false;
+  return true;
+}
 
 }  // namespace lite
 }  // namespace paddle

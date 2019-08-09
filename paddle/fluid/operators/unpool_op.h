@@ -61,10 +61,10 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
 
     auto& device_ctx = context.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> zero;
-
-    in_x_grad->mutable_data<T>(context.GetPlace());
-    zero(device_ctx, in_x_grad, static_cast<T>(0));
-
+    if (in_x_grad) {
+      in_x_grad->mutable_data<T>(context.GetPlace());
+      zero(device_ctx, in_x_grad, static_cast<T>(0));
+    }
     math::Unpool2dMaxGradFunctor<DeviceContext, T> unpool2d_max_backward;
     unpool2d_max_backward(device_ctx, *in_x, *in_y, *out, *out_grad, in_x_grad);
   }

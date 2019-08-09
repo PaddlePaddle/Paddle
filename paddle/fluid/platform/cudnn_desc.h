@@ -183,17 +183,15 @@ class ConvolutionDescriptor {
     CUDNN_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, compute_type));
+    CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+        desc, CUDNN_DEFAULT_MATH));
 #if CUDNN_VERSION_MIN(7, 0, 1)
     CUDNN_ENFORCE(
         platform::dynload::cudnnSetConvolutionGroupCount(desc, groups));
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-        desc, CUDNN_DEFAULT_MATH));
     if (dtype == CUDNN_DATA_HALF) {
       CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           desc, CUDNN_TENSOR_OP_MATH));
     }
-#endif
 #endif
   }
 

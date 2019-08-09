@@ -36,7 +36,7 @@ class FillConstantOp : public OpLite {
   bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
     auto Out_name = opdesc.Output("Out").front();
 
-    param_.Out = GetMutableVar<Tensor>(scope, Out_name);
+    param_.Out = GetMutableVar<lite::Tensor>(scope, Out_name);
     param_.dtype = opdesc.GetAttr<int>("dtype");
     param_.shape = opdesc.GetAttr<std::vector<int64_t>>("shape");
     param_.value = opdesc.GetAttr<float>("value");

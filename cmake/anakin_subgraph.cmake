@@ -1,3 +1,7 @@
+if(NOT WITH_GPU)
+    return()
+endif()
+
 set(ANAKIN_ROOT "/usr" CACHE PATH "ANAKIN ROOT")
 find_path(ANAKIN_INCLUDE_DIR anakin_config.h
     PATHS ${ANAKIN_ROOT} ${ANAKIN_ROOT}/include
@@ -12,7 +16,9 @@ find_library(ANAKIN_LIBRARY NAMES libanakin_saber_common.so libanakin.so
     DOC "Path to ANAKIN library.")
 
 if(ANAKIN_INCLUDE_DIR AND ANAKIN_LIBRARY)
+  if(WITH_DSO)
     set(ANAKIN_FOUND ON)
+  endif(WITH_DSO)
 else()
     set(ANAKIN_FOUND OFF)
 endif()
@@ -24,9 +30,4 @@ if(ANAKIN_FOUND)
     include_directories(${ANAKIN_ROOT}/saber)
     link_directories(${ANAKIN_ROOT})
     add_definitions(-DPADDLE_WITH_ANAKIN)
-endif()
-
-if(ANAKIN_FOUND AND WITH_GPU AND WITH_DSO)
-    message(STATUS "Compile with anakin subgraph.")
-    set(ANAKIN_SUBGRAPH ON)
 endif()

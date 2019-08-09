@@ -23,10 +23,12 @@ using allocation::Allocation;
 using allocation::Allocator;
 using allocation::AllocationPtr;
 
-extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
-                                               size_t size);
+extern std::shared_ptr<Allocation> AllocShared(
+    const platform::Place& place, size_t size,
+    Allocator::Attr attr = Allocator::kDefault);
 
-extern AllocationPtr Alloc(const platform::Place& place, size_t size);
+extern AllocationPtr Alloc(const platform::Place& place, size_t size,
+                           Allocator::Attr attr = Allocator::kDefault);
 
 }  // namespace memory
 }  // namespace paddle

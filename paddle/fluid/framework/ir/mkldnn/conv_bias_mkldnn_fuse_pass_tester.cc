@@ -81,7 +81,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
+  tensor->mutable_data(place, proto::VarType::FP32,
+                       ::paddle::memory::Allocator::kDefault, 1);
 }
 
 void MainTest(bool convWithExistingBias) {
@@ -96,7 +97,7 @@ void MainTest(bool convWithExistingBias) {
     InitTensorHolder(&scope, place, "conv_bias");
     InitTensorHolder(&scope, place, "eltwise_bias");
   }
-  graph->SetNotOwned(kParamScopeAttr, &scope);
+  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
 
   auto pass = PassRegistry::Instance().Get("conv_bias_mkldnn_fuse_pass");
 
@@ -140,12 +141,7 @@ TEST(ConvBiasFusePass, conv_with_existing_bias) { MainTest(true); }
 
 TEST(ConvBiasFusePass, conv3d) {
   Conv3DBiasFusePass pass;
-  ASSERT_EQ(pass.type(), std::string("conv3d"));
-}
-
-TEST(ConvBiasFusePass, conv2d_transpose) {
-  Conv2DTransposeBiasFusePass pass;
-  ASSERT_EQ(pass.type(), std::string("conv2d_transpose"));
+  ASSERT_TRUE(pass.is_conv3d());
 }
 
 }  // namespace ir

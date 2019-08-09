@@ -135,8 +135,7 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     }
 
     auto lod = in->lod();
-    // to avoid out_grad missing lod, compute lod again
-    auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
+    auto out_lod = out_grad->lod();
 
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());

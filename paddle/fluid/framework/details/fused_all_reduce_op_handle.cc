@@ -44,10 +44,17 @@ typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
-    const platform::NCCLCommunicator *ctxs)
-    : NCCLOpHandleBase(node, places, ctxs),
+    const platform::NCCLContextMap *ctxs)
+    : OpHandleBase(node),
       local_scopes_(local_scopes),
-      num_of_all_reduce_(num_of_all_reduce) {
+      places_(places),
+      num_of_all_reduce_(num_of_all_reduce),
+      nccl_ctxs_(ctxs) {
+  if (nccl_ctxs_) {
+    for (auto &p : places_) {
+      this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
+    }
+  }
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 #else
@@ -160,13 +167,16 @@ void FusedAllReduceOpHandle::RunImpl() {
       auto &p = places_[i];
       void *buffer = const_cast<void *>(lod_tensor_data.at(i));
 
+      int dev_id = boost::get<platform::CUDAPlace>(p).device;
+      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+      auto stream = nccl_ctx.stream();
+      auto comm = nccl_ctx.comm_;
       all_reduce_calls.emplace_back([=] {
-        NCCLAllReduce(p, buffer, buffer, numel,
-                      static_cast<ncclDataType_t>(nccl_dtype), ncclSum);
+        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+            buffer, buffer, numel, static_cast<ncclDataType_t>(nccl_dtype),
+            ncclSum, comm, stream));
       });
     }
-
-    VLOG(10) << "fusedallreduce size:" << numel * SizeOfType(dtype);
 
     this->RunAndRecordEvent([&] {
       if (all_reduce_calls.size() == 1UL) {

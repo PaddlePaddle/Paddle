@@ -24,24 +24,15 @@ import six
 import argparse
 import pickle
 import numpy as np
-import time
+
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
-RUN_STEP = 5
+RUN_STEP = 10
 DEFAULT_BATCH_SIZE = 2
-
-
-def my_print(class_name, log_str):
-    localtime = time.asctime(time.localtime(time.time()))
-    print_str = localtime + "\t" + class_name + "\t" + log_str
-    if six.PY2:
-        sys.stderr.write(pickle.dumps(print_str))
-    else:
-        sys.stderr.buffer.write(pickle.dumps(print_str))
 
 
 class TestDistRunnerBase(object):
@@ -60,14 +51,11 @@ class TestDistRunnerBase(object):
                        trainers,
                        sync_mode,
                        dc_asgd=False,
-                       current_endpoint=None,
-                       nccl_comm_num=1):
+                       current_endpoint=None):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
-        if nccl_comm_num > 1:
-            config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
@@ -92,9 +80,7 @@ class TestDistRunnerBase(object):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
-        my_print(type(self).__name__, "run pserver startup program done.")
         exe.run(pserver_prog)
-        my_print(type(self).__name__, "run pserver main program done.")
 
     def run_trainer(self, args):
         self.lr = args.lr
@@ -109,29 +95,17 @@ class TestDistRunnerBase(object):
                 self.get_model(batch_size=args.batch_size)
 
         if args.mem_opt:
-            my_print(type(self).__name__, "begin to run memory optimize")
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-            my_print(type(self).__name__, "trainer run memory optimize done.")
         if args.update_method == "pserver":
-            my_print(
-                type(self).__name__,
-                "begin to run transpile on trainer with pserver mode")
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
                                     args.sync_mode, args.dc_asgd)
             trainer_prog = t.get_trainer_program()
-            my_print(
-                type(self).__name__,
-                "get trainer program done with pserver mode.")
         elif args.update_method == "nccl2" or args.update_method == "nccl2_reduce_layer":
             # transpile for nccl2
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
-            config.nccl_comm_num = args.nccl_comm_num
-            my_print(
-                type(self).__name__,
-                "begin to run transpile on trainer with nccl2 mode")
             nccl2_t = fluid.DistributeTranspiler(config=config)
             nccl2_t.transpile(
                 args.trainer_id,
@@ -139,9 +113,6 @@ class TestDistRunnerBase(object):
                 startup_program=fluid.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint)
-            my_print(
-                type(self).__name__,
-                "get trainer program done. with nccl2 mode")
             trainer_prog = fluid.default_main_program()
         else:
             trainer_prog = fluid.default_main_program()
@@ -154,7 +125,6 @@ class TestDistRunnerBase(object):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        my_print(type(self).__name__, "run worker startup program done.")
 
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_threads = 1
@@ -164,9 +134,6 @@ class TestDistRunnerBase(object):
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
-
-        if args.enable_backward_deps:
-            build_stra.enable_backward_optimizer_op_deps = True
 
         if args.use_reduce:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
@@ -187,21 +154,10 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
-        my_print(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
             build_strategy=build_stra,
             exec_strategy=exec_strategy)
-        my_print(type(self).__name__, "program compiled with data parallel")
-
-        if args.use_cuda and args.update_method == "nccl2":
-            # it just for test share_vars_from feature.
-            test_exe = fluid.ParallelExecutor(
-                use_cuda=True,
-                loss_name=avg_cost.name,
-                build_strategy=build_stra,
-                main_program=test_program,
-                share_vars_from=binary._executor)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -222,7 +178,6 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
-        my_print(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for _ in six.moves.xrange(RUN_STEP):
             loss, = exe.run(binary,
@@ -245,7 +200,6 @@ class TestParallelDyGraphRunnerBase(object):
             "train_one_loop should be implemented by the child classes.")
 
     def run_trainer(self, args):
-
         seed = 90
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(device_id)
@@ -263,48 +217,39 @@ class TestParallelDyGraphRunnerBase(object):
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            np.random.seed(seed)
-            import random
-            random.seed = seed
             model, train_reader, opt = self.get_model()
-            nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
+            nranks = len(args.endpoints.split(",")) if args.endpoints else 1
             if args.update_method == "nccl2":
+                sys.stderr.write("")
+                model = dygraph.parallel.DataParallel(model)
                 strategy = dygraph.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
-                my_print(
-                    type(self).__name__,
-                    "begin to prepare context in dygraph with nccl2")
                 dygraph.parallel.prepare_context(strategy)
-                model = dygraph.parallel.DataParallel(model, strategy)
-                my_print(type(self).__name__, "model built in dygraph")
             out_losses = []
-            my_print(type(self).__name__, "begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
                 data = _get_data(data)
                 if step_id == RUN_STEP:
                     break
                 loss = self.run_one_loop(model, opt, data)
-                if step_id % 10 == 0:
-                    my_print(
-                        type(self).__name__,
-                        "loss at step %d: %f" % (step_id, loss))
+
+                # FIXME(Yancey1989): scale the loss inplace 
+                loss.stop_gradient = True
+                loss_scale = to_variable(np.array([nranks]).astype("float32"))
+                loss = loss / loss_scale
+
                 out_losses.append(loss.numpy())
-
-                # FIXME(Yancey1989): scale the loss inplace
-                if args.update_method == "nccl2":
-                    loss = model.scale_loss(loss)
-
                 loss.backward()
-                if args.update_method == "nccl2":
-                    model.apply_collective_grads()
 
                 opt.minimize(loss)
                 model.clear_gradients()
-            my_print(type(self).__name__, pickle.dumps(out_losses))
+            if six.PY2:
+                print(pickle.dumps(out_losses))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 def runtime_main(test_class):
@@ -319,9 +264,6 @@ def runtime_main(test_class):
         choices=["pserver", "nccl2", "local", "nccl2_reduce_layer"])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
-    parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
-    parser.add_argument(
-        '--enable_backward_deps', type=bool, required=False, default=1)
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
@@ -399,18 +341,14 @@ class TestDistBase(unittest.TestCase):
         self._lr = 0.001
         self._use_dgc = False
         self._dygraph = False
-        self._nccl_comm_num = 1
         self._setup_config()
         self._after_setup_config()
-        self._enable_backward_deps = False
 
     def _find_free_port(self):
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
                 s.bind(('', 0))
-                my_print(
-                    type(self).__name__, "socket name: %s" % s.getsockname()[1])
                 return s.getsockname()[1]
 
         while True:
@@ -441,13 +379,11 @@ class TestDistBase(unittest.TestCase):
         ps0_pipe = open("/tmp/ps0_err.log", "wb")
         ps1_pipe = open("/tmp/ps1_err.log", "wb")
 
-        my_print(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps0_pipe,
             env=required_envs)
-        my_print(type(self).__name__, "going to start pserver process 1")
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -553,13 +489,11 @@ class TestDistBase(unittest.TestCase):
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
-        my_print(type(self).__name__, "going to start trainer process 0")
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr0_pipe,
             env=env0)
-        my_print(type(self).__name__, "going to start trainer process 1")
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -591,20 +525,16 @@ class TestDistBase(unittest.TestCase):
         ps1.terminate()
 
         # print server log
-        '''
-        with open("/tmp/ps0_err.log", "rb") as fn:
+        with open("/tmp/ps0_err.log", "r") as fn:
             sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "rb") as fn:
+        with open("/tmp/ps1_err.log", "r") as fn:
             sys.stderr.write("ps1 stderr: %s\n" % fn.read())
-        '''
 
         # print log
-        '''
-        with open("/tmp/tr0_err.log", "rb") as fn:
+        with open("/tmp/tr0_err.log", "r") as fn:
             sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        with open("/tmp/tr1_err.log", "rb") as fn:
+        with open("/tmp/tr1_err.log", "r") as fn:
             sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
-        '''
 
         return pickle.loads(tr0_out), pickle.loads(tr1_out)
 
@@ -656,18 +586,9 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr0_cmd += " --use_dgc"
             tr1_cmd += " --use_dgc"
-
-        if self._nccl_comm_num > 1:
-            tr0_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
-            tr1_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
-
         if self._mp_mode:
             env0 = {"FLAGS_selected_gpus": "0"}
             env1 = {"FLAGS_selected_gpus": "1"}
-
-        if self._enable_backward_deps:
-            tr0_cmd += " --enable_backward_deps 1"
-            tr1_cmd += " --enable_backward_deps 1"
 
         env0.update(envs)
         env1.update(envs)
@@ -677,13 +598,11 @@ class TestDistBase(unittest.TestCase):
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
-        my_print(type(self).__name__, "going to start process 0 with nccl2")
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr0_pipe,
             env=env0)
-        my_print(type(self).__name__, "going to start process 1 with nccl2")
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -714,7 +633,7 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "FLAGS_cudnn_deterministic": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1"
@@ -744,6 +663,9 @@ class TestDistBase(unittest.TestCase):
             local_loss = local_losses[step_id]
             tr0_loss = tr0_losses[step_id]
             tr1_loss = tr1_losses[step_id]
-            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
+            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss]))
+            if not self._dygraph:
+                # Parallel DyGraph already scaled the loss in training
+                dist_loss = dist_loss / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)

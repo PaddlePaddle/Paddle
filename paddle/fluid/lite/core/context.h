@@ -23,6 +23,11 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 #endif
+#ifdef LITE_WITH_OPENCL
+#include "paddle/fluid/lite/opencl/cl_context.h"
+#include "paddle/fluid/lite/opencl/cl_engine.h"
+#include "paddle/fluid/lite/opencl/cl_helper.h"
+#endif
 #include <map>
 #include <memory>
 #include <set>
@@ -34,6 +39,10 @@
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/utils/all.h"
 
+#ifdef LITE_WITH_OPENCL
+DECLARE_string(cl_path);
+#endif
+
 namespace paddle {
 namespace lite {
 
@@ -44,6 +53,7 @@ using HostContext = Context<TargetType::kHost>;
 using X86Context = Context<TargetType::kX86>;
 using CUDAContext = Context<TargetType::kCUDA>;
 using ARMContext = Context<TargetType::kARM>;
+using OpenClContext = Context<TargetType::kOpenCL>;
 
 template <>
 class Context<TargetType::kHost> {
@@ -51,7 +61,7 @@ class Context<TargetType::kHost> {
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {}
 
-  void CopyShared(const HostContext* ctx) {}
+  void CopySharedTo(const HostContext* ctx) {}
 
   std::string name() const { return "HostContext"; }
 };
@@ -61,47 +71,41 @@ class Context<TargetType::kHost> {
 template <>
 class Context<TargetType::kARM> {
  public:
-  Context();
-  Context(PowerMode mode, int threads);
+  Context() {}
   explicit Context(const ARMContext& ctx);
 
-  ARMContext& operator=(const ARMContext& ctx);
+  ARMContext& operator=(const ARMContext& ctx) {}
 
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() { DeviceInfo::Init(); }
 
-  void CopyShared(const ARMContext* ctx) {}
+  void CopySharedTo(const ARMContext* ctx) {}
 
-  void SetRunMode(PowerMode mode, int threads);
-  void SetCache(int l1size, int l2size, int l3size);
-  void SetArch(ARMArch arch);
-  void BindDev();
+  void SetRunMode(PowerMode mode, int threads) {
+    return DeviceInfo::Global().SetRunMode(mode, threads);
+  }
+  void SetCache(int l1size, int l2size, int l3size) {
+    return DeviceInfo::Global().SetCache(l1size, l2size, l3size);
+  }
+  void SetArch(ARMArch arch) { return DeviceInfo::Global().SetArch(arch); }
 
-  PowerMode mode() const;
-  int threads() const;
-  ARMArch arch() const;
+  PowerMode mode() const { return DeviceInfo::Global().mode(); }
+  int threads() const { return DeviceInfo::Global().threads(); }
+  ARMArch arch() const { return DeviceInfo::Global().arch(); }
+  int l1_cache_size() const { return DeviceInfo::Global().l1_cache_size(); }
+  int l2_cache_size() const { return DeviceInfo::Global().l2_cache_size(); }
+  int l3_cache_size() const { return DeviceInfo::Global().l3_cache_size(); }
 
   template <typename T>
   T* workspace_data() {
-    return workspace_.mutable_data<T>();
+    return DeviceInfo::Global().workspace_data<T>();
   }
 
-  int l1_cache_size() const;
-  int l2_cache_size() const;
-  int l3_cache_size() const;
-  bool ExtendWorkspace(DDimLite dims);
+  bool ExtendWorkspace(DDimLite dims) {
+    return DeviceInfo::Global().ExtendWorkspace(dims);
+  }
 
   std::string name() const { return "ARMContext"; }
-
- private:
-  // LITE_POWER_HIGH stands for using big cores,
-  // LITE_POWER_LOW stands for using small core,
-  // LITE_POWER_FULL stands for using all cores
-  ARMArch arch_;
-  PowerMode mode_;
-  std::vector<int> active_ids_;
-  TensorLite workspace_;
-  int64_t count_{0};
 };
 #endif
 
@@ -115,7 +119,7 @@ class Context<TargetType::kCUDA> {
     cublas_fp32_ = std::make_shared<lite::cuda::Blas<float>>();
   }
 
-  void CopyShared(const CUDAContext* ctx) {
+  void CopySharedTo(const CUDAContext* ctx) {
     CHECK(ctx);
     CHECK(cublas_fp32_) << "cublas_fp32 should be set first";
     ctx->cublas_fp32_ = cublas_fp32_;
@@ -181,7 +185,7 @@ class Context<TargetType::kX86> {
   // NOTE: InitOnce should only be used by ContextScheduler
   void InitOnce() {}
 
-  void CopyShared(const X86Context* ctx) {}
+  void CopySharedTo(const X86Context* ctx) {}
 
   const device_ctx_t* x86_device_context() { return x86_device_context_.get(); }
   void SetX86DeviceContext(std::unique_ptr<device_ctx_t>&& ctx) {
@@ -205,6 +209,43 @@ class Context<TargetType::kX86> {
   // legacy info.
   std::unique_ptr<device_ctx_t> x86_device_context_;
   std::unique_ptr<execution_ctx_t> x86_execution_context_;
+};
+#endif
+
+#ifdef LITE_WITH_OPENCL
+template <>
+class Context<TargetType::kOpenCL> {
+  mutable std::shared_ptr<CLContext> cl_context_;
+  mutable std::shared_ptr<CLHelper> cl_helper_;
+
+ public:
+  CLContext* cl_context() { return cl_context_.get(); }
+  CLHelper* cl_helper() { return cl_helper_.get(); }
+
+  void InitOnce() {
+    // Init cl engine.
+    CHECK(CLEngine::Global()->IsInitSuccess()) << "OpenCL engine init failed";
+    CLEngine::Global()->set_cl_path(FLAGS_cl_path);
+
+    cl_context_ = std::make_shared<CLContext>();
+    cl_helper_ = std::make_shared<CLHelper>();
+    cl_helper_->set_context(cl_context_.get());
+
+    PrepareKernels();
+  }
+
+  void CopySharedTo(const OpenClContext* ctx) {
+    ctx->cl_context_ = cl_context_;
+    ctx->cl_helper_ = cl_helper_;
+  }
+
+ private:
+  void PrepareKernels() {
+    cl_helper_->AddKernel("elementwise_add", "elementwise_add_kernel.cl");
+    cl_helper_->AddKernel("channel_add", "channel_add_kernel.cl");
+    cl_helper_->AddKernel("pool_max", "pool_kernel.cl");
+    cl_helper_->AddKernel("pool_avg", "pool_kernel.cl");
+  }
 };
 #endif
 
@@ -236,25 +277,31 @@ class ContextScheduler {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
     switch (target) {
       case TARGET(kHost):
-        kernel_contexts_[TargetType::kHost].As<HostContext>().CopyShared(
+        kernel_contexts_[TargetType::kHost].As<HostContext>().CopySharedTo(
             &ctx->As<HostContext>());
         break;
 #ifdef LITE_WITH_X86
       case TARGET(kX86):
-        kernel_contexts_[TargetType::kX86].As<X86Context>().CopyShared(
+        kernel_contexts_[TargetType::kX86].As<X86Context>().CopySharedTo(
             &ctx->As<X86Context>());
         break;
 #endif
 #ifdef LITE_WITH_CUDA
       case TARGET(kCUDA):
-        kernel_contexts_[TargetType::kCUDA].As<CUDAContext>().CopyShared(
+        kernel_contexts_[TargetType::kCUDA].As<CUDAContext>().CopySharedTo(
             &ctx->As<CUDAContext>());
         break;
 #endif
 #ifdef LITE_WITH_ARM
       case TARGET(kARM):
-        kernel_contexts_[TargetType::kARM].As<ARMContext>().CopyShared(
+        kernel_contexts_[TargetType::kARM].As<ARMContext>().CopySharedTo(
             &ctx->As<ARMContext>());
+        break;
+#endif
+#ifdef LITE_WITH_OPENCL
+      case TARGET(kOpenCL):
+        kernel_contexts_[TargetType::kOpenCL].As<OpenClContext>().CopySharedTo(
+            &ctx->As<OpenClContext>());
         break;
 #endif
       default:
@@ -279,6 +326,9 @@ class ContextScheduler {
 #endif
 #ifdef LITE_WITH_ARM
     InitContext<TargetType::kARM, ARMContext>();
+#endif
+#ifdef LITE_WITH_OPENCL
+    InitContext<TargetType::kOpenCL, OpenClContext>();
 #endif
   }
 

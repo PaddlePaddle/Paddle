@@ -209,12 +209,6 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("fuse_brelu",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
-  AddAttr<float>("fuse_brelu_threshold",
-                 "(float, default false 6.0) Only used in mkldnn kernel")
-      .SetDefault(6.0f);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
@@ -533,16 +527,9 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
     // ddO, dI, dW
     // Unlike grad op, double grad op does not use name@GRAD@GRAD
     // as key of ops' inputs and outputs.
-    auto ddx = OutputGrad(framework::GradVarName("Input"));
-    auto ddw = OutputGrad(framework::GradVarName("Filter"));
-    std::vector<std::string> empty_str = {};
-
-    op->SetOutput(
-        "DDOutput",
-        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
-    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
-
+    op->SetOutput("DDOutput", InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", InputGrad("Filter"));
+    op->SetOutput("DInput", InputGrad("Input"));
     op->SetAttrMap(Attrs());
 
     return std::unique_ptr<framework::OpDesc>(op);
@@ -554,13 +541,13 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
   auto w_dims = ctx->GetInputDim("Filter");
   auto do_dims = ctx->GetInputDim("DOutput");
 
-  if (ctx->HasOutput("DDOutput") && ctx->HasInput("DDInput")) {
+  if (ctx->HasOutput("DDOutput")) {
     ctx->SetOutputDim("DDOutput", do_dims);
   }
-  if (ctx->HasOutput("DFilter") && ctx->HasInput("DDInput")) {
+  if (ctx->HasOutput("DFilter")) {
     ctx->SetOutputDim("DFilter", w_dims);
   }
-  if (ctx->HasOutput("DInput") && ctx->HasInput("DDFilter")) {
+  if (ctx->HasOutput("DInput")) {
     ctx->SetOutputDim("DInput", x_dims);
   }
 }

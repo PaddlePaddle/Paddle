@@ -56,7 +56,12 @@ else()
 endif()
 
 if (WIN32)
-  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
+  IF(NOT EXISTS "${XXHASH_INSTALL_DIR}/lib/libxxhash.lib")
+    add_custom_command(TARGET extern_xxhash POST_BUILD
+            COMMAND cmake -E copy ${XXHASH_INSTALL_DIR}/lib/xxhash.lib ${XXHASH_INSTALL_DIR}/lib/libxxhash.lib
+            )
+  ENDIF()
+  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.lib")
 else()
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
 endif ()

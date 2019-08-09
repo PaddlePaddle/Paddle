@@ -54,6 +54,15 @@ TEST(scale_arm, compute) {
   lite::Tensor output;
   lite::Tensor output_ref;
 
+#if 1  // for ci speedup
+  for (auto n : {1, 3}) {
+    for (auto c : {1, 3}) {
+      for (auto h : {3, 4}) {
+        for (auto w : {4, 3}) {
+          for (auto bias_after_scale : {true, false}) {
+            for (auto s : {-1.0f, 0.13f}) {
+              for (auto b : {-15.f, 0.11234f}) {
+#else
   for (auto n : {1, 3, 4, 11}) {
     for (auto c : {1, 3, 11, 4}) {
       for (auto h : {3, 1, 11, 4}) {
@@ -61,6 +70,8 @@ TEST(scale_arm, compute) {
           for (auto bias_after_scale : {true, false}) {
             for (auto s : {-100.25f, -1.0f, 0.13f, 3840.975f}) {
               for (auto b : {-3075.495f, -15.f, 0.11234f, 128.15f}) {
+#endif
+
                 x.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
                 output.Resize(DDim(std::vector<int64_t>({n, c, h, w})));
                 output_ref.Resize(DDim(std::vector<int64_t>({n, c, h, w})));

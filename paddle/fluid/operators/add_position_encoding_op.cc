@@ -33,13 +33,6 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   platform::CPUPlace());
-  }
 };
 
 class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
@@ -51,14 +44,6 @@ class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
       auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
       ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
     }
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        platform::CPUPlace());
   }
 };
 

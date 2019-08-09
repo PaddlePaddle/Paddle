@@ -53,7 +53,12 @@ ExternalProject_Add(
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 IF(WIN32)
-    set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/snappy.lib")
+    IF(NOT EXISTS "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
+        add_custom_command(TARGET extern_snappy POST_BUILD
+                COMMAND cmake -E copy ${SNAPPY_INSTALL_DIR}/lib/snappy.lib ${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib
+                )
+    ENDIF()
+    set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
 else(WIN32)
     set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.a")
 endif (WIN32)

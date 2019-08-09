@@ -260,7 +260,7 @@ class MkldnnQuantizerTest : public testing::Test {
     predictor.reset(new AnalysisPredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
-    auto qconfig = new MkldnnQuantizerConfig();
+    auto qconfig = std::make_shared<MkldnnQuantizerConfig>();
 
     mkldnn_quantizer.reset(
         new AnalysisPredictor::MkldnnQuantizer(*predictor_p, qconfig));
@@ -384,7 +384,7 @@ TEST_F(MkldnnQuantizerTest, histogram_empty) {
   // zero tensor
   framework::LoDTensor var_tensor;
   var_tensor.Resize({0});
-  var_tensor.mutable_data<double>(platform::CPUPlace());
+  ASSERT_TRUE(var_tensor.mutable_data<double>(platform::CPUPlace()));
 
   ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
 }

@@ -46,7 +46,7 @@ void FcFuser::BuildPattern() {
 void FcFuser::InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto fc_op = LiteOpRegistry::Global().Create("fc");
-  auto mul = matched.at("mul")->stmt()->op;
+  auto mul = matched.at("mul")->stmt()->op();
   auto* scope = mul->scope();
   auto& valid_places = mul->valid_places();
   fc_op->Attach(op_desc, scope);
@@ -60,7 +60,7 @@ void FcFuser::InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) {
 }
 
 cpp::OpDesc FcFuser::GenOpDesc(const key2nodes_t& matched) {
-  cpp::OpDesc op_desc;
+  cpp::OpDesc op_desc = *matched.at("mul")->stmt()->op_info();
   op_desc.SetType("fc");
   op_desc.SetInput("Input", {matched.at("x")->arg()->name});
   op_desc.SetInput("W", {matched.at("W")->arg()->name});

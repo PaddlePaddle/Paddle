@@ -17,72 +17,64 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/lite/api/paddle_api.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/optimizer.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 
+#ifdef LITE_WITH_X86
+#include "paddle/fluid/framework/program_desc.h"
+#endif
+
 namespace paddle {
 namespace lite {
 
-struct Config {};
-
-class ExecutorLite {
+/*
+ * Predictor for inference, input a model, it will optimize and execute it.
+ */
+class Predictor {
  public:
-  ExecutorLite() { scope_ = std::make_shared<Scope>(); }
-  explicit ExecutorLite(const std::shared_ptr<lite::Scope>& root_scope) {
-    scope_ = root_scope;
-  }
+  // Create an empty predictor.
+  Predictor() { scope_ = std::make_shared<Scope>(); }
+  // Create a predictor with the weight variable scope set.
+  explicit Predictor(const std::shared_ptr<lite::Scope>& root_scope)
+      : scope_(root_scope) {}
 
+  // Build from a model, with places set for hardware config.
   void Build(const std::string& model_path, const Place& prefer_place,
-             const std::vector<Place>& valid_places) {
-    LoadModel(model_path, scope_.get(), &program_desc_);
-    Build(program_desc_, prefer_place, valid_places);
-  }
+             const std::vector<Place>& valid_places,
+             const std::vector<std::string>& passes = {});
 
   void Build(const framework::proto::ProgramDesc& desc,
-             const Place& prefer_place,
-             const std::vector<Place>& valid_places) {
-    program_desc_ = desc;
-    Program program(desc, scope_, valid_places);
+             const Place& prefer_place, const std::vector<Place>& valid_places,
+             const std::vector<std::string>& passes = {});
 
-    optimizer_.KernelPickPreferPlace(prefer_place);
-    core::KernelPickFactor factor;
-    factor.ConsiderTarget();
-    optimizer_.Run(std::move(program), valid_places, factor);
-    program_ = optimizer_.GenRuntimeProgram();
-  }
-
-// This method is disabled in mobile, or unnecessary dependencies required.
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-  void SaveModel(const std::string& dir);
-#endif
-
-  // Get offset-th col of feed.
-  lite::Tensor* GetInput(size_t offset) {
-    auto* _feed_list = program_->exec_scope()->FindVar("feed");
-    CHECK(_feed_list) << "no feed variable in exec_scope";
-    auto* feed_list = _feed_list->GetMutable<std::vector<lite::Tensor>>();
-    if (offset >= feed_list->size()) {
-      feed_list->resize(offset + 1);
-    }
-    return &feed_list->at(offset);
-  }
-
-  const lite::Tensor* GetOutput(size_t offset) {
-    auto* _fetch_list = program_->exec_scope()->FindVar("fetch");
-    CHECK(_fetch_list) << "no fatch variable in exec_scope";
-    auto& fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
-    CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
-    return &fetch_list.at(offset);
-  }
-
+  // Run the predictor for a single batch of data.
   void Run() { program_->Run(); }
 
-  const framework::proto::ProgramDesc& program_desc() const {
-    return program_desc_;
+  // Get offset-th col of feed inputs.
+  lite::Tensor* GetInput(size_t offset);
+
+  // Get offset-th col of fetch results.
+  const lite::Tensor* GetOutput(size_t offset) const;
+
+  const framework::proto::ProgramDesc& program_desc() const;
+  const lite::Tensor* GetTensor(const std::string& name) const;
+  const RuntimeProgram& runtime_program() const;
+
+  // This method is disabled in mobile, for unnecessary dependencies required.
+  void SaveModel(const std::string& dir);
+
+#ifdef LITE_WITH_X86
+  void Run(const std::vector<framework::Tensor>& tensors) {
+    FeedVars(tensors);
+    program_->Run();
   }
+
+  void FeedVars(const std::vector<framework::Tensor>& tensors);
+#endif
 
  private:
   Optimizer optimizer_;
@@ -91,6 +83,7 @@ class ExecutorLite {
   std::unique_ptr<RuntimeProgram> program_;
 };
 
+#ifdef LITE_WITH_X86
 /*
  * An executor for training.
  *
@@ -114,21 +107,31 @@ class CXXTrainer {
       : scope_(root_scope),
         preferred_place_(preferred_place),
         valid_places_(valid_places),
-        main_program_executor_(ExecutorLite(scope_)) {}
+        main_program_executor_(Predictor(scope_)) {}
 
   // Build the RuntimeProgram cache for the main program. The cache will run
   // multiple times for the epoches.
   // NOTE Just support to execute the 0-th block currently.
-  ExecutorLite& BuildMainProgramExecutor(
-      const framework::proto::ProgramDesc& desc, int block_id = 0) {
+  Predictor& BuildMainProgramExecutor(const framework::proto::ProgramDesc& desc,
+                                      int block_id = 0) {
     main_program_executor_.Build(desc, preferred_place_, valid_places_);
     return main_program_executor_;
   }
 
+#ifdef LITE_WITH_X86
+  Predictor& BuildMainProgramExecutor(framework::ProgramDesc& desc) {  // NOLINT
+    return BuildMainProgramExecutor(*desc.Proto());
+  }
+
+  void RunStartupProgram(framework::ProgramDesc& desc) {  // NOLINT
+    RunStartupProgram(*desc.Proto());
+  }
+#endif
+
   // Run the startup program. It just executes once, no cache needed.
   void RunStartupProgram(const framework::proto::ProgramDesc& desc,
                          int block_id = 0) {
-    ExecutorLite exe(scope_);
+    Predictor exe(scope_);
     exe.Build(desc, preferred_place_, valid_places_);
     exe.Run();
   }
@@ -140,8 +143,9 @@ class CXXTrainer {
   std::vector<Place> valid_places_;
 
   // The training program.
-  ExecutorLite main_program_executor_;
+  Predictor main_program_executor_;
 };
+#endif
 
 }  // namespace lite
 }  // namespace paddle

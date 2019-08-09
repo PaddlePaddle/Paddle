@@ -140,7 +140,8 @@ class RuntimeProgram {
 
   void Run() {
     for (auto& inst : instructions_) {
-      LOG(INFO) << ">> Running kernel: " << inst;
+      VLOG(4) << ">> Running kernel: " << inst.op()->op_info()->Repr()
+              << " on Target " << TargetToStr(inst.kernel()->target());
       inst.Run();
     }
   }
@@ -153,6 +154,8 @@ class RuntimeProgram {
   lite::Scope* exec_scope() { return exec_scope_; }
 
   size_t num_instructions() const { return instructions_.size(); }
+
+  const std::vector<Instruction>& instructions() const { return instructions_; }
 
  protected:
   std::string SerializeProgram(const framework::proto::ProgramDesc& desc);

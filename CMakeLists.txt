@@ -16,8 +16,10 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
-
+#add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
+add_definitions("-Wall -g")
 include(system)
+include(cross_compiling/preproject)
 
 project(paddle CXX C)
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
@@ -41,7 +43,9 @@ if(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
 endif(WIN32)
 
-find_package(CUDA QUIET)
+if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    find_package(CUDA QUIET)
+endif()
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -79,18 +83,78 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 
+if(ANDROID OR IOS OR ARMLINUX)
+    set(WITH_GPU OFF CACHE STRING
+        "Disable GPU when cross-compiling for Android and iOS" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+        "Disable DSO when cross-compiling for Android and iOS" FORCE)
+    set(WITH_AVX OFF CACHE STRING
+        "Disable AVX when cross-compiling for Android and iOS" FORCE)
+    set(WITH_PYTHON OFF CACHE STRING
+        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
+    set(WITH_RDMA OFF CACHE STRING
+        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL when cross-compiling for Android and iOS" FORCE)
+endif()
+
+# for lite, both server and mobile framework.
+option(WITH_LITE "Enable lite framework" OFF)
+option(LITE_WITH_JAVA "Enable Java JNI lib in lite mode" OFF)
+option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
+option(LITE_WITH_X86  "Enable X86 in lite mode"  ON)
+option(LITE_WITH_ARM  "Enable ARM in lite mode"  OFF)
+option(LITE_WITH_OPENMP "Enable OpenMP in lite framework" ON)
+option(LITE_WITH_OPENCL   "Enable OpenCL support in lite" OFF)
+option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" OFF)
+option(LITE_WITH_PROFILE  "Enable profile mode in lite framework"  OFF)
+
+
+set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
+        "A path setting third party libraries download & build directories.")
+
+# CMAKE_BUILD_TYPE
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+            "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+            FORCE)
+endif()
+
+include_directories("${PADDLE_SOURCE_DIR}")
+
+# for mobile
+if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    message(STATUS "Building the mobile framework")
+    include(cross_compiling/postproject)
+
+    # include the necessary thirdparty dependencies
+    include(external/gflags)    # download, build, install gflags
+    include(external/glog)      # download, build, install glog
+    include(external/gtest)     # download, build, install gtest
+    #include(external/zlib)     # download, build, install gtest
+    include(external/protobuf)  # download, build, install protobuf
+    include(external/eigen)     # download eigen3
+    include(ccache)             # set ccache for compilation
+
+    # for opencl
+    if (LITE_WITH_OPENCL)
+        include(external/opencl-headers)
+        include(external/opencl-clhpp)
+    endif()
+
+    include(generic)            # simplify cmake module
+    include(configure)          # add paddle env configuration
+
+    add_subdirectory(paddle)
+    return()
+endif()
+
+
 # PY_VERSION
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
-
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 if (APPLE)
     set(WITH_MKL OFF CACHE STRING
@@ -102,16 +166,12 @@ if (WIN32)
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
 endif()
 
-set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
-  "A path setting third party libraries download & build directories.")
-
 set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
   "A path setting fluid shared and static libraries")
 
 set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
   "A path setting fluid inference shared and static libraries")
 
-set(THIRD_PARTY_BUILD_TYPE Release)
 
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
@@ -185,7 +245,6 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-
 include(external/threadpool)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
@@ -234,7 +293,6 @@ include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
 
 
-include_directories("${PADDLE_SOURCE_DIR}")
 
 if(WITH_AMD_GPU)
     find_package(HIP)

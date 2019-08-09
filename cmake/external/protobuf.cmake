@@ -142,7 +142,6 @@ IF (WIN32)
 ENDIF(WIN32)
 
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
-
     find_path(PROTOBUF_INCLUDE_DIR google/protobuf/message.h PATHS ${PROTOBUF_ROOT}/include NO_DEFAULT_PATH)
     find_library(PROTOBUF_LIBRARY protobuf libprotobuf.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_library(PROTOBUF_LITE_LIBRARY protobuf-lite libprotobuf-lite.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
@@ -178,12 +177,29 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         "${PROTOBUF_INSTALL_DIR}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}"
          PARENT_SCOPE)
 
+    SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
+    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
     SET(OPTIONAL_CACHE_ARGS "")
     SET(OPTIONAL_ARGS "")
+
     IF(BUILD_FOR_HOST)
-        SET(OPTIONAL_ARGS "-Dprotobuf_WITH_ZLIB=OFF")
-    ELSE()
         SET(OPTIONAL_ARGS
+            "-DCMAKE_C_COMPILER=${HOST_C_COMPILER}"
+            "-DCMAKE_CXX_COMPILER=${HOST_CXX_COMPILER}"
+            "-Dprotobuf_WITH_ZLIB=OFF"
+            "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}")
+        SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
+    ELSE()
+        # protobuf have compile issue when use android stl c++_static
+        SET(PROTOBUF_REPO "https://github.com/tensor-tang/protobuf.git")
+        SET(PROTOBUF_TAG "mobile")
+        SET(OPTIONAL_ARGS "-Dprotobuf_WITH_ZLIB=OFF"
+            "-DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+            "-DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION}"
+            "-DCMAKE_ANDROID_ARCH_ABI=${CMAKE_ANDROID_ARCH_ABI}"
+            "-DCMAKE_ANDROID_NDK=${CMAKE_ANDROID_NDK}"
+            "-DCMAKE_ANDROID_STL_TYPE=${CMAKE_ANDROID_STL_TYPE}"
+            "-DCMAKE_ANDROID_NDK_TOOLCHAIN_VERSION=${CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION}"
             "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
             "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
@@ -191,25 +207,18 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
             "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
             "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
-            "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
-            "-Dprotobuf_WITH_ZLIB=ON"
-            "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
-            ${EXTERNAL_OPTIONAL_ARGS})
-        SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
+            "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}")
     ENDIF()
     IF(WIN32)
         SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-DCMAKE_GENERATOR_PLATFORM=x64")
     ENDIF()
-
-    SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
-    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
 
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         PREFIX          ${PROTOBUF_SOURCES_DIR}
         UPDATE_COMMAND  ""
-        DEPENDS         zlib
+        #DEPENDS         zlib
         GIT_REPOSITORY  ${PROTOBUF_REPO}
         GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
@@ -233,6 +242,13 @@ ENDFUNCTION()
 
 SET(PROTOBUF_VERSION 3.1.0)
 
+IF(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    build_protobuf(protobuf_host TRUE)
+    LIST(APPEND external_project_dependencies protobuf_host)
+    SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
+        CACHE FILEPATH "protobuf executable." FORCE)
+ENDIF()
+
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)
 
@@ -245,7 +261,12 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
-        CACHE FILEPATH "protobuf executable." FORCE)
-    PROMPT_PROTOBUF_LIB(extern_protobuf)
+    IF(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+        PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
+    ELSE()
+        SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
+            CACHE FILEPATH "protobuf executable." FORCE)
+        PROMPT_PROTOBUF_LIB(extern_protobuf)
+    ENDIF()
+
 ENDIF(NOT PROTOBUF_FOUND)

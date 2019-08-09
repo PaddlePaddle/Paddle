@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/lite/core/mir/passes.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/core/optimizer.h"
 #include "paddle/fluid/lite/core/program_fake_utils.h"
 #include "paddle/fluid/lite/kernels/cuda/use_kernels.h"
@@ -60,7 +60,7 @@ TEST(variable_place_inference_pass, test) {
       "argument_type_display_pass",     //
       "variable_place_inference_pass",  //
       "argument_type_display_pass",     //
-      "type_target_transform_pass",     //
+      "type_target_cast_pass",          //
   });
 
   Place prefered_place{

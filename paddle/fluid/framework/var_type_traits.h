@@ -36,7 +36,6 @@ namespace platform {
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 class Communicator;
-class NCCLCommunicator;
 #endif
 #endif
 }  // namespace platform
@@ -141,7 +140,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::map<size_t, Tensor>, operators::reader::LoDTensorBlockingQueueHolder,
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
-    ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
+    ncclUniqueId, platform::Communicator,
 #endif
     operators::CudnnRNNCache,
 #endif

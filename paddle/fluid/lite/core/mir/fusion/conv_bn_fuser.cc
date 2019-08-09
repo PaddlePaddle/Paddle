@@ -70,7 +70,7 @@ void ConvBNFuser::BuildPattern() {
 void ConvBNFuser::InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) {
   auto op_desc = GenOpDesc(matched);
   auto eltwise_op = LiteOpRegistry::Global().Create("elementwise_add");
-  auto conv = matched.at("conv2d")->stmt()->op;
+  auto conv = matched.at("conv2d")->stmt()->op();
   auto* scope = conv->scope();
   auto& valid_places = conv->valid_places();
 
@@ -84,9 +84,9 @@ void ConvBNFuser::InsertNewNode(SSAGraph* graph, const key2nodes_t& matched) {
                         ->GetMutable<lite::Tensor>();
   size_t bias_size = bn_scale_t->data_size();
   auto bn_scale_d = bn_scale_t->mutable_data<float>();
-  PADDLE_ENFORCE(bias_size == conv_weight_dims[0],
-                 "The BN bias's size should be equal to the size of the first "
-                 "dim size of the conv weights");
+  CHECK_EQ(bias_size, static_cast<size_t>(conv_weight_dims[0]))
+      << "The BN bias's size should be equal to the size of the first "
+      << "dim size of the conv weights";
 
   auto bn_mean_t = scope->FindVar(matched.at("bn_mean")->arg()->name)
                        ->GetMutable<lite::Tensor>();

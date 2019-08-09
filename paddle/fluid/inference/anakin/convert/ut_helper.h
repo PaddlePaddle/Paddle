@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 using anakin::Precision;
+using anakin::saber::X86;
 
 namespace paddle {
 namespace inference {
@@ -214,14 +215,13 @@ class AnakinConvertValidation {
 
 template class AnakinConvertValidation<::anakin::saber::NV,
                                        ::anakin::Precision::FP32>;
-template class AnakinConvertValidation<::anakin::saber::NV,
-                                       ::anakin::Precision::INT8>;
-#ifdef ANAKIN_X86_PLACE
 template class AnakinConvertValidation<::anakin::saber::X86,
                                        ::anakin::Precision::FP32>;
+
+template class AnakinConvertValidation<::anakin::saber::NV,
+                                       ::anakin::Precision::INT8>;
 template class AnakinConvertValidation<::anakin::saber::X86,
                                        ::anakin::Precision::INT8>;
-#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

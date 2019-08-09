@@ -111,7 +111,7 @@ class SumOp : public framework::OperatorWithKernel {
                        "Input var[%s] should not be nullptr", x_vars_name[idx]);
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
-        if (tensor->numel() <= 0 || (!tensor->IsInitialized())) {
+        if (tensor->numel() == 0) {
           continue;
         }
         if (dtype == -1) {

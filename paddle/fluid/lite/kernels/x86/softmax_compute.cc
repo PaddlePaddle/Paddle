@@ -12,76 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/core/op_registry.h"
-namespace paddle {
-namespace lite {
-namespace kernels {
-namespace x86 {
-
-static inline int CanonicalAxis(const int axis, const int rank) {
-  if (axis < 0) {
-    return axis + rank;
-  }
-  return axis;
-}
-
-static inline int SizeToAxis(const int axis, lite::DDim dims) {
-  int size = 1;
-  for (int i = 0; i < axis; i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
-static inline int SizeFromAxis(const int axis, lite::DDim dims) {
-  int size = 1;
-  for (int i = axis; i < dims.size(); i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
-template <typename T>
-class SoftmaxCompute : public KernelLite<TARGET(kX86), PRECISION(kFloat)> {
- public:
-  using param_t = operators::SoftmaxParam;
-
-  void Run() override {
-    auto& param = *param_.get_mutable<operators::SoftmaxParam>();
-    // auto& context = context_->As<X86Context>();
-    CHECK(param.output);
-    CHECK(param.x);
-    const int rank = param.x->dims().size();
-    const int axis = CanonicalAxis(param.axis, rank);
-    int axis_dim = param.x->dims()[axis];
-    const int n = SizeToAxis(axis, param.x->dims());
-    const int d = SizeFromAxis(axis, param.x->dims());
-    std::vector<int64_t> shape{n, d};
-
-    lite::Tensor input_2d, out_2d;
-    input_2d.ShareDataWith(*param.x);
-    input_2d.Resize(lite::DDim(shape));
-    out_2d.ShareDataWith(*param.output);
-    out_2d.Resize(lite::DDim(shape));
-
-    paddle::operators::math::SoftmaxFunctor<platform::CPUDeviceContext, T,
-                                            true>()(
-        platform::CPUDeviceContext(), axis_dim, &input_2d.raw_tensor(),
-        &out_2d.raw_tensor());
-  }
-
-  virtual ~SoftmaxCompute() = default;
-};
-
-}  // namespace x86
-}  // namespace kernels
-}  // namespace lite
-}  // namespace paddle
+#include "paddle/fluid/lite/kernels/x86/softmax_compute.h"
 
 REGISTER_LITE_KERNEL(softmax, kX86, kFloat, kNCHW,
                      paddle::lite::kernels::x86::SoftmaxCompute<float>, def)

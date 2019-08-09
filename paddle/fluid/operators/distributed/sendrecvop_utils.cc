@@ -40,7 +40,8 @@ static TensorPayload GetCommunicationAllocationFromTensor(
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
     platform::CUDAPinnedPlace cuda_pinned;
-    auto result = memory::AllocShared(cuda_pinned, copy_size);
+    auto result = memory::AllocShared(
+        cuda_pinned, copy_size, memory::allocation::Allocator::kCrossDevice);
 
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),

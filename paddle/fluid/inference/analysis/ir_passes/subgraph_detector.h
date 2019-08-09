@@ -18,7 +18,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -75,11 +74,10 @@ class SubGraphFuser {
   using NodeInsideSubgraphTeller = SubgraphDetector::NodeInsideSubgraphTeller;
 
   SubGraphFuser(Graph *graph, const NodeInsideSubgraphTeller &teller,
-                int min_subgraph_size, std::string name = "anakin_engine")
+                int min_subgraph_size)
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
-        min_subgraph_size_{min_subgraph_size},
-        name_{name} {}
+        min_subgraph_size_{min_subgraph_size} {}
 
   // The main method which run all the logic.
   void operator()();
@@ -92,7 +90,6 @@ class SubGraphFuser {
   Graph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
   int min_subgraph_size_;
-  const std::string name_;
 };
 
 struct NodeWrapper {

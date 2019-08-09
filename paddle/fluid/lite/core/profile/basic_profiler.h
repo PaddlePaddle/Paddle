@@ -59,6 +59,7 @@ class BasicTimer : TimerBase<BasicTimer> {
   uint64_t count_{};
   uint32_t max_{std::numeric_limits<uint32_t>::min()};
   uint32_t min_{std::numeric_limits<uint32_t>::max()};
+  uint32_t max_count_{};
   int id_{-1};
   std::string key_;
   std::chrono::time_point<std::chrono::high_resolution_clock> timer_{};
@@ -75,18 +76,23 @@ class BasicTimer : TimerBase<BasicTimer> {
   void SetKey(const std::string &key) { key_ = key; }
   void Start() { timer_ = std::chrono::high_resolution_clock::now(); }
   void Stop() {
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::high_resolution_clock::now() - timer_);
     Log(duration.count());
   }
 
   int count() const { return count_; }
-
   void Log(uint32_t timespan) {
-    total_ += timespan;
-    max_ = std::max(max_, timespan);
-    min_ = std::min(min_, timespan);
+    uint32_t max_record = max_;
+    if (count_ >= 10000) {
+      total_ += timespan;
+      max_ = std::max(max_, timespan);
+      min_ = std::min(min_, timespan);
+    }
     count_++;
+    if (max_record != max_) {
+      max_count_ = count_;
+    }
   }
 
   static std::string basic_repr_header() {
@@ -95,17 +101,19 @@ class BasicTimer : TimerBase<BasicTimer> {
        << std::setw(data_w) << "average"  //
        << std::setw(data_w) << "min"      //
        << std::setw(data_w) << "max"      //
-       << std::setw(data_w) << "count";
+       << std::setw(data_w) << "count"    //
+       << std::setw(data_w) << "total_";
     return ss.str();
   }
 
   std::string basic_repr() const {
     std::stringstream ss;
-    ss << std::setw(name_w) << key()  //
-       << std::setw(data_w) << ave()  //
-       << std::setw(data_w) << min()  //
-       << std::setw(data_w) << max()  //
-       << std::setw(data_w) << count_;
+    ss << std::setw(name_w) << key()   //
+       << std::setw(data_w) << ave()   //
+       << std::setw(data_w) << min()   //
+       << std::setw(data_w) << max()   //
+       << std::setw(data_w) << count_  //
+       << std::setw(data_w) << total_;
     return ss.str();
   }
 
@@ -116,7 +124,12 @@ class BasicTimer : TimerBase<BasicTimer> {
     return id_;
   }
 
-  double ave() const { return total_ * 1. / count_; }
+  double ave() const {
+    if (count_ > 10000)
+      return total_ * 1. / (count_ - 10000);
+    else
+      return 0;
+  }
   double max() const { return max_; }
   double min() const { return min_; }
 

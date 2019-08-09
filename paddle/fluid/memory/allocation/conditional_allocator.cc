@@ -20,7 +20,8 @@ namespace memory {
 namespace allocation {
 
 ConditionalAllocator& ConditionalAllocator::AddAllocator(
-    std::function<bool(size_t)> func, std::shared_ptr<Allocator> allocator) {
+    std::function<bool(size_t, Allocator::Attr)> func,
+    std::shared_ptr<Allocator> allocator) {
   underlying_allocators_.emplace_back(std::move(func), std::move(allocator));
   return *this;
 }
@@ -33,10 +34,11 @@ bool ConditionalAllocator::IsAllocThreadSafe() const {
                      });
 }
 
-Allocation* ConditionalAllocator::AllocateImpl(size_t size) {
+Allocation* ConditionalAllocator::AllocateImpl(size_t size,
+                                               Allocator::Attr attr) {
   for (auto& pair : underlying_allocators_) {
-    if (pair.first(size)) {
-      return pair.second->Allocate(size).release();
+    if (pair.first(size, attr)) {
+      return pair.second->Allocate(size, attr).release();
     }
   }
   throw BadAlloc("No suitable allocator");

@@ -18,7 +18,6 @@ from ... import layers
 from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import create_master_params_grads, master_param_to_train_param
-from .fp16_utils import update_loss_scaling
 
 __all__ = ["decorate"]
 
@@ -36,51 +35,15 @@ class OptimizerWithMixedPrecison(object):
         optimizer (Optimizer): A common Optimizer object.
         init_loss_scaling (float): The initial loss scaling factor.
         use_dynamic_loss_scaling (bool): Whether to use dynamic loss scaling.
-        incr_every_n_steps(int): Increases loss scaling every n consecutive 
-                                 steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
-                                      inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
-                           scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
-                           the loss scaling.
-
     """
 
-    def __init__(self, optimizer, init_loss_scaling, use_dynamic_loss_scaling,
-                 incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
-                 decr_ratio):
+    def __init__(self, optimizer, init_loss_scaling, use_dynamic_loss_scaling):
         self._optimizer = optimizer
         self._param_grads = None
         self._train_program = default_main_program()
         self._startup_prog = default_startup_program()
-        self._loss_scaling = layers.create_global_var(
-            name=unique_name.generate("loss_scaling"),
-            shape=[1],
-            value=init_loss_scaling,
-            dtype='float32',
-            persistable=True)
+        self._loss_scaling = init_loss_scaling
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
-        if self._use_dynamic_loss_scaling:
-            self._incr_every_n_steps = layers.fill_constant(
-                shape=[1], dtype='int32', value=incr_every_n_steps)
-            self._decr_every_n_nan_or_inf = layers.fill_constant(
-                shape=[1], dtype='int32', value=decr_every_n_nan_or_inf)
-            self._incr_ratio = incr_ratio
-            self._decr_ratio = decr_ratio
-            self._num_good_steps = layers.create_global_var(
-                name=unique_name.generate("num_good_steps"),
-                shape=[1],
-                value=0,
-                dtype='int32',
-                persistable=True)
-            self._num_bad_steps = layers.create_global_var(
-                name=unique_name.generate("num_bad_steps"),
-                shape=[1],
-                value=0,
-                dtype='int32',
-                persistable=True)
 
         # Ensure the data type of learning rate vars is float32 (same as the 
         # master parameter dtype)
@@ -141,33 +104,9 @@ class OptimizerWithMixedPrecison(object):
         Returns:
             A list of optimize operators.
         """
-
-        if self._use_dynamic_loss_scaling:
-
-            grads = [layers.reduce_sum(g) for [_, g] in master_params_grads]
-            all_grads = layers.concat(grads)
-            all_grads_sum = layers.reduce_sum(all_grads)
-            is_overall_finite = layers.isfinite(all_grads_sum)
-
-            update_loss_scaling(is_overall_finite, self._loss_scaling,
-                                self._num_good_steps, self._num_bad_steps,
-                                self._incr_every_n_steps,
-                                self._decr_every_n_nan_or_inf, self._incr_ratio,
-                                self._decr_ratio)
-
-            # apply_gradient append all ops in global block, thus we shouldn't
-            # apply gradient in the switch branch.
-            with layers.Switch() as switch:
-                with switch.case(is_overall_finite):
-                    pass
-                with switch.default():
-                    for _, g in master_params_grads:
-                        layers.assign(layers.zeros_like(g), g)
-
         optimize_ops = self._optimizer.apply_gradients(master_params_grads)
         master_param_to_train_param(master_params_grads, self._param_grads,
                                     self._train_program)
-
         return optimize_ops
 
     def minimize(self, loss):
@@ -187,28 +126,13 @@ class OptimizerWithMixedPrecison(object):
         return scaled_loss, optimize_ops, master_params_grads
 
 
-def decorate(optimizer,
-             init_loss_scaling=1.0,
-             incr_every_n_steps=1000,
-             decr_every_n_nan_or_inf=2,
-             incr_ratio=2.0,
-             decr_ratio=0.8,
-             use_dynamic_loss_scaling=False):
+def decorate(optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=False):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:
         optimizer(Optimizer): A common Optimizer.
         init_loss_scaling(float): The initial loss scaling factor.
-        incr_every_n_steps(int): Increases loss scaling every n consecutive 
-                                 steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
-                                      inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
-                           scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
-                           the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
 
     Returns:
@@ -227,8 +151,7 @@ def decorate(optimizer,
             scaled_loss, _, _ = mp_optimizer.minimize(loss)
     """
 
-    mp_optimizer = OptimizerWithMixedPrecison(
-        optimizer, init_loss_scaling, use_dynamic_loss_scaling,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)
+    mp_optimizer = OptimizerWithMixedPrecison(optimizer, init_loss_scaling,
+                                              use_dynamic_loss_scaling)
 
     return mp_optimizer

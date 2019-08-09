@@ -39,6 +39,10 @@ DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 namespace paddle {
 namespace framework {
 
+OpDuppy op_duppy;
+Scope scope_duppy;
+RuntimeContext runtime_context_duppy({}, {});
+
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
@@ -884,6 +888,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // result of HasAttr.
   if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context = true;
+  if (!enable_cache_expected_kernel && HasAttr(kEnableCacheExpectedKernel))
+    enable_cache_expected_kernel = true;
   if (!all_kernels_must_compute_runtime_shape &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape = true;
@@ -892,12 +898,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RunImpl(scope, place, &ctx);
   } else {
     const Scope* cur_scope = &scope;
-    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-      std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-        pre_scope_ = cur_scope;
-      }
+    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = cur_scope;
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -909,7 +912,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+  if (!enable_cache_expected_kernel || !kernel_type_) {
     ChooseKernel(*runtime_ctx, scope, place);
   }
 
@@ -997,11 +1000,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  std::lock_guard<std::mutex> lock(cache_update_mutex_);
-  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-    kernel_type_.reset(new OpKernelType(expected_kernel_key));
-    kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
-  }
+  kernel_type_.reset(new OpKernelType(expected_kernel_key));
+  kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
 }
 
 void OperatorWithKernel::TransferInplaceVarsBack(
@@ -1027,6 +1027,7 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+  if (!need_prepare_data_) return new_scope;
 
   std::unordered_set<std::string> no_buffer_ins;
   if (info_) {
@@ -1119,6 +1120,10 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If new_scope = nullptr, it means that for each input of this Op, there is
+  // no TransformData. Thus, PrepareData could be skipped at the rest iterations
+  // of this Op's execution to save the elapsed time.
+  if (!new_scope) need_prepare_data_ = false;
 
   return new_scope;
 }
@@ -1142,7 +1147,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           t = &(var->Get<SelectedRows>().value());
         }
         if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
                          input.first, i);
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(

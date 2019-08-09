@@ -50,10 +50,7 @@ bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
  * out.
  */
 static bool IsSupportedCompound(const std::vector<std::string> &functors) {
-  PADDLE_ENFORCE_EQ(functors.size(), 2UL);
-
-  static std::unordered_set<std::string> unary_fun = {"scale", "relu", "tanh",
-                                                      "sigmoid"};
+  static std::unordered_set<std::string> unary_fun = {"scale", "relu"};
   static std::unordered_set<std::string> binary_fun = {"elementwise_add",
                                                        "elementwise_mul"};
 

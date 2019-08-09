@@ -43,11 +43,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
     op_desc.SetAttr("contextStart", seqconv->Op()->GetAttr("contextStart"));
     op_desc.SetAttr("contextStride", seqconv->Op()->GetAttr("contextStride"));
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto& scope = graph->Get<Scope>(kParamScopeAttr);
+    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
     const std::string ColMat = patterns::UniqueKey("SeqConvColMat");
     op_desc.SetOutput("ColMat", {ColMat});
     op_desc.SetOutput("Out", {relu_out->Name()});
-    scope.Var(ColMat)->GetMutable<LoDTensor>();
+    scope->Var(ColMat)->GetMutable<LoDTensor>();
 
     auto* op = graph->CreateOpNode(&op_desc);
     IR_NODE_LINK_TO(input, op);

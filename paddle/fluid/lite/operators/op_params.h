@@ -28,10 +28,15 @@ namespace lite {
 namespace operators {
 
 using param_t = Any;
+#define WITH_INT8_CONFIG             \
+  bool enable_int8{false};           \
+  float input_scale{1.0};            \
+  std::vector<float> weight_scale{}; \
+  float output_scale{1.0};
 
 /// ----------------------- Functional operators ------------------------------
 struct FeedParam {
-  const std::vector<lite::Tensor>* feed_list{};
+  std::vector<lite::Tensor>* feed_list{};
   lite::Tensor* out{};
   int col;
 };
@@ -48,6 +53,12 @@ struct IoCopyParam {
   lite::Tensor* y{};
 };
 
+struct CalibParam {
+  const lite::Tensor* input{};
+  lite::Tensor* output{};
+  float scale;
+};
+
 /// -------------------------- NN operators ------------------------------------
 
 struct FcParam {
@@ -57,21 +68,21 @@ struct FcParam {
   lite::Tensor* output{};
   lite::DDim in_mat_dims;
   int in_num_col_dims{1};
-};
-
-struct ReluParam {
-  lite::Tensor* input{};
-  lite::Tensor* output{};
+  bool weight_transposed{false};
+  // for int8
+  WITH_INT8_CONFIG
 };
 
 // For Mul Op
 struct MulParam {
-  lite::Tensor* x{};
-  lite::Tensor* y{};
+  const lite::Tensor* x{};
+  const lite::Tensor* y{};
   lite::Tensor* output{};
 
   int x_num_col_dims{1};
   int y_num_col_dims{1};
+  // for int8
+  WITH_INT8_CONFIG
 };
 
 struct MulGradParam {
@@ -124,8 +135,8 @@ struct ConcatParam {
 struct ConvParam {
   lite::Tensor* x{};
   lite::Tensor* filter{};
-  const lite::Tensor* bias{};
-  const lite::Tensor* residualData{};
+  lite::Tensor* bias{nullptr};
+  lite::Tensor* residualData{nullptr};
   lite::Tensor* output{};
   std::vector<int> strides{1, 1};
   std::vector<int> paddings{0, 0};
@@ -143,6 +154,27 @@ struct ConvParam {
   float scale_weights{1.0f};      // only used with mkl-dnn int8
   bool force_fp32_output{false};  // only used in mkl-dnn int8
   std::string data_format{"Anylayout"};
+  // for int8
+  WITH_INT8_CONFIG
+};
+
+// For BatchNorm op
+struct BatchNormParam {
+  lite::Tensor* x{};
+  lite::Tensor* bias{};
+  lite::Tensor* scale{};
+  lite::Tensor* mean{};
+  lite::Tensor* variance{};
+  lite::Tensor* y{};
+  lite::Tensor* mean_out{};
+  lite::Tensor* variance_out{};
+  lite::Tensor* saved_mean{};
+  lite::Tensor* saved_variance{};
+  bool is_test{true};
+  bool use_global_stats{false};
+  float epsilon;
+  float momentum;
+  DataLayoutType data_layout{DATALAYOUT(kNCHW)};
 };
 
 // For Pooling op
@@ -174,6 +206,85 @@ struct DropoutParam {
   std::string dropout_implementation{"downgrade_in_infer"};
 };
 
+// For Split op
+struct SplitParam {
+  lite::Tensor* x{};
+  std::vector<lite::Tensor*> output{};
+  int axis{-1};
+  int num{0};
+  std::vector<int> sections;
+};
+
+// For Transpose op
+struct TransposeParam {
+  const lite::Tensor* x{};
+  lite::Tensor* output{};
+  std::vector<int> axis;
+  bool use_mkldnn{false};
+  std::string data_format{"AnyLayout"};
+};
+
+struct GruParam {
+  lite::Tensor* x{};
+  lite::Tensor* h0{};
+  lite::Tensor* weight{};
+  lite::Tensor* bias{};
+  lite::Tensor* batchGate{};
+  lite::Tensor* batchResetHiddenPrev{};
+  lite::Tensor* batchHidden{};
+  lite::Tensor* hidden{};
+  std::string activation{"tanh"};
+  std::string gate_activation{"sigmoid"};
+  bool is_reverse{false};
+  bool origin_mode{false};
+};
+
+struct FusionGruParam {
+  lite::Tensor* x{};
+  lite::Tensor* h0{};
+  lite::Tensor* weightX{};
+  lite::Tensor* weightH{};
+  lite::Tensor* bias{};
+  lite::Tensor* reorderedH0{};
+  lite::Tensor* xx{};
+  lite::Tensor* batchedInput{};
+  lite::Tensor* batchedOut{};
+  lite::Tensor* hidden{};
+  std::string activation{"tanh"};
+  std::string gate_activation{"sigmoid"};
+  bool is_reverse{false};
+  bool use_seq{true};
+};
+
+struct LookupTableParam {
+  lite::Tensor* w{};
+  lite::Tensor* ids{};
+  lite::Tensor* output{};
+  bool is_sparse{false};
+  bool is_distributed{false};
+  int64_t padding_idx{-1};
+  bool remote_prefetch{false};
+  int trainer_id{0};
+  std::vector<std::string> epmap{};
+  std::vector<int64_t> height_sections{};
+  std::vector<std::string> table_names{};
+};
+
+struct SequenceReshapeParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+  int new_dim;
+};
+
+///----------------------- reduce operators -----------------------------
+struct ReduceParam {
+  lite::Tensor* x{};
+  lite::Tensor* output{};
+  std::vector<int> dim{0};
+  bool keep_dim{false};
+  bool reduce_all{false};
+};
+
 /// ----------------------- element wise operators ----------------------
 struct ElementwiseParam {
   const lite::Tensor* X{};
@@ -188,6 +299,14 @@ struct ElementwiseGradParam {
   lite::Tensor* X_grad{};
   lite::Tensor* Y_grad{};
   int axis{-1};  // for broadcasting.
+};
+
+struct FusionElementwiseActivationParam : public ElementwiseParam {
+  std::string act_type;
+};
+
+struct FusionElementwiseActivationGradParam : public ElementwiseGradParam {
+  std::string act_type;
 };
 
 /// ----------------------- activation operators ----------------------
@@ -227,6 +346,28 @@ struct FillConstantParam {
   lite::Tensor* Out{};
 };
 
+//
+struct FakeQuantizeMovingAvgMaxAbsParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* in_scale{};
+  const lite::Tensor* in_accum{};
+  const lite::Tensor* in_state{};
+  lite::Tensor* out{};
+  lite::Tensor* out_scale{};
+  lite::Tensor* out_state{};
+  lite::Tensor* out_accum{};
+  int bit_length;
+  bool is_test{true};
+  float moving_rate{0.9};
+};
+
+struct FakeDequantizeMaxAbsParam {
+  const lite::Tensor* x{};
+  const lite::Tensor* in_scale{};
+  lite::Tensor* out{};
+  float max_range;
+};
+
 /// ----------------------- sgd operators ----------------------
 struct SGDParam {
   int dtype{framework::proto::VarType::FP32};
@@ -237,20 +378,14 @@ struct SGDParam {
   lite::Tensor* ParamOut{};
 };
 
-//
-struct BatchNormParam {
-  lite::Tensor* x{};
-  lite::Tensor* bias{};
-  lite::Tensor* mean{};
-  lite::Tensor* scale{};
-  lite::Tensor* var{};
-  lite::Tensor* out{};
-  lite::Tensor* mean_out{};
-  lite::Tensor* var_out{};
-  lite::Tensor* saved_mean{};
-  lite::Tensor* saved_var{};
-
-  float eps{1e-5};
+/// ----------------------- uniform_random operators ----------------------
+struct UniformRandomParam {
+  std::vector<int64_t> shape{};
+  float min{-1.0f};
+  float max{1.0f};
+  int seed{0};
+  int dtype{framework::proto::VarType::FP32};
+  lite::Tensor* Out{};
 };
 
 }  // namespace operators

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sstream>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -97,8 +96,6 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
 
     // Make the outputs point to the continuous space.
     offset = 0;
-    std::stringstream ss;
-    ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < out_tensors.size(); ++i) {
       size_t len = static_cast<size_t>(out_tensors[i]->numel());
       auto dim = out_tensors[i]->dims();
@@ -108,10 +105,10 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
           .Resize(dim);
       len = Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
       offset += len;
-      ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
-         << " address: " << out_tensors[i]->data<void>() << ", ";
+      VLOG(10) << "alloc_space_for_vars: output(" << out_var_names[i]
+               << ") ,dim:(" << dim << ")"
+               << " Address: " << out_tensors[i]->data<void>();
     }
-    VLOG(10) << ss.str();
   }
 
  private:
@@ -136,9 +133,6 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *numel = 0;
     size_t size_of_dtype = 0;
-
-    std::stringstream ss;
-    ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
       PADDLE_ENFORCE(lod_tensors[i]->IsInitialized(), "%s is not initialized.",
                      var_names[i]);
@@ -154,13 +148,11 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
 
       auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(size, 0);
-      ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
-         << "), ";
+      VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
+               << lod_tensors[i]->dims() << ")";
       *numel += Alignment(static_cast<size_t>(size) * size_of_dtype, place) /
                 size_of_dtype;
     }
-
-    VLOG(10) << ss.str();
   }
 };
 

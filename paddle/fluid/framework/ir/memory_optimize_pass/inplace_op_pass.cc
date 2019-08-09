@@ -48,6 +48,8 @@ DEFINE_bool(
     "Such as scale, elementwise_add"
     "By default, it's turned off");
 
+DECLARE_string(memory_optimize_debug);
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -456,6 +458,13 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
                 << " is not the same size with "
                 << "Output(" << out_param << ")=" << out_arg << " in "
                 << op_type;
+        continue;
+      }
+
+      // Debug Interface. Which would be skipped by the pass.
+      if (out_arg == FLAGS_memory_optimize_debug) {
+        VLOG(4) << "Skiped var by force. FLAGS_memory_optimize_debug="
+                << out_node->Name();
         continue;
       }
 

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_set>
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/lite/utils/string.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -84,7 +85,8 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   auto marked_nodes = ConsumeMarkedNodes(graph);
   // Create nodes
   for (const Node* n : graph->Nodes()) {
-    std::string node_id = FormatName(n) + "(" + std::to_string(n->id()) + ")";
+    std::string node_id =
+        lite::string_format("%s(%d)", FormatName(n).c_str(), n->id());
     if (n->IsOp()) {
       decltype(op_attrs) attr =
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;

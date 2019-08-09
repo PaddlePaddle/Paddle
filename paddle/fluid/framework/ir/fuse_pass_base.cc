@@ -26,8 +26,7 @@ void FusePassBase::Init(const std::string& repr, Graph* graph) const {
 
 Scope* FusePassBase::param_scope() const {
   PADDLE_ENFORCE(graph_->Has(kParamScopeAttr));
-  auto& scope = graph_->Get<framework::Scope>(kParamScopeAttr);
-  return &scope;
+  return graph_->Get<framework::Scope*>(kParamScopeAttr);
 }
 
 void FusePassBase::AddStatis(int count_of_fused) const {
