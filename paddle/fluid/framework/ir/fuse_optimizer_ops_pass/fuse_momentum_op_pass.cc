@@ -33,7 +33,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
   }
 
   // Fuse Momentum Ops
-  virtual void FuseOptimizerOps(
+  virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &momentum_ops, ir::Graph *graph) const {
@@ -77,9 +77,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     momentum_desc.SetAttr("use_nesterov", use_nesterov);
     momentum_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-    auto momentum_node = graph->CreateOpNode(&momentum_desc);
-
-    InserInputAndOutputForOptOps(momentum_ops, momentum_node);
+    return graph->CreateOpNode(&momentum_desc);
   }
 };
 

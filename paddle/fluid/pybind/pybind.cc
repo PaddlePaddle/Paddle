@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -187,6 +188,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
+
+  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
   BindImperative(&m);
 
@@ -1065,7 +1068,17 @@ All parameter, weight, gradient are variables in Paddle.
                    t = fluid.LoDTensor()
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
-           )DOC");
+           )DOC")
+      .def("_move_to_list",
+           [](LoDTensorArray &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               res[i] = py::cast(std::move(self[i]));
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership);
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
@@ -1647,10 +1660,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors,
-                     const std::string &fetched_var_name) {
+                     const std::vector<std::string> &fetch_tensors) {
         pybind11::gil_scoped_release release;
-        self.Run(fetch_tensors, fetched_var_name);
+        return self.Run(fetch_tensors);
       });
 
   BindRecordIOWriter(&m);

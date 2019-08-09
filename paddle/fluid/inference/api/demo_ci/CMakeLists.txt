@@ -4,6 +4,9 @@ option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL.
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
+if(NOT WITH_STATIC_LIB)
+  add_definitions("-DPADDLE_WITH_SHARED_LIB")
+endif()
 
 macro(safe_set_static_flag)
     foreach(flag_var
@@ -109,7 +112,7 @@ if(WITH_MKL)
 else()
   set(MATH_LIB ${PADDLE_LIB_THIRD_PARTY_PATH}openblas/lib/libopenblas${CMAKE_STATIC_LIBRARY_SUFFIX})
   if(WIN32)
-    set(MATH_DLL ${PADDLE_LIB_THIRD_PARTY_PATH}openblas/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(MATH_DLL ${PADDLE_LIB_THIRD_PARTY_PATH}openblas/lib/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 endif()
 
@@ -157,7 +160,7 @@ if(WIN32)
           )
     else()
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${MATH_DLL}/openblas.dll ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MATH_DLL} ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
             )
     endif()
 endif()
