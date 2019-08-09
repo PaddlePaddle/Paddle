@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
@@ -186,28 +187,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     } else {
       RunImpl(scope, place);
     }
-
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw std::move(exception);
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-
-    if (callstack.empty()) {
-      throw std::move(exception);
-    }
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
+    framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
