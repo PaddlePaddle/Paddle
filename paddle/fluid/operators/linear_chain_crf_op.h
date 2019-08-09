@@ -76,7 +76,6 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     const Tensor* label = ctx.Input<framework::Tensor>("Label");
     // getting seq_num  using padding or not
     size_t seq_num = 0;
-    VLOG(2) << 1111;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       seq_num = label_length->numel();
@@ -87,7 +86,6 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       batch_size = emission_dims[0];
       tag_num = emission_dims[1];
     }
-    VLOG(2) << 2222;
     ll->Resize({static_cast<int>(seq_num), 1});
     ll->mutable_data<T>(platform::CPUPlace());
     // getting in_lod using padding or not
@@ -99,14 +97,12 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     Tensor label_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
     label_tmp.ShareDataWith(*label);
-    VLOG(2) << 3333;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       auto label_length_ptr = label_length->data<int64_t>();
       for (size_t i = 0; i < seq_num; i++) {
         in_lod[i + 1] = in_lod[i] + label_length_ptr[i];
       }
-      VLOG(2) << 4444;
       emission_weights_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
       auto label_dims = label->dims();
@@ -121,13 +117,11 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
       PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
     }
-    VLOG(2) << 5555;
     // Now, all the inputs and outputs should be on the CPU memory.
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
         framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
-    VLOG(2) << 6666;
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     auto x = EigenMatrix<T>::From(emission_weights_tmp);
@@ -135,16 +129,12 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     x_row_max.device(place) =
         x.maximum(Eigen::DSizes<int, 1>(1))
             .reshape(Eigen::DSizes<int, 2>(static_cast<int>(batch_size), 1));
-    VLOG(2) << 7777;
     auto x_exps = EigenMatrix<T>::From(*emission_exps);
     x_exps.device(place) =
         (x - x_row_max.broadcast(Eigen::DSizes<int, 2>(1, tag_num))).exp();
-    VLOG(2) << 8888;
     auto w = EigenMatrix<T>::From(*transition_weights);
     auto w_exps = EigenMatrix<T>::From(*transition_exps);
     w_exps.device(place) = w.exp();
-    VLOG(2) << 9999;
-    VLOG(2) << in_lod;
     T* log_likelihood = ll->data<T>();
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = static_cast<int>(in_lod[i]);
@@ -154,26 +144,19 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         log_likelihood[i] = 0.;
         continue;
       }
-      VLOG(2) << 111111;
       const Tensor one_seq = emission_weights_tmp.Slice(start_pos, end_pos);
-      VLOG(2) << 222222;
       Tensor one_seq_row_max = emission_row_max.Slice(start_pos, end_pos);
       Tensor one_seq_exps = emission_exps->Slice(start_pos, end_pos);
-      VLOG(2) << 333333;
       const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_alpha = alpha->Slice(start_pos, end_pos);
-      VLOG(2) << 444444;
       log_likelihood[i] = ForwardOneSequence(
           one_seq, one_seq_row_max, one_seq_exps, *transition_weights,
           *transition_exps, one_seq_label, &one_seq_alpha);
     }
-    VLOG(2) << 55555;
     if (ctx.HasInput("length")) {
       emission_exps->Resize(
           {emission_dims[0], emission_dims[1], emission_dims[2]});
-      VLOG(2) << 555551;
       alpha->Resize({emission_dims[0], emission_dims[1], emission_dims[2]});
-      VLOG(2) << 555552;
     }
   };
 
@@ -249,39 +232,39 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     const T* ll_grad =
         ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    VLOG(2) << "grad:" << 1111111;
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
-    emission_grad->mutable_data<T>(platform::CPUPlace());
     PADDLE_ENFORCE(emission_grad, "Output(Emission@Grad) should not be null.");
-    VLOG(2) << "grad:" << 22222222;
+    emission_grad->mutable_data<T>(platform::CPUPlace());
     Tensor alpha_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
     alpha_tmp.ShareDataWith(*alpha);
-    VLOG(2) << "grad:" << 3333333333;
     Tensor label_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
     label_tmp.ShareDataWith(*label);
     Tensor emission_exps_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
     emission_exps_tmp.ShareDataWith(*emission_exps);
-    VLOG(2) << "grad:" << 1111;
     // getting seq_num  using padding or not
     size_t seq_num = 0;
+    size_t tag_num = 0;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       seq_num = label_length->dims()[0];
       auto emission_dims = emission_grad->dims();
+      tag_num = emission_dims[2];
+      auto label_dims = label->dims();
       emission_grad->Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
-      label_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
+      label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
       alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
       emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
+      auto emission_dims = emission_grad->dims();
       seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
+      tag_num = emission_dims[1];
     }
-    VLOG(2) << "grad:" << 2222;
     // getting lod using padding or not
     framework::Vector<size_t> lod(seq_num + 1);
     if (ctx.HasInput("length")) {
@@ -295,7 +278,6 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
     }
 
-    VLOG(2) << "grad:" << 3333;
     Tensor* transition_grad =
         ctx.Output<Tensor>(framework::GradVarName("Transition"));
 
@@ -306,8 +288,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       math::set_constant(ctx.device_context(), transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
-    VLOG(2) << "grad:" << 4444;
-    auto emission_dims = emission_exps_tmp.dims();
+    auto emission_dims = emission_exps->dims();
     // Beta is the memo table used in dynamic programming to calculate the
     // backwark vectors. For a backward vector i (the i-th row of beta), it
     // captures the unnormalized probabilities of partial sequences starting
@@ -321,18 +302,17 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       int start_pos = static_cast<int>(lod[i]);
       int end_pos = static_cast<int>(lod[i + 1]);
       if (end_pos == start_pos) continue;
-      VLOG(2) << "grad:" << 5555;
       const Tensor one_seq_emission_exps =
           emission_exps_tmp.Slice(start_pos, end_pos);
       const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
       const Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
       Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
-
       BackwardOneSequence(
           ctx.template device_context<platform::CPUDeviceContext>(), ll_grad[i],
           one_seq_emission_exps, *transition_exps, one_seq_alpha, one_seq_label,
-          &one_seq_beta, transition_grad, &one_seq_emission_grad);
+          &one_seq_beta, transition_grad, &one_seq_emission_grad, seq_num,
+          tag_num);
     }
     if (ctx.HasInput("length")) {
       emission_grad->Resize(
@@ -345,16 +325,14 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
                            const T ll_grad, const Tensor& emission_exps,
                            const Tensor& transition_exps, const Tensor& alpha,
                            const Tensor& label, Tensor* beta,
-                           Tensor* transition_grad,
-                           Tensor* emission_grad) const {
+                           Tensor* transition_grad, Tensor* emission_grad,
+                           const size_t seq_length,
+                           const size_t tag_num) const {
     const T* w_exps = transition_exps.data<T>();
     const T* x_exps = emission_exps.data<T>();
     const int64_t* label_value = label.data<int64_t>();
     T* beta_value = beta->data<T>();
 
-    auto x_dims = emission_exps.dims();
-    const size_t seq_length = x_dims[0];
-    const size_t tag_num = x_dims[1];
     const size_t state_trans_base_idx = 2;
 
     // Calculate the backward vectors: beta.

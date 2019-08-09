@@ -23,9 +23,10 @@ from op_test import OpTest
 
 class LinearChainCrfForward(object):
     def __init__(self, seq_start_positions, emission_weights, emission_row_max,
-                 emission_exps, transition_weights, transition_exps, labels):
-        self.tag_num = emission_weights.shape[1]
-        self.seq_num = len(seq_start_positions) - 1
+                 emission_exps, transition_weights, transition_exps, labels,
+                 seq_num, tag_num):
+        self.tag_num = tag_num
+        self.seq_num = seq_num
 
         self.seq_start_positions = seq_start_positions
         self.labels = labels
@@ -132,7 +133,7 @@ class TestLinearChainCrfOp(OpTest):
         }
         crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
                                     emission_exps, transition, transition_exps,
-                                    labels)
+                                    labels, SEQ_NUM, TAG_NUM)
         alpha, log_likelihood = crf.crf_forward_compute()
 
         self.outputs = {
@@ -164,14 +165,14 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5
-
+        BATCH_SIZE = 1
         sequence_lens = []
         seq_start_pos = [0]
         for i in range(SEQ_NUM):
             sequence_lens.append(random.randint(0, MAX_SEQ_LEN))
             seq_start_pos.append(seq_start_pos[-1] + sequence_lens[-1])
         emission = np.random.uniform(
-            -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
+            -1, 1, [BATCH_SIZE, MAX_SEQ_LEN, TAG_NUM]).astype("float64")
         emission_row_max = np.amax(emission, axis=1, keepdims=True)
         emission_exps = np.exp(emission - emission_row_max)
 
@@ -180,17 +181,20 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         transition_exps = np.exp(transition)
 
         labels = np.random.randint(
-            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
+            low=0,
+            high=TAG_NUM,
+            size=(BATCH_SIZE, MAX_SEQ_LEN, 1),
+            dtype="int64")
 
         self.inputs = {
             "Emission": emission,
             "Transition": transition,
             "Label": labels,
-            "Length": sequence_lens
+            "length": sequence_lens
         }
-        crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
-                                    emission_exps, transition, transition_exps,
-                                    labels)
+        crf = LinearChainCrfForward(
+            seq_start_pos, emission[0], emission_row_max[0], emission_exps[0],
+            transition, transition_exps, labels[0], SEQ_NUM, TAG_NUM)
         alpha, log_likelihood = crf.crf_forward_compute()
 
         self.outputs = {
