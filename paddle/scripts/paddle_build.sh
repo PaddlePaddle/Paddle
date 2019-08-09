@@ -580,6 +580,7 @@ function assert_api_spec_approvals() {
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "PADDLE_ENFORCE will be deprecated soon. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL instead."
             echo "You must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE. "
             exit 1
         fi
