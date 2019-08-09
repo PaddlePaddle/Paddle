@@ -33,6 +33,8 @@ message TrainerDesc {
   optional bool debug = 6 [ default = false ];
   optional FetchConfig fetch_config = 7;
   optional bool use_cvm = 8 [ default = false ];
+  optional bool dump_slot = 9 [ default = false ];
+  optional float scale_datanorm = 10 [ default = -1 ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
@@ -41,6 +43,8 @@ message TrainerDesc {
   optional SectionWorkerParameter section_param = 104;
   // datafeed desc
   optional DataFeedDesc data_desc = 201;
+  // adjust ins weight
+  optional AdjustInsWeightConfig adjust_ins_weight_config = 301;
 }
 
 message HogwildWorkerParameter { repeated string skip_ops = 1; }
@@ -84,6 +88,14 @@ message FetchConfig {
   repeated string fetch_var_str_format = 2;
   optional int32 print_period = 3 [ default = 100 ];
   optional Method method = 4 [ default = PRINT ];
+}
+
+message AdjustInsWeightConfig {
+  optional bool need_adjust = 1 [ default = false ];
+  optional string nid_slot = 2 [ default = "" ];
+  optional float nid_adjw_threshold = 3 [ default = 0.0 ];
+  optional float nid_adjw_ratio = 4 [ default = 0.0 ];
+  optional string ins_weight_slot = 5 [ default = "" ];
 }
 
 message ProgramConfig {
