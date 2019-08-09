@@ -165,7 +165,6 @@ class TestDistRunnerBase(object):
 
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_threads = 1
-        exec_strategy.allow_op_delay = False
 
         build_stra = fluid.BuildStrategy()
         # FIXME force disable enable_inplace and memory_optimize

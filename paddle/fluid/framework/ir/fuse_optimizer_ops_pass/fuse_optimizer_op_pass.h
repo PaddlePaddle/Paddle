@@ -41,15 +41,16 @@ class FuseOptimizerOpPass : public ir::Pass {
       std::unordered_map<std::string, std::vector<std::string>> *aux_var_set,
       std::vector<ir::Node *> *ops) const;
 
-  void InserInputAndOutputForOptOps(const std::vector<ir::Node *> &opt_ops,
-                                    ir::Node *opt_node) const;
+  void InsertInputAndOutputForFusedOpNode(
+      const std::vector<ir::Node *> &opt_ops, ir::Graph *graph,
+      ir::Node *opt_node) const;
 
  private:
   virtual const std::string GetOpType() const = 0;
 
   virtual const std::vector<std::string> GetAuxiliaryVarNames() const = 0;
 
-  virtual void FuseOptimizerOps(
+  virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
@@ -91,6 +92,9 @@ class FuseOptimizerOpPass : public ir::Pass {
                            *aux_var_set) const;
 
   bool IsLoDTensorType(const proto::VarType::Type &type) const;
+
+  bool HasVarDepsBetweenOps(const std::vector<Node *> &topo_nodes,
+                            const std::vector<Node *> &opt_nodes) const;
 };
 
 }  // namespace ir
