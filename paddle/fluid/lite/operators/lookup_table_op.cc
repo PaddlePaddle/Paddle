@@ -63,7 +63,7 @@ bool LookupTableOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
     param_.trainer_id = opdesc.GetAttr<int>("trainer_id");
   if (opdesc.HasAttr("height_sections"))
     param_.height_sections =
-        opdesc.GetAttr<std::vector<int64_t>>("height_sections");
+        opdesc.GetAttr<std::vector<int32_t>>("height_sections");
   if (opdesc.HasAttr("epmap"))
     param_.epmap = opdesc.GetAttr<std::vector<std::string>>("epmap");
   if (opdesc.HasAttr("table_names"))

@@ -266,7 +266,7 @@ struct LookupTableParam {
   bool remote_prefetch{false};
   int trainer_id{0};
   std::vector<std::string> epmap{};
-  std::vector<int64_t> height_sections{};
+  std::vector<int32_t> height_sections{};
   std::vector<std::string> table_names{};
 };
 
