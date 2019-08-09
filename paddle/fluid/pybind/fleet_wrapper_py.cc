@@ -43,6 +43,7 @@ void BindFleetWrapper(py::module* m) {
   py::class_<framework::FleetWrapper>(*m, "Fleet")
       .def(py::init())
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
+      .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
       .def("run_server", &framework::FleetWrapper::RunServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
