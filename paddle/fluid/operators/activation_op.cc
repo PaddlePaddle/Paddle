@@ -36,20 +36,6 @@ static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == kDepOut || GradFunctor::FwdDeps() == kNoDeps;
 }
 
-std::unique_ptr<std::unordered_set<std::string>> GetInplaceOpSet() {
-  std::unique_ptr<std::unordered_set<std::string>> ret(
-      new std::unordered_set<std::string>());
-#define INSERT_INTO_INPLACE_OP_SET(op_type, __omitted, fwd_functor, \
-                                   bwd_functor)                     \
-  if (CanInplaceAct<bwd_functor<float>>()) {                        \
-    ret->insert(#op_type);                                          \
-  }
-
-  FOR_EACH_ACTIVATION_OP(INSERT_INTO_INPLACE_OP_SET);
-#undef INSERT_INTO_INPLACE_OP_SET
-  return ret;
-}
-
 #define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
   class OP_NAME##OpMaker                                                     \
       : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
