@@ -2617,7 +2617,7 @@ class ExponentialMovingAverage(object):
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
                 param_ema = self._ema_vars[param.name]
-                if self._ema_vars.has_key(param.name + '.master'):
+                if param.name + '.master' in self._ema_vars:
                     master_ema = self._ema_vars[param.name + '.master']
                     param_master_emas.append([param_ema, master_ema])
                 else:

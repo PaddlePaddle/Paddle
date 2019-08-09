@@ -72,12 +72,6 @@ class TestFuseAdamOps(TestFuseOptimizationOps):
     def optimizer(self, learning_rate=1e-4):
         return fluid.optimizer.Adam(learning_rate=learning_rate)
 
-    def test_simple_fc_with_fuse_op(self):
-        self._decorate_compare_fused_optimizer_ops(
-            simple_fc_net, True, optimizer=self.optimizer)
-        self._decorate_compare_fused_optimizer_ops(
-            simple_fc_net, False, optimizer=self.optimizer)
-
     def test_batchnorm_fc_with_fuse_op(self):
         self._decorate_compare_fused_optimizer_ops(
             fc_with_batchnorm, True, optimizer=self.optimizer)
@@ -135,6 +129,48 @@ class TestSpareFuseSGDOps(TestSpareFuseAdamOps):
 
 
 class TestSpareFuseMomentumOps(TestSpareFuseAdamOps):
+    def optimizer(self, learning_rate=1e-3):
+        return fluid.optimizer.Momentum(
+            learning_rate=learning_rate, momentum=0.1)
+
+
+class TestPassConflictBase(TestFuseAdamOps):
+    def _compare_fused_optimizer_ops(self,
+                                     model,
+                                     use_cuda,
+                                     feed_dict=None,
+                                     get_data_from_feeder=None,
+                                     optimizer=fluid.optimizer.Adam):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
+
+        self.check_pass_conflict(
+            model,
+            feed_dict=feed_dict,
+            get_data_from_feeder=get_data_from_feeder,
+            use_cuda=use_cuda,
+            fuse_all_optimizer_ops=True,
+            optimizer=optimizer,
+            enable_sequential_execution=True)
+
+
+class TestFuseAdamOpsPassConflict(TestPassConflictBase):
+    def optimizer(self, learning_rate=1e-4):
+        return fluid.optimizer.Adam(learning_rate=learning_rate)
+
+    def test_batchnorm_fc_with_fuse_op(self):
+        self._decorate_compare_fused_optimizer_ops(
+            fc_with_batchnorm, True, optimizer=self.optimizer)
+        self._decorate_compare_fused_optimizer_ops(
+            fc_with_batchnorm, False, optimizer=self.optimizer)
+
+
+class TestFuseSGDOpsPassConflict(TestFuseAdamOpsPassConflict):
+    def optimizer(self, learning_rate=1e-3):
+        return fluid.optimizer.SGD(learning_rate=learning_rate)
+
+
+class TestFuseMomentumOpsPassConflict(TestFuseAdamOpsPassConflict):
     def optimizer(self, learning_rate=1e-3):
         return fluid.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1)
