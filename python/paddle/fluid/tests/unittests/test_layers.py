@@ -1891,12 +1891,21 @@ class TestBook(LayerTest):
     def test_filter_by_instag(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            x1 = layers.data(name='X1', shape=[32, 1], dtype='float32', 
-                    lod_level=0)
-            x2 = layers.data(name='X2', shape=[32, 1], dtype='int64', 
-                    lod_level=0, stop_gradient=True)
-            x3 = layers.create_global_var(shape=[1,1], value=20, dtype='int64',
-                    persistable=True, force_cpu=True, name='X3')
+            x1 = layers.data(
+                name='X1', shape=[32, 1], dtype='float32', lod_level=0)
+            x2 = layers.data(
+                name='X2',
+                shape=[32, 1],
+                dtype='int64',
+                lod_level=0,
+                stop_gradient=True)
+            x3 = layers.create_global_var(
+                shape=[1, 1],
+                value=20,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True,
+                name='X3')
             out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
 
     def test_roi_pool(self):
