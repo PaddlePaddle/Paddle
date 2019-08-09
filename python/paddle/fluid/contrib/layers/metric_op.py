@@ -85,7 +85,7 @@ def ctr_metric_bundle(input, label):
     tmp_res_sigmoid = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[-1])
     tmp_ones = helper.create_global_variable(
-        persistable=False, dtype='float32', shape=[-1]) 
+        persistable=False, dtype='float32', shape=[-1])
 
     batch_prob = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[1])
@@ -157,7 +157,8 @@ def ctr_metric_bundle(input, label):
         outputs={"Out": [local_q]})
 
     helper.append_op(
-        type="reduce_sum", inputs={"X": [label]},
+        type="reduce_sum",
+        inputs={"X": [label]},
         outputs={"Out": [batch_pos_num]})
     helper.append_op(
         type="elementwise_add",
@@ -175,13 +176,13 @@ def ctr_metric_bundle(input, label):
             'value': float(1.0),
         })
     helper.append_op(
-        type="reduce_sum", inputs={"X": [tmp_ones]},
+        type="reduce_sum",
+        inputs={"X": [tmp_ones]},
         outputs={"Out": [batch_ins_num]})
     helper.append_op(
         type="elementwise_add",
         inputs={"X": [batch_ins_num],
                 "Y": [local_ins_num]},
         outputs={"Out": [local_ins_num]})
-
 
     return local_sqrerr, local_abserr, local_prob, local_q, local_pos_num, local_ins_num
