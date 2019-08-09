@@ -235,6 +235,7 @@ class OpTest(unittest.TestCase):
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
+        return op
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
@@ -316,7 +317,12 @@ class OpTest(unittest.TestCase):
 
             return outputs
 
-    def _calc_output(self, place, parallel=False, no_check_set=None, loss=None):
+    def _calc_output(self,
+                     place,
+                     parallel=False,
+                     no_check_set=None,
+                     loss=None,
+                     enable_inplace=None):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -351,12 +357,124 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = list(map(block.var, fetch_list))
+
+        if enable_inplace is not None:
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = enable_inplace
+            build_strategy.memory_optimize = False
+
+            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
+                build_strategy=build_strategy, places=place)
+            program = compiled_prog
+
         executor = Executor(place)
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
         return outs, fetch_list
+
+    def check_inplace_output_with_place(self, place, no_check_set=None):
+        # can`t enable inplace 
+        if self.op_type not in fluid.core._get_has_infer_inplace_ops():
+            return
+        expect_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=False)
+        actual_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=True)
+
+        # compare expect_outs and actual_outs
+        for i, out in enumerate(fetch_list):
+            self.assertTrue(
+                np.array_equal(
+                    np.array(expect_outs[i]), np.array(actual_outs[i])),
+                "Output (" + out.name + ") has diff at " + str(place) +
+                "when using and not using inplace")
+
+    def check_inplace_grad_output_with_place(self, place, no_check_set=None):
+        # get forward outs
+        forward_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=False)
+
+        # create froward program to get forward vars
+        program = Program()
+        block = program.global_block()
+        op = self._append_ops(block)
+        inputs = self._get_inputs(block)
+        outputs = self._get_outputs(block)
+        feed_map = self.feed_var(inputs, place)
+
+        # get grad_op 
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
+                                                                  set(), [])
+        grad_op_desc = grad_op_desc_list[0]
+        # grad_op can not inplace
+        if grad_op_desc.type() not in fluid.core._get_has_infer_inplace_ops():
+            return
+
+        # create grad program
+        grad_program = Program()
+        grad_block = grad_program.global_block()
+        new_op_desc = grad_block.desc.append_op()
+        new_op_desc.copy_from(grad_op_desc)
+        grad_program._sync_with_cpp()
+        # create grad vars based on forward vars (shape and dtype)
+        for arg in grad_op_desc.input_arg_names(
+        ) + grad_op_desc.output_arg_names():
+            forward_var_name = op_grad_to_var.get(arg, None)
+            if forward_var_name is None:
+                forward_var_name = arg
+            forward_var = block.vars.get(forward_var_name)
+            assert forward_var is not None, "{} cannot be found".format(
+                forward_var_name)
+            grad_var = grad_block.create_var(
+                name=arg,
+                dtype=forward_var.dtype,
+                shape=forward_var.shape,
+                type=forward_var.type,
+                persistable=False)
+        grad_program._sync_with_cpp()
+        grad_fetch_list = grad_op_desc.output_arg_names()
+
+        def _calc_grad_output(enable_inplace=None):
+            # generate feed_map for grad_program
+            # since we don`t really check gradient accuracy, but the consistency when using and not using inplace
+            # we use forward outs (also inputs sometimes) as grad (fake) feeds
+            grad_feed_map = {}
+            for arg in grad_op_desc.input_arg_names():
+                if arg in feed_map.keys():
+                    grad_feed_map[arg] = feed_map[arg]._copy()
+                else:
+                    forward_var_name = op_grad_to_var.get(arg, None)
+                    if forward_var_name is None:
+                        forward_var_name = arg
+                    for i, out in enumerate(fetch_list):
+                        if out.name == forward_var_name:
+                            grad_feed_map[arg] = forward_outs[i]._copy()
+
+            exe = Executor(place)
+
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = enable_inplace
+            build_strategy.memory_optimize = False
+            compiled_program = fluid.CompiledProgram(
+                grad_program).with_data_parallel(
+                    build_strategy=build_strategy, places=place)
+            outs = exe.run(compiled_program,
+                           feed=grad_feed_map,
+                           fetch_list=grad_fetch_list,
+                           return_numpy=True)
+            return outs
+
+        expect_outs = _calc_grad_output(enable_inplace=False)
+        actual_outs = _calc_grad_output(enable_inplace=True)
+
+        # compare expect_outs and actual_outs
+        for i, out_name in enumerate(grad_fetch_list):
+            self.assertTrue(
+                np.array_equal(expect_outs[i], actual_outs[i]),
+                "Output (" + out_name + ") has diff at " + str(place) +
+                "when using and not using inplace")
 
     def check_output_with_place(self,
                                 place,
@@ -463,6 +581,10 @@ class OpTest(unittest.TestCase):
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
+
+        self.check_inplace_output_with_place(place, no_check_set=no_check_set)
+        self.check_inplace_grad_output_with_place(
+            place, no_check_set=no_check_set)
 
     def _get_places(self):
         if self.dtype == np.float16:

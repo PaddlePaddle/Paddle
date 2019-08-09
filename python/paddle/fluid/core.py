@@ -170,6 +170,7 @@ if avx_supported():
         from .core_avx import _append_python_callable_object_and_return_id
         from .core_avx import _cleanup, _Scope
         from .core_avx import _get_use_default_grad_op_desc_maker_ops
+        from .core_avx import _get_has_infer_inplace_ops
         from .core_avx import _is_program_version_supported
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _set_fuse_parameter_group_size
