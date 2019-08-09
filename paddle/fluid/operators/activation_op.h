@@ -49,21 +49,6 @@ enum ActBwdOpFwdDeps {
   kDepXOut = 0x03
 };
 
-std::unique_ptr<std::unordered_set<std::string>> GetInplaceOpSet();
-
-static bool IsInplace(const std::string& op) {
-  static auto InplaceOpSet = GetInplaceOpSet();
-  bool inplace = InplaceOpSet->count(op);
-  // for op_grad
-  const int kGradSuffixLen = 4;
-  if (op.size() > kGradSuffixLen &&
-      op.compare(op.size() - kGradSuffixLen - 1, kGradSuffixLen, "grad")) {
-    inplace =
-        InplaceOpSet->count(op.substr(0, op.size() - (kGradSuffixLen + 1)));
-  }
-  return inplace;
-}
-
 /* The following operator can be used to process SelectedRows, because the
  * output of those operator for zero is zero too.
  */
