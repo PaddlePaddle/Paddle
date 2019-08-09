@@ -284,8 +284,6 @@ class CompiledProgram(object):
                     "share_vars_from is not compiled and run, so there is no "
                     "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
-            # drop the local_exe_scopes of the previous parallel_executor
-            self._share_vars_from._executor.drop_local_exe_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
