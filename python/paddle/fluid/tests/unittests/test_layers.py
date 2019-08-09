@@ -872,6 +872,37 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
+    def test_eye_op(self):
+        np_eye = np.eye(3, 2)
+        array_rlt1 = [np_eye for _ in range(3)]
+        stack_rlt1 = np.stack(array_rlt1, axis=0)
+        array_rlt2 = [stack_rlt1 for _ in range(4)]
+        stack_rlt2 = np.stack(array_rlt2, axis=0)
+
+        with self.dynamic_graph():
+            eye_tensor = layers.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt1 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[3])
+            eye_tensor_rlt2 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[4, 3])
+            diag_tensor = layers.eye(20)
+
+        self.assertTrue(np.allclose(eye_tensor.numpy(), np_eye))
+        self.assertTrue(np.allclose(eye_tensor_rlt1.numpy(), stack_rlt1))
+        self.assertTrue(np.allclose(eye_tensor_rlt2.numpy(), stack_rlt2))
+        self.assertTrue(np.allclose(diag_tensor.numpy(), np.eye(20)))
+
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3.1)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, num_columns=2.2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=[-1])
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
