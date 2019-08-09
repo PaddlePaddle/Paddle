@@ -65,12 +65,12 @@ struct OpInfo {
   }
 
   const GradOpMakerFN& GradOpMaker() const {
-    std::string type = proto_ ? proto_->type() : "unknown";
+    std::string type = Proto().type();
     PADDLE_ENFORCE_NOT_NULL(
         grad_op_maker_,
         "Operator %s's GradOpMaker has not been "
-        "registered. Please check whether %s_op has "
-        "grad_op. If not, please set stop_gradient to True "
+        "registered.\nPlease check whether %s_op has "
+        "grad_op.\nIf not, please set stop_gradient to True "
         "for its input and output variables using var.step_gradient=True.",
         type.c_str(), type.c_str());
     return grad_op_maker_;
