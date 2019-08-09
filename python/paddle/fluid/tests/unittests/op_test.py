@@ -376,7 +376,7 @@ class OpTest(unittest.TestCase):
 
     def check_inplace_output_with_place(self, place, no_check_set=None):
         # can`t enable inplace 
-        if self.op_type not in fluid.core._get_has_infer_inplace_ops():
+        if not fluid.core._has_infer_inplace(self.op_type):
             return
         expect_outs, fetch_list = self._calc_output(
             place, no_check_set=no_check_set, enable_inplace=False)
@@ -392,10 +392,6 @@ class OpTest(unittest.TestCase):
                 "when using and not using inplace")
 
     def check_inplace_grad_output_with_place(self, place, no_check_set=None):
-        # get forward outs
-        forward_outs, fetch_list = self._calc_output(
-            place, no_check_set=no_check_set, enable_inplace=False)
-
         # create froward program to get forward vars
         program = Program()
         block = program.global_block()
@@ -405,12 +401,22 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         # get grad_op 
+        if not core._has_grad_op_maker(op.desc.type()):
+            return
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
                                                                   set(), [])
-        grad_op_desc = grad_op_desc_list[0]
-        # grad_op can not inplace
-        if grad_op_desc.type() not in fluid.core._get_has_infer_inplace_ops():
+        # has grad_op_maker but no grad_op ?
+        if not grad_op_desc_list:
             return
+        grad_op_desc = grad_op_desc_list[0]
+
+        # grad_op can not inplace
+        if not core._has_infer_inplace(grad_op_desc.type()):
+            return
+
+        # get forward outs
+        forward_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set)
 
         # create grad program
         grad_program = Program()
@@ -418,6 +424,7 @@ class OpTest(unittest.TestCase):
         new_op_desc = grad_block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
         grad_program._sync_with_cpp()
+
         # create grad vars based on forward vars (shape and dtype)
         for arg in grad_op_desc.input_arg_names(
         ) + grad_op_desc.output_arg_names():
