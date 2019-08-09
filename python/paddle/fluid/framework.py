@@ -269,11 +269,15 @@ def name_scope(prefix=None):
               g = f - 1
     """
     # TODO(panyx0718): Only [0-9a-z].
-    assert prefix, "namescope prefix cannot be empty."
-    global _name_scope
-    _name_scope = _name_scope.child(prefix)
-    yield
-    _name_scope = _name_scope.parent()
+    # in dygraph we don't need namescope since it will cause mem leak
+    if not in_dygraph_mode():
+        assert prefix, "namescope prefix cannot be empty."
+        global _name_scope
+        _name_scope = _name_scope.child(prefix)
+        yield
+        _name_scope = _name_scope.parent()
+    else:
+        yield
 
 
 def _full_name_scope():
@@ -451,9 +455,10 @@ class Variable(object):
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
                 self._ivar = core.VarBase(
-                    name, dtype if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [],
-                    _current_expected_place(), stop_gradient, True
+                    name, type
+                    if type else core.VarDesc.VarType.LOD_TENSOR, dtype
+                    if dtype else core.VarDesc.VarType.FP32,
+                    list(shape) if shape else [], stop_gradient, True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -541,13 +546,16 @@ class Variable(object):
         return np.array(new_ivar.value().get_tensor())
 
     def backward(self, backward_strategy=None):
-        from .dygraph import BackwardStrategy
-        if backward_strategy is None:
-            backward_strategy = BackwardStrategy()
-            backward_strategy.sort_sum_gradient = False
+        if in_dygraph_mode():
+            from .dygraph import BackwardStrategy
+            if backward_strategy is None:
+                backward_strategy = BackwardStrategy()
+                backward_strategy.sort_sum_gradient = False
 
-        self._ivar._run_backward(backward_strategy)
-        _dygraph_tracer()._clear_ops()
+            self._ivar._run_backward(backward_strategy, _dygraph_tracer())
+        else:
+            raise ValueError(
+                "Variable.backward() is only avaliable in DyGraph mode")
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
@@ -575,9 +583,13 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s %s' % (
-                self.name, self.dtype, self.shape,
-                str(self._ivar.value().get_tensor()))
+            tensor = self._ivar.value().get_tensor()
+            if tensor._is_initialized():
+                return 'name %s, dtype: %s shape: %s %s' % (
+                    self.name, self.dtype, self.shape, str(tensor))
+            else:
+                return 'name %s, shape: %s, not inited' % (self.name,
+                                                           self.shape)
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -672,7 +684,7 @@ class Variable(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self._ivar.dtype
+            return self._ivar.type
         else:
             return self.desc.type()
 
@@ -1044,9 +1056,7 @@ class Operator(object):
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
-            self.iop = core.OpBase(type)
-            self.previous_ops = []
-
+            self._type = type
             self.attrs = attrs if attrs else {}
         else:
             self.block = block
@@ -1192,7 +1202,7 @@ class Operator(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self.iop.type
+            return self._type
         else:
             return self.desc.type()
 
@@ -1746,10 +1756,12 @@ class Block(object):
                 else:
                     attrs['is_test'] = False
 
+            type = kwargs.get("type", None)
+
             op = Operator(
                 block=self,
                 desc=None,
-                type=kwargs.get("type", None),
+                type=type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs)
@@ -1758,9 +1770,11 @@ class Block(object):
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in dygraph mode.
-            _dygraph_tracer().trace_op(op,
+
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs
+                                       if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
@@ -1821,17 +1835,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         if in_dygraph_mode():
+            type = kwargs.get("type", None)
+            attrs = kwargs.get("attrs", {})
             op = Operator(
-                self,
-                None,
-                type=kwargs.get("type", None),
-                inputs=None,
-                outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                self, None, type=type, inputs=None, outputs=None, attrs=attrs)
 
-            _dygraph_tracer().trace_op(op,
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs
+                                       if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
