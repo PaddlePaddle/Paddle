@@ -18,6 +18,7 @@ including create, config, run, etc.
 
 from __future__ import print_function
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import os
 import shutil
@@ -160,7 +161,8 @@ class TestDataset(unittest.TestCase):
         dataset.load_into_memory()
         dataset.local_shuffle()
 
-        exe = fluid.Executor(fluid.CUDAPlace(0))
+        exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         for i in range(2):
             try:
@@ -250,7 +252,8 @@ class TestDataset(unittest.TestCase):
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
 
-        exe = fluid.Executor(fluid.CUDAPlace(0))
+        exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         for i in range(2):
             try:
