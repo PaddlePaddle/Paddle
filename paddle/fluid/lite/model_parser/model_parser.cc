@@ -91,7 +91,7 @@ void LoadLoDTensor(std::istream &is, Variable *var) {
   auto *tensor = var->GetMutable<lite::Tensor>();
   uint32_t version{};
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
-  LOG(INFO) << "model version " << version;
+  VLOG(3) << "model version " << version;
 
   // Load LoD information
   uint64_t lod_level{};
@@ -154,7 +154,7 @@ void LoadModel(const std::string &model_dir, Scope *scope,
       continue;
 
     std::string file_path = model_dir + "/" + var.name();
-    LOG(INFO) << "reading weight " << var.name();
+    VLOG(4) << "reading weight " << var.name();
 
     std::ifstream file(file_path);
     switch (var.type().type()) {
@@ -209,7 +209,7 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.data_size();
+    uint64_t size = tensor.memory_size();
     CHECK_LT(size, std::numeric_limits<std::streamsize>::max())
         << "Index overflow when writing tensor";
 

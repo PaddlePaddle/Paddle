@@ -27,7 +27,6 @@ from .initializer import Constant
 from . import unique_name
 from .framework import Program, Variable, program_guard
 from . import layers
-from .layers import detection
 
 __all__ = [
     'MetricBase',
@@ -154,25 +153,20 @@ class CompositeMetric(MetricBase):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            preds = [[0.1], [0.7], [0.8], [0.9], [0.2],
-                     [0.2], [0.3], [0.5], [0.8], [0.6]]
-            labels = [[0], [1], [1], [1], [1],
-                      [0], [0], [0], [0], [0]]
-            preds = np.array(preds)
-            labels = np.array(labels)
-
-            comp = fluid.metrics.CompositeMetric()
-            precision = fluid.metrics.Precision()
-            recall = fluid.metrics.Recall()
-            comp.add_metric(precision)
-            comp.add_metric(recall)
-
+          labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
+          pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+          comp = fluid.metrics.CompositeMetric()
+          acc = fluid.metrics.Precision()
+          recall = fluid.metrics.Recall()
+          comp.add_metric(acc)
+          comp.add_metric(recall)
+          for pass in range(PASSES):
+            comp.reset()
+            for data in train_reader():
+                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
             comp.update(preds=preds, labels=labels)
-            numpy_precision, numpy_recall = comp.eval()
-
-            print("expect precision: %.2f, got %.2f" % ( 3. / 5, numpy_precision ) )
-            print("expect recall: %.2f, got %.2f" % (3. / 4, numpy_recall ) )
+            numpy_acc, numpy_recall = comp.eval()
     """
 
     def __init__(self, name=None):
@@ -221,30 +215,20 @@ class Precision(MetricBase):
     relevant instances among the retrieved instances.
     https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers
 
-    This class mangages the precision score for binary classification task.
+    Note Precision is different with Accuracy in binary classifiers.
+    accuracy = true positive / total instances
+    precision = true positive / all positive instance
 
     Examples:
         .. code-block:: python
 
-            import numpy as np
-
             metric = fluid.metrics.Precision()
-
-            # generate the preds and labels
-
-            preds = [[0.1], [0.7], [0.8], [0.9], [0.2],
-                     [0.2], [0.3], [0.5], [0.8], [0.6]]
-
-            labels = [[0], [1], [1], [1], [1],
-                      [0], [0], [0], [0], [0]]
-
-            preds = np.array(preds)
-            labels = np.array(labels)
-
-            metric.update(preds=preds, labels=labels)
-            numpy_precision = metric.eval()
-
-            print("expct precision: %.2f and got %.2f" % ( 3.0 / 5.0, numpy_precision))
+            for pass in range(PASSES):
+                metric.reset()
+                for data in train_reader():
+                    loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                    metric.update(preds=preds, labels=labels)
+                numpy_precision = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -263,7 +247,7 @@ class Precision(MetricBase):
         for i in range(sample_num):
             pred = preds[i]
             label = labels[i]
-            if pred == 1:
+            if label == 1:
                 if pred == label:
                     self.tp += 1
                 else:
@@ -282,30 +266,16 @@ class Recall(MetricBase):
 
     https://en.wikipedia.org/wiki/Precision_and_recall
 
-    This class mangages the recall score for binary classification task.
-
     Examples:
         .. code-block:: python
 
-            import numpy as np
-
             metric = fluid.metrics.Recall()
-
-            # generate the preds and labels
-
-            preds = [[0.1], [0.7], [0.8], [0.9], [0.2],
-                     [0.2], [0.3], [0.5], [0.8], [0.6]]
-
-            labels = [[0], [1], [1], [1], [1],
-                      [0], [0], [0], [0], [0]]
-
-            preds = np.array(preds)
-            labels = np.array(labels)
-
-            metric.update(preds=preds, labels=labels)
-            numpy_precision = metric.eval()
-
-            print("expct precision: %.2f and got %.2f" % ( 3.0 / 4.0, numpy_precision))
+            for pass in range(PASSES):
+                metric.reset()
+                for data in train_reader():
+                    loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(preds=preds, labels=labels)
+                numpy_recall = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -318,16 +288,15 @@ class Recall(MetricBase):
             raise ValueError("The 'preds' must be a numpy ndarray.")
         if not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray.")
-        sample_num = labels.shape[0]
-        preds = np.rint(preds).astype("int32")
-
+        sample_num = labels[0]
         for i in range(sample_num):
-            pred = preds[i]
+            pred = preds[i].astype("int32")
             label = labels[i]
             if label == 1:
                 if pred == label:
                     self.tp += 1
-                else:
+            else:
+                if pred != label:
                     self.fn += 1
 
     def eval(self):
@@ -337,7 +306,8 @@ class Recall(MetricBase):
 
 class Accuracy(MetricBase):
     """
-    Calculate the mean accuracy over multiple batches.
+    Accumulate the accuracy from minibatches and compute the average accuracy
+    for every pass.
     https://en.wikipedia.org/wiki/Accuracy_and_precision
 
     Args:
@@ -346,28 +316,18 @@ class Accuracy(MetricBase):
     Examples:
         .. code-block:: python
 
-            #suppose we have batch_size = 128
-            batch_size=128
-            accuracy_manager = fluid.metrics.Accuracy()
-
-            #suppose the accuracy is 0.9 for the 1st batch
-            batch1_acc = 0.9
-            accuracy_manager.update(value = batch1_acc, weight = batch_size)
-            print("expect accuracy: %.2f, get accuracy: %.2f" % (batch1_acc, accuracy_manager.eval()))
-
-            #suppose the accuracy is 0.8 for the 2nd batch
-            batch2_acc = 0.8
-
-            accuracy_manager.update(value = batch2_acc, weight = batch_size)
-            #the joint acc for batch1 and batch2 is (batch1_acc * batch_size + batch2_acc * batch_size) / batch_size / 2
-            print("expect accuracy: %.2f, get accuracy: %.2f" % ((batch1_acc * batch_size + batch2_acc * batch_size) / batch_size / 2, accuracy_manager.eval()))
-
-            #reset the accuracy_manager
-            accuracy_manager.reset()
-            #suppose the accuracy is 0.8 for the 3rd batch
-            batch3_acc = 0.8
-            accuracy_manager.update(value = batch3_acc, weight = batch_size)
-            print("expect accuracy: %.2f, get accuracy: %.2f" % (batch3_acc, accuracy_manager.eval()))
+            labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            minibatch_accuracy = fluid.layers.accuracy(pred, label)
+            accuracy_evaluator = fluid.metrics.Accuracy()
+            for pass in range(PASSES):
+                accuracy_evaluator.reset()
+                for data in train_reader():
+                    batch_size = data[0]
+                    loss = exe.run(fetch_list=[cost, minibatch_accuracy])
+                accuracy_evaluator.update(value=minibatch_accuracy, weight=batch_size)
+                numpy_acc = accuracy_evaluator.eval()
     """
 
     def __init__(self, name=None):
@@ -388,15 +348,10 @@ class Accuracy(MetricBase):
                 "The 'value' must be a number(int, float) or a numpy ndarray.")
         if not _is_number_(weight):
             raise ValueError("The 'weight' must be a number(int, float).")
-        if _is_number_(weight) and weight < 0:
-            raise ValueError("The 'weight' can not be negative")
         self.value += value * weight
         self.weight += weight
 
     def eval(self):
-        """
-        Return the mean accuracy (float or numpy.array) for all accumulated batches.
-        """
         if self.weight == 0:
             raise ValueError("There is no data in Accuracy Metrics. \
                 Please check layers.accuracy output has added to Accuracy.")
@@ -416,29 +371,17 @@ class ChunkEvaluator(MetricBase):
     Examples:
         .. code-block:: python
 
-            # init the chunck-level evaluation manager
+            labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
+                input=pred,
+                label=label)
             metric = fluid.metrics.ChunkEvaluator()
-
-            # suppose the model predict 10 chuncks, while 8 ones are correct and the ground truth has 9 chuncks.
-            num_infer_chunks = 10
-            num_label_chunks = 9 
-            num_correct_chunks = 8
-
-            metric.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
-            numpy_precision, numpy_recall, numpy_f1 = metric.eval()
-
-            print("precision: %.2f, recall: %.2f, f1: %.2f" % (numpy_precision, numpy_recall, numpy_f1))
-
-            # the next batch, predicting 3 prefectly correct chuncks.
-            num_infer_chunks = 3
-            num_label_chunks = 3
-            num_correct_chunks = 3
-
-            metric.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
-            numpy_precision, numpy_recall, numpy_f1 = metric.eval()
-
-            print("precision: %.2f, recall: %.2f, f1: %.2f" % (numpy_precision, numpy_recall, numpy_f1))
-
+            for data in train_reader():
+                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
+                numpy_precision, numpy_recall, numpy_f1 = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -487,17 +430,12 @@ class ChunkEvaluator(MetricBase):
 class EditDistance(MetricBase):
     """
     Edit distance is a way of quantifying how dissimilar two strings
-    (e.g., words) are to each another by counting the minimum number
-    of edit operations (add, remove or replace) required to transform
-    one string into the other.
+    (e.g., words) are to one another by counting the minimum number
+    of operations required to transform one string into the other.
     Refer to https://en.wikipedia.org/wiki/Edit_distance
 
-    This EditDistance class takes two inputs by using update function:
-    1. distances: a (batch_size, 1) numpy.array, each element represents the
-    edit distance between two sequences.
-    2. seq_num: a int|float value, standing for the number of sequence pairs.
-
-    and returns the overall edit distance of multiple sequence-pairs.
+    Accumulate edit distance sum and sequence number from mini-batches and
+    compute the average edit_distance and instance error of all batches.
 
     Args:
         name: the metrics name
@@ -505,37 +443,19 @@ class EditDistance(MetricBase):
     Examples:
         .. code-block:: python
 
-            import numpy as np
+            distances, seq_num = fluid.layers.edit_distance(input, label)
+            distance_evaluator = fluid.metrics.EditDistance()
+            for epoch in PASS_NUM:
+                distance_evaluator.reset()
+                for data in batches:
+                    loss = exe.run(fetch_list=[cost] + list(edit_distance_metrics))
+                distance_evaluator.update(distances, seq_num)
+                distance, instance_error = distance_evaluator.eval()
 
-            # suppose that batch_size is 128
-            batch_size = 128
+    In the above example:
 
-            # init the edit distance manager
-            distance_evaluator = fluid.metrics.EditDistance("EditDistance")
-
-            # generate the edit distance across 128 sequence pairs, the max distance is 10 here
-            edit_distances_batch0 = np.random.randint(low = 0, high = 10, size = (batch_size, 1))
-            seq_num_batch0 = batch_size
-
-            distance_evaluator.update(edit_distances_batch0, seq_num_batch0)
-            avg_distance, wrong_instance_ratio = distance_evaluator.eval()
-            print("the average edit distance for batch0 is %.2f and the wrong instance ratio is %.2f " % (avg_distance, wrong_instance_ratio))
-
-            edit_distances_batch1 = np.random.randint(low = 0, high = 10, size = (batch_size, 1))
-            seq_num_batch1 = batch_size
-
-            distance_evaluator.update(edit_distances_batch1, seq_num_batch1)
-            avg_distance, wrong_instance_ratio = distance_evaluator.eval()
-            print("the average edit distance for batch0 and batch1 is %.2f and the wrong instance ratio is %.2f " % (avg_distance, wrong_instance_ratio))
-
-            distance_evaluator.reset()
-
-            edit_distances_batch2 = np.random.randint(low = 0, high = 10, size = (batch_size, 1))
-            seq_num_batch2 = batch_size
-
-            distance_evaluator.update(edit_distances_batch2, seq_num_batch2)
-            avg_distance, wrong_instance_ratio = distance_evaluator.eval()
-            print("the average edit distance for batch2 is %.2f and the wrong instance ratio is %.2f " % (avg_distance, wrong_instance_ratio))
+        - 'distance' is the average of the edit distance in a pass.
+        - 'instance_error' is the instance error rate in a pass.
 
     """
 
@@ -546,15 +466,6 @@ class EditDistance(MetricBase):
         self.instance_error = 0
 
     def update(self, distances, seq_num):
-        """
-        Update the overall edit distance
-
-        Args:
-            distances: a (batch_size, 1) numpy.array, each element represents the 
-            edit distance between two sequences.
-            seq_num: a int|float value, standing for the number of sequence pairs.
-
-        """
         if not _is_numpy_(distances):
             raise ValueError("The 'distances' must be a numpy ndarray.")
         if not _is_number_(seq_num):
@@ -566,11 +477,6 @@ class EditDistance(MetricBase):
         self.total_distance += total_distance
 
     def eval(self):
-        """
-        Return two floats:
-        avg_distance: the average distance for all sequence pairs updated using the update function.
-        avg_instance_error: the ratio of sequence pairs whose edit distance is not zero.
-        """
         if self.seq_num == 0:
             raise ValueError(
                 "There is no data in EditDistance Metric. Please check layers.edit_distance output has been added to EditDistance."
@@ -582,9 +488,9 @@ class EditDistance(MetricBase):
 
 class Auc(MetricBase):
     """
-    The auc metric is for binary classification.
+    Auc metric adapts to the binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve
-    Please notice that the auc metric is implemented with python, which may be a little bit slow.
+    Need to note that auc metric compute the value via Python natively.
     If you concern the speed, please use the fluid.layers.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
@@ -605,26 +511,12 @@ class Auc(MetricBase):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            # init the auc metric
-            auc_metric = fluid.metrics.Auc("ROC")
-
-            # suppose that batch_size is 128
-            batch_num = 100
-            batch_size = 128
-
-            for batch_id in range(batch_num):
-
-                class0_preds = np.random.random(size = (batch_size, 1))
-                class1_preds = 1 - class0_preds
-
-                preds = np.concatenate((class0_preds, class1_preds), axis=1)
-
-                labels = np.random.randint(2, size = (batch_size, 1))
-                auc_metric.update(preds = preds, labels = labels)
-
-                # shall be some score closing to 0.5 as the preds are randomly assigned
-                print("auc for iteration %d is %.2f" % (batch_id, auc_metric.eval()))
+            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
+            metric = fluid.metrics.Auc()
+            for data in train_reader():
+                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(preds, labels)
+                numpy_auc = metric.eval()
     """
 
     def __init__(self, name, curve='ROC', num_thresholds=4095):
@@ -637,15 +529,6 @@ class Auc(MetricBase):
         self._stat_neg = [0] * _num_pred_buckets
 
     def update(self, preds, labels):
-        """
-        Update the auc curve with the given predictions and labels
-
-        Args:
-             preds: an numpy array in the shape of (batch_size, 2), preds[i][j] denotes the probability
-             of classifying the instance i into the class j.
-             labels: an numpy array in the shape of (batch_size, 1), labels[i] is either o or 1, representing
-             the label of the instance i.
-        """
         if not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray.")
         if not _is_numpy_(preds):
@@ -665,9 +548,6 @@ class Auc(MetricBase):
         return abs(x1 - x2) * (y1 + y2) / 2.0
 
     def eval(self):
-        """
-        Return the area (a float score) under auc curve
-        """
         tot_pos = 0.0
         tot_neg = 0.0
         auc = 0.0
@@ -729,38 +609,20 @@ class DetectionMAP(object):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid.layers as layers
-
-            batch_size = -1 # can be any size
-            image_boxs_num = 10
-            bounding_bboxes_num = 21
-
-            pb = layers.data(name='prior_box', shape=[image_boxs_num, 4],
-                append_batch_size=False, dtype='float32')
-
-            pbv = layers.data(name='prior_box_var', shape=[image_boxs_num, 4],
-                append_batch_size=False, dtype='float32')
-
-            loc = layers.data(name='target_box', shape=[batch_size, bounding_bboxes_num, 4],
-                append_batch_size=False, dtype='float32')
-
-            scores = layers.data(name='scores', shape=[batch_size, bounding_bboxes_num, image_boxs_num],
-                append_batch_size=False, dtype='float32')
-
-            nmsed_outs = fluid.layers.detection_output(scores=scores,
-                loc=loc, prior_box=pb, prior_box_var=pbv)
-
-            gt_box = fluid.layers.data(name="gt_box", shape=[batch_size, 4], dtype="float32")
-            gt_label = fluid.layers.data(name="gt_label", shape=[batch_size, 1], dtype="float32")
-            difficult = fluid.layers.data(name="difficult", shape=[batch_size, 1], dtype="float32")
-
-            exe = fluid.Executor(fluid.CUDAPlace(0))
-            map_evaluator = fluid.metrics.DetectionMAP(nmsed_outs, gt_label, gt_box, difficult, class_num = 3)
-
+            exe = fluid.Executor(place)
+            map_evaluator = fluid.Evaluator.DetectionMAP(input,
+                gt_label, gt_box, gt_difficult)
             cur_map, accum_map = map_evaluator.get_map_var()
+            fetch = [cost, cur_map, accum_map]
+            for epoch in PASS_NUM:
+                map_evaluator.reset(exe)
+                for data in batches:
+                    loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
 
-            # see detailed examples at 
-            https://github.com/PaddlePaddle/models/blob/43cdafbb97e52e6d93cc5bbdc6e7486f27665fc8/PaddleCV/object_detection
+    In the above example:
+
+            - 'cur_map_v' is the mAP of current mini-batch.
+            - 'accum_map_v' is the accumulative mAP of one pass.
 
  
     """
@@ -785,7 +647,7 @@ class DetectionMAP(object):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = detection.detection_map(
+        map = layers.detection_map(
             input,
             label,
             class_num,
@@ -810,7 +672,7 @@ class DetectionMAP(object):
         self.has_state = var
 
         # calculate accumulative mAP
-        accum_map = detection.detection_map(
+        accum_map = layers.detection_map(
             input,
             label,
             class_num,

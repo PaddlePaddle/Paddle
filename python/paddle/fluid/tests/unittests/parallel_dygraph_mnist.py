@@ -55,6 +55,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
         self._conv2d = Conv2D(
             self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -100,13 +101,11 @@ class MNIST(fluid.dygraph.Layer):
                               loc=0.0, scale=scale)),
                       act="softmax")
 
-    def forward(self, inputs, label):
+    def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        cost = self._fc(x)
-        loss = fluid.layers.cross_entropy(cost, label)
-        avg_loss = fluid.layers.mean(loss)
-        return avg_loss
+        x = self._fc(x)
+        return x
 
 
 class TestMnist(TestParallelDyGraphRunnerBase):
@@ -114,7 +113,7 @@ class TestMnist(TestParallelDyGraphRunnerBase):
         model = MNIST("mnist")
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=2, drop_last=True)
-        opt = fluid.optimizer.SGD(learning_rate=1e-3)
+        opt = SGDOptimizer(learning_rate=1e-3)
         return model, train_reader, opt
 
     def run_one_loop(self, model, opt, data):
@@ -127,8 +126,9 @@ class TestMnist(TestParallelDyGraphRunnerBase):
         label = to_variable(y_data)
         label.stop_gradient = True
 
-        avg_loss = model(img, label)
-
+        cost = model(img)
+        loss = fluid.layers.cross_entropy(cost, label)
+        avg_loss = fluid.layers.mean(loss)
         return avg_loss
 
 

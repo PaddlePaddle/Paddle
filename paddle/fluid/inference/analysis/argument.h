@@ -63,16 +63,6 @@ struct Argument {
   using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
-  void PartiallyRelease() {
-    if (Has("model_program_path")) {
-      if (Has("model_from_memory") && model_from_memory()) {
-        model_program_path().clear();
-        model_program_path().shrink_to_fit();
-        model_params_path().clear();
-        model_params_path().shrink_to_fit();
-      }
-    }
-  }
 
 #define DECL_ARGUMENT_FIELD(field__, Field, type__)          \
  public:                                                     \
@@ -174,7 +164,6 @@ struct Argument {
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
-  DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
 
   DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
                       anakin_max_shape_t);

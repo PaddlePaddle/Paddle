@@ -21,7 +21,7 @@ namespace lite {
 namespace operators {
 
 bool ConcatOpLite::CheckShape() const {
-  CHECK_GT_OR_FALSE(param_.x.size(), 1UL);
+  CHECK_GE_OR_FALSE(param_.x.size(), 1UL);
   CHECK_OR_FALSE(param_.output);
   return true;
 }
@@ -50,6 +50,10 @@ bool ConcatOpLite::InferShape() const {
   }
   // Set output dims
   param_.output->Resize(lite::DDim(out_dims));
+  if (n == 1) {
+    param_.output->ShareDataWith(param_.x[0]->raw_tensor());
+  }
+  param_.output->raw_tensor().set_lod(param_.x[0]->raw_tensor().lod());
   return true;
 }
 

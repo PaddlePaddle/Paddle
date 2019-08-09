@@ -12,57 +12,61 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <Eigen/Core>
-#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/kernels/arm/mul_compute.h"
+#include <vector>
+#include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
-#include "paddle/fluid/lite/core/types.h"
+#include "paddle/fluid/lite/core/type_system.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
 
-template <typename T>
-void mul_compute_eigen(const T* x, int x_h, int x_w, const T* y, int y_h,
-                       int y_w, T* out) {
-  using matrix_t =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
-  Eigen::Map<const matrix_t> X(x, x_h, x_w);
-  Eigen::Map<const matrix_t> Y(y, y_h, y_w);
-  Eigen::Map<matrix_t> Out(out, x_h, y_w);
-
-  Out = X * Y;
+void MulCompute::PrepareForRun() {
+  auto& ctx = this->ctx_->template As<ARMContext>();
 }
 
-class MulCompute : public KernelLite<TARGET(kARM), PRECISION(kFloat)> {
- public:
-  using param_t = operators::MulParam;
+void MulCompute::Run() {
+  auto& param = Param<param_t>();
 
-  void Run() override {
-    auto& param = Param<operators::MulParam>();
-    core::dim2 x_shape(
-        {static_cast<int>(
-             param.x->dims().Slice(0, param.x_num_col_dims).production()),
-         static_cast<int>(
-             param.x->dims()
-                 .Slice(param.x_num_col_dims, param.x->dims().size())
-                 .production())});
-    core::dim2 y_shape(
-        {static_cast<int>(
-             param.y->dims().Slice(0, param.y_num_col_dims).production()),
-         static_cast<int>(
-             param.y->dims()
-                 .Slice(param.y_num_col_dims, param.y->dims().size())
-                 .production())});
+  const auto* x_data = param.x->data<float>();
+  const auto* y_data = param.y->data<float>();
+  auto* o_data = param.output->mutable_data<float>();
 
-    mul_compute_eigen(param.x->data<float>(), x_shape.x, x_shape.y,  //
-                      param.y->data<float>(), y_shape.x, y_shape.y,  //
-                      param.output->mutable_data<float>());
+  m_ = static_cast<int>(
+      param.x->dims().Slice(0, param.x_num_col_dims).production());
+  int x_w =
+      static_cast<int>(param.x->dims()
+                           .Slice(param.x_num_col_dims, param.x->dims().size())
+                           .production());
+  int y_h = static_cast<int>(
+      param.y->dims().Slice(0, param.y_num_col_dims).production());
+  n_ = static_cast<int>(param.y->dims()
+                            .Slice(param.y_num_col_dims, param.y->dims().size())
+                            .production());
+
+  CHECK_EQ(x_w, y_h) << "x_w must be equal with y_h";
+  k_ = x_w;
+
+  if (n_ == 1) {
+    lite::arm::math::sgemv(x_data, y_data, o_data, false, m_, k_, false,
+                           nullptr, false);
+
+  } else {
+    constexpr bool is_tranposed_y = false;
+    auto& ctx = this->ctx_->template As<ARMContext>();
+    int hblock = lite::arm::math::get_hblock(ctx.arch());
+    int m_round = hblock * ((m_ + hblock - 1) / hblock);
+    ctx.ExtendWorkspace(DDimLite(std::vector<int64_t>({m_round * k_})));
+
+    float* packed_x = static_cast<float*>(ctx.workspace_data<float>()) +
+                      ctx.l2_cache_size() / sizeof(float);
+    lite::arm::math::prepackA(packed_x, x_data, k_, 0, m_, 0, k_, false, &ctx);
+    lite::arm::math::sgemm_prepack(packed_x, y_data, nullptr, o_data, m_, n_,
+                                   k_, false, false, is_tranposed_y, &ctx);
   }
-
-  virtual ~MulCompute() = default;
-};
+}
 
 }  // namespace arm
 }  // namespace kernels

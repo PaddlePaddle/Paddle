@@ -105,12 +105,14 @@ void Printf(const char* fmt, const Args&... args) {
   Fprintf(std::cout, fmt, args...);
 }
 
-inline std::string HumanReadableSize(double f_size) {
+template <typename T>
+std::string HumanReadableSize(T size) {
   size_t i = 0;
+  double f_size = static_cast<double>(size);
   double orig = f_size;
   const std::vector<std::string> units(
       {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"});
-  while (f_size >= 1024) {
+  while (f_size > 1024) {
     f_size /= 1024;
     i++;
   }

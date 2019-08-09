@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include <unordered_set>
 
 namespace paddle {
 namespace inference {
@@ -31,8 +32,8 @@ struct SimpleOpTypeSetTeller : public Teller {
   std::unordered_set<std::string> teller_set{
       {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
        "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-       "elementwise_add", "elementwise_mul", "dropout", "prelu",
-       "conv2d_transpose", "leaky_relu", "fc"}};
+       "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
+       "conv2d_transpose", "leaky_relu"}};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {

@@ -24,9 +24,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#ifdef EXIT  // NOLINT
-#undef EXIT  // NOLINT
-#endif       // NOLINT
+
 #include "framework/core/net/net.h"
 #include "framework/core/types.h"
 #include "framework/graph/graph.h"
@@ -116,13 +114,12 @@ class AnakinEngine {
 
  private:
   bool initialized_{false};
-  int device_;
   int max_batch_size_;
   std::map<std::string, std::vector<int>> max_input_shape_;
-  std::vector<std::string> program_inputs_;
+  int device_;
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
-  static std::once_flag init_anakin_;
+  std::vector<std::string> program_inputs_;
   std::unordered_map<std::string, float> tensor_scales_;
   // Always be false in gpu mode but true in most cpu cases.
   bool auto_config_layout_;

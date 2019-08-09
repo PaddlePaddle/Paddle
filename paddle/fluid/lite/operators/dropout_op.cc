@@ -52,13 +52,16 @@ class DropoutOpLite : public OpLite {
     param_.mask = GetMutableVar<lite::Tensor>(scope, Mask);
 
     param_.dropout_prob = op_desc.GetAttr<float>("dropout_prob");
-    if (op_desc.HasAttr("axis")) {
-      param_.is_test = op_desc.GetAttr<bool>("is_test");
-    }
+    param_.is_test = true;
+    // TODO(sangoly): `is_test` has different attr type in x86 and arm, set
+    // `true` now.
+    // if (op_desc.HasAttr("is_test")) {
+    //   param_.is_test = op_desc.GetAttr<bool>("is_test");
+    // }
     param_.fix_seed = op_desc.GetAttr<bool>("fix_seed");
     param_.seed = op_desc.GetAttr<int>("seed");
     param_.dropout_implementation =
-        op_desc.GetAttr<int>("dropout_implementation");
+        op_desc.GetAttr<std::string>("dropout_implementation");
     return true;
   }
 

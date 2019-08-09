@@ -51,7 +51,7 @@ class MeanOp : public OpLite {
   std::string DebugString() const override { return "mean"; }
 
  private:
-  mutable operators::ElementwiseParam param_;
+  mutable operators::MeanParam param_;
 };
 
 #ifdef LITE_WITH_X86
@@ -73,7 +73,7 @@ class MeanGradOp : public OpLite {
   }
 
   bool AttachImpl(const cpp::OpDesc& opdesc, lite::Scope* scope) override {
-    CHECK_EQ(opdesc.InputArgumentNames().size(), 3UL);
+    CHECK_EQ(opdesc.InputArgumentNames().size(), 2UL);
     auto X_name = opdesc.Input("X").front();
     auto Out_grad_name = opdesc.Input(framework::GradVarName("Out")).front();
     auto X_grad_name = opdesc.Output(framework::GradVarName("X")).front();

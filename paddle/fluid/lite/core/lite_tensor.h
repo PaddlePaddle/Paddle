@@ -47,6 +47,22 @@ class DDimLite : public DDimBase<DDimLite> {
                            std::multiplies<value_type>());
   }
   const std::vector<value_type> &data() const { return data_; }
+  value_type count(int start, int end) const {
+    if (start < 0) {
+      start = 0;
+    }
+    if (end > size()) {
+      end = size();
+    }
+    if (end < start) {
+      end = start;
+    }
+    value_type sum = 1;
+    for (auto i = start; i < end; ++i) {
+      sum *= data_[i];
+    }
+    return sum;
+  }
 
  private:
   std::vector<value_type> data_;
@@ -89,6 +105,8 @@ class TensorLite : public TensorBase<TensorLite> {
   T *mutable_data(TargetType target);
   void *mutable_data(size_t memory_size);
   void *mutable_data(TargetType target, size_t memory_size);
+
+  const void *raw_data() const { return buffer_->data(); }
 
   size_t memory_size() const { return memory_size_; }
 

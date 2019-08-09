@@ -66,9 +66,7 @@ void BindDataset(py::module* m) {
       .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
       .def("release_memory", &framework::Dataset::ReleaseMemory)
       .def("local_shuffle", &framework::Dataset::LocalShuffle)
-      .def("global_shuffle", &framework::Dataset::GlobalShuffle)
-      .def("get_memory_data_size", &framework::Dataset::GetMemoryDataSize)
-      .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize);
+      .def("global_shuffle", &framework::Dataset::GlobalShuffle);
 }
 
 }  // end namespace pybind

@@ -43,6 +43,7 @@ FindAttr(framework::proto::OpDesc *desc, const std::string &name) {
     it->set_##pb_f__(v);                                         \
   }
 SET_IMPL_ONE(int, INT, i);
+SET_IMPL_ONE(int64_t, LONG, l);
 SET_IMPL_ONE(float, FLOAT, f);
 SET_IMPL_ONE(bool, BOOLEAN, b);
 
@@ -116,11 +117,13 @@ GetFindAttr(const framework::proto::OpDesc &desc, const std::string &name) {
   }
 GET_ATTR_IMPL(int32_t, i);
 GET_ATTR_IMPL(float, f);
+GET_ATTR_IMPL(int64_t, l);
 GET_ATTR_IMPL(bool, b);
 GET_ATTRS_IMPL(std::vector<int>, ints);
 GET_ATTRS_IMPL(std::vector<float>, floats);
 GET_ATTRS_IMPL(std::vector<std::string>, strings);
 GET_ATTR_IMPL(std::string, s);
+GET_ATTRS_IMPL(std::vector<int64_t>, longs);
 
 }  // namespace pb
 }  // namespace lite

@@ -80,6 +80,8 @@ class Tensor {
   template <typename T>
   const T* data() const;
 
+  const void* raw_data() const { return holder_->ptr(); }
+
   inline bool IsInitialized() const;
 
   /**
@@ -87,12 +89,17 @@ class Tensor {
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(platform::Place place, size_t requested_size = 0);
+  T* mutable_data(platform::Place place,
+                  memory::Allocator::Attr attr = memory::Allocator::kDefault,
+                  size_t requested_size = 0);
 
   void* mutable_data(platform::Place place, proto::VarType::Type type,
+                     memory::Allocator::Attr attr = memory::Allocator::kDefault,
                      size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, size_t requested_size = 0);
+  void* mutable_data(platform::Place place,
+                     memory::Allocator::Attr attr = memory::Allocator::kDefault,
+                     size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -104,7 +111,9 @@ class Tensor {
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
+  T* mutable_data(DDim dims, platform::Place place,
+                  memory::Allocator::Attr attr = memory::Allocator::kDefault,
+                  size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;

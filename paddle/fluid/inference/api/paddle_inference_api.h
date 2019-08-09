@@ -28,6 +28,6 @@ limitations under the License. */
 
 #include "paddle_analysis_config.h"  // NOLINT
 #include "paddle_api.h"              // NOLINT
-#if (defined WITH_ANAKIN) || (defined PADDLE_WITH_ANAKIN)
+#ifdef WITH_ANAKIN
 #include "paddle_anakin_config.h"  // NOLINT
 #endif

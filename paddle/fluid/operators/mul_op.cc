@@ -180,72 +180,16 @@ class MulOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class MulDoubleGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
-
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("DOut", "DDOut");
-    }
-    if (ctx->HasOutput("DX") && ctx->HasInput("DDY")) {
-      ctx->ShareDim("X", "DX");
-    }
-    if (ctx->HasOutput("DY") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("Y", "DY");
-    }
-  }
-};
-
-class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
-    retv->SetType("mul_grad_grad");
-
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput("DOut", Input(framework::GradVarName("Out")));
-    retv->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    retv->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
-
-    auto ddx = OutputGrad(framework::GradVarName("X"));
-    auto ddw = OutputGrad(framework::GradVarName("Y"));
-    std::vector<std::string> empty_str = {};
-
-    retv->SetOutput("DDOut", (ddx.empty())
-                                 ? empty_str
-                                 : InputGrad(framework::GradVarName("Out")));
-    retv->SetOutput("DX", ddw.empty() ? empty_str : InputGrad("X"));
-    retv->SetOutput("DY", ddx.empty() ? empty_str : InputGrad("Y"));
-
-    retv->SetAttrMap(Attrs());
-    return retv;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
                   ops::MulOpGradMaker);
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp, ops::MulDoubleGradMaker);
-REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    mul_grad_grad,
-    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);

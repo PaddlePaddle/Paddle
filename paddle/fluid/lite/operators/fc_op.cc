@@ -61,7 +61,7 @@ bool FcOpLite::InferShape() const {
   param_.output->Resize(lite::DDim(output_dims));
 
   // share LoD
-  // param_.output->set_lod(param_.input->lod());
+  param_.output->raw_tensor().set_lod(param_.input->lod());
   return true;
 }
 

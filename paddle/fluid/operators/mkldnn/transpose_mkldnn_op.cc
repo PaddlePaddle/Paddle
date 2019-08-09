@@ -46,8 +46,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> nchw_tz = paddle::framework::vectorize2int(input->dims());
 
     const std::string key = platform::TransposeMKLDNNHandler::GetHash(
-        nchw_tz, axis,
-        ctx.op().Output("Out") + std::to_string(input->format()));
+        nchw_tz, axis, ctx.op().Output("Out"));
 
     platform::TransposeMKLDNNHandler handler(nchw_tz, axis, dev_ctx,
                                              mkldnn_engine, key);

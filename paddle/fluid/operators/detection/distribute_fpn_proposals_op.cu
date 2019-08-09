@@ -140,7 +140,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
                                               target_lvls_data, keys_out,
                                               idx_in, idx_out, roi_num);
     // Allocate temporary storage
-    auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+    auto d_temp_storage = memory::Alloc(place, temp_storage_bytes,
+                                        memory::Allocator::kScratchpad);
 
     // Run sorting operation
     // sort target level to get corresponding index

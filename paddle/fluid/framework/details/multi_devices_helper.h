@@ -45,7 +45,6 @@ constexpr char kGraphVars[] = "vars";
 constexpr char kPlaces[] = "places";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
-constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;

@@ -42,6 +42,8 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
       CREATE_KERNEL1(target__, kFloat);                 \
     case PRECISION(kInt8):                              \
       CREATE_KERNEL1(target__, kInt8);                  \
+    case PRECISION(kInt64):                             \
+      CREATE_KERNEL1(target__, kInt64);                 \
     case PRECISION(kAny):                               \
       CREATE_KERNEL1(target__, kAny);                   \
     default:                                            \
@@ -61,6 +63,9 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
     } break;
     case TARGET(kARM): {
       CREATE_KERNEL(kARM);
+    } break;
+    case TARGET(kOpenCL): {
+      CREATE_KERNEL(kOpenCL);
     } break;
     default:
       CHECK(false) << "not supported kernel target " << TargetToStr(target);
@@ -92,12 +97,18 @@ KernelRegistry::KernelRegistry()
   INIT_FOR(kHost, kAny, kAny);
 
   INIT_FOR(kX86, kFloat, kNCHW);
+  INIT_FOR(kX86, kInt64, kNCHW);
   INIT_FOR(kX86, kAny, kNCHW);
   INIT_FOR(kX86, kAny, kAny);
 
   INIT_FOR(kARM, kFloat, kNCHW);
+  INIT_FOR(kARM, kInt8, kNCHW);
   INIT_FOR(kARM, kAny, kNCHW);
   INIT_FOR(kARM, kAny, kAny);
+
+  INIT_FOR(kOpenCL, kFloat, kNCHW);
+  INIT_FOR(kOpenCL, kAny, kNCHW);
+  INIT_FOR(kOpenCL, kAny, kAny);
 #undef INIT_FOR
 }
 

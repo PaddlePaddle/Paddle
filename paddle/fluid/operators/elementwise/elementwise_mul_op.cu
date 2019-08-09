@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -89,9 +88,3 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_mul_grad_grad,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>);

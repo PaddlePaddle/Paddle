@@ -20,7 +20,3 @@ import paddle.fluid as fluid
 class TestInstallCheck(unittest.TestCase):
     def test_install_check(self):
         fluid.install_check.run_check()
-
-
-if __name__ == '__main__':
-    unittest.main()

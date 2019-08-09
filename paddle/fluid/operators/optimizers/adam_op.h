@@ -29,15 +29,6 @@ namespace operators {
 
 namespace scatter = paddle::operators::math::scatter;
 
-class AdamOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override;
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-};
-
 struct GPUAdam;
 struct CPUAdam;
 

@@ -54,12 +54,10 @@ class OpLite : public Registry {
   OpLite() = default;
   explicit OpLite(const std::string &type) : op_type_(type) {}
   explicit OpLite(const std::vector<Place> &valid_places)
-      : valid_places_(valid_places) {
-    LOG(INFO) << "valid places " << valid_places.size();
-  }
+      : valid_places_(valid_places) {}
 
   void SetValidPlaces(const std::vector<Place> &places) {
-    LOG(INFO) << "valid places " << valid_places_.size();
+    VLOG(3) << "valid places " << valid_places_.size();
     valid_places_ = places;
   }
   const std::vector<Place> &valid_places() const { return valid_places_; }
@@ -198,6 +196,22 @@ class OpInfo : public cpp::OpDesc {
       }
     }
     return false;
+  }
+
+  void UpdateAllInputs(const std::string &from, const std::string &to) {
+    for (auto &item : inputs_) {
+      for (auto &var : item.second) {
+        if (var == from) var = to;
+      }
+    }
+  }
+
+  void UpdateAllOutputs(const std::string &from, const std::string &to) {
+    for (auto &item : outputs_) {
+      for (auto &var : item.second) {
+        if (var == from) var = to;
+      }
+    }
   }
 };
 

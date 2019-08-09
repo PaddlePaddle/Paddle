@@ -13,48 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include <memory>
-#include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
-namespace paddle {
-namespace operators {
-
-class ElementwiseSubDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType("elementwise_sub_grad_grad");
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("DOut", Input(framework::GradVarName("Out")));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
-
-    op->SetAttrMap(Attrs());
-
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    return op;
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, "Sub",
-                                           "Out = X - Y");
-
-REGISTER_OPERATOR(elementwise_sub_grad, ops::ElementwiseOpExplicitGrad,
-                  ops::ElementwiseGradOpInplace,
-                  ops::ElementwiseGradNoBufVarsInference,
-                  ops::ElementwiseSubDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_sub_grad_grad,
-                  ops::ElementwiseOpDoubleGradWithoutDXDY);
+REGISTER_ELEMWISE_EXPLICIT_OP(elementwise_sub, "Sub", "Out = X - Y");
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,
@@ -68,13 +30,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad_grad,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);

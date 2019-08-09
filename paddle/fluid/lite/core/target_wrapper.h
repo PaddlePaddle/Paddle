@@ -16,7 +16,9 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include "paddle/fluid/lite/api/paddle_place.h"
 #include "paddle/fluid/lite/utils/cp_logging.h"
+
 #ifdef LITE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -25,119 +27,17 @@
 namespace paddle {
 namespace lite {
 
-enum class TargetType : int {
-  kUnk = 0,
-  kHost,
-  kX86,
-  kCUDA,
-  kARM,
-  kAny,  // any target
-  NUM,   // number of fields.
-};
-enum class PrecisionType : int {
-  kUnk = 0,
-  kFloat,
-  kInt8,
-  kAny,  // any precision
-  NUM,   // number of fields.
-};
-enum class DataLayoutType : int {
-  kUnk = 0,
-  kNCHW,
-  kAny,  // any data layout
-  NUM,   // number of fields.
-};
-
-// Some helper macro to get a specific TargetType.
-#define TARGET(item__) paddle::lite::TargetType::item__
-// Some helper macro to get a specific PrecisionType.
-#define PRECISION(item__) paddle::lite::PrecisionType::item__
-#define DATALAYOUT(item__) paddle::lite::DataLayoutType::item__
-
-static const std::string& TargetToStr(TargetType target) {
-  static const std::string target2string[] = {"unk", "host", "x86", "cuda",
-                                              "any"};
-  auto x = static_cast<int>(target);
-  CHECK_LT(x, static_cast<int>(TARGET(NUM)));
-  return target2string[x];
-}
-
-static const std::string& PrecisionToStr(PrecisionType precision) {
-  static const std::string precision2string[] = {"unk", "float", "int8_t",
-                                                 "any"};
-  auto x = static_cast<int>(precision);
-  CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
-  return precision2string[x];
-}
-
-static const std::string& DataLayoutToStr(DataLayoutType layout) {
-  static const std::string datalayout2string[] = {"unk", "NCHW", "any"};
-  auto x = static_cast<int>(layout);
-  CHECK_LT(x, static_cast<int>(DATALAYOUT(NUM)));
-  return datalayout2string[x];
-}
-
-static const std::string& TargetRepr(TargetType target) {
-  static const std::string target2string[] = {"kUnk", "kHost", "kX86", "kCUDA",
-                                              "kAny"};
-  auto x = static_cast<int>(target);
-  CHECK_LT(x, static_cast<int>(TARGET(NUM)));
-  return target2string[x];
-}
-
-static const std::string& PrecisionRepr(PrecisionType precision) {
-  static const std::string precision2string[] = {"kUnk", "kFloat", "kInt8",
-                                                 "kAny"};
-  auto x = static_cast<int>(precision);
-  CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
-  return precision2string[x];
-}
-
-static const std::string& DataLayoutRepr(DataLayoutType layout) {
-  static const std::string datalayout2string[] = {"kUnk", "kNCHW", "kAny"};
-  auto x = static_cast<int>(layout);
-  CHECK_LT(x, static_cast<int>(DATALAYOUT(NUM)));
-  return datalayout2string[x];
-}
-
-/*
- * Place specifies the execution context of a Kernel or input/output for a
- * kernel. It is used to make the analysis of the MIR more clear and accurate.
- */
-struct Place {
-  TargetType target{TARGET(kUnk)};
-  PrecisionType precision{PRECISION(kUnk)};
-  DataLayoutType layout{DATALAYOUT(kUnk)};
-  int16_t device{0};  // device ID
-
-  Place() = default;
-  Place(TargetType target, PrecisionType precision,
-        DataLayoutType layout = DATALAYOUT(kNCHW), int16_t device = 0)
-      : target(target), precision(precision), layout(layout), device(device) {}
-
-  bool is_valid() const {
-    return target != TARGET(kUnk) && precision != PRECISION(kUnk) &&
-           layout != DATALAYOUT(kUnk);
-  }
-
-  size_t hash() const;
-
-  bool operator==(const Place& other) const {
-    return target == other.target && precision == other.precision &&
-           layout == other.layout && device == other.device;
-  }
-
-  bool operator!=(const Place& other) const { return !(*this == other); }
-
-  friend bool operator<(const Place& a, const Place& b);
-
-  friend std::ostream& operator<<(std::ostream& os, const Place& other) {
-    os << other.DebugString();
-    return os;
-  }
-
-  std::string DebugString() const;
-};
+using lite_api::TargetType;
+using lite_api::PrecisionType;
+using lite_api::DataLayoutType;
+using lite_api::PrecisionTypeLength;
+using lite_api::TargetToStr;
+using lite_api::Place;
+using lite_api::PrecisionToStr;
+using lite_api::DataLayoutToStr;
+using lite_api::TargetRepr;
+using lite_api::PrecisionRepr;
+using lite_api::DataLayoutRepr;
 
 // Memory copy directions.
 enum class IoDirection {

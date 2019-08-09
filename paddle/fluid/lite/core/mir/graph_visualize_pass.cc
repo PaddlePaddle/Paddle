@@ -17,6 +17,7 @@
 #include <set>
 #include <string>
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/utils/string.h"
 
 namespace paddle {
 namespace lite {
@@ -39,7 +40,7 @@ std::string Visualize(mir::SSAGraph* graph) {
     if (node.IsArg()) {
       key = node.AsArg().name;
     } else {
-      key = node.AsStmt().op_type + std::to_string(id++);
+      key = string_format("%s%d", node.AsStmt().op_type().c_str(), id++);
     }
 
     if (node.IsStmt()) {

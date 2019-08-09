@@ -62,19 +62,10 @@ class DownpourServer(Server):
         Returns:
             return None 
         """
-        for table in self._server.downpour_server_param.downpour_table_param:
-            if table.table_id == table_id:
-                if table.type == pslib.PS_SPARSE_TABLE:
-                    return
-                else:
-                    raise ValueError("expect table %s type=%s, but actual type=%s" \
-                        %(table_id, pslib.PS_SPARSE_TABLE, table.type))
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = "DownpourSparseTable"
         table.type = pslib.PS_SPARSE_TABLE
-        table.compress_in_save = True
-        table.shard_num = 1000
         table.accessor.accessor_class = "DownpourFeatureValueAccessor"
         table.accessor.sparse_sgd_param.learning_rate = learning_rate
         table.accessor.sparse_sgd_param.initial_g2sum = 3
@@ -103,24 +94,10 @@ class DownpourServer(Server):
         Returns:
             return None 
         """
-        fea_dim = 0
-        for param in filter(lambda x: x.name.find("embedding") == -1,
-                            param_var):
-            fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
-
-        for table in self._server.downpour_server_param.downpour_table_param:
-            if table.table_id == table_id:
-                if table.type == pslib.PS_DENSE_TABLE:
-                    table.accessor.fea_dim = fea_dim
-                    return
-                else:
-                    raise ValueError("expect table %s type=%s, but actual type=%s" \
-                        %(table_id, pslib.PS_DENSE_TABLE, table.type))
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = "DownpourDenseTable"
         table.type = pslib.PS_DENSE_TABLE
-        table.compress_in_save = True
         table.accessor.accessor_class = "DownpourDenseValueAccessor"
         table.accessor.dense_sgd_param.name = "adam"
         table.accessor.dense_sgd_param.adam.learning_rate = learning_rate
@@ -129,6 +106,10 @@ class DownpourServer(Server):
         table.accessor.dense_sgd_param.adam.ada_epsilon = 1e-8
         table.accessor.dense_sgd_param.adam.mom_decay_rate = 0.99
         table.accessor.dense_sgd_param.naive.learning_rate = 0.0002
+        fea_dim = 0
+        for param in filter(lambda x: x.name.find("embedding") == -1,
+                            param_var):
+            fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
         table.accessor.fea_dim = fea_dim
 
     def add_data_norm_table(self, table_id, learning_rate, param_var, grad_var):
@@ -142,27 +123,17 @@ class DownpourServer(Server):
         Returns:
             return None 
         """
-        fea_dim = 0
-        for param in filter(lambda x: x.name.find("embedding") == -1,
-                            param_var):
-            fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
-
-        for table in self._server.downpour_server_param.downpour_table_param:
-            if table.table_id == table_id:
-                if table.type == pslib.PS_DENSE_TABLE:
-                    table.accessor.fea_dim = fea_dim
-                    return
-                else:
-                    raise ValueError("expect table %s type=%s, but actual type=%s" \
-                        %(table_id, pslib.PS_DENSE_TABLE, table.type))
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = "DownpourDenseTable"
         table.type = pslib.PS_DENSE_TABLE
-        table.compress_in_save = True
         table.accessor.accessor_class = "DownpourDenseValueAccessor"
         table.accessor.dense_sgd_param.name = "summary"
         table.accessor.dense_sgd_param.summary.summary_decay_rate = 0.999999
+        fea_dim = 0
+        for param in filter(lambda x: x.name.find("embedding") == -1,
+                            param_var):
+            fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
         table.accessor.fea_dim = fea_dim
 
     def get_desc(self):
@@ -198,9 +169,6 @@ class DownpourWorker(Worker):
         Returns:
             return None 
         """
-        for table in self._worker.sparse_table:
-            if table.table_id == table_id:
-                return
         table = self._worker.sparse_table.add()
         table.table_id = table_id
         table.slot_key.extend([var.name for var in slot_key_vars])
@@ -219,9 +187,6 @@ class DownpourWorker(Worker):
         Returns:
             return None 
         """
-        for table in self._worker.dense_table:
-            if table.table_id == table_id:
-                return
         table = self._worker.dense_table.add()
         table.table_id = table_id
         table.dense_variable_name.extend(

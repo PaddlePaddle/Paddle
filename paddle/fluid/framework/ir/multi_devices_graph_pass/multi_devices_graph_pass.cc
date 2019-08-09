@@ -157,11 +157,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  multi_nccl_ctxs_ = &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
-  nccl_ctxs_ = nullptr;
-  if (multi_nccl_ctxs_) {
-    nccl_ctxs_ = multi_nccl_ctxs_->DefaultFlatCtx();
-  }
+  nccl_ctxs_ = &Get<platform::NCCLContextMap>(details::kNCCLCtxs);
 #endif
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
@@ -464,20 +460,20 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::SparseAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes, places, multi_nccl_ctxs_, is_encoded,
+              scopes, places, nccl_ctxs_, is_encoded,
               static_cast<int>(strategy_.trainers_endpoints_.size()) *
                   places_.size()));
     } else {
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::AllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-              scopes, places, multi_nccl_ctxs_));
+              scopes, places, nccl_ctxs_));
     }
 #elif defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::AllReduceOpHandle(
             result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-            scopes, places, multi_nccl_ctxs_));
+            scopes, places, nccl_ctxs_));
 #else
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::AllReduceOpHandle(

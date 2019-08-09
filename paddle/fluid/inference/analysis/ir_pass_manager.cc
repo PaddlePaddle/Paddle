@@ -38,9 +38,9 @@ IRPassManager::IRPassManager(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, main_program);
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
-    auto *scope_ptr = argument->scope_ptr();
-    PADDLE_ENFORCE(scope_ptr);
-    graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
+    graph_->Set(framework::ir::kParamScopeAttr,
+                new framework::Scope *(
+                    const_cast<framework::Scope *>(&argument->scope())));
   }
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
@@ -87,10 +87,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool enable_int8 = argument->tensorrt_precision_mode() ==
                          AnalysisConfig::Precision::kInt8;
 
-      pass->Set("predictor_id", new int(argument->predictor_id()));
-      bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
-      pass->Set("use_calib_mode", new bool(use_calib_mode));
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
@@ -113,10 +110,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("engine_opt_info", new std::map<std::string, std::string>(
                                        argument->engine_opt_info()));
     }
-    if (pass_name == "ngraph_subgraph_pass") {
-      pass->Set("program",
-                new framework::ProgramDesc *(&argument->main_program()));
-    }
+
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));

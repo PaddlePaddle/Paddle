@@ -1,12 +1,10 @@
 #!/bin/bash
-PADDLE_ROOT=/home
-mkdir ${PADDLE_ROOT}
+PADDLE_ROOT=/paddle
 cd ${PADDLE_ROOT}
-pip install /paddle/build/opt/paddle/share/wheels/*.whl
 git clone https://github.com/PaddlePaddle/FluidDoc
 git clone https://github.com/tianshuo78520a/PaddlePaddle.org.git
-cd ${PADDLE_ROOT}/FluidDoc/doc/fluid/api
-sh gen_doc.sh
+sh ${PADDLE_ROOT}/FluidDoc/doc/fluid/api/gen_doc.sh
+pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
 apt-get update && apt-get install -y python-dev build-essential
 cd ${PADDLE_ROOT}/PaddlePaddle.org/portal
 pip install -r requirements.txt

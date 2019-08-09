@@ -14,6 +14,11 @@
 
 #include "paddle/fluid/lite/kernels/arm/fc_compute.h"
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <random>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/arm/math/funcs.h"
 #include "paddle/fluid/lite/core/op_registry.h"
@@ -22,6 +27,46 @@ namespace paddle {
 namespace lite {
 namespace kernels {
 namespace arm {
+
+#define A(i, j) a[i * lda + j]
+#define B(i, j) b[i * ldb + j]
+#define C(i, j) c[i * ldc + j]
+
+template <typename T>
+void gemm_bias(const T* a, const int M, const int K, const T* b, const int K_,
+               const int N, T* biases, T* c) {
+  EXPECT_TRUE(K_ == K && M > 0 && N > 0 && K > 0);
+  EXPECT_TRUE(a && b && c);
+  const int lda = K;
+  const int ldb = N;
+  const int ldc = N;
+  for (int m = 0; m < M; ++m) {
+    for (int n = 0; n < N; ++n) {
+      C(m, n) = 0.0f;
+      for (int k = 0; k < K; ++k) {
+        C(m, n) += A(m, k) * B(k, n);
+      }
+    }
+  }
+  if (biases) {
+    for (int m = 0; m < M; ++m) {
+      for (int n = 0; n < N; ++n) {
+        C(m, n) += biases[n];
+      }
+    }
+  }
+}
+
+template <typename T>
+void FillData(T* a, const int n, const T lower = static_cast<T>(-2.f),
+              const T upper = static_cast<T>(2.f)) {
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
+  for (int i = 0; i < n; ++i) {
+    a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
+  }
+}
 
 TEST(fc_arm, retrive_op) {
   auto fc =
@@ -37,108 +82,117 @@ TEST(fc_arm, init) {
 }
 
 TEST(fc_arm, compare_test) {
-  lite::Tensor x, w, b, out, ref;
-  constexpr int batch_size = 2;
-  x.Resize({batch_size, 3});
-  w.Resize({3, 4});
-  b.Resize({1, 4});
-  out.Resize({batch_size, 4});
-  ref.Resize({batch_size, 4});
+  using T = float;
 
-  auto x_data = x.mutable_data<float>();
-  auto w_data = w.mutable_data<float>();
-  auto b_data = b.mutable_data<float>();
-  auto out_data = out.mutable_data<float>();
-  auto ref_data = ref.mutable_data<float>();
+  for (int m : {1, 2, 3, 4}) {
+    for (int n : {1, 2, 3, 4}) {
+      for (int k : {1, 2, 3, 4}) {
+        for (bool with_bias : {true, false}) {
+          VLOG(3) << "m: " << m << ", n: " << n << ", k: " << k
+                  << (with_bias ? ", with bias" : "");
+          lite::Tensor x, w, b, out, ref;
 
-  for (int64_t i = 0; i < x.dims().product(); i++) {
-    x_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < w.dims().product(); i++) {
-    w_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < b.dims().product(); i++) {
-    b_data[i] = static_cast<float>(i);
-  }
+          x.Resize({m, k});
+          w.Resize({k, n});
+          b.Resize({1, n});
+          out.Resize({m, n});
+          ref.Resize({m, n});
 
-  lite::arm::math::fc_compute_eigen(x_data, batch_size, 3,  //
-                                    w_data, 3, 4,           //
-                                    b_data, ref_data);
+          auto* x_data = x.mutable_data<T>();
+          auto* w_data = w.mutable_data<T>();
+          auto* b_data = with_bias ? b.mutable_data<T>() : nullptr;
 
-  // fc compute kernel
-  FcCompute fc;
-  operators::FcParam param;
+          auto* out_data = out.mutable_data<T>();
+          auto* ref_data = ref.mutable_data<T>();
 
-  param.in_num_col_dims = 1;
-  param.input = &x;
-  param.w = &w;
-  param.bias = &b;
-  param.output = &out;
-  param.in_mat_dims = x.dims();
+          FillData<T>(x_data, x.dims().production());
+          FillData<T>(w_data, w.dims().production());
+          FillData<T>(out_data, out.dims().production(), 0, 0);
+          FillData<T>(ref_data, ref.dims().production(), 0, 0);
 
-  DeviceInfo::Init();
-  std::unique_ptr<KernelContext> ctx(new KernelContext);
-  ctx->As<ARMContext>();
-  fc.SetParam(param);
-  fc.SetContext(std::move(ctx));
-  fc.Run();
+          if (with_bias) {
+            FillData<T>(b_data, b.dims().production());
+          }
 
-  VLOG(3) << "output vs ref";
-  for (int i = 0; i < out.dims().product(); i++) {
-    VLOG(3) << out_data[i] << " vs " << ref_data[i];
-  }
+          FcCompute fc;
+          operators::FcParam param;
 
-  for (int i = 0; i < out.dims().product(); ++i) {
-    EXPECT_NEAR(out_data[i], ref_data[i], 1e-5);
+          param.input = &x;
+          param.w = &w;
+          param.bias = with_bias ? &b : nullptr;
+          param.output = &out;
+          param.in_num_col_dims = 1;
+          param.in_mat_dims = x.dims();
+
+          DeviceInfo::Init();
+          std::unique_ptr<KernelContext> ctx(new KernelContext);
+          ctx->As<ARMContext>();
+          fc.SetParam(param);
+          fc.SetContext(std::move(ctx));
+          fc.PrepareForRun();
+          fc.Run();
+
+          gemm_bias<T>(x_data, m, k, w_data, k, n, b_data, ref_data);
+
+          for (int i = 0; i < out.dims().production(); i++) {
+            EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
+          }
+        }
+      }
+    }
   }
 }
 
 TEST(fc_arm, num_col_dims) {
-  FcCompute fc;
-  operators::FcParam param;
+  using T = float;
 
-  lite::Tensor x;
-  lite::Tensor w;
-  lite::Tensor bias;
-  lite::Tensor output;
+  for (bool with_bias : {true, false}) {
+    lite::Tensor x, w, b, out, ref;
 
-  x.Resize({1, 2, 3});
-  w.Resize({3, 4});
-  bias.Resize({1, 4});
-  output.Resize({2, 4});
+    x.Resize({1, 2, 3});
+    w.Resize({3, 4});
+    b.Resize({1, 4});
+    out.Resize({2, 4});
+    ref.Resize({2, 4});
 
-  auto* x_data = x.mutable_data<float>();
-  auto* w_data = w.mutable_data<float>();
-  auto* bias_data = bias.mutable_data<float>();
-  auto* output_data = output.mutable_data<float>();
+    auto* x_data = x.mutable_data<float>();
+    auto* w_data = w.mutable_data<float>();
+    auto* b_data = with_bias ? b.mutable_data<T>() : nullptr;
 
-  for (int64_t i = 0; i < x.dims().product(); i++) {
-    x_data[i] = static_cast<float>(i);
+    auto* out_data = out.mutable_data<T>();
+    auto* ref_data = ref.mutable_data<T>();
+
+    FillData<T>(x_data, x.dims().production());
+    FillData<T>(w_data, w.dims().production());
+    FillData<T>(out_data, out.dims().production(), 0, 0);
+    FillData<T>(ref_data, ref.dims().production(), 0, 0);
+    if (with_bias) {
+      FillData<T>(b_data, b.dims().production());
+    }
+    FcCompute fc;
+    operators::FcParam param;
+    param.input = &x;
+    param.w = &w;
+    param.bias = with_bias ? &b : nullptr;
+    param.output = &out;
+    param.in_num_col_dims = 2;
+    param.in_mat_dims = x.dims();
+
+    std::unique_ptr<KernelContext> ctx(new KernelContext);
+    ctx->As<ARMContext>();
+    DeviceInfo::Init();
+
+    fc.SetParam(param);
+    fc.SetContext(std::move(ctx));
+    fc.PrepareForRun();
+    fc.Run();
+
+    gemm_bias<T>(x_data, 2, 3, w_data, 3, 4, b_data, ref_data);
+
+    for (int i = 0; i < out.dims().production(); i++) {
+      EXPECT_NEAR(out_data[i], ref_data[i], 1e-3);
+    }
   }
-  for (int64_t i = 0; i < w.dims().product(); i++) {
-    w_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < bias.dims().product(); i++) {
-    bias_data[i] = static_cast<float>(i);
-  }
-  for (int64_t i = 0; i < output.dims().product(); i++) {
-    output_data[i] = static_cast<float>(i);
-  }
-
-  param.in_num_col_dims = 2;
-  param.input = &x;
-  param.w = &w;
-  param.bias = &bias;
-  param.output = &output;
-  param.in_mat_dims = x.dims();
-
-  std::unique_ptr<KernelContext> ctx(new KernelContext);
-  ctx->As<ARMContext>();
-  DeviceInfo::Init();
-
-  fc.SetParam(param);
-  fc.SetContext(std::move(ctx));
-  fc.Run();
 }
 
 }  // namespace arm

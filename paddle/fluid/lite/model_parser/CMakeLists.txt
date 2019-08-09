@@ -1,7 +1,7 @@
-#cc_library(runtime_lite SRCS runtime.cc)
+#lite_cc_library(runtime_lite SRCS runtime.cc)
 
 #TODO(Superjomn) enable it again.
-if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+if(NOT LITE_ON_MOBILE)
     lite_cc_test(test_model_parser_lite SRCS model_parser_test.cc
       DEPS model_parser_lite framework_proto_lite
       ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model)
@@ -10,18 +10,15 @@ if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     endif(WITH_TESTING)
 endif()
 
+lite_cc_library(compatible_pb_lite SRCS compatible_pb.cc
+  DEPS op_desc_lite framework_proto_lite var_desc_lite cpp_op_desc_lite)
 
-cc_library(compatible_pb_lite SRCS compatible_pb.cc DEPS op_desc_lite framework_proto_lite var_desc_lite)
-
-set(model_parser_deps variable_lite scope_lite ${tensor_lite} scope_lite
-                      target_wrapper_host
-                      compatible_pb_lite
-                      memory_lite
-                      )
-if (LITE_WITH_CUDA)
-    set(model_parser_deps ${model_parser_deps} target_wrapper_cuda)
-endif()
-cc_library(model_parser_lite SRCS model_parser.cc DEPS ${model_parser_deps})
+lite_cc_library(model_parser_lite SRCS model_parser.cc DEPS
+    variable_lite scope_lite ${tensor_lite} scope_lite
+    target_wrapper_host
+    compatible_pb_lite
+    memory_lite
+    CUDA_DEPS target_wrapper_cuda)
 
 lite_cc_test(test_op_desc_lite SRCS op_desc_test.cc DEPS cpp_op_desc_lite op_desc_lite compatible_pb_lite)
 

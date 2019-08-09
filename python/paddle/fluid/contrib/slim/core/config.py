@@ -20,14 +20,10 @@ from ..prune import *
 from ..quantization import *
 from .strategy import *
 from ..distillation import *
-from ..searcher import *
-from ..nas import *
 
 __all__ = ['ConfigFactory']
 """This factory is used to create instances by loading and parsing configure file with yaml format.
 """
-
-PLUGINS = ['pruners', 'quantizers', 'quantizers', 'strategies', 'controllers']
 
 
 class ConfigFactory(object):
@@ -84,7 +80,7 @@ class ConfigFactory(object):
                     assert self.version == int(key_values['version'])
 
                 # parse pruners
-                if key in PLUGINS:
+                if key == 'distillers' or key == 'pruners' or key == 'quantizers' or key == 'strategies':
                     instances = key_values[key]
                     for name in instances:
                         self._new_instance(name, instances[name])
@@ -95,12 +91,8 @@ class ConfigFactory(object):
                     if 'init_model' in key_values[key]:
                         self.compressor['init_model'] = key_values[key][
                             'init_model']
-                    if 'checkpoint_path' in key_values[key]:
-                        self.compressor['checkpoint_path'] = key_values[key][
-                            'checkpoint_path']
-                    if 'eval_epoch' in key_values[key]:
-                        self.compressor['eval_epoch'] = key_values[key][
-                            'eval_epoch']
+                    self.compressor['checkpoint_path'] = key_values[key][
+                        'checkpoint_path']
                     if 'strategies' in key_values[key]:
                         for name in key_values[key]['strategies']:
                             strategy = self.instance(name)

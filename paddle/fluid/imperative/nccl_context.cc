@@ -93,7 +93,6 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
     send(sock, buffer, NCCL_UNIQUE_ID_BYTES, 0);
     break;
   }
-  close(sock);
 }
 
 void NCCLParallelContext::BcastNCCLId(ncclUniqueId *nccl_id, int root) {

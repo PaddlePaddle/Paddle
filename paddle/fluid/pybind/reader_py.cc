@@ -31,7 +31,6 @@ class MultiDeviceFeedReader {
  public:
   using ResultDictList =
       std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
-  using ResultList = std::vector<std::vector<framework::LoDTensor>>;
 
   MultiDeviceFeedReader(
       const std::shared_ptr<operators::reader::LoDTensorBlockingQueue> &queue,
@@ -77,21 +76,6 @@ class MultiDeviceFeedReader {
       for (size_t j = 0; j < names_.size(); ++j) {
         result[i].emplace(names_[j], std::move(ret_[i][j]));
       }
-    }
-    ReadAsync();
-    return result;
-  }
-
-  ResultList ReadNextList() {
-    bool success = WaitFutures();
-    if (!success) {
-      return {};
-    }
-
-    ResultList result;
-    result.reserve(ret_.size());
-    for (size_t i = 0; i < ret_.size(); ++i) {
-      result.emplace_back(std::move(ret_[i]));
     }
     ReadAsync();
     return result;
@@ -157,8 +141,6 @@ void BindReader(py::module *module) {
 
   py::class_<MultiDeviceFeedReader>(m, "MultiDeviceFeedReader", "")
       .def("read_next", &MultiDeviceFeedReader::ReadNext,
-           py::call_guard<py::gil_scoped_release>())
-      .def("read_next_list", &MultiDeviceFeedReader::ReadNextList,
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &MultiDeviceFeedReader::Reset,
            py::call_guard<py::gil_scoped_release>());

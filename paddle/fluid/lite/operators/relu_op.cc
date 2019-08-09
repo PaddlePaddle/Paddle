@@ -21,22 +21,22 @@ namespace operators {
 
 bool ReluOp::CheckShape() const { return true; }
 bool ReluOp::InferShape() const {
-  CHECK_OR_FALSE(param_.input);
-  CHECK_OR_FALSE(param_.output);
+  CHECK_OR_FALSE(param_.X);
+  CHECK_OR_FALSE(param_.Out);
   // TODO(Superjomn) Enable data sharing.
-  param_.output->Resize(param_.input->dims());
+  param_.Out->Resize(param_.X->dims());
   // share lod
-  // param_.output->set_lod(param_.input->lod());
+  param_.Out->raw_tensor().set_lod(param_.X->lod());
   return true;
 }
 
 bool ReluOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
-  param_.input = const_cast<lite::Tensor *>(
+  param_.X = const_cast<lite::Tensor *>(
       &scope->FindVar(opdesc.Input("X").front())->Get<lite::Tensor>());
-  param_.output =
+  param_.Out =
       scope->FindVar(opdesc.Output("Out").front())->GetMutable<lite::Tensor>();
-  CHECK(param_.input);
-  CHECK(param_.output);
+  CHECK(param_.X);
+  CHECK(param_.Out);
   return true;
 }
 

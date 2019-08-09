@@ -51,7 +51,13 @@ class PadOpConverter : public OpConverter {
 
     PADDLE_ENFORCE(layer != nullptr);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pad", {output_name}, test_mode);
+    engine_->SetITensor(output_name, layer->getOutput(0));
+    layer->setName(("scale (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
+    if (test_mode) {  // the test framework can not determine which is the
+                      // output, so place the declaration inside.
+      engine_->DeclareOutput(output_name);
+    }
   }
 };
 

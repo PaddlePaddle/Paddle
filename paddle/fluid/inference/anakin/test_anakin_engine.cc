@@ -22,6 +22,7 @@ limitations under the License. */
 using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
+using anakin::saber::X86;
 using anakin::saber::Shape;
 using anakin::PBlock;
 using anakin::PTuple;
