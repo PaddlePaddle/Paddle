@@ -31,6 +31,7 @@ from test_imperative_base import new_program_scope
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  pool_size,
@@ -50,6 +51,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
         self._conv2d = Conv2D(
             self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -80,10 +82,10 @@ class MNIST(fluid.dygraph.Layer):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 20, 5, 2, 2, act="relu")
+            self.full_name(), 1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 50, 5, 2, 2, act="relu")
+            self.full_name(), 20, 50, 5, 2, 2, act="relu")
 
         pool_2_shape = 50 * 4 * 4
         SIZE = 10
@@ -103,45 +105,30 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-    def reader_decorator(self, reader):
-        def _reader_imple():
-            for item in reader():
-                image = np.array(item[0]).reshape(1, 28, 28)
-                label = np.array(item[1]).astype('int64').reshape(1)
-                yield image, label
-
-        return _reader_imple
-
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
-        batch_size = 128
-        batch_num = 50
-
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
-
-            batch_py_reader = fluid.io.PyReader(capacity=1)
-            batch_py_reader.decorate_sample_list_generator(
-                paddle.batch(
-                    self.reader_decorator(paddle.dataset.mnist.train()),
-                    batch_size=batch_size,
-                    drop_last=True),
-                places=fluid.CPUPlace())
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             mnist.train()
             dy_param_init_value = {}
             for epoch in range(epoch_num):
-                for batch_id, data in enumerate(batch_py_reader()):
-                    if batch_id >= batch_num:
-                        break
-                    img = data[0]
-                    dy_x_data = img.numpy()
-                    label = data[1]
+                for batch_id, data in enumerate(train_reader()):
+                    dy_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(128, 1)
+
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
                     label.stop_gradient = True
 
                     cost = mnist(img)
@@ -172,9 +159,7 @@ class TestImperativeMnist(unittest.TestCase):
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(),
-                batch_size=batch_size,
-                drop_last=True)
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
@@ -198,14 +183,11 @@ class TestImperativeMnist(unittest.TestCase):
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
-                    if batch_id >= batch_num:
-                        break
                     static_x_data = np.array(
                         [x[0].reshape(1, 28, 28)
                          for x in data]).astype('float32')
                     y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(
-                            [batch_size, 1])
+                        [x[1] for x in data]).astype('int64').reshape([128, 1])
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)

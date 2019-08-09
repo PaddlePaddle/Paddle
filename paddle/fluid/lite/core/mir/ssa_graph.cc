@@ -24,10 +24,10 @@ namespace lite {
 namespace mir {
 
 bool SSAGraph::CheckBidirectionalConnection() {
-  LOG(INFO) << "node count " << node_storage_.size();
+  VLOG(4) << "node count " << node_storage_.size();
   for (auto &node : node_storage_) {
-    if (node.IsStmt()) LOG(INFO) << node.AsStmt().op_info()->Type();
-    if (node.IsArg()) LOG(INFO) << node.AsArg().name << " " << node.AsArg().id;
+    if (node.IsStmt()) VLOG(4) << node.AsStmt().op_info()->Type();
+    if (node.IsArg()) VLOG(4) << node.AsArg().name << " " << node.AsArg().id;
     for (auto *in : node.inlinks) {
       CHECK(in->outlinks.end() !=
             std::find(in->outlinks.begin(), in->outlinks.end(), &node));
@@ -123,11 +123,9 @@ void SSAGraph::Build(const Program &program,
 
   std::unordered_map<std::string, mir::Node *> arg_update_node_map_;
   for (auto &op : program.ops()) {
-    LOG(INFO) << op->op_info()->Type();
+    VLOG(3) << op->op_info()->Type();
     auto *op_node = GraphCreateInstructNode(op, valid_places);
-    LOG(INFO) << "input:";
     for (const std::string &name : op->op_info()->input_names()) {
-      LOG(INFO) << name;
       mir::Node *arg_node = nullptr;
       if (arg_update_node_map_.count(name)) {
         arg_node = arg_update_node_map_.at(name);
@@ -141,9 +139,7 @@ void SSAGraph::Build(const Program &program,
       CHECK(arg_node->IsRoleSet());
       DirectedLink(arg_node, op_node);
     }
-    LOG(INFO) << "output:";
     for (const std::string &name : op->op_info()->output_names()) {
-      LOG(INFO) << name;
       node_storage_.emplace_back();
       auto *arg_node = &node_storage_.back();
       arg_node->AsArg(name, node_storage_.size() - 1);

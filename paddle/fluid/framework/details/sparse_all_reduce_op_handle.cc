@@ -30,7 +30,7 @@ namespace details {
 SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    const platform::NCCLCommunicator *ctxs, bool is_encoded, int nranks)
+    const platform::NCCLContextMap *ctxs, bool is_encoded, int nranks)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
       is_encoded_(is_encoded),
       nranks_(nranks) {
@@ -102,8 +102,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
 
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
-    auto *nccl_ctxs = nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, false);
-    auto &nccl_ctx = nccl_ctxs->at(dev_id);
+    auto &nccl_ctx = nccl_ctxs_->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 

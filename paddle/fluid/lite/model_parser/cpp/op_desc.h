@@ -58,6 +58,12 @@ class OpDesc : public OpDescAPI {
   std::map<std::string, std::vector<std::string>>* mutable_outputs() {
     return &outputs_;
   }
+
+  bool HasInput(const std::string& param) const {
+    auto it = inputs_.find(param);
+    return it != inputs_.end();
+  }
+
   std::vector<std::string> Input(const std::string& param) const override {
     auto it = inputs_.find(param);
     CHECK(it != inputs_.end());
@@ -73,6 +79,11 @@ class OpDesc : public OpDescAPI {
     std::vector<std::string> res;
     for (const auto& x : outputs_) res.push_back(x.first);
     return res;
+  }
+
+  bool HasOutput(const std::string& param) const {
+    auto it = outputs_.find(param);
+    return it != outputs_.end();
   }
 
   std::vector<std::string> Output(const std::string& param) const override {

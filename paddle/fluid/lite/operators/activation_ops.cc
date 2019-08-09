@@ -30,6 +30,7 @@ class ActivationOp : public OpLite {
 
   bool InferShape() const override {
     param_.Out->Resize(param_.X->dims());
+    param_.Out->raw_tensor().set_lod(param_.X->raw_tensor().lod());
     return true;
   }
 
@@ -72,6 +73,21 @@ class ActivationGradOp : public OpLite {
 
     param_.Out_grad = GetVar<lite::Tensor>(scope, Out_grad_name);
     param_.X_grad = GetMutableVar<Tensor>(scope, X_grad_name);
+
+    if (opdesc.HasInput("X")) {
+      auto X_name = opdesc.Input("X").front();
+      param_.X = GetVar<lite::Tensor>(scope, X_name);
+    } else {
+      param_.X = param_.X_grad;
+    }
+
+    if (opdesc.HasInput("Out")) {
+      auto Out_name = opdesc.Input("Out").front();
+      param_.Out = GetVar<lite::Tensor>(scope, Out_name);
+    } else {
+      param_.Out = param_.Out_grad;
+    }
+
     return true;
   }
 
@@ -89,6 +105,7 @@ class ActivationGradOp : public OpLite {
 }  // namespace paddle
 
 REGISTER_LITE_OP(square, paddle::lite::operators::ActivationOp);
+REGISTER_LITE_OP(softsign, paddle::lite::operators::ActivationOp);
 #ifdef LITE_WITH_X86
 REGISTER_LITE_OP(square_grad, paddle::lite::operators::ActivationGradOp);
 #endif

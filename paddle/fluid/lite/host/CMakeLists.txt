@@ -1,1 +1,2 @@
-cc_library(target_wrapper_host SRCS target_wrapper.cc)
+lite_cc_library(target_wrapper_host SRCS target_wrapper.cc)
+ 

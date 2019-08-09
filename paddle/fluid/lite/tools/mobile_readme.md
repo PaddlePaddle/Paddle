@@ -17,8 +17,16 @@ $ git checkout incubate/lite
 
 ### 主要cmake选项
                 
-- `ARM_TARGET_OS` 代表目标操作系统， 目前支持 "android" "armlinux"， 模型是Android
-- `ARM_TARGET_ARCH_ABI` 代表ARCH， 目前支持 "arm64-v8a" "armeabi-v7a"。 模型是arm64-v8a
+- `ARM_TARGET_OS` 代表目标操作系统， 目前支持 "android" "armlinux"， 默认是Android
+- `ARM_TARGET_ARCH_ABI` 代表ARCH，支持输入"armv8"和"armv7"，针对OS不一样选择不一样。
+    - `-DARM_TARGET_OS="android"` 时 
+        - "armv8", 等效于 "arm64-v8a"。 default值为这个。
+        - "armv7", 等效于 "armeabi-v7a"。 
+    - `-DARM_TARGET_OS="armlinux"` 时 
+        - "armv8", 等效于 "arm64"。 default值为这个。
+        - "armv7hf", 等效于使用`eabihf`且`-march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 `。
+        - "armv7", 等效于使用`eabi`且`-march=armv7-a -mfloat-abi=softfp -mfpu=neon-vfpv4`。
+- `ARM_TARGET_LANG` 代表目标编译的语言， 默认为gcc，支持 gcc和clang两种。
 
 ### 编译
 
@@ -124,3 +132,4 @@ $ adb devices
 List of devices attached
 5cb00b6 device
 ```
+ 

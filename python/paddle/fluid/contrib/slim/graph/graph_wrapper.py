@@ -209,7 +209,6 @@ class GraphWrapper(object):
             if var.persistable:
                 self.persistables[var.name] = var
         self.compiled_graph = None
-        in_nodes = [] if in_nodes is None else in_nodes
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
@@ -242,7 +241,7 @@ class GraphWrapper(object):
         """
         return var._var.persistable
 
-    def compile(self, for_parallel=True, for_test=False, mem_opt=False):
+    def compile(self, for_parallel=True, for_test=False):
         """
         Compile the program in this wrapper to framework.CompiledProgram for next running.
         This function must be called if the program is modified.
@@ -258,9 +257,8 @@ class GraphWrapper(object):
         if for_parallel:
             # disable memory optimize for stable training
             build_strategy = compiler.BuildStrategy()
-            build_strategy.enable_inplace = mem_opt
-            build_strategy.memory_optimize = mem_opt
-            #            build_strategy.async_mode = False
+            build_strategy.enable_inplace = False
+            build_strategy.memory_optimize = False
             self.compiled_graph = compiler.CompiledProgram(
                 target).with_data_parallel(
                     loss_name=loss, build_strategy=build_strategy)
@@ -477,12 +475,8 @@ class GraphWrapper(object):
         for var in self.program.list_vars():
             if var.persistable and var.name not in self.persistables:
                 self.persistables[var.name] = var
-        persistables = []
-        for var in self.persistables:
-            if 'reader' not in var and 'double_buffer' not in var:
-                persistables.append(self.persistables[var])
 
-        io.save_vars(exe.exe, path, vars=persistables)
+        io.save_vars(exe.exe, path, vars=self.persistables.values())
 
     def load_persistables(self, path, exe):
         """
@@ -495,11 +489,8 @@ class GraphWrapper(object):
         def if_exist(var):
             return os.path.exists(os.path.join(path, var.name))
 
-        persistables = []
-        for var in self.persistables:
-            if 'reader' not in var and 'double_buffer' not in var:
-                persistables.append(self.persistables[var])
-        io.load_vars(exe.exe, path, vars=persistables, predicate=if_exist)
+        io.load_vars(
+            exe.exe, path, vars=self.persistables.values(), predicate=if_exist)
 
     def update_param_shape(self, scope):
         """

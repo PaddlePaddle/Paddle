@@ -56,9 +56,6 @@ OpInputConfig::OpInputConfig(std::istream& is) {
         ParseDims(is);
       } else if (sep == "lod" || sep == "lod:") {
         ParseLoD(is);
-      } else if (sep == "filename") {
-        is >> filename;
-        EraseEndSep(&filename);
       }
     }
   }
@@ -89,7 +86,7 @@ void OpInputConfig::ParseInitializer(std::istream& is) {
   EraseEndSep(&initializer_str);
 
   const std::vector<std::string> supported_initializers = {"random", "natural",
-                                                           "zeros", "file"};
+                                                           "zeros"};
   if (!Has(supported_initializers, initializer_str)) {
     PADDLE_THROW("Unsupported initializer %s", initializer_str.c_str());
   }

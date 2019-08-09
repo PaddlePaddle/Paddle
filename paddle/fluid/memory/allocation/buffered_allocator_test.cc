@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include <gtest/gtest.h>
+#include <memory>
 #include <utility>
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -36,7 +37,7 @@ inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
 
 TEST(buffered_allocator, thread_safety) {
   std::unique_ptr<CPUAllocator> allocator(new CPUAllocator());
-  auto chunk = allocator->Allocate(1 << 20);
+  auto chunk = allocator->Allocate(1 << 20, allocator->kDefault);
   {
     auto buf_allocator = GetBufferedAllocator(chunk.get(), true);
     ASSERT_EQ(buf_allocator->IsAllocThreadSafe(), true);
@@ -65,14 +66,14 @@ class StubAllocator : public Allocator {
   size_t GetFreeCount() const { return destruct_count_; }
 
  protected:
-  void FreeImpl(Allocation *allocation) override {
+  void Free(Allocation *allocation) override {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(alloc);
     if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
     ++destruct_count_;
     delete allocation;
   }
-  Allocation *AllocateImpl(size_t size) override {
+  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override {
     ++construct_count_;
     if (size == 0) {
       return new StubAllocation(nullptr, 0, platform::CPUPlace());
@@ -98,7 +99,7 @@ TEST(buffered_allocator, lazy_free) {
 
   {
     underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(1025);
+    auto x = allocator->Allocate(1025, allocator->kDefault);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
     x = nullptr;
@@ -107,10 +108,10 @@ TEST(buffered_allocator, lazy_free) {
 
   {
     underlying_allocator->ResetCounter();
-    auto x = allocator->Allocate(900);
+    auto x = allocator->Allocate(900, allocator->kDefault);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
-    auto y = allocator->Allocate(2048);
+    auto y = allocator->Allocate(2048, allocator->kDefault);
     ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
     ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
     x = nullptr;
@@ -129,13 +130,13 @@ TEST(buffered_allocator, lazy_free) {
 
 TEST(buffered_allocator, garbage_collection) {
   std::unique_ptr<CPUAllocator> cpu_allocator(new CPUAllocator());
-  auto chunk = cpu_allocator->Allocate(2048);
+  auto chunk = cpu_allocator->Allocate(2048, cpu_allocator->kDefault);
   auto allocator = GetBufferedAllocator(chunk.get(), false);
-  auto x1 = allocator->Allocate(1600);
-  auto x2 = allocator->Allocate(400);
+  auto x1 = allocator->Allocate(1600, allocator->kDefault);
+  auto x2 = allocator->Allocate(400, allocator->kDefault);
   x1 = nullptr;
   x2 = nullptr;
-  auto x3 = allocator->Allocate(1600);
+  auto x3 = allocator->Allocate(1600, allocator->kDefault);
   ASSERT_NE(x3, nullptr);
   ASSERT_NE(x3->ptr(), nullptr);
 }

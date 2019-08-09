@@ -26,29 +26,6 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-inline int ConvOutputSize(int input_size, int filter_size, int dilation,
-                          int padding, int stride) {
-  const int dkernel = dilation * (filter_size - 1) + 1;
-  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
-  CHECK_OR_FALSE(output_size > 0);
-
-  return output_size;
-}
-
-inline bool IsExpand(const std::vector<int64_t>& filter_dim,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations) {
-  bool filter_1 = true, strides_1 = true, padding_0 = true, dilation_1 = true;
-  for (size_t j = 0; j < strides.size(); ++j) {
-    filter_1 = filter_1 && (static_cast<int>(filter_dim[j + 2]) == 1);
-    strides_1 = strides_1 && (strides[j] == 1);
-    padding_0 = padding_0 && (paddings[j] == 0);
-    dilation_1 = dilation_1 && (dilations[j] == 1);
-  }
-  return !(filter_1 && strides_1 && padding_0 && dilation_1);
-}
-
 class ConvOpLite : public OpLite {
  public:
   ConvOpLite() {}
@@ -59,7 +36,6 @@ class ConvOpLite : public OpLite {
 
   bool InferShape() const override;
 
-  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const cpp::OpDesc& op_desc, lite::Scope* scope) override {
     auto X = op_desc.Input("Input").front();
@@ -70,35 +46,51 @@ class ConvOpLite : public OpLite {
     param_.filter = scope->FindVar(Filter)->GetMutable<lite::Tensor>();
     param_.output = scope->FindVar(Out)->GetMutable<lite::Tensor>();
 
-    std::vector<std::string> input_arg_names = op_desc.InputArgumentNames();
-    if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
-        input_arg_names.end()) {
-      auto bias_arguments = op_desc.Input("Bias");
-      if (bias_arguments.size() != 0) {
-        auto bias_var = scope->FindVar(bias_arguments.front());
-        if (bias_var != nullptr) {
-          param_.bias = &bias_var->Get<lite::Tensor>();
-        }
-      }
-    }
-    if (std::find(input_arg_names.begin(), input_arg_names.end(),
-                  "ResidualData") != input_arg_names.end()) {
-      auto res_argument = op_desc.Input("ResidualData");
-      if (res_argument.size() != 0) {
-        auto residual_data_var = scope->FindVar(res_argument.front());
-        if (residual_data_var != nullptr) {
-          param_.residualData = &residual_data_var->Get<lite::Tensor>();
-        }
-      }
-    }
-
     param_.strides = op_desc.GetAttr<std::vector<int>>("strides");
     param_.paddings = op_desc.GetAttr<std::vector<int>>("paddings");
     param_.groups = op_desc.GetAttr<int>("groups");
     param_.dilations = op_desc.GetAttr<std::vector<int>>("dilations");
 
+    // optional params
+    std::vector<std::string> input_arg_names = op_desc.InputArgumentNames();
+    if (std::find(input_arg_names.begin(), input_arg_names.end(), "Bias") !=
+        input_arg_names.end()) {
+      auto bias_arguments = op_desc.Input("Bias");
+      if (bias_arguments.size() > 0) {
+        auto bias_var = scope->FindVar(bias_arguments.front());
+        if (bias_var != nullptr) {
+          param_.bias =
+              const_cast<lite::Tensor*>(&(bias_var->Get<lite::Tensor>()));
+        }
+      }
+    }
+    if (std::find(input_arg_names.begin(), input_arg_names.end(),
+                  "ResidualData") != input_arg_names.end()) {
+      auto res_data_arguments = op_desc.Input("ResidualData");
+      if (res_data_arguments.size() > 0) {
+        auto residual_data_var = scope->FindVar(res_data_arguments.front());
+        if (residual_data_var != nullptr) {
+          param_.residualData = const_cast<lite::Tensor*>(
+              &(residual_data_var->Get<lite::Tensor>()));
+        }
+      }
+    }
+    param_.fuse_relu = op_desc.GetAttr<bool>("fuse_relu");
+    // For Int8
+    if (op_desc.HasAttr("enable_int8")) {
+      param_.enable_int8 = op_desc.GetAttr<bool>("enable_int8");
+      if (op_desc.HasAttr("input_scale"))
+        param_.input_scale = op_desc.GetAttr<float>("input_scale");
+      if (op_desc.HasAttr("weight_scale"))
+        param_.weight_scale =
+            op_desc.GetAttr<std::vector<float>>("weight_scale");
+      if (op_desc.HasAttr("output_scale"))
+        param_.output_scale = op_desc.GetAttr<float>("output_scale");
+    }
     return true;
   }
+
+  void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
   std::string DebugString() const override { return "conv2d"; }
 

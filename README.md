@@ -98,11 +98,9 @@ We provide [English](http://www.paddlepaddle.org/documentation/docs/en/1.4/begin
 
    We appreciate your contributions!
 
-## Communication
+## Ask Questions
 
-- [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 432676488 (PaddlePaddle).
-- [Forums](http://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
+You are welcome to submit questions and bug reports as [Github Issues](https://github.com/PaddlePaddle/Paddle/issues).
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).

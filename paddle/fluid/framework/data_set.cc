@@ -141,9 +141,6 @@ template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
   std::vector<T>().swap(memory_data_);
-  for (int i = 0; i < readers_.size(); ++i) {
-    readers_[i]->ReleaseChannelData();
-  }
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
 }
 
@@ -181,10 +178,8 @@ void DatasetImpl<T>::GlobalShuffle() {
   if (readers_.size() == 0) {
     CreateReaders();
   }
-  auto fleet_ptr = FleetWrapper::GetInstance();
-  // local shuffle all data before global shuffle
-  std::shuffle(memory_data_.begin(), memory_data_.end(),
-               fleet_ptr->LocalRandomEngine());
+  // if it is not InMemory, memory_data_ is empty
+  std::random_shuffle(memory_data_.begin(), memory_data_.end());
   VLOG(3) << "start global shuffle threads";
   std::vector<std::thread> global_shuffle_threads;
   for (int i = 0; i < thread_num_; ++i) {
@@ -266,27 +261,13 @@ void DatasetImpl<T>::DestroyReaders() {
 }
 
 template <typename T>
-int64_t DatasetImpl<T>::GetMemoryDataSize() {
-  return memory_data_.size();
-}
-
-template <typename T>
-int64_t DatasetImpl<T>::GetShuffleDataSize() {
-  int64_t sum = 0;
-  for (int i = 0; i < readers_.size(); ++i) {
-    sum += readers_[i]->GetChannelDataSize();
-  }
-  return sum;
-}
-
-template <typename T>
 int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
                                       const std::string& msg) {
 #ifdef _LINUX
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
   auto fleet_ptr = FleetWrapper::GetInstance();
-  int64_t index = fleet_ptr->LocalRandomEngine()() % thread_num_;
+  int64_t index = rand_r(&rand_seed) % thread_num_;
   VLOG(3) << "ramdom index=" << index;
   readers_[index]->PutInsToChannel(msg);
 #endif

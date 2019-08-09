@@ -115,7 +115,6 @@ void PatternMatcher::operator()(SSAGraph *graph,
 bool PatternMatcher::MarkPMNodesInGraph(SSAGraph *graph) {
   VLOG(3) << "mark pmnodes in graph";
   if (graph->nodes().empty()) return false;
-
   for (auto &node : graph->mutable_nodes()) {
     for (const auto &pmnode : pattern_.nodes()) {
       if (pmnode->Tell(&node)) {
@@ -326,7 +325,7 @@ std::string PMPattern::DotString() const {
   // Create Nodes
   std::unordered_map<PMNode *, std::string> node2dot;
   for (const auto &node : nodes()) {
-    std::string node_id = "Node" + std::to_string(id++);
+    std::string node_id = string_format("Node%d", id++);
     dot.AddNode(node_id, {}, node->name());
     node2dot[node.get()] = node_id;
   }
@@ -398,7 +397,7 @@ PMNode *PMNode::assert_is_op_output(const std::string &op_type) {
   asserts_.emplace_back([=](const Node *x) {
     for (auto *op : x->inlinks) {
       if (op && op->IsStmt()) {
-        auto *op_info = x->stmt()->op_info();
+        auto *op_info = op->stmt()->op_info();
         if (op_info->Type() == op_type) return true;
       }
     }
@@ -409,8 +408,8 @@ PMNode *PMNode::assert_is_op_output(const std::string &op_type) {
 
 bool IsNthOutput(const Node *var, const Node *op, const std::string &argument,
                  size_t nth) {
-  PADDLE_ENFORCE(var->IsArg());
-  PADDLE_ENFORCE(op->IsStmt());
+  CHECK(var->IsArg());
+  CHECK(op->IsStmt());
   auto op_info = op->stmt()->op_info();
   if (op_info->Output(argument).size() <= nth) return false;
   return var->arg()->name == op_info->Output(argument)[nth];
@@ -418,8 +417,8 @@ bool IsNthOutput(const Node *var, const Node *op, const std::string &argument,
 
 bool IsNthInput(const Node *var, const Node *op, const std::string &argument,
                 size_t nth) {
-  PADDLE_ENFORCE(var->IsArg());
-  PADDLE_ENFORCE(op->IsStmt());
+  CHECK(var->IsArg());
+  CHECK(op->IsStmt());
   auto op_info = op->stmt()->op_info();
   if (op_info->Input(argument).size() <= nth) return false;
   return var->arg()->name == op_info->Input(argument)[nth];

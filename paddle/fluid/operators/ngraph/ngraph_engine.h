@@ -40,7 +40,7 @@ enum class OpState {                /* nGraph support state on ops          */
 
 // cache engine repetitives
 struct EngineCache {
-  std::shared_ptr<ngraph::runtime::Executable> ngraph_handle;
+  std::shared_ptr<ngraph::Function> ngraph_function;
   std::set<std::string> persistables;
   std::vector<std::string> var_in;
   std::vector<std::string> var_out;
@@ -84,6 +84,8 @@ class NgraphEngine {
 
   // ngraph backend eg. CPU
   static std::shared_ptr<ngraph::runtime::Backend> backend_;
+  // ngraph function to call and execute
+  std::shared_ptr<ngraph::Function> ngraph_function_;
   // var_name of inputs
   std::vector<std::string> var_in_;
   // var_name of outputs from  fetch in order
@@ -99,7 +101,7 @@ class NgraphEngine {
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
       var_node_map_;
   // prepare info for ngraph engine need
-  void Prepare(const framework::ExecutionContext& ctx);
+  void Prepare(const std::vector<int>& interval);
   // get ngraph engine input and output list
   void BuildNgIO(const std::vector<framework::OpDesc*>& op_descs,
                  const std::vector<int>& interval);
@@ -107,13 +109,12 @@ class NgraphEngine {
   void GetNgInputShape();
   // Call ngraph bridge to map ops
   void BuildNgNodes();
+  // run paddle RuntimeInferShape to get the tensor shape
+  void RunInferShape();
   // build ngraph function call
-  std::shared_ptr<ngraph::Function> BuildNgFunction(
-      const framework::ExecutionContext& ctx);
-  // clear ngraph engine cache and t_in cache
-  void ClearNgCache();
+  void BuildNgFunction(const std::vector<int>& interval);
   // Check cache for ngraph function or otherwise build the function
-  void GetNgFunction(const framework::ExecutionContext& ctx);
+  void GetNgFunction(std::string engine_key, const std::vector<int>& interval);
 };
 
 }  // namespace operators

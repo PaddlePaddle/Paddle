@@ -166,11 +166,11 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           bias_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, false, false, 0.0, fwd_prop_kind);
+          fuse_relu, false, fwd_prop_kind);
     } else {
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, boost::none, dst_md, strides, paddings,
-          mkldnn_engine, fuse_relu, false, false, 0.0, fwd_prop_kind);
+          mkldnn_engine, fuse_relu, false, fwd_prop_kind);
     }
 
     // create mkldnn memory from input tensors (data/weights)
@@ -188,8 +188,9 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::memory> dst_memory_p;
 
-    auto output_data =
-        output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+    auto output_data = output->mutable_data<T>(
+        ctx.GetPlace(), paddle::memory::Allocator::kDefault,
+        handler.GetDstMemorySize());
     dst_memory_p = handler.AcquireDstMemoryFromPrimitive(
         platform::to_void_cast<T>(output_data));
 

@@ -65,10 +65,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 
       // Error checking
-      PADDLE_ENFORCE(
-          static_cast<bool>(*buffer),
-          "There is a problem with loading model parameters. "
-          "Please check whether the model file is complete or damaged.");
+      PADDLE_ENFORCE(static_cast<bool>(*buffer), "Cannot read more");
 
       // Get data from fin to tensor
       DeserializeFromStream(*buffer, tensor, dev_ctx);

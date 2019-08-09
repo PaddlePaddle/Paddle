@@ -16,8 +16,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/lite/api/paddle_use_passes.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
-#include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/program_fake_utils.h"
 
@@ -52,4 +52,6 @@ TEST(SSAGraph, test) {
 }  // namespace paddle
 
 USE_LITE_OP(fc);
-USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
+#ifdef LITE_WITH_X86
+// USE_LITE_KERNEL(fc, kX86, kFloat, kNCHW, def);
+#endif

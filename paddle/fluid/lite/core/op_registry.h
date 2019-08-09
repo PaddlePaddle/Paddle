@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/lite/api/paddle_lite_factory_helper.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -32,7 +33,6 @@ namespace lite {
 
 using KernelFunc = std::function<void()>;
 using KernelFuncCreator = std::function<std::unique_ptr<KernelFunc>()>;
-
 class LiteOpRegistry final : public Factory<OpLite, std::shared_ptr<OpLite>> {
  public:
   static LiteOpRegistry &Global() {
@@ -69,6 +69,8 @@ class KernelRegistry final {
                                       DATALAYOUT(kNCHW)> *,  //
               KernelRegistryForTarget<TARGET(kX86), PRECISION(kFloat),
                                       DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kX86), PRECISION(kInt64),
+                                      DATALAYOUT(kNCHW)> *,  //
               KernelRegistryForTarget<TARGET(kX86), PRECISION(kInt8),
                                       DATALAYOUT(kNCHW)> *,  //
               KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat),
@@ -80,6 +82,12 @@ class KernelRegistry final {
               KernelRegistryForTarget<TARGET(kARM), PRECISION(kAny),
                                       DATALAYOUT(kAny)> *,  //
               KernelRegistryForTarget<TARGET(kARM), PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kARM), PRECISION(kInt8),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kOpenCL), PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kOpenCL), PRECISION(kInt8),
                                       DATALAYOUT(kNCHW)> *  //
               >;
 
@@ -91,9 +99,9 @@ class KernelRegistry final {
   void Register(const std::string &name,
                 typename KernelRegistryForTarget<Target, Precision,
                                                  Layout>::creator_t &&creator) {
-    // VLOG(3) << "register for " << TargetToStr(Target) << ":"
-    //<< PrecisionToStr(Precision) << "//"
-    //<< GetKernelOffset<Target, Precision, Layout>();
+    /*VLOG(3) << "register for " << TargetToStr(Target) << ":"
+            << PrecisionToStr(Precision) << "//"
+            << GetKernelOffset<Target, Precision, Layout>();*/
     using kernel_registor_t =
         KernelRegistryForTarget<Target, Precision, Layout>;
     auto &varient = registries_[GetKernelOffset<Target, Precision, Layout>()];
@@ -153,6 +161,9 @@ class KernelRegistor : public lite::Registor<KernelType> {
  public:
   KernelRegistor(const std::string &op_type, const std::string &alias)
       : Registor<KernelType>([=] {
+          /*VLOG(3) << "Register kernel " << op_type << " for "
+                  << TargetToStr(target) << " " << PrecisionToStr(precision)
+                  << " " << DataLayoutToStr(layout) << " alias " << alias;*/
           KernelRegistry::Global().Register<target, precision, layout>(
               op_type, [=]() -> std::unique_ptr<KernelType> {
                 std::unique_ptr<KernelType> x(new KernelType);
@@ -168,18 +179,12 @@ class KernelRegistor : public lite::Registor<KernelType> {
 
 // Operator registry
 #define LITE_OP_REGISTER_INSTANCE(op_type__) op_type__##__registry__instance__
-#define LITE_OP_REGISTER_FAKE(op_type__) op_type__##__registry__
 #define REGISTER_LITE_OP(op_type__, OpClass)                              \
   static paddle::lite::OpLiteRegistor<OpClass> LITE_OP_REGISTER_INSTANCE( \
       op_type__)(#op_type__);                                             \
   int touch_op_##op_type__() {                                            \
     return LITE_OP_REGISTER_INSTANCE(op_type__).Touch();                  \
   }
-
-#define USE_LITE_OP(op_type__)                                   \
-  extern int touch_op_##op_type__();                             \
-  int LITE_OP_REGISTER_FAKE(op_type__) __attribute__((unused)) = \
-      touch_op_##op_type__();
 
 // Kernel registry
 #define LITE_KERNEL_REGISTER(op_type__, target__, precision__) \
@@ -209,12 +214,6 @@ class KernelRegistor : public lite::Registor<KernelType> {
       __attribute__((unused)) = paddle::lite::ParamTypeRegistry::NewInstance< \
           TARGET(target__), PRECISION(precision__), DATALAYOUT(layout__)>(    \
           #op_type__ "/" #alias__)
-
-#define USE_LITE_KERNEL(op_type__, target__, precision__, layout__, alias__) \
-  extern int touch_##op_type__##target__##precision__##layout__##alias__();  \
-  int op_type__##target__##precision__##layout__##alias__                    \
-      __attribute__((unused)) =                                              \
-          touch_##op_type__##target__##precision__##layout__##alias__();
 
 #define LITE_KERNEL_INSTANCE(op_type__, target__, precision__, layout__, \
                              alias__)                                    \

@@ -27,11 +27,35 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-import sys
+
 from .. import compat as cpt
 from .proto import framework_pb2
+try:
+    if os.name == 'nt':
+        import sys
+        third_lib_path = os.path.abspath(os.path.dirname(
+            __file__)) + os.sep + '..' + os.sep + 'libs'
+        os.environ['path'] += ';' + third_lib_path
+        sys.path.append(third_lib_path)
 
-from . import core
+    from . import core
+except ImportError as e:
+    if os.name == 'nt':
+        executable_path = os.path.abspath(os.path.dirname(sys.executable))
+        raise ImportError(
+            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+        if you encounters \"DLL load failed\" errors. If you have python
+        installed in other directory, replace \"%s\" with your own
+        directory. The original error is: \n %s""" %
+            (executable_path, executable_path, cpt.get_exception_message(e)))
+    else:
+        raise ImportError(
+            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+        if you encounters \"libmkldnn.so not found\" errors. If you have python
+        installed in other directory, replace \"/usr/local/lib\" with your own
+        directory. The original error is: \n""" + cpt.get_exception_message(e))
+except Exception as e:
+    raise e
 from . import unique_name
 
 __all__ = [
@@ -82,24 +106,7 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    if "CPU_NUM" not in os.environ.keys():
-        sys.stderr.write(
-            'The CPU_NUM is not specified, you should set CPU_NUM in '
-            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
-            'indicates that how many CPUPlace are used in the current task.\n'
-            '!!! The default number of CPUPlaces is 1.\n\n')
-        os.environ['CPU_NUM'] = str(1)
-    cpu_num = os.environ.get('CPU_NUM')
-    return int(cpu_num)
-
-
-def _cuda_ids():
-    gpus_env = os.getenv("FLAGS_selected_gpus")
-    if gpus_env:
-        device_ids = [int(s) for s in gpus_env.split(",")]
-    else:
-        device_ids = six.moves.range(core.get_cuda_device_count())
-    return device_ids
+    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
 
 def cuda_places(device_ids=None):
@@ -133,7 +140,11 @@ def cuda_places(device_ids=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
-        device_ids = _cuda_ids()
+        gpus_env = os.getenv("FLAGS_selected_gpus")
+        if gpus_env:
+            device_ids = [int(s) for s in gpus_env.split(",")]
+        else:
+            device_ids = six.moves.range(core.get_cuda_device_count())
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
@@ -518,14 +529,8 @@ class Variable(object):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def backward(self, backward_strategy=None):
-        from .dygraph import BackwardStrategy
-        if backward_strategy is None:
-            backward_strategy = BackwardStrategy()
-            backward_strategy.sort_sum_gradient = False
-
-        self._ivar._run_backward(backward_strategy)
-        _dygraph_tracer()._clear_ops()
+    def backward(self):
+        self._ivar._run_backward()
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
@@ -553,9 +558,8 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s %s' % (
-                self.name, self.dtype, self.shape,
-                str(self._ivar.value().get_tensor()))
+            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
+                                                     self.shape)
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -643,8 +647,6 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
-        if in_dygraph_mode():
-            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
@@ -756,8 +758,10 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name),
-                dtype=self.dtype)
+                name=unique_name.generate(".".join(self.name)),
+                dtype=self.dtype,
+                persistable=self.persistable,
+                stop_gradient=self.stop_gradient, )
         else:
             return self
 
@@ -988,12 +992,12 @@ class Operator(object):
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
                 op_attrs[op_maker.kOpRoleAttrName(
-                )] = self.block.program._op_role
+                )] = self.block.program.op_role
 
             role_var_name = op_maker.kOpRoleVarAttrName()
             if len(self.block.program.
-                   _op_role_var) != 0 and role_var_name not in op_attrs:
-                op_attrs[role_var_name] = self.block.program._op_role_var
+                   op_role_var) != 0 and role_var_name not in op_attrs:
+                op_attrs[role_var_name] = self.block.program.op_role_var
 
             if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
                 del op_attrs[role_var_name]
@@ -1002,7 +1006,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initialized an Operator can not be None.")
+                    "`type` to initilized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1025,6 +1029,7 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
+
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1034,17 +1039,13 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for index, arg in enumerate(in_args):
+                        for arg in in_args:
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, Variable):
-                                in_arg_names.append(cpt.to_text(arg.name))
                             else:
-                                raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
-                                )
+                                in_arg_names.append(cpt.to_text(arg.name))
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1379,9 +1380,7 @@ class Block(object):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            cur_program = fluid.Program()
+            cur_program = Program()
             cur_block = cur_program.current_block()
             var = cur_block.create_var(name="X",
                                        shape=[-1, 23, 48],
@@ -1663,22 +1662,13 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
-            attrs = kwargs.get("attrs", {})
-            if _dygraph_tracer_._train_mode == False:
-                # eval mode
-                if ('trainable_statistics' not in attrs
-                    ) or not attrs['trainable_statistics']:
-                    attrs['is_test'] = True
-                else:
-                    attrs['is_test'] = False
-
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=attrs)
+                attrs=kwargs.get("attrs", {}))
 
             # record ops in tracer rather than blocks
             #
@@ -2716,19 +2706,12 @@ class Program(object):
         A empty program.
 
     Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-                x = fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-                y = fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-                z = fluid.layers.fc(name="fc", input=x, size=10, act="relu")
-
-            print("main program is: {}".format(main_program))
-            print("start up program is: {}".format(startup_program))
+        >>> main_program = fluid.Program()
+        >>> startup_program = fluid.Program()
+        >>> with fluid.program_guard(main_program=main_program, startup_program=startup_program):
+        >>>     fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
+        >>>     fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
+        >>>     fluid.layers.fc(name="fc", shape=[10], dtype='float32', act="relu")
 
     """
 
@@ -2738,7 +2721,7 @@ class Program(object):
         self.current_block_idx = 0
         self._seed = 0
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
-        self.__op_role_var = []
+        self._op_role_var = []
 
         # for distribute training
         # _is_distributed = True if under distributed training
@@ -2758,10 +2741,6 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
-        self._nccl_comm_num = 1
-        self._use_hierarchical_allreduce = False
-        self._hierarchical_allreduce_inter_nranks = 0
-        self._hierarchical_allreduce_exter_nranks = 0
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
@@ -2771,12 +2750,6 @@ class Program(object):
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
-
-        # assigned if this program has been parsed by a pipeline optimizer
-        self._pipeline_opt = None
-
-        # appending gradients times
-        self._appending_grad_times = 0
 
     @property
     def _is_mem_optimized(self):
@@ -2789,7 +2762,7 @@ class Program(object):
         self.__is_mem_optimized = target
 
     @property
-    def _op_role(self):
+    def op_role(self):
         """
         The operator role. In a enum {Forward, Backward, Optimize}.
 
@@ -2798,27 +2771,31 @@ class Program(object):
 
         For example, the forward operator should be executed on every device.
         The backward operator should be executed on every device and the
-        parameter gradient of backward (use :code:`_op_role_var` to get this
+        parameter gradient of backward (use :code:`op_role_var` to get this
         variable) operator should be merged to one device. The optimization
         operators should be executed on only one device and broadcast the
         optimization result, i.e., the new parameter, to every other device.
         """
         return self._current_role
 
-    @_op_role.setter
-    def _op_role(self, role):
+    @op_role.setter
+    def op_role(self, role):
         self._current_role = role
 
     @property
-    def _op_role_var(self):
+    def op_role_var(self):
         """
-        The auxiliary variables for :code:`_op_role` property.
+        The auxiliary variables for :code:`op_role` property.
 
-        See Also: :code:`Program._op_role`'s documentation for details.
+        See Also: :code:`Program.op_role`'s documentation for details.
 
         Notes: This is a very low-level API. Users should not use it directly.
         """
-        return self.__op_role_var
+        return self._op_role_var
+
+    @op_role_var.setter
+    def set_op_role_var(self, var_name):
+        self._op_role_var = [var_name]
 
     @contextlib.contextmanager
     def _backward_role_guard(self):
@@ -2847,16 +2824,16 @@ class Program(object):
             >>>     p = p - 0.001 * g
         """
         tmp_role = self._current_role
-        tmp_var = self.__op_role_var
+        tmp_var = self._op_role_var
 
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
-        self.__op_role_var = [
+        self._op_role_var = [
             var.name if isinstance(var, Variable) else var
             for var in param_and_grads
         ]
         yield
-        self.__op_role_var = tmp_var
+        self._op_role_var = tmp_var
         self._current_role = tmp_role
 
     @signature_safe_contextmanager
@@ -2881,16 +2858,16 @@ class Program(object):
         """
 
         tmp_role = self._current_role
-        tmp_var = self.__op_role_var
+        tmp_var = self._op_role_var
 
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.LRSched
         if is_with_opt:
             self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
         # TODO(typhoonzero): how to set target learning rate var
-        self.__op_role_var = []
+        self._op_role_var = []
         yield
-        self.__op_role_var = tmp_var
+        self._op_role_var = tmp_var
         self._current_role = tmp_role
 
     def __str__(self):
@@ -2923,15 +2900,6 @@ class Program(object):
         Raises:
             ValueError: If any of required fields is not set and throw_on_error is
                 True.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                prog_string = prog.to_string(throw_on_error=True, with_details=False)
-                print(prog_string)
 
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
@@ -2972,20 +2940,13 @@ class Program(object):
 
         * Set for_test to False when we want to clone the program for training.
         * Set for_test to True when we want to clone the program for testing.
-          We will not do any prune on program here, So if you just want an
-          forward program for testing, please use :code:`clone` before using
-          :code:`Opimizer.minimize`
 
-        Notes: 
-        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
-        2. This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. E.g.
+        Notes: This API DOES NOT prune any operator. Use
+        :code:`clone(for_test=True)` before backward and optimization please. e.g.
 
-        .. code-block:: python
-
-            test_program = fluid.default_main_program().clone(for_test=True)
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer.minimize()
+            >>> test_program = fluid.default_main_program().clone(for_test=True)
+            >>> optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            >>> optimizer.minimize()
 
         Args:
             for_test(bool): True if change the :code:`is_test` attribute of
@@ -2996,107 +2957,55 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and
-        this will not affect your training or testing progress. In the following
-        example we give you an simple method :code:`print_prog(program)` to
-        print Program Descs inorder to make sure you have same print result
-        after :code:`clone`:
+            1. To clone a test program, the sample code is:
 
-            .. code-block:: python
+            >>> import paddle.fluid as fluid
+            >>> train_program = fluid.Program()
+            >>> startup_program = fluid.Program()
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     img = fluid.layers.data(name='image', shape=[784])
+            >>>     hidden = fluid.layers.fc(input=img, size=200, act='relu')
+            >>>     hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
+            >>>     loss = fluid.layers.cross_entropy(
+            >>>                 input=fluid.layers.fc(hidden, size=10, act='softmax'),
+            >>>                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+            >>>
+            >>> test_program = train_program.clone(for_test=True)
+            >>>
+            >>> sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     sgd.minimize(loss)
 
-                import paddle.fluid as fluid
-                import six
+            2. The :code:`clone` method can be avoid if you create program for
+            training and program for testing individually.
 
+            >>> import paddle.fluid as fluid
+            >>>
+            >>> def network(is_test):
+            >>>     img = fluid.layers.data(name='image', shape=[784])
+            >>>     hidden = fluid.layers.fc(input=img, size=200, act='relu')
+            >>>     hidden = fluid.layers.dropout(hidden, dropout_prob=0.5, is_test=is_test)
+            >>>     loss = fluid.layers.cross_entropy(
+            >>>                 input=fluid.layers.fc(hidden, size=10, act='softmax'),
+            >>>                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+            >>>     return loss
+            >>>
+            >>> train_program = fluid.Program()
+            >>> startup_program = fluid.Program()
+            >>> test_program = fluid.Program()
+            >>>
+            >>> with fluid.program_guard(train_program, startup_program):
+            >>>     with fluid.unique_name.guard():
+            >>>         loss = network(is_test=False)
+            >>>         sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            >>>         sgd.minimize(loss)
+            >>>
+            >>> # the test startup program is not used.
+            >>> with fluid.program_guard(test_program, fluid.Program()):
+            >>>     with fluid.unique_name.guard():
+            >>>         loss = network(is_test=True)
 
-                def print_prog(prog):
-                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
-                        print(value)
-                    for op in prog.block(0).ops:
-                        print("op type is {}".format(op.type))
-                        print("op inputs are {}".format(op.input_arg_names))
-                        print("op outputs are {}".format(op.output_arg_names))
-                        for key, value in sorted(six.iteritems(op.all_attrs())):
-                            if key not in ['op_callstack', 'op_role_var']:
-                                print(" [ attrs: {}:   {} ]".format(key, value))
-
-
-        1. To clone a test program, the sample code is:
-                .. code-block:: python
-
-                    import paddle.fluid as fluid
-                    import six
-
-                    def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
-                            print(value)
-                        for op in prog.block(0).ops:
-                            print("op type is {}".format(op.type))
-                            print("op inputs are {}".format(op.input_arg_names))
-                            print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
-                                if key not in ['op_callstack', 'op_role_var']:
-                                    print(" [ attrs: {}:   {} ]".format(key, value))
-
-                    train_program = fluid.Program()
-                    startup_program = fluid.Program()
-                    with fluid.program_guard(train_program, startup_program):
-                        with fluid.unique_name.guard():
-                            img = fluid.layers.data(name='image', shape=[784])
-                            hidden = fluid.layers.fc(input=img, size=200, act='relu')
-                            hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
-                            loss = fluid.layers.cross_entropy(
-                                                      input=fluid.layers.fc(hidden, size=10, act='softmax'),
-                                        label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-                            avg_loss = fluid.layers.mean(loss)
-                            test_program = train_program.clone(for_test=False)
-                    print_prog(test_program)
-                    with fluid.program_guard(train_program, startup_program):
-                        with fluid.unique_name.guard():
-                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                            sgd.minimize(avg_loss)
-
-
-        2. The clone method can be avoid if you create program for training and program for testing individually.
-                .. code-block:: python
-
-                    import paddle.fluid as fluid
-                    import six
-
-                    def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
-                            print(value)
-                        for op in prog.block(0).ops:
-                            print("op type is {}".format(op.type))
-                            print("op inputs are {}".format(op.input_arg_names))
-                            print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
-                                if key not in ['op_callstack', 'op_role_var']:
-                                    print(" [ attrs: {}:   {} ]".format(key, value))
-                    def network(is_test):
-                        img = fluid.layers.data(name='image', shape=[784])
-                        hidden = fluid.layers.fc(input=img, size=200, act='relu')
-                        hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
-                        loss = fluid.layers.cross_entropy(
-                            input=fluid.layers.fc(hidden, size=10, act='softmax'),
-                            label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-                        avg_loss = fluid.layers.mean(loss)
-                        return avg_loss
-
-
-                    train_program_2 = fluid.Program()
-                    startup_program_2 = fluid.Program()
-                    test_program_2 = fluid.Program()
-                    with fluid.program_guard(train_program_2, startup_program_2):
-                        with fluid.unique_name.guard():
-                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                             sgd.minimize(avg_loss)
-                    # the test startup program is not used.
-                    with fluid.program_guard(test_program_2, fluid.Program()):
-                        with fluid.unique_name.guard():
-                            loss = network(is_test=True)
-                    print(test_program_2)
-
-        The two code snippets above will generate and print same programs.
+            The two code snippets above will generate same programs.
         """
         if for_test:
             p = self._inference_optimize(prune_read_op=False)
@@ -3110,8 +3019,7 @@ class Program(object):
             ]
 
             p._current_role = self._current_role
-            p.__op_role_var = self.__op_role_var
-            p._appending_grad_times = self._appending_grad_times
+            p._op_role_var = self._op_role_var
 
             p._sync_with_cpp()
 
@@ -3267,17 +3175,6 @@ class Program(object):
         the random seed from random device.
 
         Notes: It must be set before the operators have been added.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                random_seed = prog.random_seed
-                print(random_seed)
-                prog.random_seed = 1
-                print(prog.random_seed)
         """
         return self._seed
 
@@ -3285,15 +3182,6 @@ class Program(object):
     def num_blocks(self):
         """
         The number of blocks in this program.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                num_blocks = prog.num_blocks
-                print(num_blocks)
         """
         return self.desc.num_blocks()
 
@@ -3309,15 +3197,6 @@ class Program(object):
     def global_block(self):
         """
         Get the first block of this program.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                gb_block = prog.global_block()
-                print(gb_block)
         """
         return self.blocks[0]
 
@@ -3329,15 +3208,6 @@ class Program(object):
 
         Returns:
             Block: The :code:`index` block
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                block_0 = prog.block(0)
-                print(block_0)
         """
         return self.blocks[index]
 
@@ -3345,15 +3215,6 @@ class Program(object):
         """
         Get the current block. The :code:`current` block is the block to append
         operators.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                current_blk = prog.current_block()
-                print(current_blk)
         """
         return self.blocks[self.current_block_idx]
 
@@ -3472,17 +3333,6 @@ class Program(object):
 
         Returns:
             iterable: The generator will yield every variable in this program.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                img = fluid.layers.data(name='img', shape=[1,28,28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[128,1], dtype='int64')
-                for var in prog.list_vars():
-                    print(var)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -3551,15 +3401,6 @@ class Parameter(Variable):
 
         Returns(str): The debug string.
 
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
-                debug_str = prog.to_string(throw_on_error=True, with_details=False)
-                print(debug_str)
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -3596,21 +3437,6 @@ def default_startup_program():
 
     Returns:
         Program: startup program
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-                x = fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-                y = fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-                z = fluid.layers.fc(name="fc", input=x, size=10, act="relu")
-
-                print("main program is: {}".format(fluid.default_main_program()))
-                print("start up program is: {}".format(fluid.default_startup_program()))
     """
     return _startup_program_
 
@@ -3629,35 +3455,6 @@ def default_main_program():
 
     Returns:
         Program: main program
-
-    Examples:
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            
-            # Sample Network:
-            data = fluid.layers.data(name='image', shape=[3, 224, 224], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            
-            conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
-            bn1 = fluid.layers.batch_norm(conv1, act='relu')
-            pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
-            conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
-            bn2 = fluid.layers.batch_norm(conv2, act='relu')
-            pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
-            
-            fc1 = fluid.layers.fc(pool2, size=50, act='relu')
-            fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
-            
-            loss = fluid.layers.cross_entropy(input=fc2, label=label)
-            loss = fluid.layers.mean(loss)
-            opt = fluid.optimizer.Momentum(
-                learning_rate=0.1,
-                momentum=0.9,
-                regularization=fluid.regularizer.L2Decay(1e-4))
-            opt.minimize(loss)
-            
-            print(fluid.default_main_program())
     """
     return _main_program_
 
@@ -3696,8 +3493,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `"with"` statement.
-    Layer functions in the Python `"with"` block will append operators and
+    Change the global main program and startup program with `with` statement.
+    Layer functions in the Python `with` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3725,9 +3522,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program): New startup program inside `"with"` statement.
-            None means not changing startup program.
+        main_program(Program): New main program inside `with` statement.
+        startup_program(Program): New startup program inside `with` statement.
+            None means do not change startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

@@ -54,11 +54,6 @@ def data(name,
     All the input variables of this function are passed in as local variables
     to the LayerHelper constructor.
 
-    Notice that paddle would only use :code:`shape` to infer the shapes of 
-    following variables in the network during compile-time. During run-time, 
-    paddle would not check whether the shape of the feeded data matches the 
-    :code:`shape` settings in this function. 
-
     Args:
        name(str): The name/alias of the function
        shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
@@ -67,12 +62,9 @@ def data(name,
                     should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
-            For example if shape=[1], the resulting shape is [-1, 1]. This will 
-            be useful to set different batch size at run time.
-          2. If shape contains -1, such as shape=[1, -1].
-            append_batch_size will be enforced to be be False (ineffective)
-            because PaddlePaddle cannot set more than 1 unknown number on the
-            shape.
+            For example if shape=[1], the resulting shape is [-1, 1].
+          2. If shape contains -1, such as shape=[1, -1],
+            append_batch_size will be enforced to be be False (ineffective).
        dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
@@ -660,11 +652,11 @@ def py_reader(capacity,
     This layer returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source. More details :ref:`user_guide_use_py_reader_en` .  When
-    :code:`Executor::Run()` is invoked in C++ side, the data from the generator
-    would be read automatically. Unlike :code:`DataFeeder.feed()`, the data
-    reading process and :code:`Executor::Run()` process can run in parallel
-    using :code:`py_reader`. The :code:`start()` method of the Reader should be
+    source in Python side. When :code:`Executor::Run()` is invoked in C++
+    side, the data from the generator would be read automatically. Unlike
+    :code:`DataFeeder.feed()`, the data reading process and
+    :code:`Executor::Run()` process can run in parallel using
+    :code:`py_reader`. The :code:`start()` method of the Reader should be
     called when each pass begins, while the :code:`reset()` method should be
     called when the pass ends and :code:`fluid.core.EOFException` raises.
     Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
@@ -902,7 +894,6 @@ def open_files(filenames,
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1,)],
@@ -1000,19 +991,6 @@ def shuffle(reader, buffer_size):
 
     Returns:
         callable: the new reader whose output is shuffled.
-
-    Examples:
-        .. code-block:: python
-
-            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
-                                                           './data2.recordio'],
-                                                    shapes=[(3,224,224), (1,)],
-                                                    lod_levels=[0, 0],
-                                                    dtypes=['float32', 'int64'],
-                                                    thread_num=2,
-                                                    buffer_size=2)
-            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
-            shuffle_reader = fluid.layers.shuffle(reader=batch_reader, buffer_size=5000)
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
@@ -1076,8 +1054,7 @@ def double_buffer(reader, place=None, name=None):
 
     Examples:
 
-        >>> import paddle.fluid as fluid
-        >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
+        >>> reader = fluid.layers.open_files(filenames=['somefile'],
         >>>                                  shapes=[[-1, 784], [-1, 1]],
         >>>                                  dtypes=['float32', 'int64'])
         >>> reader = fluid.layers.double_buffer(reader)
@@ -1112,16 +1089,15 @@ def read_file(reader):
 
     Examples:
         .. code-block:: python
-          
-           import paddle.fluid as fluid
+
            data_file = fluid.layers.open_files(
                 filenames=['mnist.recordio'],
                 shapes=[(-1, 748), (-1, 1)],
                 lod_levels=[0, 0],
                 dtypes=["float32", "int64"])
-           data_file = fluid.layers.double_buffer(
+            data_file = fluid.layers.double_buffer(
                 fluid.layers.batch(data_file, batch_size=64))
-           input, label = fluid.layers.read_file(data_file)
+            input, label = fluid.layers.read_file(data_file)
     """
     helper = LayerHelper('read_file')
     out = [

@@ -64,6 +64,7 @@ void RuntimeProgram::SaveParams(const std::string &dir,
 
 void Program::Build(const framework::proto::ProgramDesc &program) {
   CHECK(ops_.empty()) << "Executor duplicate Build found";
+
   // Create operators.
   for (const auto &proto_op_desc : program.blocks(0).ops()) {
     lite::OpDesc op_desc_dummy(proto_op_desc);
@@ -98,6 +99,7 @@ void Program::PrepareWorkspace(const framework::proto::ProgramDesc &program) {
     } else {
       if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
       weights_.push_back(var_desc.Name());
+      if (var_desc.Persistable()) scope_->Var(var_desc.Name());
     }
   }
 }

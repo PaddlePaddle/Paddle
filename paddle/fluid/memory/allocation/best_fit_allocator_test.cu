@@ -37,7 +37,8 @@ struct ForEachFill {
 TEST(BestFitAllocator, concurrent_cuda) {
   CUDAAllocator allocator(platform::CUDAPlace(0));
   // 256 MB
-  auto cuda_allocation = allocator.Allocate(256U * 1024 * 1024);
+  auto cuda_allocation =
+      allocator.Allocate(256U * 1024 * 1024, allocator.kDefault);
   LockedAllocator concurrent_allocator(
       std::unique_ptr<Allocator>(new BestFitAllocator(cuda_allocation.get())));
 
@@ -50,8 +51,8 @@ TEST(BestFitAllocator, concurrent_cuda) {
     for (size_t i = 0; i < 128; ++i) {
       size_t allocate_size = dist(engine);
 
-      auto allocation =
-          concurrent_allocator.Allocate(sizeof(size_t) * allocate_size);
+      auto allocation = concurrent_allocator.Allocate(
+          sizeof(size_t) * allocate_size, concurrent_allocator.kDefault);
 
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 

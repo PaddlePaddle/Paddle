@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using framework::Tensor;
 
 class ConcatOp : public framework::OperatorWithKernel {
  public:
@@ -36,10 +36,7 @@ class ConcatOp : public framework::OperatorWithKernel {
                    "Output(Out) of ConcatOp should not be null.");
 
     auto ins = ctx->GetInputsDim("X");
-    size_t axis =
-        ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
-                    static_cast<int64_t>(ins[0].size()));
-
+    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
     const size_t n = ins.size();
 
     PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
@@ -83,19 +80,8 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
-    auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
-    for (auto *input : inputs) {
-      if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
-        flag = 1;
-        break;
-      }
-    }
-    if (flag == 0) {
-      PADDLE_THROW("All Inputs of Concat OP are Empty!");
-    }
+    auto input_data_type =
+        framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]);
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -118,17 +104,8 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
     AddAttr<int>("axis",
-                 "The axis along which the input tensors will be concatenated."
-                 "The axis could also be negative numbers. Negative axis is "
-                 "interpreted as counting from the end of the rank."
-                 "i.e., axis + rank(X) th dimension.")
+                 "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
-        .SetDefault(false);
     AddComment(R"DOC(
 Concat Operator.
 

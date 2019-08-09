@@ -64,6 +64,7 @@ def optimizer_setting(params):
 class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
@@ -73,6 +74,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._conv = Conv2D(
             self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
@@ -129,15 +131,20 @@ class BottleneckBlock(fluid.dygraph.Layer):
         super(BottleneckBlock, self).__init__(name_scope)
 
         self.conv0 = ConvBNLayer(
-            self.full_name(), num_filters=num_filters, filter_size=1)
+            self.full_name(),
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=1)
         self.conv1 = ConvBNLayer(
             self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             groups=cardinality)
         self.conv2 = ConvBNLayer(
             self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
             act='relu')
@@ -150,6 +157,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         if not shortcut:
             self.short = ConvBNLayer(
                 self.full_name(),
+                num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
                 stride=stride)
@@ -192,6 +200,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 self.full_name(),
+                num_channels=3,
                 num_filters=64,
                 filter_size=7,
                 stride=2,
@@ -209,6 +218,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 self.full_name(),
+                num_channels=3,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
@@ -226,18 +236,21 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 self.full_name(),
+                num_channels=3,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.conv1 = ConvBNLayer(
                 self.full_name(),
+                num_channels=64,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.conv2 = ConvBNLayer(
                 self.full_name(),
+                num_channels=64,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
@@ -298,20 +311,11 @@ class SeResNeXt(fluid.dygraph.Layer):
 
 
 class TestImperativeResneXt(unittest.TestCase):
-    def reader_decorator(self, reader):
-        def _reader_imple():
-            for item in reader():
-                doc = np.array(item[0]).reshape(3, 224, 224)
-                label = np.array(item[1]).astype('int64').reshape(1)
-                yield doc, label
-
-        return _reader_imple
-
     def test_se_resnext_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 1
+        batch_num = 2
         epoch_num = 1
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -322,28 +326,29 @@ class TestImperativeResneXt(unittest.TestCase):
             np.random.seed(seed)
             import random
             random.seed = seed
-
-            batch_py_reader = fluid.io.PyReader(capacity=1)
-            batch_py_reader.decorate_sample_list_generator(
-                paddle.batch(
-                    self.reader_decorator(
-                        paddle.dataset.flowers.train(use_xmap=False)),
-                    batch_size=batch_size,
-                    drop_last=True),
-                places=fluid.CPUPlace())
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size,
+                drop_last=True)
 
             dy_param_init_value = {}
             for param in se_resnext.parameters():
                 dy_param_init_value[param.name] = param.numpy()
             for epoch_id in range(epoch_num):
-                for batch_id, data in enumerate(batch_py_reader()):
+                for batch_id, data in enumerate(train_reader()):
 
                     if batch_id >= batch_num and batch_num != -1:
                         break
 
-                    img = data[0]
-                    label = data[1]
-                    label.stop_gradient = True
+                    dy_x_data = np.array(
+                        [x[0].reshape(3, 224, 224)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(
+                            batch_size, 1)
+
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
                     label.stop_gradient = True
 
                     out = se_resnext(img)

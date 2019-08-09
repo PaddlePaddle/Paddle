@@ -17,24 +17,26 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
-/**
- * case 1:
- *    inputs:
- *        t_a.shape: [2, 3, 4]
- *        t_b.shape: [3, 3, 4]
- *    output:
- *        out.shape: [5, 3, 4]
- */
 template <typename DeviceContext, typename Place>
-void ConcatCase1(DeviceContext* context) {
+void testConcat() {
   paddle::framework::Tensor input_a_cpu;
   paddle::framework::Tensor input_b_cpu;
   paddle::framework::Tensor out_cpu;
-
   paddle::framework::Tensor input_a;
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
+  DeviceContext* context = new DeviceContext(Place());
+  //  DeviceContext context(Place());
+
+  /**
+   * cast1:
+   *    inputs:
+   *        t_a.shape: [2, 3, 4]
+   *        t_b.shape: [3, 3, 4]
+   *    output:
+   *        out.shape: [5, 3, 4]
+   */
   auto dim_a = paddle::framework::make_ddim({2, 3, 4});
   auto dim_b = paddle::framework::make_ddim({3, 3, 4});
   auto dim_out = paddle::framework::make_ddim({5, 3, 4});
@@ -49,8 +51,8 @@ void ConcatCase1(DeviceContext* context) {
     out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
   }
 
-  int* a_ptr = nullptr;
-  int* b_ptr = nullptr;
+  int* a_ptr;
+  int* b_ptr;
   if (paddle::platform::is_gpu_place(Place())) {
     a_ptr = input_a_cpu.data<int>();
     b_ptr = input_b_cpu.data<int>();
@@ -82,7 +84,7 @@ void ConcatCase1(DeviceContext* context) {
   PADDLE_ENFORCE_EQ(input_a.dims(), dim_a);
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
-  int* out_ptr = nullptr;
+  int* out_ptr;
   if (paddle::platform::is_gpu_place(Place())) {
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
@@ -102,42 +104,28 @@ void ConcatCase1(DeviceContext* context) {
       ++idx_a;
     }
   }
-}
+  //
+  /**
+    * cast2:
+    *    inputs:
+    *        t_a.shape: [2, 3, 4]
+    *        t_b.shape: [2, 4, 4]
+    *    output:
+    *        out.shape: [2, 7, 4]
+    */
+  dim_a = paddle::framework::make_ddim({2, 3, 4});
+  dim_b = paddle::framework::make_ddim({2, 4, 4});
+  dim_out = paddle::framework::make_ddim({2, 7, 4});
 
-/**
-  * case 2:
-  *    inputs:
-  *        t_a.shape: [2, 3, 4]
-  *        t_b.shape: [2, 4, 4]
-  *    output:
-  *        out.shape: [2, 7, 4]
-  */
-template <typename DeviceContext, typename Place>
-void ConcatCase2(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
-
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
-
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 4, 4});
-  auto dim_out = paddle::framework::make_ddim({2, 7, 4});
-
-  input_a.mutable_data<int>(dim_a, Place());
-  input_b.mutable_data<int>(dim_b, Place());
-  out.mutable_data<int>(dim_out, Place());
-
+  input_a.Resize(dim_a);
+  input_b.Resize(dim_b);
+  out.Resize(dim_out);
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.Resize(dim_a);
+    input_b_cpu.Resize(dim_b);
+    out_cpu.Resize(dim_out);
   }
 
-  int* a_ptr = nullptr;
-  int* b_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
     a_ptr = input_a_cpu.data<int>();
     b_ptr = input_b_cpu.data<int>();
@@ -158,18 +146,16 @@ void ConcatCase2(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  input.clear();
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 1, &out);
 
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(), dim_a);
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
-  int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
@@ -178,8 +164,8 @@ void ConcatCase2(DeviceContext* context) {
     out_ptr = out.data<int>();
   }
 
-  int cols = 3 * 4;
-  int idx_a = 0, idx_b = 0;
+  cols = 3 * 4;
+  idx_a = 0, idx_b = 0;
   for (int i = 0; i < 2; ++i) {
     for (int j = 0; j < 28; ++j) {
       if (j >= cols) {
@@ -191,42 +177,28 @@ void ConcatCase2(DeviceContext* context) {
       }
     }
   }
-}
 
-/**
-  * case 3:
-  *    inputs:
-  *        t_a.shape: [2, 3, 5]
-  *        t_b.shape: [2, 3, 4]
-  *    output:
-  *        out.shape: [2, 3, 9]
-  */
-template <typename DeviceContext, typename Place>
-void ConcatCase3(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
+  /**
+    * cast3:
+    *    inputs:
+    *        t_a.shape: [2, 3, 5]
+    *        t_b.shape: [2, 3, 4]
+    *    output:
+    *        out.shape: [2, 3, 9]
+    */
+  dim_a = paddle::framework::make_ddim({2, 3, 4});
+  dim_b = paddle::framework::make_ddim({2, 3, 5});
+  dim_out = paddle::framework::make_ddim({2, 3, 9});
 
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
-
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 3, 5});
-  auto dim_out = paddle::framework::make_ddim({2, 3, 9});
-
-  input_a.mutable_data<int>(dim_a, Place());
-  input_b.mutable_data<int>(dim_b, Place());
-  out.mutable_data<int>(dim_out, Place());
-
+  input_a.Resize(dim_a);
+  input_b.Resize(dim_b);
+  out.Resize(dim_out);
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.Resize(dim_a);
+    input_b_cpu.Resize(dim_b);
+    out_cpu.Resize(dim_out);
   }
 
-  int* a_ptr = nullptr;
-  int* b_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
     a_ptr = input_a_cpu.data<int>();
     b_ptr = input_b_cpu.data<int>();
@@ -247,18 +219,16 @@ void ConcatCase3(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  input.clear();
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 2, &out);
 
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(), dim_a);
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
-  int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
@@ -268,8 +238,8 @@ void ConcatCase3(DeviceContext* context) {
   }
 
   // check the data
-  int cols = 4;
-  int idx_a = 0, idx_b = 0;
+  cols = 4;
+  idx_a = 0, idx_b = 0;
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 9; ++j) {
       if (j >= cols) {
@@ -281,43 +251,29 @@ void ConcatCase3(DeviceContext* context) {
       }
     }
   }
-}
 
-/**
-  * case 4:
-  *    inputs:
-  *        axis = 1
-  *        t_a.shape: [2, 3, 4]
-  *        t_b.shape: [2, 3, 4]
-  *    output:
-  *        out.shape: [2, 6, 4]
-  */
-template <typename DeviceContext, typename Place>
-void ConcatCase4(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
+  /**
+    * cast4:
+    *    inputs:
+    *        axis = 1
+    *        t_a.shape: [2, 3, 4]
+    *        t_b.shape: [2, 3, 4]
+    *    output:
+    *        out.shape: [2, 6, 4]
+    */
+  dim_a = paddle::framework::make_ddim({2, 3, 4});
+  dim_b = paddle::framework::make_ddim({2, 3, 4});
+  dim_out = paddle::framework::make_ddim({2, 6, 4});
 
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
-
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_out = paddle::framework::make_ddim({2, 6, 4});
-
-  input_a.mutable_data<int>(dim_a, Place());
-  input_b.mutable_data<int>(dim_b, Place());
-  out.mutable_data<int>(dim_out, Place());
-
+  input_a.Resize(dim_a);
+  input_b.Resize(dim_b);
+  out.Resize(dim_out);
   if (paddle::platform::is_gpu_place(Place())) {
-    input_a_cpu.mutable_data<int>(dim_a, paddle::platform::CPUPlace());
-    input_b_cpu.mutable_data<int>(dim_b, paddle::platform::CPUPlace());
-    out_cpu.mutable_data<int>(dim_out, paddle::platform::CPUPlace());
+    input_a_cpu.Resize(dim_a);
+    input_b_cpu.Resize(dim_b);
+    out_cpu.Resize(dim_out);
   }
 
-  int* a_ptr = nullptr;
-  int* b_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
     a_ptr = input_a_cpu.data<int>();
     b_ptr = input_b_cpu.data<int>();
@@ -338,19 +294,16 @@ void ConcatCase4(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  input.clear();
   input.push_back(input_a);
   input.push_back(input_b);
 
-  paddle::operators::math::ConcatFunctor<DeviceContext, int> concat_functor;
   concat_functor(*context, input, 1, &out);
-  context->Wait();
 
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(), dim_a);
   PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
 
-  int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
@@ -360,8 +313,8 @@ void ConcatCase4(DeviceContext* context) {
   }
 
   // check the data
-  int cols = 12;
-  int idx_a = 0, idx_b = 0;
+  cols = 12;
+  idx_a = 0, idx_b = 0;
   for (int i = 0; i < 2; ++i) {
     for (int j = 0; j < 24; ++j) {
       if (j >= cols) {
@@ -375,21 +328,10 @@ void ConcatCase4(DeviceContext* context) {
   }
 }
 
-template <typename DeviceContext, typename Place>
-void TestConcatMain() {
-  DeviceContext* context = new DeviceContext(Place());
-
-  ConcatCase1<DeviceContext, Place>(context);
-  ConcatCase2<DeviceContext, Place>(context);
-  ConcatCase3<DeviceContext, Place>(context);
-  ConcatCase4<DeviceContext, Place>(context);
-}
-
 TEST(math, concat) {
-  TestConcatMain<paddle::platform::CPUDeviceContext,
-                 paddle::platform::CPUPlace>();
+  testConcat<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
-  TestConcatMain<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>();
+  testConcat<paddle::platform::CUDADeviceContext,
+             paddle::platform::CUDAPlace>();
 #endif
 }

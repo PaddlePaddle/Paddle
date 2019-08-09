@@ -30,7 +30,6 @@ endif(NOT WITH_PROFILER)
 
 if(WITH_AVX AND AVX_FOUND)
     set(SIMD_FLAG ${AVX_FLAG})
-    add_definitions(-DPADDLE_WITH_AVX)
 elseif(SSE3_FOUND)
     set(SIMD_FLAG ${SSE3_FLAG})
 endif()
@@ -158,3 +157,33 @@ endif(WITH_BRPC_RDMA)
 if(ON_INFER)
     add_definitions(-DPADDLE_ON_INFERENCE)
 endif(ON_INFER)
+
+if(WITH_WBAES)
+    add_definitions(-DPADDLE_WITH_WBAES)
+endif(WITH_WBAES)
+
+# for lite
+# TODO(Superjomn) not work fine with the option
+if (LITE_WITH_CUDA)
+add_definitions("-DLITE_WITH_CUDA")
+endif()
+
+if (LITE_WITH_X86)
+    add_definitions("-DLITE_WITH_X86")
+endif()
+
+if (LITE_WITH_ARM)
+    add_definitions("-DLITE_WITH_ARM")
+endif()
+
+if (LITE_WITH_OPENCL)
+    add_definitions("-DLITE_WITH_OPENCL")
+endif()
+
+if (LITE_WITH_PROFILE)
+    add_definitions("-DLITE_WITH_PROFILE")
+endif()
+
+if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+  add_definitions("-DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK")
+endif()

@@ -44,31 +44,6 @@ class ElementwiseDivGradOpDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class ElementwiseDivDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType("elementwise_div_grad_grad");
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("Out", Input("Out"));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
-    op->SetInput("DX", Output(framework::GradVarName("X")));
-
-    op->SetAttrMap(Attrs());
-
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetOutput("DOut", InputGrad("Out"));
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-
-    return op;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -78,9 +53,7 @@ REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseDivGradOpDescMaker);
 
-REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad,
-                  ops::ElementwiseDivDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad);
+REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
@@ -94,14 +67,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div_grad_grad,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);

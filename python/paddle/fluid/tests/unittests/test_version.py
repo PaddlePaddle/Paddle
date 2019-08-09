@@ -30,18 +30,14 @@ class VersionTest(unittest.TestCase):
         self._commit_regex = "[0-9a-f]{5,49}"
 
     def test_check_output(self):
-        # check commit format
-        self.assertTrue(re.match(self._commit_regex, fluid_version.commit))
         self.assertTrue(isinstance(fluid_version.istaged, bool))
 
         # check version format
         if fluid_version.istaged:
-            self.assertEqual(fluid_version.major, 0)
-            self.assertEqual(fluid_version.minor, 0)
-            self.assertEqual(fluid_version.patch, "0")
-            self.assertEqual(fluid_version.rc, 0)
-            self.assertEqual(fluid_version.full_version, "0.0.0")
+            self.assertEqual(fluid_version.full_version, "latest")
         else:
+            # check commit format
+            self.assertTrue(re.match(self._commit_regex, fluid_version.commit))
             self.assertTrue(re.match(self._major_regex, fluid_version.major))
             self.assertTrue(re.match(self._minor_regex, fluid_version.minor))
             self.assertTrue(re.match(self._patch_regex, fluid_version.patch))
