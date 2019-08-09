@@ -176,6 +176,9 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
+  m.def("_get_has_infer_inplace_ops",
+        [] { return OpInfoMap::Instance().GetHasInferInplaceOps(); });
+
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.
@@ -490,10 +493,17 @@ PYBIND11_MODULE(core_noavx, m) {
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
            )DOC")
-      .def("__str__", [](const LoDTensor &self) {
-        std::stringstream ostr;
-        ostr << self;
-        return ostr.str();
+      .def("__str__",
+           [](const LoDTensor &self) {
+             std::stringstream ostr;
+             ostr << self;
+             return ostr.str();
+           })
+      .def("_copy", [](const LoDTensor &self) {
+        LoDTensor dst;
+        TensorCopySync(self, self.place(), &dst);
+        dst.set_lod(self.lod());
+        return dst;
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
