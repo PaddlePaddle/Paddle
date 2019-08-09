@@ -1908,9 +1908,8 @@ class DynamicRNN(object):
         if len(self.step_inputs) <= 0:
             raise RuntimeError("step_input() must be set at least once.")
 
-        parent_block = self._parent_block_()
         for i in xrange(len(self.outputs)):
-            parent_block.append_op(
+            self.helper.append_op(
                 type='lod_reset',
                 inputs={'X': self.outputs[i],
                         'Y': self.step_inputs[0]},
