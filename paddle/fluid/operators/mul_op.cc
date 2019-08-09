@@ -17,6 +17,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -76,6 +79,30 @@ class MulOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    int customized_type_value =
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+
+      if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+          input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
+        customized_type_value = kMULMKLDNNINT8;
+      }
+    }
+#endif
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library, customized_type_value);
+  }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -84,6 +111,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two
@@ -114,6 +144,27 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
+    AddAttr<float>(
+        "scale_x",
+        "scale_x to be used for int8 mul input data x. scale_x has the"
+        "same purpose as scale_in in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
+        .SetDefault(1.0f);
+    AddAttr<std::vector<float>>(
+        "scale_y",
+        "scale_y to be used for int8 mul input data y. scale_y has the"
+        "same purpose as scale_weights in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
+        .SetDefault({1.0f});
+    AddAttr<float>("scale_out",
+                   "scale_out to be used for int8 output data."
+                   "Only used with MKL-DNN INT8")
+        .SetDefault(1.0f);
+    AddAttr<bool>(
+        "force_fp32_output",
+        "(bool, default false) Force quantize kernel output FP32, only "
+        "used in quantized MKL-DNN.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Mul Operator.
 
@@ -237,14 +288,19 @@ class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
                   ops::MulOpGradMaker);
+
 REGISTER_OPERATOR(mul_grad, ops::MulGradOp, ops::MulDoubleGradMaker);
+
 REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
+
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     mul_grad_grad,
     ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,

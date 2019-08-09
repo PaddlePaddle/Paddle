@@ -103,8 +103,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
             ? kConvMKLDNNINT8
             : kConvMKLDNNFP32;
   }

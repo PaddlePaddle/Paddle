@@ -20,6 +20,13 @@
 #include <iosfwd>
 #include <stdexcept>
 
+#define CHAR_POINTER_CMP(a, b) \
+  do {                         \
+    if (!a && !b) return 0;    \
+    if (!a) return -1;         \
+    if (!b) return 1;          \
+  } while (0)
+
 namespace paddle {
 namespace string {
 
@@ -40,6 +47,7 @@ char Piece::operator[](size_t n) const {
 }
 
 int Compare(Piece a, Piece b) {
+  CHAR_POINTER_CMP(a.data(), b.data());
   const size_t min_len = (a.len() < b.len()) ? a.len() : b.len();
   int r = memcmp(a.data(), b.data(), min_len);
   if (r == 0) {
@@ -52,8 +60,10 @@ int Compare(Piece a, Piece b) {
 }
 
 bool operator==(Piece x, Piece y) {
-  return ((x.len() == y.len()) &&
-          (x.data() == y.data() || memcmp(x.data(), y.data(), x.len()) == 0));
+  return (!x.len() && !y.len()) ? true
+                                : ((x.len() == y.len()) &&
+                                   (x.data() == y.data() ||
+                                    memcmp(x.data(), y.data(), x.len()) == 0));
 }
 
 bool operator!=(Piece x, Piece y) { return !(x == y); }
@@ -65,12 +75,14 @@ bool operator<=(Piece x, Piece y) { return Compare(x, y) <= 0; }
 bool operator>=(Piece x, Piece y) { return Compare(x, y) >= 0; }
 
 bool HasPrefix(Piece s, Piece x) {
-  return ((s.len() >= x.len()) && (memcmp(s.data(), x.data(), x.len()) == 0));
+  return !x.len() ? true : ((s.len() >= x.len()) &&
+                            (memcmp(s.data(), x.data(), x.len()) == 0));
 }
 
 bool HasSuffix(Piece s, Piece x) {
-  return ((s.len() >= x.len()) &&
-          (memcmp(s.data() + (s.len() - x.len()), x.data(), x.len()) == 0));
+  return !x.len() ? true : ((s.len() >= x.len()) &&
+                            (memcmp(s.data() + (s.len() - x.len()), x.data(),
+                                    x.len()) == 0));
 }
 
 Piece SkipPrefix(Piece s, size_t n) {

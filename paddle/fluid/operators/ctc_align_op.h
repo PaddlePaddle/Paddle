@@ -31,50 +31,73 @@ class CTCAlignKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* output = ctx.Output<LoDTensor>("Output");
-    const size_t level = 0;
-    auto input_lod = framework::ToAbsOffset(input->lod());
-
-    // check input dims and lod
-    auto input_dims = input->dims();
-    PADDLE_ENFORCE_EQ(input_dims[0],
-                      static_cast<int64_t>(input_lod[level].back()),
-                      "The first dimension of Input(Input) should be equal to "
-                      "the sum of all sequences' lengths.");
-
-    const size_t num_sequences = input_lod[level].size() - 1;
     size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
-
-    // merge repeated tokens and delete blank
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    size_t output_idx = 0;
-    std::vector<size_t> output_lod0(1, 0);
+    auto input_dims = input->dims();
     const T* input_data = input->data<T>();
-    for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
-      T prev_token = -1;
-      for (size_t i = input_lod[level][seq_idx];
-           i < input_lod[level][seq_idx + 1]; ++i) {
-        if ((unsigned)input_data[i] != blank &&
-            !(merge_repeated && input_data[i] == prev_token)) {
-          output_data[output_idx] = input_data[i];
-          ++output_idx;
-        }
-        prev_token = input_data[i];
-      }
-      output_lod0.push_back(output_idx);
-    }
 
-    // set output lod
-    framework::LoD output_lod;
-    output_lod.push_back(output_lod0);
-    output->set_lod(output_lod);
-    // resize output dims
-    output->Resize({static_cast<int64_t>(output_lod0.back()), 1});
-    // for empty sequence
-    if (output_lod0.back() == 0) {
-      output->Resize({1, 1});
-      output_data = output->mutable_data<T>(ctx.GetPlace());
-      output_data[0] = -1;
+    // support tensor input, no lod information
+    if (input->lod().empty()) {
+      size_t padding_num = static_cast<size_t>(ctx.Attr<int>("padding_num"));
+      for (size_t batch_id = 0; batch_id < (unsigned)input_dims[0];
+           batch_id++) {
+        T prev_token = -1;
+        size_t output_idx = 0;
+        for (size_t i = 0; i < (unsigned)input_dims[1]; i++) {
+          size_t input_ind = batch_id * input_dims[1] + i;
+          if ((unsigned)input_data[input_ind] != blank &&
+              !(merge_repeated && input_data[input_ind] == prev_token)) {
+            output_data[batch_id * input_dims[1] + output_idx] =
+                input_data[input_ind];
+            ++output_idx;
+          }
+          prev_token = input_data[input_ind];
+        }
+        for (size_t j = output_idx; j < (unsigned)input_dims[1]; j++)
+          output_data[batch_id * input_dims[1] + j] = padding_num;
+      }
+    } else {
+      const size_t level = 0;
+      auto input_lod = framework::ToAbsOffset(input->lod());
+
+      // check input dims and lod
+      PADDLE_ENFORCE_EQ(
+          input_dims[0], static_cast<int64_t>(input_lod[level].back()),
+          "The first dimension of Input(Input) should be equal to "
+          "the sum of all sequences' lengths.");
+
+      const size_t num_sequences = input_lod[level].size() - 1;
+
+      // merge repeated tokens and delete blank
+      size_t output_idx = 0;
+      std::vector<size_t> output_lod0(1, 0);
+      for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
+        T prev_token = -1;
+        for (size_t i = input_lod[level][seq_idx];
+             i < input_lod[level][seq_idx + 1]; ++i) {
+          if ((unsigned)input_data[i] != blank &&
+              !(merge_repeated && input_data[i] == prev_token)) {
+            output_data[output_idx] = input_data[i];
+            ++output_idx;
+          }
+          prev_token = input_data[i];
+        }
+        output_lod0.push_back(output_idx);
+      }
+
+      // set output lod
+      framework::LoD output_lod;
+      output_lod.push_back(output_lod0);
+      output->set_lod(output_lod);
+      // resize output dims
+      output->Resize({static_cast<int64_t>(output_lod0.back()), 1});
+      // for empty sequence
+      if (output_lod0.back() == 0) {
+        output->Resize({1, 1});
+        output_data = output->mutable_data<T>(ctx.GetPlace());
+        output_data[0] = -1;
+      }
     }
   }
 };

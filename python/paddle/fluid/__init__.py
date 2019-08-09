@@ -152,15 +152,15 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'benchmark', 'eager_delete_scope',
-        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
-        'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
-        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
-        'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
-        'enable_parallel_graph', 'fuse_parameter_groups_size',
-        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname', 'dygraph_debug'
+        'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
+        'eager_delete_scope', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
+        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
+        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
+        'memory_fraction_of_eager_deletion', 'allocator_strategy',
+        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
+        'pe_profile_fname', 'inner_op_parallelism', 'enable_parallel_graph',
+        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
+        'fuse_parameter_memory_size', 'tracer_profile_fname', 'dygraph_debug'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -206,7 +206,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
             'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
+            'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

@@ -30,7 +30,6 @@ class FuseAllReduceOpPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
     ir::Graph &result = *graph;
-
     auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -38,17 +37,55 @@ class FuseAllReduceOpPass : public ir::Pass {
         &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
 #endif
 
-    std::unordered_set<std::string> grads;
     auto &params_grads =
-        result.Get<details::ParamsAndGrads>(details::kParamsAndGrads);
+        result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     size_t num_of_all_reduce = params_grads.size();
+    std::unordered_set<std::string> grads;
     grads.reserve(num_of_all_reduce);
     for (auto p_g : params_grads) {
       grads.insert(p_g.second);
     }
 
+    std::unordered_map<std::string, Node *> all_reduce_ops =
+        GetAllReduceOps(result, places, grads);
+
+    VLOG(10) << "Find all_reduce_ops: " << all_reduce_ops.size();
+    if (all_reduce_ops.size() == 0) {
+      return;
+    }
+
+    PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size(),
+                      "The number of all_reduce OpHandle is not equal to the "
+                      "number of grads. Maybe some gradients are sparse type, "
+                      "it is not supported currently.");
+    VLOG(10) << "Insert fused_all_reduce";
+
+    auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
+        details::kGroupParamsAndDenseGrads);
+
+    for (auto &group_p_g : group_params_grads) {
+      size_t group_size = group_p_g.size();
+      PADDLE_ENFORCE_GT(group_size, static_cast<size_t>(0));
+      std::vector<ir::Node *> group_all_reduce_ops;
+      group_all_reduce_ops.reserve(group_size);
+      for (auto &p_g : group_p_g) {
+        group_all_reduce_ops.emplace_back(all_reduce_ops.at(p_g.second));
+      }
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      InsertFusedAllReduce(places, local_scopes, group_size,
+                           group_all_reduce_ops, multi_nccl_ctxs, &result);
+#else
+      InsertFusedAllReduce(places, local_scopes, group_size,
+                           group_all_reduce_ops, &result);
+#endif
+    }
+  }
+
+  std::unordered_map<std::string, Node *> GetAllReduceOps(
+      const Graph &result, const std::vector<platform::Place> &places,
+      const std::unordered_set<std::string> &grads) const {
     size_t num_place = places.size();
-    std::unordered_map<std::string, ir::Node *> all_reduce_ops;
+    std::unordered_map<std::string, Node *> all_reduce_ops;
     all_reduce_ops.reserve(grads.size());
     for (auto &node : result.Nodes()) {
       if (node->IsOp()) {
@@ -70,37 +107,7 @@ class FuseAllReduceOpPass : public ir::Pass {
         }
       }
     }
-
-    VLOG(10) << "Find all_reduce_ops: " << all_reduce_ops.size();
-    if (all_reduce_ops.size() == 0) {
-      return;
-    }
-
-    PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size(),
-                      "The number of all_reduce OpHandle is not equal to the "
-                      "number of grads. Maybe some gradients are sparse type, "
-                      "it is not supported currently.");
-    VLOG(10) << "Insert fused_all_reduce";
-
-    auto &group_grads_params =
-        graph->Get<details::GroupGradsAndParams>(details::kGroupGradsAndParams);
-
-    for (auto &group_g_p : group_grads_params) {
-      size_t group_size = group_g_p.size();
-      PADDLE_ENFORCE_GT(group_size, static_cast<size_t>(0));
-      std::vector<ir::Node *> group_all_reduce_ops;
-      group_all_reduce_ops.reserve(group_size);
-      for (auto &g_p : group_g_p) {
-        group_all_reduce_ops.emplace_back(all_reduce_ops.at(g_p.first));
-      }
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      InsertFusedAllReduce(places, local_scopes, group_size,
-                           group_all_reduce_ops, multi_nccl_ctxs, &result);
-#else
-      InsertFusedAllReduce(places, local_scopes, group_size,
-                           group_all_reduce_ops, &result);
-#endif
-    }
+    return all_reduce_ops;
   }
 
   void InsertFusedAllReduce(const std::vector<platform::Place> &places,

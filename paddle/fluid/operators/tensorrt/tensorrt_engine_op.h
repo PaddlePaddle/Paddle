@@ -48,12 +48,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
+  bool enable_fp16_;
   bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
+  AnalysisConfig::Precision precision_mode_;
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -66,6 +68,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     workspace_size_ = Attr<int>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
+    enable_fp16_ = Attr<bool>("enable_fp16");
     use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
@@ -92,6 +95,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_ =
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Get(engine_key_ + std::to_string(predictor_id_));
+    }
+    precision_mode_ = AnalysisConfig::Precision::kFloat32;
+    if (enable_int8_) {
+      precision_mode_ = AnalysisConfig::Precision::kInt8;
+    }
+    if (enable_fp16_) {
+      precision_mode_ = AnalysisConfig::Precision::kHalf;
     }
   }
 
@@ -121,8 +131,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // This process will builds a 32-bit trt engine, runs it on the calibration
     // set, and records a histogram for each
     // tensor of the distribution of activation values.
-    LOG_FIRST_N(INFO, 1) << "The TRT engine: " << engine_key_
-                         << " is running calibration trt int8... ";
+    LOG_FIRST_N(INFO, 1) << "This process is generating calibration table for "
+                            "Paddle TRT int8...";
+
     int runtime_batch = 1;
     if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_key_)) {
       TRTCalibratorEngine *calib_res =
@@ -140,7 +151,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           calib_buffers, runtime_batch, engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
-            max_batch_size_, workspace_size_, enable_int8_,
+            max_batch_size_, workspace_size_, precision_mode_,
             calib_res->calib_.get(),
             boost::get<platform::CUDAPlace>(dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
@@ -240,7 +251,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_ =
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Create(engine_key_ + std::to_string(predictor_id_),
-                      max_batch_size_, workspace_size_, enable_int8_,
+                      max_batch_size_, workspace_size_, precision_mode_,
                       calibrator_.get(), device_id_);
       PrepareTRTEngine(scope, trt_engine_);
     }
