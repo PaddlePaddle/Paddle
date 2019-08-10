@@ -111,6 +111,10 @@ class DataFeed {
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
+  virtual void SetPlace(const paddle::platform::Place& place) {
+    place_ = place;
+  }
+  virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -124,6 +128,7 @@ class DataFeed {
   // This function is used to pick one file from the global filelist(thread
   // safe).
   virtual bool PickOneFile(std::string* filename);
+  virtual void CopyToFeedTensor(void* dst, const void* src, size_t size);
 
   std::vector<std::string> filelist_;
   size_t* file_idx_;
@@ -158,6 +163,7 @@ class DataFeed {
   bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
+  platform::Place place_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
