@@ -18,9 +18,8 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/float16.h"
-#include <cuda.h>
-#include <curand_kernel.h>
 #include "paddle/fluid/platform/dynload/curand.h"
+#include <curand.h>
 namespace paddle {
 namespace operators {
 
@@ -40,6 +39,12 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
+    if (step_size == 0) {
+      rng.discard(idx);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      rng.discard(step_size);
+    }
     if (dist(rng) < dropout_prob) {
       mask = 0;
       dest = 0;
@@ -56,20 +61,19 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
-template <typename T>
-__global__ void DropoutKernel(const size_t n, const const float dropout_prob,
-		const T* src, const float* random_data, uint8_t* mask, T* dst,
-		bool is_upscale_in_train){
-	
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const T scale = static_cast<T>(1. / (1. - dropout_prob));
-  for(; idx < n; idx += blockDim.x + gridDim.x ){
-    mask[idx] = (random_data[idx] > dropout_prob ? 1 : 0);
-    if(mask[idx])
-    	dst[idx] = src[idx] * scale;
-    else
-	dst[idx] = 0;
-  }
+template <typename T, typename MaskType>
+__global__ void DropoutCUDAKernel(const int N, const float dropout_prob,
+		const T* src, MaskType* mask_data, T* dst, bool is_upscale_in_train){
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+        for(size_t i = id; i < N; i += blockDim.x * gridDim.x){
+           mask_data[i] = (dst[i] > dropout_prob) ? 1 : 0;
+	   dst[i] = src[i] * mask_data[i];
+	   if(is_upscale_in_train){
+             dst[i] = src[i] / static_cast<T>(1.0f - dropout_prob);
+	   }
+
+	}
+
 }
 
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
@@ -111,21 +115,16 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
-
-      float* rand_data = (float *)cudaMalloc(size, sizeof(float));
-      curandGenerator_t gen;
-      platform::dynload::curandCreateGenerator(&gen, 
-		                      CURAND_RNG_PSEUDO_DEFAULT);
-      platform::dynload::curandSetPseudoRandomGeneratorSeed(gen, 
-		                      seed);
-      platform::dynload::curandGenerateUniform(gen, rand_data, size);
-      DropoutKernel<T> <<<grid, threads, 0, stream>>>(size, dropout_prob,
-		      x_data, random_data, mask_data, y_data, upscale_in_train);
-      cudaFree(rand_data);
       /*RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train);
-	  */
+          upscale_in_train);*/
+       curandGenerator_t gen;
+       curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT);
+       curandSetPseudoRandomGeneratorSeed(gen,seed);
+       curandGenerateUniform(gen, y_data, x_numel);
+       DropoutCUDAKernel<T, uint8_t><<<grid, threads, 0, stream>>>(x_numel,
+		     dropout_prob,  x_data, mask_data, y_data, upscale_in_train );
+
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
@@ -144,9 +143,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
+    dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>)
     //ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
+    //ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     dropout_grad, ops::DropoutGradKernel<plat::CUDADeviceContext, float>,
     //ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
