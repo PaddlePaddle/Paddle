@@ -56,15 +56,16 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
+
 template <typename T>
-__global__ void DropoutKernel(const size_t n, const const float dropout_prob,
-		const T* src, const float* random_data, uint8_t* mask, T* dst,
-		bool is_upscale_in_train){
+__global__ void DropoutKernel(const size_t n, const float dropout_prob,
+		const T* src,  uint8_t* mask, T* dst,
+		bool is_upscale_in_train, float* rand_data){
 	
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   const T scale = static_cast<T>(1. / (1. - dropout_prob));
   for(; idx < n; idx += blockDim.x + gridDim.x ){
-    mask[idx] = (random_data[idx] > dropout_prob ? 1 : 0);
+    mask[idx] = (rand_data[idx] > dropout_prob ? 1 : 0);
     if(mask[idx])
     	dst[idx] = src[idx] * scale;
     else
@@ -112,15 +113,17 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
 
-      float* rand_data = (float *)cudaMalloc(size, sizeof(float));
+      float* rand_data;
+      cudaMalloc((void**)(&rand_data), sizeof(float) * size);
       curandGenerator_t gen;
       platform::dynload::curandCreateGenerator(&gen, 
 		                      CURAND_RNG_PSEUDO_DEFAULT);
       platform::dynload::curandSetPseudoRandomGeneratorSeed(gen, 
 		                      seed);
       platform::dynload::curandGenerateUniform(gen, rand_data, size);
-      DropoutKernel<T> <<<grid, threads, 0, stream>>>(size, dropout_prob,
-		      x_data, random_data, mask_data, y_data, upscale_in_train);
+      //DropoutKernel<T><<<grid, threads, 0, stream>>>(size, dropout_prob, x_data, random_data, mask_data, y_data, upscale_in_train);
+      DropoutKernel<T><<<grid, threads, 0, stream>>>(size, dropout_prob, x_data,  mask_data, y_data, upscale_in_train, rand_data);
+      platform::dynload::curandDestroyGenerator(gen);
       cudaFree(rand_data);
       /*RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
