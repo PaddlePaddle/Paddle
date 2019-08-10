@@ -11,16 +11,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <cuda.h>
+#include <curand_kernel.h>
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include <string>
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/platform/float16.h"
-#include <cuda.h>
-#include <curand_kernel.h>
 #include "paddle/fluid/platform/dynload/curand.h"
+#include "paddle/fluid/platform/float16.h"
 namespace paddle {
 namespace operators {
 
@@ -29,10 +29,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T* src,
                                 MaskType* mask_data, T* dst,
                                 bool is_upscale_in_train) {
-  thrust::minstd_rand rng;
-  rng.seed(seed);
-  thrust::uniform_real_distribution<float> dist(0, 1);
-
+  curandStatePhilox4_32_10_t state;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int step_size = 0;
 
@@ -40,7 +37,13 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
-    if (dist(rng) < dropout_prob) {
+    if (step_size == 0) {
+      curand_init(seed, idx, step_size, &state);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      curand_init(seed, idx, step_size, &state);
+    }
+    if (curand_uniform(&state) < dropout_prob) {
       mask = 0;
       dest = 0;
     } else {
@@ -53,23 +56,6 @@ __global__ void RandomGenerator(const size_t n, const int seed,
     }
     mask_data[idx] = mask;
     dst[idx] = dest;
-  }
-}
-
-
-template <typename T>
-__global__ void DropoutKernel(const size_t n, const float dropout_prob,
-		const T* src,  uint8_t* mask, T* dst,
-		bool is_upscale_in_train, float* rand_data){
-	
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const T scale = static_cast<T>(1. / (1. - dropout_prob));
-  for(; idx < n; idx += blockDim.x + gridDim.x ){
-    mask[idx] = (rand_data[idx] > dropout_prob ? 1 : 0);
-    if(mask[idx])
-    	dst[idx] = src[idx] * scale;
-    else
-	dst[idx] = 0;
   }
 }
 
@@ -112,23 +98,15 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
-
-      float* rand_data;
-      cudaMalloc((void**)(&rand_data), sizeof(float) * size);
-      curandGenerator_t gen;
-      platform::dynload::curandCreateGenerator(&gen, 
-		                      CURAND_RNG_PSEUDO_DEFAULT);
-      platform::dynload::curandSetPseudoRandomGeneratorSeed(gen, 
-		                      seed);
-      platform::dynload::curandGenerateUniform(gen, rand_data, size);
-      //DropoutKernel<T><<<grid, threads, 0, stream>>>(size, dropout_prob, x_data, random_data, mask_data, y_data, upscale_in_train);
-      DropoutKernel<T><<<grid, threads, 0, stream>>>(size, dropout_prob, x_data,  mask_data, y_data, upscale_in_train, rand_data);
-      platform::dynload::curandDestroyGenerator(gen);
-      cudaFree(rand_data);
-      /*RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
+      auto& dev_ctx = context.cuda_device_context();
+      auto& allocator =
+          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+      int bytes = sizeof(float) * size;
+      auto random_ptr = allocator.Allocate(bytes);
+      float* random_data = reinterpret_cast<float*>(random_ptr->ptr());
+      RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train);
-	  */
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
@@ -148,9 +126,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
-    //ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     dropout_grad, ops::DropoutGradKernel<plat::CUDADeviceContext, float>,
-    //ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::DropoutGradKernel<plat::CUDADeviceContext, double>);
