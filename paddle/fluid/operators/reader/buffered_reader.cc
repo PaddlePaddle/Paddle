@@ -138,7 +138,8 @@ void BufferedReader::ReadAsync(size_t i) {
                        size);
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        cuda_pinned_place, cuda_pinned_ptr, size, stream_);
-          PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+          PADDLE_ENFORCE(cudaStreamSynchronize(stream_),
+                         "cuda stream sync error.");
         }
         gpu[i].set_lod(cpu[i].lod());
       }
