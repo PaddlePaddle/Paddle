@@ -53,6 +53,15 @@ def _has_backward_op(graph):
     return False
 
 
+def _prune_feed_ops(program):
+    # prune the feed ops in the program.
+    pop_idx = []
+    for i, op in enumerate(program.global_block().ops):
+        if op.type == "feed": pop_idx.append(i)
+    for index in pop_idx[::-1]:
+        program.global_block()._remove_op(index)
+
+
 class CompiledProgram(object):
     """
     Compiles to Graph for execution.
@@ -112,6 +121,7 @@ class CompiledProgram(object):
             # don't not create a new program here.
             self._program = None
         elif isinstance(program_or_graph, framework.Program):
+            _prune_feed_ops(program_or_graph)
             self._graph = core.Graph(program_or_graph.desc)
             self._program = program_or_graph
         else:
