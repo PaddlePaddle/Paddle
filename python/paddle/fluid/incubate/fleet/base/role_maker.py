@@ -390,8 +390,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
                 self._node_num = len(self._node_ips)
                 self._node_id = self._node_ips.index(self._node_ip)
-                #print(stderr, "node_num:", self._node_num, "node_id:", self._node_id,
-                #      "node_ip:", self._node_ip)
             self._role_is_generated = True
 
     def _get_node_ips_from_endpoints(self, endpoints):
@@ -400,14 +398,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         for ep in endpoints:
             ip = ep.split(":")[0].strip()
             if ip not in ss:
-                #print("endpoint:", ep, "ip:", ep.split(":")[0])
                 ss.add(ip)
-
                 ips.append(ip)
             else:
                 continue
 
-        #print(stderr, "ips:", ips)
         return ips
 
     def get_pserver_endpoints(self):

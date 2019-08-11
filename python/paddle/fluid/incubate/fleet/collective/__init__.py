@@ -167,6 +167,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
+        self.print_config = False
 
     def backward(self,
                  loss,
@@ -226,10 +227,10 @@ class CollectiveOptimizer(DistributedOptimizer):
         worker_endpoints_env = ','.join(worker_endpoints)
         trainers_num = fleet.worker_num()
 
-        #if self.print_config:
-        #print(sys.stderr, "worker_endpoints:{} trainers_num:{} current_endpoint:{} \
-        #          trainer_id:{}".format(worker_endpoints, trainers_num,
-        #                                current_endpoint, trainer_id))
+        if self.print_config:
+            print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
+                  trainer_id:{}".format(worker_endpoints, trainers_num,
+                                        current_endpoint, trainer_id))
 
         # call transpiler
         config = dist_transpiler.DistributeTranspilerConfig()
@@ -251,7 +252,6 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _try_to_compile(self, startup_program, main_program):
         self._transpile(startup_program, main_program)
 
-        #print(sys.stderr, "strategy mode:", self._strategy.mode)
         if self._strategy.mode == "collective":
             return main_program
 
@@ -261,8 +261,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._strategy.enable_backward_optimizer_op_deps = True
 
         self._compiled_program = compiler.CompiledProgram(main_program)
-
-        #print(sys.stderr, "stratetegy:", self._strategy)
 
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,
@@ -298,8 +296,6 @@ class CollectiveOptimizer(DistributedOptimizer):
             startup_program = fluid.default_startup_program()
         fleet.startup_program = startup_program
 
-        #print("start_program:", startup_program)
-
         self._loss = loss
 
         self._check_collective_mode(main_program, self._optimizer,
@@ -308,7 +304,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
-        #print("try to compile")
         fleet._origin_program = main_program
         fleet.main_program = self._try_to_compile(startup_program, main_program)
 

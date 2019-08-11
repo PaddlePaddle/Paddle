@@ -766,8 +766,9 @@ class TestDistBase(unittest.TestCase):
             pipes[i].close()
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
 
-        print("outs[0]:", outs[0])
-        print("outs[1]:", outs[1])
+        if check_error_log:
+            print("outs[0]:", outs[0])
+            print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def check_with_place(self,
