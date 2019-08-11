@@ -167,8 +167,8 @@ package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + 
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
-    shutil.copy(r'${TENSORRT_ROOT}\lib\${TR_INFER_RT}', libs_path)
-    shutil.copy(r'${TENSORRT_ROOT}\lib\${TR_INFER_PLUGIN_RT}', libs_path)
+    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_RT}'), libs_path)
+    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_PLUGIN_RT}'), libs_path)
     package_data['paddle.libs'] += ['${TR_INFER_RT}', '${TR_INFER_PLUGIN_RT}']
 
 if '${WITH_MKL}' == 'ON':
