@@ -109,6 +109,8 @@ class TestDataset(unittest.TestCase):
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
+        dataset.set_fea_eval(10000, True)
+        dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
 
         exe = fluid.Executor(fluid.CPUPlace())
