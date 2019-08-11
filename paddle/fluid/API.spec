@@ -830,7 +830,7 @@ paddle.fluid.dygraph.Tracer.train_mode (ArgSpec(args=['self'], varargs=None, key
 paddle.fluid.dygraph.prepare_context (ArgSpec(args=['strategy'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.save_persistables (ArgSpec(args=['model_dict', 'dirname', 'optimizers'], varargs=None, keywords=None, defaults=('save_dir', None)), ('document', 'b0b2ec2a502214a737300fb648cb9dc7'))
 paddle.fluid.dygraph.load_persistables (ArgSpec(args=['dirname'], varargs=None, keywords=None, defaults=('save_dir',)), ('document', 'e0709f8259620fdcfd2c0c1b23348852'))
-paddle.fluid.dygraph.NoamDecay ('paddle.fluid.dygraph.learning_rate_scheduler.NoamDecay', ('document', 'e45b81ab71653cb8ad7384671e6238e4'))
+paddle.fluid.dygraph.NoamDecay ('paddle.fluid.dygraph.learning_rate_scheduler.NoamDecay', ('document', '9ccfea97dbf15134d406a23aae1e1fa2'))
 paddle.fluid.dygraph.NoamDecay.__init__ (ArgSpec(args=['self', 'd_model', 'warmup_steps', 'begin', 'step', 'dtype'], varargs=None, keywords=None, defaults=(1, 1, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.NoamDecay.create_lr_var (ArgSpec(args=['self', 'lr'], varargs=None, keywords=None, defaults=None), ('document', '013bc233558149d0757b3df57845b866'))
 paddle.fluid.dygraph.NoamDecay.step (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
