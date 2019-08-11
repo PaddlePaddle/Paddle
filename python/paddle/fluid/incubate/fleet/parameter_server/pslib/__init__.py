@@ -294,6 +294,7 @@ class PSLib(Fleet):
                     scope(Scope): Scope object
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
+                    var_names(list): var name list
                     load_combine(bool): load from a file or splited param files
                                         default False.
 
@@ -319,11 +320,13 @@ class PSLib(Fleet):
         mode = kwargs.get("mode", 0)
         scope = kwargs.get("scope", None)
         model_proto_file = kwargs.get("model_proto_file", None)
+        var_names = kwargs.get("var_names", None)
         load_combine = kwargs.get("load_combine", False)
         self._role_maker._barrier_worker()
         if scope is not None and model_proto_file is not None:
             self._load_one_table_from_paddle_model(
-                scope, table_id, model_path, model_proto_file, load_combine)
+                scope, table_id, model_path, model_proto_file, var_names,
+                load_combine)
         elif self._role_maker.is_first_worker():
             self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
         self._role_maker._barrier_worker()
@@ -333,6 +336,7 @@ class PSLib(Fleet):
                                           table_id,
                                           model_path,
                                           model_proto_file,
+                                          var_names = None,
                                           load_combine=False):
         """
         load params from paddle model, and push params to pserver
@@ -343,6 +347,7 @@ class PSLib(Fleet):
             model_path(str): path of paddle model, can be local or hdfs/afs file
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
+            var_names(list): load var names
             load_combine(bool): load from a file or splited param files
 
         """
@@ -377,14 +382,17 @@ class PSLib(Fleet):
             for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
                 if table_id is not None and table_id != i.table_id:
                     continue
-                var_list = [var for var in i.dense_variable_name]
-                skip = False
-                for var in var_list:
-                    if scope.find_var(var) is None:
-                        skip = True
-                        break
-                if skip:
-                    continue
+                if var_names is None:
+                    var_list = [var for var in i.dense_variable_name]
+                    skip = False
+                    for var in var_list:
+                        if scope.find_var(var) is None:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                else:
+                    var_list = var_names
                 self._fleet_ptr.load_from_paddle_model(
                     scope, table_id, var_list, model_path, model_proto_file,
                     load_combine)
