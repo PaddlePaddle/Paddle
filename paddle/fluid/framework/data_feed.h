@@ -26,6 +26,7 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -425,6 +426,41 @@ struct Record {
   std::vector<FeatureItem> uint64_feasigns_;
   std::vector<FeatureItem> float_feasigns_;
   std::string ins_id_;
+};
+
+struct RecordCandidate {
+  std::string ins_id_;
+  std::unordered_multimap<uint16_t, FeatureKey> feas;
+
+  RecordCandidate& operator=(const Record& rec) {
+    feas.clear();
+    ins_id_ = rec.ins_id_;
+    for (auto& fea : rec.uint64_feasigns_) {
+      feas.insert({fea.slot(), fea.sign()});
+    }
+    return *this;
+  }
+};
+
+class RecordCandidateList {
+ public:
+  RecordCandidateList() = default;
+  RecordCandidateList(const RecordCandidateList&) = delete;
+  RecordCandidateList& operator=(const RecordCandidateList&) = delete;
+
+  void ReSize(size_t length);
+
+  void ReInit();
+
+  void AddAndGet(const Record& record, RecordCandidate* result);
+
+ private:
+  size_t _capacity = 0;
+  std::mutex _mutex;
+  bool _full = false;
+  size_t _cur_size = 0;
+  size_t _total_size = 0;
+  std::vector<RecordCandidate> _candidate_list;
 };
 
 template <class AR>
