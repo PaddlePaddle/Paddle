@@ -29,6 +29,7 @@ import os
 import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
+from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -106,8 +107,9 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
 
         if dist_strategy:
-            opt = fleet.distributed_optimizer(optimizer, strategy=dist_strategy)
-            _, param_grads = dist_optimizer.minimize(avg_cost)
+            dist_opt = fleet.distributed_optimizer(
+                optimizer=opt, strategy=dist_strategy)
+            _, param_grads = dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
 

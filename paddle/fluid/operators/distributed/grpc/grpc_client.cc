@@ -449,7 +449,7 @@ void GRPCClient::Proceed() {
   // destructed at this moment.
   if (FLAGS_v >= 3) {
     std::string msg("GRPCClient Proceed end");
-    fwrite(msg.c_str(), msg.length(), 1, stdout);
+    fwrite(msg.c_str(), msg.length(), 1, stderr);
   }
 }
 

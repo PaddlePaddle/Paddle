@@ -24,6 +24,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid import compiler
 
 import os
+import sys
 
 
 class LambConfig(object):
@@ -122,7 +123,8 @@ class DistributedStrategy(fluid.BuildStrategy):
                 self._exec_strategy.num_threads = 2 * self.nccl_comm_num + 1
             if self._exec_strategy.num_threads > 4:
                 print(
-                    stderr, "WARNING: if you use use_hierarchical_allreduce or "
+                    sys.stderr,
+                    "WARNING: if you use use_hierarchical_allreduce or "
                     "with multi nccl comm, please set FLAGS_sync_nccl_allreduce = 0"
                 )
 
@@ -225,9 +227,9 @@ class CollectiveOptimizer(DistributedOptimizer):
         trainers_num = fleet.worker_num()
 
         #if self.print_config:
-        print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
-                  trainer_id:{}".format(worker_endpoints, trainers_num,
-                                        current_endpoint, trainer_id))
+        #print(sys.stderr, "worker_endpoints:{} trainers_num:{} current_endpoint:{} \
+        #          trainer_id:{}".format(worker_endpoints, trainers_num,
+        #                                current_endpoint, trainer_id))
 
         # call transpiler
         config = dist_transpiler.DistributeTranspilerConfig()
@@ -249,7 +251,7 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _try_to_compile(self, startup_program, main_program):
         self._transpile(startup_program, main_program)
 
-        print("strategy mode:", self._strategy.mode)
+        #print(sys.stderr, "strategy mode:", self._strategy.mode)
         if self._strategy.mode == "collective":
             return main_program
 
@@ -260,7 +262,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
-        print("stratetegy:", self._strategy)
+        #print(sys.stderr, "stratetegy:", self._strategy)
 
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,

@@ -47,6 +47,10 @@ def my_print(class_name, log_str):
         sys.stderr.buffer.write(pickle.dumps(print_str))
 
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 class TestDistRunnerBase(object):
     def get_model(self,
                   batch_size=DEFAULT_BATCH_SIZE,
@@ -114,20 +118,22 @@ class TestDistRunnerBase(object):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        my_print("fleet.node_num:",
-                 fleet.node_num(), "fleet.trainer_num:", fleet.trainer_num())
+        my_print("gpu_fleet", "fleet.node_num:")
+        #"fleet.node_id:", fleet.node_id(),
+        #"fleet.trainer_num:", fleet.worker_num())
 
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-                self.get_model(batch_size=args.batch_size, dist_stategy=dist_strategy)
+                self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
 
-        trainer_prog = fleet.main_program
+        trainer_prog = fleet._origin_program
+        dist_prog = fleet.main_program
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(device_id)
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        my_print(type(self).__name__, "run worker startup program done.")
+        eprint(type(self).__name__, "run worker startup program done.")
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -151,7 +157,7 @@ class TestDistRunnerBase(object):
         my_print(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
-            loss, = exe.run(binary,
+            loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
@@ -687,8 +693,8 @@ class TestDistBase(unittest.TestCase):
                 "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
-                "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1",
-                "PADDLE_CURRENT_ENDPOINT": "127.0.0.1"
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": ep,
             })
         else:
             env.update({'CPU_NUM': '1'})
@@ -760,6 +766,8 @@ class TestDistBase(unittest.TestCase):
             pipes[i].close()
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
 
+        print("outs[0]:", outs[0])
+        print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def check_with_place(self,
