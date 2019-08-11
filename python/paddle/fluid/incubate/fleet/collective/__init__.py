@@ -42,7 +42,7 @@ class Collective(Fleet):
         self._local_ip = 0
 
         self.startup_program = None
-        self.origin_program = None
+        self._origin_program = None
         self.main_program = None
 
     def init_worker(self):
@@ -307,7 +307,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             loss, startup_program, parameter_list, no_grad_set)
 
         #print("try to compile")
-        fleet.origin_program = main_program
+        fleet._origin_program = main_program
         fleet.main_program = self._try_to_compile(startup_program, main_program)
 
         return optimize_ops, param_grads
