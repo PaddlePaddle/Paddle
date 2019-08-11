@@ -33,13 +33,13 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("LossWeight"),
                    "Output(LossWeight) shoudl not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Map"), "Output(Map) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("IndexMap"), "Output(IndexMap) should be not null.");
 
     auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
 
     ctx->SetOutputDim("Out", framework::make_ddim({-1, x1_dims[1]}));
     ctx->SetOutputDim("LossWeight", framework::make_ddim({-1, 1}));
-    ctx->SetOutputDim("Map", framework::make_ddim({-1, 2}));
+    ctx->SetOutputDim("IndexMap", framework::make_ddim({-1, 2}));
   }
 
  protected:
@@ -59,7 +59,7 @@ class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_lod", "is Ins with LoD info or not, default True");
     AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
     AddOutput("LossWeight", "(Tensor) loss weight.");
-    AddOutput("Map", "(LoDTensor) mapping from Out rows to X1 rows");
+    AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
     AddComment(R"DOC(
 Filter By Instag Op 
 
@@ -69,7 +69,7 @@ There are 3 inputs. First is embeded ins, Second is tags for ins,
 Third is tags to filter.
 
 There are 3 outputs. First is filtered embeded ins, Second is Loss Weight,
-Third is the Map from Out line number to X1 line number. 
+Third is the IndexMap from Out line number to X1 line number. 
 )DOC");
   }
 };
@@ -78,7 +78,7 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Map"), "Input(Map) should be not null");
+    PADDLE_ENFORCE(ctx->HasInput("IndexMap"), "Input(IndexMap) should be not null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Grad Input(Out) should be not null");
     PADDLE_ENFORCE(ctx->HasInput("Ins"), "Input(Ins) should be not null");
@@ -110,7 +110,7 @@ class FilterByInstagGradOpDescMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("filter_by_instag_grad");
-    op->SetInput("Map", Output("Map"));
+    op->SetInput("IndexMap", Output("IndexMap"));
     op->SetInput("Ins", Input("Ins"));
     op->SetAttrMap(Attrs());
     op->SetInput("LossWeight", Output("LossWeight"));

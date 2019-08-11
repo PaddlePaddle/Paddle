@@ -95,7 +95,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // otherwise, copy whole line
     // Dim [local fc count, batch size, embedding size]
     LoDTensor* out = context.Output<LoDTensor>("Out");
-    LoDTensor* map = context.Output<LoDTensor>("Map");
+    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
     // expected auto = const T
     auto* x1_data = x1->data<T>();
@@ -174,7 +174,7 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
-    auto* mmap = context.Input<LoDTensor>("Map");
+    auto* mmap = context.Input<LoDTensor>("IndexMap");
     auto* x1 = context.Input<LoDTensor>("Ins");
     x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());

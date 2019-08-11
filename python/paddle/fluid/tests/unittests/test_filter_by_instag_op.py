@@ -68,7 +68,7 @@ class TestFilterByInstagOp(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'Map': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod)
         }
 
         self.attrs = {'is_lod': True}
@@ -116,7 +116,7 @@ class TestFilterByInstagOp2(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'Map': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod)
         }
         self.attrs = {'is_lod': True, }
 
@@ -162,7 +162,7 @@ class TestFilterByInstagOp3(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'Map': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod)
         }
         self.attrs = {'is_lod': True, }
 
@@ -207,7 +207,7 @@ class TestFilterByInstagOp4(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'Map': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod)
         }
         self.attrs = {'is_lod': False, }
 

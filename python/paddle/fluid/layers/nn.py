@@ -9649,7 +9649,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
                 'Filter_tag': filter_tag},
         outputs={'Out': out,
                  'LossWeight': loss_weight,
-                 'Map': mmap},
+                 'IndexMap': mmap},
         attrs={'is_lod': is_lod})
 
     return [out, loss_weight]
