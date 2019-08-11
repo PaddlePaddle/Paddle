@@ -46,14 +46,14 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     // X1 is global FC output
     // Dim [batch size, embedding size]
-    auto* x1 = context.Input<LoDTensor>("X1");
+    auto* x1 = context.Input<LoDTensor>("Ins");
     bool is_x1_lod = context.Attr<bool>("is_lod");
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
-    auto* x2 = context.Input<LoDTensor>("X2");
+    auto* x2 = context.Input<LoDTensor>("Ins_tag");
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
-    auto* x3 = context.Input<Tensor>("X3");
+    auto* x3 = context.Input<Tensor>("Filter_tag");
 
     std::unordered_set<int64_t> filter_tag;
     auto* x3_data = x3->data<int64_t>();
@@ -72,7 +72,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
         x1_lods.push_back(i + 1);
       }
     } else {
-      x1_lods = context.Input<LoDTensor>("X1")->lod()[0];
+      x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
     }
 
     std::unordered_map<int64_t, int64_t> mmap_aux;
@@ -172,11 +172,11 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("X1"));
+    auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
     auto* mmap = context.Input<LoDTensor>("Map");
-    auto* x1 = context.Input<LoDTensor>("X1");
-    x1_grad->set_lod(context.Input<LoDTensor>("X1")->lod());
+    auto* x1 = context.Input<LoDTensor>("Ins");
+    x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());
     auto mmap_data = mmap->data<int64_t>();
     // expected auto = T

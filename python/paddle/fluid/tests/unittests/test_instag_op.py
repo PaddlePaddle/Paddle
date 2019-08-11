@@ -61,9 +61,9 @@ class TestFilterByInstagOp(OpTest):
         loss_weight = np.array([[1], [1], [1], [1]]).astype('double')
 
         self.inputs = {
-            'X1': (x1, x1_lod),
-            'X2': (x2, x2_lod),
-            'X3': x3,
+            'Ins': (x1, x1_lod),
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
         }
         self.outputs = {
             'Out': (out, out_lod),
@@ -77,7 +77,8 @@ class TestFilterByInstagOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
+        self.check_grad(['Ins'], 'Out', 
+                no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
 """This is Test Case 2"""
@@ -107,9 +108,9 @@ class TestFilterByInstagOp2(OpTest):
 
         loss_weight = np.array([[1], [1]]).astype('double')
         self.inputs = {
-            'X1': (x1, x1_lod),
-            'X2': (x2, x2_lod),
-            'X3': x3,
+            'Ins': (x1, x1_lod),
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
         }
 
         self.outputs = {
@@ -123,7 +124,8 @@ class TestFilterByInstagOp2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
+        self.check_grad(['Ins'], 'Out', 
+                no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
 """This is Test Case 3"""
@@ -153,9 +155,9 @@ class TestFilterByInstagOp3(OpTest):
 
         loss_weight = np.array([[0]]).astype('double')
         self.inputs = {
-            'X1': (x1, x1_lod),
-            'X2': (x2, x2_lod),
-            'X3': x3,
+            'Ins': (x1, x1_lod),
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
         }
         self.outputs = {
             'Out': (out, out_lod),
@@ -168,7 +170,8 @@ class TestFilterByInstagOp3(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
+        self.check_grad(['Ins'], 'Out', 
+                no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
 """This is Test Case 4"""
@@ -197,9 +200,9 @@ class TestFilterByInstagOp4(OpTest):
 
         loss_weight = np.array([[0]]).astype('double')
         self.inputs = {
-            'X1': x1,
-            'X2': (x2, x2_lod),
-            'X3': x3,
+            'Ins': x1,
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
         }
         self.outputs = {
             'Out': (out, out_lod),
@@ -212,7 +215,8 @@ class TestFilterByInstagOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X1'], 'Out', no_grad_set=set(['X2', 'X3']))
+        self.check_grad(['Ins'], 'Out', 
+                no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
 if __name__ == '__main__':

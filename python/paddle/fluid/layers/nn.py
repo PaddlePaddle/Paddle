@@ -9590,31 +9590,38 @@ def stack(x, axis=0):
 
 
 @templatedoc(op_type="filter_by_instag")
-def filter_by_instag(x1, x2, x3, is_lod):
+def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     """
     **Filter By Instag Layer**
-
-    This layer filter the inputs by tag.Every Ins has its tags, and every local
-     FC has its tag, and then this op will select the ins who has same tags with local FC.
-
-    For example, one batch has 8 ins. Every ins has its tag list. 
-        Ins   |   Tag0
+   
+    There are multiple ins, and every ins belongs to some tags. for example,
+    ins 0 belongs to tag 0 and 1. And there is another variable filter_tag 
+    as the filter, which means this tag can pass the filter. for example, if 
+    filter_tag is [0] or [1], ins 0 can pass the filter. if the filter_tag is 
+    [2], ins 0 cannot pass.
+    
+    For example, one batch has 4 ins. Every ins has its tag list. 
+        Ins   |   Ins_Tag
          0    |   0, 1
          1    |   1, 3
          2    |   0, 3
          3    |   2, 6
 
-    And the local FC has tags [1, 2]
+    And the filter tags [1]
 
-    Then we can pick Ins has tag 1 or 2, and group them as the final output.
-
-    The output should be Ins 0, 1 and 3.
+    From the definition above, ins which has tag 1 can pass the filter
+    So Ins 0 and Ins 1 can pass and be seen in the output,
+    Ins 2 and 3 cannot pass because they do not has tag 1.
 
 
     Args:
-        x1 (Variable): Input Variable (LoDTensor), usually it is global FC 2D output
-        x2 (Variable): Input Variable (LoDTensor), usually it is ins tag list
-        x3 (Variable): Input Variable (1D Tensor/List), usually it is fc tag list
+        ins (Variable): Input Variable (LoDTensor), usually it is 2D tensor
+                        And first dimension can have lod info or not.
+        ins_tag (Variable): Input Variable (LoDTensor), usually it is 1D list
+                        And split them by lod info
+        filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
+                        list that holds the tags.
+        is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
 
     Returns:
         Variable: the output (LoDTensor), filtered ins
@@ -9624,22 +9631,22 @@ def filter_by_instag(x1, x2, x3, is_lod):
         .. code-block:: python
 
         import paddle.fluid.layers as layers
-        x1 = layers.data(name='x1', shape=[-1,32], lod_level=0, dtype='float64')
-        x2 = layers.data(name='x2', shape=[-1,16], lod_level=0, dtype='int64')
-        x3 = layers.data(name='x3', shape=[-1,16], dtype='int64')
-        out, loss_weight = layers.filter_by_instag(x1, x2, x3)
+        ins = layers.data(name='Ins', shape=[-1,32], lod_level=0, dtype='float64')
+        ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+        filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
+        out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
         		
     """
     helper = LayerHelper('filter_by_instag', **locals())
 
-    out = helper.create_variable_for_type_inference(dtype=x1.dtype)
+    out = helper.create_variable_for_type_inference(dtype=ins.dtype)
     loss_weight = helper.create_variable_for_type_inference(dtype=np.float64)
-    mmap = helper.create_variable_for_type_inference(dtype=x2.dtype)
+    mmap = helper.create_variable_for_type_inference(dtype=ins_tag.dtype)
     helper.append_op(
         type='filter_by_instag',
-        inputs={'X1': x1,
-                'X2': x2,
-                'X3': x3},
+        inputs={'Ins': ins,
+                'Ins_tag': ins_tag,
+                'Filter_tag': filter_tag},
         outputs={'Out': out,
                  'LossWeight': loss_weight,
                  'Map': mmap},
