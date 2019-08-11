@@ -26,14 +26,15 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ins"), "Input(Ins) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Ins_tag"), 
-            "Input(Ins_tag) should be not null.");
+                   "Input(Ins_tag) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter_tag"), 
-            "Input(Filter_tag) should be not null.");
+                   "Input(Filter_tag) should be not null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("LossWeight"),
                    "Output(LossWeight) shoudl not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("IndexMap"), "Output(IndexMap) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("IndexMap"), 
+                   "Output(IndexMap) should be not null.");
 
     auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
 
@@ -78,7 +79,8 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("IndexMap"), "Input(IndexMap) should be not null");
+    PADDLE_ENFORCE(ctx->HasInput("IndexMap"), 
+                   "Input(IndexMap) should be not null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Grad Input(Out) should be not null");
     PADDLE_ENFORCE(ctx->HasInput("Ins"), "Input(Ins) should be not null");

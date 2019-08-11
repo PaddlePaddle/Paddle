@@ -9606,6 +9606,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
          1    |   1, 3
          2    |   0, 3
          3    |   2, 6
+    And Lod is [1,1,1,1]
 
     And the filter tags [1]
 
@@ -9613,6 +9614,8 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     So Ins 0 and Ins 1 can pass and be seen in the output,
     Ins 2 and 3 cannot pass because they do not has tag 1.
 
+    Actually, if is_lod is false, it is normal tensor that equals to 
+    lod_tensor with all 1, similar to the example above.
 
     Args:
         ins (Variable): Input Variable (LoDTensor), usually it is 2D tensor
