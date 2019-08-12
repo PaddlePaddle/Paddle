@@ -9594,12 +9594,11 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     """
     **Filter By Instag Layer**
    
-    There are multiple ins, and every ins belongs to some tags. for example,
-    ins 0 belongs to tag 0 and 1. And there is another variable filter_tag 
-    as the filter, which means this tag can pass the filter. for example, if 
-    filter_tag is [0] or [1], ins 0 can pass the filter. if the filter_tag is 
-    [2], ins 0 cannot pass.
-    
+    This function filter a batch of ins by instag, 
+    There are multiple ins, and every ins belongs to some tags. 
+    We can specify some tags we want. So the ins which belongs to that tags
+    remains in the output, and others removed.
+ 
     For example, one batch has 4 ins. Every ins has its tag list. 
         Ins   |   Ins_Tag
          0    |   0, 1
@@ -9633,11 +9632,11 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     Examples:
         .. code-block:: python
 
-        import paddle.fluid.layers as layers
-        ins = layers.data(name='Ins', shape=[-1,32], lod_level=0, dtype='float64')
-        ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
-        filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
-        out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
+          import paddle.fluid.layers as layers
+          ins = layers.data(name='Ins', shape=[-1,32], lod_level=0, dtype='float64')
+          ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+          filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
+          out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
         		
     """
     helper = LayerHelper('filter_by_instag', **locals())
