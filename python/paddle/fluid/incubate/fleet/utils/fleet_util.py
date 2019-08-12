@@ -487,7 +487,7 @@ class FleetUtil(object):
             suffix_name = "/%s/base/" % day
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
-                donefile_name="xbox_base_done.txt"
+                donefile_name = "xbox_base_done.txt"
 
         if isinstance(data_path, list):
             data_path = ",".join(data_path)
