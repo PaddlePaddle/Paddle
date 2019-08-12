@@ -93,7 +93,7 @@ class LookupTablePrefetchKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int64_t>>("height_sections");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
-    operators::distributed::prefetch<T>(
+    operators::distributed::prefetchs<T>(
         id_names, out_names, embedding_name, lookup_tables, endpoints,
         height_sections, context, context.scope());
   }

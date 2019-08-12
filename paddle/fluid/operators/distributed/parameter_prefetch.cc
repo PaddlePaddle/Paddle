@@ -168,19 +168,19 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetch<T>({id_name}, {out_name}, reconstruct_var_name, table_names,
-              endpoints, height_sections, context, scope);
+  prefetchs<T>({id_name}, {out_name}, reconstruct_var_name, table_names,
+               endpoints, height_sections, context, scope);
 }
 
 template <typename T>
-void prefetch(const std::vector<std::string>& id_var_names,
-              const std::vector<std::string>& out_var_names,
-              const std::string& reconstruct_var_name,
-              const std::vector<std::string>& table_names,
-              const std::vector<std::string>& endpoints,
-              const std::vector<int64_t>& height_sections,
-              const framework::ExecutionContext& context,
-              const framework::Scope& scope) {
+void prefetchs(const std::vector<std::string>& id_var_names,
+               const std::vector<std::string>& out_var_names,
+               const std::string& reconstruct_var_name,
+               const std::vector<std::string>& table_names,
+               const std::vector<std::string>& endpoints,
+               const std::vector<int64_t>& height_sections,
+               const framework::ExecutionContext& context,
+               const framework::Scope& scope) {
   PADDLE_ENFORCE_GT(id_var_names.size(), 0, "");
   PADDLE_ENFORCE_EQ(id_var_names.size(), out_var_names.size(), "");
   PADDLE_ENFORCE_EQ(table_names.size(), endpoints.size(), "");
