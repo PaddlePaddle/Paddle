@@ -89,7 +89,7 @@ struct BuildStrategy {
   bool fuse_elewise_add_act_ops_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
-  bool fuse_all_optimizer_ops_{false};
+  bool fuse_all_optimizer_ops_{true};
   bool fuse_all_reduce_ops_{false};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
@@ -98,7 +98,7 @@ struct BuildStrategy {
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
-  bool fuse_broadcast_ops_{false};
+  bool fuse_broadcast_ops_{true};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
 
