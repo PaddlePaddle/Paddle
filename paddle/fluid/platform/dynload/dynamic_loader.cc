@@ -247,6 +247,8 @@ void* GetNCCLDsoHandle() {
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "nvinfer.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
 #endif
