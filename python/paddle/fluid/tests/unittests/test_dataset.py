@@ -51,6 +51,14 @@ class TestDataset(unittest.TestCase):
         except:
             self.assertTrue(True)
 
+    def test_config(self):
+        """
+        Testcase for python config.
+        """
+        dataset = fluid.InMemoryDataset()
+        dataset.set_parse_ins_id(True)
+        self.assertTrue(dataset.parse_ins_id)
+
     def test_dataset_config(self):
         """ Testcase for dataset configuration. """
         dataset = fluid.core.Dataset("MultiSlotDataset")

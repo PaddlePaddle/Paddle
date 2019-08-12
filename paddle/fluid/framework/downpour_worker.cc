@@ -128,7 +128,7 @@ std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
   return std::move(out_val);
 }
 
-std::pair<int64_t, int64_t> get_tensor_bound(LoDTensor* tensor, int index) {
+std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
   auto& dims = tensor->dims();
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
@@ -752,7 +752,7 @@ void DownpourWorker::TrainFiles() {
         }
         for (int i = 0; i < batch_size; ++i) {
           ars[i] = ars[i] + " " + field + ":";
-          auto bound = get_tensor_bound(tensor, i);
+          auto bound = GetTensorBound(tensor, i);
           ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
         }
       }
