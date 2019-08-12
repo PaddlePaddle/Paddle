@@ -92,6 +92,7 @@ struct BuildStrategy {
   // NOTE: here use tristate boolean as the type of fuse_all_optimizer_ops_,
   // if users did not set it, it is none.
   boost::optional<bool> fuse_all_optimizer_ops_{boost::none};
+
   bool fuse_all_reduce_ops_{false};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`

@@ -79,7 +79,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.fuse_all_optimizer_ops_ == boost::none) {
       strategy_.fuse_all_optimizer_ops_ = true;
     } else {
-      user_specify_fuse_all_optimizer_ops = strategy_.fuse_all_optimizer_ops_;
+      user_specify_fuse_all_optimizer_ops =
+          static_cast<bool>(strategy_.fuse_all_optimizer_ops_);
     }
 
     // Specifies the restrictions between different pass.

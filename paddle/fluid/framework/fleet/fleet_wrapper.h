@@ -148,7 +148,13 @@ class FleetWrapper {
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
 
+  double GetCacheThreshold();
+  void CacheShuffle(int table_id, const std::string& path, const int mode,
+                    const double cache_threshold);
+  int32_t SaveCache(int table_id, const std::string& path, const int mode);
+
   void ClearModel();
+
   void ShrinkSparseTable(int table_id);
   void ShrinkDenseTable(int table_id, Scope* scope,
                         std::vector<std::string> var_list, float decay,
