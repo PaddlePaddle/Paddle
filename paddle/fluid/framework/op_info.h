@@ -79,9 +79,13 @@ struct OpInfo {
   }
 
   // some op has no grad_op_maker, can't use GradOpMaker() ?
-  bool HasGradOpMaker() const { return grad_op_maker_ != NULL ? true : false; }
+  bool HasGradOpMaker() const {
+    return grad_op_maker_ != nullptr ? true : false;
+  }
 
-  bool HasInferInplace() const { return infer_inplace_ != NULL ? true : false; }
+  bool HasInferInplace() const {
+    return infer_inplace_ != nullptr ? true : false;
+  }
 
   const OpAttrChecker* Checker() const { return checker_; }
 

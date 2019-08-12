@@ -232,9 +232,10 @@ class OpTest(unittest.TestCase):
             inputs=inputs,
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
-        # infer variable type and infer shape in compile-time
+        # infer variable type and infer shape in compile-time 
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
+
         return op
 
     def _get_io_vars(self, block, numpy_inputs):
@@ -322,7 +323,8 @@ class OpTest(unittest.TestCase):
                      parallel=False,
                      no_check_set=None,
                      loss=None,
-                     enable_inplace=None):
+                     enable_inplace=None,
+                     for_inplace_grad_test=None):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -331,6 +333,13 @@ class OpTest(unittest.TestCase):
         outputs = self._get_outputs(block)
         feed_map = self.feed_var(inputs, place)
 
+        if for_inplace_grad_test is not None:
+            # set persistable for variables without buffer (shape contains 0 like shape = [0,2,5], holder_ is NULL), like XShape
+            # so we can use variables in global_scope for inplace grad test directly, without feeding
+            # since feed_op will call check_memory_size() which fails when tensor holder_ is NULL
+            for name, var in block.vars.items():
+                if 0 in var.shape:
+                    var.persistable = True
         if parallel:
             use_cuda = False
             if isinstance(place, fluid.CUDAPlace):
@@ -389,7 +398,9 @@ class OpTest(unittest.TestCase):
                 np.array_equal(
                     np.array(expect_outs[i]), np.array(actual_outs[i])),
                 "Output (" + out.name + ") has diff at " + str(place) +
-                "when using and not using inplace")
+                " when using and not using inplace" + "\nExpect " +
+                str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i]) +
+                " in class " + self.__class__.__name__ + '\n')
 
     def check_inplace_grad_output_with_place(self, place, no_check_set=None):
         # create froward program to get forward vars
@@ -408,80 +419,93 @@ class OpTest(unittest.TestCase):
         # has grad_op_maker but no grad_op ?
         if not grad_op_desc_list:
             return
-        grad_op_desc = grad_op_desc_list[0]
 
-        # grad_op can not inplace
-        if not core._has_infer_inplace(grad_op_desc.type()):
-            return
+        for i, grad_op_desc in enumerate(grad_op_desc_list):
+            # grad_op can not inplace
+            if not core._has_infer_inplace(grad_op_desc.type()):
+                return
+            # get forward outs
+            forward_outs, fetch_list = self._calc_output(
+                place, no_check_set=no_check_set, for_inplace_grad_test=True)
 
-        # get forward outs
-        forward_outs, fetch_list = self._calc_output(
-            place, no_check_set=no_check_set)
+            # create grad program
+            grad_program = Program()
+            grad_block = grad_program.global_block()
+            new_op_desc = grad_block.desc.append_op()
+            new_op_desc.copy_from(grad_op_desc)
+            grad_program._sync_with_cpp()
 
-        # create grad program
-        grad_program = Program()
-        grad_block = grad_program.global_block()
-        new_op_desc = grad_block.desc.append_op()
-        new_op_desc.copy_from(grad_op_desc)
-        grad_program._sync_with_cpp()
+            # create grad vars based on forward vars (shape and dtype)
+            for arg in grad_op_desc.input_arg_names(
+            ) + grad_op_desc.output_arg_names():
+                forward_var_name = op_grad_to_var.get(arg, None)
+                if forward_var_name is None:
+                    forward_var_name = arg
+                forward_var = block.vars.get(forward_var_name)
+                assert forward_var is not None, "{} cannot be found".format(
+                    forward_var_name)
+                grad_var = grad_block.create_var(
+                    name=arg,
+                    dtype=forward_var.dtype,
+                    shape=forward_var.shape,
+                    type=forward_var.type,
+                    persistable=False)
+                # set persistable for variables without buffer (shape contains 0 like shape = [0,2,5], holder_ is NULL), like XShape
+                # so we can use variables in global_scope directly, without feeding
+                # since feed_op will call check_memory_size() which fails when tensor holder_ is NULL
+                if 0 in grad_var.shape:
+                    grad_var.persistable = True
+            grad_program._sync_with_cpp()
+            grad_fetch_list = grad_op_desc.output_arg_names()
 
-        # create grad vars based on forward vars (shape and dtype)
-        for arg in grad_op_desc.input_arg_names(
-        ) + grad_op_desc.output_arg_names():
-            forward_var_name = op_grad_to_var.get(arg, None)
-            if forward_var_name is None:
-                forward_var_name = arg
-            forward_var = block.vars.get(forward_var_name)
-            assert forward_var is not None, "{} cannot be found".format(
-                forward_var_name)
-            grad_var = grad_block.create_var(
-                name=arg,
-                dtype=forward_var.dtype,
-                shape=forward_var.shape,
-                type=forward_var.type,
-                persistable=False)
-        grad_program._sync_with_cpp()
-        grad_fetch_list = grad_op_desc.output_arg_names()
+            def _calc_grad_output(enable_inplace=None):
+                # generate feed_map for grad_program
+                # since we don`t really check gradient accuracy, but the consistency when using and not using inplace
+                # we use forward outs (also inputs sometimes) as grad (fake) feeds
+                p = core.Place()
+                p.set_place(place)
+                grad_feed_map = {}
+                for arg in grad_op_desc.input_arg_names():
+                    if arg in feed_map.keys():
+                        grad_feed_map[arg] = feed_map[arg]._copy(p)
+                    else:
+                        forward_var_name = op_grad_to_var.get(arg, None)
+                        if forward_var_name is None:
+                            forward_var_name = arg
+                        for i, out in enumerate(fetch_list):
+                            if out.name == forward_var_name:
+                                if 0 in out.shape:
+                                    continue
+                                    # don't feed tensors without buffer (shape contains 0 like shape = [0,2,5], holder_ is NULL), like XShape
+                                    # use variables in global_scope directly
+                                    # since feed_op will call check_memory_size() which fails when tensor holder_ is NULL
+                                else:
+                                    grad_feed_map[arg] = forward_outs[i]._copy(
+                                        p)
 
-        def _calc_grad_output(enable_inplace=None):
-            # generate feed_map for grad_program
-            # since we don`t really check gradient accuracy, but the consistency when using and not using inplace
-            # we use forward outs (also inputs sometimes) as grad (fake) feeds
-            grad_feed_map = {}
-            for arg in grad_op_desc.input_arg_names():
-                if arg in feed_map.keys():
-                    grad_feed_map[arg] = feed_map[arg]._copy()
-                else:
-                    forward_var_name = op_grad_to_var.get(arg, None)
-                    if forward_var_name is None:
-                        forward_var_name = arg
-                    for i, out in enumerate(fetch_list):
-                        if out.name == forward_var_name:
-                            grad_feed_map[arg] = forward_outs[i]._copy()
+                exe = Executor(place)
+                build_strategy = fluid.BuildStrategy()
+                build_strategy.enable_inplace = enable_inplace
+                compiled_program = fluid.CompiledProgram(
+                    grad_program).with_data_parallel(
+                        build_strategy=build_strategy, places=place)
+                outs = exe.run(compiled_program,
+                               feed=grad_feed_map,
+                               fetch_list=grad_fetch_list,
+                               return_numpy=True)
+                return outs
 
-            exe = Executor(place)
+            expect_outs = _calc_grad_output(enable_inplace=False)
+            actual_outs = _calc_grad_output(enable_inplace=True)
 
-            build_strategy = fluid.BuildStrategy()
-            build_strategy.enable_inplace = enable_inplace
-            build_strategy.memory_optimize = False
-            compiled_program = fluid.CompiledProgram(
-                grad_program).with_data_parallel(
-                    build_strategy=build_strategy, places=place)
-            outs = exe.run(compiled_program,
-                           feed=grad_feed_map,
-                           fetch_list=grad_fetch_list,
-                           return_numpy=True)
-            return outs
-
-        expect_outs = _calc_grad_output(enable_inplace=False)
-        actual_outs = _calc_grad_output(enable_inplace=True)
-
-        # compare expect_outs and actual_outs
-        for i, out_name in enumerate(grad_fetch_list):
-            self.assertTrue(
-                np.array_equal(expect_outs[i], actual_outs[i]),
-                "Output (" + out_name + ") has diff at " + str(place) +
-                "when using and not using inplace")
+            # compare expect_outs and actual_outs
+            for i, out_name in enumerate(grad_fetch_list):
+                self.assertTrue(
+                    np.array_equal(expect_outs[i], actual_outs[i]),
+                    "Output (" + out_name + ") has diff at " + str(place) +
+                    " when using and not using inplace" + "\nExpect " +
+                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
+                    + " in class " + self.__class__.__name__)
 
     def check_output_with_place(self,
                                 place,

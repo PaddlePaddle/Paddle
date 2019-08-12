@@ -499,9 +499,16 @@ PYBIND11_MODULE(core_noavx, m) {
              ostr << self;
              return ostr.str();
            })
-      .def("_copy", [](const LoDTensor &self) {
+      .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
+        // follow fetch_op's inplementation
         LoDTensor dst;
-        TensorCopySync(self, self.place(), &dst);
+        if (self.IsInitialized() && self.numel() > 0) {
+          TensorCopySync(self, place, &dst);
+        } else {
+          // Not copy, if the src tensor is empty.
+          dst.clear();
+          dst.Resize({0});
+        }
         dst.set_lod(self.lod());
         return dst;
       });
