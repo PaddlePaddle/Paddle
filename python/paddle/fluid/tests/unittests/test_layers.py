@@ -903,6 +903,20 @@ class TestLayer(LayerTest):
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3, batch_shape=[-1])
 
+    def test_hard_swish(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            ret = layers.hard_swish(t)
+            static_ret = self.get_static_graph_result(
+                feed={'t': np.ones(
+                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.hard_swish(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
