@@ -77,32 +77,36 @@ void DistMultiTrainer::Finalize() {
     th.join();
   }
   for (int i = 0; i < need_merge_var_names_.size(); i++) {
-    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+    auto *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
+    auto *root_tensor = root_var->GetMutable<LoDTensor>();
     std::cout << "Will Merge Var name: " << need_merge_var_names_[i] << std::endl;
-    for (int j = 1; j < thread_num_; j++) {
+    for (int j = 0; j < thread_num_; j++) {
       std::cout << "cp 1" << std::endl;
-      Scope *cur_thread_scope = workers_[j]->GetThreadScope();
+      auto *cur_thread_scope = workers_[j]->GetThreadScope();
       std::cout << "cp 2" << std::endl;  
-      Variable *thread_var = cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      auto *thread_var = cur_thread_scope->FindVar(need_merge_var_names_[i]);
       std::cout << "cp 3" << std::endl;     
-      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+      auto *thread_tensor = thread_var->GetMutable<LoDTensor>();
       std::cout << "cp 4" << std::endl;
       if (root_tensor->numel() != thread_tensor->numel()) {
         std::cout << "MERGE PASS" << std::endl;
         continue;    
       }
-      for (int i = 0; i < root_tensor->numel(); i++) {
-        std::cout << "thread " << j << " debug merge val: " << root_tensor->data<int64_t>()[i] << " | " << thread_tensor->data<int64_t>()[i] << std::endl;    
+      for (int k = 0; k < root_tensor->numel(); k++) {
+        std::cout << "thread " << j << " debug merge val: " << root_tensor->data<int64_t>()[k] << " | " << thread_tensor->data<int64_t>()[k] << std::endl;    
       }
       MergeToRootScope(root_tensor, thread_tensor);
       std::vector<std::string> delete_vars;
       delete_vars.push_back(need_merge_var_names_[i]);
-      cur_thread_scope->EraseVars(delete_vars);
+      //cur_thread_scope->EraseVars(delete_vars);
     }
+  }
+  for (int i = 0; i < thread_num_; i++) {
+    auto *cur_thread_scope = workers_[i]->GetThreadScope();
+    cur_thread_scope->DropKids();
   }
   pull_dense_worker_->Stop();
   root_scope_->DropKids();

@@ -471,7 +471,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     }
 
     PrintFetchVars();
-    thread_scope_->DropKids();
+    //thread_scope_->DropKids();
     total_inst += cur_batch;
     ++batch_cnt;
 

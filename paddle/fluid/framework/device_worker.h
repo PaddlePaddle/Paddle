@@ -157,6 +157,8 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
+  template<typename T>
+  void ZeroInit(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
