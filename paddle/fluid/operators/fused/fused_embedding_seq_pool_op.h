@@ -33,7 +33,8 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
 template <typename T>
 void prepare_csr_data(const std::vector<uint64_t> &offset,
                       const int64_t *ids_data, const size_t idx_width,
@@ -131,7 +132,8 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     output_t->Resize({batch_size, last_dim});
 
     if (combiner_type == "sum") {
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
       auto output = output_t->mutable_data<T>(context.GetPlace());
       int64_t table_height = table_var->dims()[0];
       int64_t table_width = table_var->dims()[1];
