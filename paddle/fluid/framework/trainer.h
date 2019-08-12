@@ -87,7 +87,8 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
-  virtual void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;

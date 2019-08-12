@@ -77,48 +77,41 @@ void DistMultiTrainer::Finalize() {
     th.join();
   }
   for (int i = 0; i < need_merge_var_names_.size(); i++) {
-    auto *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
       continue;
     }
-    auto *root_tensor = root_var->GetMutable<LoDTensor>();
+    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
     std::cout << "Will Merge Var name: " << need_merge_var_names_[i] << std::endl;
-    for (int j = 0; j < thread_num_; j++) {
-      std::cout << "cp 1" << std::endl;
-      auto *cur_thread_scope = workers_[j]->GetThreadScope();
-      std::cout << "cp 2" << std::endl;  
-      auto *thread_var = cur_thread_scope->FindVar(need_merge_var_names_[i]);
-      std::cout << "cp 3" << std::endl;     
-      auto *thread_tensor = thread_var->GetMutable<LoDTensor>();
-      std::cout << "cp 4" << std::endl;
+    for (int j = 1; j < thread_num_; j++) {
+      Scope *cur_thread_scope = workers_[j]->GetThreadScope();
+      Variable *thread_var = cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      LodTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
       if (root_tensor->numel() != thread_tensor->numel()) {
-        std::cout << "MERGE PASS" << std::endl;
         continue;    
       }
       for (int k = 0; k < root_tensor->numel(); k++) {
         std::cout << "thread " << j << " debug merge val: " << root_tensor->data<int64_t>()[k] << " | " << thread_tensor->data<int64_t>()[k] << std::endl;    
       }
-      MergeToRootScope(root_tensor, thread_tensor);
-      std::vector<std::string> delete_vars;
-      delete_vars.push_back(need_merge_var_names_[i]);
-      //cur_thread_scope->EraseVars(delete_vars);
+#define MergeCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (root_tensor->type() == proto_type) {            \
+      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);         \
+    }                                             \
+  } while (0)
+      _ForEachDataType_(MergeCallback);
+      //MergeToRootScope(root_tensor, thread_tensor);
     }
   }
-  for (int i = 0; i < thread_num_; i++) {
-    auto *cur_thread_scope = workers_[i]->GetThreadScope();
-    cur_thread_scope->DropKids();
-  }
+
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 }
 
+template<typename T>
 void DistMultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
-  std::cout << "root tensor numel: " << root_tensor->numel() << " tensor numel: " << tensor->numel() << std::endl;
-  std::cout << "cp 5" << std::endl;
-  int64_t* root_data = root_tensor->data<int64_t>();
-  std::cout << "cp 6" << std::endl;
-  int64_t* data = tensor->data<int64_t>();
-  std::cout << "cp 7" << std::endl;
+  T* root_data = root_tensor->data<T>();
+  T* data = tensor->data<T>();
   for (int i = 0; i < tensor->numel(); i++){
     root_data[i] += data[i];
   }

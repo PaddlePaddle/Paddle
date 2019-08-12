@@ -55,35 +55,25 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
     if (var->Persistable()) {
       auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      //std::cout << "pers: " << var->Name() << " ";
-      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() ) {
+      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end()) {
         auto *root_var = root_scope_->FindVar(var->Name());
         auto *root_tensor = root_var->GetMutable<LoDTensor>();
         std::cout << " ROOT start check var init with numel: " << var->Name() << " | " <<  root_tensor->numel() << std::endl;
   }
-      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() ) {
+      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() && thread_id_ != 0) {
         int tensor_dim = root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
         auto* ptr1 = thread_scope_->Var(var->Name());
         InitializeVariable(ptr1, var->GetType());
         LoDTensor* thread_tensor = ptr1->GetMutable<LoDTensor>();
         LoDTensor* root_tensor = root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>(); 
-        //int64_t* ptr = tensor_emb->mutable_data<int64_t>(root_tensor->dims(), platform::CPUPlace());
-        //memset(ptr, 0, sizeof(int64_t) * tensor_dim);
 #define MemsetCallback(cpp_type, proto_type) \
   do {                                            \
-    if (thread_tensor->type() == proto_type) {            \
+    if (root_tensor->type() == proto_type) {            \
       ZeroInit<cpp_type>(thread_tensor, root_tensor, tensor_dim);         \
     }                                             \
   } while (0)
         _ForEachDataType_(MemsetCallback);
         std::cout << "THREAD pers: " << var->Name() << " ";
-        
-        //auto *thread_var = thread_scope_->FindVar(var->Name());
-        //auto *thread_tensor = thread_var->GetMutable<LoDTensor>();
-        //std::cout << " start check var init with numel: " << thread_tensor->numel() << std::endl;
-        //for (int i = 0; i < thread_tensor->numel(); i++) {
-          //std::cout << "thread init tensor: " <<  thread_tensor->data<int64_t>()[i] << std::endl;    
-        //}
       }
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
