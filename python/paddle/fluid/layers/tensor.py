@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
 ]
 
 
@@ -988,6 +988,77 @@ def diag(diagonal):
         type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
 
     out.stop_gradient = True
+    return out
+
+
+def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
+    """
+    **eye**
+
+    This function constructs an identity tensor, or a batch of tensor.
+
+    Args:
+        num_rows(int): the number of rows in each batch tensor.
+        num_columns(int): the number of columns in each batch tensor.
+                          If None, default: num_rows.
+        batch_shape(list(int)): If provided, the returned tensor will have a leading
+                                batch size of this shape.
+        dtype(string): 'float32'|'int32'|..., the data type of the returned tensor.
+
+    Returns:
+        Variable: An identity tensor of shape batch_shape + [num_rows, num_columns].
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+ 	  data = fluid.layers.eye(3, dtype='int32')
+	  # [[1, 0, 0]
+          #  [0, 1, 0]
+	  #  [0, 0, 1]]
+    
+          data = fluid.layers.eye(2, 3, dtype='int32')
+	  # [[1, 0, 0]
+          #  [0, 1, 0]]
+    
+	  data = fluid.layers.eye(2, batch_shape=[3])
+          # Construct a batch of 3 identity tensors, each 2 x 2.
+          # data[i, :, :] is a 2 x 2 identity tensor, i = 0, 1, 2.
+
+    """
+
+    helper = LayerHelper("eye", **locals())
+    if not isinstance(num_rows, int) or num_rows < 0:
+        raise TypeError("num_rows should be a non-negative int")
+    if num_columns is not None:
+        if not isinstance(num_columns, int) or num_columns < 0:
+            raise TypeError("num_columns should be a non-negative int")
+    else:
+        num_columns = num_rows
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='eye',
+        inputs={},
+        outputs={'Out': [out]},
+        attrs={
+            'num_rows': num_rows,
+            'num_columns': num_columns,
+            'dtype': c_dtype
+        },
+        stop_gradient=True)
+    out.stop_gradient = True
+
+    if batch_shape is not None:
+        if not isinstance(batch_shape, list):
+            raise TypeError("batch_shape should be a list")
+        from .nn import stack
+        for batch_val in reversed(batch_shape):
+            if batch_val <= 0:
+                raise TypeError("batch_shape should be a positive int list")
+            else:
+                stack_vars = [out for _ in numpy.arange(batch_val)]
+                out = stack(stack_vars, axis=0)
     return out
 
 

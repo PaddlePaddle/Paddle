@@ -872,6 +872,51 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
+    def test_eye_op(self):
+        np_eye = np.eye(3, 2)
+        array_rlt1 = [np_eye for _ in range(3)]
+        stack_rlt1 = np.stack(array_rlt1, axis=0)
+        array_rlt2 = [stack_rlt1 for _ in range(4)]
+        stack_rlt2 = np.stack(array_rlt2, axis=0)
+
+        with self.dynamic_graph():
+            eye_tensor = layers.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt1 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[3])
+            eye_tensor_rlt2 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[4, 3])
+            diag_tensor = layers.eye(20)
+
+        self.assertTrue(np.allclose(eye_tensor.numpy(), np_eye))
+        self.assertTrue(np.allclose(eye_tensor_rlt1.numpy(), stack_rlt1))
+        self.assertTrue(np.allclose(eye_tensor_rlt2.numpy(), stack_rlt2))
+        self.assertTrue(np.allclose(diag_tensor.numpy(), np.eye(20)))
+
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3.1)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, num_columns=2.2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=[-1])
+
+    def test_hard_swish(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            ret = layers.hard_swish(t)
+            static_ret = self.get_static_graph_result(
+                feed={'t': np.ones(
+                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.hard_swish(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
@@ -1295,16 +1340,74 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
             output = layers.resize_bilinear(x, out_shape=[12, 12])
             return (output)
-            output = layers.resize_bilinear(x, scale=3)
+
+    def make_resize_bilinear_by_scale(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_bilinear(x, scale=1.5)
             return (output)
 
     def make_resize_nearest(self):
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(name='x1', shape=[3, 9, 6], dtype="float32")
+                output = layers.resize_nearest(x, out_shape=[12, 12])
+        except ValueError:
+            pass
+
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(
+                    name='x2', shape=[3, 9, 6, 7], dtype="float32")
+                output = layers.resize_nearest(x, out_shape=[12, 12, 12])
+        except ValueError:
+            pass
+
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
             output = layers.resize_nearest(x, out_shape=[12, 12])
             return (output)
-            output = layers.resize_nearest(x, scale=3)
+
+    def make_resize_nearest_by_scale(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x1', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_nearest(x, scale=1.8)
+            return (output)
+
+    def make_resize_trilinear(self):
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(name='x2', shape=[3, 9, 6], dtype="float32")
+                output = layers.resize_trilinear(x, out_shape=[12, 12, 12])
+        except ValueError:
+            pass
+
+        try:
+            with program_guard(fluid.default_main_program(),
+                               fluid.default_startup_program()):
+                x = self._get_data(
+                    name='x', shape=[3, 9, 6, 7], dtype="float32")
+                output = layers.resize_trilinear(x, out_shape=[12, 12])
+        except ValueError:
+            pass
+
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
+            output = layers.resize_trilinear(x, out_shape=[12, 12, 12])
+            return (output)
+
+    def make_resize_trilinear_by_scale(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name='x', shape=[3, 9, 6, 7], dtype="float32")
+            output = layers.resize_trilinear(x, scale=2.1)
             return (output)
 
     def make_polygon_box_transform(self):
