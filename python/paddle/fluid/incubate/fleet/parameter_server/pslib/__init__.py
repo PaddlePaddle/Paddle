@@ -324,9 +324,9 @@ class PSLib(Fleet):
         load_combine = kwargs.get("load_combine", False)
         self._role_maker._barrier_worker()
         if scope is not None and model_proto_file is not None:
-            self._load_one_table_from_paddle_model(
-                scope, table_id, model_path, model_proto_file, var_names,
-                load_combine)
+            self._load_one_table_from_paddle_model(scope, table_id, model_path,
+                                                   model_proto_file, var_names,
+                                                   load_combine)
         elif self._role_maker.is_first_worker():
             self._fleet_ptr.load_model_one_table(table_id, model_path, mode)
         self._role_maker._barrier_worker()
@@ -336,7 +336,7 @@ class PSLib(Fleet):
                                           table_id,
                                           model_path,
                                           model_proto_file,
-                                          var_names = None,
+                                          var_names=None,
                                           load_combine=False):
         """
         load params from paddle model, and push params to pserver
