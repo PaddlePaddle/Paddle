@@ -38,7 +38,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
     if (step_size == 0) {
-      curand_init(seed, idx, step_size, &state);
+      curand_init(seed, idx, idx, &state);
       step_size = blockDim.x * gridDim.x;
     } else {
       curand_init(seed, idx, step_size, &state);
@@ -98,12 +98,6 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
-      auto& dev_ctx = context.cuda_device_context();
-      auto& allocator =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-      int bytes = sizeof(float) * size;
-      auto random_ptr = allocator.Allocate(bytes);
-      float* random_data = reinterpret_cast<float*>(random_ptr->ptr());
       RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train);
