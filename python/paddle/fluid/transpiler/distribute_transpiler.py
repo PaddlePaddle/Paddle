@@ -357,11 +357,47 @@ class DistributeTranspiler(object):
                 sparse_update_ops.append(op)
         return sparse_update_ops
 
-    def _update_remote_sparse_update_op(self, param_varname, height_sections,
-                                        endpint_map, table_names):
+    def _update_remote_sparse_update_op(self, program, param_varname,
+                                        height_sections, endpoints,
+                                        table_names):
+
+        ops = []
+        op_type = ""
+
         for op in self.sparse_update_ops:
-            if param_varname in op.input_arg_names:
-                op._set_attr('epmap', endpint_map)
+            if param_varname in op.input_arg_names and op_type == "":
+                op_type = op.type
+                ops.append(op)
+            if param_varname in op.input_arg_names and op_type == op.type:
+                ops.append(op)
+
+        if op_type == "lookup_table":
+            all_ops = program.global_block().ops
+            op_idxs = [all_ops.index(op) for op in ops]
+            inputs = [op.input("Ids")[0] for op in ops]
+            w = ops[0].input("W")
+            padding_idx = ops[0].attr("padding_idx")
+            outputs = [op.output("Out")[0] for op in ops]
+
+            for idx in op_idxs[::-1]:
+                program.global_block()._remove_op(idx)
+
+            program.global_block()._insert_op(
+                index=op_idxs[0],
+                type="lookup_table_prefetch",
+                inputs={"Ids": inputs,
+                        'W': w},
+                outputs={"Out": outputs},
+                attrs={
+                    "table_names": table_names,
+                    "height_sections": height_sections,
+                    "endpoints": endpoints,
+                    "padding_idx": padding_idx
+                })
+
+        elif op_type == "nce" or op_type == "hierarchical_sigmoid":
+            for op in ops:
+                op._set_attr('epmap', endpoints)
                 op._set_attr('table_names', table_names)
                 op._set_attr('height_sections', height_sections)
                 op._set_attr('trainer_id', self.trainer_id)
@@ -524,29 +560,10 @@ class DistributeTranspiler(object):
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
 
-                if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
-                    sparse_param_name = self.grad_name_to_param_name[
-                        grad_varname]
-                    if self._is_input_of_remote_sparse_update_op(
-                            sparse_param_name):
-                        self.sparse_param_to_height_sections[
-                            sparse_param_name] = [splited_vars[0].shape[0]]
-
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
-
-                if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
-                    sparse_param_name = self.grad_name_to_param_name[
-                        grad_varname]
-                    if self._is_input_of_remote_sparse_update_op(
-                            sparse_param_name):
-                        self.sparse_param_to_height_sections[
-                            sparse_param_name] = [
-                                splited_var.shape[0]
-                                for splited_var in splited_vars
-                            ]
 
                 if not self.config.runtime_split_send_recv:
                     self._insert_split_op(program, orig_var, index,
@@ -555,6 +572,13 @@ class DistributeTranspiler(object):
             else:
                 AssertionError("Can not insert the send op by original "
                                "variable name :", splited_grad_varname)
+
+            if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
+                sparse_param_name = self.grad_name_to_param_name[grad_varname]
+                if self._is_input_of_remote_sparse_update_op(sparse_param_name):
+                    self.sparse_param_to_height_sections[sparse_param_name] = [
+                        splited_var.shape[0] for splited_var in splited_vars
+                    ]
 
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
@@ -655,7 +679,6 @@ class DistributeTranspiler(object):
                 recv_op_role_var_name = splited_trainer_grad[0].name
 
             if param_varname in self.sparse_param_to_height_sections:
-
                 for table_name in table_names:
                     distributed_var = self.vars_overview.get_distributed_var_by_slice(
                         table_name)
@@ -664,7 +687,7 @@ class DistributeTranspiler(object):
                 height_sections = self.sparse_param_to_height_sections[
                     param_varname]
                 self._update_remote_sparse_update_op(
-                    param_varname, height_sections, eps, table_names)
+                    program, param_varname, height_sections, eps, table_names)
             else:
                 recv_varnames = []
                 if self.config.runtime_split_send_recv:

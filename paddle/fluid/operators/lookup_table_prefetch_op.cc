@@ -113,12 +113,12 @@ class LookupTablePrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
 
-    AddOutput("Embeddings",
+    AddOutput("Out",
               "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
     AddAttr<std::vector<std::string>>(
-        "lookup_tables",
+        "table_names",
         "(string vector, such as emb_block0, emb_block1)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({""});
