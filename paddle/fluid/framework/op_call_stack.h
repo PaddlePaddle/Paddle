@@ -14,4 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#define WARPCTC_LIB_PATH "@WARPCTC_INSTALL_DIR@/lib/"
+#include <string>
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
+                         platform::EnforceNotMet *exception);
+}  // namespace framework
+}  // namespace paddle
