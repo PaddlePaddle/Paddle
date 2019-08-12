@@ -222,6 +222,8 @@ void prefetch(const std::vector<std::string>& id_var_names,
   prefetch_core(ids_union, tables, height_sections, &recved_vec_map, context,
                 scope);
 
+  auto& padding_idx = context.Attr<int64_t>("padding_idx");
+
   // copy vectors to out vars
   for (int i = 0; i < out_var_names.size(); i++) {
     auto& ids = ids_group[i];
@@ -232,8 +234,13 @@ void prefetch(const std::vector<std::string>& id_var_names,
 
     for (int idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
-      memory::Copy(place, out_d + idx * vec_dim_1, place,
-                   recved_vec_map[id].data(), sizeof(T) * vec_dim_1);
+
+      if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+        memset(out_d + idx * vec_dim_1, 0, sizeof(T) * vec_dim_1);
+      } else {
+        memory::Copy(place, out_d + idx * vec_dim_1, place,
+                     recved_vec_map[id].data(), sizeof(T) * vec_dim_1);
+      }
     }
   }
 

@@ -24,6 +24,8 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+constexpr int64_t kNoPadding = -1;
+
 template <typename T>
 void prefetch(const std::vector<std::string>& id_var_names,
               const std::vector<std::string>& out_var_names,

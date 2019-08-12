@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr int64_t kNoPadding = -1;
-
 class LookupTablePrefetchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -158,10 +156,10 @@ random value and set the value into the table for the next looking up.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(lookup_table_prefetch, ops::LookupTablePrefetchOp,
                   paddle::framework::DefaultGradOpDescMaker<true>,
                   ops::LookupTablePrefetchOpMaker);
 
 REGISTER_OP_CPU_KERNEL(lookup_table_prefetch,
-                       ops::LookupTablePrefetchKernel<float>,
-                       ops::LookupTablePrefetchKernel<double>);
+                       ops::LookupTablePrefetchKernel<float>);
