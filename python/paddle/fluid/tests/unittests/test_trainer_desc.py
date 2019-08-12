@@ -31,7 +31,7 @@ class TestTrainerDesc(unittest.TestCase):
         """
         Testcase for python config.
         """
-        trainer_desc = fluid.trainer_desc.TrainerDesc() 
+        trainer_desc = fluid.trainer_desc.TrainerDesc()
         trainer_desc._set_dump_fields(["a", "b"])
         trainer_desc._set_mpi_rank(1)
         trainer_desc._set_dump_fields_path("path")
