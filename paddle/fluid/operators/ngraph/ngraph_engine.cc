@@ -439,14 +439,14 @@ std::shared_ptr<ngraph::Function> NgraphEngine::BuildNgFunction(
   ngraph::ParameterVector func_inputs;
 
   for (auto& vo : var_out_) {
-    PADDLE_ENFORCE(var_node_map_->count(vo),
-                   "Cannot find vo %s in var_node_map_", vo);
+    PADDLE_ENFORCE_GT(var_node_map_->count(vo), 0,
+                      "Cannot find vo %s in var_node_map_", vo);
     func_outputs.emplace_back(var_node_map_->at(vo));
   }
 
   for (auto& vi : var_in_) {
-    PADDLE_ENFORCE(var_node_map_->count(vi),
-                   "Cannot find vi %s in var_node_map_", vi);
+    PADDLE_ENFORCE_GT(var_node_map_->count(vi), 0,
+                      "Cannot find vi %s in var_node_map_", vi);
     std::shared_ptr<ngraph::op::Parameter> prm =
         std::dynamic_pointer_cast<ngraph::op::Parameter>(
             var_in_node_map_->at(vi));
@@ -541,8 +541,8 @@ void NgraphEngine::Run(const framework::Scope& scope,
   auto& engine_cache = main_engine_cache::fetch();
   auto& t_in_cache_ = main_t_in_cache::fetch();
 
-  PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
-                 "Cannot find cached data to run ngraph function");
+  PADDLE_ENFORCE_GT(engine_cache.count(func_cache_key_), 0,
+                    "Cannot find cached data to run ngraph function");
   ng_handle = engine_cache[func_cache_key_].ngraph_handle;
   ng_backend = engine_cache[func_cache_key_].ngraph_backend;
   p_persistables = &(engine_cache[func_cache_key_].persistables);
@@ -589,8 +589,6 @@ void NgraphEngine::Run(const framework::Scope& scope,
       if (var && var->IsType<framework::LoDTensor>()) {
         auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
         void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
-        PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
-                       "Ensure ngraph tensor layout align with paddle tensor");
         ti = ng_backend->create_tensor(ng_type, sp, pd_arr);
       } else {
         PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
