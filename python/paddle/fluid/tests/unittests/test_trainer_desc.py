@@ -39,7 +39,6 @@ class TestTrainerDesc(unittest.TestCase):
         dump_fields = trainer_desc.proto_desc.dump_fields
         mpi_rank = trainer_desc.proto_desc.mpi_rank
         dump_fields_path = trainer_desc.proto_desc.dump_fields_path
-        
         self.assertEqual(len(dump_fields), 2)
         self.assertEqual(dump_fields[0], "a")
         self.assertEqual(dump_fields[1], "b")
