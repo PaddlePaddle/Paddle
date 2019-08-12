@@ -158,7 +158,7 @@ random value and set the value into the table for the next looking up.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table, ops::LookupTablePrefetchOp,
+REGISTER_OPERATOR(lookup_table_prefetch, ops::LookupTablePrefetchOp,
                   paddle::framework::DefaultGradOpDescMaker<true>,
                   ops::LookupTablePrefetchOpMaker);
 
