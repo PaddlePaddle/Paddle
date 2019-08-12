@@ -213,6 +213,7 @@ __all__ = [
     'deformable_roi_pooling',
     'var_conv_2d',
     'shard_index',
+    'hard_swish',
 ]
 
 kIgnoreIndex = -100
@@ -463,18 +464,20 @@ def embedding(input,
 
     Args:
         input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
+            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
         size(tuple|list): The shape of the look up table parameter. It should
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
-            :math:`size[0] + dim`.
-        param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        padding_idx(int|long|None): It will output all-zero padding data whenever
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
+            Default: None.
+        param_attr(ParamAttr): Parameters for this layer.
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -13097,4 +13100,39 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             'ignore_value': ignore_value
         },
         stop_gradient=True)
+    return out
+
+
+@templatedoc()
+def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(Varaible): Input of HardSwish operator.
+        threshold(float): The threshold parameter of HardSwish operator. Default:threshold=6.0
+        scale(float): The scale parameter of HardSwish operator. Default:scale=6.0
+        offset(float): The offset parameter of HardSwish operator. Default:offset=3.0
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_swish(x)
+    """
+    helper = LayerHelper('hard_swish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='hard_swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold,
+               'scale': scale,
+               'offset': offset})
     return out
