@@ -9600,11 +9600,14 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     remains in the output, and others removed.
  
     For example, one batch has 4 ins. Every ins has its tag list. 
-        Ins   |   Ins_Tag
-         0    |   0, 1
-         1    |   1, 3
-         2    |   0, 3
-         3    |   2, 6
+     
+       | Ins   |   Ins_Tag |
+       |:-----:|:------:|
+       |  0    |   0, 1 |
+       |  1    |   1, 3 |
+       |  2    |   0, 3 |
+       |  3    |   2, 6 |
+
     And Lod is [1,1,1,1]
 
     And the filter tags [1]
@@ -9626,8 +9629,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
         is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
 
     Returns:
-        Variable: the output (LoDTensor), filtered ins
-        Loss weight: the output (Tensor), loss weight
+        Variable: filtered ins (LoDTensor) and loss weight (Tensor)
 
     Examples:
         .. code-block:: python
