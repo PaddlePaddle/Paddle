@@ -54,9 +54,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
-    if (HasOpFusePass()) {
-      AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
-    }
+    AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
+
     AppendMultiDevPass();
     AppendMultiGraphOptPasses();
 
@@ -75,33 +74,25 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void ResolveOptionConfliction() {
-    bool user_specify_fuse_all_optimizer_ops = false;
-    if (strategy_.fuse_all_optimizer_ops_ == boost::none) {
-      strategy_.fuse_all_optimizer_ops_ = true;
-    } else {
-      user_specify_fuse_all_optimizer_ops =
-          static_cast<bool>(strategy_.fuse_all_optimizer_ops_);
-    }
-
     // Specifies the restrictions between different pass.
     if (strategy_.enable_parallel_graph_) {
-      LOG_IF(WARNING, user_specify_fuse_all_optimizer_ops)
-          << "Currently, fuse_all_optimizer_ops doesn't works under "
+      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
     }
     if (strategy_.is_distribution_) {
-      LOG_IF(WARNING, user_specify_fuse_all_optimizer_ops)
+      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
           << "Currently, fuse_all_optimizer_ops only works under "
              "Non-distributed mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-      LOG_IF(WARNING, user_specify_fuse_all_optimizer_ops)
+      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
           << "Currently, fuse_all_optimizer_ops only works under AllReduce "
              "mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
-      VLOG_IF(1, strategy_.fuse_all_reduce_ops_)
+      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
@@ -149,18 +140,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // NOTE: fuse_all_xx_ops will count the number of xx operator first,
     // if the number is zero, fuse_all_reduce_ops will do nothing.
     // Currently, only one type of optimization algorithm can be fused.
-    if (strategy_.fuse_all_optimizer_ops_ == true) {
+    if (strategy_.fuse_all_optimizer_ops_) {
       AppendPass("fuse_adam_op_pass");
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
     }
-  }
-
-  bool HasOpFusePass() {
-    return strategy_.fuse_relu_depthwise_conv_ ||
-           strategy_.fuse_elewise_add_act_ops_ ||
-           strategy_.fuse_all_reduce_ops_ ||
-           strategy_.fuse_all_optimizer_ops_ == true;
   }
 
   void SetCollectiveContext() const {
@@ -267,12 +251,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 #else
                                 const bool use_cuda) const {
 #endif
-  VLOG(1) << "apply all passes";
+  VLOG(3) << "apply all passes";
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(3) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -339,11 +323,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     }
-    VLOG(1) << "Start Apply Pass " << pass->Type();
+    VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
-    VLOG(1) << "Finish Apply Pass " << pass->Type();
+    VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
-  VLOG(1) << "All Passes Applied";
+  VLOG(3) << "All Passes Applied";
   return graph;
 }
 
