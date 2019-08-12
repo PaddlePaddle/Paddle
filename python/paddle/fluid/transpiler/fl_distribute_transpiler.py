@@ -438,38 +438,24 @@ class FlDistributeTranspiler(object):
         #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
-        #grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
-
-        #if not self.config.slice_var_up:
-        #    np.random.seed(self.origin_program.random_seed)
-        #    np.random.shuffle(grad_var_mapping_items)
 
         self.opti_name_to_send_dummy_out = dict()
         self.recv_program = self.origin_program.clone()
-        #self.send_program = self.origin_program.clone()
         all_ops = []
         for op in self.recv_program.global_block().ops:
             all_ops.append(op)
         delete_ops(self.recv_program.global_block(), all_ops)
-        #print(self.recv_program)
-        #all_ops = []
-        #for op in self.send_program.global_block().ops:
-        #    all_ops.append(op)
-        #delete_ops(self.send_program.global_block(), all_ops)
+
         self.split_num = len(program.global_block().ops)
         for opti_varname in self._opti_var_list:
             opti_var = program.global_block().var(opti_varname)
             eplist = ps_dispatcher.dispatch([opti_var])
-            #index = find_op_by_output_arg(
-            #    program.global_block(), opti_varname, reverse=True)
 
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
             self.opti_name_to_send_dummy_out[opti_varname] = dummy_output
 
-            #program.global_block()._insert_op(
             program.global_block().append_op(
-                #index=index + 1,
                 type="send",
                 inputs={"X": [opti_var]},
                 outputs={"Out": dummy_output},
@@ -538,13 +524,9 @@ class FlDistributeTranspiler(object):
             # will use op_role_var to get expected device place to run this op.
 
             all_recv_outputs.extend([param_var])
-            #program.global_block().append_op(
-            #program.global_block()._insert_op(
             self.recv_program.global_block().append_op(
-                #index=0,
                 type="recv",
                 inputs={"X": []},
-                #inputs={"X": [recv_dep_in]},
                 outputs={"Out": [param_var]},
                 attrs={
                     "epmap": eps,
@@ -556,8 +538,6 @@ class FlDistributeTranspiler(object):
 
         if self.sync_mode:
             # form a WAW dependency
-            #program.global_block().append_op(
-            #program.global_block()._insert_op(
             self.recv_program.global_block()._insert_op(
                 index=len(self._opti_var_list),
                 type="fetch_barrier",
@@ -590,8 +570,6 @@ class FlDistributeTranspiler(object):
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
 
         lr_ops = self._get_lr_ops()
-        #delete_ops(self.origin_program.global_block(), self.optimize_ops)
-        #delete_ops(self.origin_program.global_block(), lr_ops)
 
         # delete table init op
         if self.has_distributed_lookup_table:
@@ -618,7 +596,6 @@ class FlDistributeTranspiler(object):
         if wait_port:
             wait_server_ready(self.pserver_endpoints)
 
-        #return self.recv_program, self.origin_program, self.send_program
         self.send_program = self.origin_program.clone()
         compute_ops = self.send_program.global_block().ops[0:self.split_num]
         delete_ops(self.send_program.global_block(), compute_ops)
@@ -661,26 +638,6 @@ class FlDistributeTranspiler(object):
                     dtype=var.dtype,
                     shape=var.shape,
                     lod_level=var.lod_level)
-
-        #    op = startup_program.global_block().append_op(
-        #        type="recv",
-        #        inputs={"X": []},
-        #        outputs={"Out": var},
-        #        attrs={
-        #            "epmap": eps,
-        #            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        #        })
-
-        #fetch_barrier_out = startup_program.global_block().create_var(
-        #    name=framework.generate_control_dev_var_name())
-        #startup_program.global_block().append_op(
-        #    type="fetch_barrier",
-        #    inputs={},
-        #    outputs={"Out": fetch_barrier_out},
-        #    attrs={
-        #        "endpoints": self.pserver_endpoints,
-        #        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        #    })
 
         return startup_program
 
