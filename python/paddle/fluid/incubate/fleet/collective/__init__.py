@@ -118,10 +118,10 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.exec_strategy = fluid.ExecutionStrategy()
         sync_allreduce = os.getenv("FLAGS_sync_nccl_allreduce")
         if sync_allreduce == "0":
-            self._exec_strategy.num_threads = self.nccl_comm_num + 1
-            if sef.use_hierarchical_allreduce:
-                self._exec_strategy.num_threads = 2 * self.nccl_comm_num + 1
-            if self._exec_strategy.num_threads > 4:
+            self.exec_strategy.num_threads = self.nccl_comm_num + 1
+            if self.use_hierarchical_allreduce:
+                self.exec_strategy.num_threads = 2 * self.nccl_comm_num + 1
+            if self.exec_strategy.num_threads > 4:
                 print(
                     sys.stderr,
                     "WARNING: if you use use_hierarchical_allreduce or "
