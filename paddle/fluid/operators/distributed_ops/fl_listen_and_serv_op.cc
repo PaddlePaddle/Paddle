@@ -32,8 +32,6 @@ limitations under the License. */
 
 DEFINE_int32(flrpc_send_thread_num, 12, "number of threads for rpc send");
 DEFINE_int32(flrpc_get_thread_num, 12, "number of threads for rpc get");
-DEFINE_int32(flrpc_prefetch_thread_num, 12,
-             "number of threads for rpc prefetch");
 
 namespace paddle {
 namespace operators {
@@ -107,11 +105,10 @@ static int64_t GetTimestamp() {
   return tp.tv_sec * 1000 + tp.tv_usec / 1000;
 }
 
-void FlListenAndServOp::RunSyncLoop(
-    framework::Executor *executor, framework::ProgramDesc *program,
-    framework::Scope *recv_scope, platform::DeviceContext *dev_ctx,
-    const std::vector<int> &prefetch_block_id_list,
-    const int checkpoint_point_block_id) const {
+void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
+                                    framework::ProgramDesc *program,
+                                    framework::Scope *recv_scope,
+                                    platform::DeviceContext *dev_ctx) const {
   VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
@@ -217,90 +214,17 @@ void FlListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
   }
 }
 
-void FlListenAndServOp::RunAsyncLoop(framework::Executor *executor,
-                                     framework::ProgramDesc *program,
-                                     framework::Scope *recv_scope) const {
-  VLOG(2) << "RunAsyncLoop";
-  auto grad_to_block_id_str =
-      Attr<std::vector<std::string>>("grad_to_block_id");
-  DoubleFindMap<std::string, int32_t> grad_to_block_id;
-
-  auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
-                              const std::string &grad_and_id) {
-    std::vector<std::string> pieces;
-    flsplit(grad_and_id, ':', &pieces);
-    VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
-    PADDLE_ENFORCE_EQ(pieces.size(), 2);
-    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0);
-
-    int block_id = std::stoi(pieces[1]);
-    (*out_map)[pieces[0]] = block_id;
-  };
-
-  for (const auto &grad_and_id : grad_to_block_id_str) {
-    append_block_maps(&grad_to_block_id, grad_and_id);
-  }
-
-  size_t num_blocks = program->Size();
-  PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
-
-  std::vector<int> block_list;
-  for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
-    block_list.push_back(blkid);
-  }
-  auto optimize_prepared = executor->Prepare(*program, block_list);
-  // execute global block if needed, block id 1 in the program is global
-  // block if it's not bind to a grad var for it's update.
-  if (block_list[0] == 1 &&
-      grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
-          grad_to_block_id.end()) {
-    executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
-  }
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      grad_to_prepared_ctx, param_to_prepared_ctx;
-  for (size_t i = 0; i < block_list.size(); ++i) {
-    auto blkid = block_list[i];
-    auto it = grad_to_block_id.find_value(blkid);
-    if (it != grad_to_block_id.end()) {
-      grad_to_prepared_ctx[it->first] = optimize_prepared[i];
-    }
-  }
-
-  request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
-  request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
-  request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
-
-  while (true) {
-    if (rpc_service_->IsExit()) {
-      VLOG(4) << "get exit!rpc_processor break!";
-      break;
-    }
-
-    sleep(1);
-  }  // while(true)
-}
-
-static void FillRequestCtx(
-    distributed::RequestHandler *h, framework::Scope *scope,
-    platform::DeviceContext *dev_ctx, framework::Executor *executor,
-    framework::ProgramDesc *program,
-    std::unordered_map<std::string,
-                       std::shared_ptr<framework::ExecutorPrepareContext>>
-        *prefetch_ctx,
-    std::unordered_map<std::string, std::string>
-        *sparse_grad_name_to_param_name,
-    std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_ctx,
-    distributed::RPCServer *rpc_server) {
+static void FillRequestCtx(distributed::RequestHandler *h,
+                           framework::Scope *scope,
+                           platform::DeviceContext *dev_ctx,
+                           framework::Executor *executor,
+                           framework::ProgramDesc *program,
+                           distributed::RPCServer *rpc_server) {
   h->SetScope(scope);
   h->SetDevCtx(dev_ctx);
   h->SetExecutor(executor);
   h->SetProgram(program);
-  h->SetPrefetchPreparedCtx(prefetch_ctx);
-  h->SetSparseGradToParam(sparse_grad_name_to_param_name);
   h->SetRPCServer(rpc_server);
-  h->SetCheckpointNotifyPreparedCtx(checkpoint_ctx);
 }
 
 void FlListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
@@ -331,30 +255,21 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Scope &recv_scope = scope.NewScope();
 
   bool sync_mode = Attr<bool>("sync_mode");
-  bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
-  int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
 
   VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
-          << ", end_point:" << endpoint
-          << ", checkpoint_block_id: " << checkpoint_block_id;
+          << ", end_point:" << endpoint;
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
   request_send_handler_.reset(
-      new distributed::RequestSendHandler(sync_mode, dc_sgd));
+      new distributed::RequestSendHandler(sync_mode, false));
   request_get_handler_.reset(
-      new distributed::RequestGetHandler(sync_mode, dc_sgd));
-  request_prefetch_handler_.reset(
-      new distributed::RequestPrefetchHandler(sync_mode));
-  request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
-      sync_mode, checkpoint_block_id));
-  request_get_no_barrier_handler_.reset(
-      new distributed::RequestGetNoBarrierHandler());
+      new distributed::RequestGetHandler(sync_mode, false));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
@@ -362,14 +277,6 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestGet,
                             request_get_handler_.get(),
                             FLAGS_flrpc_get_thread_num);
-  rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
-                            request_prefetch_handler_.get(),
-                            FLAGS_flrpc_prefetch_thread_num);
-  rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
-                            request_checkpoint_handler_.get());
-  rpc_service_->RegisterRPC(distributed::kRequestGetNoBarrier,
-                            request_get_no_barrier_handler_.get());
-
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE(optimize_blocks.size() >= 1,
@@ -377,67 +284,11 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
-  std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
-  if (checkpoint_block_id != -1) {
-    auto ctx = executor.Prepare(*program, checkpoint_block_id);
-    // see: https://stackoverflow.com/a/14856553
-    ckpt_pre_context = std::move(ctx);
-  }
-
-  // prepare for prefetch
-  std::vector<int> prefetch_block_id_list;
-  std::unordered_map<int, std::string> block_id_to_prefetch_var_name;
-
-  auto prefetch_var_name_to_block_id_str =
-      Attr<std::vector<std::string>>(kPrefetchVarNameToBlockId);
-  for (const auto &prefetch_var_name_and_id :
-       prefetch_var_name_to_block_id_str) {
-    std::vector<std::string> pieces;
-    flsplit(prefetch_var_name_and_id, ':', &pieces);
-    VLOG(3) << "after split, prefetch_var = " << pieces[0]
-            << ", id=" << pieces[1];
-    PADDLE_ENFORCE_EQ(pieces.size(), 2);
-
-    int block_id = std::stoi(pieces[1]);
-    prefetch_block_id_list.push_back(block_id);
-    block_id_to_prefetch_var_name[block_id] = pieces[0];
-  }
-
-  auto prefetch_prepared = executor.Prepare(*program, prefetch_block_id_list);
-
-  std::unordered_map<std::string,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      prefetch_var_name_to_prepared_ctx;
-  for (size_t i = 0; i < prefetch_block_id_list.size(); ++i) {
-    auto block_id = prefetch_block_id_list[i];
-    auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
-    prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
-  }
-
-  // parse attr of kSparseGradToParam  sparse_grad_name -> param_name
-  std::unordered_map<std::string, std::string> sparse_grad_name_to_param_name;
-  auto sparse_grad_name_to_param_name_str =
-      Attr<std::vector<std::string>>(kSparseGradToParam);
-  for (const auto &sparse_grad_name_and_param_name :
-       sparse_grad_name_to_param_name_str) {
-    std::vector<std::string> pieces;
-    flsplit(sparse_grad_name_and_param_name, ':', &pieces);
-    PADDLE_ENFORCE_EQ(pieces.size(), 2);
-    VLOG(3) << "after split, sparse_grad_name = " << pieces[0]
-            << ", param_name = " << pieces[1];
-    sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
-  }
-
-  auto f = std::bind(
-      FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx, &executor,
-      program, &prefetch_var_name_to_prepared_ctx,
-      &sparse_grad_name_to_param_name, ckpt_pre_context, rpc_service_.get());
+  auto f = std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope,
+                     &dev_ctx, &executor, program, rpc_service_.get());
 
   f(request_send_handler_.get());
   f(request_get_handler_.get());
-  f(request_prefetch_handler_.get());
-  f(request_checkpoint_handler_.get());
-  f(request_get_no_barrier_handler_.get());
 
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(FlRunServer, rpc_service_));
@@ -455,14 +306,7 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
 
   // Write to a file of server selected port for python use.
   SavePort();
-  if (sync_mode) {
-    RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
-                prefetch_block_id_list, checkpoint_block_id);
-  } else {
-    distributed::AsyncSparseParamUpdateRecorder::Init(
-        fan_in, sparse_grad_name_to_param_name);
-    RunAsyncLoop(&executor, program, &recv_scope);
-  }
+  RunSyncLoop(&executor, program, &recv_scope, &dev_ctx);
 }
 
 class FlListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -477,29 +321,12 @@ class FlListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
-    AddAttr<std::vector<std::string>>(
-        "grad_to_block_id",
-        "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
-        "a map from grad name to it's optimize block id")
-        .SetDefault({});
     AddAttr<bool>("sync_mode", "if works at sync_mode or not").SetDefault(true);
-    AddAttr<bool>("dc_asgd", "set to true will enable DC-ASGD training.")
-        .SetDefault(false);
+    AddAttr<int>("Fanin", "How many clients send to this server.")
+        .SetDefault(1);
     AddAttr<std::vector<framework::BlockDesc *>>(
         kOptimizeBlocks, "Optimize blocks to run on server side.")
         .SetDefault({});
-    AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
-                                      "prefetch blocks to run on server side.")
-        .SetDefault({});
-    AddAttr<std::vector<std::string>>(
-        kSparseGradToParam,
-        "sparse grad name to param name. like: 'emb@Grad:emb'")
-        .SetDefault({});
-    AddAttr<int>("Fanin", "How many clients send to this server.")
-        .SetDefault(1);
-    AddAttr<int>(kCheckpointBlockId,
-                 "BolckID to run save checkpoint on pserer.")
-        .SetDefault(-1);
   }
 };
 

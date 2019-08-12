@@ -13,22 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-"""
-Steps to transpile trainer:
-1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
-2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
-3. modify trainer program add split_op to each grad variable.
-4. append send_op to send splited variables to server and
-5. add recv_op to fetch params(splited blocks or origin param) from server.
-6. append concat_op to merge splited blocks to update local weights.
-
-Steps to transpile pserver:
-1. create new program for parameter server.
-2. create params and grad variables that assigned to current server instance.
-3. create a sub-block in the server side program
-4. append ops that should run on current server instance.
-5. add listen_and_serv op
-"""
 
 import sys
 import math
@@ -47,6 +31,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
+from .distribute_transpiler import DistributeTranspilerConfig, slice_variable
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -57,7 +42,6 @@ OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
-
 PRINT_LOG = False
 
 
@@ -81,116 +65,15 @@ def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def slice_variable(var_list, slice_count, min_block_size):
-    """
-    We may need to split dense tensor to one or more blocks and put
-    them equally onto parameter server. One block is a sub-tensor
-    aligned by dim[0] of the tensor.
-
-    We need to have a minimal block size so that the calculations in
-    the parameter server side can gain better performance. By default
-    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
-
-    Args:
-        var_list (list): List of variables.
-        slice_count (int): Numel of count that variables will be sliced, which
-            could be the pserver services' count.
-        min_block_size (int): Minimum splitted block size.
-    Returns:
-        blocks (list[(varname, block_id, current_block_size)]): A list
-            of VarBlocks. Each VarBlock specifies a shard of the var.
-    """
-    blocks = []
-    for var in var_list:
-        split_count = slice_count
-        var_numel = reduce(lambda x, y: x * y, var.shape)
-        max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
-        if max_pserver_count == 0:
-            max_pserver_count = 1
-        if max_pserver_count < slice_count:
-            split_count = max_pserver_count
-        block_size = int(math.ceil(var_numel / float(split_count)))
-
-        if len(var.shape) >= 2:
-            # align by dim1(width)
-            dim1 = reduce(lambda x, y: x * y, var.shape[1:])
-            remains = block_size % dim1
-            if remains != 0:
-                block_size += dim1 - remains
-        # update split_count after aligning
-        split_count = int(math.ceil(var_numel / float(block_size)))
-        for block_id in range(split_count):
-            curr_block_size = min(block_size, var_numel - (
-                (block_id) * block_size))
-            block = VarBlock(var.name, block_id, curr_block_size)
-            blocks.append(str(block))
-    return blocks
-
-
-class DistributeTranspilerConfig(object):
-    """
-    .. py:attribute:: slice_var_up (bool)
-
-          Do Tensor slice for pservers, default is True.
-
-    .. py:attribute:: split_method (PSDispatcher)
-
-          RoundRobin or HashName can be used.
-          Try to choose the best method to balance loads for pservers.
-
-    .. py:attribute:: min_block_size (int)
-
-          Minimum number of splitted elements in block.
-
-          According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-          We can use bandwidth effiently when data size is larger than 2MB.If you
-          want to change it, please be sure you have read the slice_variable function.
-
-    Examples:
-        .. code-block:: python
-
-            config = fluid.DistributeTranspilerConfig()
-            config.slice_var_up = True
-    """
-
-    slice_var_up = True
-    split_method = None
-    min_block_size = 8192
-    enable_dc_asgd = False
-    # supported modes: pserver, nccl2
-    mode = "pserver"
-    print_log = False
-    wait_port = True
-    # split the send recv var in runtime
-    runtime_split_send_recv = False
-    sync_mode = True
-
-    nccl_comm_num = 1
-    #The picture here illustrates the principle:
-    #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
-    use_hierarchical_allreduce = False
-    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
-    hierarchical_allreduce_inter_nranks = 0
-    #Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to nodes number.
-    hierarchical_allreduce_exter_nranks = 0
-
-
 class FlDistributeTranspiler(object):
     """
-    **DistributeTranspiler**
+    **FlDistributeTranspiler**
 
     Convert the fluid program to distributed data-parallelism programs.
-    Supports two modes: pserver mode and nccl2 mode.
 
-    In pserver mode, the main_program will be transformed to use a remote
-    parameter server to do parameter optimization. And the optimization
-    graph will be put into a parameter server program.
+    In pserver mode, the trainers' main program do forward, backward and optimizaiton.  
+    pserver's main_program will sum and scale.
 
-    In nccl2 mode, the transpiler will append a NCCL_ID broadcasting
-    op in startup_program to share the NCCL_ID across the job nodes.
-    After transpile_nccl2 called, you ***must*** pass trainer_id and
-    num_trainers argument to ParallelExecutor to enable NCCL2 distributed
-    mode.
 
     Examples:
         .. code-block:: python
@@ -212,7 +95,7 @@ class FlDistributeTranspiler(object):
             trainer_id = 0
             trainers = 4
             role = "PSERVER"
-            t = fluid.DistributeTranspiler()
+            t = fluid.FlDistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if role == "PSERVER":
@@ -222,20 +105,6 @@ class FlDistributeTranspiler(object):
             elif role == "TRAINER":
                  trainer_program = t.get_trainer_program()
 
-            # for nccl2 mode
-            trainer_num = 2
-            trainer_id = 0
-            config = fluid.DistributeTranspilerConfig()
-            config.mode = "nccl2"
-            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            t = fluid.DistributeTranspiler(config=config)
-            t.transpile(trainer_id=trainer_id, trainers=trainer_endpoints, current_endpoint="192.168.0.1:6174")
-            exe = fluid.ParallelExecutor(
-                use_cuda=True,
-                loss_name=avg_loss.name,
-                num_trainers=trainer_num,
-                trainer_id=trainer_id
-            )
     """
 
     def __init__(self, config=None):
@@ -253,58 +122,6 @@ class FlDistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
-    def _transpile_nccl2(self,
-                         trainer_id,
-                         trainers,
-                         current_endpoint,
-                         startup_program=None,
-                         wait_port=True):
-        if not startup_program:
-            startup_program = default_startup_program()
-        if trainer_id >= 0:
-            worker_endpoints = trainers.split(",")
-            # send NCCL_ID to others or recv from trainer 0
-            worker_endpoints.remove(current_endpoint)
-            if trainer_id == 0 and wait_port:
-                wait_server_ready(worker_endpoints)
-
-            nccl_id_var = startup_program.global_block().create_var(
-                name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
-
-            for i in range(1, self.config.nccl_comm_num):
-                startup_program.global_block().create_var(
-                    name="NCCLID_{}".format(i),
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-
-            if self.config.use_hierarchical_allreduce:
-                startup_program.global_block().create_var(
-                    name="Hierarchical_inter_NCCLID",
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                for i in range(0, self.config.nccl_comm_num):
-                    startup_program.global_block().create_var(
-                        name="Hierarchical_exter_NCCLID_{}".format(i),
-                        persistable=True,
-                        type=core.VarDesc.VarType.RAW)
-
-            startup_program.global_block().append_op(
-                type="gen_nccl_id",
-                inputs={},
-                outputs={"NCCLID": nccl_id_var},
-                attrs={
-                    "trainers": trainers.split(","),
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": self.config.nccl_comm_num,
-                    "use_hierarchical_allreduce":
-                    self.config.use_hierarchical_allreduce,
-                    "hierarchical_allreduce_inter_nranks":
-                    self.config.hierarchical_allreduce_inter_nranks
-                })
-            return nccl_id_var
-        else:
-            raise ValueError("must set trainer_id > 0")
-
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
         sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
@@ -313,15 +130,6 @@ class FlDistributeTranspiler(object):
                     'remote_prefetch') is True:
                 sparse_update_ops.append(op)
         return sparse_update_ops
-
-    def _update_remote_sparse_update_op(self, param_varname, height_sections,
-                                        endpint_map, table_names):
-        for op in self.sparse_update_ops:
-            if param_varname in op.input_arg_names:
-                op._set_attr('epmap', endpint_map)
-                op._set_attr('table_names', table_names)
-                op._set_attr('height_sections', height_sections)
-                op._set_attr('trainer_id', self.trainer_id)
 
     def _is_input_of_remote_sparse_update_op(self, param_name):
         for op in self.sparse_update_ops:
@@ -350,13 +158,11 @@ class FlDistributeTranspiler(object):
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int|str): in pserver mode this is the number of
-                trainers, in nccl2 mode this is a string of trainer
-                endpoints.
+                trainers.
             sync_mode (bool): Do sync training or not, default is True.
             startup_program (Program|None): startup_program to transpile,
                 default is fluid.default_main_program().
-            current_endpoint (str): need pass current endpoint when
-                transpile as nccl2 distributed mode. In pserver mode
+            current_endpoint (str): In pserver mode
                 this argument is not used.
 
         Examples:
@@ -377,23 +183,6 @@ class FlDistributeTranspiler(object):
         self.origin_program = program
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
-
-        if self.config.mode == "nccl2":
-            assert (isinstance(trainers, str))
-            self.origin_program._trainers_endpoints = trainers.split(",")
-            self.origin_program._nccl_comm_num = self.config.nccl_comm_num
-            self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
-            self.origin_program._hierarchical_allreduce_inter_nranks = \
-                int(self.config.hierarchical_allreduce_inter_nranks)
-            self.origin_program._hierarchical_allreduce_exter_nranks = \
-                int(self.config.hierarchical_allreduce_exter_nranks)
-            self._transpile_nccl2(
-                trainer_id,
-                trainers,
-                current_endpoint,
-                startup_program=startup_program,
-                wait_port=self.config.wait_port)
-            return
 
         self.trainer_num = trainers
         self.sync_mode = sync_mode
@@ -550,11 +339,6 @@ class FlDistributeTranspiler(object):
                 })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
-
-        if self.has_distributed_lookup_table:
-            self._replace_lookup_table_op_with_prefetch(program,
-                                                        pserver_endpoints)
-            self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
@@ -829,22 +613,6 @@ class FlDistributeTranspiler(object):
                 __append_optimize_op__(glb_op, opt_state_block,
                                        grad_to_block_id, None, lr_ops)
 
-        # process distributed lookup_table
-        prefetch_var_name_to_block_id = []
-        if self.has_distributed_lookup_table:
-            pserver_index = self.pserver_endpoints.index(endpoint)
-            table_opt_block = self._create_table_optimize_block(
-                pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
-            optimize_blocks.append(table_opt_block)
-            lookup_table_var_name_to_block_id = self._create_prefetch_block(
-                pserver_index, pserver_program, table_opt_block)
-            checkpoint_block_id = self._create_checkpoint_save_block(
-                pserver_program, table_opt_block.idx)
-
-            pserver_program._distributed_lookup_table = self.table_name
-            prefetch_var_name_to_block_id.extend(
-                lookup_table_var_name_to_block_id)
-
         if len(opti_blocks) == 0:
             logging.warn("pserver [" + str(endpoint) +
                          "] has no optimize block!!")
@@ -859,18 +627,7 @@ class FlDistributeTranspiler(object):
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
-            "grad_to_block_id": grad_to_block_id,
-            "sparse_grad_to_param": sparse_grad_to_param,
         }
-
-        if self.has_distributed_lookup_table:
-            attrs['checkpint_block_id'] = checkpoint_block_id
-        if self.config.enable_dc_asgd:
-            attrs['dc_asgd'] = True
-
-        if len(prefetch_var_name_to_block_id) > 0:
-            attrs[
-                'prefetch_var_name_to_block_id'] = prefetch_var_name_to_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -968,15 +725,6 @@ class FlDistributeTranspiler(object):
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.all_attrs())
-        if self.config.enable_dc_asgd:
-            for p, p_bak in self.param_bak_list:
-                startup_param_var = s_prog.global_block().vars[p.name]
-                startup_tmpvar = s_prog.global_block().vars[p_bak.name]
-                # copy init random value to param_bak
-                s_prog.global_block().append_op(
-                    type="assign",
-                    inputs={"X": startup_param_var},
-                    outputs={"Out": startup_tmpvar})
 
         return s_prog
 
@@ -1217,162 +965,6 @@ class FlDistributeTranspiler(object):
         self._opti_to_param = opti_to_param
         self._opti_var_list = opti_list
 
-    # transpiler function for dis lookup_table
-    def _replace_lookup_table_op_with_prefetch(self, program,
-                                               pserver_endpoints):
-        # 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
-        self.all_in_ids_vars = []
-        self.all_prefetch_input_vars = []
-        self.all_prefetch_output_vars = []
-        self.all_out_emb_vars = []
-        lookup_table_op_index = -1
-
-        continue_search_lookup_table_op = True
-        while continue_search_lookup_table_op:
-            continue_search_lookup_table_op = False
-            all_ops = program.global_block().ops
-            for op in all_ops:
-                if op.type == LOOKUP_TABLE_TYPE and self.table_name == op.input(
-                        "W")[0]:
-                    if not op.attr('is_distributed'):
-                        raise RuntimeError(
-                            "lookup_table_op that lookup an distributed embedding table"
-                            "should set is_distributed to true")
-                    continue_search_lookup_table_op = True
-
-                    lookup_table_op_index = lookup_table_op_index if lookup_table_op_index != -1 else list(
-                        all_ops).index(op)
-                    ids_name = op.input("Ids")
-                    out_name = op.output("Out")
-
-                    ids_var = program.global_block().vars[ids_name[0]]
-                    self.all_in_ids_vars.append(ids_var)
-
-                    out_var = program.global_block().vars[out_name[0]]
-                    self.all_out_emb_vars.append(out_var)
-
-                    # delete lookup_table_op
-                    delete_ops(program.global_block(), [op])
-                    # break for loop
-                    break
-
-        for index in range(len(self.pserver_endpoints)):
-            in_var = program.global_block().create_var(
-                name=str("prefetch_compress_in_tmp_" + str(index)),
-                type=self.all_in_ids_vars[0].type,
-                shape=self.all_in_ids_vars[0].shape,
-                dtype=self.all_in_ids_vars[0].dtype)
-            self.all_prefetch_input_vars.append(in_var)
-
-            out_var = program.global_block().create_var(
-                name=str("prefetch_compress_out_tmp_" + str(index)),
-                type=self.all_out_emb_vars[0].type,
-                shape=self.all_out_emb_vars[0].shape,
-                dtype=self.all_out_emb_vars[0].dtype)
-            self.all_prefetch_output_vars.append(out_var)
-
-        # insert split_ids_op
-        program.global_block()._insert_op(
-            index=lookup_table_op_index,
-            type="split_ids",
-            inputs={'Ids': self.all_in_ids_vars},
-            outputs={"Out": self.all_prefetch_input_vars})
-
-        # insert prefetch_op
-        program.global_block()._insert_op(
-            index=lookup_table_op_index + 1,
-            type="prefetch",
-            inputs={'X': self.all_prefetch_input_vars},
-            outputs={"Out": self.all_prefetch_output_vars},
-            attrs={
-                "epmap": pserver_endpoints,
-                # FIXME(qiao) temporarily disable this config because prefetch
-                # is not act as other rpc op, it's more like a forward op
-                # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
-
-        # insert concat_op
-        program.global_block()._insert_op(
-            index=lookup_table_op_index + 2,
-            type="merge_ids",
-            inputs={
-                'Ids': self.all_in_ids_vars,
-                'Rows': self.all_prefetch_input_vars,
-                'X': self.all_prefetch_output_vars
-            },
-            outputs={"Out": self.all_out_emb_vars})
-
-    def _split_table_grad_and_add_send_vars(self, program, pserver_endpoints):
-        # 2. add split_ids_op and send_op to send gradient to pservers
-
-        # there should only be one table_name
-        all_ops = program.global_block().ops
-        table_grad_name = grad_var_name(self.table_name)
-        for op in all_ops:
-            if table_grad_name in op.output_arg_names:
-                op_index = list(all_ops).index(op)
-                # insert split_ids_op
-                program.global_block()._insert_op(
-                    index=op_index + 1,
-                    type="split_ids",
-                    inputs={
-                        'Ids': [program.global_block().vars[table_grad_name]]
-                    },
-                    outputs={"Out": self.trainer_side_table_grad_list},
-                    attrs={RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE})
-                program.global_block()._insert_op(
-                    index=op_index + 2,
-                    type="send",
-                    inputs={'X': self.trainer_side_table_grad_list},
-                    outputs={
-                        'Out':
-                        [self.grad_name_to_send_dummy_out[self.table_name]]
-                        if self.sync_mode else []
-                    },
-                    attrs={
-                        "sync_mode": not self.sync_mode,
-                        "epmap": pserver_endpoints,
-                        "trainer_id": self.trainer_id,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                        OP_ROLE_VAR_ATTR_NAME: [
-                            self.grad_name_to_param_name[table_grad_name],
-                            table_grad_name
-                        ]
-                    })
-                break
-
-    def _create_prefetch_block(self, pserver_index, pserver_program,
-                               optimize_block):
-        # STEP: create prefetch block
-        table_var = pserver_program.global_block().vars[self.table_name]
-        prefetch_var_name_to_block_id = []
-        prefetch_block = pserver_program._create_block(optimize_block.idx)
-        trainer_ids = self.all_prefetch_input_vars[pserver_index]
-        pserver_ids = pserver_program.global_block().create_var(
-            name=trainer_ids.name,
-            type=trainer_ids.type,
-            shape=trainer_ids.shape,
-            dtype=trainer_ids.dtype)
-        trainer_out = self.all_prefetch_output_vars[pserver_index]
-        pserver_out = pserver_program.global_block().create_var(
-            name=trainer_out.name,
-            type=trainer_out.type,
-            shape=trainer_out.shape,
-            dtype=trainer_out.dtype)
-        prefetch_block.append_op(
-            type="lookup_sparse_table",
-            inputs={'Ids': pserver_ids,
-                    "W": table_var},
-            outputs={"Out": pserver_out},
-            attrs={
-                "is_sparse": True,  # has no effect on lookup_table op
-                "is_distributed": True,
-                "padding_idx": -1
-            })
-        prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
-            prefetch_block.idx))
-        return prefetch_var_name_to_block_id
-
     def _create_table_optimize_block(self, pserver_index, pserver_program,
                                      pre_block_idx, grad_to_block_id):
         # STEP: create table optimize block
@@ -1457,26 +1049,6 @@ class FlDistributeTranspiler(object):
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
 
         return table_opt_block
-
-    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
-        """
-        create a new block to handle save checkpoint.
-        """
-
-        pserver_program.global_block().create_var(
-            name="kLookupTablePath",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-
-        checkpoint_save_block = pserver_program._create_block(pre_block_idx)
-        # this 'file_path' do not be used in save lookup table variable
-        checkpoint_save_block.append_op(
-            type='save',
-            inputs={'X': [self.table_name]},
-            outputs={},
-            attrs={'file_path': "none"})
-
-        return checkpoint_save_block.idx
 
     def _create_vars_from_blocklist(self,
                                     program,
@@ -1653,110 +1225,6 @@ class FlDistributeTranspiler(object):
         orig, _, _ = self._get_varname_parts(varname)
         return orig
 
-    def _append_pserver_grad_merge_ops(self, optimize_block,
-                                       grad_varname_for_block, endpoint,
-                                       grad_to_block_id, origin_program):
-        program = optimize_block.program
-        pserver_block = program.global_block()
-        grad_block = None
-        for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-            if self._orig_varname(g.name) == \
-                    self._orig_varname(grad_varname_for_block):
-                grad_block = g
-                break
-        if not grad_block:
-            # do not append this op if current endpoint
-            # is not dealing with this grad block
-            return None
-        orig_varname, block_name, trainer_name = self._get_varname_parts(
-            grad_block.name)
-        if block_name:
-            merged_var_name = '.'.join([orig_varname, block_name])
-        else:
-            merged_var_name = orig_varname
-
-        merged_var = pserver_block.vars[merged_var_name]
-        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
-        if self.sync_mode and self.trainer_num > 1:
-            vars2merge = []
-            for i in range(self.trainer_num):
-                per_trainer_name = "%s.trainer_%d" % \
-                                   (merged_var_name, i)
-                vars2merge.append(pserver_block.vars[per_trainer_name])
-            optimize_block.append_op(
-                type="sum",
-                inputs={"X": vars2merge},
-                outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False})
-            optimize_block.append_op(
-                type="scale",
-                inputs={"X": merged_var},
-                outputs={"Out": merged_var},
-                attrs={"scale": 1.0 / float(self.trainer_num)})
-        return merged_var
-
-    def _append_dc_asgd_ops(self, block, param_var, grad_var):
-        # NOTE: can not use grammar candy here, should put ops in specific block
-        local_param_bak = block.create_var(
-            name="%s.local_bak" % param_var.name,
-            shape=param_var.shape,
-            type=param_var.type,
-            dtype=param_var.dtype,
-            persistable=False)
-        # trainer_id_var is block local
-        trainer_id_var = block.create_var(
-            name="@TRAINER_ID@",
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            dtype=core.VarDesc.VarType.INT64,
-            shape=[1],
-            persistable=False)
-
-        # ref_inputs = [x[1] for x in self.param_bak_list]
-        ref_inputs = []
-        for p, p_bak in self.param_bak_list:
-            if p.name == param_var.name:
-                ref_inputs.append(p_bak)
-        block.append_op(
-            type="ref_by_trainer_id",
-            inputs={"X": ref_inputs,
-                    "TrainerId": trainer_id_var},
-            outputs={"Out": local_param_bak})
-
-        def __create_temp_var__():
-            return block.create_var(
-                name=unique_name.generate("tmp_dc_output"),
-                shape=param_var.shape,
-                type=param_var.type,
-                dtype=param_var.dtype,
-                persistable=False)
-
-        o1 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_sub",
-            inputs={"X": param_var,
-                    "Y": local_param_bak},
-            outputs={"Out": o1})
-        o2 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_mul",
-            inputs={"X": o1,
-                    "Y": grad_var},
-            outputs={"Out": o2})
-        o3 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_mul",
-            inputs={"X": o2,
-                    "Y": grad_var},
-            outputs={"Out": o3})
-        # TODO(typhoonzero): append scale
-        o4 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_add",
-            inputs={"X": grad_var,
-                    "Y": o3},
-            outputs={"Out": o4})
-        return o4
-
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
                             grad_to_block_id, origin_program, merged_var,
                             sparse_grad_to_param):
@@ -1772,10 +1240,6 @@ class FlDistributeTranspiler(object):
                     param_block = p
                     break
             return param_block
-
-        if self.config.enable_dc_asgd:
-            param_var = _get_param_block(opt_op)
-            dc = self._append_dc_asgd_ops(optimize_block, param_var, merged_var)
 
         for key in opt_op.input_names:
             if key == "Grad":
@@ -2016,39 +1480,6 @@ class FlDistributeTranspiler(object):
                     int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
-        return lr_ops
-
-    def _get_lr_ops_deprecated(self):
-        lr_ops = []
-        # find learning rate variables by optimize op
-        lr_vars = set()
-        for op in self.optimize_ops:
-            if self._is_optimizer_op(op):
-                lr_vars.add(op.input("LearningRate")[0])
-
-        find_ops = []
-        # find ops which output is lr var
-        block = self.origin_program.global_block()
-        for op in block.ops:
-            if set(op.output_arg_names) & lr_vars:
-                find_ops.append(op)
-        # make a union find struct by the ops in default_main_program
-        ufind = UnionFind(block.ops)
-
-        for op1 in block.ops:
-            for op2 in block.ops:
-                # NOTE: we need to skip all optimize ops, since it is connected
-                # with forward/backward ops and lr ops, we only need the lr ops.
-                if op1 != op2 and self._is_op_connected(op1, op2) and \
-                        not self._is_optimizer_op(op1) and not self._is_optimizer_op(op2):
-                    ufind.union(op1, op2)
-        # find all ops which is related with lr var
-        for op1 in block.ops:
-            for op2 in find_ops:
-                if ufind.is_connected(op1, op2):
-                    lr_ops.append(op1)
-                    # we only need to append op for once
-                    break
         return lr_ops
 
     def _is_opt_role_op(self, op):
