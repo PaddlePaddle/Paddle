@@ -48,23 +48,32 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_, "root_scope should be set before creating thread scope");
 
-  stat_scope_ = &root_scope_->NewScope();
-  thread_scope_ = &stat_scope_->NewScope();
+  thread_scope_ = &root_scope_->NewScope();
 
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
-      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end()) {
-        auto* ptr = stat_scope_->Var(var->Name());
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      //std::cout << "pers: " << var->Name() << " ";
+      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() && thread_id_ != 0) {
+        auto* ptr = thread_scope_->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
-      } else {
-        auto* ptr = root_scope_->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
+        std::cout << "THREAD pers: " << var->Name() << " ";
+        
+        auto *thread_var = thread_scope_->FindVar(var->Name());
+        auto *thread_tensor = thread_var->GetMutable<LoDTensor>();
+        std::cout << " start check var init with numel: " << thread_tensor->numel() << std::endl;
+        for (int i = 0; i < thread_tensor->numel(); i++) {
+          std::cout << "thread init tensor: " <<  thread_tensor->data<int64_t>()[i] << std::endl;    
+        }
       }
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
+      //std::cout << "non pers: " << var->Name() << " ";  
     }
   }
+  std::cout << "end register vars" << std::endl;
 }
 
 void HogwildWorker::BindingDataFeedMemory() {

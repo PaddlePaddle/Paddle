@@ -142,7 +142,6 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
                               Dataset* dataset,
                               const std::string& trainer_desc_str) {
-  trainer = PrepareTrainer(main_program, scope, dataset, trainer_desc_str);
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
@@ -395,9 +394,6 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   return result;
 }
 
-void Executor::RunTrainer(TrainerBase* trainer) { trainer->Run(); }
-
-void Executor::FinishTrainer(TrainerBase* trainer) { trainer->Finalize(); }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,

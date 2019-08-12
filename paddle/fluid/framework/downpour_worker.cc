@@ -64,6 +64,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   }
 
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    std::cout << " stat_var_name: " << param_.stat_var_names(i);
     stat_var_name_map_[param_.stat_var_names(i)] = 1;
   }
 
