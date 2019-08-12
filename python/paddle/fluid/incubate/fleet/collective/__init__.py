@@ -102,9 +102,6 @@ class DistributedStrategy(fluid.BuildStrategy):
 
     def __init__(self):
         super(DistributedStrategy, self).__init__()
-        self.fuse_memory_size = -1
-        self.fuse_layer_size = 1
-
         self.use_local_sgd = False
         self.use_dist_fc = False
 
@@ -215,12 +212,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         """
         Transpile the programs to distributed programs. And add the variables.
         """
-        if self._strategy.fuse_all_reduce_ops:
-            os.environ[
-                'FLAGS_fuse_parameter_memory_size'] = self.fuse_memory_size
-            os.environ[
-                'FLAGS_fuse_parameter_groups_size'] = self.fuse_layer_size
-
         worker_endpoints = fleet.worker_endpoints()
         trainer_id = fleet.worker_index()
         current_endpoint = fleet.worker_endpoints()[trainer_id]
