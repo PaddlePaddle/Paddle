@@ -972,7 +972,7 @@ class FleetUtil(object):
         last_dict = json.loads(pre_content.split("\n")[-1])
         last_day = int(last_dict["input"].split("/")[-3])
         last_path = "/".join(last_dict["input"].split("/")[:-1])
-        xbox_base_key =  int(last_dict["key"])
+        xbox_base_key = int(last_dict["key"])
         return [last_day, last_path, xbox_base_key]
 
     def get_last_save_xbox(self,
@@ -1018,7 +1018,7 @@ class FleetUtil(object):
         last_day = int(last_dict["input"].split("/")[-3])
         last_pass = int(last_dict["input"].split("/")[-2].split("-")[-1])
         last_path = "/".join(last_dict["input"].split("/")[:-1])
-        xbox_base_key =  int(last_dict["key"])
+        xbox_base_key = int(last_dict["key"])
         return [last_day, last_pass, last_path, xbox_base_key]
 
     def get_last_save_model(self,
