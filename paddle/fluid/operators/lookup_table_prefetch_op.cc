@@ -84,7 +84,6 @@ class LookupTablePrefetchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto ids_vars = context.MultiInputVar("Ids");
-    auto table_var = context.InputVar("W");
     auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
 
     auto id_names = context.Inputs("Ids");

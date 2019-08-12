@@ -82,10 +82,15 @@ static void SplitIdsIntoMultipleVarsBySection(
 typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
 
 template <typename T>
-void prefetch_core(
-    const std::vector<int64_t>& ids, const TableAndEndpoints& tables,
-    const std::vector<int64_t>& height_sections,
-    std::unordered_map<int64_t, std::vector<T>>* recved_vec_map) {
+void prefetch_core(const std::vector<int64_t>& ids,
+                   const TableAndEndpoints& tables,
+                   const std::vector<int64_t>& height_sections,
+                   const framework::ExecutionContext& context,
+                   const framework::Scope& scope,
+                   std::unordered_map<int64_t, std::vector<T>> recved_vec_map) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& actual_ctx = *pool.Get(context.GetPlace());
+
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   std::vector<std::string> in_var_names;
@@ -95,7 +100,7 @@ void prefetch_core(
     out_var_names.push_back("prefetch_recv@" + tables[i].second);
   }
 
-  auto splited_ids = SplitIds(ids_vector, height_sections);
+  auto splited_ids = SplitIds(ids, height_sections);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
                                     local_scope.get());
 
@@ -104,14 +109,18 @@ void prefetch_core(
     local_scope->Var(name)->GetMutable<framework::LoDTensor>();
   }
 
+  distributed::RPCClient* rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+          context.Attr<int>("trainer_id"));
+
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < in_var_names.size(); i++) {
     if (NeedSend(*local_scope.get(), in_var_names[i])) {
       VLOG(3) << "sending " << in_var_names[i] << " to " << tables[i].second
               << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
-          tables[i].second, cpu_ctx, *local_scope.get(), in_var_names[i],
-          out_var_names[i], table_names[i]));
+          tables[i].second, actual_ctx, *local_scope.get(), in_var_names[i],
+          out_var_names[i], tables[i].first));
     } else {
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
@@ -159,8 +168,8 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetchs({id_name}, {out_name}, reconstruct_var_name, table_names, endpoints,
-            height_sections, context, scope);
+  prefetch<T>({id_name}, {out_name}, reconstruct_var_name, table_names,
+              endpoints, height_sections, context, scope);
 }
 
 template <typename T>
@@ -178,7 +187,7 @@ void prefetch(const std::vector<std::string>& id_var_names,
   PADDLE_ENFORCE_EQ(table_names.size(), height_sections.size(), "");
 
   auto* reconstruct_var =
-      scope->FindVar(reconstruct_var_name)->GetMutable<framework::LoDTensor>();
+      scope.FindVar(reconstruct_var_name)->GetMutable<framework::LoDTensor>();
   const auto vec_dim_1 = reconstruct_var->dims()[1];
   auto* reconstruct_d = reconstruct_var->data<T>();
 
@@ -209,14 +218,15 @@ void prefetch(const std::vector<std::string>& id_var_names,
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
-  std::unordered_map<int64_t, std::vetcot<T>>* recved_vec_map;
-  prefetch_core(ids_vector, tables, height_sections, &recved_vec_map);
+  std::unordered_map<int64_t, std::vector<T>> recved_vec_map;
+  prefetch_core(ids_union, tables, height_sections, &recved_vec_map, context,
+                scope);
 
   // copy vectors to out vars
   for (int i = 0; i < out_var_names.size(); i++) {
     auto& ids = ids_group[i];
     auto* out_t =
-        scope->FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
+        scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
     out_t->Resize({ids.size(), vec_dim_1});
     auto* out_d = out_t->mutable_data<T>(place);
 
