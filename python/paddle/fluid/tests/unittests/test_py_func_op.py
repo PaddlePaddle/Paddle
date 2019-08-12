@@ -147,6 +147,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             fluid.memory_optimize(fluid.default_main_program())
 
             train_cp = fluid.default_main_program()
+
             if use_parallel_executor:
                 train_cp = compiler.CompiledProgram(fluid.default_main_program(
                 ))

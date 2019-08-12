@@ -33,7 +33,6 @@ class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(cls,
                                   method,
                                   use_cuda=True,
-                                  memory_opt=False,
                                   iter=50,
                                   batch_size=None,
                                   feed_dict=None,
@@ -59,8 +58,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         main.random_seed = 1
         with fluid.program_guard(main, startup):
             feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
-                                              main, memory_opt, method,
-                                              optimizer)
+                                              main, method, optimizer)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -112,7 +110,6 @@ class TestParallelExecutorBase(unittest.TestCase):
     def check_pass_conflict(cls,
                             method,
                             use_cuda=True,
-                            memory_opt=False,
                             feed_dict=None,
                             get_data_from_feeder=None,
                             use_reduce=False,
@@ -130,8 +127,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
-                                              main, memory_opt, method,
-                                              optimizer)
+                                              main, method, optimizer)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -175,16 +171,17 @@ class TestParallelExecutorBase(unittest.TestCase):
         return build_strategy, exec_strategy
 
     @classmethod
-    def build_model(cls, feed_dict, get_data_from_feeder, main, memory_opt,
-                    method, optimizer):
+    def build_model(cls, feed_dict, get_data_from_feeder, main, method,
+                    optimizer):
         loss = method(use_feed=feed_dict is not None)
         # NOTE(zjl): memory_optimize/inplace pass would not require
-        # that loss.persistable = True
-        loss.persistable = memory_opt
+        # that loss.persistable = True.
+        # We set loss.persistable = False here to verify our memory
+        # optimization strategies intentionally.
+        loss.persistable = False
         if optimizer:
             optimizer().minimize(loss)
-        if memory_opt:
-            fluid.memory_optimize(main)
+
         if get_data_from_feeder is not None:
             assert feed_dict is None
             feed_dict = get_data_from_feeder()
