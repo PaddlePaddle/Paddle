@@ -32,8 +32,16 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT_MSG(id >= 0, "received id:", id);
-    PADDLE_ASSERT_MSG(id < N, "received id:", id);
+    PADDLE_ASSERT_MSG(
+        id >= 0,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
+    PADDLE_ASSERT_MSG(
+        id < N,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -59,8 +67,16 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT_MSG(id >= 0, "received id:", id);
-    PADDLE_ASSERT_MSG(id < N, "received id:", id);
+    PADDLE_ASSERT_MSG(
+        id >= 0,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
+    PADDLE_ASSERT_MSG(
+        id < N,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {

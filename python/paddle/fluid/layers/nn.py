@@ -119,6 +119,7 @@ __all__ = [
     'image_resize',
     'image_resize_short',
     'resize_bilinear',
+    'resize_trilinear',
     'resize_nearest',
     'gather',
     'scatter',
@@ -210,6 +211,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'var_conv_2d',
     'shard_index',
 ]
 
@@ -461,18 +463,20 @@ def embedding(input,
 
     Args:
         input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
+            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
         size(tuple|list): The shape of the look up table parameter. It should
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
-            :math:`size[0] + dim`.
-        param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        padding_idx(int|long|None): It will output all-zero padding data whenever
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
+            Default: None.
+        param_attr(ParamAttr): Parameters for this layer.
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -7550,7 +7554,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
@@ -7606,7 +7614,11 @@ def roi_align(input,
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates. 
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
@@ -7701,12 +7713,15 @@ def image_resize(input,
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w),
-    and the resizing only applies on the last two dimensions(hight and width).
+    The input must be a tensor of the shape (num_batches, channels, in_h, in_w)
+    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies 
+    on the last two/three dimensions(depth, hight and width).
 
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+
+        'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
 
@@ -7719,6 +7734,11 @@ def image_resize(input,
     W-direction in this op) on a rectilinear 2D grid. The key idea is 
     to perform linear interpolation first in one direction, and then 
     again in the other direction.
+
+    Trilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of three variables (e.g. D-direction, 
+    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    The linear interpolation is performed on three directions.
 
     Align_corners and align_mode are optinal parameters,the calculation method 
     of interpolation can be selected by them.
@@ -7777,30 +7797,58 @@ def image_resize(input,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
+        Trilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+           
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+          
     For details of nearest neighbor interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
 
     For details of bilinear interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
 
+    For details of trilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+
 
 
     Args:
         input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
-                          (num_batches, channels, in_h, in_w).
+                          (num_batches, channels, in_h, in_w) or a
+                          5-D tensor of the shape
+                          (num_batches, channls, in_d, in_h, in_w).
         out_shape(list|tuple|Variable|None): Output shape of image resize
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
+                                    layer, the shape is (out_h, out_w) when
+                                    input is a 4-D tensor and is
+                                    (out_d, out_h, out_w) when input is a
+                                    5-D tensor. Default: None
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST'
-                       currently.
-                       Default: 'BILINEAR'
+        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR'
+                       and 'NEAREST' currently. Default: 'BILINEAR'
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
                                 according to this given shape rather than
@@ -7824,15 +7872,19 @@ def image_resize(input,
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
-        (num_batches, channls, out_h, out_w).
+        (num_batches, channls, out_h, out_w) or a 5-D tensor of the shape
+        (num_batches, channels, out_d, out_h, out_w).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR'
-                    or 'NEAREST' currently.
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
+                    'TRILINEAR' or 'NEAREST' currently.
+        ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
+        ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
-        ValueError: out_shape length should be 2.
+        ValueError: out_shape length should be 2 for input 4-D tensor.
+        ValueError: out_shape length should be 3 for input 5-D tensor.
         ValueError: scale should be greater than zero.
         TypeError: align_corners shoule be a bool value
         ValueError: align_mode can only be '0' or '1'
@@ -7846,13 +7898,19 @@ def image_resize(input,
     """
     resample_methods = {
         'BILINEAR': 'bilinear',
+        'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
     }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
-        )
+            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
+            "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
+
+    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+        raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
+    if resample == 'TRILINEAR' and len(input.shape) != 5:
+        raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
@@ -7869,6 +7927,7 @@ def image_resize(input,
 
     inputs = {"X": input}
     attrs = {
+        "out_d": 0,
         "out_h": 0,
         "out_w": 0,
         "interp_method": resample_type,
@@ -7886,12 +7945,21 @@ def image_resize(input,
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError(
                     "out_shape should be a list or tuple or Variable.")
-            if len(out_shape) != 2:
-                raise ValueError("out_shape length should be 2.")
-
-            out_shape = list(map(int, out_shape))
-            attrs['out_h'] = out_shape[0]
-            attrs['out_w'] = out_shape[1]
+            if len(input.shape) == 4:
+                if len(out_shape) != 2:
+                    raise ValueError("out_shape length should be 2 for "
+                                     "input 4-D tensor.")
+                out_shape = list(map(int, out_shape))
+                attrs['out_h'] = out_shape[0]
+                attrs['out_w'] = out_shape[1]
+            if len(input.shape) == 5:
+                if len(out_shape) != 3:
+                    raise ValueError("out_shape length should be 3 for "
+                                     "input 5-D tensor.")
+                out_shape = list(map(int, out_shape))
+                attrs['out_d'] = out_shape[0]
+                attrs['out_h'] = out_shape[1]
+                attrs['out_w'] = out_shape[2]
 
     else:
         if scale <= 0:
@@ -7974,7 +8042,7 @@ def resize_bilinear(input,
 
 
     Args:
-        input(${x_type}): ${x_comment}.
+        input(${x_type}): input should be a 4-D tensor.
 
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
                                     layer, the shape is (out_h, out_w).
@@ -8003,7 +8071,7 @@ def resize_bilinear(input,
         align_mode(bool): ${align_mode_comment}
 
     Returns:
-        ${out_comment}.
+        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
 
     Examples:
         .. code-block:: python
@@ -8015,6 +8083,112 @@ def resize_bilinear(input,
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
                         align_corners, align_mode)
+
+
+@templatedoc(op_type="trilinear_interp")
+def resize_trilinear(input,
+                     out_shape=None,
+                     scale=None,
+                     name=None,
+                     actual_shape=None,
+                     align_corners=True,
+                     align_mode=1):
+    """
+    Resize input by performing trilinear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
+    in priority order.
+
+    Trilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of three variables (e.g. D-direction, 
+    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    The linear interpolation is performed on three directions.
+
+    For details of trilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Trilinear_interpolation
+
+    Align_corners and align_mode are optinal parameters,the calculation 
+    method of interpolation can be selected by them.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+          
+            if align_corners = True && out_size > 1 :
+
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)     
+
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+
+
+    Args:
+        input(${x_type}): input should be a 4-D tensor.
+
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+                                    layer, the shape is (out_d, out_h, out_w).
+                                    Default: None
+
+        scale(float|None): The multiplier for the input depth, height or width.
+             At least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             Default: None.
+
+        name(str|None): The output variable name.
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
+                                constructing stage.
+                                Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
+
+    Returns:
+        A 5-D tensor in shape (num_batches, channels, out_d, out_h, out_w)
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            input = fluid.layers.data(name="input", shape=[3,6,9,11], dtype="float32")
+            out = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
+    """
+
+    return image_resize(input, out_shape, scale, name, 'TRILINEAR',
+                        actual_shape, align_corners, align_mode)
 
 
 @templatedoc(op_type="nearest_interp")
@@ -8070,7 +8244,7 @@ def resize_nearest(input,
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
-        input(${x_type}): ${x_comment}.
+        input(${x_type}): input should be a 4-D tensor.
 
         out_shape(list|tuple|Variable|None): Output shape of resize nearest
                                     layer, the shape is (out_h, out_w).
@@ -8098,7 +8272,7 @@ def resize_nearest(input,
         align_corners(bool): ${align_corners_comment}
 
     Returns:
-        ${out_comment}.
+        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
 
     Examples:
         .. code-block:: python
@@ -12765,6 +12939,121 @@ def deformable_roi_pooling(input,
             "trans_std": trans_std
         })
     return output
+
+
+def var_conv_2d(input,
+                row,
+                col,
+                input_channel,
+                output_channel,
+                filter_size,
+                stride=1,
+                param_attr=None,
+                act=None,
+                dtype='float32',
+                name=None):
+    """
+    The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
+    row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
+    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    padding. Besides, input.dims[1] should be 1. 
+
+    .. code-block:: text
+            
+            If input_channel is 2 and given row lodTensor and col lodTensor as follows:
+                row.lod = [[5, 4]]
+                col.lod = [[6, 7]]
+            input is a lodTensor: 
+                input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
+                input.dims = [116, 1]	# where 116 = 60 + 56
+            
+            If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
+                output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
+                output.dims = [174, 1]  # where 174 = 90 + 84
+
+    Args:
+        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row shoud be 1-level LodTensor to provide height information.
+        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input_channel (int): The number of input channel.
+        output_channel (int): The number of output channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None
+        dtype ('float32'): The data type of parameter and output.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None
+
+    Returns:
+        Variable: Output variable with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
+            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+            out = layers.var_conv_2d(input=x_lod_tensor, 
+                                     row=row_lod_tensor,
+                                     col=col_lod_tensor,
+                                     input_channel=3,
+                                     output_channel=5,
+                                     filter_size=[3, 3],
+                                     stride=1)
+    """
+    helper = LayerHelper('var_conv_2d', **locals())
+    x_shape = list(input.shape)
+    assert len(x_shape) == 2
+
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+
+    filter_shape = [
+        int(output_channel),
+        int(input_channel) * filter_size[0] * filter_size[1]
+    ]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype, )
+
+    conv_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+
+    helper.append_op(
+        type='var_conv_2d',
+        inputs={
+            'X': input,
+            'ROW': row,
+            'COLUMN': col,
+            'W': filter_param,
+        },
+        outputs={"Out": conv_res,
+                 "Col": tmp_res},
+        attrs={
+            'InputChannel': input_channel,
+            'OutputChannel': output_channel,
+            'StrideH': stride[0],
+            'StrideW': stride[1],
+            'KernelH': filter_size[0],
+            'KernelW': filter_size[1],
+        })
+
+    return helper.append_activation(conv_res)
 
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):

@@ -232,6 +232,14 @@ class Fleet(object):
     def save_persistables(self, executor, dirname, main_program=None):
         pass
 
+    @abc.abstractmethod
+    def node_num(self):
+        pass
+
+    @abc.abstractmethod
+    def node_id(self):
+        pass
+
 
 class DistributedOptimizer(object):
     """
