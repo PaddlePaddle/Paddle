@@ -46,7 +46,6 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
             get_data_from_feeder=get_data_from_feeder,
             use_cuda=use_cuda,
             fuse_all_optimizer_ops=False,
-            memory_opt=False,  # avoid the gradient's name changed in Python side.
             optimizer=optimizer)
         fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
             model,
@@ -54,7 +53,6 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
             get_data_from_feeder=get_data_from_feeder,
             use_cuda=use_cuda,
             fuse_all_optimizer_ops=True,
-            memory_opt=False,  # avoid the gradient's name changed in Python side.
             optimizer=optimizer)
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
@@ -152,7 +150,6 @@ class TestPassConflictBase(TestFuseAdamOps):
             get_data_from_feeder=get_data_from_feeder,
             use_cuda=use_cuda,
             fuse_all_optimizer_ops=True,
-            memory_opt=False,  # avoid the gradient's name changed in Python side.
             optimizer=optimizer,
             enable_sequential_execution=True)
 

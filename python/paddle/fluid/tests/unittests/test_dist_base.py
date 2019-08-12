@@ -108,10 +108,6 @@ class TestDistRunnerBase(object):
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size)
 
-        if args.mem_opt:
-            my_print(type(self).__name__, "begin to run memory optimize")
-            fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-            my_print(type(self).__name__, "trainer run memory optimize done.")
         if args.update_method == "pserver":
             my_print(
                 type(self).__name__,
@@ -327,7 +323,6 @@ def runtime_main(test_class):
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
-    parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -387,7 +382,6 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
         self._sync_mode = True
         self._enforce_place = None
-        self._mem_opt = False
         self._use_reduce = False
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
@@ -435,9 +429,6 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             ps0_cmd += " --sync_mode"
             ps1_cmd += " --sync_mode"
-        if self._mem_opt:
-            ps0_cmd += " --mem_opt"
-            ps1_cmd += " --mem_opt"
 
         print(ps0_cmd)
         print(ps1_cmd)
@@ -530,9 +521,6 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
             tr1_cmd += " --sync_mode"
-        if self._mem_opt:
-            tr0_cmd += " --mem_opt"
-            tr1_cmd += " --mem_opt"
         if self._use_reduce:
             tr0_cmd += " --use_reduce"
             tr1_cmd += " --use_reduce"
@@ -603,8 +591,6 @@ class TestDistBase(unittest.TestCase):
                   (self._python_interp, model, self._ps_endpoints,
                    trainer_id, ep, update_method, self._lr)
 
-        if self._mem_opt:
-            tr_cmd += " --mem_opt"
         if self._use_reduce:
             tr_cmd += " --use_reduce"
         if self._use_reader_alloc:
