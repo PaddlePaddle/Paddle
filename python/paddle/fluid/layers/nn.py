@@ -5725,6 +5725,7 @@ def warpctc(input,
 
     loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
     helper.append_op(
         type='warpctc',
         inputs=this_inputs,
