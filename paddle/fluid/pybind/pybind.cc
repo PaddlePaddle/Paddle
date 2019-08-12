@@ -737,10 +737,12 @@ All parameter, weight, gradient are variables in Paddle.
         return std::make_pair(grad_op_desc_ptrs, grad_to_var);
       });
   m.def("_has_grad_op_maker", [](const std::string op_type) {
-    return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
+    auto op_info = framework::OpInfoMap::Instance().GetNullable(op_type);
+    return op_info == nullptr ? false : op_info->HasGradOpMaker();
   });
   m.def("_has_infer_inplace", [](const std::string op_type) {
-    return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
+    auto op_info = framework::OpInfoMap::Instance().GetNullable(op_type);
+    return op_info == nullptr ? false : op_info->HasInferInplace();
   });
 
   m.def("prune", [](const ProgramDesc &origin,

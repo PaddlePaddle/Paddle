@@ -492,7 +492,7 @@ class OpTest(unittest.TestCase):
                 outs = exe.run(compiled_program,
                                feed=grad_feed_map,
                                fetch_list=grad_fetch_list,
-                               return_numpy=True)
+                               return_numpy=False)
                 return outs
 
             expect_outs = _calc_grad_output(enable_inplace=False)
@@ -501,7 +501,8 @@ class OpTest(unittest.TestCase):
             # compare expect_outs and actual_outs
             for i, out_name in enumerate(grad_fetch_list):
                 self.assertTrue(
-                    np.array_equal(expect_outs[i], actual_outs[i]),
+                    np.array_equal(
+                        np.array(expect_outs[i]), np.array(actual_outs[i])),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
                     str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
