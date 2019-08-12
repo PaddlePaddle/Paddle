@@ -43,7 +43,8 @@ __all__ = [
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer'
+    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
+    'RecomputeOptimizer'
 ]
 
 
@@ -3124,3 +3125,37 @@ class LookaheadOptimizer(object):
             with switch.default():
                 pass
         return mini_out
+
+class RecomputeOptimizer(Optimizer):
+    """
+    Recompute Optimizer Wrapper
+    """
+
+    def __init__(self, optimizer, checkpoints):
+        self._optimizer = optimizer
+        self._checkpoints = checkpoints
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 grad_clip=None):
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        self._dtype = loss.dtype
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            params_grads = append_backward_with_checkpoints(
+                loss, parameter_list, no_grad_set, callbacks, self._checkpoints)
+
+            if grad_clip:
+                # TODO(guru4elephant): should add grad_clip for static graph
+                pass
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+        return optimize_ops, params_grads
