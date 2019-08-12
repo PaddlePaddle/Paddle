@@ -113,6 +113,12 @@ class Blas {
   template <typename T>
   void GEMM_FREE(T* data) const;
 
+  template <typename T>
+  void CSRMM(const char* transa, const int* m, const int* n, const int* k,
+             const T* alpha, const char* matdescra, const T* val,
+             const int* indx, const int* pntrb, const int* pntre, const T* b,
+             const int* ldb, const T* beta, T* c, const int* ldc) const;
+
 #if !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void MatMulWithHead(const framework::Tensor& mat_a,
@@ -237,6 +243,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void GEMM_FREE(ARGS... args) const {
     Base()->template GEMM_FREE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void CSRMM(ARGS... args) const {
+    Base()->template CSRMM<T>(args...);
   }
 
 #if !defined(PADDLE_WITH_CUDA)
