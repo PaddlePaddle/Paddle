@@ -24,9 +24,11 @@ namespace operators {
 
 constexpr int64_t kNoPadding = -1;
 
-class LookupTablePrefetchInferShape : public framework::InferShapeBase {
+class LookupTablePrefetchOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
                    "Input(Ids) of LookupTableOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"),
@@ -39,10 +41,11 @@ class LookupTablePrefetchInferShape : public framework::InferShapeBase {
 
     PADDLE_ENFORCE_EQ(table_dims.size(), 2,
                       "Only 2 dimensions of the 'Embedding' is supported.");
-    for (size_t i = 0; i < ids_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(ids_dims[i].size(), 2,
+
+    for (auto &ids_dim : ids_dims) {
+      PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
                         "The dimension of the 'Ids' tensor must be 2.");
-      PADDLE_ENFORCE_EQ(ids_dims[i][1], 1,
+      PADDLE_ENFORCE_EQ(ids_dim[1], 1,
                         "The last dimension of the 'Ids' tensor must be 1.");
     }
 
@@ -59,11 +62,9 @@ class LookupTablePrefetchInferShape : public framework::InferShapeBase {
                    "save size and can not be 0.");
 
     auto outputs_dims = std::vector<framework::DDim>();
-    for (size_t i = 0; i < ids_dims.size(); ++i) {
-      auto o_dims = framework::vectorize(
-          framework::slice_ddim(ids_dims, 0, ids_rank - 1));
-      o_dims.push_back(table_dims[1]);
-      outputs_dims.push_back(o_dims);
+
+    for (auto &ids_dim : ids_dims) {
+      outputs_dims.push_back(framework::make_ddim({ids_dim[0], ids_dim[1]}));
     }
 
     ctx->SetOutputsDim("Embeddings", outputs_dims);
@@ -78,26 +79,26 @@ class LookupTablePrefetchInferShape : public framework::InferShapeBase {
   }
 };
 
-class LookupTablePrefetchOp : public framework::OperatorBase {
+template <typename T>
+class LookupTablePrefetchKernel : public framework::OpKernel<T> {
  public:
-  using framework::OperatorBase::OperatorBase;
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+  void Compute(const framework::ExecutionContext &context) const override {
     auto ids_vars = context.MultiInputVar("Ids");
     auto table_var = context.InputVar("W");
-    auto emb_vars = ctx.MultiOutput<framework::Tensor>("Embeddings");
+    auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
 
-    auto lookup_tables =
-        context.Attr<std::vector<std::string>>("lookup_tables");
+    auto id_names = context.Inputs("Ids");
+    auto embedding_name = context.Inputs("W").front();
+    auto out_names = context.Outputs("Out");
+
+    auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto height_sections =
         context.Attr<std::vector<int64_t>>("height_sections");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
-    operators::distributed::multi_prefetch(
-        context.Inputs("Ids"), context.Outputs("Embeddings"), lookup_tables,
-        epmap, height_sections, context, context.scope());
+    operators::distributed::prefetch<T>(
+        id_names, out_names, embedding_name, lookup_tables, endpoints,
+        height_sections, context, context.scope());
   }
 };
 
@@ -132,6 +133,14 @@ class LookupTablePrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
+
+    AddAttr<int64_t>("padding_idx",
+                     "(int64, default -1) "
+                     "If the value is -1, it makes no effect to lookup. "
+                     "Otherwise the given value indicates padding the output "
+                     "with zeros whenever lookup encounters it in Ids.")
+        .SetDefault(kNoPadding);
+
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
 
@@ -150,7 +159,10 @@ random value and set the value into the table for the next looking up.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table_prefetch, ops::LookupTablePrefetchOp,
-                  ops::LookupTablePrefetchInferShape,
-                  ops::LookupTablePrefetchOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(lookup_table, ops::LookupTablePrefetchOp,
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::LookupTablePrefetchOpMaker);
+
+REGISTER_OP_CPU_KERNEL(lookup_table_prefetch,
+                       ops::LookupTablePrefetchKernel<float>,
+                       ops::LookupTablePrefetchKernel<double>);
