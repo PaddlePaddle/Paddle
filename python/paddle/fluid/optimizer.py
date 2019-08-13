@@ -3154,8 +3154,8 @@ class RecomputeOptimizer(Optimizer):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
-            params_grads = append_backward_with_checkpoints(
-                loss, parameter_list, no_grad_set, callbacks, self._checkpoints)
+            params_grads = append_backward_with_forward_recomputation(
+                loss, parameter_list, no_grad_set, self._checkpoints)
 
             if grad_clip:
                 # TODO(guru4elephant): should add grad_clip for static graph
