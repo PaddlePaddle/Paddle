@@ -13,15 +13,15 @@
 # limitations under the License.
 import os
 
-print_info = ""
-if os.name == "nt"
+print_info = ''
+if os.name == 'nt'
     try:
         import scipy.io as scio
     except ImportError as e:
         print_info = str(e)
     if(len(print_info) > 0):
-        if "DLL load failed" in print_info:
-            raise ImportError(print_info+"\nplease download visual C++ Redistributable for vs 2015, https://www.microsoft.com/en-us/download/details.aspx?id=48145")
+        if 'DLL load failed' in print_info:
+            raise ImportError(print_info+'\nplease download visual C++ Redistributable for vs 2015, https://www.microsoft.com/en-us/download/details.aspx?id=48145')
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
