@@ -749,7 +749,7 @@ class FleetUtil(object):
         suffix_name = "/%s/delta-%s" % (day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_error("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=0)
+        key_num = fleet.save_cache_model(None, model_path, mode=1)
         self.rank0_error("save_cache_model done")
         return key_num
 
@@ -777,7 +777,7 @@ class FleetUtil(object):
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_error("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=0)
+        key_num = fleet.save_cache_model(None, model_path, mode=1)
         self.rank0_error("save_cache_model done")
         return key_num
 
