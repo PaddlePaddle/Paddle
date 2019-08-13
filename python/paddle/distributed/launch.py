@@ -139,6 +139,7 @@ def start_procs(args):
 
     current_node_ip = args.node_ip
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
+    node_num = len(node_ips)
     node_id = node_ips.index(current_node_ip)
     num_nodes = len(node_ips)
 
@@ -182,6 +183,9 @@ def start_procs(args):
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
+
+        if node_num > 1:
+            current_env.update({"FLAGS_sync_nccl_allreduce": "0"})
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
