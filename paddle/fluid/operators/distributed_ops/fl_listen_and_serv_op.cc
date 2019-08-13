@@ -142,6 +142,12 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
       break;
     }
 
+    VLOG(3) << "wait all clients to send after_optimizer parameters";
+    rpc_service_->SetCond(distributed::kRequestSend);
+    VLOG(3) << "wait all clients to send send_barrier";
+    rpc_service_->WaitBarrier(distributed::kRequestSend);
+    VLOG(3) << "ResetBarrierCounter";
+    rpc_service_->ResetBarrierCounter();
     // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
     // and this will still work.
     // The optimize blocks which have the same parent ID would run parallel
@@ -168,13 +174,6 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
 
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
-
-    VLOG(3) << "wait all clients to send after_optimizer parameters";
-    rpc_service_->SetCond(distributed::kRequestSend);
-    VLOG(3) << "wait all clients to send send_barrier";
-    rpc_service_->WaitBarrier(distributed::kRequestSend);
-    VLOG(3) << "ResetBarrierCounter";
-    rpc_service_->ResetBarrierCounter();
   }  // while(true)
 }
 
