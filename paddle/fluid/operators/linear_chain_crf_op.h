@@ -73,25 +73,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     memset(emission_exps_data, 0, emission_exps->numel() * sizeof(T));
     memset(alpha_data, 0, alpha->numel() * sizeof(T));
     auto emission_dims = emission_weights->dims();
-    size_t batch_size;
-    size_t tag_num;
+
     const Tensor* label = ctx.Input<framework::Tensor>("Label");
-    // getting seq_num  using padding or not
-    size_t seq_num = 0;
-    if (ctx.HasInput("length")) {
-      const Tensor* label_length = ctx.Input<framework::Tensor>("length");
-      seq_num = label_length->numel();
-      batch_size = emission_dims[0] * emission_dims[1];
-      tag_num = emission_dims[2];
-    } else {
-      seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
-      batch_size = emission_dims[0];
-      tag_num = emission_dims[1];
-    }
-    ll->Resize({static_cast<int>(seq_num), 1});
-    ll->mutable_data<T>(platform::CPUPlace());
-    // getting in_lod using padding or not
-    framework::Vector<size_t> in_lod(seq_num + 1);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor emission_weights_tmp = ctx.AllocateTmpTensor<T, DeviceContext>(
         emission_weights->dims(), dev_ctx);
@@ -105,12 +88,17 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     Tensor alpha_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
     alpha_tmp.ShareDataWith(*alpha);
+    size_t seq_num = 0;
+    size_t batch_size;
+    size_t tag_num;
+    const int64_t* length_data;
+    framework::Vector<size_t> in_lod;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
-      auto label_length_ptr = label_length->data<int64_t>();
-      for (size_t i = 0; i < seq_num; i++) {
-        in_lod[i + 1] = in_lod[i] + label_length_ptr[i];
-      }
+      length_data = label_length->data<int64_t>();
+      seq_num = label_length->numel();
+      batch_size = emission_dims[0] * emission_dims[1];
+      tag_num = emission_dims[2];
       emission_weights_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
       auto label_dims = label->dims();
@@ -122,9 +110,15 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
                      "the size of Input(length) must be equal to "
                      "emission_dims[0] and label_dims[0].");
     } else {
+      seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
+      batch_size = emission_dims[0];
+      tag_num = emission_dims[1];
       in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
       PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
     }
+
+    ll->Resize({static_cast<int>(seq_num), 1});
+    ll->mutable_data<T>(platform::CPUPlace());
     // Now, all the inputs and outputs should be on the CPU memory.
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
@@ -145,8 +139,16 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     w_exps.device(place) = w.exp();
     T* log_likelihood = ll->data<T>();
     for (size_t i = 0; i < seq_num; ++i) {
-      int start_pos = static_cast<int>(in_lod[i]);
-      int end_pos = static_cast<int>(in_lod[i + 1]);
+      int start_pos = 0;
+      int end_pos = 0;
+      if (ctx.HasInput("length")) {
+        if (length_data[i] == 0) continue;
+        start_pos = i * emission_dims[1];
+        end_pos = start_pos + static_cast<int>(length_data[i]);
+      } else {
+        start_pos = static_cast<int>(in_lod[i]);
+        end_pos = static_cast<int>(in_lod[i + 1]);
+      }
       if (end_pos == start_pos) {
         // If an empty input sequence is given, pad 0 for its cost.
         log_likelihood[i] = 0.;
@@ -255,8 +257,11 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     emission_grad_tmp.ShareDataWith(*emission_grad);
     // getting seq_num  using padding or not
     size_t seq_num = 0;
+    framework::Vector<size_t> lod;
+    const int64_t* length_data;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
+      length_data = label_length->data<int64_t>();
       seq_num = label_length->dims()[0];
       auto emission_dims = emission_grad->dims();
       auto label_dims = label->dims();
@@ -268,16 +273,6 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
       seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
-    }
-    // getting lod using padding or not
-    framework::Vector<size_t> lod(seq_num + 1);
-    if (ctx.HasInput("length")) {
-      const Tensor* label_length = ctx.Input<framework::Tensor>("length");
-      auto label_length_ptr = label_length->data<int64_t>();
-      for (size_t i = 0; i < seq_num; i++) {
-        lod[i + 1] = lod[i] + label_length_ptr[i];
-      }
-    } else {
       lod = ctx.Input<LoDTensor>("Label")->lod()[0];
       PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
     }
@@ -298,14 +293,22 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // captures the unnormalized probabilities of partial sequences starting
     // at position i.
     Tensor beta;
-    beta.mutable_data<T>(emission_dims, platform::CPUPlace());
+    auto* beta_data = beta.mutable_data<T>(emission_dims, platform::CPUPlace());
+    memset(beta_data, 0, beta.numel() * sizeof(T));
     if (ctx.HasInput("length")) {
       beta.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
     }
-    for (size_t i = 0; i < lod.size() - 1; ++i) {
-      int start_pos = static_cast<int>(lod[i]);
-      int end_pos = static_cast<int>(lod[i + 1]);
-      if (end_pos == start_pos) continue;
+    for (size_t i = 0; i < seq_num; ++i) {
+      int start_pos = 0;
+      int end_pos = 0;
+      if (ctx.HasInput("length")) {
+        if (length_data[i] == 0) continue;
+        start_pos = i * emission_dims[1];
+        end_pos = start_pos + static_cast<int>(length_data[i]);
+      } else {
+        start_pos = static_cast<int>(lod[i]);
+        end_pos = static_cast<int>(lod[i + 1]);
+      }
       const Tensor one_seq_emission_exps =
           emission_exps_tmp.Slice(start_pos, end_pos);
       const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
