@@ -1080,9 +1080,6 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::take_ownership);
 
-  m.def("IsInplace",
-        [](std::string op) -> bool { return operators::IsInplace(op); });
-
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
