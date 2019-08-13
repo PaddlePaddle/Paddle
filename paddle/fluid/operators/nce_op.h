@@ -196,9 +196,9 @@ class NCEKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
       auto weight = context.Inputs("Weight").front();
-      operators::distributed::prefetch<T>(
-          "Ids@Prefetch", "Weight@Prefetch", weight, table_names, epmap,
-          height_sections, context, local_scope);
+      operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
+                                       weight, table_names, epmap,
+                                       height_sections, context, local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

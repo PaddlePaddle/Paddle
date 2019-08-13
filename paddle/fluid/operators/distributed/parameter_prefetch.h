@@ -26,7 +26,6 @@ namespace distributed {
 
 constexpr int64_t kNoPadding = -1;
 
-template <typename T>
 void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& out_var_names,
                const std::string& reconstruct_var_name,
@@ -36,7 +35,6 @@ void prefetchs(const std::vector<std::string>& id_var_names,
                const framework::ExecutionContext& context,
                const framework::Scope& scope);
 
-template <typename T>
 void prefetch(const std::string& id_name, const std::string& out_name,
               const std::string& reconstruct_var_name,
               const std::vector<std::string>& table_names,

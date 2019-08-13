@@ -85,7 +85,7 @@ void prefetch_core(
     const std::vector<int64_t>& ids, const TableAndEndpoints& tables,
     const std::vector<int64_t>& height_sections,
     const framework::ExecutionContext& context, const framework::Scope& scope,
-    std::unordered_map<int64_t, std::vector<float>> recved_vec_map) {
+    std::unordered_map<int64_t, std::vector<float>>* recved_vec_map) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& actual_ctx = *pool.Get(context.GetPlace());
 
@@ -149,7 +149,7 @@ void prefetch_core(
         auto origin_id = id + abs_sections[section_idx];
         std::vector<float> vecs(row_numel);
         std::copy_n(out_var_data + i * row_numel, row_numel, vecs.begin());
-        recved_vec_map[origin_id] = vecs;
+        (*recved_vec_map)[origin_id] = vecs;
       }
     } else {
       VLOG(3) << "ids in this section is empty";
@@ -217,7 +217,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
   prefetch_core(ids_union, tables, height_sections, context, scope,
-                recved_vec_map);
+                &recved_vec_map);
 
   auto& padding_idx = context.Attr<int64_t>("padding_idx");
 
