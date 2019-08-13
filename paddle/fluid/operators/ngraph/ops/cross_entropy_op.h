@@ -193,7 +193,7 @@ void BuildCrossEntropy2Node(
   paddle::platform::SetOutputNode(op, "Y", xe, ngb_node_map);
 }
 
-void BuildCrossEntropyGrad2Node(
+void BuildCrossEntropy2GradNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
@@ -240,4 +240,4 @@ void BuildCrossEntropyGrad2Node(
 REGISTER_NG_OP(cross_entropy, BuildCrossEntropyNode);
 REGISTER_NG_OP(cross_entropy_grad, BuildCrossEntropyGradNode);
 REGISTER_NG_OP(cross_entropy2, BuildCrossEntropy2Node);
-REGISTER_NG_OP(cross_entropy_grad2, BuildCrossEntropyGrad2Node);
+REGISTER_NG_OP(cross_entropy2_grad, BuildCrossEntropy2GradNode);

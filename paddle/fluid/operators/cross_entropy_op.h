@@ -210,7 +210,7 @@ struct HardLabelCrossEntropyBackwardFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
+class CrossEntropy2OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
@@ -237,7 +237,7 @@ class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
+class CrossEntropy2GradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
