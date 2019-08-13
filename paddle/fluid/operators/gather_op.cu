@@ -41,8 +41,6 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
         paddle::framework::DataTypeToString(index_type),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
-    PADDLE_ENFORCE_GT(index->numel(), 0,
-                      "The index of gather_op should not be empty.");
     if (index_type == framework::proto::VarType::INT32) {
       GPUGather<T, int>(ctx.device_context(), *x, *index, output);
     } else if (index_type == framework::proto::VarType::INT64) {
