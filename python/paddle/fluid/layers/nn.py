@@ -5678,25 +5678,25 @@ def warpctc(input,
          follewed by a mean_op.
        use_cudnn (bool, default false): Whether to use cudnn.
        input_length(Variable): The length for each input sequence if it is 
-       of Tensor type, it should have shape `[batch_size]` and dtype int64.
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
-       of Tensor type, it should have shape `[batch_size]` and dtype int64.
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor of the shape [batch_size, 1].
 
     Examples:
-
         .. code-block:: python
+
             # using LoDTensor
             import paddle.fluid as fluid
             import numpy as np
-            num_classes = 8
+            
             label = fluid.layers.data(name='label', shape=[12, 1],
                                       dtype='float32', lod_level=1)
             predict = fluid.layers.data(name='predict', 
-                                        shape=[11, num_classes],
+                                        shape=[11, 8],
                                         dtype='float32',lod_level=1)
             cost = fluid.layers.warpctc(input=predict, label=label)
 
@@ -5707,10 +5707,12 @@ def warpctc(input,
                                          dtype='int64')
             label = fluid.layers.data(name='label', shape=[12, 1],
                                       dtype='float32')
-            max_seq_length = 4 # length of the longest logit sequence
-            batch_size = 4 # number of logit sequences
+            # length of the longest logit sequence
+            max_seq_length = 4
+            # number of logit sequences
+            batch_size = 4
             predict = fluid.layers.data(name='predict', 
-                                        shape=[max_seq_length, batch_size, num_classes],
+                                        shape=[max_seq_length, batch_size, 8],
                                         dtype='float32')
             cost = fluid.layers.warpctc(input=predict,label=label,
                                         input_length=input_length,
