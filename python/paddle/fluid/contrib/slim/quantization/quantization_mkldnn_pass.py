@@ -301,15 +301,12 @@ class TransformThroughFP32Pass(object):
             'fake_quantize_range_abs_max',
             'fake_quantize_dequantize_moving_average_abs_max'
         ]
-        self.channel_wise_dequantize_types = [
-            'fake_channel_wise_dequantize_max_abs'
-        ]
         self.fake_quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self.fake_dequantize_types = [
-            'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+            'fake_dequantize_max_abs'
         ]
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._pool_ops = ['pool2d']
@@ -352,17 +349,11 @@ class TransformThroughFP32Pass(object):
                 lod_tensor = _convert_scale2tensor(scale)
                 self.VarQuantScales[input_name] = (False, lod_tensor)
 
-            if op.name() in self.channel_wise_dequantize_types:
-                quant_bits = op.op().attr("quant_bits")
-                assert quant_bits[
-                    0] == 8, 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
-                        quant_bits)
-
+            if op.name() in self.fake_dequantize_types:
                 input_name = op.input("X")[0]
-                scale_names = op.input("Scales")
-                scale_num = len(scale_names)
-                self.WeightScales[input_name] = self._load_param(self._scope,
-                                                                 scale_names[0])
+                scale_names = op.input("Scale")
+                max_range = op.op().attr("max_range")
+                self.WeightScales[input_name] = max_range
 
     def _load_param(self, scope, param_name):
         return np.array(scope.find_var(param_name).get_tensor())
@@ -420,6 +411,8 @@ class TransformThroughFP32Pass(object):
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops:
                 self._dequantize_conv_weights(graph, op)
+            elif op.name() in self._mul_ops:
+                self._dequantize_mul_weights(graph, op)
         return graph
 
     def _dequantize_conv_weights(self, graph, op_node):
@@ -433,7 +426,17 @@ class TransformThroughFP32Pass(object):
         scales = self.WeightScales[output_name]
         weight = self._load_param(self._scope, weight_name)
         w_fp32 = np.divide(
-            np.multiply(weight, _broadcast_scales(scales)), self.s8_max)
+            np.multiply(weight, self.s8_max), scales)
+        w_fp32 = w_fp32.reshape(weight.shape)
+        self._restore_var(weight_name, w_fp32)
+
+    def _dequantize_mul_weights(self, graph, op_node):
+        weight_name = op_node.input("Y")[0]
+        output_name = op_node.output("Out")[0]
+        scales = self.WeightScales[output_name]
+        weight = self._load_param(self._scope, weight_name)
+        w_fp32 = np.divide(
+            np.multiply(weight, self.s8_max), scales)
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
 
