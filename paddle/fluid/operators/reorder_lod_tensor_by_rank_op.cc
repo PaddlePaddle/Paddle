@@ -203,7 +203,7 @@ class IdentityInferShape : public framework::InferShapeBase {
     context->SetOutputDim("Out", context->GetInputDim("X"));
     // X'lod and Out'lod is different on runtime, so there is no need to call
     // ShareLoD for runtime. While the setting of Out's lod is done in detail
-    // implementation.
+    // kernel implementation.
     if (!context->IsRuntime()) {
       context->ShareLoD("X", /*->*/ "Out");
     }
