@@ -48,7 +48,7 @@ IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS         ${GTEST_DEPENDS}
         GIT_REPOSITORY  "https://github.com/google/googletest.git"
-        GIT_TAG         "release-1.8.0"
+        GIT_TAG         "release-1.8.1"
         PREFIX          ${GTEST_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
