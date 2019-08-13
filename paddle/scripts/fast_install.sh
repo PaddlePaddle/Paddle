@@ -401,7 +401,6 @@ function PipLinuxInstall(){
 
   if [[ "$paddle_version" == "2" ]];then
     if [[ "$GPU" == "gpu" ]];then
-          echo 1111 $wheel_gpu_release
           rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
           wget -q $wheel_gpu_release
           if [ "$?" == "0" ];then
@@ -418,7 +417,6 @@ function PipLinuxInstall(){
             exit 1
           fi
     else
-        echo 000
         rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_release
         if [ "$?" == "0" ];then
@@ -436,7 +434,6 @@ function PipLinuxInstall(){
         fi
     fi
   fi
-  echo ppp
   if [[ "$GPU" == "gpu" ]];then
         rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_gpu_develop
