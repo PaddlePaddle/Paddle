@@ -24,7 +24,7 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true, 
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true,
                       "Input(Ins) should be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Ins_tag"), true,
                       "Input(Ins_tag) should be not null.");
@@ -85,7 +85,7 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
                       "Input(IndexMap) should be not null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       "Grad Input(Out) should be not null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true, 
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true,
                       "Input(Ins) should be not null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("LossWeight"), true,
                       "Input(LossWeight) should be not null");
