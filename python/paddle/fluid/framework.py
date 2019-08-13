@@ -36,6 +36,7 @@ from . import unique_name
 
 __all__ = [
     'Program',
+    'Variable',
     'default_startup_program',
     'default_main_program',
     'program_guard',
