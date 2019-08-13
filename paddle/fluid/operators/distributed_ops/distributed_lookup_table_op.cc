@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class LookupTablePrefetchOp : public framework::OperatorWithKernel {
+class DistributedLookupTableOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -31,8 +31,8 @@ class LookupTablePrefetchOp : public framework::OperatorWithKernel {
                    "Input(Ids) of LookupTableOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"),
                    "Input(W) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Embeddings"),
-                   "Output(Embeddings) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Outs"),
+                   "Output(Outs) of LookupTableOp should not be null.");
 
     auto ids_dims = ctx->GetInputsDim("Ids");
     auto table_dims = ctx->GetInputDim("W");
@@ -65,8 +65,8 @@ class LookupTablePrefetchOp : public framework::OperatorWithKernel {
       outputs_dims.push_back(framework::make_ddim({ids_dim[0], ids_dim[1]}));
     }
 
-    ctx->SetOutputsDim("Embeddings", outputs_dims);
-    ctx->ShareLoD("Ids", /*->*/ "Embeddings");
+    ctx->SetOutputsDim("Outs", outputs_dims);
+    ctx->ShareLoD("Ids", /*->*/ "Outs");
   }
 
  protected:
@@ -78,7 +78,7 @@ class LookupTablePrefetchOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class LookupTablePrefetchKernel : public framework::OpKernel<T> {
+class DistributedLookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto ids_vars = context.MultiInputVar("Ids");
@@ -93,13 +93,13 @@ class LookupTablePrefetchKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int64_t>>("height_sections");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
-    operators::distributed::prefetchs<T>(
-        id_names, out_names, embedding_name, lookup_tables, endpoints,
-        height_sections, context, context.scope());
+    operators::distributed::prefetchs(id_names, out_names, embedding_name,
+                                      lookup_tables, endpoints, height_sections,
+                                      context, context.scope());
   }
 };
 
-class LookupTablePrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
+class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
@@ -157,9 +157,9 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(lookup_table_prefetch, ops::LookupTablePrefetchOp,
+REGISTER_OPERATOR(lookup_table_prefetch, ops::DistributedLookupTableOp,
                   paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::LookupTablePrefetchOpMaker);
+                  ops::DistributedLookupTableOpMaker);
 
 REGISTER_OP_CPU_KERNEL(lookup_table_prefetch,
-                       ops::LookupTablePrefetchKernel<float>);
+                       ops::DistributedLookupTableKernel<float>);
