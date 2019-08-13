@@ -44,6 +44,7 @@ class TrainerFactory(object):
                 trainer._set_mpi_rank(opt_info["mpi_rank"])
                 trainer._set_dump_fields(opt_info["dump_fields"])
                 trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                trainer._set_dump_converter(opt_info["dump_converter"])
                 trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
             trainer._set_device_worker(device_worker)
         return trainer

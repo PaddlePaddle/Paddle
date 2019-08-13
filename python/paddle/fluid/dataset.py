@@ -283,6 +283,7 @@ class InMemoryDataset(DatasetBase):
         self.fleet_send_batch_size = None
         self.queue_num = None
         self.parse_ins_id = False
+        self.parse_content = False
         self.merge_by_lineid = False
 
     def _prepare_to_run(self):
@@ -299,6 +300,7 @@ class InMemoryDataset(DatasetBase):
             self.queue_num = self.thread_num
         self.dataset.set_queue_num(self.queue_num)
         self.dataset.set_parse_ins_id(self.parse_ins_id)
+        self.dataset.set_parse_content(self.parse_content)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
@@ -322,7 +324,7 @@ class InMemoryDataset(DatasetBase):
 
     def set_parse_ins_id(self, parse_ins_id):
         """
-        Set Dataset output queue num, training threads get data from queues
+        Set id Dataset need to parse insid
 
         Args:
             parse_ins_id(bool): if parse ins_id or not
@@ -336,6 +338,23 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.parse_ins_id = parse_ins_id
+
+    def set_parse_content(self, parse_content):
+        """
+        Set if Dataset need to parse content
+
+        Args:
+            parse_content(bool): if parse content or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_parse_content(True)
+
+        """
+        self.parse_content = parse_content
 
     def set_fleet_send_batch_size(self, fleet_send_batch_size):
         """

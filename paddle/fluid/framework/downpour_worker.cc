@@ -75,6 +75,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   dump_slot_ = desc.dump_slot();
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
   dump_fields_path_ = desc.dump_fields_path();
+  dump_converter_ = desc.dump_converter();
   dump_fields_.resize(desc.dump_fields_size());
   for (int i = 0; i < desc.dump_fields_size(); ++i) {
     dump_fields_[i] = desc.dump_fields(i);
@@ -95,7 +96,7 @@ std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
   }
   std::ostringstream os;
   for (int64_t i = start; i < end; i++) {
-    os << tensor->data<T>()[i] << " ";
+    os << ":" << tensor->data<T>()[i];
   }
   return os.str();
 }
@@ -733,13 +734,15 @@ void DownpourWorker::TrainFiles() {
       std::string path =
           string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
                                 mpi_rank_, thread_id_);
-      thread_local std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, "");
+      thread_local std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
       for (auto& ar : ars) {
         ar.clear();
       }
       auto& ins_id_vec = device_reader_->GetInsIdVec();
+      auto& ins_content_vec = device_reader_->GetInsContentVec();
       for (size_t i = 0; i < ins_id_vec.size(); i++) {
         ars[i] += ins_id_vec[i];
+        ars[i] = ars[i] + "\t" + ins_content_vec[i];
       }
       for (auto& field : dump_fields_) {
         Variable* var = thread_scope_->FindVar(field);
@@ -751,7 +754,9 @@ void DownpourWorker::TrainFiles() {
           continue;
         }
         for (int i = 0; i < batch_size; ++i) {
-          ars[i] = ars[i] + " " + field + ":";
+          auto output_dim = tensor->dims()[1];
+          std::string output_dimstr = boost::lexical_cast<std::string>(output_dim);
+          ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
           auto bound = GetTensorBound(tensor, i);
           ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
         }

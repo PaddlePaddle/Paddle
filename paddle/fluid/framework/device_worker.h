@@ -186,6 +186,7 @@ class DownpourWorker : public HogwildWorker {
   bool dump_slot_;
   bool need_dump_field_;
   std::string dump_fields_path_;
+  std::string dump_converter_;
   std::vector<std::string> dump_fields_;
   int mpi_rank_;
   bool need_to_push_sparse_;

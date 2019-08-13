@@ -38,6 +38,7 @@ message TrainerDesc {
   optional int32 mpi_rank = 11 [ default = -1 ];
   optional string dump_fields_path = 12;
   repeated string dump_fields = 13;
+  optional string dump_converter = 14;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
