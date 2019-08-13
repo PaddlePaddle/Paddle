@@ -81,7 +81,6 @@ static void SplitIdsIntoMultipleVarsBySection(
 
 typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
 
-template <typename T>
 void prefetch_core(const std::vector<int64_t>& ids,
                    const TableAndEndpoints& tables,
                    const std::vector<int64_t>& height_sections,
@@ -149,9 +148,8 @@ void prefetch_core(const std::vector<int64_t>& ids,
       for (int64_t i = 0; i < dims[0]; ++i) {
         auto id = ids_in_this_section[i];
         auto origin_id = id + abs_sections[section_idx];
-        std::vector<T> vecs;
-        vecs.resize(row_numel);
-        std::copy(out_var_data + i * row_numel, row_numel, vecs.data());
+        std::vector<T> vecs(row_numel);
+        std::copy(out_var_data + i * row_numel, row_numel, vecs.begin());
         recved_vec_map[origin_id] = vecs;
       }
     } else {
@@ -235,19 +233,19 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     for (int idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
 
-      if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+      if (padding_idx != distributed::kNoPadding && ids[i] == padding_idx) {
         memset(out_d + idx * vec_dim_1, 0, sizeof(T) * vec_dim_1);
       } else {
-        memory::Copy(place, out_d + idx * vec_dim_1, place,
-                     recved_vec_map[id].data(), sizeof(T) * vec_dim_1);
+        std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
+                  out_d + idx * vec_dim_1);
       }
     }
   }
 
   // reconstruct var
   for (auto& id : ids_union) {
-    memory::Copy(place, reconstruct_d + id * vec_dim_1, place,
-                 recved_vec_map[id].data(), sizeof(T) * vec_dim_1);
+    std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
+              reconstruct_d + id * vec_dim_1);
   }
 }
 

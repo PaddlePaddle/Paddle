@@ -136,7 +136,7 @@ class LookupTablePrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
                      "If the value is -1, it makes no effect to lookup. "
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
-        .SetDefault(kNoPadding);
+        .SetDefault(distributed::kNoPadding);
 
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.

@@ -374,10 +374,14 @@ class DistributeTranspiler(object):
         if op_type == "lookup_table":
             all_ops = program.global_block().ops
             op_idxs = [all_ops.index(op) for op in ops]
-            inputs = [op.input("Ids")[0] for op in ops]
-            w = ops[0].input("W")
+            inputs = [
+                program.global_block().vars[op.input("Ids")[0]] for op in ops
+            ]
+            w = program.global_block().vars[ops[0].input("W")[0]]
             padding_idx = ops[0].attr("padding_idx")
-            outputs = [op.output("Out")[0] for op in ops]
+            outputs = [
+                program.global_block().vars[op.output("Out")[0]] for op in ops
+            ]
 
             for idx in op_idxs[::-1]:
                 program.global_block()._remove_op(idx)
