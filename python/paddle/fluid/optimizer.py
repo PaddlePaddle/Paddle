@@ -2959,8 +2959,11 @@ class RecomputeOptimizer(Optimizer):
     Recompute Optimizer Wrapper
     """
 
-    def __init__(self, optimizer, checkpoints):
+    def __init__(self, optimizer):
         self._optimizer = optimizer
+        self._checkpoints = None
+
+    def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
 
     def minimize(self,
@@ -2969,6 +2972,9 @@ class RecomputeOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  grad_clip=None):
+        if self._checkpoints == None:
+            raise ValueError("You should call _set_checkpoints first")
+
         if framework.in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute")
