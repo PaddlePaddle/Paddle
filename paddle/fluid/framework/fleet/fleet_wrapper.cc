@@ -403,6 +403,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
                                        std::string model_proto_file,
                                        std::vector<std::string> table_var_list,
                                        bool load_combine) {
+#ifdef PADDLE_WITH_PSLIB
   // load ProgramDesc from model file
   auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
     std::string contents;
@@ -469,6 +470,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
   }
   delete old_scope;
   PushDenseParamSync(scope, table_id, table_var_list);
+#endif
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
