@@ -24,6 +24,7 @@ from . import core
 from .dygraph.base import _not_support
 
 __all__ = [
+    'set_gradient_clip',
     'ErrorClipByValue',
     'GradientClipByValue',
     'GradientClipByNorm',
