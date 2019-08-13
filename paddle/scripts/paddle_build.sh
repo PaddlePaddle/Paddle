@@ -583,7 +583,7 @@ function assert_api_spec_approvals() {
         fi
     fi
 
-    HAS_PADDLE_ENFORCE_=`git diff -U0 upstream/$BRANCH |grep -rn "PADDLE_ENFORCE_" paddle || true`
+    HAS_PADDLE_ENFORCE_=`git diff -U0 upstream/$BRANCH |grep -rn "PADDLE_ENFORCE_" || true`
     if [ ${HAS_PADDLE_ENFORCE_} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
