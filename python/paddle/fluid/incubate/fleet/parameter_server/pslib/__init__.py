@@ -211,6 +211,12 @@ class PSLib(Fleet):
             self._fleet_ptr.save_model(dirname, mode)
         self._role_maker._barrier_worker()
 
+    def node_num(self):
+        pass
+
+    def node_id(self):
+        pass
+
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
         """
         save sparse cache table,

@@ -165,11 +165,9 @@ class DownpourSGD(DeviceWorker):
                 self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                 0].accessor.fea_dim - 2
             sparse_table.fea_dim = sparse_table.emb_dim + 2
-        #stat_var_names = downpour.stat_var_names.add()
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
-                print("added stat var name: ",  i)
-                downpour.stat_var_names.extend([i]) 
+                downpour.stat_var_names.extend([i])
         # TODO(guru4elephant): hard code here, need to improve
         sparse_table.label_var_name = "click"
 

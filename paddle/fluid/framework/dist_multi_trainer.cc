@@ -32,12 +32,9 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 
   thread_num_ = readers.size();
   workers_.resize(thread_num_);
-  std::cout << "Trainer Thread num: " << thread_num_ << std::endl;
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size(); i++) {
-    std::cout << " need merge var name: " << trainer_desc.downpour_param().stat_var_names(i);
     need_merge_var_names_.push_back(trainer_desc.downpour_param().stat_var_names(i));
   }
-  std::cout << "  >>need merge var names push END<<" << std::endl;
 
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
@@ -81,17 +78,13 @@ void DistMultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
-    std::cout << "Will Merge Var name: " << need_merge_var_names_[i] << std::endl;
+    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>(); 
     for (int j = 1; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
       Variable *thread_var = cur_thread_scope->FindVar(need_merge_var_names_[i]);
-      LodTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;    
-      }
-      for (int k = 0; k < root_tensor->numel(); k++) {
-        std::cout << "thread " << j << " debug merge val: " << root_tensor->data<int64_t>()[k] << " | " << thread_tensor->data<int64_t>()[k] << std::endl;    
       }
 #define MergeCallback(cpp_type, proto_type) \
   do {                                            \
@@ -100,7 +93,6 @@ void DistMultiTrainer::Finalize() {
     }                                             \
   } while (0)
       _ForEachDataType_(MergeCallback);
-      //MergeToRootScope(root_tensor, thread_tensor);
     }
   }
 

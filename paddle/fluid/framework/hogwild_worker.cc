@@ -55,11 +55,6 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
     if (var->Persistable()) {
       auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end()) {
-        auto *root_var = root_scope_->FindVar(var->Name());
-        auto *root_tensor = root_var->GetMutable<LoDTensor>();
-        std::cout << " ROOT start check var init with numel: " << var->Name() << " | " <<  root_tensor->numel() << std::endl;
-  }
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() && thread_id_ != 0) {
         int tensor_dim = root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
         auto* ptr1 = thread_scope_->Var(var->Name());
@@ -69,23 +64,20 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
 #define MemsetCallback(cpp_type, proto_type) \
   do {                                            \
     if (root_tensor->type() == proto_type) {            \
-      ZeroInit<cpp_type>(thread_tensor, root_tensor, tensor_dim);         \
+      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim);         \
     }                                             \
   } while (0)
         _ForEachDataType_(MemsetCallback);
-        std::cout << "THREAD pers: " << var->Name() << " ";
       }
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      //std::cout << "non pers: " << var->Name() << " ";  
     }
   }
-  std::cout << "end register vars" << std::endl;
 }
 
 template<typename T>
-void HogwildWorker::ZeroInit(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim) {
+void HogwildWorker::SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim) {
   T* ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);
 }

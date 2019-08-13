@@ -120,9 +120,7 @@ class DeviceWorker {
   virtual void SetReaderPlace(const paddle::platform::Place& place) {
     device_reader_->SetPlace(place);
   }
-  virtual Scope* GetThreadScope() {
-    return thread_scope_;    
-  }
+  virtual Scope* GetThreadScope() { return thread_scope_; }
  protected:
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
@@ -158,14 +156,14 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
   template<typename T>
-  void ZeroInit(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
+  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
-  //Scope* thread_scope_;
+  // Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
@@ -194,7 +192,6 @@ class DownpourWorker : public HogwildWorker {
   DownpourWorkerParameter param_;
   float scale_datanorm_;
   // just save the value in param_ for easy access
-  
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
   std::map<uint64_t, std::vector<std::string>> sparse_value_names_;

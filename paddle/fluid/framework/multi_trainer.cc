@@ -24,12 +24,9 @@ namespace framework {
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
-  std::cout << "Trainer Thread num: " << thread_num_ << std::endl;
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size(); i++) {
-    std::cout << " need merge var name: " << trainer_desc.downpour_param().stat_var_names(i);
     need_merge_var_names_.push_back(trainer_desc.downpour_param().stat_var_names(i));
   }
-  std::cout << "  >>need merge var names push END<<" << std::endl;
   SetDataset(dataset);
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
