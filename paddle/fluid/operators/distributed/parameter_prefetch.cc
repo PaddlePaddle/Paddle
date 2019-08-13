@@ -81,12 +81,11 @@ static void SplitIdsIntoMultipleVarsBySection(
 
 typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
 
-void prefetch_core(const std::vector<int64_t>& ids,
-                   const TableAndEndpoints& tables,
-                   const std::vector<int64_t>& height_sections,
-                   const framework::ExecutionContext& context,
-                   const framework::Scope& scope,
-                   std::unordered_map<int64_t, std::vector<T>> recved_vec_map) {
+void prefetch_core(
+    const std::vector<int64_t>& ids, const TableAndEndpoints& tables,
+    const std::vector<int64_t>& height_sections,
+    const framework::ExecutionContext& context, const framework::Scope& scope,
+    std::unordered_map<int64_t, std::vector<float>> recved_vec_map) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& actual_ctx = *pool.Get(context.GetPlace());
 
@@ -137,7 +136,7 @@ void prefetch_core(const std::vector<int64_t>& ids,
     if (!ids_in_this_section.empty()) {
       auto& prefetch_out_var = local_scope->Var(out_var_names[section_idx])
                                    ->Get<framework::LoDTensor>();
-      const auto* out_var_data = prefetch_out_var.data<T>();
+      const auto* out_var_data = prefetch_out_var.data<float>();
       auto& dims = prefetch_out_var.dims();
 
       PADDLE_ENFORCE_EQ(dims.size(), 2, "");
@@ -148,8 +147,8 @@ void prefetch_core(const std::vector<int64_t>& ids,
       for (int64_t i = 0; i < dims[0]; ++i) {
         auto id = ids_in_this_section[i];
         auto origin_id = id + abs_sections[section_idx];
-        std::vector<T> vecs(row_numel);
-        std::copy(out_var_data + i * row_numel, row_numel, vecs.begin());
+        std::vector<float> vecs(row_numel);
+        std::copy_n(out_var_data + i * row_numel, row_numel, vecs.begin());
         recved_vec_map[origin_id] = vecs;
       }
     } else {
@@ -158,7 +157,6 @@ void prefetch_core(const std::vector<int64_t>& ids,
   }
 }
 
-template <typename T>
 void prefetch(const std::string& id_name, const std::string& out_name,
               const std::string& reconstruct_var_name,
               const std::vector<std::string>& table_names,
@@ -166,11 +164,10 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetchs<T>({id_name}, {out_name}, reconstruct_var_name, table_names,
-               endpoints, height_sections, context, scope);
+  prefetchs({id_name}, {out_name}, reconstruct_var_name, table_names, endpoints,
+            height_sections, context, scope);
 }
 
-template <typename T>
 void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& out_var_names,
                const std::string& reconstruct_var_name,
@@ -187,7 +184,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   auto* reconstruct_var =
       scope.FindVar(reconstruct_var_name)->GetMutable<framework::LoDTensor>();
   const auto vec_dim_1 = reconstruct_var->dims()[1];
-  auto* reconstruct_d = reconstruct_var->data<T>();
+  auto* reconstruct_d = reconstruct_var->data<float>();
 
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
@@ -198,6 +195,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
   std::vector<std::vector<int64_t>> ids_group;
   std::vector<int64_t> ids_union;
+  std::vector<framework::LoD> ids_lods;
   TableAndEndpoints tables;
 
   for (auto& id_name : id_var_names) {
@@ -210,15 +208,16 @@ void prefetchs(const std::vector<std::string>& id_var_names,
       ids_union.push_back(id_data[i]);
     }
     ids_group.push_back(ids);
+    ids_lods.push_back(id_tensor.lod());
   }
 
   for (int i; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
-  std::unordered_map<int64_t, std::vector<T>> recved_vec_map;
-  prefetch_core(ids_union, tables, height_sections, &recved_vec_map, context,
-                scope);
+  std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
+  prefetch_core(ids_union, tables, height_sections, context, scope,
+                recved_vec_map);
 
   auto& padding_idx = context.Attr<int64_t>("padding_idx");
 
@@ -227,19 +226,22 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     auto& ids = ids_group[i];
     auto* out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
-    out_t->Resize({ids.size(), vec_dim_1});
-    auto* out_d = out_t->mutable_data<T>(place);
+    out_t->Resize(
+        framework::make_ddim({static_cast<int64_t>(ids.size()), vec_dim_1}));
+    auto* out_d = out_t->mutable_data<float>(place);
 
     for (int idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
 
       if (padding_idx != distributed::kNoPadding && ids[i] == padding_idx) {
-        memset(out_d + idx * vec_dim_1, 0, sizeof(T) * vec_dim_1);
+        memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
       } else {
         std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
                   out_d + idx * vec_dim_1);
       }
     }
+
+    out_t->set_lod(ids_lods[i]);
   }
 
   // reconstruct var

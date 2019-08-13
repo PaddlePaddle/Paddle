@@ -27,11 +27,11 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
+    PADDLE_ENFORCE(ctx->HasInputs("Ids"),
                    "Input(Ids) of LookupTableOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"),
                    "Input(W) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Outs"),
+    PADDLE_ENFORCE(ctx->HasOutputs("Outputs"),
                    "Output(Outs) of LookupTableOp should not be null.");
 
     auto ids_dims = ctx->GetInputsDim("Ids");
@@ -48,7 +48,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     }
 
     auto lookup_tables =
-        ctx->Attrs().Get<std::vector<std::string>>("lookup_tables");
+        ctx->Attrs().Get<std::vector<std::string>>("table_names");
     auto height_sections =
         ctx->Attrs().Get<std::vector<int64_t>>("height_sections");
     auto endpoints = ctx->Attrs().Get<std::vector<std::string>>("endpoints");
@@ -62,11 +62,11 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     auto outputs_dims = std::vector<framework::DDim>();
 
     for (auto &ids_dim : ids_dims) {
-      outputs_dims.push_back(framework::make_ddim({ids_dim[0], ids_dim[1]}));
+      outputs_dims.push_back(framework::make_ddim({ids_dim[0], table_dims[1]}));
     }
 
-    ctx->SetOutputsDim("Outs", outputs_dims);
-    ctx->ShareLoD("Ids", /*->*/ "Outs");
+    ctx->SetOutputsDim("Outputs", outputs_dims);
+    ctx->ShareLoD("Ids", /*->*/ "Outputs");
   }
 
  protected:
@@ -86,7 +86,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     auto id_names = context.Inputs("Ids");
     auto embedding_name = context.Inputs("W").front();
-    auto out_names = context.Outputs("Out");
+    auto out_names = context.Outputs("Outputs");
 
     auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto height_sections =
@@ -111,7 +111,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
 
-    AddOutput("Out",
+    AddOutput("Outputs",
               "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
@@ -130,6 +130,8 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
+
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
 
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
@@ -157,9 +159,9 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(lookup_table_prefetch, ops::DistributedLookupTableOp,
+REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
                   paddle::framework::DefaultGradOpDescMaker<true>,
                   ops::DistributedLookupTableOpMaker);
 
-REGISTER_OP_CPU_KERNEL(lookup_table_prefetch,
+REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
                        ops::DistributedLookupTableKernel<float>);

@@ -368,7 +368,8 @@ class DistributeTranspiler(object):
             if param_varname in op.input_arg_names and op_type == "":
                 op_type = op.type
                 ops.append(op)
-            if param_varname in op.input_arg_names and op_type == op.type:
+
+            elif param_varname in op.input_arg_names and op_type == op.type:
                 ops.append(op)
 
         if op_type == "lookup_table":
@@ -388,15 +389,16 @@ class DistributeTranspiler(object):
 
             program.global_block()._insert_op(
                 index=op_idxs[0],
-                type="lookup_table_prefetch",
+                type="distributed_lookup_table",
                 inputs={"Ids": inputs,
                         'W': w},
-                outputs={"Out": outputs},
+                outputs={"Outputs": outputs},
                 attrs={
                     "table_names": table_names,
                     "height_sections": height_sections,
                     "endpoints": endpoints,
-                    "padding_idx": padding_idx
+                    "padding_idx": padding_idx,
+                    "trainer_id": self.trainer_id
                 })
 
         elif op_type == "nce" or op_type == "hierarchical_sigmoid":
