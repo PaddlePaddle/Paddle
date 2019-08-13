@@ -99,7 +99,7 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     // - for ReadFromArray, share X[I]'s lod to Out
     // - for WriteToArray, share X's lod to Out[I]
     // but we cannot get I's value here, so leave this work to detail
-    // implementation.
+    // kernel implementation.
     if (!context->IsRuntime()) {
       context->ShareLoD("X", /*->*/ "Out");
     }
