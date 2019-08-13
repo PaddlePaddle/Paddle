@@ -648,9 +648,9 @@ class FleetUtil(object):
         pass_id = str(pass_id)
         suffix_name = "/%s/%s/" % (day, pass_id)
         model_path = output_path + suffix_name
-        self.rank0_error("going to save_model %s" % model_path)
+        self.rank0_print("going to save_model %s" % model_path)
         self.save_fleet_model(model_path)
-        self.rank0_error("save_model done")
+        self.rank0_print("save_model done")
 
     def save_batch_model(self, output_path, day):
         """
@@ -671,9 +671,9 @@ class FleetUtil(object):
         day = str(day)
         suffix_name = "/%s/0/" % day
         model_path = output_path + suffix_name
-        self.rank0_error("going to save_model %s" % model_path)
+        self.rank0_print("going to save_model %s" % model_path)
         fleet.save_persistables(None, model_path, mode=3)
-        self.rank0_error("save_batch_model done")
+        self.rank0_print("save_batch_model done")
 
     def save_delta_model(self, output_path, day, pass_id):
         """
@@ -696,9 +696,9 @@ class FleetUtil(object):
         pass_id = str(pass_id)
         suffix_name = "/%s/delta-%s/" % (day, pass_id)
         model_path = output_path + suffix_name
-        self.rank0_error("going to save_delta_model %s" % model_path)
+        self.rank0_print("going to save_delta_model %s" % model_path)
         fleet.save_persistables(None, model_path, mode=1)
-        self.rank0_error("save_delta_model done")
+        self.rank0_print("save_delta_model done")
 
     def save_xbox_base_model(self, output_path, day):
         """
@@ -720,9 +720,9 @@ class FleetUtil(object):
         pass_id = str(pass_id)
         suffix_name = "/%s/base/" % day
         model_path = output_path + suffix_name
-        self.rank0_error("going to save_xbox_base_model " + model_path)
+        self.rank0_print("going to save_xbox_base_model " + model_path)
         fleet.save_persistables(None, model_path, mode=2)
-        self.rank0_error("save_xbox_base_model done")
+        self.rank0_print("save_xbox_base_model done")
 
     def save_cache_model(self, output_path, day, pass_id):
         """
@@ -748,9 +748,9 @@ class FleetUtil(object):
         pass_id = str(pass_id)
         suffix_name = "/%s/delta-%s" % (day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
-        self.rank0_error("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=0)
-        self.rank0_error("save_cache_model done")
+        self.rank0_print("going to save_cache_model %s" % model_path)
+        key_num = fleet.save_cache_model(None, model_path, mode=1)
+        self.rank0_print("save_cache_model done")
         return key_num
 
     def save_cache_base_model(self, output_path, day):
@@ -776,9 +776,9 @@ class FleetUtil(object):
         day = str(day)
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
-        self.rank0_error("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=0)
-        self.rank0_error("save_cache_model done")
+        self.rank0_print("going to save_cache_base_model %s" % model_path)
+        key_num = fleet.save_cache_model(None, model_path, mode=2)
+        self.rank0_print("save_cache_base_model done")
         return key_num
 
     def pull_all_dense_params(self, scope, program):
