@@ -253,7 +253,7 @@ class CrossEntropyGradOpDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class CrossEntropyOp2 : public CrossEntropyOpBase {
+class CrossEntropy2Op : public CrossEntropyOpBase {
  public:
   using CrossEntropyOpBase::CrossEntropyOpBase;
 
@@ -280,7 +280,7 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
   }
 };
 
-class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
+class CrossEntropy2GradientOp : public CrossEntropyGradientOpBase {
  public:
   using CrossEntropyGradientOpBase::CrossEntropyGradientOpBase;
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -301,7 +301,7 @@ class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
   }
 };
 
-class CrossEntropyOpMaker2 : public framework::OpProtoAndCheckerMaker {
+class CrossEntropy2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
@@ -343,14 +343,14 @@ or not. But the output only shares the LoD information with input X.
   }
 };
 
-class CrossEntropyGradOpDescMaker2 : public framework::SingleGradOpDescMaker {
+class CrossEntropy2GradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType("cross_entropy_grad2");
+    op->SetType("cross_entropy2_grad");
     op->SetInput("Label", Input("Label"));
     op->SetInput("MatchX", Output("MatchX"));
     op->SetInput("XShape", Output("XShape"));
@@ -377,13 +377,13 @@ REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
                        ops::CrossEntropyGradientOpKernel<CPUCtx, float>,
                        ops::CrossEntropyGradientOpKernel<CPUCtx, double>);
 
-REGISTER_OPERATOR(cross_entropy2, ops::CrossEntropyOp2,
-                  ops::CrossEntropyOpMaker2, ops::CrossEntropyOpInferVarType,
-                  ops::CrossEntropyGradOpDescMaker2);
-REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);
+REGISTER_OPERATOR(cross_entropy2, ops::CrossEntropy2Op,
+                  ops::CrossEntropy2OpMaker, ops::CrossEntropyOpInferVarType,
+                  ops::CrossEntropy2GradOpDescMaker);
+REGISTER_OPERATOR(cross_entropy2_grad, ops::CrossEntropy2GradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy2,
-                       ops::CrossEntropyOpKernel2<CPUCtx, float>,
-                       ops::CrossEntropyOpKernel2<CPUCtx, double>);
-REGISTER_OP_CPU_KERNEL(cross_entropy_grad2,
-                       ops::CrossEntropyGradientOpKernel2<CPUCtx, float>,
-                       ops::CrossEntropyGradientOpKernel2<CPUCtx, double>);
+                       ops::CrossEntropy2OpKernel<CPUCtx, float>,
+                       ops::CrossEntropy2OpKernel<CPUCtx, double>);
+REGISTER_OP_CPU_KERNEL(cross_entropy2_grad,
+                       ops::CrossEntropy2GradientOpKernel<CPUCtx, float>,
+                       ops::CrossEntropy2GradientOpKernel<CPUCtx, double>);
