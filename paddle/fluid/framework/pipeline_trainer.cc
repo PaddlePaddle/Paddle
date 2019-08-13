@@ -101,6 +101,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
         this_worker->SetPipelineNum(pipeline_num_);
         if (i == 0) {
           this_worker->SetDataFeed(readers[reader_index++]);
+          this_worker->SetReaderPlace(place);
         }
         this_worker->SetPlace(place);
         this_worker->Initialize(trainer_desc);
