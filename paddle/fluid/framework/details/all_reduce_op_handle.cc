@@ -22,6 +22,7 @@
 
 // asynchronous nccl allreduce or synchronous issue:
 // https://github.com/PaddlePaddle/Paddle/issues/15049
+// If you want to change this default value, why?(gongwb)
 DEFINE_bool(
     sync_nccl_allreduce, true,
     "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
