@@ -129,10 +129,7 @@ _PSCMDID = _descriptor.EnumDescriptor(
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_STOP_SERVER',
-            index=12,
-            number=12,
-            options=None,
+            name='PS_STOP_SERVER', index=12, number=12, options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_SAVE_ONE_CACHE_TABLE',
