@@ -582,6 +582,18 @@ function assert_api_spec_approvals() {
             exit 1
         fi
     fi
+
+    HAS_PADDLE_ENFORCE_=`git diff -U0 upstream/$BRANCH |grep -rn "PADDLE_ENFORCE_" |grep -v " || true`
+    if [ ${HAS_PADDLE_ENFORCE_} ] && [ "${GIT_PR_ID}" != "" ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "Please add Error Message in PADDLE_ENFORCE_XXX interface."
+            echo "You must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for it."
+            exit 1
+        fi
+    fi
 }
 
 

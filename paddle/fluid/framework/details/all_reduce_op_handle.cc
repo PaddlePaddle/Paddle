@@ -92,8 +92,7 @@ void AllReduceOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), places_.size(),
-      "The NoDummyInputSize should be equal to the number of places.");
+      in_var_handles.size(), places_.size());
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
       "The NoDummyInputSize and NoDummyOutputSize should be equal.");
