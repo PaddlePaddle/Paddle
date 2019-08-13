@@ -26,10 +26,10 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TemporalShiftOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TemporalShiftOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of TemporalShiftOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of TemporalShiftOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4,
