@@ -421,8 +421,8 @@ class PSLib(Fleet):
                 if skip:
                     continue
                 self._fleet_ptr.load_from_paddle_model(
-                    scope, table_id, var_names, model_path,
-                    model_proto_file, table_var_names, load_combine)
+                    scope, table_id, var_names, model_path, model_proto_file,
+                    table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
