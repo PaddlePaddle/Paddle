@@ -171,6 +171,22 @@ class PSLib(Fleet):
         self._role_maker._finalize()
 
     def distributed_optimizer(self, optimizer, strategy={}):
+        """
+        distributed_optimizer
+
+        Args:
+            optimizer(Optimizer): optimizer
+            strategy(dict): strategy
+
+        Examples:
+            .. code-block:: python
+
+              fleet.distributed_optimizer(optimizer)
+
+        Returns:
+            optimizer(DownpourOptimizer): downpour optimizer
+
+        """
         self._optimizer = DownpourOptimizer(optimizer, strategy)
         return self._optimizer
 
@@ -183,6 +199,20 @@ class PSLib(Fleet):
                              export_for_deployment=True):
         """
         save pserver model called from a worker
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save model path
+            feeded_var_names(list): default None
+            target_vars(list): default None
+            main_program(Program): default None
+            export_for_deployment(bool): default None
+
+        Examples:
+            .. code-block:: python
+
+              fleet.save_inference_model(dirname="hdfs:/my/path")
+
         """
         self._fleet_ptr.save_model(dirname)
 
