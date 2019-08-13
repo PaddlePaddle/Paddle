@@ -14,7 +14,7 @@
 import os
 
 print_info = ""
-if os.name == "nt"
+if os.name == "nt":
     try:
         import scipy.io as scio
     except ImportError as e:
