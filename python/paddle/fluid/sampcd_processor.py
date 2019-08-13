@@ -1000,7 +1000,7 @@ else:
       
               ''')
 
-        #exit(1)
+        exit(1)
     else:
 
         print "Sample code check is successful!"
