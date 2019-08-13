@@ -237,24 +237,21 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _node_num(self):
         worker_endpoints = fleet.worker_endpoints()
-        current_endpoint = fleet.worker_endpoints()[trainer_id]
+        current_endpoint = fleet.worker_endpoints()[fleet.worker_index()]
         worker_endpoints_env = ','.join(worker_endpoints)
 
-        node_ips = self._get_node_ips_from_endpoints(worker_endpoints())
+        node_ips = self._get_node_ips_from_endpoints(worker_endpoints)
         node_ip = current_endpoint.split(":")[0].strip()
 
-        node_num = len(self._node_ips)
+        node_num = len(node_ips)
 
         return node_num
 
     def _try_to_compile(self, startup_program, main_program):
-        self._transpile(startup_program, main_program)
-
-        if self._strategy.mode == "collective":
-            return main_program
-
         node_num = self._node_num()
         assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
+
+        print("node_num:", node_num)
 
         self._strategy.fuse_all_reduce_ops = True
         exec_strategy = self._strategy.exec_strategy
@@ -272,15 +269,19 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         sync_allreduce = os.getenv("FLAGS_sync_nccl_allreduce")
         if sync_allreduce is None or sync_allreduce == "1":
-            exec_strategy.num_threads = self.nccl_comm_num + 1
-            if sef.use_hierarchical_allreduce:
-                exec_strategy.num_threads = 2 * self.nccl_comm_num + 1
+            exec_strategy.num_threads = self._strategy.nccl_comm_num + 1
+            if self._strategy.use_hierarchical_allreduce:
+                exec_strategy.num_threads = 2 * self._strategy.nccl_comm_num + 1
             if exec_strategy.num_threads > 4:
-                print(
-                    sys.stderr,
-                    "WARNING: if you use use_hierarchical_allreduce or "
-                    "with multi nccl comm, please set FLAGS_sync_nccl_allreduce = 0"
+                logging.warn(
+                    "if you use use_hierarchical_allreduce or "
+                    "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
                 )
+
+        self._transpile(startup_program, main_program)
+
+        if self._strategy.mode == "collective":
+            return main_program
 
         self._strategy.num_trainers = fleet.worker_num()
         self._strategy.trainer_id = fleet.worker_index()
