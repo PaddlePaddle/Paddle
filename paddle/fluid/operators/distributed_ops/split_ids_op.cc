@@ -81,21 +81,6 @@ class SplitIdsOpInferVarType : public framework::VarTypeInference {
   }
 };
 
-class SplitIdsOpGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto grad = new framework::OpDesc();
-    grad->SetType("concat");
-    grad->SetInput("X", OutputGrad("Out"));
-    grad->SetOutput("Out", InputGrad("Ids"));
-    grad->SetAttr("axis", 0);
-    return std::unique_ptr<framework::OpDesc>(grad);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
