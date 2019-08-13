@@ -53,6 +53,11 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   // check index of shape 1-D
   PADDLE_ENFORCE((index.dims().size() == 1 && index.dims()[0] > 0) ||
                  (index.dims().size() == 2 && index.dims()[1] == 1));
+  if (index.dims().size() == 1) {
+    PADDLE_ENFORCE_GT(index.dims()[0], 0, "The index should not be empty.");
+  } else if (index.dims().size() == 2) {
+    PADDLE_ENFORCE_EQ(index.dims()[1], 1, "The index should be 1-D.");
+  }
 
   int index_size = index.dims()[0];
 
