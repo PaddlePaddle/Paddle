@@ -33,8 +33,10 @@ function(copy TARGET)
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
         if (WIN32)   #windows
+            file(TO_NATIVE_PATH ${src} native_src)
+            file(TO_NATIVE_PATH ${dst} native_dst)
             add_custom_command(TARGET ${TARGET} POST_BUILD
-                    COMMAND ${PYTHON_EXECUTABLE} ${COPY_SCRIPT_DIR}/copyfile.py ${src} ${dst})
+                    COMMAND ${PYTHON_EXECUTABLE} ${COPY_SCRIPT_DIR}/copyfile.py ${native_src} ${native_dst})
         else (WIN32) #not windows
             add_custom_command(TARGET ${TARGET} PRE_BUILD
                     COMMAND mkdir -p "${dst}"

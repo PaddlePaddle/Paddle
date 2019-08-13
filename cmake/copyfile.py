@@ -17,22 +17,28 @@ import sys
 import shutil
 import glob
 
+
 def main():
     src = sys.argv[1]
     dst = sys.argv[2]
     if os.path.isdir(src):  #copy directory
         pathList = os.path.split(src)
         dst = os.path.join(dst, pathList[-1])
-        shutil.copytree(src, dst)
-        print("copy directory: {0} --->>> {1}".format(src,dst))
-    else:   #copy file, wildcard
+        if not os.path.exists(dst):
+            shutil.copytree(src, dst)
+            print("first copy directory: {0} --->>> {1}".format(src, dst))
+        else:
+            shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+            print("overwritten copy directory: {0} --->>> {1}".format(src, dst))
+    else:  #copy file, wildcard
         if not os.path.exists(dst):
             os.makedirs(dst)
         srcFiles = glob.glob(src)
         for srcFile in srcFiles:
             shutil.copy(srcFile, dst)
-            print("copy file: {0} --->>> {1}".format(srcFile,dst))
-        
+            print("copy file: {0} --->>> {1}".format(srcFile, dst))
+
 
 if __name__ == "__main__":
     main()
