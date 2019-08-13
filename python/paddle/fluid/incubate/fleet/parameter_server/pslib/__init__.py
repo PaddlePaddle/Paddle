@@ -382,20 +382,17 @@ class PSLib(Fleet):
             for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
                 if table_id is not None and table_id != i.table_id:
                     continue
-                if var_names is None:
-                    var_list = [var for var in i.dense_variable_name]
-                    skip = False
-                    for var in var_list:
-                        if scope.find_var(var) is None:
-                            skip = True
-                            break
-                    if skip:
-                        continue
-                else:
-                    var_list = var_names
+                table_var_names = [var for var in i.dense_variable_name]
+                skip = False
+                for var in table_var_names:
+                    if scope.find_var(var) is None:
+                        skip = True
+                        break
+                if skip:
+                    continue
                 self._fleet_ptr.load_from_paddle_model(
-                    scope, table_id, var_list, model_path, model_proto_file,
-                    load_combine)
+                    scope, table_id, var_names, model_path,
+                    model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):

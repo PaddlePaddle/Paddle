@@ -136,6 +136,7 @@ class FleetWrapper {
   void LoadFromPaddleModel(Scope& scope, const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path, std::string model_proto_file,
+                           std::vector<std::string> table_var_list,
                            bool load_combine);
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
