@@ -23,10 +23,9 @@ from op_test import OpTest
 
 class LinearChainCrfForward(object):
     def __init__(self, seq_start_positions, emission_weights, emission_row_max,
-                 emission_exps, transition_weights, transition_exps, labels,
-                 seq_num, tag_num):
-        self.tag_num = tag_num
-        self.seq_num = seq_num
+                 emission_exps, transition_weights, transition_exps, labels):
+        self.tag_num = emission_weights.shape[1]
+        self.seq_num = len(seq_start_positions) - 1
 
         self.seq_start_positions = seq_start_positions
         self.labels = labels
@@ -133,7 +132,66 @@ class TestLinearChainCrfOp(OpTest):
         }
         crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
                                     emission_exps, transition, transition_exps,
-                                    labels, SEQ_NUM, TAG_NUM)
+                                    labels)
+        alpha, log_likelihood = crf.crf_forward_compute()
+
+        self.outputs = {
+            "Alpha": alpha,
+            "EmissionExps": emission_exps,
+            "TransitionExps": transition_exps,
+            "LogLikelihood": log_likelihood
+        }
+
+    def setUp(self):
+        self.op_type = "linear_chain_crf"
+        self.set_test_data()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["Emission", "Transition"], "LogLikelihood")
+
+    def test_check_grad_ignore_transition(self):
+        self.check_grad(
+            ["Emission"], "LogLikelihood", no_grad_set=set("Transition"))
+
+
+class TestLinearChainCrfOp(OpTest):
+    def set_test_data(self):
+        # TODO(caoying) Fix the unittest by: add the boundary cases when
+        # sequence lengths are 1, 2, and 3.
+
+        SEQ_NUM = 3
+        TAG_NUM = 17
+        MAX_SEQ_LEN = 5
+
+        # the linear_chain_crf operator only supports sequence (LoD level = 1)
+        lod = [[]]
+        seq_start_pos = [0]
+        for i in range(SEQ_NUM):
+            lod[-1].append(random.randint(0, MAX_SEQ_LEN))
+            seq_start_pos.append(seq_start_pos[-1] + lod[-1][-1])
+        emission = np.random.uniform(
+            -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
+        emission_row_max = np.amax(emission, axis=1, keepdims=True)
+        emission_exps = np.exp(emission - emission_row_max)
+
+        transition = np.random.uniform(-0.5, 0.5,
+                                       [TAG_NUM + 2, TAG_NUM]).astype("float64")
+        transition_exps = np.exp(transition)
+
+        labels = np.random.randint(
+            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
+
+        self.inputs = {
+            "Emission": (emission, lod),
+            "Transition": transition,
+            "Label": (labels, lod)
+        }
+        crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
+                                    emission_exps, transition, transition_exps,
+                                    labels)
         alpha, log_likelihood = crf.crf_forward_compute()
 
         self.outputs = {
@@ -159,20 +217,31 @@ class TestLinearChainCrfOp(OpTest):
 
 
 class TestLinearChainCrfPaddingTensor(OpTest):
-    def set_test_data(self):
+    def seq_pad(self, data, length):
+        max_len = np.max(length)
+        shape = [len(length), max_len] + list(data.shape[1:])
+        padded = np.zeros(shape).astype(data.dtype)
+        offset = 0
+        for i, l in enumerate(length):
+            padded[i, 0:l] = data[offset:offset + l]
+            offset += l
+        return padded
+
+    def set_test_data_1(self):
         # Fix the unittest by: add padding tensor in inputs 
 
         SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5
-        BATCH_SIZE = 1
-        sequence_lens = []
+
+        # the linear_chain_crf operator only supports sequence (LoD level = 1)
+        lod = [[]]
         seq_start_pos = [0]
         for i in range(SEQ_NUM):
-            sequence_lens.append(random.randint(0, MAX_SEQ_LEN))
-            seq_start_pos.append(seq_start_pos[-1] + sequence_lens[-1])
+            lod[-1].append(random.randint(0, MAX_SEQ_LEN))
+            seq_start_pos.append(seq_start_pos[-1] + lod[-1][-1])
         emission = np.random.uniform(
-            -1, 1, [BATCH_SIZE, MAX_SEQ_LEN, TAG_NUM]).astype("float64")
+            -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
         emission_row_max = np.amax(emission, axis=1, keepdims=True)
         emission_exps = np.exp(emission - emission_row_max)
 
@@ -181,32 +250,28 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         transition_exps = np.exp(transition)
 
         labels = np.random.randint(
-            low=0,
-            high=TAG_NUM,
-            size=(BATCH_SIZE, MAX_SEQ_LEN, 1),
-            dtype="int64")
+            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
 
         self.inputs = {
-            "Emission": emission,
+            "Emission": self.seq_pad(emission, lod[0]),
             "Transition": transition,
-            "Label": labels,
-            "length": sequence_lens
+            "Label": self.seq_pad(labels, lod[0]),
+            "length": np.array(lod[0])
         }
-        crf = LinearChainCrfForward(
-            seq_start_pos, emission[0], emission_row_max[0], emission_exps[0],
-            transition, transition_exps, labels[0], SEQ_NUM, TAG_NUM)
+        crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
+                                    emission_exps, transition, transition_exps,
+                                    labels)
         alpha, log_likelihood = crf.crf_forward_compute()
-
         self.outputs = {
-            "Alpha": alpha,
-            "EmissionExps": emission_exps,
+            "Alpha": self.seq_pad(alpha, lod[0]),
+            "EmissionExps": self.seq_pad(emission_exps, lod[0]),
             "TransitionExps": transition_exps,
             "LogLikelihood": log_likelihood
         }
 
     def setUp(self):
         self.op_type = "linear_chain_crf"
-        self.set_test_data()
+        self.set_test_data_1()
 
     def test_check_output(self):
         self.check_output()

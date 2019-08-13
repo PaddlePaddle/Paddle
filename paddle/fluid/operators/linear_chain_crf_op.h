@@ -65,11 +65,13 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     // Because the computation codes only runs on CPU, here the memory for all
     // the outputs is FIXED to be allocated on the CPU memory.
-    emission_exps->mutable_data<T>(platform::CPUPlace());
+    auto* emission_exps_data =
+        emission_exps->mutable_data<T>(platform::CPUPlace());
+    auto* alpha_data = alpha->mutable_data<T>(platform::CPUPlace());
     transition_exps->mutable_data<T>(platform::CPUPlace());
-    alpha->mutable_data<T>(platform::CPUPlace());
     // Resize the output tensor to its correct dimension.
-
+    memset(emission_exps_data, 0, emission_exps->numel() * sizeof(T));
+    memset(alpha_data, 0, alpha->numel() * sizeof(T));
     auto emission_dims = emission_weights->dims();
     size_t batch_size;
     size_t tag_num;
@@ -97,6 +99,12 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     Tensor label_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
     label_tmp.ShareDataWith(*label);
+    Tensor emission_exps_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
+    emission_exps_tmp.ShareDataWith(*emission_exps);
+    Tensor alpha_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
+    alpha_tmp.ShareDataWith(*alpha);
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       auto label_length_ptr = label_length->data<int64_t>();
@@ -107,8 +115,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
       auto label_dims = label->dims();
       label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
-      alpha->Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
-      emission_exps->Resize(
+      alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
+      emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
       PADDLE_ENFORCE(seq_num == emission_dims[0] && seq_num == label_dims[0],
                      "the size of Input(length) must be equal to "
@@ -129,7 +137,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     x_row_max.device(place) =
         x.maximum(Eigen::DSizes<int, 1>(1))
             .reshape(Eigen::DSizes<int, 2>(static_cast<int>(batch_size), 1));
-    auto x_exps = EigenMatrix<T>::From(*emission_exps);
+    auto x_exps = EigenMatrix<T>::From(emission_exps_tmp);
     x_exps.device(place) =
         (x - x_row_max.broadcast(Eigen::DSizes<int, 2>(1, tag_num))).exp();
     auto w = EigenMatrix<T>::From(*transition_weights);
@@ -146,17 +154,12 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       }
       const Tensor one_seq = emission_weights_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_row_max = emission_row_max.Slice(start_pos, end_pos);
-      Tensor one_seq_exps = emission_exps->Slice(start_pos, end_pos);
+      Tensor one_seq_exps = emission_exps_tmp.Slice(start_pos, end_pos);
       const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
-      Tensor one_seq_alpha = alpha->Slice(start_pos, end_pos);
+      Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
       log_likelihood[i] = ForwardOneSequence(
           one_seq, one_seq_row_max, one_seq_exps, *transition_weights,
           *transition_exps, one_seq_label, &one_seq_alpha);
-    }
-    if (ctx.HasInput("length")) {
-      emission_exps->Resize(
-          {emission_dims[0], emission_dims[1], emission_dims[2]});
-      alpha->Resize({emission_dims[0], emission_dims[1], emission_dims[2]});
     }
   };
 
@@ -235,7 +238,9 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
     PADDLE_ENFORCE(emission_grad, "Output(Emission@Grad) should not be null.");
-    emission_grad->mutable_data<T>(platform::CPUPlace());
+    auto* emission_grad_data =
+        emission_grad->mutable_data<T>(platform::CPUPlace());
+    memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
     Tensor alpha_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
     alpha_tmp.ShareDataWith(*alpha);
@@ -245,25 +250,24 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     Tensor emission_exps_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
     emission_exps_tmp.ShareDataWith(*emission_exps);
+    Tensor emission_grad_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(emission_grad->dims(), dev_ctx);
+    emission_grad_tmp.ShareDataWith(*emission_grad);
     // getting seq_num  using padding or not
     size_t seq_num = 0;
-    size_t tag_num = 0;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       seq_num = label_length->dims()[0];
       auto emission_dims = emission_grad->dims();
-      tag_num = emission_dims[2];
       auto label_dims = label->dims();
-      emission_grad->Resize(
+      emission_grad_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
       label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
       alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
       emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
-      auto emission_dims = emission_grad->dims();
       seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
-      tag_num = emission_dims[1];
     }
     // getting lod using padding or not
     framework::Vector<size_t> lod(seq_num + 1);
@@ -307,16 +311,12 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
       const Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
-      Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
+      Tensor one_seq_emission_grad =
+          emission_grad_tmp.Slice(start_pos, end_pos);
       BackwardOneSequence(
           ctx.template device_context<platform::CPUDeviceContext>(), ll_grad[i],
           one_seq_emission_exps, *transition_exps, one_seq_alpha, one_seq_label,
-          &one_seq_beta, transition_grad, &one_seq_emission_grad, seq_num,
-          tag_num);
-    }
-    if (ctx.HasInput("length")) {
-      emission_grad->Resize(
-          {emission_dims[0], emission_dims[1], emission_dims[2]});
+          &one_seq_beta, transition_grad, &one_seq_emission_grad);
     }
   };
 
@@ -325,14 +325,15 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
                            const T ll_grad, const Tensor& emission_exps,
                            const Tensor& transition_exps, const Tensor& alpha,
                            const Tensor& label, Tensor* beta,
-                           Tensor* transition_grad, Tensor* emission_grad,
-                           const size_t seq_length,
-                           const size_t tag_num) const {
+                           Tensor* transition_grad,
+                           Tensor* emission_grad) const {
     const T* w_exps = transition_exps.data<T>();
     const T* x_exps = emission_exps.data<T>();
     const int64_t* label_value = label.data<int64_t>();
     T* beta_value = beta->data<T>();
-
+    auto x_dims = emission_exps.dims();
+    const size_t seq_length = x_dims[0];
+    const size_t tag_num = x_dims[1];
     const size_t state_trans_base_idx = 2;
 
     // Calculate the backward vectors: beta.

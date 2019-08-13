@@ -309,6 +309,7 @@ def fc(input,
           import paddle.fluid as fluid
           # when input is single tensor
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
 
           # when input are multiple tensors
@@ -1288,8 +1289,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
              startup_program = fluid.Program()
      
              #define net structure, using LodTensor
-             emission = fluid.layers.data(name='emission', shape=[10], dtype='float32', lod_level=1)
+             input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
              label = fluid.layers.data(name='Label', shape=[1], dtype='int', lod_level=1)
+             emission= fluid.layers.fc(input=input_data, size=10, act="tanh", num_flatten_dims=2)
              crf_cost = fluid.layers.linear_chain_crf(
              input=emission,
              label=label,
@@ -1298,9 +1300,10 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
                  learning_rate=0.01)) 
             
              #define net structure, using padding  
-             emission = fluid.layers.data(name='emission', shape=[10], dtype='float32')
+             input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32')
              label = fluid.layers.data(name='Label', shape=[1], dtype='int')
              label_length = fluid.layers.data(name='Length', shape=[1], dtype='int')
+             emission= fluid.layers.fc(input=input_data, size=10, act="tanh", num_flatten_dims=2)
              crf_cost = fluid.layers.linear_chain_crf(
              input=emission,
              label=label,
@@ -1323,7 +1326,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
              cc=np.random.rand(4,10,10).astype('float32')
              dd=np.random.rand(4,10,1).astype('int64')
              ll=np.array([[3,3,4,2]])
-             feed1 = {'emission':cc,'label':dd,'length':ll}
+             feed1 = {'input_data':cc,'label':dd,'length':ll}
              
              loss = exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
              print(loss) 
