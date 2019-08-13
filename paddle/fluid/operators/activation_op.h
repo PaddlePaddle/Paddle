@@ -49,21 +49,6 @@ enum ActBwdOpFwdDeps {
   kDepXOut = 0x03
 };
 
-std::unique_ptr<std::unordered_set<std::string>> GetInplaceOpSet();
-
-static bool IsInplace(const std::string& op) {
-  static auto InplaceOpSet = GetInplaceOpSet();
-  bool inplace = InplaceOpSet->count(op);
-  // for op_grad
-  const int kGradSuffixLen = 4;
-  if (op.size() > kGradSuffixLen &&
-      op.compare(op.size() - kGradSuffixLen - 1, kGradSuffixLen, "grad")) {
-    inplace =
-        InplaceOpSet->count(op.substr(0, op.size() - (kGradSuffixLen + 1)));
-  }
-  return inplace;
-}
-
 /* The following operator can be used to process SelectedRows, because the
  * output of those operator for zero is zero too.
  */
@@ -934,6 +919,51 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
+// HardSwish = min(max(0, x+3), 6) * x / 6
+template <typename T>
+struct HardSwishFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = (x + static_cast<T>(offset))
+                        .cwiseMax(static_cast<T>(0))
+                        .cwiseMin(static_cast<T>(threshold)) *
+                    x / static_cast<T>(scale);
+  }
+};
+
+template <typename T>
+struct HardSwishGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto tmp = ((x + static_cast<T>(offset)) < static_cast<T>(threshold))
+                   .template cast<T>();
+    dx.device(d) =
+        dout *
+        (((x + static_cast<T>(offset)) > static_cast<T>(0)).template cast<T>() *
+             (static_cast<T>(2) * x + static_cast<T>(offset)) /
+             static_cast<T>(scale) * tmp +
+         static_cast<T>(1) * (static_cast<T>(1) - tmp));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // softplus(x) = log(1 + exp(x))
 // When x is a very large positive number, exp(x) may explode to inf,
 // Using trick below for numerical stability
@@ -1595,4 +1625,5 @@ class SqrtDoubleGradKernel
           HardSigmoidGradFunctor);                                            \
   __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                      \
   __macro(thresholded_relu, ThresholdedRelu, ThresholdedReluFunctor,          \
-          ThresholdedReluGradFunctor);
+          ThresholdedReluGradFunctor);                                        \
+  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);
