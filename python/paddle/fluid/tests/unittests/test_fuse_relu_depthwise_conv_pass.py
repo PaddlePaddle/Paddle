@@ -120,7 +120,6 @@ class TestMNIST(TestParallelExecutorBase):
             use_cuda=use_cuda,
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
-            memory_opt=False,
             optimizer=_optimizer)
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
             model,
@@ -128,7 +127,6 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_relu_depthwise_conv=False,
-            memory_opt=False,
             optimizer=_optimizer)
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):

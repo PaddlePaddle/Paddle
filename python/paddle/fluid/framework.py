@@ -2848,6 +2848,8 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._use_lamb = False
+
         self._nccl_comm_num = 1
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0

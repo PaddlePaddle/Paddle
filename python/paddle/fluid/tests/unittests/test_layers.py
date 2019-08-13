@@ -872,6 +872,51 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
+    def test_eye_op(self):
+        np_eye = np.eye(3, 2)
+        array_rlt1 = [np_eye for _ in range(3)]
+        stack_rlt1 = np.stack(array_rlt1, axis=0)
+        array_rlt2 = [stack_rlt1 for _ in range(4)]
+        stack_rlt2 = np.stack(array_rlt2, axis=0)
+
+        with self.dynamic_graph():
+            eye_tensor = layers.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt1 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[3])
+            eye_tensor_rlt2 = layers.eye(num_rows=3,
+                                         num_columns=2,
+                                         batch_shape=[4, 3])
+            diag_tensor = layers.eye(20)
+
+        self.assertTrue(np.allclose(eye_tensor.numpy(), np_eye))
+        self.assertTrue(np.allclose(eye_tensor_rlt1.numpy(), stack_rlt1))
+        self.assertTrue(np.allclose(eye_tensor_rlt2.numpy(), stack_rlt2))
+        self.assertTrue(np.allclose(diag_tensor.numpy(), np.eye(20)))
+
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3.1)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, num_columns=2.2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=2)
+        with self.assertRaises(TypeError):
+            layers.eye(num_rows=3, batch_shape=[-1])
+
+    def test_hard_swish(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            ret = layers.hard_swish(t)
+            static_ret = self.get_static_graph_result(
+                feed={'t': np.ones(
+                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.hard_swish(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
@@ -1851,14 +1896,6 @@ class TestBook(LayerTest):
             self.assertTrue(z.lod_level == 1)
             return z
 
-    def test_lod_append(self):
-        with self.static_graph():
-            x = layers.data(
-                name='x', shape=[6, 10], dtype='float32', lod_level=1)
-            y = layers.lod_append(x, [1, 1, 1, 1, 1, 1])
-            self.assertTrue(y.lod_level == 1)
-            return y
-
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
@@ -1953,6 +1990,26 @@ class TestBook(LayerTest):
             out = layers.sequence_slice(
                 input=seqs, offset=offset, length=length)
             return (out)
+
+    def test_filter_by_instag(self):
+        # TODO(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            x1 = layers.data(
+                name='Ins', shape=[32, 1], dtype='float32', lod_level=0)
+            x2 = layers.data(
+                name='Ins_tag',
+                shape=[32, 1],
+                dtype='int64',
+                lod_level=0,
+                stop_gradient=True)
+            x3 = layers.create_global_var(
+                shape=[1, 1],
+                value=20,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True,
+                name='Filter_tag')
+            out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
