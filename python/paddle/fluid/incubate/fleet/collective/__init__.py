@@ -251,8 +251,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         node_num = self._node_num()
         assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
 
-        print("node_num:", node_num)
-
         self._strategy.fuse_all_reduce_ops = True
         exec_strategy = self._strategy.exec_strategy
 
@@ -277,6 +275,13 @@ class CollectiveOptimizer(DistributedOptimizer):
                     "if you use use_hierarchical_allreduce or "
                     "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
                 )
+
+        if self.print_config:
+            print("node_num:", node_num, "num_threads:",
+                  exec_strategy.num_threads, "use_hierarchical_allreduce:",
+                  self._strategy.use_hierarchical_allreduce, "nccl_comm_num:",
+                  self._strategy.nccl_comm_num, "FLAGS_sync_nccl_allreduce:",
+                  sync_allreduce)
 
         self._transpile(startup_program, main_program)
 
