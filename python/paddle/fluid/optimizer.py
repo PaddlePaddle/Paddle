@@ -23,7 +23,7 @@ from paddle.fluid.framework import Program, Variable, name_scope, default_main_p
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward, _some_in_set_, _append_grad_suffix_
+from .backward import append_backward, append_backward_with_forward_recomputation, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
@@ -2954,7 +2954,7 @@ class PipelineOptimizer(object):
         }
 
 
-class RecomputeOptimizer(Optimizer):
+class RecomputeOptimizer(object):
     """
     Recompute Optimizer Wrapper
     """
@@ -2989,7 +2989,7 @@ class RecomputeOptimizer(Optimizer):
                 # TODO(guru4elephant): should add grad_clip for static graph
                 pass
 
-        optimize_ops = self.apply_optimize(
+        optimize_ops = self._optimizer.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads

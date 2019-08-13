@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 from paddle.fluid import framework as framework
+from paddle.fluid import Variable
 from . import core
 import collections
 import copy
@@ -25,6 +26,21 @@ from . import unique_name
 __all__ = [
     'append_backward', 'gradients', 'append_backward_with_forward_recomputation'
 ]
+
+
+def _add_var_to_block_with_new_name_(block, var, name):
+    res_var = Variable(
+        block,
+        name=name,
+        shape=var.shape,
+        dtype=var.dtype,
+        lod_level=var.lod_level,
+        #capacity=var.capacity,
+        persistable=var.persistable,
+        error_clip=var.error_clip,
+        stop_gradient=var.stop_gradient,
+        is_data=var.is_data)
+    return res_var
 
 
 def _find_loss_op_(loss):
@@ -438,7 +454,11 @@ def _append_backward_ops_with_checkpoints_(
 
     grad_op_descs = []
     subprogram_num = len(recompute_section)
-    block = fluid.default_main_program().current_block()
+    for op in reversed(ops[op_idx_with_checkpoint_input[-1]:]):
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+        grad_op_descs.extend(grad_op_desc)
+        grad_to_var.update(op_grad_to_var)
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -461,7 +481,6 @@ def _append_backward_ops_with_checkpoints_(
 
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-            grad_op_descs.extend(grad_op_desc)
             for op_desc in grad_op_desc:
                 for name in op_desc.input_arg_names():
                     if block.has_var(name) and block.var(name).persistable:
@@ -500,9 +519,9 @@ def _append_backward_ops_with_checkpoints_(
                     if name not in var_name_dict:
                         var_name_dict[name] = var_prefix + name
             for key in var_name_dict:
-                new_var = add_var_to_block_with_new_name(block,
-                                                         block.var(key),
-                                                         var_name_dict[key])
+                new_var = _add_var_to_block_with_new_name_(block,
+                                                           block.var(key),
+                                                           var_name_dict[key])
             op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
             )
             backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -519,11 +538,12 @@ def _append_backward_ops_with_checkpoints_(
         grad_op_descs = []
         for op_desc in reversed(section_ff_op_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc,
-                cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+                op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
         for op_desc in grad_op_descs:
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op_desc)
@@ -667,6 +687,8 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
+            if "@GRAD" not in grad_var_name:
+                continue
             if block.desc.has_var_recursive(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
                 continue
@@ -860,9 +882,6 @@ def append_backward_with_forward_recomputation(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Forward) |
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
-    if callbacks is not None:
-        isinstance(callbacks, list)
-
     program = loss.block.program
     program._appending_grad_times += 1
 
@@ -898,6 +917,7 @@ def append_backward_with_forward_recomputation(loss,
 
     # should not work since appending grad times <= 1
     _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
+
     _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
 
     program.current_block_idx = current_block_idx
@@ -925,7 +945,8 @@ def append_backward_with_forward_recomputation(loss,
             params_and_grads.append((param_var, grad_var))
         else:
             params_and_grads.append((param_var, None))
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for p, g in params_and_grads:
         if g is None:
             continue
@@ -934,6 +955,7 @@ def append_backward_with_forward_recomputation(loss,
             if g.name in op.output_arg_names:
                 g.op = op
                 break
+
         if g.op is None:
             raise ValueError("Unexpected branch")
         attr_val = [p.name, g.name]
@@ -1118,6 +1140,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
             raise ValueError("Unexpected branch")
         attr_val = [p.name, g.name]
         if g.op.has_attr(op_role_var_attr_name):
+            print(g.op.attr(op_role_var_attr_name))
             attr_val.extend(g.op.attr(op_role_var_attr_name))
         g.op._set_attr(op_role_var_attr_name, attr_val)
 
