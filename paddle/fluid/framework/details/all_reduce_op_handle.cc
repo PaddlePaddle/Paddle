@@ -92,10 +92,10 @@ void AllReduceOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), places_.size());
-  PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
       "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+  PADDLE_ENFORCE_EQ(
+      in_var_handles.size(), places_.size());
 
   std::vector<const LoDTensor *> lod_tensors;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {

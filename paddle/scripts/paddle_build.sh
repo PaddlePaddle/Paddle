@@ -583,6 +583,8 @@ function assert_api_spec_approvals() {
         fi
     fi
 
+    s=`git diff -U0 upstream/$BRANCH`
+    echo $s
     HAS_PADDLE_ENFORCE_=`git diff -U0 upstream/$BRANCH |grep -rn "PADDLE_ENFORCE_" |grep -v '"' || true`
     if [ ${HAS_PADDLE_ENFORCE_} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
