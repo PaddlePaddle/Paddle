@@ -776,9 +776,9 @@ class FleetUtil(object):
         day = str(day)
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
-        self.rank0_print("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=1)
-        self.rank0_print("save_cache_model done")
+        self.rank0_print("going to save_cache_base_model %s" % model_path)
+        key_num = fleet.save_cache_model(None, model_path, mode=2)
+        self.rank0_print("save_cache_base_model done")
         return key_num
 
     def pull_all_dense_params(self, scope, program):
