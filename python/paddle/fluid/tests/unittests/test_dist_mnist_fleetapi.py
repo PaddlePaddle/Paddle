@@ -13,31 +13,23 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
-
-from paddle.fluid.tests.unittests.test_gaussian_random_op import TestGaussianRandomOp
-
-
-class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+from test_dist_base import TestDistBase
 
 
-class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
-    def setUp(self):
-        TestGaussianRandomOp.setUp(self)
-        self.attrs = {
-            "shape": [1000, 784],
-            "mean": .0,
-            "std": 1.,
-            "seed": 0,
-            "use_mkldnn": self.use_mkldnn
-        }
+class TestDistMnistNCCL2FleetApi(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._gpu_fleet_api = True
 
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
