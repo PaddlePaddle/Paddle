@@ -239,6 +239,14 @@ class DistributedTranspiler(Fleet):
             self.main_program, self.startup_program = \
                 self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
 
+    def node_num(self):
+        logging.warn(
+            "You should not call 'node_num' method for collective mode.")
+
+    def node_id(self):
+        logging.warn(
+            "You should not call 'node_id' method for collective mode.")
+
 
 fleet = DistributedTranspiler()
 
