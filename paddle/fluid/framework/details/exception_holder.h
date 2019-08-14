@@ -88,13 +88,13 @@ class ExceptionHolder {
     type_ = kNone;
   }
 
-  void Catch(const platform::EnforceNotMet exp) {
+  void Catch(const platform::EnforceNotMet& exp) {
     std::lock_guard<std::mutex> lock(mu_);
     exception_.reset(new platform::EnforceNotMet(exp));
     type_ = kEnforceNotMet;
   }
 
-  void Catch(const platform::EOFException exp) {
+  void Catch(const platform::EOFException& exp) {
     std::lock_guard<std::mutex> lock(mu_);
     // EOFException will not cover up existing EnforceNotMet.
     if (exception_.get() == nullptr) {
