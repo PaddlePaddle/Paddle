@@ -157,6 +157,7 @@ set(COMMON_FLAGS
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
     -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
     -Wno-error=parentheses # Warning in boost gcc 8.2
+    -Wno-ignored-qualifiers # Warning in boost gcc 8.2
     ${fsanitize}
 )
 
