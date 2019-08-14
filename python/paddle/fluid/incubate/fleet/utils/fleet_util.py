@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Fleet Utils"""
+"""Fleet Utils."""
 
 import collections
 import json
@@ -310,11 +310,14 @@ class FleetUtil(object):
                       model_path,
                       xbox_base_key,
                       data_path,
+                      hadoop_fs_name,
                       monitor_data={}):
         xbox_dict = collections.OrderedDict()
-        xbox_dict["id"] = int(time.time())
+        xbox_dict["id"] = str(int(time.time()))
         xbox_dict["key"] = str(xbox_base_key)
-        xbox_dict["input"] = model_path.rstrip("/") + "/000"
+        if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+            model_path = model_path[model_path.find(":") + 1:]
+        xbox_dict["input"] = hadoop_fs_name + model_path.rstrip("/") + "/000"
         xbox_dict["record_count"] = "111111"
         xbox_dict["job_name"] = "default_job_name"
         xbox_dict["ins_tag"] = "feasign"
@@ -437,7 +440,7 @@ class FleetUtil(object):
                             hadoop_fs_ugi,
                             monitor_data={},
                             hadoop_home="$HADOOP_HOME",
-                            donefile_name="xbox_patch_done.txt"):
+                            donefile_name=None):
         """
         write delta donefile or xbox base donefile
 
@@ -451,7 +454,7 @@ class FleetUtil(object):
             hadoop_fs_ugi(str): hdfs/afs fs ugi
             monitor_data(dict): metrics
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
-            donefile_name(str): donefile name, default is "donefile.txt"
+            donefile_name(str): donefile name, default is None"
 
         Examples:
             .. code-block:: python
@@ -478,9 +481,13 @@ class FleetUtil(object):
         if pass_id != "-1":
             suffix_name = "/%s/delta-%s/" % (day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
+            if donefile_name is None:
+                donefile_name = "xbox_patch_done.txt"
         else:
             suffix_name = "/%s/base/" % day
             model_path = output_path.rstrip("/") + suffix_name
+            if donefile_name is None:
+                donefile_name = "xbox_base_done.txt"
 
         if isinstance(data_path, list):
             data_path = ",".join(data_path)
@@ -488,7 +495,7 @@ class FleetUtil(object):
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
             xbox_str = self._get_xbox_str(output_path, day, model_path, \
-                    xbox_base_key, data_path, monitor_data={})
+                    xbox_base_key, data_path, hadoop_fs_name, monitor_data={})
             configs = {
                 "fs.default.name": hadoop_fs_name,
                 "hadoop.job.ugi": hadoop_fs_ugi
@@ -717,14 +724,13 @@ class FleetUtil(object):
 
         """
         day = str(day)
-        pass_id = str(pass_id)
         suffix_name = "/%s/base/" % day
         model_path = output_path + suffix_name
         self.rank0_print("going to save_xbox_base_model " + model_path)
         fleet.save_persistables(None, model_path, mode=2)
         self.rank0_print("save_xbox_base_model done")
 
-    def save_cache_model(self, output_path, day, pass_id):
+    def save_cache_model(self, output_path, day, pass_id, mode=1):
         """
         save cache model
 
@@ -732,6 +738,7 @@ class FleetUtil(object):
             output_path(str): output path
             day(str|int): training day
             pass_id(str|int): training pass id
+            mode(str|int): save mode
 
         Returns:
             key_num(int): cache key num
@@ -746,10 +753,11 @@ class FleetUtil(object):
         """
         day = str(day)
         pass_id = str(pass_id)
+        mode = int(mode)
         suffix_name = "/%s/delta-%s" % (day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=1)
+        key_num = fleet.save_cache_model(None, model_path, mode=mode)
         self.rank0_print("save_cache_model done")
         return key_num
 
@@ -922,6 +930,97 @@ class FleetUtil(object):
 
         fleet._role_maker._barrier_worker()
 
+    def get_last_save_xbox_base(self,
+                                output_path,
+                                hadoop_fs_name,
+                                hadoop_fs_ugi,
+                                hadoop_home="$HADOOP_HOME"):
+        """
+        get last saved base xbox info from xbox_base_done.txt
+
+        Args:
+            output_path(str): output path
+            hadoop_fs_name(str): hdfs/afs fs_name
+            hadoop_fs_ugi(str): hdfs/afs fs_ugi
+            hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
+
+        Returns:
+            [last_save_day, last_path, xbox_base_key]
+            last_save_day(int): day of saved model
+            last_path(str): model path
+            xbox_base_key(int): xbox key
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              last_save_day, last_path, xbox_base_key = \
+                  fleet_util.get_last_save_xbox_base("hdfs:/my/path", 20190722,
+                                                     88)
+
+        """
+        donefile_path = output_path + "/xbox_base_done.txt"
+        configs = {
+            "fs.default.name": hadoop_fs_name,
+            "hadoop.job.ugi": hadoop_fs_ugi
+        }
+        client = HDFSClient(hadoop_home, configs)
+        if not client.is_file(donefile_path):
+            return [-1, -1, int(time.time())]
+        pre_content = client.cat(donefile_path)
+        last_dict = json.loads(pre_content.split("\n")[-1])
+        last_day = int(last_dict["input"].split("/")[-3])
+        last_path = "/".join(last_dict["input"].split("/")[:-1])
+        xbox_base_key = int(last_dict["key"])
+        return [last_day, last_path, xbox_base_key]
+
+    def get_last_save_xbox(self,
+                           output_path,
+                           hadoop_fs_name,
+                           hadoop_fs_ugi,
+                           hadoop_home="$HADOOP_HOME"):
+        """
+        get last saved xbox info from xbox_patch_done.txt
+
+        Args:
+            output_path(str): output path
+            hadoop_fs_name(str): hdfs/afs fs_name
+            hadoop_fs_ugi(str): hdfs/afs fs_ugi
+            hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
+
+        Returns:
+            [last_save_day, last_save_pass, last_path, xbox_base_key]
+            last_save_day(int): day of saved model
+            last_save_pass(int): pass id of saved
+            last_path(str): model path
+            xbox_base_key(int): xbox key
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              last_save_day, last_save_pass, last_path, xbox_base_key = \
+                  fleet_util.get_last_save_xbox("hdfs:/my/path", 20190722, 88)
+
+        """
+        donefile_path = output_path + "/xbox_patch_done.txt"
+        configs = {
+            "fs.default.name": hadoop_fs_name,
+            "hadoop.job.ugi": hadoop_fs_ugi
+        }
+        client = HDFSClient(hadoop_home, configs)
+        if not client.is_file(donefile_path):
+            return [-1, -1, "", int(time.time())]
+        pre_content = client.cat(donefile_path)
+        last_dict = json.loads(pre_content.split("\n")[-1])
+        last_day = int(last_dict["input"].split("/")[-3])
+        last_pass = int(last_dict["input"].split("/")[-2].split("-")[-1])
+        last_path = "/".join(last_dict["input"].split("/")[:-1])
+        xbox_base_key = int(last_dict["key"])
+        return [last_day, last_pass, last_path, xbox_base_key]
+
     def get_last_save_model(self,
                             output_path,
                             hadoop_fs_name,
@@ -937,18 +1036,19 @@ class FleetUtil(object):
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
 
         Returns:
-            [last_save_day, last_save_pass, last_path]
+            [last_save_day, last_save_pass, last_path, xbox_base_key]
             last_save_day(int): day of saved model
             last_save_pass(int): pass id of saved
             last_path(str): model path
+            xbox_base_key(int): xbox key
 
         Examples:
             .. code-block:: python
 
               from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
               fleet_util = FleetUtil()
-              last_save_day, last_save_pass, last_path = \
-                  fleet_util.save_xbox_base_model("hdfs:/my/path", 20190722, 88)
+              last_save_day, last_save_pass, last_path, xbox_base_key = \
+                  fleet_util.get_last_save_model("hdfs:/my/path", 20190722, 88)
 
         """
         last_save_day = -1
@@ -961,13 +1061,14 @@ class FleetUtil(object):
         }
         client = HDFSClient(hadoop_home, configs)
         if not client.is_file(donefile_path):
-            return [-1, -1, ""]
+            return [-1, -1, "", int(time.time())]
         content = client.cat(donefile_path)
         content = content.split("\n")[-1].split("\t")
         last_save_day = int(content[0])
         last_save_pass = int(content[3])
         last_path = content[2]
-        return [last_save_day, last_save_pass, last_path]
+        xbox_base_key = int(content[1])
+        return [last_save_day, last_save_pass, last_path, xbox_base_key]
 
     def get_online_pass_interval(self, days, hours, split_interval,
                                  split_per_pass, is_data_hourly_placed):
