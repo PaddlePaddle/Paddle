@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "io/fs.h"
 #include <string>
 #include <vector>
+#include "io/fs.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -34,8 +34,13 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   if (trainer_desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
     need_dump_field_ = true;
   }
+  if (need_dump_field_) {
+    auto& file_list = dataset->GetFileList();
+    if (file_list.size() == 0) {
+      need_dump_field_ = false;
+    }
+  }
   mpi_rank_ = trainer_desc.mpi_rank() / 2;
-  
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
 
@@ -84,7 +89,7 @@ void DistMultiTrainer::InitDumpEnv() {
   std::string path =
       string::format_string("%s/part-%03d", dump_fields_path_.c_str(),
                             mpi_rank_);
-  
+
   fp_ = fs_open_write(path, &err_no, dump_converter_);
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetChannelWriter(queue_.get());

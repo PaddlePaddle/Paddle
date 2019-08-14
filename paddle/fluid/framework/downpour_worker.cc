@@ -750,7 +750,8 @@ void DownpourWorker::TrainFiles() {
         }
         for (int i = 0; i < batch_size; ++i) {
           auto output_dim = tensor->dims()[1];
-          std::string output_dimstr = boost::lexical_cast<std::string>(output_dim);
+          std::string output_dimstr =
+              boost::lexical_cast<std::string>(output_dim);
           ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
           auto bound = GetTensorBound(tensor, i);
           ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
