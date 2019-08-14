@@ -27,39 +27,6 @@ class PyPrRoIPool(object):
         else:
             return data[h][w]
 
-    def _PrRoIPoolingGetCoeff(self, dh, dw):
-        dw = abs(dw)
-        dh = abs(dh)
-        return (1.0 - dh) * (1.0 - dw)
-
-    def _PrRoIPoolingSingleCoorIntegral(self, s, t, c1, c2):
-        return 0.5 * (t * t - s * s) * c2 + (t - 0.5 * t * t - s + 0.5 * s * s
-                                             ) * c1
-
-    def _PrRoIPoolingInterpolation(self, data, h, w, height, width):
-        retVal = 0.0
-        math.floorh1 = math.floor(h)
-        math.floorw1 = math.floor(w)
-        retVal += self._PrRoIPoolingGetData(data, h1, w1, height,
-                                            width) * self._PrRoIPoolingGetCoeff(
-                                                h - float(h1), w - float(w1))
-        h1 = math.floor(h) + 1
-        w1 = math.floor(w)
-        retVal += self._PrRoIPoolingGetData(data, h1, w1, height,
-                                            width) * self._PrRoIPoolingGetCoeff(
-                                                h - float(h1), w - float(w1))
-        h1 = math.floor(h)
-        w1 = math.floor(w) + 1
-        retVal += self._PrRoIPoolingGetData(data, h1, w1, height,
-                                            width) * self._PrRoIPoolingGetCoeff(
-                                                h - float(h1), w - float(w1))
-        h1 = math.floor(h) + 1
-        w1 = math.floor(w) + 1
-        retVal += self._PrRoIPoolingGetData(data, h1, w1, height,
-                                            width) * self._PrRoIPoolingGetCoeff(
-                                                h - float(h1), w - float(w1))
-        return retVal
-
     def _PrRoIPoolingMatCalculation(self, this_data, s_h, s_w, e_h, e_w, y0, x0,
                                     y1, x1, h0, w0):
         sum_out = 0.0
