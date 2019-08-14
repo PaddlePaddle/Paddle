@@ -108,7 +108,6 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.use_local_sgd = False
         self.use_dist_fc = False
 
-        self.local_sgd_config = None  # LocalSGDConfig
         self.dist_fc_config = None  # DistFCConfig
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
@@ -191,12 +190,13 @@ class CollectiveOptimizer(DistributedOptimizer):
         Check the conflict condtions.
         """
         if strategy.use_local_sgd:
+            strategy.mode = "collective"
+            strategy.collective_mode = "local_sgd"
             self._check_condition(
                 "use_local_sgd",
                 use_dgc=main_program._enable_dgc,
                 use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
-            assert strategy.local_sgd_config is not None, "DistributedStrategy.local_sgd_config should be set"
 
         if strategy.use_dist_fc:
             self._check_condition(
