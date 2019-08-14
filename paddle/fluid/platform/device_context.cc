@@ -303,11 +303,7 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  PADDLE_ENFORCE(cudaSetDevice(place_.device),
-                 "Failed to set device for Cudnn handle in DeviceContext");
-  return cudnn_handle_;
-}
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this);

@@ -193,8 +193,6 @@ class CudnnWorkspaceHandle {
   inline explicit CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx)
       : device_context_(dev_ctx) {}
 
-  /*! \brief Thread which call RunFunc() would acquire the lock first
-   *  before invoking cudnn functions. */
   template <typename Callback>
   inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
     if (required_workspace_bytes > WorkspaceSize()) {
@@ -220,17 +218,10 @@ class CudnnWorkspaceHandle {
     if (required_workspace_bytes <= WorkspaceSize()) {
       return;
     }
-    if (allocation_) {
-      allocation_.reset();
-    }
     allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
   }
 
-  inline void ResetWorkspace() {
-    if (allocation_) {
-      allocation_ = nullptr;
-    }
-  }
+  inline void ResetWorkspace() { allocation_ = nullptr; }
 
   inline size_t WorkspaceSize() {
     if (allocation_ == nullptr) {

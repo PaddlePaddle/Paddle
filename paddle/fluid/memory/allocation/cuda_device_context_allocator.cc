@@ -23,8 +23,8 @@ namespace memory {
 namespace allocation {
 
 CUDADeviceContextAllocator::CUDADeviceContextAllocator(
-    const platform::CUDAPlace place)
-    : place_(place) {
+    const platform::CUDAPlace place, cudaStream_t default_stream)
+    : place_(place), default_stream_(default_stream) {
   platform::CUDADeviceGuard guard(place_.device);
   PADDLE_ENFORCE(cudaEventCreate(&event_, cudaEventDisableTiming),
                  "Create event failed in CUDADeviceContextAllocator");
@@ -33,25 +33,23 @@ CUDADeviceContextAllocator::CUDADeviceContextAllocator(
 CUDADeviceContextAllocator::~CUDADeviceContextAllocator() {
   if (event_) {
     platform::CUDADeviceGuard guard(place_.device);
-    cudaEventDestroy(event_);
+    PADDLE_ENFORCE(
+        cudaEventDestroy(event_),
+        "Destory event failed in CUDADeviceContextAllocator destroctor");
   }
-}
-
-void CUDADeviceContextAllocator::SetComputeStream(cudaStream_t compute_stream) {
-  compute_stream_ = compute_stream;
 }
 
 Allocation *CUDADeviceContextAllocator::AllocateImpl(size_t size) {
   PADDLE_ENFORCE_NOT_NULL(
-      compute_stream_,
-      "Didn't set compute stream for CUDADeviceContextAllocator");
+      default_stream_,
+      "Didn't set default stream for CUDADeviceContextAllocator");
   platform::CUDADeviceGuard guard(place_.device);
   auto allocation =
       new CUDADeviceContextAllocation(memory::Alloc(place_, size));
   // Wait for the event on stream
-  PADDLE_ENFORCE(cudaEventRecord(event_, compute_stream_),
+  PADDLE_ENFORCE(cudaEventRecord(event_, default_stream_),
                  "Failed to record event in CUDADeviceContextAllocator");
-  PADDLE_ENFORCE(cudaStreamWaitEvent(compute_stream_, event_, 0),
+  PADDLE_ENFORCE(cudaStreamWaitEvent(default_stream_, event_, 0),
                  "Failed to wait event in CUDADeviceContextAllocator");
   return allocation;
 }

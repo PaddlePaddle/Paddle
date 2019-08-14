@@ -26,10 +26,9 @@ namespace allocation {
 
 class CUDADeviceContextAllocator : public Allocator {
  public:
-  explicit CUDADeviceContextAllocator(platform::CUDAPlace place);
+  explicit CUDADeviceContextAllocator(platform::CUDAPlace place,
+                                      cudaStream_t default_stream);
   ~CUDADeviceContextAllocator();
-
-  void SetComputeStream(cudaStream_t compute_stream);
 
  protected:
   Allocation *AllocateImpl(size_t size) override;
@@ -38,7 +37,7 @@ class CUDADeviceContextAllocator : public Allocator {
  private:
   platform::CUDAPlace place_;
   cudaEvent_t event_{nullptr};
-  cudaStream_t compute_stream_{nullptr};
+  cudaStream_t default_stream_{nullptr};
 };
 
 }  // namespace allocation

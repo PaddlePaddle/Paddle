@@ -36,7 +36,6 @@ AllocationPtr CUDADeviceContextAllocatorPool::Alloc(
   PADDLE_ENFORCE(iter != allocators_.end(),
                  "CUDADeviceContextAllocatorPool initialization error");
   auto &allocator = iter->second;
-  allocator->SetComputeStream(dev_ctx.stream());
   AllocationPtr allocation = allocator->Allocate(size);
   static_cast<CUDADeviceContextAllocation *>(allocation.get())
       ->SetCUDADeviceContext(&dev_ctx);
@@ -47,9 +46,11 @@ CUDADeviceContextAllocatorPool::CUDADeviceContextAllocatorPool() {
   std::vector<int> devices = platform::GetSelectedDevices();
   for (int i : devices) {
     auto place = platform::CUDAPlace(i);
-    allocators_.insert(
-        make_pair(place, std::shared_ptr<CUDADeviceContextAllocator>(
-                             new CUDADeviceContextAllocator(place))));
+    auto compute_stream =
+        platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+    auto allocator = std::shared_ptr<CUDADeviceContextAllocator>(
+        new CUDADeviceContextAllocator(place, compute_stream));
+    allocators_.insert(make_pair(place, allocator));
   }
 }
 

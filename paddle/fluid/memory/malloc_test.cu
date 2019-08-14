@@ -14,6 +14,8 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <thread>  // NOLINT
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -23,8 +25,10 @@ namespace paddle {
 namespace memory {
 
 const int NUM_STREAMS = 8;
-const int N = 1 << 10;
+const int N = 2;
 const float DELTA = 1e-1;
+
+using CudaDevCtxVec = std::vector<std::unique_ptr<platform::CUDADeviceContext>>;
 
 __global__ void kernel(float *x, int n) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -34,53 +38,91 @@ __global__ void kernel(float *x, int n) {
 }
 
 void CheckKernelOutput(float *x, int n) {
-  float *host_x = new float[n];
+  auto host_x = std::unique_ptr<float[]>(new float[n]);
   for (int i = 0; i < n; ++i) {
-    EXPECT_TRUE(cudaSuccess == cudaMemcpy(host_x, x, n * sizeof(float),
+    EXPECT_TRUE(cudaSuccess == cudaMemcpy(host_x.get(), x, n * sizeof(float),
                                           cudaMemcpyDeviceToHost));
     EXPECT_GE(host_x[i] + DELTA, 3.14159f * i);
     EXPECT_LE(host_x[i] - DELTA, 3.14159f * i);
   }
-  delete[] host_x;
+}
+
+void MultiStreamCompute(float **data, float **second_data,
+                        const platform::CUDADeviceContext &ctx) {
+  // multi-streams
+  AllocationPtr allocation_ptr = Alloc(ctx, N * sizeof(float));
+  EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
+  *data = reinterpret_cast<float *>(allocation_ptr->ptr());
+  kernel<<<1, 64, 0, ctx.stream()>>>(*data, N);
+
+  // allocate and compute on same stream again
+  allocation_ptr = Alloc(ctx, N * sizeof(float));
+  EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
+  *second_data = reinterpret_cast<float *>(allocation_ptr->ptr());
+  kernel<<<1, 64, 0, ctx.stream()>>>(*second_data, N);
 }
 
 TEST(Malloc, CUDADeviceContextMultiStream) {
   auto place = platform::CUDAPlace(0);
-
   EXPECT_TRUE(cudaSuccess == cudaSetDevice(0));
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
-  EXPECT_EQ(main_stream_alloc_ptr->size(), N * sizeof(float));
+  EXPECT_GE(main_stream_alloc_ptr->size(), N * sizeof(float));
   float *main_stream_data =
       reinterpret_cast<float *>(main_stream_alloc_ptr->ptr());
 
   float *data[NUM_STREAMS];
   float *second_data[NUM_STREAMS];
-  platform::CUDADeviceContext *dev_ctx[NUM_STREAMS];
+  CudaDevCtxVec dev_ctx;
+
+  // default stream
+  kernel<<<1, 64>>>(main_stream_data, N);
+  main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    // default stream
-    kernel<<<1, 64>>>(main_stream_data, N);
-
-    dev_ctx[i] = new platform::CUDADeviceContext(place);
-    AllocationPtr allocation_ptr = Alloc(*dev_ctx[i], N * sizeof(float));
-    EXPECT_EQ(allocation_ptr->size(), N * sizeof(float));
-    data[i] = reinterpret_cast<float *>(allocation_ptr->ptr());
-
-    // multi-streams
-    kernel<<<1, 64, 0, dev_ctx[i]->stream()>>>(data[i], N);
-
-    // allocate and compute on same stream again
-    allocation_ptr = Alloc(*dev_ctx[i], N * sizeof(float));
-    EXPECT_EQ(allocation_ptr->size(), N * sizeof(float));
-    second_data[i] = reinterpret_cast<float *>(allocation_ptr->ptr());
-    kernel<<<1, 64, 0, dev_ctx[i]->stream()>>>(second_data[i], N);
+    dev_ctx.push_back(std::unique_ptr<platform::CUDADeviceContext>(
+        new platform::CUDADeviceContext(place)));
+    MultiStreamCompute(&data[i], &second_data[i], *dev_ctx[i]);
   }
 
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
-  CheckKernelOutput(main_stream_data, N);
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    delete dev_ctx[i];
+    CheckKernelOutput(data[i], N);
+    CheckKernelOutput(second_data[i], N);
+  }
+}
+
+TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
+  auto place = platform::CUDAPlace(0);
+  EXPECT_TRUE(cudaSuccess == cudaSetDevice(0));
+
+  AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
+  EXPECT_GE(main_stream_alloc_ptr->size(), N * sizeof(float));
+  float *main_stream_data =
+      reinterpret_cast<float *>(main_stream_alloc_ptr->ptr());
+
+  float *data[NUM_STREAMS];
+  float *second_data[NUM_STREAMS];
+  CudaDevCtxVec dev_ctx;
+  std::vector<std::thread> threads;
+
+  // default stream
+  kernel<<<1, 64>>>(main_stream_data, N);
+  main_stream_alloc_ptr.reset();
+
+  for (int i = 0; i < NUM_STREAMS; ++i) {
+    dev_ctx.push_back(std::unique_ptr<platform::CUDADeviceContext>(
+        new platform::CUDADeviceContext(place)));
+    threads.push_back(std::thread(MultiStreamCompute, &data[i], &second_data[i],
+                                  std::cref(*dev_ctx[i])));
+  }
+
+  for (int i = 0; i < NUM_STREAMS; ++i) {
+    threads[i].join();
+  }
+
+  EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
+  for (int i = 0; i < NUM_STREAMS; ++i) {
     CheckKernelOutput(data[i], N);
     CheckKernelOutput(second_data[i], N);
   }
@@ -89,7 +131,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
 TEST(Malloc, AllocZero) {
   auto place = platform::CUDAPlace(0);
   AllocationPtr allocation_ptr = Alloc(place, 0);
-  EXPECT_EQ(allocation_ptr->size(), 0);
+  EXPECT_GE(allocation_ptr->size(), 0);
 }
 }  // namespace memory
 }  // namespace paddle
