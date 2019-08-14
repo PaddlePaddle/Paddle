@@ -3,8 +3,8 @@
 English | [简体中文](./README_cn.md)
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/documentation/docs/zh/1.4/beginners_guide/index_cn.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -77,26 +77,26 @@ Now our developers could acquire Tesla V100 online computing resources for free.
 
 ## Installation
 
-It is recommended to read [this doc](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/index_en.html) on our website.
+It is recommended to read [this doc](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html) on our website.
 
 ## Documentation
 
-We provide [English](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/index_en.html) and
-[Chinese](http://www.paddlepaddle.org/documentation/docs/zh/1.4/beginners_guide/install/index_cn.html) documentation.
+We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html) and
+[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/install/index_cn.html) documentation.
 
 - [Deep Learning 101](https://github.com/PaddlePaddle/book)
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](http://paddlepaddle.org/documentation/docs/en/1.4/user_guides/howto/training/multi_node_en.html)
+- [Distributed Training](http://paddlepaddle.org.cn/documentation/docs/en/1.5/user_guides/howto/training/multi_node_en.html)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Python API](http://paddlepaddle.org/documentation/docs/en/1.4/api/index_en.html)
+- [Python API](http://paddlepaddle.org.cn/documentation/docs/en/1.5/api/index_en.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://paddlepaddle.org/documentation/docs/en/1.4/advanced_usage/development/contribute_to_paddle/index_en.html)
+- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.5/advanced_usage/development/contribute_to_paddle/index_en.html)
 
    We appreciate your contributions!
 
