@@ -80,6 +80,9 @@ void PullDenseWorker::Stop() {
   if (running_) {
     running_ = false;
     t_.join();
+    // pull dense when stop, to make sure local dense params are same as
+    // pserver, so save paddle model will save dense model same as pserver
+    PullDense(true);
   }
 }
 

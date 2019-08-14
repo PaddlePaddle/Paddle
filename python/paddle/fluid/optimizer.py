@@ -2176,6 +2176,7 @@ class LambOptimizer(AdamOptimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        block.program._use_lamb = True
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])
@@ -2617,7 +2618,7 @@ class ExponentialMovingAverage(object):
             with param.block.program._optimized_guard(
                 [param, tmp]), name_scope('moving_average'):
                 param_ema = self._ema_vars[param.name]
-                if self._ema_vars.has_key(param.name + '.master'):
+                if param.name + '.master' in self._ema_vars:
                     master_ema = self._ema_vars[param.name + '.master']
                     param_master_emas.append([param_ema, master_ema])
                 else:
