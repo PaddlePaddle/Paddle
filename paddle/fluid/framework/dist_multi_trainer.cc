@@ -86,9 +86,8 @@ void DistMultiTrainer::DumpWork() {
 void DistMultiTrainer::InitDumpEnv() {
   queue_ = paddle::framework::MakeChannel<std::string>();
   int err_no = 0;
-  std::string path =
-      string::format_string("%s/part-%03d", dump_fields_path_.c_str(),
-                            mpi_rank_);
+  std::string path = string::format_string(
+      "%s/part-%03d", dump_fields_path_.c_str(), mpi_rank_);
 
   fp_ = fs_open_write(path, &err_no, dump_converter_);
   for (int i = 0; i < thread_num_; ++i) {
