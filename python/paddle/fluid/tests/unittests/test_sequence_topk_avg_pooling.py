@@ -122,11 +122,36 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
 class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
     def set_data(self):
         topks = [2, 3]
-        channel_num = 5
+        channel_num = 3
         dim = 10
         row = [3]
         col = [4]
         self.init_data(topks, channel_num, row, col, dim)
+
+    def test_api(self):
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[1], lod_level=1)
+        row = fluid.layers.data(name='row', shape=[10], lod_level=1)
+        col = fluid.layers.data(name='col', shape=[10], lod_level=1)
+        topk_avg = fluid.layers.sequence_topk_avg_pooling(
+            input=x, row=row, col=col, topks=[1, 3, 5], channel_num=5)
+
+        place = fluid.CPUPlace()
+        x_tensor = fluid.create_lod_tensor(
+            np.random.rand(45, 1).astype('float32'), [[30, 15]], place)
+        row_tensor = fluid.create_lod_tensor(
+            np.random.rand(5, 10).astype('float32'), [[2, 3]], place)
+        col_tensor = fluid.create_lod_tensor(
+            np.random.rand(4, 10).astype('float32'), [[3, 1]], place)
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(
+            feed={'x': x_tensor,
+                  'row': row_tensor,
+                  'col': col_tensor},
+            fetch_list=[topk_avg],
+            return_numpy=False)
 
 
 if __name__ == '__main__':
