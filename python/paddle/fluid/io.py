@@ -21,6 +21,9 @@ import six
 import logging
 from functools import reduce
 
+import paddle
+import paddle.reader
+from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
@@ -32,10 +35,12 @@ from .reader import *
 from . import core
 from .. import compat as cpt
 
+batch = paddle.batch
+
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model'
-] + reader.__all__
+    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
