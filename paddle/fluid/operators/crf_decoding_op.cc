@@ -88,13 +88,13 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Emission"),
-                   "Input(Emission) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Transition"),
-                   "Input(Transition) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Emission"), true,
+                      "Input(Emission) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Transition"), true,
+                      "Input(Transition) should be not null.");
 
-    PADDLE_ENFORCE(ctx->HasOutput("ViterbiPath"),
-                   "Output(ViterbiPath) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ViterbiPath"), true,
+                      "Output(ViterbiPath) should be not null.");
 
     auto emission_dims = ctx->GetInputDim("Emission");
     bool has_length = ctx->HasInput("Length");
@@ -106,10 +106,11 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                         "The Input(Emission) should be a 2-D tensor.");
     }
-    PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
+    PADDLE_ENFORCE_GT(emission_dims[0], 0,
+                      "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
                       "The Input(Transition) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
         transition_dims[0] - 2, transition_dims[1],
@@ -125,8 +126,8 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE(label_dims.size() == 2UL,
-                     "The Input(Label) should be a 2-D tensor");
+      PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+                        "The Input(Label) should be a 2-D tensor");
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],

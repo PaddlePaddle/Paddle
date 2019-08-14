@@ -67,7 +67,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
                         "The Input(Emission) should be a sequence.");
       auto lod = emission_weights->lod();
-      PADDLE_ENFORCE(lod.size(), "Input(Emission) must be a sequence.");
+      PADDLE_ENFORCE_GT(lod.size(), 0, "Input(Emission) must be a sequence.");
       const size_t level = 0;
       const size_t seq_num = lod[level].size() - 1;
 
