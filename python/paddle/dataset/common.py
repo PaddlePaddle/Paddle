@@ -32,7 +32,6 @@ __all__ = [
     'md5file',
     'split',
     'cluster_files_reader',
-    'convert',
 ]
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
@@ -205,40 +204,3 @@ def cluster_files_reader(files_pattern,
                     yield line
 
     return reader
-
-
-def convert(output_path, reader, line_count, name_prefix):
-    import recordio
-    """
-    Convert data from reader to recordio format files.
-
-    :param output_path: directory in which output files will be saved.
-    :param reader: a data reader, from which the convert program will read
-                   data instances.
-    :param name_prefix: the name prefix of generated files.
-    :param max_lines_to_shuffle: the max lines numbers to shuffle before
-                                 writing.
-    """
-
-    assert line_count >= 1
-    indx_f = 0
-
-    def write_data(indx_f, lines):
-        filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
-        writer = recordio.writer(filename)
-        for l in lines:
-            # FIXME(Yancey1989):
-            # dumps with protocol: pickle.HIGHEST_PROTOCOL
-            writer.write(pickle.dumps(l))
-        writer.close()
-
-    lines = []
-    for i, d in enumerate(reader()):
-        lines.append(d)
-        if i % line_count == 0 and i >= line_count:
-            write_data(indx_f, lines)
-            lines = []
-            indx_f += 1
-            continue
-
-    write_data(indx_f, lines)
