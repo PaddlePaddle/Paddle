@@ -52,12 +52,12 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   // check index of shape 1-D
   if (index.dims().size() == 1) {
     PADDLE_ENFORCE_GT(index.dims()[0], 0,
-                      "The index of gather_op should not be empty when "
-                      "index.dims().size() == 1.");
+                      "The index of gather_op should not be empty when the "
+                      "index's rank is 1.");
   } else if (index.dims().size() == 2) {
-    PADDLE_ENFORCE_EQ(
-        index.dims()[1], 1,
-        "If index.dims().size() is 2, the seconde dim should be 1.");
+    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
+                      " If the index's rank of gather_op is 2, the second "
+                      "dimension should be 1.");
   }
 
   int index_size = index.dims()[0];
