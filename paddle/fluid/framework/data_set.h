@@ -17,6 +17,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
@@ -61,6 +62,8 @@ class Dataset {
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins) = 0;
+  // set fea eval mode
+  virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
   // get file list
   virtual const std::vector<std::string>& GetFileList() = 0;
   // get thread num
@@ -94,6 +97,10 @@ class Dataset {
   virtual void LocalShuffle() = 0;
   // global shuffle data
   virtual void GlobalShuffle() = 0;
+  // for slots shuffle
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
+  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
+                             std::vector<Record>* result) = 0;
   // create readers
   virtual void CreateReaders() = 0;
   // destroy readers
@@ -130,6 +137,7 @@ class DatasetImpl : public Dataset {
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins);
 
+  virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
@@ -150,6 +158,9 @@ class DatasetImpl : public Dataset {
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
+  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
+                             std::vector<Record>* result) {}
   virtual void CreateReaders();
   virtual void DestroyReaders();
   virtual int64_t GetMemoryDataSize();
@@ -168,6 +179,8 @@ class DatasetImpl : public Dataset {
   // and when finish reading, we set cur_channel = 1 - cur_channel,
   // so if cur_channel=0, all data are in output_channel, else consume_channel
   int cur_channel_;
+  std::vector<T> slots_shuffle_original_data_;
+  RecordCandidateList slots_shuffle_rclist_;
   int thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
   int trainer_num_;
@@ -184,6 +197,7 @@ class DatasetImpl : public Dataset {
   bool keep_unmerged_ins_;
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
+  bool slots_shuffle_fea_eval_ = false;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
@@ -191,6 +205,9 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
+  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
+                             std::vector<Record>* result);
   virtual ~MultiSlotDataset() {}
 };
 
