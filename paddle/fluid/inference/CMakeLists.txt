@@ -1,25 +1,7 @@
-#set(FLUID_FRAMEWORK_MODULES proto_desc framework_proto memory
-#    lod_tensor device_context scope op_registry selected_rows)
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
-if(WIN32)
-  sep_library(fluid_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-else(WIN32)
-  cc_library(fluid_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-endif(WIN32)
-
-message(STATUS "fluid_modules, cc_lib: ${FLUID_FRAMEWORK_MODULES}")
-cc_library(fluid_framework_shared
-    SRCS io_dumpy.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
-    SHARED DEPS ${FLUID_FRAMEWORK_MODULES})
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(fluid_framework_shared PROPERTIES OUTPUT_NAME fluid_framework)
-target_link_libraries(fluid_framework_shared ${os_dependency_modules})
-
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
-
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api

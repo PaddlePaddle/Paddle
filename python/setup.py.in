@@ -1,8 +1,15 @@
-from setuptools import setup, Distribution, Extension
 import subprocess
 import os
 import re
 import shutil
+import sys
+import fnmatch
+
+from setuptools import Command
+from setuptools import setup, Distribution, Extension
+from setuptools.command.install import install as InstallCommandBase
+
+
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
@@ -209,10 +216,20 @@ if '${WITH_NGRAPH}' == 'ON':
     package_data['paddle.libs']+=['${NGRAPH_SHARED_LIB_NAME}',
                                   '${NGRAPH_CPU_LIB_NAME}',
                                   '${NGRAPH_TBB_LIB_NAME}']
+
+# copy libfuild_framework.so to libs
+fluid_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
+print(fluid_framework_lib)
+shutil.copy(fluid_framework_lib, libs_path)
+package_data['paddle.libs'] += [('libfluid_framework' if os.name != 'nt' else 'fluid_framework') + ext_name]
+
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
+
+
+
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
 # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
@@ -237,6 +254,103 @@ if os.name == 'nt':
     package_dir = fix_package_dir
     ext_modules = []
 
+def find_files(pattern, root):
+    for dirpath, _, files in os.walk(root):
+      for filename in fnmatch.filter(files, pattern):
+          yield os.path.join(dirpath, filename)
+
+headers = (
+    list(find_files('*.h', '${PADDLE_SOURCE_DIR}/paddle/fluid/framework')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
+    list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/Core')) + # eigen
+    list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
+    list(find_files('*', '${EIGEN_INCLUDE_DIR}/unsupported/Eigen')) + # eigen
+    list(find_files('*', '${GFLAGS_INSTALL_DIR}/include')) + # gflags
+    list(find_files('*', '${GLOG_INSTALL_DIR}/include')) + # glog
+    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
+    list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
+    list(find_files('*', '${PROTOBUF_INSTALL_DIR}/include')) + # protobuf
+    list(find_files('^((?!\.git).)*$', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
+
+
+class InstallCommand(InstallCommandBase):
+    def finalize_options(self):
+        ret = InstallCommandBase.finalize_options(self)
+        self.install_headers = os.path.join(self.install_purelib, 'paddle',
+                                            'include')
+        self.install_lib = self.install_platlib
+        return ret
+  
+
+class InstallHeaders(Command):
+    """Override how headers are copied.
+    """
+    description = 'install C/C++ header files'
+  
+    user_options = [('install-dir=', 'd',
+                     'directory to install header files to'),
+                    ('force', 'f',
+                     'force installation (overwrite existing files)'),
+                   ]
+  
+    boolean_options = ['force']
+  
+    def initialize_options(self):
+        self.install_dir = None
+        self.force = 0
+        self.outfiles = []
+  
+    def finalize_options(self):
+        self.set_undefined_options('install',
+                                   ('install_headers', 'install_dir'),
+                                   ('force', 'force'))
+  
+    def mkdir_and_copy_file(self, header):
+        if 'third_party' not in header:
+            # framework
+            install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+        else:
+            # third_party
+            install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
+            install_dir = re.sub('src/extern_eigen3/', '', install_dir)
+            install_dir = re.sub('src/extern_boost/', '', install_dir)
+        install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
+        print(self.install_dir, install_dir)
+            # thirdparty
+            #install_dir = re.sub('${GFLAGS_INSTALL_DIR}',
+            #                     'third_party/gflags', install_dir)
+            #install_dir = re.sub('${GLOG_INSTALL_DIR}',
+            #                     'third_party/glog', install_dir)
+            #install_dir = re.sub('${BOOST_INCLUDE_DIR}',
+            #                     'third_party/boost', install_dir)
+            #install_dir = re.sub('${XXHASH_INSTALL_DIR}',
+            #                     'third_party/xxhash', install_dir)
+            #install_dir = re.sub('${PROTOBUF_INSTALL_DIR}',
+            #                     'third_party/protobuf', install_dir)
+            #install_dir = re.sub('${THREADPOOL_SOURCE_DIR}',
+            #                     'third_party/threadpool', install_dir)
+        if not os.path.exists(install_dir):
+            self.mkpath(install_dir)
+        print(header, install_dir)
+        return self.copy_file(header, install_dir)
+  
+    def run(self):
+        hdrs = self.distribution.headers
+        if not hdrs:
+            return
+        self.mkpath(self.install_dir)
+        for header in hdrs:
+            (out, _) = self.mkdir_and_copy_file(header)
+            self.outfiles.append(out)
+  
+    def get_inputs(self):
+        return self.distribution.headers or []
+  
+    def get_outputs(self):
+        return self.outfiles
+
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
@@ -246,5 +360,10 @@ setup(name='${PACKAGE_NAME}',
       package_data=package_data,
       package_dir=package_dir,
       scripts=paddle_bins,
-      distclass=BinaryDistribution
+      distclass=BinaryDistribution,
+      headers=headers,
+      cmdclass={
+          'install_headers': InstallHeaders,
+          'install': InstallCommand,
+      },
 )

@@ -43,6 +43,8 @@ struct OpInfo {
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
 
+  ~OpInfo() { VLOG(5) << "destroy OpInfo"; }
+
   // NOTE(zjl): this flag is added to check whether
   // the grad maker is the default one.
   bool use_default_grad_op_desc_maker_{false};

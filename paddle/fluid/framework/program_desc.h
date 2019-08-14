@@ -30,6 +30,7 @@ class BlockDesc;
 class ProgramDesc {
  public:
   ProgramDesc();
+  ~ProgramDesc() { VLOG(5) << "destroy ProgramDesc"; }
 
   explicit ProgramDesc(const proto::ProgramDesc &desc);
 

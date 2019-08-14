@@ -242,3 +242,18 @@ message(STATUS "commit: ${PADDLE_COMMIT}")
 message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
+if(WIN32)
+  sep_library(fluid_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+else(WIN32)
+  cc_library(fluid_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+endif(WIN32)
+
+cc_library(fluid_framework_shared
+    SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    SHARED DEPS ${FLUID_FRAMEWORK_MODULES})
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+set_target_properties(fluid_framework_shared PROPERTIES OUTPUT_NAME fluid_framework)
+target_link_libraries(fluid_framework_shared ${os_dependency_modules})
+SET(FLUID_FRAMEWORK_SHARED_LIB ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libfluid_framework.so CACHE INTERNAL "Fluid framework lib")

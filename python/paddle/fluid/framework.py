@@ -958,10 +958,8 @@ class OpProtoHolder(object):
             self.__class__,
             '_instance'), 'Please use `instance()` to get OpProtoHolder object!'
         op_protos = get_all_op_protos()
-        print("Op Num ", len(op_protos))
         self.op_proto_map = {}
         for proto in op_protos:
-            print("Op ", proto.type)
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):

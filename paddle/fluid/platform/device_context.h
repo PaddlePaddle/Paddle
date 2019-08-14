@@ -442,6 +442,8 @@ class DeviceContextPool {
     return *pool;
   }
 
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
+
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
 
