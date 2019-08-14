@@ -29,45 +29,6 @@ HOSTDEVICE T PrRoIPoolingGetData(const T* data, const int h, const int w,
 }
 
 template <typename T>
-HOSTDEVICE T PrRoIPoolingGetCoeff(T dh, T dw) {
-  dw = dw > 0 ? dw : -dw;
-  dh = dh > 0 ? dh : -dh;
-  return (1.0f - dh) * (1.0f - dw);
-}
-
-template <typename T>
-HOSTDEVICE T PrRoIPoolingSingleCoorIntegral(T s, T t, T c1, T c2) {
-  return 0.5 * (t * t - s * s) * c2 + (t - 0.5 * t * t - s + 0.5 * s * s) * c1;
-}
-
-template <typename T>
-HOSTDEVICE T PrRoIPoolingInterpolation(const T* data, const T h, const T w,
-                                       const int height, const int width) {
-  T retVal = 0.0f;
-  int h1 = floorf(h);
-  int w1 = floorf(w);
-  retVal +=
-      PrRoIPoolingGetData(data, h1, w1, height, width) *
-      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
-  h1 = floorf(h) + 1;
-  w1 = floorf(w);
-  retVal +=
-      PrRoIPoolingGetData(data, h1, w1, height, width) *
-      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
-  h1 = floorf(h);
-  w1 = floorf(w) + 1;
-  retVal +=
-      PrRoIPoolingGetData(data, h1, w1, height, width) *
-      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
-  h1 = floorf(h) + 1;
-  w1 = floorf(w) + 1;
-  retVal +=
-      PrRoIPoolingGetData(data, h1, w1, height, width) *
-      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
-  return retVal;
-}
-
-template <typename T>
 HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
                                         const int s_w, const int e_h,
                                         const int e_w, const T y0, const T x0,
