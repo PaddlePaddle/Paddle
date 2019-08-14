@@ -85,6 +85,17 @@ class LightNASSpace(SearchSpace):
             2, 4, 3, 3, 2, 2, 2
         ]
 
+    def get_model_latency(self, program):
+        """Get model latency according to program.
+        Returns the number of ops since it's only for testing.
+        Args:
+            program(Program): The program to get latency.
+        Return:
+            (float): model latency.
+        """
+        blocks = program.global_block()
+        return len(blocks.ops)
+
     def create_net(self, tokens=None):
         """Create a network for training by tokens.
         """
