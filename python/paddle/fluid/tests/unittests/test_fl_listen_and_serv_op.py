@@ -29,21 +29,16 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-
     # loss function
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
     avg_cost = fluid.layers.mean(cost)
-
     # optimizer
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
-
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
-
     pserver_endpoints = ip + ":" + port
     current_endpoint = ip + ":" + port
-
     config = fluid.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
     t = fluid.FlDistributeTranspiler(config=config)
@@ -78,8 +73,6 @@ class TestFlListenAndServOp(OpTest):
             assert start_left_time >= 0, "wait ps ready failed"
             time.sleep(sleep_time)
             try:
-                # the listen_and_serv_op would touch a file which contains the listen port
-                # on the /tmp directory until it was ready to process all the RPC call.
                 os.stat("/tmp/paddle.%d.port" % pid)
                 return
             except os.error:
