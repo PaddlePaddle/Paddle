@@ -252,7 +252,7 @@ class CompiledProgram(object):
     def _with_distributed(self):
         raise NotImplementedError()
 
-    def _compile_data_parallel(self, use_cuda=False, scope=None, places=None):
+    def _compile_data_parallel(self, places, use_cuda=False, scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
@@ -271,7 +271,9 @@ class CompiledProgram(object):
             assert scope is not None, ""
             self._local_scopes = []
 
-        assert places, "The places must be specified."
+        assert isinstance(places, tuple) or isinstance(places, list), \
+            "Currently , The places type only should be list or tuple, \n" \
+            "but the input type is {}.".format(type(places))
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
