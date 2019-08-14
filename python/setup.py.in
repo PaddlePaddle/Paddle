@@ -260,19 +260,20 @@ def find_files(pattern, root):
           yield os.path.join(dirpath, filename)
 
 headers = (
-    list(find_files('*.h', '${PADDLE_SOURCE_DIR}/paddle/fluid/framework')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
-    list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/Core')) + # eigen
+    list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/framework')) +
+    ['${EIGEN_INCLUDE_DIR}/Eigen/Core'] + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/unsupported/Eigen')) + # eigen
     list(find_files('*', '${GFLAGS_INSTALL_DIR}/include')) + # gflags
     list(find_files('*', '${GLOG_INSTALL_DIR}/include')) + # glog
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
     list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
-    list(find_files('*', '${PROTOBUF_INSTALL_DIR}/include')) + # protobuf
-    list(find_files('^((?!\.git).)*$', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
+    list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
+    list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
 
 
 class InstallCommand(InstallCommandBase):
@@ -308,7 +309,9 @@ class InstallHeaders(Command):
                                    ('force', 'force'))
   
     def mkdir_and_copy_file(self, header):
-        if 'third_party' not in header:
+        if 'pb.h' in header:
+            install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
+        elif 'third_party' not in header:
             # framework
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
         else:
@@ -317,23 +320,8 @@ class InstallHeaders(Command):
             install_dir = re.sub('src/extern_eigen3/', '', install_dir)
             install_dir = re.sub('src/extern_boost/', '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
-        print(self.install_dir, install_dir)
-            # thirdparty
-            #install_dir = re.sub('${GFLAGS_INSTALL_DIR}',
-            #                     'third_party/gflags', install_dir)
-            #install_dir = re.sub('${GLOG_INSTALL_DIR}',
-            #                     'third_party/glog', install_dir)
-            #install_dir = re.sub('${BOOST_INCLUDE_DIR}',
-            #                     'third_party/boost', install_dir)
-            #install_dir = re.sub('${XXHASH_INSTALL_DIR}',
-            #                     'third_party/xxhash', install_dir)
-            #install_dir = re.sub('${PROTOBUF_INSTALL_DIR}',
-            #                     'third_party/protobuf', install_dir)
-            #install_dir = re.sub('${THREADPOOL_SOURCE_DIR}',
-            #                     'third_party/threadpool', install_dir)
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
-        print(header, install_dir)
         return self.copy_file(header, install_dir)
   
     def run(self):

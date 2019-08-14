@@ -217,7 +217,6 @@ copy(memory_lib
         )
 
 set(inference_deps paddle_fluid_shared paddle_fluid)
-set(framework_lib_deps fluid_framework_shared fluid_framework)
 
 set(module "inference/api")
 
@@ -236,10 +235,8 @@ endif ()
 set(module "inference")
 if(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
-    set(fluid_framework_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libfluid_framework.*)
 else(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
-    set(fluid_framework_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libfluid_framework.*)
 endif(WIN32)
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h
@@ -249,9 +246,6 @@ copy(inference_lib DEPS ${inference_deps}
        ${dst_dir}/${module}
        ${dst_dir}/${module}
         )
-
-# copy fluid_framework
-copy(fluid_framework_libs DEPS ${framework_lib_deps} SRCS ${fluid_framework_lib} DSTS ${dst_dir}/${module})
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto
