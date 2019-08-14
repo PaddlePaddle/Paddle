@@ -76,21 +76,21 @@ class DownpourServer(Server):
         table.compress_in_save = True
         table.shard_num = 1000
         table.accessor.accessor_class = "DownpourCtrAccessor"
-        table.accessor.sparse_sgd_param.learning_rate = learning_rate
+        table.accessor.sparse_sgd_param.learning_rate = 0.05
         table.accessor.sparse_sgd_param.initial_g2sum = 3
         table.accessor.sparse_sgd_param.initial_range = 1e-4
         table.accessor.sparse_sgd_param.weight_bounds.extend([-10, 10])
 
         table.accessor.embedx_dim = 8
-        table.accessor.embedx_threshold = 5
+        table.accessor.embedx_threshold = 10
         table.accessor.fea_dim = 11
         table.accessor.downpour_accessor_param.nonclk_coeff = 0.1
-        table.accessor.downpour_accessor_param.click_coeff = 2
-        table.accessor.downpour_accessor_param.base_threshold = 0.2
-        table.accessor.downpour_accessor_param.delta_threshold = 0.15
-        table.accessor.downpour_accessor_param.delta_keep_days = 16
+        table.accessor.downpour_accessor_param.click_coeff = 1
+        table.accessor.downpour_accessor_param.base_threshold = 1.5
+        table.accessor.downpour_accessor_param.delta_threshold = 0.25
+        table.accessor.downpour_accessor_param.delta_keep_days = 30
         table.accessor.downpour_accessor_param.delete_after_unseen_days = 30
-        table.accessor.downpour_accessor_param.show_click_decay_rate = 0.999
+        table.accessor.downpour_accessor_param.show_click_decay_rate = 0.98
         table.accessor.downpour_accessor_param.delete_threshold = 0.8
 
     def add_dense_table(self, table_id, learning_rate, param_var, grad_var):
@@ -158,11 +158,11 @@ class DownpourServer(Server):
                         %(table_id, pslib.PS_DENSE_TABLE, table.type))
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
-        table.table_class = "DownpourDenseTable"
+        table.table_class = "DownpourDenseDoubleTable"
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = True
-        table.accessor.accessor_class = "DownpourDenseValueAccessor"
-        table.accessor.dense_sgd_param.name = "summary"
+        table.accessor.accessor_class = "DownpourDenseValueDoubleAccessor"
+        table.accessor.dense_sgd_param.name = "summarydouble"
         table.accessor.dense_sgd_param.summary.summary_decay_rate = 0.999999
         table.accessor.fea_dim = fea_dim
 
