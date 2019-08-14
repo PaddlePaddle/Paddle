@@ -40,43 +40,48 @@ class BlockingQueue {
   }
 
   bool Send(const T& elem) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
+    //std::unique_lock<std::mutex> lock(mutex_);
+    //send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
     if (closed_) {
       VLOG(5)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
       return false;
     }
-    PADDLE_ENFORCE_LT(queue_.size(), capacity_);
-    queue_.push_back(elem);
-    receive_cv_.notify_one();
+    if (queue_.size() < capacity_) {
+      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      queue_.push_back(elem);
+    }
+    //  receive_cv_.notify_one();
     return true;
   }
 
   bool Send(T&& elem) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
+    //std::unique_lock<std::mutex> lock(mutex_);
+    //send_cv_.wait(lock, [&] { return queue_.size() < capacity_ || closed_; });
     if (closed_) {
       VLOG(5)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
       return false;
     }
-    PADDLE_ENFORCE_LT(queue_.size(), capacity_);
-    queue_.emplace_back(std::move(elem));
-    receive_cv_.notify_one();
+    if (queue_.size() < capacity_) {
+      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      queue_.emplace_back(std::move(elem));
+    }
+    //receive_cv_.notify_one();
     return true;
   }
 
   bool Receive(T* elem) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    receive_cv_.wait(lock, [&] { return !queue_.empty() || closed_; });
+    //std::unique_lock<std::mutex> lock(mutex_);
+    //receive_cv_.wait(lock, [&] { return !queue_.empty() || closed_; });
     if (!queue_.empty()) {
+      static int i = 0;
       PADDLE_ENFORCE_NOT_NULL(elem);
-      *elem = queue_.front();
-      if (LIKELY(!speed_test_mode_)) {
+      *elem = queue_[i++ % queue_.size()];
+      if (0) {
         queue_.pop_front();
       }
-      send_cv_.notify_one();
+      //send_cv_.notify_one();
       return true;
     } else {
       PADDLE_ENFORCE(closed_);
