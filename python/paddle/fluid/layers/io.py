@@ -1096,14 +1096,15 @@ def double_buffer(reader, place=None, name=None):
         wrapped reader with double buffer.
 
     Examples:
-
-        >>> import paddle.fluid as fluid
-        >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
-        >>>                                  shapes=[[-1, 784], [-1, 1]],
-        >>>                                  lod_levels=[0, 0],
-        >>>                                  dtypes=['float32', 'int64'])
-        >>> reader = fluid.layers.double_buffer(reader)
-        >>> img, label = fluid.layers.read_file(reader)
+        .. code-block:: python
+          
+           import paddle.fluid as fluid
+           reader = fluid.layers.py_reader(capacity=64,
+                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                           dtypes=['float32', 'int64'],
+                                           use_double_buffer=False)
+           reader = fluid.layers.double_buffer(reader)
+           image, label = fluid.layers.read_file(reader)
     """
     attrs = dict()
     if place is not None:
@@ -1136,14 +1137,10 @@ def read_file(reader):
         .. code-block:: python
           
            import paddle.fluid as fluid
-           data_file = fluid.layers.open_files(
-                filenames=['mnist.recordio'],
-                shapes=[(-1, 748), (-1, 1)],
-                lod_levels=[0, 0],
-                dtypes=["float32", "int64"])
-           data_file = fluid.layers.double_buffer(
-                fluid.layers.batch(data_file, batch_size=64))
-           input, label = fluid.layers.read_file(data_file)
+           reader = fluid.layers.py_reader(capacity=64,
+                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                           dtypes=['float32', 'int64'])
+           image, label = fluid.layers.read_file(reader)
     """
     helper = LayerHelper('read_file')
     out = [
