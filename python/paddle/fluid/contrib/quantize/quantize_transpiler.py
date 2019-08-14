@@ -220,7 +220,7 @@ class QuantizeTranspiler(object):
             self.activation_quantize_type == 'range_abs_max':
             self.global_step = autoincreased_step_counter()
 
-    def freeze_program(self, program, place, fuse_bn=False, scope=None):
+    def freeze_program(self, program, place, scope=None):
         """Freeze input training program for inference.
 
         Args:
@@ -230,10 +230,6 @@ class QuantizeTranspiler(object):
         self.is_test = True
         scope = global_scope() if scope is None else scope
         program = default_main_program() if program is None else program
-
-        if fuse_bn:
-            bn_fuse_transpiler = InferenceTranspiler()
-            bn_fuse_transpiler.transpile(program, place)
 
         persistable_vars = [
             v.name
