@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNFormat = mkldnn::memory::format;
+using MKLDNNFormat = mkldnn::memory::format_tag;
 using MKLDNNDataType = mkldnn::memory::data_type;
 
 inline MKLDNNFormat ToMKLDNNFormat(const DataLayout& layout) {
@@ -56,11 +56,10 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
       {DataTypeTrait<float>::DataType(), MKLDNNDataType::f32},
       {DataTypeTrait<int8_t>::DataType(), MKLDNNDataType::s8},
       {DataTypeTrait<uint8_t>::DataType(), MKLDNNDataType::u8},
-      {DataTypeTrait<int16_t>::DataType(), MKLDNNDataType::s16},
       {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32}};
   auto iter = dict.find(static_cast<int>(type));
   if (iter != dict.end()) return iter->second;
-  return MKLDNNDataType::data_undef;
+  return MKLDNNDataType::undef;
 }
 
 #endif

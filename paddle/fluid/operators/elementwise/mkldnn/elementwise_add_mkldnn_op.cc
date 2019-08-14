@@ -51,27 +51,30 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto y_dims_untrimed = y->dims();
     auto z_dims = z->dims();
 
+    mkldnn::stream astream(mkldnn_engine);
+
     // Execute default elementwise_add operator when
     // broadcast operations need to performed.
     if (x_dims != y_dims_untrimed) {
       Tensor _x;
-      mkldnn::memory::format format;
-      std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
+      mkldnn::memory::format_tag format;
+      std::vector<int64_t> src_x_tz = framework::vectorize(x_dims);
 
       if ((src_x_tz.size() == 3 &&
-           x->format() != (format = memory::format::ncw)) ||
+           x->format() != (format = memory::format_tag::ncw)) ||
           (src_x_tz.size() == 4 &&
-           x->format() != (format = memory::format::nchw)) ||
+           x->format() != (format = memory::format_tag::nchw)) ||
           (src_x_tz.size() == 5 &&
-           x->format() != (format = memory::format::ncdhw))) {
+           x->format() != (format = memory::format_tag::ncdhw))) {
         _x.Resize(x_dims);
 
         mkldnn::memory::data_type in_type = platform::MKLDNNGetDataType<T>();
         auto out_format = platform::MKLDNNFormatForSize(
-            x_dims.size(), mkldnn::memory::format::nchw);
+            x_dims.size(), mkldnn::memory::format_tag::nchw);
 
         const std::string key = platform::ReorderMKLDNNHandler::GetHash(
-            src_x_tz, x->format(), out_format, std::to_string(in_type));
+            src_x_tz, x->format(), out_format,
+            std::to_string(static_cast<int>(in_type)));
 
         platform::ReorderMKLDNNHandler handler(src_x_tz, x->type(), in_type,
                                                dev_ctx, mkldnn_engine, key);
@@ -84,9 +87,10 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
 
         auto x_reorder = handler.AcquireReorder(x_memory_p, user_x_memory_p);
 
-        std::vector<primitive> pipeline;
-        pipeline.push_back(*x_reorder);
-        stream(stream::kind::eager).submit(pipeline).wait();
+        // TODO(grygielski)
+        x_reorder->execute(astream, *user_x_memory_p, *x_memory_p);
+        astream.wait();
+
       } else {
         format = x->format();
         _x.ShareDataWith(*x);
@@ -120,22 +124,23 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       z->set_format(format);
     } else {
       PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                         x->format() != memory::format::format_undef,
+                         x->format() != memory::format_tag::undef,
                      "Wrong layout/format set for X tensor");
       PADDLE_ENFORCE(y->layout() == DataLayout::kMKLDNN &&
-                         y->format() != memory::format::format_undef,
+                         y->format() != memory::format_tag::undef,
                      "Wrong layout/format set for Y tensor");
 
-      std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
-      std::vector<int> src_y_tz = framework::vectorize2int(y_dims_untrimed);
-      std::vector<int> dst_tz = framework::vectorize2int(z_dims);
+      std::vector<int64_t> src_x_tz = framework::vectorize(x_dims);
+      std::vector<int64_t> src_y_tz = framework::vectorize(y_dims_untrimed);
+      std::vector<int64_t> dst_tz = framework::vectorize(z_dims);
 
-      std::vector<memory::primitive_desc> srcs_pd;
+      std::vector<memory::desc> srcs_md;
       std::vector<float> scales = {1.0f, 1.0f};
 
       const std::string key = platform::MKLDNNHandler::GetHash(
-          src_x_tz, ctx.op().Output("Out") + std::to_string(x->format()) +
-                        std::to_string(y->format()));
+          src_x_tz, ctx.op().Output("Out") +
+                        std::to_string(static_cast<int>(x->format())) +
+                        std::to_string(static_cast<int>(y->format())));
 
       platform::SumMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
@@ -148,24 +153,23 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
           paddle::platform::to_void_cast(y_data));
 
       auto dst_md = memory::desc({dst_tz}, platform::MKLDNNGetDataType<T>(),
-                                 memory::format::any);
+                                 memory::format_tag::any);
 
       auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
           {src_x_memory, src_y_memory}, scales, dst_md);
 
       auto dst_memory = handler.AcquireDstMemoryFromPrimitive(z_data);
 
-      std::vector<primitive::at> inputs({*src_x_memory, *src_y_memory});
+      auto sum_prim = handler.AcquireSum(dst_memory);
 
-      auto sum_prim = handler.AcquireSum(dst_memory, &inputs);
-
-      std::vector<primitive> pipeline;
-      pipeline.push_back(*sum_prim);
-      stream(stream::kind::eager).submit(pipeline).wait();
+      // TODO(grygielski) refactor?
+      sum_prim->execute(astream, {{MKLDNN_ARG_MULTIPLE_SRC, *src_x_memory},
+                                  {MKLDNN_ARG_MULTIPLE_SRC + 1, *src_y_memory},
+                                  {MKLDNN_ARG_DST, *dst_memory}});
+      astream.wait();
 
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format(
-          (memory::format)dst_memory->get_primitive_desc().desc().data.format);
+      z->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory));
     }
   }
 };

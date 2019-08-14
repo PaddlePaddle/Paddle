@@ -56,7 +56,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
     e_mid = e_mid.constant(k);
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    auto dims = paddle::framework::vectorize(x->dims());
 
     // Format and dims are assumed to be the same for dst and src
     auto md = paddle::platform::MKLDNNMemDesc(
@@ -76,15 +76,14 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_memory =
         handler.AcquireDstMemory(md, platform::to_void_cast<T>(output_data));
 
-    auto lrn_p = handler.AcquireLRN(dst_memory, src_memory);
+    auto lrn_p = handler.AcquireLRN();
 
-    std::vector<mkldnn::primitive> pipeline = {*lrn_p};
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(mkldnn_engine);
+    lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                             {MKLDNN_ARG_DST, *dst_memory}});
+    astream.wait();
 
-    auto output_format =
-        (mkldnn::memory::format)dst_memory->get_primitive_desc()
-            .desc()
-            .data.format;
+    auto output_format = paddle::platform::GetMKLDNNFormat(*dst_memory);
 
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(output_format);
@@ -119,7 +118,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto x_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
     auto out_grad_data = out_grad->data<T>();
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    auto dims = paddle::framework::vectorize(x->dims());
 
     const std::string key = platform::LRNMKLDNNHandler::GetHash(
         dims, n, alpha, beta, k, x->format(), ctx.op().Input("Out"));
@@ -133,7 +132,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto diff_md = paddle::platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
-    auto workspace = handler.AcquireWorkspaceMemory();
+    // TODO(gyrgielski) redundant? since ref_lrn doesnt use workspace parameter
+    // auto workspace = handler.AcquireWorkspaceMemory();
 
     auto diff_dst_memory = handler.AcquireDiffDstMemory(
         diff_md, platform::to_void_cast<T>(out_grad_data));
@@ -148,16 +148,15 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     handler.AcquireLRNBackwardPrimitiveDescriptor(src_md, diff_md, n, alpha,
                                                   beta, k);
 
-    auto lrn_bwd = handler.AcquireLRNBackward(src_memory, diff_dst_memory,
-                                              workspace, diff_src_memory);
+    auto lrn_bwd = handler.AcquireLRNBackward();
 
-    std::vector<mkldnn::primitive> pipeline = {*lrn_bwd};
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(mkldnn_engine);
+    lrn_bwd->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
+                               {MKLDNN_ARG_DIFF_SRC, *diff_src_memory}});
+    astream.wait();
 
-    auto output_format =
-        (mkldnn::memory::format)diff_src_memory->get_primitive_desc()
-            .desc()
-            .data.format;
+    auto output_format = paddle::platform::GetMKLDNNFormat(*diff_src_memory);
 
     x_grad->set_layout(framework::DataLayout::kMKLDNN);
     x_grad->set_format(output_format);

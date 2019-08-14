@@ -59,10 +59,26 @@ class FCPrimitiveFactory {
       weights_ = CreateFourDimWeightsMemory(input, weights);
     }
 
-    auto dst_desc = CreateMemDescriptor(output, memory::format::any);
+    auto dst_desc = CreateMemDescriptor(output, memory::format_tag::any);
 
     fc_ = CreateFcPrimitive(*input_, *weights_, dst_desc, bias, output, ctx);
     return *fc_;
+  }
+
+  // TODO(grygielski) test function
+  void Execute() {
+    mkldnn::stream astream(engine_);
+    if (bias_) {
+      fc_->execute(astream, {{MKLDNN_ARG_SRC, boost::get<memory>(input_)},
+                             {MKLDNN_ARG_WEIGHTS, boost::get<memory>(weights_)},
+                             {MKLDNN_ARG_BIAS, boost::get<memory>(bias_)},
+                             {MKLDNN_ARG_DST, boost::get<memory>(output_)}});
+    } else {
+      fc_->execute(astream, {{MKLDNN_ARG_SRC, boost::get<memory>(input_)},
+                             {MKLDNN_ARG_WEIGHTS, boost::get<memory>(weights_)},
+                             {MKLDNN_ARG_DST, boost::get<memory>(output_)}});
+    }
+    astream.wait();
   }
 
  private:
@@ -70,46 +86,52 @@ class FCPrimitiveFactory {
                           const Tensor* in) {
     input_->set_data_handle(const_cast<T*>(in->data<T>()));
     output_->set_data_handle(out->mutable_data<T>(ctx.GetPlace()));
-    if (out->format() == memory::format::format_undef) {
-      auto output_format = output_->get_primitive_desc().desc().data.format;
-      out->set_format((memory::format)output_format);
+    if (out->format() == memory::format_tag::undef) {
+      auto output_format =
+          paddle::platform::GetMKLDNNFormat(boost::get<memory>(output_));
+      out->set_format(output_format);
     }
   }
 
-  memory::format MatchWeightFormat(memory::format fmt) {
-    using format = memory::format;
+  memory::format_tag MatchWeightFormat(memory::format_tag fmt) {
+    using format = memory::format_tag;
     switch (fmt) {
       case format::nChw16c:
-        return format::oIhw16i;
+        return format::aBcd16b;
       case format::nChw8c:
-        return format::oIhw8i;
+        return format::aBcd8b;
       case format::nchw:
         return format::oihw;
       default:
-        return format::format_undef;
+        return format::undef;
     }
   }
 
   mkldnn::memory Reorder(const memory::desc& src_desc,
                          const memory::desc& dst_desc, const void* src_data) {
-    auto src_mem = memory({src_desc, engine_}, const_cast<void*>(src_data));
-    auto dst_mem = memory({dst_desc, engine_});
+    auto src_mem = memory(src_desc, engine_, const_cast<void*>(src_data));
+    auto dst_mem = memory(dst_desc, engine_);
 
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
-    stream(stream::kind::eager).submit({reorder}).wait();
+
+    mkldnn::stream astream(engine_);
+    reorder.execute(astream, src_mem, dst_mem);
+    astream.wait();
+
+    // stream(stream::kind::eager).submit({reorder}).wait();
 
     return dst_mem;
   }
 
-  static mkldnn::memory::desc CreateMemDescriptor(const std::vector<int>& dims,
-                                                  memory::format format) {
+  static mkldnn::memory::desc CreateMemDescriptor(
+      const std::vector<int64_t>& dims, memory::format_tag format) {
     return platform::MKLDNNMemDesc(dims, platform::MKLDNNGetDataType<T>(),
                                    format);
   }
 
   static mkldnn::memory::desc CreateMemDescriptor(const Tensor* tensor,
-                                                  memory::format format) {
-    auto dims = framework::vectorize2int(tensor->dims());
+                                                  memory::format_tag format) {
+    auto dims = framework::vectorize(tensor->dims());
     return CreateMemDescriptor(dims, format);
   }
 
@@ -120,14 +142,14 @@ class FCPrimitiveFactory {
 
   mkldnn::memory CreateMemory(const mkldnn::memory::desc& desc,
                               const void* data) {
-    return memory({desc, engine_}, const_cast<void*>(data));
+    return memory(desc, engine_, const_cast<void*>(data));
   }
 
   mkldnn::memory TransposeWeights(const Tensor* weights) {
-    auto dims = framework::vectorize2int(weights->dims());
+    auto dims = framework::vectorize(weights->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
-    auto src_desc = CreateMemDescriptor(dims, memory::format::io);
-    auto dst_desc = CreateMemDescriptor(dims, memory::format::oi);
+    auto src_desc = CreateMemDescriptor(dims, memory::format_tag::io);
+    auto dst_desc = CreateMemDescriptor(dims, memory::format_tag::oi);
     return Reorder(src_desc, dst_desc, weights->data<T>());
   }
 
@@ -136,8 +158,8 @@ class FCPrimitiveFactory {
                                           const memory::desc& dst_desc,
                                           const Tensor* bias, Tensor* output,
                                           const ExecutionContext& ctx) {
-    const auto weights_desc = weights_memory.get_primitive_desc().desc();
-    const auto src_desc = src_memory.get_primitive_desc().desc();
+    const auto weights_desc = weights_memory.get_desc();
+    const auto src_desc = src_memory.get_desc();
     if (bias) {
       auto bias_desc = CreateMemDescriptor(bias, bias->format());
       bias_ = CreateMemory(bias_desc, bias);
@@ -146,15 +168,13 @@ class FCPrimitiveFactory {
 
       output_ = CreateDstMemory(fc_prim_desc, ctx, output);
 
-      return inner_product_forward(fc_prim_desc, src_memory, weights_memory,
-                                   *bias_, *output_);
+      return inner_product_forward(fc_prim_desc);
     } else {
       auto fc_prim_desc = CreateFcPrimDesc(src_desc, weights_desc, dst_desc);
 
       output_ = CreateDstMemory(fc_prim_desc, ctx, output);
 
-      return inner_product_forward(fc_prim_desc, src_memory, weights_memory,
-                                   *output_);
+      return inner_product_forward(fc_prim_desc);
     }
   }
 
@@ -182,12 +202,12 @@ class FCPrimitiveFactory {
 
   mkldnn::memory CreateFourDimWeightsMemory(const Tensor* input,
                                             const Tensor* weights) {
-    auto input_dims = framework::vectorize2int(input->dims());
-    auto weight_dims = framework::vectorize2int(weights->dims());
+    auto input_dims = framework::vectorize(input->dims());
+    auto weight_dims = framework::vectorize(weights->dims());
     auto dims = {weight_dims[1], input_dims[1], input_dims[2], input_dims[3]};
 
     auto dst_format = MatchWeightFormat(input->format());
-    auto src_desc = CreateMemDescriptor(dims, memory::format::oihw);
+    auto src_desc = CreateMemDescriptor(dims, memory::format_tag::oihw);
     auto dst_desc = CreateMemDescriptor(dims, dst_format);
 
     return Reorder(src_desc, dst_desc, weights_->get_data_handle());
@@ -196,11 +216,11 @@ class FCPrimitiveFactory {
   mkldnn::memory CreateDstMemory(
       const mkldnn::inner_product_forward::primitive_desc& fc_prim_desc,
       const ExecutionContext& ctx, Tensor* output) {
-    auto dst_prim_desc = fc_prim_desc.dst_primitive_desc();
-    auto buffer_size = dst_prim_desc.get_size();
+    auto dst_desc = fc_prim_desc.dst_desc();
+    auto buffer_size = dst_desc.get_size();
     T* output_data = output->mutable_data<T>(ctx.GetPlace(), buffer_size);
-    output->set_format((memory::format)dst_prim_desc.desc().data.format);
-    return memory(dst_prim_desc, to_void_cast<T>(output_data));
+    output->set_format(paddle::platform::GetMKLDNNFormat(dst_desc));
+    return memory(dst_desc, engine_, to_void_cast<T>(output_data));
   }
 
   void RecomputeOutputDims(const ExecutionContext& ctx, const LoDTensor* input,
@@ -267,8 +287,10 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
 
     auto prim_creator =
         GetPrimitiveFactory<T>(dev_ctx, ctx, input, w, mkldnn_engine);
+
+    // TODO(grygielski) rethink all of that
     auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);
-    stream(stream::kind::eager).submit({fc}).wait();
+    prim_creator->Execute();
 
     output->set_layout(DataLayout::kMKLDNN);
   }

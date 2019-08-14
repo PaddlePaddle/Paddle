@@ -191,13 +191,13 @@ if '${WITH_MKLDNN}' == 'ON':
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
         # we can support mkl on mac.
         #
-        # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
+        # change rpath of libmkldnn.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
-        # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
+        # thus, libmkldnn.so.1 will find libmklml_intel.so and libiomp5.so.
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libmkldnn.so failed, command: %s" % command)
-    package_data['paddle.libs']+=['libmkldnn.so.0' if os.name != 'nt' else ('mkldnn' + ext_name)]
+    package_data['paddle.libs']+=['libmkldnn.so.1' if os.name != 'nt' else ('mkldnn' + ext_name)]
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
 if '${WITH_NGRAPH}' == 'ON':
     # only change rpath in Release mode,

@@ -74,7 +74,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   auto& pool = platform::DeviceContextPool::Instance();
 
   auto src_dim = in.dims();
-  std::vector<int64_t> dst_dim;
+  std::vector<int> dst_dim;
 
   auto axis = GetAxis(kernel_type_for_var.data_layout_,
                       expected_kernel_type.data_layout_);
@@ -106,8 +106,6 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
       return platform::to_void_cast(tensor.data<int8_t>());
     case mkldnn::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
-    case mkldnn::memory::data_type::s16:
-      return platform::to_void_cast(tensor.data<int16_t>());
     case mkldnn::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
     default:
@@ -116,6 +114,7 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
 }
 #endif
 
+// TODO(grygielski)
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in, Tensor* out) {
@@ -128,8 +127,8 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "non-MKLDNN");
 
 #ifdef PADDLE_WITH_MKLDNN
-  PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
-                     in.format() != memory::format::any,
+  PADDLE_ENFORCE(in.format() != memory::format_tag::undef &&
+                     in.format() != memory::format_tag::any,
                  "Input tensor should have specified memory format");
 
   // Set default as NCHW in case not specified
@@ -141,11 +140,10 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       pool.Get(expected_kernel_type.place_));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
-  std::vector<int> out_tz = in_tz;
-
+  std::vector<int64_t> in_tz = paddle::framework::vectorize(in.dims());
+  std::vector<int64_t> out_tz = in_tz;
   memory::data_type in_type = ToMKLDNNDataType(in.type());
-  PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
+  PADDLE_ENFORCE(in_type != memory::data_type::undef,
                  "Input tensor type is not supported: %s", in.type());
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
@@ -158,7 +156,8 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
     const std::string key = platform::ReorderMKLDNNHandler::GetHash(
-        in_tz, in_format, out_format, std::to_string(in_type));
+        in_tz, in_format, out_format,
+        std::to_string(static_cast<int>(in_type)));
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);
@@ -169,15 +168,15 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*reorder_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(cpu_engine);
+    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+    astream.wait();
   } else {
     out->ShareDataWith(in);
   }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(memory::format::format_undef);
+  out->set_format(memory::format_tag::undef);
 #endif
 }
 

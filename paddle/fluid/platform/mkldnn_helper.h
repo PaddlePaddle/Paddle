@@ -67,9 +67,9 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
   return tf_pd<Type>(desc, e, p);
 }
 
-inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
+inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
                                           mkldnn::memory::data_type data_type,
-                                          mkldnn::memory::format format) {
+                                          mkldnn::memory::format_tag format) {
   mkldnn::memory::dims tz = dims;
   return mkldnn::memory::desc({tz}, data_type, format);
 }
@@ -81,7 +81,7 @@ inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
 
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_type::data_undef;
+  return mkldnn::memory::data_type::undef;
 }
 
 template <>
@@ -101,71 +101,188 @@ inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
   return mkldnn::memory::data_type::u8;
 }
 
-inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {
+inline void Reorder(mkldnn::memory& src, mkldnn::memory& dst,
+                    const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
-  std::vector<mkldnn::primitive> pipeline;
-  pipeline.push_back(reorder_prim);
-  mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+  mkldnn::stream astream(engine);
+  reorder_prim.execute(astream, src, dst);
+  astream.wait();
 }
 
-inline mkldnn::memory::format GetMKLDNNFormat(const mkldnn::memory memory) {
-  return static_cast<mkldnn::memory::format>(
-      memory.get_primitive_desc().desc().data.format);
+// TODO(grygielski)
+inline mkldnn::memory::format_tag GetMKLDNNFormat(
+    mkldnn::memory::desc mem_desc) {
+  // TODO(grygielski) clean this mess
+  // mkldnn::memory::desc mem_desc({1, 64, 128, 128},
+  // mkldnn::memory::data_type::f32, mkldnn::memory::format_tag::nChw16c);
+  // auto mem_desc = memory.get_desc();
+  // std::cout<<"nDIMS:"<<mem_desc.data.ndims<<std::endl;
+  // std::cout<<"DIMS:"<<mem_desc.data.dims[0]<<" "<<mem_desc.data.dims[1]<<"
+  // "<<mem_desc.data.dims[2]<<" "<<mem_desc.data.dims[3]<<std::endl;
+  // std::cout<<"STRIDES:"<<mem_desc.data.format_desc.blocking.strides[0]<<"
+  // "<<mem_desc.data.format_desc.blocking.strides[1]<<"
+  // "<<mem_desc.data.format_desc.blocking.strides[2]<<"
+  // "<<mem_desc.data.format_desc.blocking.strides[3]<<std::endl;
+  // std::cout<<"INNER
+  // BLOCKS:"<<mem_desc.data.format_desc.blocking.inner_blks[0]<<std::endl;
+  // std::cout<<"INNER BLOCK
+  // IDX:"<<mem_desc.data.format_desc.blocking.inner_idxs[0]<<std::endl;
+  // if(mem_desc.data.ndims < 2) {
+  //   return mkldnn::memory::format_tag::x;
+  // }
+  // std::vector<int64_t> mem_dims(std::begin(mem_desc.data.dims),
+  // std::end(mem_desc.data.dims));
+  // mkldnn::memory::desc temp(mem_dims, mkldnn::memory::data_type::f32,
+  // mkldnn::memory::format_tag::nchw);
+  // if(temp == mem_desc) {
+  //   return mkldnn::memory::format_tag::nchw;
+  // }
+  // else {
+  //   return mkldnn::memory::format_tag::nhwc;
+  // }
+
+  auto ndims = mem_desc.data.ndims;
+  auto strides = mem_desc.data.format_desc.blocking.strides;
+  auto inner_nblks = mem_desc.data.format_desc.blocking.inner_nblks;
+  auto inner_blks = mem_desc.data.format_desc.blocking.inner_blks;
+  auto inner_idxs = mem_desc.data.format_desc.blocking.inner_idxs;
+
+  // TODO(grygielski) incomplete
+  if (ndims == 1) {
+    return mkldnn::memory::format_tag::x;
+  } else if (ndims == 2) {
+    if (inner_nblks == 0) {
+      if (strides[0] > strides[1]) {
+        return mkldnn::memory::format_tag::nc;
+      } else {
+        return mkldnn::memory::format_tag::cn;
+      }
+    }
+  } else if (ndims == 3) {
+    if (inner_nblks == 0) {
+      if (strides[0] > strides[1] && strides[1] > strides[2]) {
+        return mkldnn::memory::format_tag::ncw;
+      } else {
+        return mkldnn::memory::format_tag::nwc;
+      }
+    }
+  } else if (ndims == 4) {
+    if (inner_nblks == 0) {
+      if (strides[0] > strides[1] && strides[1] > strides[2] &&
+          strides[2] > strides[3]) {
+        return mkldnn::memory::format_tag::nchw;
+      } else {
+        return mkldnn::memory::format_tag::nhwc;
+      }
+    } else if (inner_nblks == 1) {
+      if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
+        return mkldnn::memory::format_tag::nChw16c;
+      } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
+        return mkldnn::memory::format_tag::nChw8c;
+      } else if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
+        return mkldnn::memory::format_tag::nChw4c;
+      } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
+        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+          strides[3] >= strides[1]) {
+            return mkldnn::memory::format_tag::Acdb16a;
+        }       
+      }
+    } else if (inner_nblks == 2) {
+      if (inner_blks[0] == 16 && inner_blks[1] == 16) {
+        if(inner_idxs[0] == 1 && inner_idxs[1] == 0) {
+          return mkldnn::memory::format_tag::OIhw16i16o;
+        }
+      }
+    }
+  } else if (ndims == 5) {
+    if (inner_nblks == 0) {
+      if (strides[0] > strides[1] && strides[1] > strides[2] &&
+          strides[2] > strides[3] && strides[3] > strides[4]) {
+        return mkldnn::memory::format_tag::ncdhw;
+      } else {
+        return mkldnn::memory::format_tag::ndhwc;
+      }
+    }
+  }
+  std::cout<<"@@@@@@@@@@ UNDEFINED FORMAT @@@@@@@@@@@@@@@@@@@"<<std::endl;
+  std::cout<<"NDIMS: "<<ndims<<std::endl;
+  std::cout<<"INNER_NBLKS: "<<inner_nblks<<std::endl;
+  for (int i=0;i<ndims;++i) {
+    std::cout<<"STRIDE["<<i<<"]: "<<strides[i]<<std::endl;
+  }
+  for (int i=0;i<inner_nblks;++i) {
+    std::cout<<"INNER_BLKS["<<i<<"]: "<<inner_blks[i]<<std::endl;
+  }
+  for (int i=0;i<inner_nblks;++i) {
+    std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
+  }
+  return mkldnn::memory::format_tag::undef;
+  // return mkldnn::memory::format_tag::nChw16c;
+
+  // return static_cast<mkldnn::memory::format_tag>(
+  //     memory.get_primitive_desc().desc().data.format_tag);
 }
 
-inline mkldnn::memory::format GetMKLDNNFormat(
-    const mkldnn::sum::primitive_desc& memory) {
-  return static_cast<mkldnn::memory::format>(
-      memory.dst_primitive_desc().desc().data.format);
+inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
+  auto mem_desc = memory.get_desc();
+  return GetMKLDNNFormat(mem_desc);
 }
 
-inline mkldnn::memory::format MKLDNNFormatForSize(
-    size_t dims_size, mkldnn::memory::format data_format) {
+// TODO(grygielski) innecessary
+// inline mkldnn::memory::format_tag GetMKLDNNFormat(
+//     const mkldnn::sum::primitive_desc& memory) {
+//      return mkldnn::memory::format_tag::nchw;
+// return static_cast<mkldnn::memory::format_tag>(
+//     memory.dst_primitive_desc().desc().data.format_tag);
+//}
+
+inline mkldnn::memory::format_tag MKLDNNFormatForSize(
+    size_t dims_size, mkldnn::memory::format_tag data_format) {
   if (dims_size == 1) {
-    return mkldnn::memory::format::x;
+    return mkldnn::memory::format_tag::x;
   } else if (dims_size == 2) {
-    return mkldnn::memory::format::nc;
+    return mkldnn::memory::format_tag::nc;
   } else if (dims_size == 3) {
-    if (data_format == mkldnn::memory::format::nchw) {
-      return mkldnn::memory::format::ncw;
-    } else if (data_format == mkldnn::memory::format::nhwc) {
-      return mkldnn::memory::format::nwc;
+    if (data_format == mkldnn::memory::format_tag::nchw) {
+      return mkldnn::memory::format_tag::ncw;
+    } else if (data_format == mkldnn::memory::format_tag::nhwc) {
+      return mkldnn::memory::format_tag::nwc;
     }
   } else if (dims_size == 5) {
-    if (data_format == mkldnn::memory::format::nchw) {
-      return mkldnn::memory::format::ncdhw;
-    } else if (data_format == mkldnn::memory::format::nhwc) {
-      return mkldnn::memory::format::ndhwc;
+    if (data_format == mkldnn::memory::format_tag::nchw) {
+      return mkldnn::memory::format_tag::ncdhw;
+    } else if (data_format == mkldnn::memory::format_tag::nhwc) {
+      return mkldnn::memory::format_tag::ndhwc;
     }
   }
   return data_format;
 }
 
-inline mkldnn::memory::format data_format_to_memory_format(
+inline mkldnn::memory::format_tag data_format_to_memory_format(
     const std::string& data_format) {
   switch (framework::StringToDataLayout(data_format)) {
     case framework::DataLayout::kNHWC:
-      return mkldnn::memory::format::nhwc;
+      return mkldnn::memory::format_tag::nhwc;
     case framework::DataLayout::kNCHW:
-      return mkldnn::memory::format::nchw;
+      return mkldnn::memory::format_tag::nchw;
     default:
-      return mkldnn::memory::format::any;
+      return mkldnn::memory::format_tag::any;
   }
 }
 
-inline mkldnn::memory::format StringToMKLDNNFormat(std::string* format) {
+inline mkldnn::memory::format_tag StringToMKLDNNFormat(std::string* format) {
   std::transform(format->begin(), format->end(), format->begin(), ::tolower);
 
   if (!format->compare("nchw")) {
-    return mkldnn::memory::format::nchw;
+    return mkldnn::memory::format_tag::nchw;
   } else if (!format->compare("nchw16c")) {
-    return mkldnn::memory::format::nChw16c;
+    return mkldnn::memory::format_tag::nChw16c;
   } else if (!format->compare("nchw8c")) {
-    return mkldnn::memory::format::nChw8c;
+    return mkldnn::memory::format_tag::nChw8c;
   } else if (!format->compare("nhwc")) {
-    return mkldnn::memory::format::nhwc;
+    return mkldnn::memory::format_tag::nhwc;
   } else {
-    return mkldnn::memory::format::any;
+    return mkldnn::memory::format_tag::any;
   }
 }
 

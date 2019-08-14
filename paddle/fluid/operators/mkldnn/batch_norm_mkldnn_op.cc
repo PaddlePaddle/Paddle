@@ -44,18 +44,18 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
   std::shared_ptr<memory> AcquireScaleshiftMemoryFromPrimitive(void *ptr) {
-    return this->AcquireMemoryFromPrimitive(
-        batch_norm_pd_->weights_primitive_desc(), ptr, "@scaleshift_mem_p");
+    return this->AcquireMemoryFromPrimitive(batch_norm_pd_->weights_desc(), ptr,
+                                            "@scaleshift_mem_p");
   }
 
   std::shared_ptr<memory> AcquireMeanMemoryFromPrimitive(void *ptr) {
-    return this->AcquireMemoryFromPrimitive(
-        batch_norm_pd_->mean_primitive_desc(), ptr, "@mean_mem_p");
+    return this->AcquireMemoryFromPrimitive(batch_norm_pd_->mean_desc(), ptr,
+                                            "@mean_mem_p");
   }
 
   std::shared_ptr<memory> AcquireVarianceMemoryFromPrimitive(void *ptr) {
-    return this->AcquireMemoryFromPrimitive(
-        batch_norm_pd_->variance_primitive_desc(), ptr, "@variance_mem_p");
+    return this->AcquireMemoryFromPrimitive(batch_norm_pd_->variance_desc(),
+                                            ptr, "@variance_mem_p");
   }
 
   std::shared_ptr<batch_norm_fwd::primitive_desc>
@@ -83,6 +83,7 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     return batch_norm_pd_;
   }
 
+  // TODO(grygielski) redundant parameters
   std::shared_ptr<batch_norm_fwd> AcquireTestTrainingBatchNormFwd(
       std::shared_ptr<memory> src_memory,
       std::shared_ptr<memory> scaleshift_memory,
@@ -94,15 +95,9 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
 
     if (batch_norm_p == nullptr) {
       if (is_test) {
-        batch_norm_p = std::make_shared<batch_norm_fwd>(
-            *batch_norm_pd_, *src_memory,
-            (const mkldnn::primitive::at &)*mean_memory,
-            (const mkldnn::primitive::at &)*variance_memory, *scaleshift_memory,
-            *dst_memory);
+        batch_norm_p = std::make_shared<batch_norm_fwd>(*batch_norm_pd_);
       } else {
-        batch_norm_p = std::make_shared<batch_norm_fwd>(
-            *batch_norm_pd_, *src_memory, *scaleshift_memory, *dst_memory,
-            *mean_memory, *variance_memory);
+        batch_norm_p = std::make_shared<batch_norm_fwd>(*batch_norm_pd_);
       }
 
       dev_ctx_.SetBlob(prim_key, batch_norm_p);
@@ -112,7 +107,8 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
   }
 
   static std::string GetHash(const memory::dims &input_dims, float epsilon,
-                             unsigned flag, bool is_test, memory::format format,
+                             mkldnn::normalization_flags flag, bool is_test,
+                             memory::format_tag format,
                              const std::string &suffix = "") {
     auto dims2str = [](const memory::dims &operand_dims) {
       std::string dstr = "";
@@ -122,8 +118,8 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       return dstr;
     };
     return dims2str(input_dims) + std::to_string(epsilon) +
-           std::to_string(flag) + std::to_string(is_test) +
-           std::to_string(format) + suffix;
+           std::to_string(static_cast<int>(flag)) + std::to_string(is_test) +
+           std::to_string(static_cast<int>(format)) + suffix;
   }
 
  private:
@@ -183,7 +179,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto *shift = ctx.Input<Tensor>("Bias");
 
     PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                       x->format() != memory::format::format_undef,
+                       x->format() != memory::format_tag::undef,
                    "Wrong layout/format set for Input x tensor");
 
     const T *x_data = x->data<T>();
@@ -204,8 +200,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                            ? mkldnn::prop_kind::forward_scoring
                            : mkldnn::prop_kind::forward_training;
 
-    auto src_tz = paddle::framework::vectorize2int(x->dims());
-    auto scale_tz = paddle::framework::vectorize2int(scale->dims());
+    auto src_tz = paddle::framework::vectorize(x->dims());
+    auto scale_tz = paddle::framework::vectorize(scale->dims());
     PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
     const unsigned int ic = scale_tz[0];
 
@@ -217,12 +213,12 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     copy_to_weights(scale->data<T>(), scale->data<T>() + ic, shift->data<T>(),
                     shift->data<T>() + ic, &scaleshift_data);
 
-    unsigned flags = mkldnn::use_scale_shift;
-    if (global_stats) flags |= mkldnn::use_global_stats;
-    if (fuse_with_relu) flags |= mkldnn::fuse_bn_relu;
+    auto flags = mkldnn::normalization_flags::use_scale_shift;
+    if (global_stats) flags |= mkldnn::normalization_flags::use_global_stats;
+    if (fuse_with_relu) flags |= mkldnn::normalization_flags::fuse_norm_relu;
 
     // create mkldnn memory from input x tensor
-    mkldnn::memory::format input_format =
+    mkldnn::memory::format_tag input_format =
         platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     // keys for backward pass
@@ -250,26 +246,28 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireScaleshiftMemoryFromPrimitive(scaleshift_data.data());
 
     // create mkldnn memory for output y tensor
-    auto dst_memory = handler.AcquireDstMemory(
-        batch_norm_fwd_pd->dst_primitive_desc().desc(), y_data);
+    auto dst_memory =
+        handler.AcquireDstMemory(batch_norm_fwd_pd->dst_desc(), y_data);
+
+    // TODO(grygielski) refactor that
+    std::shared_ptr<memory> mean_memory;
+    std::shared_ptr<memory> variance_memory;
 
     std::shared_ptr<batch_norm_fwd> batch_norm_p;
     if (global_stats) {
       // create mkldnn memory for stats (as input)
-      std::shared_ptr<memory> mean_memory =
+      mean_memory =
           handler.AcquireMeanMemoryFromPrimitive(to_void_cast(mean_data));
-      std::shared_ptr<memory> variance_memory =
-          handler.AcquireVarianceMemoryFromPrimitive(
-              to_void_cast(variance_data));
+      variance_memory = handler.AcquireVarianceMemoryFromPrimitive(
+          to_void_cast(variance_data));
 
       batch_norm_p = handler.AcquireTestTrainingBatchNormFwd(
           src_memory, scaleshift_memory, dst_memory, mean_memory,
           variance_memory, true);
     } else {
       // create mkldnn memory for stats (as output)
-      std::shared_ptr<memory> mean_memory =
-          handler.AcquireMeanMemoryFromPrimitive(batch_mean_data);
-      std::shared_ptr<memory> variance_memory =
+      mean_memory = handler.AcquireMeanMemoryFromPrimitive(batch_mean_data);
+      variance_memory =
           handler.AcquireVarianceMemoryFromPrimitive(batch_variance_data);
 
       batch_norm_p = handler.AcquireTestTrainingBatchNormFwd(
@@ -280,9 +278,15 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     y->set_layout(DataLayout::kMKLDNN);
     y->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*batch_norm_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    // TODO(grygielski)
+    mkldnn::stream astream(mkldnn_engine);
+    batch_norm_p->execute(astream,
+                          {{MKLDNN_ARG_SRC, *src_memory},
+                           {MKLDNN_ARG_SCALE_SHIFT, *scaleshift_memory},
+                           {MKLDNN_ARG_MEAN, *mean_memory},
+                           {MKLDNN_ARG_VARIANCE, *variance_memory},
+                           {MKLDNN_ARG_DST, *dst_memory}});
+    astream.wait();
 
     if (!global_stats) {
       // mkldnn only compute stats for current batch
@@ -324,7 +328,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     PADDLE_ENFORCE(diff_y->layout() == DataLayout::kMKLDNN &&
-                       diff_y->format() != memory::format::format_undef,
+                       diff_y->format() != memory::format_tag::undef,
                    "Wrong layout/format set for Input diff_y tensor");
 
     const T *x_data = x->data<T>();
@@ -337,24 +341,24 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     T *diff_scale_data = diff_scale->mutable_data<T>(ctx.GetPlace());
     T *diff_shift_data = diff_shift->mutable_data<T>(ctx.GetPlace());
 
-    auto src_tz = paddle::framework::vectorize2int(x->dims());
+    auto src_tz = paddle::framework::vectorize(x->dims());
     auto diff_src_tz = src_tz;
     auto dst_tz = src_tz;
     auto diff_dst_tz = dst_tz;
-    auto scale_tz = paddle::framework::vectorize2int(scale->dims());
+    auto scale_tz = paddle::framework::vectorize(scale->dims());
     PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
 
-    const unsigned int ic = scale_tz[0];
+    const int64_t ic = scale_tz[0];
 
     using bn_bwd_types = bn_type_traits<mkldnn::batch_normalization_backward>;
 
-    mkldnn::memory::format dst_format =
+    mkldnn::memory::format_tag dst_format =
         platform::MKLDNNFormatForSize(src_tz.size(), diff_y->format());
 
-    mkldnn::memory::format input_format =
+    mkldnn::memory::format_tag input_format =
         platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
-    unsigned flags = mkldnn::use_scale_shift;
+    auto flags = mkldnn::normalization_flags::use_scale_shift;
 
     // keys from forward pass
     const std::string key = BatchNormMKLDNNHandler::GetHash(
@@ -383,11 +387,11 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key_batch_norm_diff_dst_mem_p =
         key_with_hash + "@batch_norm_bwd_diff_dst_mem_p";
 
-    primitive reorder_diff_dst;
+    std::shared_ptr<mkldnn::reorder> reorder_diff_dst;
     bool is_diff_dst_reordered = false;
-    auto user_diff_dst_memory = memory(
-        {{{diff_dst_tz}, memory::data_type::f32, dst_format}, mkldnn_engine},
-        to_void_cast(diff_y_data));
+    auto user_diff_dst_memory =
+        memory({{diff_dst_tz}, memory::data_type::f32, dst_format},
+               mkldnn_engine, to_void_cast(diff_y_data));
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
     const size_t scaleshift_size = 2 * ic;
@@ -409,56 +413,62 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto batch_norm_bwd_p = std::static_pointer_cast<batch_norm_bwd>(
         dev_ctx.GetBlob(key_batch_norm_bwd_p));
 
+    // TODO(grygielski) in MKLDNN 1.0 you need all memories to execute so take
+    // look at next if/else
+    // create mkldnn memory for input tensors (src/mean/variance)
+
+    // for diff_dst, try to use same format as dst in forward pass
+    // TODO(grygielski)
+    // auto diff_dst_pd = batch_norm_fwd_pd.get()->dst_primitive_desc();
+    auto diff_dst_md = batch_norm_fwd_pd.get()->dst_desc();
+
+    auto src_memory = std::shared_ptr<memory>(
+        new memory({{src_tz}, memory::data_type::f32, input_format},
+                   mkldnn_engine, to_void_cast(x_data)));
+
+    // create primitive descriptor for batch norm backward
+    auto batch_norm_bwd_desc =
+        bn_bwd_types::op_desc{mkldnn::prop_kind::backward, diff_dst_md,
+                              src_memory->get_desc(), epsilon, flags};
+    auto batch_norm_bwd_pd = bn_bwd_types::op_prim{
+        batch_norm_bwd_desc, mkldnn_engine, *batch_norm_fwd_pd};
+
+    auto mean_memory =
+        std::make_shared<memory>(batch_norm_bwd_pd.mean_desc(), mkldnn_engine,
+                                 to_void_cast(batch_mean_data));
+    auto variance_memory = std::make_shared<memory>(
+        batch_norm_bwd_pd.variance_desc(), mkldnn_engine,
+        to_void_cast(batch_variance_data));
+
+    // create mkldnn memory for input tensors (scale/shift)
+    auto scaleshift_memory =
+        std::make_shared<memory>(batch_norm_bwd_pd.weights_desc(),
+                                 mkldnn_engine, scaleshift_data.data());
+
+    // create mkldnn memory for output diff weights (combined scale/shift)
+    auto diff_scaleshift_memory =
+        std::make_shared<memory>(batch_norm_bwd_pd.diff_weights_desc(),
+                                 mkldnn_engine, diff_scaleshift_data.data());
+
+    std::shared_ptr<memory> diff_src_memory;
+    std::shared_ptr<memory> diff_dst_memory;
+
     if (batch_norm_bwd_p == nullptr) {
-      auto src_memory = std::shared_ptr<memory>(new memory(
-          {{{src_tz}, memory::data_type::f32, input_format}, mkldnn_engine},
-          to_void_cast(x_data)));
-
-      // for diff_dst, try to use same format as dst in forward pass
-      auto diff_dst_pd = batch_norm_fwd_pd.get()->dst_primitive_desc();
-      auto diff_dst_md = diff_dst_pd.desc();
-
-      // create primitive descriptor for batch norm backward
-      auto batch_norm_bwd_desc = bn_bwd_types::op_desc{
-          mkldnn::prop_kind::backward, diff_dst_md,
-          src_memory->get_primitive_desc().desc(), epsilon, flags};
-      auto batch_norm_bwd_pd = bn_bwd_types::op_prim{
-          batch_norm_bwd_desc, mkldnn_engine, *batch_norm_fwd_pd};
-
       // reorder user_diff_dst if it's not in preferred format
-      auto diff_dst_memory = std::make_shared<memory>(user_diff_dst_memory);
-      if (diff_dst_pd != user_diff_dst_memory.get_primitive_desc()) {
-        diff_dst_memory = std::make_shared<memory>(diff_dst_pd);
-        reorder_diff_dst = reorder(user_diff_dst_memory, *diff_dst_memory);
+      diff_dst_memory = std::make_shared<memory>(user_diff_dst_memory);
+      if (diff_dst_md != user_diff_dst_memory.get_desc()) {
+        diff_dst_memory = std::make_shared<memory>(diff_dst_md, mkldnn_engine);
+        reorder_diff_dst = std::make_shared<mkldnn::reorder>(
+            user_diff_dst_memory, *diff_dst_memory);
         is_diff_dst_reordered = true;
       }
 
-      // create mkldnn memory for input tensors (src/mean/variance)
-      auto mean_memory =
-          std::make_shared<memory>(batch_norm_bwd_pd.mean_primitive_desc(),
-                                   to_void_cast(batch_mean_data));
-      auto variance_memory =
-          std::make_shared<memory>(batch_norm_bwd_pd.variance_primitive_desc(),
-                                   to_void_cast(batch_variance_data));
-
-      // create mkldnn memory for input tensors (scale/shift)
-      auto scaleshift_memory = std::make_shared<memory>(
-          batch_norm_bwd_pd.weights_primitive_desc(), scaleshift_data.data());
-
-      // create mkldnn memory for output diff weights (combined scale/shift)
-      auto diff_scaleshift_memory = std::make_shared<memory>(
-          batch_norm_bwd_pd.diff_weights_primitive_desc(),
-          diff_scaleshift_data.data());
-
       // here assume diff_src is in the same format of src
-      auto diff_src_memory = std::make_shared<memory>(
-          src_memory->get_primitive_desc(), diff_x_data);
+      diff_src_memory = std::make_shared<memory>(src_memory->get_desc(),
+                                                 mkldnn_engine, diff_x_data);
 
       // finally create batch_norm backward primitive
-      batch_norm_bwd_p = std::make_shared<batch_norm_bwd>(
-          batch_norm_bwd_pd, *src_memory, *mean_memory, *variance_memory,
-          *diff_dst_memory, *scaleshift_memory, *diff_src_memory,
-          *diff_scaleshift_memory);
+      batch_norm_bwd_p = std::make_shared<batch_norm_bwd>(batch_norm_bwd_pd);
 
       dev_ctx.SetBlob(key_batch_norm_bwd_p, batch_norm_bwd_p);
       dev_ctx.SetBlob(key_batch_norm_src_mem_p, src_memory);
@@ -472,9 +482,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
       // set layout/format of output tensors
       diff_x->set_layout(DataLayout::kMKLDNN);
-      diff_x->set_format((memory::format)diff_src_memory->get_primitive_desc()
-                             .desc()
-                             .data.format);
+      diff_x->set_format(paddle::platform::GetMKLDNNFormat(*diff_src_memory));
     } else {
       // primitives already exist
       UpdateMemoryData(dev_ctx, key_batch_norm_src_mem_p, to_void_cast(x_data));
@@ -486,30 +494,40 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                        scaleshift_data.data());
       UpdateMemoryData(dev_ctx, key_batch_norm_diff_scaleshift_mem_p,
                        diff_scaleshift_data.data());
-      auto diff_src_memory = UpdateMemoryData(
-          dev_ctx, key_batch_norm_diff_src_mem_p, to_void_cast(diff_x_data));
-      auto diff_dst_memory = UpdateMemoryData(
-          dev_ctx, key_batch_norm_diff_dst_mem_p, to_void_cast(diff_y_data));
+      diff_src_memory = UpdateMemoryData(dev_ctx, key_batch_norm_diff_src_mem_p,
+                                         to_void_cast(diff_x_data));
+      diff_dst_memory = UpdateMemoryData(dev_ctx, key_batch_norm_diff_dst_mem_p,
+                                         to_void_cast(diff_y_data));
 
       // reorder user_diff_dst if it's not in preferred format
-      if (diff_dst_memory->get_primitive_desc() !=
-          user_diff_dst_memory.get_primitive_desc()) {
-        reorder_diff_dst = reorder(user_diff_dst_memory, *diff_dst_memory);
+      if (diff_dst_memory->get_desc() != user_diff_dst_memory.get_desc()) {
+        reorder_diff_dst = std::make_shared<mkldnn::reorder>(
+            user_diff_dst_memory, *diff_dst_memory);
         is_diff_dst_reordered = true;
       }
 
       // set layout/format of output tensors
       diff_x->set_layout(DataLayout::kMKLDNN);
-      diff_x->set_format((memory::format)diff_src_memory->get_primitive_desc()
-                             .desc()
-                             .data.format);
+      diff_x->set_format(paddle::platform::GetMKLDNNFormat(*diff_src_memory));
     }
 
     // execute optional reorder and batch_norm backward primitive
-    std::vector<primitive> pipeline;
-    if (is_diff_dst_reordered) pipeline.push_back(reorder_diff_dst);
-    pipeline.push_back(*batch_norm_bwd_p);
-    stream(stream::kind::eager).submit(pipeline).wait();
+    // TODO(grygielski)
+    mkldnn::stream astream(mkldnn_engine);
+    if (is_diff_dst_reordered) {
+      reorder_diff_dst->execute(astream, user_diff_dst_memory,
+                                *diff_dst_memory);
+      astream.wait();
+    }
+    batch_norm_bwd_p->execute(
+        astream, {{MKLDNN_ARG_SRC, *src_memory},
+                  {MKLDNN_ARG_MEAN, *mean_memory},
+                  {MKLDNN_ARG_VARIANCE, *variance_memory},
+                  {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
+                  {MKLDNN_ARG_SCALE_SHIFT, *scaleshift_memory},
+                  {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
+                  {MKLDNN_ARG_DIFF_SCALE_SHIFT, *diff_scaleshift_memory}});
+    astream.wait();
 
     // copy back diff sacle/shift to output tensors (diff scale/shift)
     diff_scaleshift_data.resize(scaleshift_size);

@@ -46,10 +46,10 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != mkldnn::memory::format::format_undef,
+                       input->format() != mkldnn::memory::format_tag::undef,
                    "Wrong layout/format set for Input tensor");
     PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != mkldnn::memory::format::format_undef,
+                       filter->format() != mkldnn::memory::format_tag::undef,
                    "Wrong layout/format set for Filter tensor");
     PADDLE_ENFORCE(input->dims().size() == 4,
                    "Input must be with 4 dimensions, i.e. NCHW");
@@ -58,15 +58,24 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     if (bias) {
       PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != mkldnn::memory::format::format_undef,
+                         bias->format() != mkldnn::memory::format_tag::undef,
                      "Wrong layout/format set for Bias tensor");
       PADDLE_ENFORCE(bias->dims().size() == 1,
                      "Bias must only have 1 dimension, i.e. X");
     }
 
-    std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    // TODO(grygielski) change
+    std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+
+    // TODO(grygielski) change
+    std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+
+    // TODO(grygielski) change
+    std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
+    std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
+
     int groups = ctx.Attr<int>("groups");
 
     // TODO(tpatejko): add support for dilation
@@ -77,10 +86,10 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> iohw_weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
-    std::vector<int> weights_tz = iohw_weights_tz;
+    std::vector<int64_t> src_tz = paddle::framework::vectorize(input->dims());
+    std::vector<int64_t> iohw_weights_tz =
+        paddle::framework::vectorize(filter->dims());
+    std::vector<int64_t> weights_tz = iohw_weights_tz;
     // IOHW -> OIHW
     weights_tz[0] = iohw_weights_tz[1];
     weights_tz[1] = iohw_weights_tz[0];
@@ -88,10 +97,10 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Custom Reorder from IOHW to OIHW
     auto iohw2oihw_reorder =
         [&iohw_weights_tz](const T* filter_data) -> std::shared_ptr<T> {
-      int o = iohw_weights_tz[1];
-      int c = iohw_weights_tz[0];
-      int h = iohw_weights_tz[2];
-      int w = iohw_weights_tz[3];
+      int64_t o = iohw_weights_tz[1];
+      int64_t c = iohw_weights_tz[0];
+      int64_t h = iohw_weights_tz[2];
+      int64_t w = iohw_weights_tz[3];
       std::shared_ptr<T> reordered_filter_data(new T[o * c * h * w](),
                                                std::default_delete<T[]>());
       for (int i = 0; i < c; ++i) {
@@ -119,7 +128,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       weights_tz[3] = h;
       weights_tz[4] = w;
     }
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    std::vector<int64_t> dst_tz = paddle::framework::vectorize(output->dims());
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvTransposeMKLDNNHandler::GetHash(
@@ -132,8 +141,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         {src_tz}, platform::MKLDNNGetDataType<T>(), input->format());
     auto user_weights_md =
         platform::MKLDNNMemDesc({weights_tz}, platform::MKLDNNGetDataType<T>(),
-                                (g == 1) ? mkldnn::memory::format::oihw
-                                         : mkldnn::memory::format::goihw);
+                                (g == 1) ? mkldnn::memory::format_tag::oihw
+                                         : mkldnn::memory::format_tag::goihw);
 
     /* create memory descriptor for convolution without specified format
      * ('any') which lets a primitive (convolution in this case) choose
@@ -150,8 +159,9 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-    std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
-                               // Currently used whenever bias is != nullptr.
+    std::vector<int64_t>
+        bias_tz;  // TODO(mgallus): avoid empty vector creation.
+                  // Currently used whenever bias is != nullptr.
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
@@ -163,9 +173,10 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
     if (bias) {
-      bias_tz = paddle::framework::vectorize2int(bias->dims());
-      auto bias_md = platform::MKLDNNMemDesc(
-          bias_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::x);
+      bias_tz = paddle::framework::vectorize(bias->dims());
+      auto bias_md =
+          platform::MKLDNNMemDesc(bias_tz, platform::MKLDNNGetDataType<T>(),
+                                  mkldnn::memory::format_tag::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
           fuse_activation, fuse_alpha, fuse_beta, false, fwd_prop_kind);
@@ -198,26 +209,35 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // create convolution op primitive
     std::shared_ptr<mkldnn::deconvolution_forward> conv_p;
+    conv_p = handler.AcquireConvolution();
+
+    // TODO(grygielski)
+    mkldnn::stream astream(mkldnn_engine);
     if (bias) {
       const T* bias_data = bias->data<T>();
       auto user_bias_md =
           platform::MKLDNNMemDesc({bias_tz}, platform::MKLDNNGetDataType<T>(),
-                                  mkldnn::memory::format::x);
+                                  mkldnn::memory::format_tag::x);
       auto user_bias_memory_p = handler.AcquireBiasMemory(
           user_bias_md, platform::to_void_cast<T>(bias_data));
 
       auto bias_memory_p =
           handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
-      conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
-                                          bias_memory_p, dst_memory_p);
+
+      conv_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
+                                {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
+                                {MKLDNN_ARG_BIAS, *bias_memory_p},
+                                {MKLDNN_ARG_DST, *dst_memory_p}});
     } else {
-      conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
-                                          dst_memory_p);
+      conv_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
+                                {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
+                                {MKLDNN_ARG_DST, *dst_memory_p}});
     }
+    astream.wait();
 
     // push primitive to stream and wait until it's executed
-    pipeline.push_back(*conv_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    // pipeline.push_back(*conv_p);
+    // mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));

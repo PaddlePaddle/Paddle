@@ -43,11 +43,11 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    std::vector<int> nchw_tz = paddle::framework::vectorize2int(input->dims());
+    std::vector<int64_t> nchw_tz = paddle::framework::vectorize(input->dims());
 
     const std::string key = platform::TransposeMKLDNNHandler::GetHash(
-        nchw_tz, axis,
-        ctx.op().Output("Out") + std::to_string(input->format()));
+        nchw_tz, axis, ctx.op().Output("Out") +
+                           std::to_string(static_cast<int>(input->format())));
 
     platform::TransposeMKLDNNHandler handler(nchw_tz, axis, dev_ctx,
                                              mkldnn_engine, key);
@@ -59,12 +59,15 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*transpose_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    // TODO(grygielski)
+    mkldnn::stream astream(mkldnn_engine);
+    transpose_p->execute(astream, *transpose_src_memory_p,
+                         *transpose_dst_memory_p);
+    astream.wait();
 
+    // TODO(grygielski) why like that?
     output->set_layout(DataLayout::kNCHW);
-    output->set_format(mkldnn::memory::format::format_undef);
+    output->set_format(mkldnn::memory::format_tag::undef);
   }
 };
 
@@ -97,8 +100,8 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     x_grad->mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> nchw_tz =
-        paddle::framework::vectorize2int(out_grad->dims());
+    std::vector<int64_t> nchw_tz =
+        paddle::framework::vectorize(out_grad->dims());
 
     const std::string key = platform::TransposeMKLDNNHandler::GetHash(
         nchw_tz, axis, ctx.op().Output(framework::GradVarName("X")));
@@ -113,9 +116,10 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*transpose_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(mkldnn_engine);
+    transpose_p->execute(astream, *transpose_src_memory_p,
+                         *transpose_dst_memory_p);
+    astream.wait();
   }
 };
 

@@ -63,28 +63,28 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       LoDTensor* output = ctx.Output<LoDTensor>("Out");
       T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-      std::vector<int> dst_tz = framework::vectorize2int(output->dims());
+      std::vector<int64_t> dst_tz = framework::vectorize(output->dims());
       auto src_tz = dst_tz;
-      memory::format output_format{memory::format::format_undef};
+      memory::format_tag output_format{memory::format_tag::undef};
       std::vector<float> scales;
-      std::vector<memory::primitive_desc> srcs_mpd;
+      std::vector<memory::desc> srcs_md;
       std::vector<mkldnn::memory> srcs_mem;
 
       PADDLE_ENFORCE(in_vars[0]->IsType<LoDTensor>(),
                      "Input[0] must be LoDTensors");
       auto& input0 = in_vars[0]->Get<LoDTensor>();
       PADDLE_ENFORCE(input0.layout() == DataLayout::kMKLDNN &&
-                         input0.format() != memory::format::format_undef,
+                         input0.format() != memory::format_tag::undef,
                      "Wrong layout/format for inputs[0]");
 
-      memory::format input_format = input0.format();
+      memory::format_tag input_format = input0.format();
 
       for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
                        "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();
         PADDLE_ENFORCE(input.layout() == DataLayout::kMKLDNN &&
-                           input.format() != memory::format::format_undef,
+                           input.format() != memory::format_tag::undef,
                        "Wrong layout/format for inputs");
 
         if (input.numel() == 0) {
@@ -95,46 +95,57 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         auto src_md =
             memory::desc(src_tz, memory::data_type::f32, input_format);
-        auto src_mpd = memory::primitive_desc(src_md, mkldnn_engine);
-        auto src_mem = memory(src_mpd, to_void_cast(input_data));
-        srcs_mpd.push_back(src_mpd);
+        auto src_mem = memory(src_md, mkldnn_engine, to_void_cast(input_data));
+        srcs_md.push_back(src_md);
         srcs_mem.push_back(src_mem);
         scales.push_back(1.0);
       }
 
       auto dst_md =
-          memory::desc(dst_tz, memory::data_type::f32, memory::format::any);
+          memory::desc(dst_tz, memory::data_type::f32, memory::format_tag::any);
 
-      auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_mpd);
+      auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_md, mkldnn_engine);
 
       std::shared_ptr<memory> dst_mem;
       if (in_place) {
-        dst_mem.reset(new memory(sum_pd.dst_primitive_desc()));
+        dst_mem.reset(new memory(sum_pd.dst_desc(), mkldnn_engine));
       } else {
-        dst_mem.reset(new memory(sum_pd.dst_primitive_desc(), output_data));
-      }
-      std::vector<mkldnn::primitive::at> inputs;
-      for (size_t i = 0; i < srcs_mem.size(); ++i) {
-        inputs.push_back(srcs_mem[i]);
+        dst_mem.reset(
+            new memory(sum_pd.dst_desc(), mkldnn_engine, output_data));
       }
 
-      auto sum_prim = mkldnn::sum(sum_pd, inputs, *dst_mem);
-      output_format = (memory::format)platform::GetMKLDNNFormat(sum_pd);
+      // for (size_t i = 0; i < srcs_mem.size(); ++i) {
+      //   inputs.push_back(srcs_mem[i]);
+      // }
 
-      primitive reorder_prim;
+      auto sum_prim = mkldnn::sum(sum_pd);
+      output_format = platform::GetMKLDNNFormat(sum_pd.dst_desc());
+
+      std::shared_ptr<mkldnn::reorder> reorder_p;
       std::shared_ptr<memory> target_mem;
       if (in_place) {
         output_format = input_format;
-        target_mem.reset(new memory(
-            {{{src_tz}, memory::data_type::f32, output_format}, mkldnn_engine},
-            output_data));
-        reorder_prim = reorder(*dst_mem, *target_mem);
+        target_mem.reset(
+            new memory({{src_tz}, memory::data_type::f32, output_format},
+                       mkldnn_engine, output_data));
+        reorder_p = std::make_shared<reorder>(*dst_mem, *target_mem);
       }
 
-      std::vector<primitive> pipeline;
-      pipeline.push_back(sum_prim);
-      if (in_place) pipeline.push_back(reorder_prim);
-      stream(stream::kind::eager).submit(pipeline).wait();
+      // TODO(grygielski) refactor
+      mkldnn::stream astream(mkldnn_engine);
+      std::unordered_map<int, memory> args;
+      for (size_t i = 0; i < srcs_mem.size(); ++i) {
+        args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, srcs_mem.at(i)});
+      }
+      args.insert({MKLDNN_ARG_DST, *dst_mem});
+
+      sum_prim.execute(astream, args);
+      astream.wait();
+
+      if (in_place) {
+        reorder_p->execute(astream, *dst_mem, *target_mem);
+        astream.wait();
+      }
 
       output->set_layout(DataLayout::kMKLDNN);
       output->set_format(output_format);

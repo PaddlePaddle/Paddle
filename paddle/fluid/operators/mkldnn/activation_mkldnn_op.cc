@@ -37,7 +37,7 @@ std::string gethash(const mkldnn::memory::dims &operand_dims,
     }
     return dstr;
   };
-  return dim2str(operand_dims) + std::to_string(algorithm);
+  return dim2str(operand_dims) + std::to_string(static_cast<int>(algorithm));
 }
 }  // namespace
 
@@ -48,7 +48,7 @@ class MKLDNNActivationKernel
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                       x->format() != memory::format::format_undef,
+                       x->format() != memory::format_tag::undef,
                    "Wrong layout/format set for Input x tensor");
 
     Functor functor;
@@ -63,7 +63,7 @@ class MKLDNNActivationGradKernel
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE(diff_y->layout() == DataLayout::kMKLDNN &&
-                       diff_y->format() != memory::format::format_undef,
+                       diff_y->format() != memory::format_tag::undef,
                    "Wrong layout/format set for Input OutGrad tensor");
 
     PADDLE_ENFORCE(
@@ -96,10 +96,11 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
       "Input dim must be with 2, 3 or 4");
 
-  std::vector<int> src_tz = framework::vectorize2int(x->dims());
+  // TODO(grygielski)
+  std::vector<int64_t> src_tz = paddle::framework::vectorize(x->dims());
 
   auto src_format =
-      src_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
+      src_tz.size() == 2 ? mkldnn::memory::format_tag::nc : x->format();
 
   bool is_test = ctx.Attr<bool>("is_test");
 
@@ -120,12 +121,13 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   auto dst_memory_p =
       handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(y_data));
-  auto activation_p = handler.AcquireActivation(dst_memory_p, src_memory_p);
+  auto activation_p = handler.AcquireActivation();
 
-  // push primitive to stream and wait until it's executed
-  std::vector<primitive> pipeline;
-  pipeline.push_back(*activation_p);
-  stream(stream::kind::eager).submit(pipeline).wait();
+  // TODO(grygielski)
+  mkldnn::stream astream(mkldnn_engine);
+  activation_p->execute(astream, {{MKLDNN_ARG_FROM, *src_memory_p},
+                                  {MKLDNN_ARG_TO, *dst_memory_p}});
+  astream.wait();
 
   y->set_layout(DataLayout::kMKLDNN);
   y->set_format(GetMKLDNNFormat(*dst_memory_p));
@@ -149,14 +151,16 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
-  std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
+  // TODO(grygielski)
+  std::vector<int64_t> diff_dst_tz =
+      paddle::framework::vectorize(diff_y->dims());
 
   // diff_dst and src dims should be the same
   auto src_format =
-      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
+      diff_dst_tz.size() == 2 ? mkldnn::memory::format_tag::nc : x->format();
 
-  auto diff_y_format =
-      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : diff_y->format();
+  auto diff_y_format = diff_dst_tz.size() == 2 ? mkldnn::memory::format_tag::nc
+                                               : diff_y->format();
 
   auto diff_dst_md = platform::MKLDNNMemDesc(
       diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);
@@ -178,19 +182,20 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   auto activation_backward_pd =
       handler.AcquireActivationBackwardPrimitiveDescriptor(
-          algorithm, diff_dst_md, src_memory_p->get_primitive_desc().desc(),
-          alpha, beta);
+          algorithm, diff_dst_md, src_memory_p->get_desc(), alpha, beta);
 
   auto diff_src_memory_p =
       handler.AcquireDiffSrcMemoryFromPrimitive(diff_x_data);
 
-  auto activation_backward_p = handler.AcquireActivationBackward(
-      diff_src_memory_p, diff_dst_memory_p, src_memory_p);
+  auto activation_backward_p = handler.AcquireActivationBackward();
 
-  // push primitive to stream and wait until it's executed
-  std::vector<primitive> pipeline;
-  pipeline.push_back(*activation_backward_p);
-  stream(stream::kind::eager).submit(pipeline).wait();
+  // TODO(grygielski)
+  mkldnn::stream astream(mkldnn_engine);
+  activation_backward_p->execute(astream,
+                                 {{MKLDNN_ARG_SRC, *src_memory_p},
+                                  {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_p},
+                                  {MKLDNN_ARG_DIFF_SRC, *diff_src_memory_p}});
+  astream.wait();
 
   diff_x->set_layout(DataLayout::kMKLDNN);
   diff_x->set_format(GetMKLDNNFormat(*diff_src_memory_p));

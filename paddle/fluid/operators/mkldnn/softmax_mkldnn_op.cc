@@ -77,35 +77,36 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     return softmax_pd_;
   }
 
+  // TODO(grygielski)
   std::shared_ptr<mkldnn::softmax_forward> AcquireSoftmax(
-      std::shared_ptr<mkldnn::memory> dst_memory_p,
-      std::shared_ptr<mkldnn::memory> src_memory_p) {
+      //   std::shared_ptr<mkldnn::memory> dst_memory_p,
+      //   std::shared_ptr<mkldnn::memory> src_memory_p
+      ) {
     /*Generate key*/
     auto prim_key = key_ + "@softmax_p";
 
     auto softmax_p = std::static_pointer_cast<mkldnn::softmax_forward>(
         dev_ctx_.GetBlob(prim_key));
     if (softmax_p == nullptr) {
-      softmax_p = std::make_shared<mkldnn::softmax_forward>(
-          *softmax_pd_, *(static_cast<mkldnn::memory*>(src_memory_p.get())),
-          *(static_cast<mkldnn::memory*>(dst_memory_p.get())));
+      softmax_p = std::make_shared<mkldnn::softmax_forward>(*softmax_pd_);
       dev_ctx_.SetBlob(prim_key, softmax_p);
     }
 
     return softmax_p;
   }
 
+  // TODO(grygielski)
   std::shared_ptr<mkldnn::softmax_backward> AcquireSoftmaxBackward(
-      std::shared_ptr<mkldnn::memory> dst_memory_p,
-      std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      std::shared_ptr<mkldnn::memory> diff_src_memory_p) {
+      //   std::shared_ptr<mkldnn::memory> dst_memory_p,
+      //   std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
+      //   std::shared_ptr<mkldnn::memory> diff_src_memory_p
+      ) {
     auto prim_key = key_ + "@softmax_bwd_p";
     auto softmax_bwd_p = std::static_pointer_cast<mkldnn::softmax_backward>(
         dev_ctx_.GetBlob(prim_key));
     if (softmax_bwd_p == nullptr) {
-      softmax_bwd_p = std::make_shared<mkldnn::softmax_backward>(
-          *softmax_bwd_pd_, *dst_memory_p, *diff_dst_memory_p,
-          *diff_src_memory_p);
+      softmax_bwd_p =
+          std::make_shared<mkldnn::softmax_backward>(*softmax_bwd_pd_);
       dev_ctx_.SetBlob(prim_key, softmax_bwd_p);
     }
 
@@ -146,8 +147,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = flattened_input.data<T>();
     T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
-    std::vector<int> dst_tz = src_tz;
+    std::vector<int64_t> src_tz = paddle::framework::vectorize(flattened_dims);
+    std::vector<int64_t> dst_tz = src_tz;
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
     // Generate keys for storing/retriving primitives for this operator
@@ -157,7 +158,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     SoftmaxMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
     // Currently only NC data format is supported
     auto softmax_md = MKLDNNMemDesc(
-        {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format::nc);
+        {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format_tag::nc);
     // Normalization is made after innermost dimension eg. C out of NC
     auto softmax_desc = softmax_forward::desc(prop_kind::forward_scoring,
                                               softmax_md, 1 /*dim: C*/);
@@ -169,12 +170,13 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireSrcMemory(softmax_md, to_void_cast<T>(input_data));
     auto softmax_dst_memory_p =
         handler.AcquireDstMemory(softmax_md, to_void_cast<T>(output_data));
-    auto softmax_p =
-        handler.AcquireSoftmax(softmax_dst_memory_p, softmax_src_memory_p);
+    auto softmax_p = handler.AcquireSoftmax();
 
-    std::vector<primitive> pipeline{
-        *(static_cast<softmax_forward::primitive*>(softmax_p.get()))};
-    stream(stream::kind::eager).submit(pipeline).wait();
+    // TODO(grygielski)
+    mkldnn::stream astream(mkldnn_engine);
+    softmax_p->execute(astream, {{MKLDNN_ARG_SRC, *softmax_src_memory_p},
+                                 {MKLDNN_ARG_DST, *softmax_dst_memory_p}});
+    astream.wait();
 
     const bool is_test = ctx.Attr<bool>("is_test");
     if (!is_test) {
@@ -222,8 +224,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     const T* diff_dst_ptr = flattened_dout.template data<T>();
     T* diff_src_ptr = flattened_dx.template mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(flattened_dims);
-    std::vector<int> src_tz(dst_tz);
+    std::vector<int64_t> dst_tz = paddle::framework::vectorize(flattened_dims);
+    std::vector<int64_t> src_tz(dst_tz);
 
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
@@ -242,9 +244,9 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     // TODO(jczaja): Add layouts support when there is a need to do so
     // Two dimensional softmax does support NC format
     auto data_softmax_md = MKLDNNMemDesc(
-        {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format::nc);
+        {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format_tag::nc);
     auto diff_softmax_md = MKLDNNMemDesc(
-        {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format::nc);
+        {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format_tag::nc);
     // Normalization is made after innermost dimension eg. C out of NC
     auto softmax_bwd_desc =
         softmax_backward::desc(diff_softmax_md, data_softmax_md, 1 /* dim: C*/);
@@ -262,11 +264,15 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
         diff_softmax_md, to_void_cast<T>(diff_src_ptr));
 
     // Get primitve from device context
-    auto softmax_bwd_p = handler.AcquireSoftmaxBackward(
-        dst_memory_p, diff_dst_memory_p, diff_src_memory_p);
+    auto softmax_bwd_p = handler.AcquireSoftmaxBackward();
 
-    std::vector<primitive> pipeline{*softmax_bwd_p};
-    stream(stream::kind::eager).submit(pipeline).wait();
+    // TODO(grygielski)
+    mkldnn::stream astream(mkldnn_engine);
+    softmax_bwd_p->execute(astream,
+                           {{MKLDNN_ARG_DST, *dst_memory_p},
+                            {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_p},
+                            {MKLDNN_ARG_DIFF_SRC, *diff_src_memory_p}});
+    astream.wait();
   }
 };
 }  // namespace operators
