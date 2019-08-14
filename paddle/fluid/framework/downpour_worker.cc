@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "io/fs.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -73,18 +72,19 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   use_cvm_ = desc.use_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
-  adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
-  dump_fields_path_ = desc.dump_fields_path();
-  dump_converter_ = desc.dump_converter();
   dump_fields_.resize(desc.dump_fields_size());
   for (int i = 0; i < desc.dump_fields_size(); ++i) {
     dump_fields_[i] = desc.dump_fields(i);
   }
-  need_dump_field_ = false;
-  if (dump_fields_.size() != 0 && dump_fields_path_ != "") {
-    need_dump_field_ = true;
-  }
-  mpi_rank_ = desc.mpi_rank() / 2;
+  adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+}
+
+void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
+  writer_.Reset(queue);
+}
+
+void DownpourWorker::SetNeedDump(bool need_dump_field) {
+  need_dump_field_ = need_dump_field;
 }
 
 template <typename T>
@@ -126,7 +126,7 @@ std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
   } else {
     out_val = "unsupported type";
   }
-  return std::move(out_val);
+  return out_val;
 }
 
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
@@ -730,11 +730,6 @@ void DownpourWorker::TrainFiles() {
     if (need_dump_field_) {
       int batch_size = device_reader_->GetCurBatchSize();
       std::vector<std::string> ars(batch_size);
-      int err_no = 0;
-      std::string path =
-          string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
-                                mpi_rank_, thread_id_);
-      thread_local std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
       for (auto& ar : ars) {
         ar.clear();
       }
@@ -766,23 +761,16 @@ void DownpourWorker::TrainFiles() {
         if (ars[i].length() == 0) {
           continue;
         }
-        size_t write_count =
-            fwrite_unlocked(ars[i].data(), 1, ars[i].length(), fp.get());
-        if (write_count != ars[i].length()) {
-          VLOG(3) << "dump text failed";
-          break;
-        }
-        write_count = fwrite_unlocked("\n", 1, 1, fp.get());
-        if (write_count != 1) {
-          VLOG(3) << "dump text failed";
-          break;
-        }
+        writer_ << ars[i];
       }
     }
 
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
+  }
+  if (need_dump_field_) {
+    writer_.Flush();
   }
 }
 

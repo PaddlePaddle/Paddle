@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "io/fs.h"
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_feed_factory.h"
@@ -27,6 +28,14 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 
+  dump_fields_path_ = trainer_desc.dump_fields_path();
+  dump_converter_ = trainer_desc.dump_converter();
+  need_dump_field_ = false;
+  if (trainer_desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
+    need_dump_field_ = true;
+  }
+  mpi_rank_ = trainer_desc.mpi_rank() / 2;
+  
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
 
@@ -39,6 +48,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
+    workers_[i]->SetNeedDump(need_dump_field_);
   }
 
   VLOG(3) << "going to initialize pull dense worker";
@@ -48,7 +58,50 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
+void DistMultiTrainer::DumpWork() {
+  while (1) {
+    std::string out_str;
+    if (!queue_->Get(out_str)) {
+      break;
+    }
+    size_t write_count =
+        fwrite_unlocked(out_str.data(), 1, out_str.length(), fp_.get());
+    if (write_count != out_str.length()) {
+      VLOG(3) << "dump text failed";
+      continue;
+    }
+    write_count = fwrite_unlocked("\n", 1, 1, fp_.get());
+    if (write_count != 1) {
+      VLOG(3) << "dump text failed";
+      continue;
+    }
+  }
+}
+
+void DistMultiTrainer::InitDumpEnv() {
+  queue_ = paddle::framework::MakeChannel<std::string>();
+  int err_no = 0;
+  std::string path =
+      string::format_string("%s/part-%03d", dump_fields_path_.c_str(),
+                            mpi_rank_);
+  
+  fp_ = fs_open_write(path, &err_no, dump_converter_);
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->SetChannelWriter(queue_.get());
+  }
+  dump_thread_ = std::thread(&DistMultiTrainer::DumpWork, this);
+}
+
+void DistMultiTrainer::FinalizeDumpEnv() {
+  queue_->Close();
+  dump_thread_.join();
+  queue_.reset();
+}
+
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+  if (need_dump_field_) {
+    InitDumpEnv();
+  }
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
   VLOG(3) << "init other env done.";
@@ -69,6 +122,9 @@ void DistMultiTrainer::Run() {
 void DistMultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
+  }
+  if (need_dump_field_) {
+    FinalizeDumpEnv();
   }
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
