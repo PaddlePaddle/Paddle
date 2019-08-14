@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #if defined(PADDLE_WITH_DGC)
 #include "dgc/dgc.h"
 #endif

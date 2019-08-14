@@ -242,14 +242,12 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   attrs_ = attrs;
   need_update_ = true;
   block_ = nullptr;
-  VLOG(5) << "OpDesc Type " << Type();
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
   CopyFrom(other);
   block_ = block;
   need_update_ = true;
-  VLOG(5) << "OpDesc Type " << Type();
 }
 
 void OpDesc::CopyFrom(const OpDesc &op_desc) {
@@ -295,7 +293,6 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     }
   }
   this->block_ = block;
-  VLOG(5) << "OpDesc Type " << Type();
 }
 
 proto::OpDesc *OpDesc::Proto() {
@@ -644,14 +641,6 @@ static void InitInferShapeFuncs() {
   std::call_once(init_infer_shape_funcs, [] {
     auto *map = OpInfoMap::Instance();
     auto &info_map = *(map->mutable_map());
-    for (const auto &n : info_map) {
-      VLOG(1) << "OP INFO " << n.first;
-    }
-
-    for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
-      auto op_type = kern_pair.first;
-      VLOG(1) << "OP KER TYPE " << op_type;
-    }
 
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;

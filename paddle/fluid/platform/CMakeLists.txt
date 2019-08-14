@@ -120,5 +120,3 @@ if(WITH_GPU)
 else()
     cc_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor operator)
 endif()
-
-cc_test(dynamic_loader_test SRCS dynamic_loader_test.cc DEPS device_context)

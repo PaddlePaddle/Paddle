@@ -52,24 +52,9 @@ namespace {
 int kProgramId = -1;
 }  // namespace
 
-void PrintProgramInfo(const ProgramDesc& prog) {
-  for (int i = 0; i < prog.Size(); ++i) {
-    VLOG(5) << "block " << i;
-    auto& block = prog.Block(i);
-    for (auto* op : block.AllOps()) {
-      VLOG(5) << "op " << op->Type();
-    }
-  }
-  // std::string binary_str;
-  // prog.Proto()->SerializeToString(&binary_str);
-  // VLOG(5) << binary_str;
-}
-
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {
-  PrintProgramInfo(prog_);
-}
+    : prog_(prog), block_id_(block_id) {}
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
@@ -432,7 +417,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
-    VLOG(5) << "========Run op========= " << op->Type();
     op->Run(*local_scope, place_);
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());

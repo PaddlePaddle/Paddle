@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -57,8 +58,6 @@ struct OperatorRegistrar : public Registrar {
                    "'%s' is registered more than once.", op_type);
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
-    auto *map = OpInfoMap::Instance();
-    VLOG(1) << "OperatorRegistrar " << op_type << ", InfoMap " << map;
     OpInfo info;
     details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
     OpInfoMap::Instance()->Insert(op_type, info);
@@ -83,7 +82,6 @@ struct OpKernelRegistrarFunctor;
 template <typename PlaceType, typename T, typename Func>
 inline void RegisterKernelClass(const char* op_type, const char* library_type,
                                 int customized_type_value, Func func) {
-  VLOG(1) << "RegisterKernelClass " << op_type;
   std::string library(library_type);
   std::string data_layout = "ANYLAYOUT";
   if (library == "MKLDNN") {
@@ -102,7 +100,6 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
   void operator()(const char* op_type, const char* library_type,
                   int customized_type_value) const {
-    VLOG(1) << "OpKernelRegistrarFunctor " << op_type;
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
     RegisterKernelClass<PlaceType, T>(
         op_type, library_type, customized_type_value,
@@ -130,7 +127,6 @@ class OpKernelRegistrar : public Registrar {
  public:
   explicit OpKernelRegistrar(const char* op_type, const char* library_type,
                              int customized_type_value) {
-    VLOG(1) << "OpKernelRegistrar " << op_type;
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
     func(op_type, library_type, customized_type_value);
   }
@@ -144,7 +140,6 @@ class OpKernelRegistrarEx : public Registrar {
  public:
   explicit OpKernelRegistrarEx(const char* op_type, const char* library_type,
                                int customized_type_value) {
-    VLOG(1) << "OpKernelRegistrarEx " << op_type;
     OpKernelRegistrarFunctorEx<PlaceType, false, 0, DataTypeAndKernelType...>
         func;
     func(op_type, library_type, customized_type_value);

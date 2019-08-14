@@ -30,10 +30,6 @@ class OpDesc {
  public:
   OpDesc() {}
 
-  // ~OpDesc() {
-  //   VLOG(5) << "destroy OpDesc " << Type();
-  // }
-
   OpDesc(const std::string &type, const VariableNameMap &inputs,
          const VariableNameMap &outputs, const AttributeMap &attrs);
 

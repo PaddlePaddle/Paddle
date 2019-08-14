@@ -1,7 +1,8 @@
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
+
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
@@ -78,8 +79,8 @@ else(WIN32)
 endif()
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
-set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 
+set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.map")
