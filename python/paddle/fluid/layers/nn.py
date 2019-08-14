@@ -211,8 +211,10 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'filter_by_instag',
     'var_conv_2d',
     'shard_index',
+    'hard_swish',
 ]
 
 kIgnoreIndex = -100
@@ -9753,6 +9755,76 @@ def stack(x, axis=0):
     return out
 
 
+@templatedoc(op_type="filter_by_instag")
+def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
+    """
+    **Filter By Instag Layer**
+   
+    This function filter a batch of ins by instag, 
+    There are multiple ins, and every ins belongs to some tags. 
+    We can specify some tags we want. So the ins which belongs to that tags
+    remains in the output, and others removed.
+ 
+    For example, one batch has 4 ins. Every ins has its tag list. 
+     
+       | Ins   |   Ins_Tag |
+       |:-----:|:------:|
+       |  0    |   0, 1 |
+       |  1    |   1, 3 |
+       |  2    |   0, 3 |
+       |  3    |   2, 6 |
+
+    And Lod is [1,1,1,1]
+
+    And the filter tags [1]
+
+    From the definition above, ins which has tag 1 can pass the filter
+    So Ins 0 and Ins 1 can pass and be seen in the output,
+    Ins 2 and 3 cannot pass because they do not has tag 1.
+
+    Actually, if is_lod is false, it is normal tensor that equals to 
+    lod_tensor with all 1, similar to the example above.
+
+    Args:
+        ins (Variable): Input Variable (LoDTensor), usually it is 2D tensor
+                        And first dimension can have lod info or not.
+        ins_tag (Variable): Input Variable (LoDTensor), usually it is 1D list
+                        And split them by lod info
+        filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
+                        list that holds the tags.
+        is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
+
+    Returns:
+        Variable: filtered ins (LoDTensor) and loss weight (Tensor)
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid.layers as layers
+          ins = layers.data(name='Ins', shape=[-1,32], lod_level=0, dtype='float64')
+          ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+          filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
+          out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
+        		
+    """
+    helper = LayerHelper('filter_by_instag', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=ins.dtype)
+    loss_weight = helper.create_variable_for_type_inference(dtype=np.float64)
+    mmap = helper.create_variable_for_type_inference(dtype=ins_tag.dtype)
+    helper.append_op(
+        type='filter_by_instag',
+        inputs={'Ins': ins,
+                'Ins_tag': ins_tag,
+                'Filter_tag': filter_tag},
+        outputs={'Out': out,
+                 'LossWeight': loss_weight,
+                 'IndexMap': mmap},
+        attrs={'is_lod': is_lod})
+
+    return [out, loss_weight]
+
+
 def unstack(x, axis=0, num=None):
     """
     **UnStack Layer**
@@ -13099,4 +13171,39 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             'ignore_value': ignore_value
         },
         stop_gradient=True)
+    return out
+
+
+@templatedoc()
+def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(Varaible): Input of HardSwish operator.
+        threshold(float): The threshold parameter of HardSwish operator. Default:threshold=6.0
+        scale(float): The scale parameter of HardSwish operator. Default:scale=6.0
+        offset(float): The offset parameter of HardSwish operator. Default:offset=3.0
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_swish(x)
+    """
+    helper = LayerHelper('hard_swish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='hard_swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold,
+               'scale': scale,
+               'offset': offset})
     return out
