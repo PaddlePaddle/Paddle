@@ -501,23 +501,6 @@ class FlDistributeTranspiler(object):
             if self._is_optimizer_op(op) and self._is_opt_op_on_pserver(
                     endpoint, op):
                 opt_op_on_pserver.append(op)
-        # step 3.3
-        # prepare if dc asgd is enabled
-        if self.config.enable_dc_asgd == True:
-            assert (self.sync_mode == False)
-            self.param_bak_list = []
-            # add param_bak for each trainer
-            for p in self.param_grad_ep_mapping[endpoint]["params"]:
-                # each parameter should have w_bak for each trainer id
-                for i in range(self.trainer_num):
-                    param_bak_name = "%s.trainer_%d_bak" % (p.name, i)
-                    tmpvar = pserver_program.global_block().create_var(
-                        # NOTE: this var name format is used in `request_get_handler`
-                        name=param_bak_name,
-                        type=p.type,
-                        shape=p.shape,
-                        dtype=p.dtype)
-                    self.param_bak_list.append((p, tmpvar))
 
         # step 3.4
         # Iterate through the ops, and if an op and the optimize ops
@@ -640,21 +623,6 @@ class FlDistributeTranspiler(object):
         # save pserver program to generate pserver side startup relatively.
         self.pserver_program = pserver_program
         return pserver_program
-
-    def get_pserver_programs(self, endpoint):
-        """
-        Get pserver side main program and startup program for distributed training.
-
-        Args:
-            endpoint (str): current pserver endpoint.
-
-        Returns:
-            tuple: (main_program, startup_program), of type "Program"
-        """
-        pserver_prog = self.get_pserver_program(endpoint)
-        pserver_startup = self.get_startup_program(
-            endpoint, pserver_program=pserver_prog)
-        return pserver_prog, pserver_startup
 
     def get_startup_program(self,
                             endpoint,
@@ -964,91 +932,6 @@ class FlDistributeTranspiler(object):
         self._param_to_opti = param_to_opti
         self._opti_to_param = opti_to_param
         self._opti_var_list = opti_list
-
-    def _create_table_optimize_block(self, pserver_index, pserver_program,
-                                     pre_block_idx, grad_to_block_id):
-        # STEP: create table optimize block
-        table_opt_block = pserver_program._create_block(pre_block_idx)
-        # create table param and grad var in pserver program
-        # create table optimize block in pserver program
-        table_opt_op = [
-            op for op in self.optimize_ops
-            if 'Param' in op.input_names and op.input("Param")[0] ==
-            self.table_name
-        ][0]
-
-        origin_param_var = self.origin_program.global_block().vars[
-            self.table_name]
-
-        zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / float(
-                len(self.pserver_endpoints))))
-        table_shape = list(origin_param_var.shape)
-        table_shape[0] = zero_dim
-
-        param_var = pserver_program.global_block().create_var(
-            name=origin_param_var.name,
-            shape=table_shape,
-            dtype=origin_param_var.dtype,
-            type=core.VarDesc.VarType.SELECTED_ROWS,
-            persistable=True)
-
-        # parameter must be selected rows
-        param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
-        grad_var = pserver_program.global_block()._clone_variable(
-            self.origin_program.global_block().vars[grad_var_name(
-                self.table_name)])
-
-        lr_var = pserver_program.global_block()._clone_variable(
-            self.origin_program.global_block().vars[table_opt_op.input(
-                "LearningRate")[0]])
-
-        if self.sync_mode:
-            # create grad vars in pserver program
-            table_grad_var = self.table_param_grad[1]
-            pserver_side_table_grad_list = [
-                pserver_program.global_block().create_var(
-                    name="%s.trainer_%d.pserver_%d" %
-                    (table_grad_var.name, index, pserver_index),
-                    type=table_grad_var.type,
-                    shape=table_grad_var.shape,
-                    dtype=table_grad_var.dtype)
-                for index in range(self.trainer_num)
-            ]
-
-            # append sum op for pserver_side_table_grad_list
-            table_opt_block.append_op(
-                type="sum",
-                inputs={"X": pserver_side_table_grad_list},
-                outputs={"Out": [grad_var]},
-                attrs={"use_mkldnn": False})
-        else:
-            # in async_mode, for table gradient, it also need to be splited to each parameter server
-            origin_grad_name = grad_var.name
-            splited_grad_name = self.trainer_side_table_grad_list[
-                pserver_index].name
-            if not splited_grad_name.startswith(origin_grad_name):
-                raise ValueError("origin_grad_var: " + splited_grad_name +
-                                 " grad_var:" + grad_var.name)
-            grad_var = pserver_program.global_block()._rename_var(
-                origin_grad_name, splited_grad_name)
-
-        inputs = {
-            "Param": [param_var],
-            "Grad": [grad_var],
-            "LearningRate": [lr_var]
-        }
-        outputs = {"ParamOut": [param_var]}
-        # only support sgd now
-        logging.warn(
-            "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
-            + table_opt_op.type)
-        table_opt_block.append_op(type="sgd", inputs=inputs, outputs=outputs)
-
-        # add table parameter gradient and it's block id to grad_to_block_id
-        grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
-
-        return table_opt_block
 
     def _create_vars_from_blocklist(self,
                                     program,
