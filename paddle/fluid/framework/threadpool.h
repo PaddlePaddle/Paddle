@@ -72,7 +72,7 @@ class ThreadPool {
     Task task([fn]() -> std::unique_ptr<platform::EnforceNotMet> {
       try {
         fn();
-      } catch (platform::EnforceNotMet ex) {
+      } catch (platform::EnforceNotMet& ex) {
         return std::unique_ptr<platform::EnforceNotMet>(
             new platform::EnforceNotMet(ex));
       } catch (const std::exception& e) {
