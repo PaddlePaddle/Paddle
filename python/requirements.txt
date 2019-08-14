@@ -1,5 +1,6 @@
 requests>=2.20.0
-numpy>=1.12
+numpy>=1.12, <=1.16.4 ; python_version<"3.5"
+numpy>=1.12 ; python_version>="3.5"
 protobuf>=3.1.0
 recordio>=0.1.0
 matplotlib<=2.2.4 ; python_version<"3.6"
