@@ -10768,29 +10768,30 @@ def sequence_topk_pooling(input, topk, channel_num):
 
         * Example 1:
 
-            Given a 1-level LoDTensor input with channel_num is 3:
-                input.lod =  [[36, 48, 24]]
-                input.dims = [108, 1]
+            Given a 1-level LoDTensor input with channel_num is 3, batch_size is 2,
+            Here hidden_size is 4, the raw lod information of sequence length is [[3, 4]]
+                input.lod =  [[36, 48]]   # where 36 = seq_len * channel_num * hidden_size
+                input.dims = [84, 1]
 
             If topk is 5, then we will get a 1-level output LoDTensor:
                 out.lod =  [[15, 15, 15]] # where 15 is channel_num * topk
-                out.dims = [45, 1]
+                out.dims = [3, 15]
 
         * Example 2:
 
             Given a 1-level LoDTensor input with channel_num is 3:
-                input.lod =  [[36, 48, 24]]
-                input.dims = [108, 1]
+                input.lod =  [[36, 48]]
+                input.dims = [84, 1]
 
              If topk is 10, then we get a 1-level LoDTensor:
-                out.lod =  [[30, 30, 30]] # where 15 is channel_num * topk
-                out.dims = [90, 1]
+                out.lod =  [[30, 30, 30]] # where 30 is channel_num * topk
+                out.dims = [3, 30]
 
             In this case, x.lod[0][3] is 24 < 30, It will padding 0 at the back in each channel.
 
     Args:
         input (Variable): Input variable which should be 1-level LodTensor.
-        topk (int): Take :attr:`topk` features for by value from each channel input sequence.
+        topk (int): Take :attr:`topk` features for by value from each channel of input sequence.
         channel_num (int): The number of input channel.
 
     Returns:

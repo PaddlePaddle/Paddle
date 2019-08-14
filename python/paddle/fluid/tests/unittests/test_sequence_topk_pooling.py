@@ -91,6 +91,22 @@ class TestSequenceTopkPoolingOpCase1(TestSequenceTopkPoolingOp):
         feature = [32, 16, 48]
         self.init_data(topk, channel_num, feature)
 
+    def test_api(self):
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[1], lod_level=1)
+        x_topk = fluid.layers.sequence_topk_pooling(
+            input=x, topk=3, channel_num=5)
+
+        place = fluid.CPUPlace()
+        x_data = np.random.rand(180, 1).astype('float32')
+        x_tensor = fluid.create_lod_tensor(x_data, [[60, 120]], place)
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'x': x_tensor},
+                      fetch_list=[x_topk],
+                      return_numpy=False)
+
 
 if __name__ == '__main__':
     unittest.main()

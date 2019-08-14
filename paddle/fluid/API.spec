@@ -239,7 +239,7 @@ paddle.fluid.layers.sigmoid_cross_entropy_with_logits (ArgSpec(args=['x', 'label
 paddle.fluid.layers.maxout (ArgSpec(args=['x', 'groups', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '22df6542f3f9aa3f34c0c2dab5dc1d80'))
 paddle.fluid.layers.space_to_depth (ArgSpec(args=['x', 'blocksize', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '26decdea9376b6b9a0d3432d82ca207b'))
 paddle.fluid.layers.affine_grid (ArgSpec(args=['theta', 'out_shape', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'f85b263b7b6698d000977529a28f202b'))
-paddle.fluid.layers.sequence_topk_pooling (ArgSpec(args=['input', 'topk', 'channel_num'], varargs=None, keywords=None, defaults=None), ('document', '3e6db39691403a78a608dc085e3a4ca6'))
+paddle.fluid.layers.sequence_topk_pooling (ArgSpec(args=['input', 'topk', 'channel_num'], varargs=None, keywords=None, defaults=None), ('document', '3a65d0446b67b3ad95078fc028786c2a'))
 paddle.fluid.layers.sequence_reverse (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '65c8362e48810b8226e311c5d046db51'))
 paddle.fluid.layers.affine_channel (ArgSpec(args=['x', 'scale', 'bias', 'data_layout', 'name', 'act'], varargs=None, keywords=None, defaults=(None, None, 'NCHW', None, None)), ('document', '9f303c67538e468a36c5904a0a3aa110'))
 paddle.fluid.layers.similarity_focus (ArgSpec(args=['input', 'axis', 'indexes', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '18ec2e3afeb90e70c8b73d2b71c40fdb'))
