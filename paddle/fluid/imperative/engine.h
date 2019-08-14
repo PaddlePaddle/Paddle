@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"

@@ -41,9 +41,6 @@ class Tracer(core.Tracer):
         return list((item for name, item in six.iteritems(self._vars)
                      if isinstance(item, framework.Parameter)))
 
-    def _clear_ops(self):
-        self._clear()
-
     def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
         self.trace(type, inputs, outputs, attrs,
                    framework._current_expected_place(), self._train_mode and

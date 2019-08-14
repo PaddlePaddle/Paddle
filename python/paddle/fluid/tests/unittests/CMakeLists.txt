@@ -165,7 +165,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
-
+list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
 set(TEST_OPS_WITH_GC
@@ -227,6 +227,7 @@ py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20 LABELS "RUN_TYPE=EXCLUSIVE")

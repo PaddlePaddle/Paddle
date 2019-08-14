@@ -15,15 +15,10 @@
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include <algorithm>
 #include <memory>
-#include <queue>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
