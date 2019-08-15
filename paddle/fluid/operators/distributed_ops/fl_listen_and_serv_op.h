@@ -71,13 +71,6 @@ class FlListenAndServOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
 
-  void ResetReceivedVars(framework::Scope* recv_scope,
-                         platform::DeviceContext* dev_ctx,
-                         bool reset_all = false) const;
-
-  void CacheVarsType(const std::vector<std::string>& varnames,
-                     const framework::Scope& scope) const;
-
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
   mutable std::shared_ptr<distributed::RequestHandler> request_send_handler_;

@@ -38,7 +38,6 @@ namespace operators {
 
 void FlRunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
-  VLOG(4) << "RunServer thread end";
 }
 static void flsplit(const std::string &str, char sep,
                     std::vector<std::string> *pieces) {
@@ -137,7 +136,6 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
     rpc_service_->WaitBarrier(distributed::kRequestGet);
 
     if (rpc_service_->IsExit()) {
-      LOG(WARNING) << "get exit!rpc_processor break!";
       rpc_service_->SetCond(distributed::kRequestGet);
       break;
     }
@@ -171,46 +169,7 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
     FlParallelExecuteBlocks(parallel_blkids, executor, optimize_prepared,
                             program, recv_scope);
     VLOG(3) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
-
-    VLOG(3) << "ResetReceivedVars";
-    ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
   }  // while(true)
-}
-
-void FlListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
-                                          platform::DeviceContext *dev_ctx,
-                                          bool reset_all) const {
-  for (auto &varname : sparse_vars_) {
-    auto var = recv_scope->FindVar(varname);
-    if (var == nullptr) {
-      VLOG(2) << "can not find var " << varname << " in received scope";
-      continue;
-    }
-    if (var->IsType<framework::SelectedRows>()) {
-      VLOG(3) << "reset sparse var: " << varname;
-      var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
-    } else {
-      PADDLE_THROW("The type of sparse var should be SelectedRows");
-    }
-  }
-  if (UNLIKELY(reset_all)) {
-    for (auto &varname : dense_vars_) {
-      auto var = recv_scope->FindVar(varname);
-      if (var == nullptr) {
-        VLOG(2) << "can not find var " << varname << " in received scope";
-        continue;
-      }
-      if (var->IsType<framework::LoDTensor>()) {
-        math::set_constant(*dev_ctx, var->GetMutable<framework::LoDTensor>(),
-                           static_cast<float>(0));
-      } else if (var->IsType<framework::Tensor>()) {
-        math::set_constant(*dev_ctx, var->GetMutable<framework::Tensor>(),
-                           static_cast<float>(0));
-      } else {
-        PADDLE_THROW("The type of dense var should be in [LoDTensor, Tensor]");
-      }
-    }
-  }
 }
 
 static void FillRequestCtx(distributed::RequestHandler *h,
@@ -224,25 +183,6 @@ static void FillRequestCtx(distributed::RequestHandler *h,
   h->SetExecutor(executor);
   h->SetProgram(program);
   h->SetRPCServer(rpc_server);
-}
-
-void FlListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
-                                      const framework::Scope &scope) const {
-  for (const auto &varname : varnames) {
-    auto var = scope.FindVar(varname);
-    PADDLE_ENFORCE(var != nullptr,
-                   "Received var should be initialized in the received scope.");
-    if (var->IsType<framework::SelectedRows>()) {
-      sparse_vars_.push_back(varname);
-    } else if (var->IsType<framework::LoDTensor>() ||
-               var->IsType<framework::Tensor>()) {
-      dense_vars_.push_back(varname);
-    } else {
-      PADDLE_THROW(
-          "The type of received var should be in [SelectedRows, LoDTensor, "
-          "Tensor].");
-    }
-  }
 }
 
 void FlListenAndServOp::RunImpl(const framework::Scope &scope,
@@ -301,7 +241,6 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   // Cache the type of the received vars as `sparse_vars_` and `dense_vars_`
   // so that we can reset them at the end of each iteration.
   // NOTE: only used in sync update
-  CacheVarsType(inputs, recv_scope);
 
   // Write to a file of server selected port for python use.
   SavePort();

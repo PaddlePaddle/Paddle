@@ -28,7 +28,6 @@ import numpy
 
 
 def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
-
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -53,7 +52,7 @@ def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     exe = fluid.Executor(place)
 
     exe.run(trainer_startup_program)
-    for i in range(2):
+    for i in range(5):
         exe.run(recv_program)
         exe.run(main_program,
                 feed={
@@ -154,11 +153,17 @@ class TestFlListenAndServOp(OpTest):
         time.sleep(5)
         t1 = self._start_trainer0(False, True, run_trainer)
         time.sleep(2)
-        t1 = self._start_trainer1(False, True, run_trainer)
+        t2 = self._start_trainer1(False, True, run_trainer)
         # raise SIGTERM to pserver
         time.sleep(2)
         cmd_del = "rm trainer*dms* pserver*dms*"
         os.system(cmd_del)
+        os.kill(p1.pid, signal.SIGINT)
+        p1.join()
+        os.kill(t1.pid, signal.SIGINT)
+        t1.join()
+        os.kill(t2.pid, signal.SIGINT)
+        t2.join()
 
 
 if __name__ == '__main__':
