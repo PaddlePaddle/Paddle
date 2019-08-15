@@ -24,15 +24,16 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ROW"),
-                   "Input(ROW) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("COLUMN"),
-                   "Input(COLUMN) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("pos"), "pos(out) should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("ROW"), true,
+                      "Input(ROW) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("COLUMN"), true,
+                      "Input(COLUMN) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("pos"), true,
+                      "pos(out) should not be null");
 
     auto attr = ctx->Attrs();
     auto channel_num = attr.Get<int>("channel_num");
@@ -77,9 +78,10 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Gradient of Out should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "The input X should not be null.");
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
