@@ -79,6 +79,9 @@ class TestPRROIPoolOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=2)
+
 
 if __name__ == '__main__':
     unittest.main()
