@@ -81,10 +81,9 @@ class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{
-        {"Input", /*->*/ "Output"}};
+    return { std::make_pair("Input", "Output")};
   }
 };
 

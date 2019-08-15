@@ -45,9 +45,9 @@ class SeluOp : public framework::OperatorWithKernel {
 
 class SeluOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    return { std::make_pair("X", "Out")};
   }
 };
 

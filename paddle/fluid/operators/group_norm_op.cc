@@ -189,9 +189,9 @@ class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
 class GroupNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  const std::vector< std::pair<std::string, std::string> >  GetInputOutputWithSameType()
       const override {
-    return {{"X", /*->*/ "Y"}};
+    return { std::make_pair( "X", "Y")};
   }
 };
 

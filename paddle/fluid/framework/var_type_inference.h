@@ -122,6 +122,20 @@ class InferVarTypeContext {
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 
+  virtual void ShareVarType( const std::string& in, const std::string& out)
+  {
+    auto& x_name = Input(in).at(0);
+    auto& out_name = Output(out).at(0);
+    SetType( out_name, GetType(x_name));
+  }
+
+  virtual void ShareDataType( const std::string& in, const std::string& out)
+  {
+    auto& x_name = Input(in).at(0);
+    auto& out_name = Output( out).at(0);
+    SetDataType( out_name, GetDataType(x_name));
+  }
+
  protected:
   const OpDesc* op_;
   BlockDesc* block_;
@@ -136,19 +150,16 @@ class VarTypeInference {
 class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const final {  // NOLINT
-    auto in_out_var_names = this->GetInputOutputWithSameType();
+    auto& in_out_var_names = this->GetInputOutputWithSameType();
 
     for (auto& i_o_n : in_out_var_names) {
-      auto& x_name = ctx->Input(i_o_n.first).at(0);
-      auto& out_name = ctx->Output(i_o_n.second).at(0);
-
-      ctx->SetType(out_name, ctx->GetType(x_name));
-      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+      ctx->ShareVarType( i_o_n.first, i_o_n.second);
+      ctx->ShareDataType( i_o_n.first, i_o_n.second);
     }
   }
 
  protected:
-  virtual std::unordered_map<std::string, std::string>
+  virtual const std::vector<std::pair<std::string, std::string>>
   GetInputOutputWithSameType() const = 0;
 };
 
