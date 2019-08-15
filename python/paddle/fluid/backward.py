@@ -461,11 +461,8 @@ def _append_backward_ops_(block,
 
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
 
-    # will remove grad op of pull_box_sparese(maybe because this op doesn't have output)
-    # will refine pull_box_sparse op
-    # for test the process, hard code here temp
-    #grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
-    #no_grad_dict[block.idx])
+    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
+                                            no_grad_dict[block.idx])
 
     not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
     grad_op_descs = [

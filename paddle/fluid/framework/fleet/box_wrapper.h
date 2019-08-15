@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <memory>
 #include <mutex>  // NOLINT
-#include <set>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/fleet/boxps.h"
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -31,16 +31,18 @@ class BoxWrapper {
   virtual ~BoxWrapper() {}
   BoxWrapper() {}
 
-  int PassBegin(const std::set<uint64_t>& feasgin_to_box) const;
-  int PassEnd() const;
-  int PullSparse(const Scope& scope, const paddle::platform::Place& place,
+  int BeginPass(const std::vector<uint64_t>& feasgin_to_box) const;
+  int EndPass() const;
+  int PullSparse(const paddle::platform::Place& place,
                  const std::vector<const uint64_t*>& keys,
                  const std::vector<float*>& values,
-                 const std::vector<int64_t>& slot_lengths);
-  int PushSparseGrad(const Scope& scope, const paddle::platform::Place& place,
+                 const std::vector<int64_t>& slot_lengths,
+                 const int hidden_size);
+  int PushSparseGrad(const paddle::platform::Place& place,
                      const std::vector<const uint64_t*>& keys,
                      const std::vector<const float*>& grad_values,
-                     const std::vector<int64_t>& slot_lengths);
+                     const std::vector<int64_t>& slot_lengths,
+                     const int hidden_size);
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
     if (nullptr == s_instance_) {
@@ -50,17 +52,17 @@ class BoxWrapper {
       if (nullptr == s_instance_) {
         s_instance_.reset(new paddle::framework::BoxWrapper());
         // s_instance_->boxps_ptr_.reset(new paddle::boxps::FakeBoxPS());
-        s_instance_->boxps_ptr_ = std::shared_ptr<paddle::boxps::BoxPS>(
+        s_instance_->boxps_ptr_ = std::shared_ptr<paddle::boxps::BoxPSBase>(
             new paddle::boxps::FakeBoxPS());
-        s_instance_->boxps_ptr_->init(
-            2);  // Just hard code for embedding size now.
+        s_instance_->boxps_ptr_->InitializeCPU(
+            nullptr, 0);  // Just hard code for embedding size now.
       }
     }
     return s_instance_;
   }
 
  private:
-  static std::shared_ptr<paddle::boxps::BoxPS> boxps_ptr_;
+  static std::shared_ptr<paddle::boxps::BoxPSBase> boxps_ptr_;
   static std::shared_ptr<BoxWrapper> s_instance_;
 
  protected:

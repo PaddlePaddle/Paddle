@@ -26,14 +26,24 @@ using LoDTensor = framework::LoDTensor;
 template <typename T>
 class PullBoxSparseCUDAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    printf("pull_box_sparse in gpu\n");
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PullBoxSparseFunctor(ctx);
   }
 };
 
+template <typename T>
+class PullBoxSparseCUDAGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PushBoxSparseFunctor(ctx);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseCUDAKernel<int>,
                         ops::PullBoxSparseCUDAKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(pull_box_sparse_grad,
+                        ops::PullBoxSparseCUDAGradKernel<float>,
+                        ops::PullBoxSparseCUDAGradKernel<int64_t>);

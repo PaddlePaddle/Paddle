@@ -669,7 +669,6 @@ void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId end";
 }
 
-<<<<<<< HEAD
 void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
                                      std::vector<Record>* result) {
   int debug_erase_cnt = 0;
@@ -830,27 +829,28 @@ void MultiSlotDataset::SlotsShuffle(
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
           << ", memory data size for slots shuffle=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
 
-void MultiSlotDataset::PassBegin() {
+void MultiSlotDataset::BeginPass() {
   auto box_ptr = BoxWrapper::GetInstance();
   std::vector<Record> pass_data;
-  std::set<uint64_t> feasign_to_box;
+  std::vector<uint64_t> feasign_to_box;
   input_channel_->ReadAll(pass_data);
   for (const auto& ins : pass_data) {
     const auto& feasign_v = ins.uint64_feasigns_;
     for (const auto feasign : feasign_v) {
-      feasign_to_box.insert(feasign.sign().uint64_feasign_);
+      feasign_to_box.push_back(feasign.sign().uint64_feasign_);
     }
   }
   input_channel_->Open();
   input_channel_->Write(pass_data);
   input_channel_->Close();
-  box_ptr->PassBegin(feasign_to_box);
+  box_ptr->BeginPass(feasign_to_box);
 }
 
-void MultiSlotDataset::PassEnd() {
+void MultiSlotDataset::EndPass() {
   auto box_ptr = BoxWrapper::GetInstance();
-  box_ptr->PassEnd();
+  box_ptr->EndPass();
 }
 
 }  // end namespace framework

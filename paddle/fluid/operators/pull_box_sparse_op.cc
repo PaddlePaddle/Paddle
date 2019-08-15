@@ -99,6 +99,7 @@ class PushBoxSparseOpDescMaker : public framework::SingleGradOpDescMaker {
 
     op->SetInput("Ids", Input("Ids"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetAttrMap(Attrs());
     return op;
   }
