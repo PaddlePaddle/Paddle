@@ -1,0 +1,6 @@
+if (WITH_GPU)
+    nv_library(relu2_op SHARED SRCS relu_op.cc relu_op.cu DEPS fluid_framework_shared)
+else()
+    cc_library(relu2_op SHARED SRCS relu_op.cc DEPS fluid_framework_shared)
+endif()
+set_target_properties(relu2_op PROPERTIES OUTPUT_NAME relu2_op)
