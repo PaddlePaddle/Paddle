@@ -271,7 +271,7 @@ def main_pascalvoc_preprocess(args):
         '--choice', choices=['local', 'VOC_test_2007'], required=True)
     parser.add_argument(
         "--data_dir",
-        default="/home/li/AIPG-Paddle/paddle/build/third_party/inference_demo/int8v2/pascalvoc_small",
+        default="./third_party/inference_demo/int8v2/pascalvoc_small",
         type=str,
         help="Dataset root directory")
     parser.add_argument(
