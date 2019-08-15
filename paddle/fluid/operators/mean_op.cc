@@ -47,9 +47,9 @@ Mean Operator calculates the mean of all elements in X.
 
 class MeanOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    return {std::make_pair( "X", "Out")};
   }
 };
 

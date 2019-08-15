@@ -200,12 +200,11 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   std::unique_ptr<framework::OperatorBase> op_base =
       framework::OpRegistry::CreateOp(op->Type(), invars_name_map,
                                       outvars_name_map, attrs_map);
-
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext infer_var_type_ctx(&inputs, outputs, &attrs_map);
     info.infer_var_type_(&infer_var_type_ctx);
   }
-
+  
   // TODO(minqiyang): Support infer var type in imperative mode
   // Run forward op
   VLOG(3) << "tracer running " << op->Type();
@@ -224,7 +223,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   prepared_op.func(
       framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
                                   prepared_op.ctx, prepared_op.kernel_configs));
-
+  
   if (!stop_gradient) {
     VLOG(5) << "start construct backward op";
 

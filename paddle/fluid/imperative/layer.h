@@ -432,26 +432,8 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
       : InferVarTypeContext(nullptr, nullptr),
         inputs_(inputs),
         outputs_(outputs),
-        attrs_(attrs_map),
-        input_names_(),
-        output_names_(),
-        var_set_() {
-    input_names_.reserve(inputs_->size());
-    for (auto& it : *inputs_) {
-      for (std::shared_ptr<imperative::VarBase> var : it.second) {
-        input_names_[it.first].emplace_back(var->Name());
-        var_set_[var->Name()] = var;
-      }
-    }
-
-    output_names_.reserve(outputs_->size());
-    for (auto& it : *outputs_) {
-      for (std::shared_ptr<imperative::VarBase> var : it.second) {
-        output_names_[it.first].emplace_back(var->Name());
-        var_set_[var->Name()] = var;
-      }
-    }
-  }
+        attrs_(attrs_map)
+        {  }
 
   virtual ~RuntimeInferVarTypeContext() {}
 
@@ -461,12 +443,12 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
   }
 
   bool HasVar(const std::string& name) const override {
-    return var_set_.count(name) > 0;
+    return inputs_->find( name ) != inputs_->end();
   }
 
   bool HasInput(const std::string& name) const override {
     PADDLE_ENFORCE_NOT_NULL(inputs_);
-    return inputs_->count(name) > 0;
+    return inputs_->find(name) != inputs_->end();
   }
 
   bool HasOutput(const std::string& name) const override {
@@ -476,36 +458,32 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
 
   const std::vector<std::string>& Input(
       const std::string& name) const override {
-    return input_names_.at(name);
+    PADDLE_THROW( "Don't handle input name list in Dygraph mode");
   }
 
   const std::vector<std::string>& Output(
       const std::string& name) const override {
-    return output_names_.at(name);
+      PADDLE_THROW( "Don't handle output name list in Dygraph mode");
   }
 
   framework::proto::VarType::Type GetType(
       const std::string& name) const override {
-    return var_set_.at(name)->Type();
+    PADDLE_THROW( "Don't handle GetType by name in Dygraph mode");
   }
 
   void SetType(const std::string& name,
                framework::proto::VarType::Type type) override {
-    if (name == "kLookupTablePath") {
-      VLOG(2) << "SUPER UGLY FIX, remove this when move imperative mode in C++";
-    } else {
-      var_set_[name]->SetType(type);
-    }
+    PADDLE_THROW( "Don't handle SetType by name in Dygraph mode");
   }
 
   framework::proto::VarType::Type GetDataType(
       const std::string& name) const override {
-    return var_set_.at(name)->DataType();
+    PADDLE_THROW( "Don't handle GetDataType by name in Dygraph mode");
   }
 
   void SetDataType(const std::string& name,
                    framework::proto::VarType::Type type) override {
-    var_set_[name]->SetDataType(type);
+    PADDLE_THROW( "Don't handle SetDataType by name in Dygraph mode"); 
   }
 
   std::vector<framework::proto::VarType::Type> GetDataTypes(
@@ -536,14 +514,33 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
     PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
   }
 
+  void ShareVarType( const std::string& in, const std::string& out) 
+  {
+     auto out_it = outputs_->find( out );
+     auto in_it = inputs_->find( in );
+     PADDLE_ENFORCE( out_it != outputs_->end(), "output [%s] is not in outputs", out);
+     PADDLE_ENFORCE( in_it != inputs_->end(), "input [%s] is not in inputs", in );
+     PADDLE_ENFORCE_EQ( out_it->second.size(), 1, "output [%s] should only contain 1 variable", out);
+     PADDLE_ENFORCE_EQ( in_it->second.size(), 1, "input [%s] should only contain 1 variable", in);
+
+     out_it->second[0]->SetType( in_it->second[0]->Type() );
+  }
+
+  void ShareDataType( const std::string& in, const std::string& out)
+  {
+     auto out_it = outputs_->find( out );
+     auto in_it = inputs_->find( in );
+     PADDLE_ENFORCE( out_it != outputs_->end(), "output [%s] is not in outputs", out);
+     PADDLE_ENFORCE( in_it != inputs_->end(), "input [%s] is not in inputs", in );
+     PADDLE_ENFORCE_EQ( out_it->second.size(), 1, "output [%s] should only contain 1 variable", out);
+     PADDLE_ENFORCE_EQ( in_it->second.size(), 1, "input [%s] should only contain 1 variable", in);
+     out_it->second[0]->SetDataType( in_it->second[0]->DataType() );
+  }
+
  private:
   const imperative::VarBasePtrMap* inputs_;
   imperative::VarBasePtrMap* outputs_;
   const framework::AttributeMap* attrs_;
-  std::unordered_map<std::string, std::vector<std::string>> input_names_;
-  std::unordered_map<std::string, std::vector<std::string>> output_names_;
-  std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
-      var_set_;
 };
 
 }  // namespace imperative
