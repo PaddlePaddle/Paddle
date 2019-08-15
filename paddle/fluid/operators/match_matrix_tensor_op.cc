@@ -28,15 +28,15 @@ using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                 "X(Input) of MatchMatrix should not be null.");
+                    "X(Input) of MatchMatrix should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                 "Y(Input) of MatchMatrix should not be null.");
+                    "Y(Input) of MatchMatrix should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                 "W(Input) of MatchMatrix should not be null.");
+                    "W(Input) of MatchMatrix should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                 "Out(Output) of MatchMatrix should not be null.");
+                    "Out(Output) of MatchMatrix should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Tmp"), true,
-                 "Tmp(Output) of MatchMatrix should not be null.");
+                    "Tmp(Output) of MatchMatrix should not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2,
@@ -50,15 +50,11 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(w_dims.size(), 3UL, "W should be 3-D tensor");
 
   int dim_t = ctx->Attrs().Get<int>("dim_t");
-  PADDLE_ENFORCE_EQ(
-      w_dims[0], x_dims[1],
-      "W 's shape must satisfy: W[0] = X[1]");
-  PADDLE_ENFORCE_EQ(
-      w_dims[1], dim_t,
-      "W 's shape must satisfy: W[1] = dim_t");
-  PADDLE_ENFORCE_EQ(
-      w_dims[2], y_dims[1],
-      "W 's shape must satisfy: W[2] = Y[1]");
+  PADDLE_ENFORCE_EQ(w_dims[0], x_dims[1],
+                    "W 's shape must satisfy: W[0] = X[1]");
+  PADDLE_ENFORCE_EQ(w_dims[1], dim_t, "W 's shape must satisfy: W[1] = dim_t");
+  PADDLE_ENFORCE_EQ(w_dims[2], y_dims[1],
+                    "W 's shape must satisfy: W[2] = Y[1]");
 
   int out_dim_0 = -1;
   int tmp_dim_0 = -1;
@@ -118,13 +114,13 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 void MatchMatrixTensorOpGrad::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                 "Input(X) of SequencePadGradOp should not be null.");
+                    "Input(X) of SequencePadGradOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                 "Input(Y) of SequencePadGradOp should not be null.");
+                    "Input(Y) of SequencePadGradOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                 "Input(W) of SequencePadGradOp should not be null.");
+                    "Input(W) of SequencePadGradOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                 "Input(Out@GRAD) of SequencePadGradOp should not be null.");
+                    "Input(Out@GRAD) of SequencePadGradOp should not be null.");
 
   if (ctx->HasOutput(framework::GradVarName("X"))) {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
