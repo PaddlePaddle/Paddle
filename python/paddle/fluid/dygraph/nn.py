@@ -1589,7 +1589,7 @@ class NCE(layers.Layer):
                        default: 'uniform'.
         custom_dist (float[]|None): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
-                       custom_dist[i] is the probility of i-th class to be sampled.
+                       custom_dist[i] is the probability of i-th class to be sampled.
                        Default: None.
         seed (int): The seed used in sampler. Default: 0.
         is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
