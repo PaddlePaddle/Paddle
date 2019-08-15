@@ -3,8 +3,8 @@
 [English](./README.md) | 简体中文
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/documentation/docs/zh/1.4/beginners_guide/index_cn.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -59,26 +59,26 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 
 ## 安装
 
-推荐阅读官网上的[安装说明](http://www.paddlepaddle.org/documentation/docs/zh/1.4/beginners_guide/install/index_cn.html)
+推荐阅读官网上的[安装说明](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/install/index_cn.html)
 
 ## 文档
 
-我们提供[英文](http://www.paddlepaddle.org/documentation/docs/en/1.4/beginners_guide/index_en.html)和
-[中文](http://www.paddlepaddle.org/documentation/docs/zh/1.4/beginners_guide/install/index_cn.html) 文档
+我们提供[英文](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html)和
+[中文](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/install/index_cn.html) 文档
 
 - [深度学习101](https://github.com/PaddlePaddle/book)
 
   或许您想从这个在线交互式书籍开始，可以在Jupyter Notebook中运行
 
-- [分布式训练](http://paddlepaddle.org/documentation/docs/zh/1.4/user_guides/howto/training/multi_node.html)
+- [分布式训练](http://paddlepaddle.org.cn/documentation/docs/zh/1.5/user_guides/howto/training/multi_node.html)
 
   可以在MPI集群上运行分布式训练任务
 
-- [Python API](http://paddlepaddle.org/documentation/docs/zh/1.4/api_cn/index_cn.html)
+- [Python API](http://paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/index_cn.html)
 
    新的API支持代码更少更简洁的程序
 
-- [贡献方式](http://paddlepaddle.org/documentation/docs/zh/1.4/advanced_usage/development/contribute_to_paddle/index_cn.html)
+- [贡献方式](http://paddlepaddle.org.cn/documentation/docs/zh/1.5/advanced_usage/development/contribute_to_paddle/index_cn.html)
 
    欢迎您的贡献!
 

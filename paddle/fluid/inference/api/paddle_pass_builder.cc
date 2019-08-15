@@ -145,6 +145,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
+                  "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
                   "fc_lstm_fuse_pass",             //
                   "mul_lstm_fuse_pass",            //
@@ -179,8 +180,9 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",   //
-             "conv_brelu_mkldnn_fuse_pass",  //
+             "conv_relu_mkldnn_fuse_pass",        //
+             "conv_leaky_relu_mkldnn_fuse_pass",  //
+             "conv_relu6_mkldnn_fuse_pass",       //
              // Disabled due to topology-dependent speed-up
              // "fc_mkldnn_pass"
          })) {
