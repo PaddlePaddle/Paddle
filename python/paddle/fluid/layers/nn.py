@@ -226,7 +226,6 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        act=None,
-       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -300,7 +299,6 @@ def fc(input,
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
-        is_test(bool): A flag indicating whether execution is in test phase.
         name (str, default None): The name of this layer.
 
     Returns:
@@ -3207,6 +3205,10 @@ def batch_norm(input,
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        sync_batch_norm automatically.
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
