@@ -3208,6 +3208,10 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        sync_batch_norm automatically.
+
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
         act(string, Default None): Activation type, linear|relu|prelu|...
