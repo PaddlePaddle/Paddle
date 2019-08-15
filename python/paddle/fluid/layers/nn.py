@@ -5720,11 +5720,20 @@ def warpctc(input,
                                         label_length=label_length)
 
     """
+    assert ((input_length and label_length) or
+            (not label_length and
+             not input_length)), "Inputs should be both LoDTensors or Tensors."
+
     helper = LayerHelper('warpctc', **locals())
-    this_inputs = {'Logits': [input], "Label": [label]}
+    this_inputs = dict()
     if input_length and label_length:
+        this_inputs['Logits'] = [input]
+        this_inputs['Label'] = [label]
         this_inputs['LogitsLength'] = [input_length]
         this_inputs['LabelLength'] = [label_length]
+    else:
+        this_inputs['Logits'] = [input]
+        this_inputs['Label'] = [label]
 
     loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
