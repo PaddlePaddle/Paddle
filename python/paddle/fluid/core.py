@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import site
 import sys
 import os
 
@@ -34,8 +35,8 @@ if os.path.exists(current_path + os.sep + 'core_noavx.' + core_suffix):
 try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
+        os.environ['path'] = third_lib_path + ';' + os.environ['path']
+        sys.path.insert(0, third_lib_path)
 
 except ImportError as e:
     from .. import compat as cpt
@@ -175,6 +176,7 @@ if avx_supported():
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
+        from .core_avx import _set_paddle_lib_path
     except Exception as e:
         if has_avx_core:
             raise e
@@ -203,9 +205,29 @@ if load_noavx:
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
+        from .core_noavx import _set_paddle_lib_path
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(
                 'Error: Can not import noavx core while this file exists ' +
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
         raise e
+
+
+# set paddle lib path
+def set_paddle_lib_path():
+    site_dirs = site.getsitepackages() if hasattr(
+        site,
+        'getsitepackages') else [x for x in sys.path if 'site-packages' in x]
+    for site_dir in site_dirs:
+        lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
+        if os.path.exists(lib_dir):
+            _set_paddle_lib_path(lib_dir)
+            return
+    if hasattr(site, 'USER_SITE'):
+        lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
+        if os.path.exists(lib_dir):
+            _set_paddle_lib_path(lib_dir)
+
+
+set_paddle_lib_path()
