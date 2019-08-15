@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,11 +24,12 @@ class SequenceTopkPoolingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("pos"), "pos(out) should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("pos"), true,
+                      "pos(out) should not be null");
 
     auto attr = ctx->Attrs();
     auto channel_num = attr.Get<int>("channel_num");
@@ -39,7 +40,8 @@ class SequenceTopkPoolingOp : public framework::OperatorWithKernel {
       framework::Variable* x_var =
           boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
       const auto& x_lod = x_var->Get<LoDTensor>().lod();
-      PADDLE_ENFORCE(!x_lod.empty(), "The Input(X) must hold lod info.");
+      PADDLE_ENFORCE_EQ(x_lod.empty(), false,
+                        "The Input(X) must hold lod info.");
       const auto& x_lod_0 = x_lod[0];
       vec_out_shape.push_back(x_lod_0.size() - 1);
     } else {
@@ -76,9 +78,10 @@ class SequenceTopkPoolingGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Gradient of Out should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "The input X should not be null.");
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
