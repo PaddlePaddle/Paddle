@@ -106,7 +106,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                         "The Input(Emission) should be a 2-D tensor.");
     }
-    PADDLE_ENFORCE_GT(emission_dims[0], 0,
+    PADDLE_ENFORCE_NE(emission_dims[0], 0,
                       "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
