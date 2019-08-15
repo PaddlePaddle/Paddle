@@ -69,10 +69,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
               if (op->Type() == "conv2d") {
                 // output of conv2d with relu must be unsigned
                 std::string fuse_activation =
-                    op->HasAttr("fuse_activation")
-                        ? boost::get<std::string>(
-                              op->GetAttr("fuse_activation"))
-                        : "";
+                    op->GetAttrIfExists<std::string>("fuse_activation");
                 is_unsigned =
                     (fuse_activation == "relu" || fuse_activation == "relu6");
               } else if (op->Type() == "relu") {
