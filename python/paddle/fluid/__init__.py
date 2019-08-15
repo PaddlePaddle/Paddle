@@ -69,7 +69,7 @@ from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlac
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
-    memory_optimize, release_memory, DistributeTranspilerConfig, FlDistributeTranspiler
+    memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import dygraph_grad_clip
