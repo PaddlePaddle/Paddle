@@ -72,16 +72,12 @@ void f_test(){
 
     std::shared_ptr<VarBase> weight( new VarBase( "weight", paddle::framework::proto::VarType::FP32,  {hidden_size * 2, hidden_size * 4}, place, false, true, true) );
     std::shared_ptr<VarBase> bias( new VarBase( "bias", paddle::framework::proto::VarType::FP32,  { hidden_size * 4 }, place, false, true, true) );
-    //need to set real value here
 
     auto tracer = new Tracer();
     auto float_type = paddle::framework::proto::VarType::FP32;
     
     auto start = std::chrono::steady_clock::now();
     int max_loop = 1000;
-
-    //StartProfile();
-    //ProfilerStart("test.prof");
 
     for( int loop = 0; loop < max_loop; ++loop)
     {
