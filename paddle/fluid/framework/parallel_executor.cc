@@ -252,7 +252,22 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "buffer_shared_inplace_pass Applied";
   }
 
-  if (build_strategy_.memory_optimize_) {
+  /**
+   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
+   * set BuildStrategy.memory_optimize according to whether gc is enabled.
+   * If gc is enabled, BuildStrategy.memory_optimize = False.
+   * If gc is disabled, BuildStrategy.memory_optimize = True.
+   * This is because gc+memory_optimize is worse than gc only.
+   *
+   * As an option, users can enable BuildStrategy.memory_optimize forcely
+   * by setting True, and disable it forcely by setting False.
+   */
+  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
+  if (!build_strategy_.memory_optimize_) {
+    build_strategy_.memory_optimize_ = !is_gc_enabled;
+  }
+
+  if (build_strategy_.memory_optimize_.get()) {
     auto cross_op_memory_reuse_pass = ir::PassRegistry::Instance().Get(
         "buffer_shared_cross_op_memory_reuse_pass");
     cross_op_memory_reuse_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
@@ -265,7 +280,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
   }
 
-  if (GetEagerDeletionThreshold() < 0) {
+  if (!is_gc_enabled) {
     return graph;
   }
   size_t max_memory_size = static_cast<size_t>(GetEagerDeletionThreshold());
@@ -313,6 +328,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
+    LOG(INFO) << "Garbage collection strategy is enabled, when "
+              << "FLAGS_eager_delete_tensor_gb = "
+              << (static_cast<double>(GetEagerDeletionThreshold()) / (1 << 30));
   }
   return graph;
 }
@@ -665,8 +683,8 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
-                           const std::string &fetched_var_name) {
+FeedFetchList ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
@@ -681,8 +699,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data = member_->executor_->Run(fetch_tensors);
-  *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
-      fetch_data;
+  return fetch_data;
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(

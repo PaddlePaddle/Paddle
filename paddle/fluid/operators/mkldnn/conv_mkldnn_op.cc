@@ -408,12 +408,21 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
     std::shared_ptr<platform::ConvMKLDNNHandler> handler;
 
-    auto prim_key = key + "@conv_p";
-    auto dst_key = key + "@dst_mem_p";
-    auto src_key = key + "@src_mem_p";
-    auto user_src_key = key + "@user_src_mem_p";
-    auto src_reorder_key = key + "@src_mem_preorder_p";
-    auto residual_reorder_key = key + "@residual_data_mem_preorder_p";
+    // This is workaround for hacky implementation
+    // of conv int8 mkl-dnn. Once conv fp32 and conv int8
+    // are merged/unified, this will disappear
+    std::string key_tid = "";
+    if (platform::get_cur_mkldnn_session_id() ==
+        platform::kMKLDNNSessionID_Default) {
+      key_tid = "-t:" + platform::MKLDNNHandler::ThreadIDasStr();
+    }
+
+    auto prim_key = key + key_tid + "@conv_p";
+    auto dst_key = key + key_tid + "@dst_mem_p";
+    auto src_key = key + key_tid + "@src_mem_p";
+    auto user_src_key = key + key_tid + "@user_src_mem_p";
+    auto src_reorder_key = key + key_tid + "@src_mem_preorder_p";
+    auto residual_reorder_key = key + key_tid + "@residual_data_mem_preorder_p";
 
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
@@ -475,9 +484,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       handler.reset(
           new platform::ConvMKLDNNHandler(dev_ctx, mkldnn_engine, key));
       // create a conv primitive descriptor and save it for usage in backward
-      // TODO(lidanqing): We use relu post-op instead of brelu post-op cause
-      // mkldnn v0.18 does not support INT8 brelu post-op. Use code in /**/ when
-      // v0.20 is enabled
       auto propagation = is_test ? mkldnn::prop_kind::forward_scoring
                                  : mkldnn::prop_kind::forward_training;
 
@@ -487,15 +493,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                                mkldnn::memory::format::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu || fuse_brelu /*fuse_relu*/,
-            fuse_residual_conn, false /*fuse_brelu*/, fuse_brelu_threshold,
-            propagation, output_shift_scale, sum_scale);
+            mkldnn_engine, fuse_relu, fuse_residual_conn, fuse_brelu,
+            fuse_brelu_threshold, propagation, output_shift_scale, sum_scale);
       } else {
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
             src_md, weights_md, boost::none, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu || fuse_brelu /*fuse_relu*/,
-            fuse_residual_conn, false /*fuse_brelu*/, fuse_brelu_threshold,
-            propagation, output_shift_scale, sum_scale);
+            mkldnn_engine, fuse_relu, fuse_residual_conn, fuse_brelu,
+            fuse_brelu_threshold, propagation, output_shift_scale, sum_scale);
       }
 
       // create mkldnn memory from input tensors (data/weights)

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 
 #include <string>
 
@@ -36,6 +37,7 @@ void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 
+void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

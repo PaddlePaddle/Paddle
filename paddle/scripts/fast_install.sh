@@ -34,7 +34,7 @@ function yellow(){
 
 path='http://paddlepaddle.org/download?url='
 #release_version=`curl -s https://pypi.org/project/paddlepaddle/|grep -E "/project/paddlepaddle/"|grep "release"|awk -F '/' '{print $(NF-1)}'|head -1`
-release_version=1.2.0
+release_version=1.5.1
 python_list=(
 "27"
 "35"
@@ -752,9 +752,10 @@ function clearMacPythonEnv(){
 function checkMacPython2(){
     while true
        do
+          python_min="2.7.15"
           python_version=`$python_root --version 2>&1 1>&1`
           if [[ $? == "0" ]];then
-               if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ];then
+               if [ "$python_version" == "" ] || ( "$python_root" == "/usr/bin/python" && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
                     clearMacPythonEnv
                else
                     check_python=`echo $python_version | grep "Python 2"`
@@ -801,9 +802,10 @@ function checkMacPython2(){
 function checkMacPython3(){
     while true
        do
+          python_min="2.7.15"
           python_version=`$python_root --version 2>&1 1>&1`
           if [[ $? == "0" ]];then
-               if [ "$python_version" == "" ] || [ "$python_root" == "/usr/bin/python" -a "$python_version" == "Python 2.7.10" ]  ;then
+               if [ "$python_version" == "" ] || ( "$python_root" == "/usr/bin/python" && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
                     clearMacPythonEnv
                else
                     check_python=`echo $python_version | grep "Python 3"`
@@ -922,7 +924,7 @@ function checkMacPip(){
             return 1
        else
             if [[ $python_brief_version == "27" ]];then
-               uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
+               uncode=`$python_root -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27"`
                if [[ $uncode == "" ]];then
                   uncode="mu"
                else
