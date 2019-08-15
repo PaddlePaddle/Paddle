@@ -116,7 +116,7 @@ paddle.fluid.layers.dynamic_lstmp (ArgSpec(args=['input', 'size', 'proj_size', '
 paddle.fluid.layers.dynamic_gru (ArgSpec(args=['input', 'size', 'param_attr', 'bias_attr', 'is_reverse', 'gate_activation', 'candidate_activation', 'h_0', 'origin_mode'], varargs=None, keywords=None, defaults=(None, None, False, 'sigmoid', 'tanh', None, False)), ('document', '83617c165827e030636c80486d5de6f3'))
 paddle.fluid.layers.gru_unit (ArgSpec(args=['input', 'hidden', 'size', 'param_attr', 'bias_attr', 'activation', 'gate_activation', 'origin_mode'], varargs=None, keywords=None, defaults=(None, None, 'tanh', 'sigmoid', False)), ('document', '33974b9bfa69f2f1eb85e6f956dff04e'))
 paddle.fluid.layers.linear_chain_crf (ArgSpec(args=['input', 'label', 'param_attr'], varargs=None, keywords=None, defaults=(None,)), ('document', '34f96be41684b0959897a9e735997e20'))
-paddle.fluid.layers.crf_decoding (ArgSpec(args=['input', 'param_attr', 'label'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c469f22029f7b5d41ecd44dfa1e81ffd'))
+paddle.fluid.layers.crf_decoding (ArgSpec(args=['input', 'param_attr', 'label'], varargs=None, keywords=None, defaults=(None,)), ('document', '5ce117258e243be1c81539e254178d90'))
 paddle.fluid.layers.cos_sim (ArgSpec(args=['X', 'Y'], varargs=None, keywords=None, defaults=None), ('document', '8e6ce424cf9e261ef32ee229c06a6e66'))
 paddle.fluid.layers.cross_entropy (ArgSpec(args=['input', 'label', 'soft_label', 'ignore_index'], varargs=None, keywords=None, defaults=(False, -100)), ('document', 'f43c659ca1749a3f0ff2231e6dfda07d'))
 paddle.fluid.layers.bpr_loss (ArgSpec(args=['input', 'label', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '6263dfdeb6c670fa0922c9cbc8fb1bf4'))
