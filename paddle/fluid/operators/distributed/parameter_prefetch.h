@@ -28,7 +28,7 @@ constexpr int64_t kNoPadding = -1;
 
 void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& out_var_names,
-               const std::string& reconstruct_var_name,
+               const std::string& persistable_var_name,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
                const std::vector<int64_t>& height_sections,
@@ -36,7 +36,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
                const framework::Scope& scope);
 
 void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& reconstruct_var_name,
+              const std::string& persistable_var_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
               const std::vector<int64_t>& height_sections,

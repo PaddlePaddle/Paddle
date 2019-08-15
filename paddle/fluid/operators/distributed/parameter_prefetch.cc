@@ -17,6 +17,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
@@ -129,6 +130,7 @@ void prefetch_core(
   }
 
   PADDLE_ENFORCE_EQ(out_var_names.size(), height_sections.size(), "");
+
   auto abs_sections = ToAbsoluteSection(height_sections);
   for (size_t section_idx = 0; section_idx < out_var_names.size();
        ++section_idx) {
@@ -158,19 +160,19 @@ void prefetch_core(
 }
 
 void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& reconstruct_var_name,
+              const std::string& persistable_var_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetchs({id_name}, {out_name}, reconstruct_var_name, table_names, endpoints,
+  prefetchs({id_name}, {out_name}, persistable_var_name, table_names, endpoints,
             height_sections, context, scope);
 }
 
 void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& out_var_names,
-               const std::string& reconstruct_var_name,
+               const std::string& persistable_var_name,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
                const std::vector<int64_t>& height_sections,
@@ -182,7 +184,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   PADDLE_ENFORCE_EQ(table_names.size(), height_sections.size(), "");
 
   auto* reconstruct_var =
-      scope.FindVar(reconstruct_var_name)->GetMutable<framework::LoDTensor>();
+      scope.FindVar(persistable_var_name)->GetMutable<framework::LoDTensor>();
   const auto vec_dim_1 = reconstruct_var->dims()[1];
   auto* reconstruct_d = reconstruct_var->data<float>();
 
@@ -211,6 +213,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     ids_lods.push_back(id_tensor.lod());
   }
 
+  std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
+  ids_union.assign(s.begin(), s.end());
+
   for (int i; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
@@ -228,27 +233,27 @@ void prefetchs(const std::vector<std::string>& id_var_names,
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
     out_t->Resize(
         framework::make_ddim({static_cast<int64_t>(ids.size()), vec_dim_1}));
+    out_t->set_lod(ids_lods[i]);
+
     auto* out_d = out_t->mutable_data<float>(place);
 
     for (int idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
 
-      if (padding_idx != distributed::kNoPadding && ids[i] == padding_idx) {
+      if (padding_idx != distributed::kNoPadding && id == padding_idx) {
         memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
       } else {
-        std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
-                  out_d + idx * vec_dim_1);
+        std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
+                    out_d + idx * vec_dim_1);
       }
     }
-
-    out_t->set_lod(ids_lods[i]);
   }
 
   // reconstruct var
-  for (auto& id : ids_union) {
-    std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
-              reconstruct_d + id * vec_dim_1);
-  }
+  //  for (auto& id : ids_union) {
+  //    std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
+  //              reconstruct_d + id * vec_dim_1);
+  //  }
 }
 
 };  // namespace distributed
