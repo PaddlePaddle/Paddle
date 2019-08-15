@@ -88,10 +88,8 @@ class TestDataset(unittest.TestCase):
         dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
-        dataset.set_filelist([
-            "test_run_with_dump_a.txt",
-            "test_run_with_dump_b.txt"
-        ])
+        dataset.set_filelist(
+            ["test_run_with_dump_a.txt", "test_run_with_dump_b.txt"])
         dataset.set_parse_ins_id(True)
         dataset.set_parse_content(True)
         dataset.set_pipe_command("cat")
