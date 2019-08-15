@@ -133,7 +133,8 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
-          'paddle.fluid.incubate.fleet.collective']
+          'paddle.fluid.incubate.fleet.collective',
+          'paddle.fluid.incubate.fleet.utils']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -164,6 +165,11 @@ libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
+if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
+    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_RT}'), libs_path)
+    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_PLUGIN_RT}'), libs_path)
+    package_data['paddle.libs'] += ['${TR_INFER_RT}', '${TR_INFER_PLUGIN_RT}']
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)

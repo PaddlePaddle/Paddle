@@ -174,7 +174,7 @@ class DistributeTranspilerConfig(object):
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
-    # supported modes: sgd, local_sgd
+    # supported modes: grad_allreduce, local_sgd
     collective_mode = None
 
 
@@ -431,7 +431,7 @@ class DistributeTranspiler(object):
                 trainers_num = len(self.origin_program._trainers_endpoints)
                 # selected automaticly
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
-                    self.config.hierarchical_allreduce_inter_nranks = fluid.core.get_cuda_device_count(
+                    self.config.hierarchical_allreduce_inter_nranks = core.get_cuda_device_count(
                     )
 
                 assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \

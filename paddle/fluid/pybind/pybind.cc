@@ -1068,10 +1068,17 @@ All parameter, weight, gradient are variables in Paddle.
                    t = fluid.LoDTensor()
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
-           )DOC");
-
-  m.def("IsInplace",
-        [](std::string op) -> bool { return operators::IsInplace(op); });
+           )DOC")
+      .def("_move_to_list",
+           [](LoDTensorArray &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               res[i] = py::cast(std::move(self[i]));
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership);
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
@@ -1650,10 +1657,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors,
-                     const std::string &fetched_var_name) {
+                     const std::vector<std::string> &fetch_tensors) {
         pybind11::gil_scoped_release release;
-        self.Run(fetch_tensors, fetched_var_name);
+        return self.Run(fetch_tensors);
       });
 
   BindRecordIOWriter(&m);
