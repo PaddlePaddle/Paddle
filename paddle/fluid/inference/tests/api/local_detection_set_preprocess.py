@@ -30,26 +30,7 @@ import functools
 import distutils.util
 import sys
 from optparse import OptionParser
-
-
-def preprocess(args, img):
-    img_width, img_height = img.size
-
-    img = img.resize((args.resize_w, args.resize_h), Image.ANTIALIAS)
-    img = np.array(img)
-
-    # HWC to CHW
-    if len(img.shape) == 3:
-        img = np.swapaxes(img, 1, 2)
-        img = np.swapaxes(img, 1, 0)
-    # RBG to BGR
-    img = img[[2, 1, 0], :, :]
-    img = img.astype('float32')
-    img_mean = np.array(args.mean_value)[:, np.newaxis, np.newaxis].astype(
-        'float32')
-    img -= img_mean
-    img *= 0.007843
-    return img
+from full_pascalvoc_test_preprocess import preprocess
 
 
 def pascalvoc(args):
