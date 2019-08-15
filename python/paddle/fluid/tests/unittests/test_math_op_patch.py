@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 import numpy
 from paddle.fluid.dygraph.base import to_variable
 
+
 class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_add_scalar(self):
@@ -217,7 +218,6 @@ class TestMathOpPatches(unittest.TestCase):
 #             print(value)
 #             print(value)
 #             print(value)
-
 
 if __name__ == '__main__':
     unittest.main()
