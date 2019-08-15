@@ -28,7 +28,8 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist.py", delta=1e-5)
+            self.check_with_place(
+                "dist_mnist.py", delta=1e-5, check_error_log=True)
 
 
 if __name__ == "__main__":

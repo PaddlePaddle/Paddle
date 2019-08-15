@@ -107,10 +107,16 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
 
         if dist_strategy:
+            import sys
+            import pickle
+            sys.stderr.write(pickle.dumps("enter into dist_strategy"))
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=dist_strategy)
             _, param_grads = dist_opt.minimize(avg_cost)
         else:
+            import sys
+            import pickle
+            sys.stderr.write(pickle.dumps("enter into dist_strategy else"))
             opt.minimize(avg_cost)
 
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict

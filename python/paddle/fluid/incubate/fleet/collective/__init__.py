@@ -67,6 +67,10 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
+        import sys
+        import pickle
+        sys.stderr.write(pickle.dumps("enter into distributed_optimizer"))
+
         self._optimizer = \
             CollectiveOptimizer(optimizer, strategy)
         return self._optimizer

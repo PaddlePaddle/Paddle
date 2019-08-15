@@ -28,3 +28,10 @@ else
     echo "not find trainer 0"
     exit -1
 fi
+
+# use specified values
+cluster_node_ips="192.168.0.16"
+node_ip="127.0.0.1"
+
+distributed_args="--cluster_node_ips ${cluster_node_ips} --node_ip ${node_ip} --selected_gpus=0,1 --log_dir testlog"
+python -m paddle.distributed.launch ${distributed_args} multi_process.py
