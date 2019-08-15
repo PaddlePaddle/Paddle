@@ -23,6 +23,7 @@ from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
+import logging
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
@@ -1374,6 +1375,10 @@ class LayerNorm(layers.Layer):
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0))
+        else:
+            if self._param_attr:
+                logging.warn("param_attr are only avaliable with scale is True")
+
         if self._shift:
             assert self._bias_attr is not False
             self._bias_w = self.create_parameter(
@@ -1381,6 +1386,9 @@ class LayerNorm(layers.Layer):
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True)
+        else:
+            if self._bias_attr:
+                logging.warn("bias_attr are only avaliable with shift is True")
 
     def forward(self, input):
         inputs = dict()
@@ -1410,7 +1418,7 @@ class LayerNorm(layers.Layer):
                 "begin_norm_axis": self._begin_norm_axis
             })
 
-        return self._helper.append_activation(layer_norm_out)
+        return self._helper.append_activation(layer_norm_out, act=self._act)
 
 
 class GRUUnit(layers.Layer):
@@ -1648,6 +1656,7 @@ class NCE(layers.Layer):
     def __init__(self,
                  name_scope,
                  num_total_classes,
+                 sample_weight=None,
                  param_attr=None,
                  bias_attr=None,
                  num_neg_samples=None,
@@ -1661,7 +1670,7 @@ class NCE(layers.Layer):
         self._num_total_classes = num_total_classes
 
         self._inputs = dict()
-
+        self._inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
         if sampler == "uniform":
             sampler = 0
         elif sampler == "log_uniform":
@@ -1941,15 +1950,15 @@ class BilinearTensorProduct(layers.Layer):
 
         if self._bias_attr:
             bias_size = [1, self._size]
-            bias = self.create_parameter(
+            self._bias_param = self.create_parameter(
                 attr=self._bias_attr,
                 shape=bias_size,
                 dtype=self._dtype,
                 is_bias=True)
-            self._inputs["Bias"] = bias
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self._w}
+        self._inputs["Bias"] = self._bias_param
         if self._name is not None:
             out = self._helper.create_variable(
                 name=".".join([self.full_name(), self._name]),
@@ -1964,7 +1973,7 @@ class BilinearTensorProduct(layers.Layer):
             outputs={"Out": out})
 
         # add activation
-        return self._helper.append_activation(out)
+        return self._helper.append_activation(out, act=self._act)
 
 
 class Conv2DTranspose(layers.Layer):
@@ -2099,6 +2108,7 @@ class Conv2DTranspose(layers.Layer):
         assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
         self._param_attr = param_attr
         self._bias_attr = bias_attr
+        self._act = act
         self._groups = groups
         self._num_filters = num_filters
         self._use_cudnn = use_cudnn
@@ -2197,7 +2207,7 @@ class Conv2DTranspose(layers.Layer):
         else:
             pre_act = pre_bias
 
-        out = self._helper.append_activation(pre_act)
+        out = self._helper.append_activation(pre_act, act=self._act)
         return out
 
 
@@ -2247,6 +2257,7 @@ class SequenceConv(layers.Layer):
         self._padding = padding
         self._bias_attr = bias_attr
         self._param_attr = param_attr
+        self._act = act
 
     def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
@@ -2287,7 +2298,7 @@ class SequenceConv(layers.Layer):
         else:
             pre_act = pre_bias
 
-        return self._helper.append_activation(pre_act)
+        return self._helper.append_activation(pre_act, act=self._act)
 
 
 class RowConv(layers.Layer):
