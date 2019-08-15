@@ -683,8 +683,8 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
-                           const std::string &fetched_var_name) {
+FeedFetchList ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
@@ -699,8 +699,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data = member_->executor_->Run(fetch_tensors);
-  *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
-      fetch_data;
+  return fetch_data;
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(

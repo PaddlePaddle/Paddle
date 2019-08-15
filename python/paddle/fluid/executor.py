@@ -527,12 +527,12 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        exe.run(fetch_var_names, fetch_var_name)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        tensors = exe.run(fetch_var_names)._move_to_list()
 
         if return_numpy:
-            return as_numpy(arr)
-        return [arr[i] for i in range(len(arr))]
+            return as_numpy(tensors)
+        else:
+            return tensors
 
     def run(self,
             program=None,
@@ -745,10 +745,12 @@ class Executor(object):
             exe.run(program.desc, scope, 0, True, True, fetch_var_name)
         else:
             exe.run_cached_prepared_ctx(ctx, scope, False, False, False)
-        outs = self._fetch_data(fetch_list, fetch_var_name, scope)
+        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        tensors = arr._move_to_list()
         if return_numpy:
-            outs = as_numpy(outs)
-        return outs
+            return as_numpy(tensors)
+        else:
+            return tensors
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)

@@ -431,6 +431,28 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
+// Conv with Activation
+// op: conv + activation
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// activation_out, activation
+struct ConvActivation : public PatternBase {
+  ConvActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_activation") {}
+
+  PDNode* operator()(PDNode* conv_input, std::string conv_type = "conv2d",
+                     std::string activation_type = "relu");
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(activation);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // CONV with ReLU
 // op: conv + relu
 // named nodes:
@@ -794,6 +816,23 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(concat_out);
   PATTERN_DECL_NODE(relu_op);
   PATTERN_DECL_NODE(relu_out);
+};
+
+// Conv + Requant
+// named nodes:
+// conv_op, conv_out
+// requant_op, requant_out
+struct ConvRequant : public PatternBase {
+  ConvRequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_requant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_out);
+
+  PATTERN_DECL_NODE(requant_op);
+  PATTERN_DECL_NODE(requant_out);
 };
 
 // PriorBox operator

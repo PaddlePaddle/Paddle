@@ -117,6 +117,9 @@ class DeviceWorker {
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
+  virtual void SetReaderPlace(const paddle::platform::Place& place) {
+    device_reader_->SetPlace(place);
+  }
 
  protected:
   Scope* root_scope_ = nullptr;

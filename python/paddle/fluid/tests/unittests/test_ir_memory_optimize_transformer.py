@@ -57,16 +57,11 @@ class TestTransformerWithIR(TestParallelExecutorBase):
             self.check_network_convergence(
                 transformer,
                 use_cuda=True,
-                memory_opt=True,
                 use_ir_memory_optimize=False,
                 iter=2)
             # check IR memory optimize
             self.check_network_convergence(
-                transformer,
-                use_cuda=True,
-                memory_opt=False,
-                use_ir_memory_optimize=True,
-                iter=2)
+                transformer, use_cuda=True, use_ir_memory_optimize=True, iter=2)
 
 
 if __name__ == '__main__':
