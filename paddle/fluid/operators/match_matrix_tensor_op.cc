@@ -27,15 +27,15 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"),
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                  "X(Input) of MatchMatrix should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Y"),
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
                  "Y(Input) of MatchMatrix should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("W"),
+  PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
                  "W(Input) of MatchMatrix should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Out"),
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                  "Out(Output) of MatchMatrix should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Tmp"),
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Tmp"), true,
                  "Tmp(Output) of MatchMatrix should not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
@@ -50,9 +50,15 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(w_dims.size(), 3UL, "W should be 3-D tensor");
 
   int dim_t = ctx->Attrs().Get<int>("dim_t");
-  PADDLE_ENFORCE(
-      x_dims[1] == w_dims[0] && y_dims[1] == w_dims[2] && w_dims[1] == dim_t,
-      "W 's shape must be X[1] * dim_t * Y[1].");
+  PADDLE_ENFORCE_EQ(
+      w_dims[0], x_dims[1],
+      "W 's shape must satisfy: W[0] = X[1]");
+  PADDLE_ENFORCE_EQ(
+      w_dims[1], dim_t,
+      "W 's shape must satisfy: W[1] = dim_t");
+  PADDLE_ENFORCE_EQ(
+      w_dims[2], y_dims[1],
+      "W 's shape must satisfy: W[2] = Y[1]");
 
   int out_dim_0 = -1;
   int tmp_dim_0 = -1;
@@ -60,7 +66,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::Variable* x_var =
         boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE(!x_lod.empty(), "The Input(X) must hold lod info.");
+    PADDLE_ENFORCE_EQ(x_lod.empty(), false, "The Input(X) must hold lod info.");
     const auto& x_lod_0 = x_lod[0];
     PADDLE_ENFORCE_GE(x_lod_0.size(), 2,
                       "The Input(X)'s lod info is corrupted.");
@@ -71,7 +77,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::Variable* y_var =
         boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Y")[0]);
     const auto& y_lod = y_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE(!y_lod.empty(), "The Input(Y) must hold lod info.");
+    PADDLE_ENFORCE_EQ(y_lod.empty(), false, "The Input(Y) must hold lod info.");
     const auto& y_lod_0 = y_lod[0];
     PADDLE_ENFORCE_GE(y_lod_0.size(), 2,
                       "The Input(Y)'s lod info is corrupted.");
@@ -111,13 +117,13 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 
 void MatchMatrixTensorOpGrad::InferShape(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"),
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                  "Input(X) of SequencePadGradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Y"),
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
                  "Input(Y) of SequencePadGradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("W"),
+  PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
                  "Input(W) of SequencePadGradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                  "Input(Out@GRAD) of SequencePadGradOp should not be null.");
 
   if (ctx->HasOutput(framework::GradVarName("X"))) {
