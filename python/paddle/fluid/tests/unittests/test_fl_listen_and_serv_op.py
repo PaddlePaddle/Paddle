@@ -26,6 +26,7 @@ from multiprocessing import Process
 from op_test import OpTest
 import numpy
 import urllib
+import sys
 
 
 def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
@@ -75,6 +76,8 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     sgd_optimizer.minimize(avg_cost)
     with open("pserver_startup_program.dms", "rb") as f:
         pserver_startup_program_desc_str = f.read()
+    with open("server_startup_program", "w") as wf:
+        wf.write(pserver_startup_program_desc_str)
     with open("pserver_main_program.dms", "rb") as f:
         pserver_main_program_desc_str = f.read()
 
@@ -139,37 +142,36 @@ class TestFlListenAndServOp(OpTest):
 
     def test_handle_signal_in_serv_op(self):
         # run pserver on CPU in sync mode
-        urllib.urlretrieve(
-            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_startup_program.dms",
-            "pserver_startup_program.dms")
-        urllib.urlretrieve(
-            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_main_program.dms",
-            "pserver_main_program.dms")
-        urllib.urlretrieve(
-            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_recv_program.dms",
-            "trainer_recv_program.dms")
-        urllib.urlretrieve(
-            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_main_program.dms",
-            "trainer_main_program.dms")
-        urllib.urlretrieve(
-            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_send_program.dms",
-            "trainer_send_program.dms")
-        p1 = self._start_pserver(False, True, run_pserver)
-        self._wait_ps_ready(p1.pid)
-        time.sleep(5)
-        t1 = self._start_trainer0(False, True, run_trainer)
-        time.sleep(2)
-        t2 = self._start_trainer1(False, True, run_trainer)
-        # raise SIGTERM to pserver
-        time.sleep(2)
-        cmd_del = "rm trainer*dms* pserver*dms*"
-        os.system(cmd_del)
-        os.kill(p1.pid, signal.SIGINT)
-        p1.join()
-        os.kill(t1.pid, signal.SIGINT)
-        t1.join()
-        os.kill(t2.pid, signal.SIGINT)
-        t2.join()
+        if sys.platform == 'win32' or sys.platform == 'sys.platform':
+            pass
+        else:
+            print(sys.platform)
+            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_startup_program.dms"
+            os.system(cmd)
+            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_main_program.dms"
+            os.system(cmd)
+            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_recv_program.dms"
+            os.system(cmd)
+            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_main_program.dms"
+            os.system(cmd)
+            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_send_program.dms"
+            os.system(cmd)
+            p1 = self._start_pserver(False, True, run_pserver)
+            self._wait_ps_ready(p1.pid)
+            time.sleep(5)
+            t1 = self._start_trainer0(False, True, run_trainer)
+            time.sleep(2)
+            t2 = self._start_trainer1(False, True, run_trainer)
+            # raise SIGTERM to pserver
+            time.sleep(2)
+            cmd_del = "rm trainer*dms* pserver*dms*"
+            os.system(cmd_del)
+            os.kill(p1.pid, signal.SIGINT)
+            p1.join()
+            os.kill(t1.pid, signal.SIGINT)
+            t1.join()
+            os.kill(t2.pid, signal.SIGINT)
+            t2.join()
 
 
 if __name__ == '__main__':
