@@ -183,6 +183,9 @@ def start_procs(args):
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
 
+        if num_nodes > 1:
+            current_env.update({"FLAGS_sync_nccl_allreduce": "0"})
+
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
 

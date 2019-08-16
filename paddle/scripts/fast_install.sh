@@ -755,7 +755,7 @@ function checkMacPython2(){
           python_min="2.7.15"
           python_version=`$python_root --version 2>&1 1>&1`
           if [[ $? == "0" ]];then
-               if [ "$python_version" == "" ] || ( "$python_root" == "/usr/bin/python" && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
+               if [ "$python_version" == "" ] || ( [ "$python_root" == "/usr/bin/python" ] && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
                     clearMacPythonEnv
                else
                     check_python=`echo $python_version | grep "Python 2"`
@@ -805,7 +805,7 @@ function checkMacPython3(){
           python_min="2.7.15"
           python_version=`$python_root --version 2>&1 1>&1`
           if [[ $? == "0" ]];then
-               if [ "$python_version" == "" ] || ( "$python_root" == "/usr/bin/python" && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
+               if [ "$python_version" == "" ] || ( [ "$python_root" == "/usr/bin/python" ] && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
                     clearMacPythonEnv
                else
                     check_python=`echo $python_version | grep "Python 3"`
@@ -850,26 +850,14 @@ function checkMacPython3(){
 }
 
 function checkMacPaddleVersion(){
-  while true
-    do
-      read -n1 -p "Step 2. 选择PaddlePaddle的版本，请按回车键继续..."
-      echo
-      yellow "          1. 开发版：对应Github上develop分支，如您需要开发、或希望使用PaddlePaddle最新功能，请选用此版本"
-      yellow "          2. 稳定版（推荐）：如您无特殊开发需求，建议使用此版本，目前最新的版本号为 ${release_version}"
-      read -p "          => 请输入数字1或2。如输入其他字符或直接回车，将会默认选择【 2. 稳定版 】 。请在这里输入并回车：" paddle_version
-      if [[ "$paddle_version" == "1" ]]||[[ "$paddle_version" == "2" ]];then
-          echo
-          yellow "          您选择了数字【"$paddle_version" 】"
-          echo
-          break
-      else
-          paddle_version="2"
-          echo
-          yellow "          您选择了数字【2】"
-          echo
-          break
-      fi
-    done
+    echo
+    yellow "          目前PaddlePaddle在MacOS环境下只提供稳定版，最新的版本号为 ${release_version}"
+    echo
+    paddle_version="2"
+    echo
+    yellow "          我们将会为您安装PaddlePaddle稳定版，请按回车键继续... "
+    read -n1 -p ""
+    echo
 }
 function initCheckMacPython2(){
    echo

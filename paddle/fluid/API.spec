@@ -472,7 +472,7 @@ paddle.fluid.contrib.op_freq_statistic (ArgSpec(args=['program'], varargs=None, 
 paddle.fluid.contrib.QuantizeTranspiler ('paddle.fluid.contrib.quantize.quantize_transpiler.QuantizeTranspiler', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.contrib.QuantizeTranspiler.__init__ (ArgSpec(args=['self', 'weight_bits', 'activation_bits', 'activation_quantize_type', 'weight_quantize_type', 'window_size', 'moving_rate'], varargs=None, keywords=None, defaults=(8, 8, 'abs_max', 'abs_max', 10000, 0.9)), ('document', '14b39f1fcd5667ff556b1aad94357d1d'))
 paddle.fluid.contrib.QuantizeTranspiler.convert_to_int8 (ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.contrib.QuantizeTranspiler.freeze_program (ArgSpec(args=['self', 'program', 'place', 'fuse_bn', 'scope'], varargs=None, keywords=None, defaults=(False, None)), ('document', '909675a1ab055c69b436a7893fcae4fd'))
+paddle.fluid.contrib.QuantizeTranspiler.freeze_program (ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=(None,)), ('document', '909675a1ab055c69b436a7893fcae4fd'))
 paddle.fluid.contrib.QuantizeTranspiler.training_transpile (ArgSpec(args=['self', 'program', 'startup_program'], varargs=None, keywords=None, defaults=(None, None)), ('document', '6dd9909f10b283ba2892a99058a72884'))
 paddle.fluid.contrib.distributed_batch_reader (ArgSpec(args=['batch_reader'], varargs=None, keywords=None, defaults=None), ('document', 'b60796eb0a481484dd34e345f0eaa4d5'))
 paddle.fluid.contrib.Compressor ('paddle.fluid.contrib.slim.core.compressor.Compressor', ('document', 'a5417774a94aa9ae5560a42b96527e7d'))
