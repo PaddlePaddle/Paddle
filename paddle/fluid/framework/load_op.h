@@ -27,12 +27,24 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename T>
+T *DynLoad(void *handle, std::string name) {
+  T *func = reinterpret_cast<T *>(dlsym(handle, name.c_str()));
+#if !defined(_WIN32)
+  auto errorno = dlerror();
+#else
+  auto errorno = GetLastError();
+#endif  // !_WIN32
+  PADDLE_ENFORCE(nullptr != func, errorno);
+  return func;
+}
+
 void LoadOpLib(const std::string &dso_name) {
-  void *op_dso_handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
+  void *handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
   typedef OpInfoMap *get_op_info_t();
-  get_op_info_t *get_op_info = reinterpret_cast<get_op_info_t *>(
-      dlsym(op_dso_handle, "PD_GetAllOpProtos"));
+  get_op_info_t *get_op_info =
+      DynLoad<get_op_info_t>(handle, "PD_GetOpInfoMap");
   auto *op_info = get_op_info();
   auto *other_info_map = op_info->mutable_map();
 
@@ -42,12 +54,10 @@ void LoadOpLib(const std::string &dso_name) {
       const std::vector<BlockDesc *> &);
 
   grad_op_desc_maker_t *grad_op_desc_maker =
-      reinterpret_cast<grad_op_desc_maker_t *>(
-          dlsym(op_dso_handle, "PD_GetGradOpDescStrs"));
+      DynLoad<grad_op_desc_maker_t>(handle, "PD_GetGradOpDescStrs");
 
   auto *cur_info = OpInfoMap::Instance();
   for (const auto &n : *(other_info_map)) {
-    VLOG(1) << "Load OP " << n.first;
     auto type = n.first;
     if (type == "recurrent" || type == "recurrent_grad" ||
         type == "conditional_block" || type == "conditional_block_grad") {
@@ -56,9 +66,17 @@ void LoadOpLib(const std::string &dso_name) {
     if (cur_info->Has(n.first)) {
       PADDLE_THROW("Op %s has been registered.");
     }
-    VLOG(1) << "Inser OP " << n.first;
     OpInfo info;
     info.creator_ = n.second.creator_;
+
+    // If get the protocol buffer from dynamic library directly, there
+    // will be deconstruction error
+    // ** Error in `python`: free(): invalid pointer:
+    //  ...  paddle::framework::proto::OpDesc::SharedDtor()
+    // It seems a bug in protobuf, see
+    // https://github.com/protocolbuffers/protobuf/issues/435
+    // So, get the serialized binary string from dynamic library,
+    // then deserialize to protocol buffer.
     info.grad_op_maker_ = [grad_op_desc_maker](
         const OpDesc &op_desc,
         const std::unordered_set<std::string> &no_grad_set,
@@ -87,9 +105,9 @@ void LoadOpLib(const std::string &dso_name) {
     cur_info->Insert(type, info);
   }
 
-  typedef void init_device(platform::DeviceContextPool *);
-  init_device *init_dev = reinterpret_cast<init_device *>(
-      dlsym(op_dso_handle, "PD_InitDevicesPool"));
+  typedef void init_device_t(platform::DeviceContextPool *);
+  init_device_t *init_dev =
+      DynLoad<init_device_t>(handle, "PD_InitDevicesPool");
   init_dev(&(platform::DeviceContextPool::Instance()));
 }
 

@@ -1,4 +1,4 @@
-/* copyright (c) 2018 paddlepaddle authors. all rights reserved.
+/* copyright (c) 2019 paddlepaddle authors. all rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,10 +28,13 @@ limitations under the License. */
 extern "C" {
 #endif
 
-paddle::framework::OpInfoMap *PD_GetAllOpProtos();
+// C-API to get global OpInfo map.
+paddle::framework::OpInfoMap *PD_GetOpInfoMap();
 
+// C-API to init global DeviceContextPool from outside.
 void PD_InitDevicesPool(paddle::platform::DeviceContextPool *pool);
 
+// C-API to serialize the grad op protocol message to a binary string.
 std::vector<std::string> PD_GetGradOpDescStrs(
     const paddle::framework::OpDesc &op_desc,
     const std::unordered_set<std::string> &no_grad_set,
