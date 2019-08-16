@@ -498,7 +498,7 @@ function assert_api_spec_approvals() {
                "python/paddle/fluid/framework.py"
                "python/paddle/fluid/backward.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
-
+    API_Flag="True"
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
     git_files=`git diff --numstat upstream/$BRANCH| wc -l`
     git_count=`git diff --numstat upstream/$BRANCH| awk '{sum+=$1}END{print sum}'`
@@ -531,6 +531,7 @@ function assert_api_spec_approvals() {
           fi
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
+            API_Flag="False"
             if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
               echo "You must have two RD (wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change! ${API_FILE} for the management reason of API interface and API document."
             elif [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
@@ -544,15 +545,14 @@ function assert_api_spec_approvals() {
             else
               echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the api change! ${API_FILE} for the management reason of the underlying code for fluid."
             fi
-            exit 1
           fi
       fi
     done
+    
 
     HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the usage (either add or delete) of const_cast."
@@ -562,8 +562,7 @@ function assert_api_spec_approvals() {
     
     HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
     if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 47554610` 
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 47554610` 
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag."
@@ -573,14 +572,17 @@ function assert_api_spec_approvals() {
 
     HAS_PADDLE_ENFORCE_FLAG=`git diff -U0 upstream/$BRANCH |grep -v "PADDLE_ENFORCE_" |grep -o -m 1 "PADDLE_ENFORCE" || true`
     if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "PADDLE_ENFORCE will be deprecated soon. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL instead."
             echo "You must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE. "
             exit 1
         fi
+    fi
+
+    if [ "API_Flag" == "False" ];then
+      exit 1
     fi
 }
 
@@ -1026,9 +1028,9 @@ function main() {
       build_and_check)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        example
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
+        example
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
