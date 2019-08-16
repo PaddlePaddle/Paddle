@@ -76,8 +76,6 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     sgd_optimizer.minimize(avg_cost)
     with open("pserver_startup_program.dms", "rb") as f:
         pserver_startup_program_desc_str = f.read()
-    with open("server_startup_program", "w") as wf:
-        wf.write(pserver_startup_program_desc_str)
     with open("pserver_main_program.dms", "rb") as f:
         pserver_main_program_desc_str = f.read()
 
