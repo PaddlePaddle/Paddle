@@ -831,7 +831,7 @@ void MultiSlotDataset::SlotsShuffle(
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
 }
 
-void MultiSlotDataset::BeginPass() {
+void MultiSlotDataset::FeedPass() {
   auto box_ptr = BoxWrapper::GetInstance();
   std::vector<Record> pass_data;
   std::vector<uint64_t> feasign_to_box;
@@ -845,7 +845,12 @@ void MultiSlotDataset::BeginPass() {
   input_channel_->Open();
   input_channel_->Write(pass_data);
   input_channel_->Close();
-  box_ptr->BeginPass(feasign_to_box);
+  box_ptr->FeedPass(feasign_to_box);
+}
+
+void MultiSlotDataset::BeginPass() {
+  auto box_ptr = BoxWrapper::GetInstance();
+  box_ptr->BeginPass();
 }
 
 void MultiSlotDataset::EndPass() {

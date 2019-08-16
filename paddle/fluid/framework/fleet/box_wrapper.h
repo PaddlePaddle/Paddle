@@ -31,7 +31,8 @@ class BoxWrapper {
   virtual ~BoxWrapper() {}
   BoxWrapper() {}
 
-  int BeginPass(const std::vector<uint64_t>& feasgin_to_box) const;
+  int FeedPass(const std::vector<uint64_t>& feasgin_to_box) const;
+  int BeginPass() const;
   int EndPass() const;
   int PullSparse(const paddle::platform::Place& place,
                  const std::vector<const uint64_t*>& keys,
@@ -64,6 +65,7 @@ class BoxWrapper {
  private:
   static std::shared_ptr<paddle::boxps::BoxPSBase> boxps_ptr_;
   static std::shared_ptr<BoxWrapper> s_instance_;
+  int GetDate() const;
 
  protected:
   static bool is_initialized_;  // no use now

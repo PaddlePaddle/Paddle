@@ -74,8 +74,9 @@ class BoxPSBase {
   BoxPSBase() {}
   virtual ~BoxPSBase() {}
 
-  virtual int BeginPass(int date,
-                        const std::vector<uint64_t> &keys_of_one_pass) = 0;
+  virtual int FeedPass(int date,
+                       const std::vector<uint64_t> &keys_of_one_pass) = 0;
+  virtual int BeginPass() = 0;
   virtual int EndPass() = 0;
 
   virtual int InitializeCPU(const char *conf_file, int minibatch_size) = 0;
@@ -106,8 +107,9 @@ class FakeBoxPS : public BoxPSBase {
   FakeBoxPS() {}
   virtual ~FakeBoxPS() {}
 
-  int BeginPass(int date,
-                const std::vector<uint64_t> &keys_of_one_pass) override;
+  int FeedPass(int date,
+               const std::vector<uint64_t> &keys_of_one_pass) override;
+  int BeginPass() override;
   int EndPass() override;
 
   int InitializeCPU(const char *conf_file, int minibatch_size) override;

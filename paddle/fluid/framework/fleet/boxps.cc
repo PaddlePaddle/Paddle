@@ -39,8 +39,8 @@ void FakeBoxPS::DebugPrintKey(const uint64_t *d, int len,
   printf("\n");
 }
 
-int FakeBoxPS::BeginPass(int date, const std::vector<uint64_t> &pass_data) {
-  printf("FakeBoxPS: Pass begin...\n");
+int FakeBoxPS::FeedPass(int date, const std::vector<uint64_t> &pass_data) {
+  printf("FakeBoxPS: Feed begin...\n");
   printf("FakeBoxPS: date: %d\n", date);
   for (const auto fea : pass_data) {
     if (emb_.find(fea) == emb_.end()) {
@@ -51,8 +51,13 @@ int FakeBoxPS::BeginPass(int date, const std::vector<uint64_t> &pass_data) {
   return 0;
 }
 
+int FakeBoxPS::BeginPass() {
+  printf("FakeBoxPS: Begin pass, do nothing...\n");
+  return 0;
+}
+
 int FakeBoxPS::EndPass() {
-  printf("FakeBoxPS: Pass end...\n");
+  printf("FakeBoxPS: End pass, do nothing...\n");
   return 0;
 }
 

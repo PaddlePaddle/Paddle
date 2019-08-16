@@ -609,6 +609,9 @@ class InMemoryDataset(DatasetBase):
             return global_data_size[0]
         return local_data_size[0]
 
+    def feed_pass(self):
+        self.dataset.feed_pass()
+
     def begin_pass(self):
         self.dataset.begin_pass()
 

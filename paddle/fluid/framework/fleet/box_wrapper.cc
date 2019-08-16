@@ -24,7 +24,7 @@ namespace framework {
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
 std::shared_ptr<paddle::boxps::BoxPSBase> BoxWrapper::boxps_ptr_ = nullptr;
 
-int BoxWrapper::BeginPass(const std::vector<uint64_t>& feasgin_to_box) const {
+int BoxWrapper::GetDate() const {
   time_t now = time(0);
   tm t;
 #ifdef _WIN32
@@ -35,8 +35,16 @@ int BoxWrapper::BeginPass(const std::vector<uint64_t>& feasgin_to_box) const {
   char buf[10];
   snprintf(buf, sizeof(buf), "%04d%02d%02d", (1900 + t.tm_year), (1 + t.tm_mon),
            t.tm_mday);
-  int date = atoi(buf);
-  boxps_ptr_->BeginPass(date, feasgin_to_box);
+  return atoi(buf);
+}
+
+int BoxWrapper::FeedPass(const std::vector<uint64_t>& feasgin_to_box) const {
+  boxps_ptr_->FeedPass(GetDate(), feasgin_to_box);
+  return 0;
+}
+
+int BoxWrapper::BeginPass() const {
+  boxps_ptr_->BeginPass();
   return 0;
 }
 

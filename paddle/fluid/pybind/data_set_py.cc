@@ -112,6 +112,8 @@ void BindDataset(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,
            py::call_guard<py::gil_scoped_release>())
+      .def("feed_pass", &framework::Dataset::FeedPass,
+           py::call_guard<py::gil_scoped_release>())
       .def("begin_pass", &framework::Dataset::BeginPass,
            py::call_guard<py::gil_scoped_release>())
       .def("end_pass", &framework::Dataset::EndPass,
