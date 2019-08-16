@@ -549,6 +549,9 @@ function assert_api_spec_approvals() {
       fi
     done
     
+    if [ "API_Flag" == "False" ];then
+      exit 1
+    fi
 
     HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
@@ -581,9 +584,6 @@ function assert_api_spec_approvals() {
         fi
     fi
 
-    if [ "API_Flag" == "False" ];then
-      exit 1
-    fi
 }
 
 
