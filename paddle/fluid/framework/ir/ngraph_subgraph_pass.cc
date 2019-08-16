@@ -48,7 +48,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
 }
 
 void NgraphSubgraphPass::ApplyImpl(Graph *graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init("ngraph_subgraph_pass", graph);
 
   std::unordered_set<Node *> nodes2delete;
@@ -139,7 +139,7 @@ void UpdateNgraphIO(Node *node, Graph *graph,
 
 void NgraphSubgraphPass::CreateNgraphEngineOp(Node *node, Graph *graph) const {
   auto &subgraph = *ANAT::Agent(node).subgraph();
-  PADDLE_ENFORCE(!subgraph.empty());
+  PADDLE_ENFORCE_NE(subgraph.empty(), true, "subgraph cannot be empty");
 
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
@@ -155,8 +155,8 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(Node *node, Graph *graph) const {
       *vars->Add() = *node->Var()->Proto();
     }
   }
-  PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
-                 "the block has no var-desc");
+  PADDLE_ENFORCE_NE(block_desc.Proto()->vars().empty(), true,
+                    "the block has no var-desc");
 
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
