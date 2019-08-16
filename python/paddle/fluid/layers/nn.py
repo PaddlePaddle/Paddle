@@ -226,7 +226,6 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        act=None,
-       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -300,7 +299,6 @@ def fc(input,
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
-        is_test(bool): A flag indicating whether execution is in test phase.
         name (str, default None): The name of this layer.
 
     Returns:
