@@ -23,15 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
-// CUDNN_BATCHNORM_SPATIAL_PERSISTENT in batchnorm. This mode can be faster in
-// some tasks because an optimized path may be selected for CUDNN_DATA_FLOAT
-// and CUDNN_DATA_HALF data types, compute capability 6.0 or higher. The
-// reason we set it to false by default is that this mode may use scaled
-// atomic integer reduction that may cause a numerical overflow for certain
-// input data range.
-DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
-            "Whether enable CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode for cudnn "
-            "batch_norm, default is False.");
+DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
