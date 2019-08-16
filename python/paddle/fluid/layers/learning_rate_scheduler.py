@@ -159,7 +159,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     >>> if not staircase:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
     >>> else:
-    >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+    >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
 
     Args:
         learning_rate: A scalar float32 value or a Variable. This

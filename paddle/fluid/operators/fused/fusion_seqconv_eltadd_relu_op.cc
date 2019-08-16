@@ -220,8 +220,7 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_seqconv_eltadd_relu, ops::FusionSeqConvEltAddReluOp,
-                  ops::FusionSeqConvEltAddReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusionSeqConvEltAddReluOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqconv_eltadd_relu,
                        ops::FusionSeqConvEltAddReluKernel<float>,
