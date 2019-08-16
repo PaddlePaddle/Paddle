@@ -252,8 +252,8 @@ else(WIN32)
 endif(WIN32)
 
 cc_library(fluid_framework_shared
-    SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
-    SHARED DEPS ${FLUID_FRAMEWORK_MODULES})
+    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    DEPS ${FLUID_FRAMEWORK_MODULES})
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(fluid_framework_shared PROPERTIES OUTPUT_NAME fluid_framework)
 target_link_libraries(fluid_framework_shared ${os_dependency_modules})
