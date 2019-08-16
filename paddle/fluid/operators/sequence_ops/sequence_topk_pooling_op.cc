@@ -90,10 +90,14 @@ class SequenceTopkPoolingGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type();
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    SequenceTopkPoolGradOpGradNoNeedBufferVars, "X");
 
 class SequenceTopkPoolingGradOpMaker : public framework::SingleGradOpDescMaker {
  public:
@@ -120,7 +124,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_topk_pooling, ops::SequenceTopkPoolingOp,
                   ops::SequenceTopkPoolingOpMaker,
                   ops::SequenceTopkPoolingGradOpMaker);
-REGISTER_OPERATOR(sequence_topk_pooling_grad, ops::SequenceTopkPoolingGradOp);
+REGISTER_OPERATOR(sequence_topk_pooling_grad, ops::SequenceTopkPoolingGradOp,
+                  ops::SequenceTopkPoolGradOpGradNoNeedBufferVars);
 REGISTER_OP_CPU_KERNEL(sequence_topk_pooling,
                        ops::SequenceTopkPoolingKernel<float>);
 REGISTER_OP_CPU_KERNEL(sequence_topk_pooling_grad,
