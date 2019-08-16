@@ -398,6 +398,11 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
     }
   }
 
+  // In use for ngraph subgraph pass for parallel executor,
+  // this will remove all nodes, bypass this and let ngraph
+  // subgraph pass to process outputs
+  if (valid_output.size() == 0) return;
+
   outputs->assign(valid_output.begin(), valid_output.end());
 }
 
