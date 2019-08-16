@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -206,7 +207,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
   }
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class)
+  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+                    paddle::framework::EmptyGradOpMaker)
 
 /**
  * Macro to register OperatorKernel.

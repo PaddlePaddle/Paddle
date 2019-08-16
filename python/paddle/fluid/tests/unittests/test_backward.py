@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 from simple_nets import init_data
 
 
-def simple_net1():
+def case1_fill_grad_vars():
     x = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     feature = fluid.layers.fc(input=x, size=20, act=None)
@@ -30,7 +30,7 @@ def simple_net1():
     return loss
 
 
-def simple_net2():
+def case2_prune_no_grad_branch():
     x = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     feature = fluid.layers.fc(input=x, size=10, act=None)
@@ -42,14 +42,28 @@ def simple_net2():
     return loss
 
 
+def case3_prune_no_grad_branch2():
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    label = fluid.layers.cast(label, dtype="float32")
+    label = fluid.layers.cast(label, dtype='int64')
+    out = fluid.layers.one_hot(input=label, depth=100)
+    loss = fluid.layers.mean(out)
+    return loss
+
+
+def case4_with_no_grad_op_maker():
+    out = fluid.layers.gaussian_random(shape=[20, 30])
+    loss = fluid.layers.mean(out)
+    return loss
+
+
 class TestBackward(unittest.TestCase):
-    def check_backward(self, model):
+    def check_backward(self, model, feed_dict):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         main = fluid.Program()
         startup = fluid.Program()
-        batch_size = 2
 
         with fluid.program_guard(main, startup):
             loss = model()
@@ -58,12 +72,16 @@ class TestBackward(unittest.TestCase):
             optimizer.minimize(loss)
 
             exe.run(fluid.default_startup_program())
-            img, label = init_data(batch_size, img_shape=[784], label_range=9)
-            exe.run(feed={'image': img, 'label': label})
+            exe.run(feed=feed_dict)
 
     def test_backward(self):
-        self.check_backward(simple_net1)
-        self.check_backward(simple_net2)
+        batch_size = 2
+        img, label = init_data(batch_size, img_shape=[784], label_range=9)
+        feed_dict = {'image': img, 'label': label}
+        self.check_backward(case1_fill_grad_vars, feed_dict)
+        self.check_backward(case2_prune_no_grad_branch, feed_dict)
+        self.check_backward(case3_prune_no_grad_branch2, {'label': label})
+        self.check_backward(case4_with_no_grad_op_maker, {})
 
 
 if __name__ == '__main__':
