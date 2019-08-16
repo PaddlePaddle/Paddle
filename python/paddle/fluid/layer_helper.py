@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import six
 
-from .framework import Parameter, dtype_is_floating, in_dygraph_mode,OpProtoHolder
+from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
@@ -175,7 +175,7 @@ class LayerHelper(LayerHelperBase):
                             param_name, self.layer_type, cls.__name__)
 
 
-class DynLoadLayerHelper(LayerHelper):
+class CustomLayerHelper(LayerHelper):
     def __init__(self, layer_type, **kwargs):
-        super(DynLoadLayerHelper, self).__init__(layer_type=layer_type, **kwargs)
+        super(CustomLayerHelper, self).__init__(layer_type=layer_type, **kwargs)
         OpProtoHolder.instance().update_op_proto()

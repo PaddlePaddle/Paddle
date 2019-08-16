@@ -30,8 +30,6 @@ paddle::framework::OpInfoMap *PD_GetAllOpProtos() {
   return paddle::framework::OpInfoMap::Instance();
 }
 
-void PD_InitDevices(bool init_p2p) { paddle::framework::InitDevices(init_p2p); }
-
 void PD_InitDevicesPool(paddle::platform::DeviceContextPool *pool) {
   paddle::platform::DeviceContextPool::SetPool(pool);
 }

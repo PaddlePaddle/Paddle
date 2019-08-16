@@ -30,8 +30,6 @@ extern "C" {
 
 paddle::framework::OpInfoMap *PD_GetAllOpProtos();
 
-void PD_InitDevices(bool init_p2p);
-
 void PD_InitDevicesPool(paddle::platform::DeviceContextPool *pool);
 
 std::vector<std::string> PD_GetGradOpDescStrs(

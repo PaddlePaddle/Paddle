@@ -24,11 +24,11 @@ import paddle.fluid as fluid
 file_dir = os.path.dirname(os.path.abspath(__file__))
 fluid.core.load_op(os.path.join(file_dir, 'librelu2_op.so'))
 
-from paddle.fluid.layer_helper import DynLoadLayerHelper
+from paddle.fluid.layer_helper import CustomLayerHelper
 
 
 def relu2(x, name=None):
-    helper = DynLoadLayerHelper("relu2", **locals())
+    helper = CustomLayerHelper("relu2", **locals())
     out = helper.create_variable(
         type=x.type, name=name, dtype=x.dtype, persistable=False)
     helper.append_op(type="relu2", inputs={"X": x}, outputs={"Y": out})
