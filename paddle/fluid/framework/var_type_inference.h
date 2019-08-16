@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -122,18 +123,16 @@ class InferVarTypeContext {
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 
-  virtual void ShareVarType( const std::string& in, const std::string& out)
-  {
+  virtual void ShareVarType(const std::string& in, const std::string& out) {
     auto& x_name = Input(in).at(0);
     auto& out_name = Output(out).at(0);
-    SetType( out_name, GetType(x_name));
+    SetType(out_name, GetType(x_name));
   }
 
-  virtual void ShareDataType( const std::string& in, const std::string& out)
-  {
+  virtual void ShareDataType(const std::string& in, const std::string& out) {
     auto& x_name = Input(in).at(0);
-    auto& out_name = Output( out).at(0);
-    SetDataType( out_name, GetDataType(x_name));
+    auto& out_name = Output(out).at(0);
+    SetDataType(out_name, GetDataType(x_name));
   }
 
  protected:
@@ -153,8 +152,8 @@ class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
     auto& in_out_var_names = this->GetInputOutputWithSameType();
 
     for (auto& i_o_n : in_out_var_names) {
-      ctx->ShareVarType( i_o_n.first, i_o_n.second);
-      ctx->ShareDataType( i_o_n.first, i_o_n.second);
+      ctx->ShareVarType(i_o_n.first, i_o_n.second);
+      ctx->ShareDataType(i_o_n.first, i_o_n.second);
     }
   }
 
