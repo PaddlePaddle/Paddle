@@ -66,8 +66,6 @@ class FlListenAndServOp : public framework::OperatorBase {
 
   int GetSelectedPort() { return rpc_service_->GetSelectedPort(); }
 
-  void Stop() override;
-
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
 

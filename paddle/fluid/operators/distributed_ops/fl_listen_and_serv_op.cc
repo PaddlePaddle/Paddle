@@ -84,14 +84,7 @@ FlListenAndServOp::FlListenAndServOp(const std::string &type,
                                      const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
-FlListenAndServOp::~FlListenAndServOp() { Stop(); }
-
-void FlListenAndServOp::Stop() {
-  rpc_service_->ShutDown();
-  server_thread_->join();
-  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-  remove(file_path.c_str());
-}
+FlListenAndServOp::~FlListenAndServOp() {}
 
 void FlListenAndServOp::SavePort() const {
   // NOTE: default write file to /tmp/paddle.selected_port
