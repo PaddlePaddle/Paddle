@@ -20,13 +20,9 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
-// asynchronous nccl allreduce or synchronous issue:
-// https://github.com/PaddlePaddle/Paddle/issues/15049
-// If you want to change this default value, why?(gongwb)
-DEFINE_bool(
-    sync_nccl_allreduce, true,
-    "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
-    "after allreduce, this mode can get better performance in some scenarios.");
+#ifdef PADDLE_WITH_CUDA
+DECLARE_bool(sync_nccl_allreduce);
+#endif
 
 namespace paddle {
 namespace framework {
