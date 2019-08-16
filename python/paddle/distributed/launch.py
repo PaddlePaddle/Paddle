@@ -82,13 +82,16 @@ POD_IP (current node ip address, not needed for local training)
         type=str,
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
-
     parser.add_argument(
         "--node_ip",
         type=str,
         default="127.0.0.1",
         help="The current node ip. ")
-
+    parser.add_argument(
+        "--use_paddlecloud",
+        type=bool,
+        default="False",
+        help="wheter to use paddlecloud platform to run your multi-process job.")
     parser.add_argument(
         "--started_port",
         type=int,
@@ -140,6 +143,13 @@ def start_procs(args):
     current_node_ip = args.node_ip
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
     node_id = node_ips.index(current_node_ip)
+    if args.use_paddlecloud:
+        # solve PADDLE_TRAINERS=null when using single node.
+        # you can automatically get ip info while using paddlecloud.
+        current_node_ip = os.getenv("POD_IP", "127.0.0.1")
+        node_ips = os.getenv("PADDLE_TRAINERS", current_node_ip).split(",")
+        node_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+
     num_nodes = len(node_ips)
 
     if args.selected_gpus is None:
@@ -223,3 +233,4 @@ def launch():
 
 if __name__ == "__main__":
     launch()
+
