@@ -13,7 +13,9 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
+#include <algorithm>
 #include <random>
+#include <unordered_map>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -21,6 +23,7 @@
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
+#include "xxhash.h"  // NOLINT
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -41,6 +44,10 @@ DatasetImpl<T>::DatasetImpl() {
   cur_channel_ = 0;
   fleet_send_batch_size_ = 80000;
   fleet_send_sleep_seconds_ = 2;
+  merge_by_insid_ = false;
+  erase_duplicate_feas_ = true;
+  keep_unmerged_ins_ = true;
+  min_merge_size_ = 2;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -94,6 +101,25 @@ void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
 template <typename T>
 void DatasetImpl<T>::SetChannelNum(int channel_num) {
   channel_num_ = channel_num;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetMergeByInsId(
+    const std::vector<std::string>& merge_slot_list, bool erase_duplicate_feas,
+    int min_merge_size, bool keep_unmerged_ins) {
+  merge_by_insid_ = true;
+  merge_slots_list_ = merge_slot_list;
+  erase_duplicate_feas_ = erase_duplicate_feas;
+  min_merge_size_ = min_merge_size;
+  keep_unmerged_ins_ = keep_unmerged_ins;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
+  slots_shuffle_fea_eval_ = fea_eval;
+  slots_shuffle_rclist_.ReSize(record_candidate_size);
+  VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval
+          << " with record candidate size: " << record_candidate_size;
 }
 
 template <typename T>
@@ -266,13 +292,22 @@ void DatasetImpl<T>::GlobalShuffle() {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() input_channel_ size "
           << input_channel_->Size();
 
-  auto global_shuffle_func = [this]() {
+  auto get_client_id = [this, fleet_ptr](const T& data) -> size_t {
+    if (!this->merge_by_insid_) {
+      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
+    } else {
+      return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0) %
+             this->trainer_num_;
+    }
+  };
+
+  auto global_shuffle_func = [this, get_client_id]() {
     auto fleet_ptr = FleetWrapper::GetInstance();
     std::vector<T> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
       for (auto& t : data) {
-        auto client_id = fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
+        auto client_id = get_client_id(t);
         ars[client_id] << t;
       }
       std::vector<std::future<int32_t>> total_status;
@@ -325,8 +360,6 @@ void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "Filelist size in Dataset: " << filelist_.size();
   VLOG(3) << "channel num in Dataset: " << channel_num_;
   CHECK(thread_num_ > 0) << "thread num should > 0";
-  CHECK(thread_num_ <= filelist_.size())
-      << "thread num should <= filelist size";
   CHECK(channel_num_ > 0) << "channel num should > 0";
   CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
@@ -345,6 +378,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     readers_[i]->SetFileListIndex(&file_idx_);
     readers_[i]->SetFileList(filelist_);
+    readers_[i]->SetParseInsId(merge_by_insid_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }
@@ -366,6 +400,7 @@ void DatasetImpl<T>::CreateReaders() {
 template <typename T>
 void DatasetImpl<T>::DestroyReaders() {
   VLOG(3) << "Calling DestroyReaders()";
+  VLOG(3) << "readers size1: " << readers_.size();
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   VLOG(3) << "readers size: " << readers_.size();
   file_idx_ = 0;
@@ -418,8 +453,368 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 }
 
 // explicit instantiation
-template class DatasetImpl<std::vector<MultiSlotType>>;
 template class DatasetImpl<Record>;
+
+void MultiSlotDataset::MergeByInsId() {
+  VLOG(3) << "MultiSlotDataset::MergeByInsId begin";
+  if (!merge_by_insid_) {
+    VLOG(3) << "merge_by_insid=false, will not MergeByInsId";
+    return;
+  }
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  std::unordered_map<int, bool> merge_slots;
+  std::vector<std::string> use_slots;
+  std::vector<bool> use_slots_is_dense;
+  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+    const auto& slot = multi_slot_desc.slots(i);
+    if (slot.is_used()) {
+      use_slots.push_back(slot.name());
+      use_slots_is_dense.push_back(slot.is_dense());
+    }
+  }
+  for (size_t i = 0; i < use_slots.size(); ++i) {
+    // currently, we don't merge dense slots
+    if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
+                  use_slots[i]) != merge_slots_list_.end() &&
+        !use_slots_is_dense[i]) {
+      merge_slots[i] = true;
+    }
+  }
+  CHECK(multi_output_channel_.size() != 0);  // NOLINT
+  auto channel_data = paddle::framework::MakeChannel<Record>();
+  VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+    std::vector<Record> vec_data;
+    multi_output_channel_[i]->Close();
+    multi_output_channel_[i]->ReadAll(vec_data);
+    channel_data->Write(std::move(vec_data));
+    vec_data.clear();
+    vec_data.shrink_to_fit();
+    multi_output_channel_[i]->Clear();
+  }
+  channel_data->Close();
+  std::vector<Record> recs;
+  recs.reserve(channel_data->Size());
+  channel_data->ReadAll(recs);
+  channel_data->Clear();
+  std::sort(recs.begin(), recs.end(), [](const Record& a, const Record& b) {
+    return a.ins_id_ < b.ins_id_;
+  });
+
+  auto sort_cmp_uint64 = [&merge_slots](const FeatureItem& a,
+                                        const FeatureItem& b) {
+    auto& a_sign = a.sign().uint64_feasign_;
+    auto& b_sign = b.sign().uint64_feasign_;
+    return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
+  };
+  auto sort_cmp_float = [&merge_slots](const FeatureItem& a,
+                                       const FeatureItem& b) {
+    auto& a_sign = a.sign().float_feasign_;
+    auto& b_sign = b.sign().float_feasign_;
+    return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
+  };
+  auto unique_eq_uint64 = [&merge_slots](const FeatureItem& a,
+                                         const FeatureItem& b) {
+    if (a.slot() == b.slot() &&
+        merge_slots.find(a.slot()) == merge_slots.end()) {
+      return true;
+    }
+    auto& a_sign = a.sign().uint64_feasign_;
+    auto& b_sign = b.sign().uint64_feasign_;
+    return a_sign == b_sign && a.slot() == b.slot();
+  };
+  auto unique_eq_float = [&merge_slots](const FeatureItem& a,
+                                        const FeatureItem& b) {
+    if (a.slot() == b.slot() &&
+        merge_slots.find(a.slot()) == merge_slots.end()) {
+      return true;
+    }
+    auto& a_sign = a.sign().float_feasign_;
+    auto& b_sign = b.sign().float_feasign_;
+    return a_sign == b_sign && a.slot() == b.slot();
+  };
+
+  std::vector<Record> results;
+  VLOG(3) << "recs.size() " << recs.size();
+  for (size_t i = 0; i < recs.size();) {
+    size_t j = i + 1;
+    while (j < recs.size() && recs[j].ins_id_ == recs[i].ins_id_) {
+      j++;
+    }
+    if (j - i < min_merge_size_) {
+      if (keep_unmerged_ins_) {
+        for (size_t k = i; k < j; ++k) {
+          results.push_back(std::move(recs[k]));
+        }
+      }
+      i = j;
+      continue;
+    }
+
+    std::vector<FeatureItem> merge_uint64_feasigns;
+    std::vector<FeatureItem> merge_float_feasigns;
+    Record rec = std::move(recs[i]);
+
+    for (size_t k = i + 1; k < j; k++) {
+      for (auto& feature : recs[k].uint64_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_uint64_feasigns.push_back(std::move(feature));
+        }
+      }
+      for (auto& feature : recs[k].float_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_float_feasigns.push_back(std::move(feature));
+        }
+      }
+      recs[k] = Record();
+    }
+    i = j;
+
+    if (!erase_duplicate_feas_) {
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
+                                  merge_uint64_feasigns.begin(),
+                                  merge_uint64_feasigns.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 merge_float_feasigns.begin(),
+                                 merge_float_feasigns.end());
+    } else {
+      std::vector<FeatureItem> not_merge_uint64_feasigns;
+      std::vector<FeatureItem> not_merge_float_feasigns;
+
+      for (auto& feature : rec.uint64_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_uint64_feasigns.push_back(std::move(feature));
+        } else {
+          not_merge_uint64_feasigns.push_back(std::move(feature));
+        }
+      }
+      for (auto& feature : rec.float_feasigns_) {
+        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
+          merge_float_feasigns.push_back(std::move(feature));
+        } else {
+          not_merge_float_feasigns.push_back(std::move(feature));
+        }
+      }
+      rec.uint64_feasigns_.clear();
+      rec.float_feasigns_.clear();
+
+      // erase duplicate uint64 feasigns
+      std::sort(merge_uint64_feasigns.begin(), merge_uint64_feasigns.end(),
+                sort_cmp_uint64);
+      merge_uint64_feasigns.erase(
+          std::unique(merge_uint64_feasigns.begin(),
+                      merge_uint64_feasigns.end(), unique_eq_uint64),
+          merge_uint64_feasigns.end());
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
+                                  merge_uint64_feasigns.begin(),
+                                  merge_uint64_feasigns.end());
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
+                                  not_merge_uint64_feasigns.begin(),
+                                  not_merge_uint64_feasigns.end());
+
+      // erase duplicate float feasigns
+      std::sort(merge_float_feasigns.begin(), merge_float_feasigns.end(),
+                sort_cmp_float);
+      merge_float_feasigns.erase(
+          std::unique(merge_float_feasigns.begin(), merge_float_feasigns.end(),
+                      unique_eq_float),
+          merge_float_feasigns.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 merge_float_feasigns.begin(),
+                                 merge_float_feasigns.end());
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
+                                 not_merge_float_feasigns.begin(),
+                                 not_merge_float_feasigns.end());
+    }
+    results.push_back(rec);
+  }
+  VLOG(3) << "results size " << results.size();
+  results.shrink_to_fit();
+
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  std::shuffle(results.begin(), results.end(), fleet_ptr->LocalRandomEngine());
+  channel_data->Open();
+  channel_data->Write(std::move(results));
+  channel_data->Close();
+  results.clear();
+  results.shrink_to_fit();
+  VLOG(3) << "channel data size " << channel_data->Size();
+  channel_data->SetBlockSize(channel_data->Size() / channel_num_ + 1);
+  VLOG(3) << "channel data block size " << channel_data->BlockSize();
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+    std::vector<Record> vec_data;
+    channel_data->Read(vec_data);
+    multi_output_channel_[i]->Open();
+    multi_output_channel_[i]->Write(std::move(vec_data));
+    vec_data.clear();
+    vec_data.shrink_to_fit();
+  }
+  CHECK(channel_data->Size() == 0);  // NOLINT
+  channel_data->Clear();
+  VLOG(3) << "MultiSlotDataset::MergeByInsId end";
+}
+
+void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
+                                     std::vector<Record>* result) {
+  int debug_erase_cnt = 0;
+  int debug_push_cnt = 0;
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  slots_shuffle_rclist_.ReInit();
+  for (const auto& rec : slots_shuffle_original_data_) {
+    RecordCandidate rand_rec;
+    Record new_rec = rec;
+    slots_shuffle_rclist_.AddAndGet(rec, &rand_rec);
+    for (auto it = new_rec.uint64_feasigns_.begin();
+         it != new_rec.uint64_feasigns_.end();) {
+      if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
+        it = new_rec.uint64_feasigns_.erase(it);
+        debug_erase_cnt += 1;
+      } else {
+        ++it;
+      }
+    }
+    for (auto slot : slots_to_replace) {
+      auto range = rand_rec.feas.equal_range(slot);
+      for (auto it = range.first; it != range.second; ++it) {
+        new_rec.uint64_feasigns_.push_back({it->second, it->first});
+        debug_push_cnt += 1;
+      }
+    }
+    result->push_back(std::move(new_rec));
+  }
+  VLOG(2) << "erase feasign num: " << debug_erase_cnt
+          << " repush feasign num: " << debug_push_cnt;
+}
+
+// slots shuffle to input_channel_ with needed-shuffle slots
+void MultiSlotDataset::SlotsShuffle(
+    const std::set<std::string>& slots_to_replace) {
+  int out_channel_size = 0;
+  if (cur_channel_ == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      out_channel_size += multi_output_channel_[i]->Size();
+    }
+  } else {
+    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+      out_channel_size += multi_consume_channel_[i]->Size();
+    }
+  }
+  VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
+          << input_channel_->Size()
+          << " output channel size: " << out_channel_size;
+  if (!slots_shuffle_fea_eval_) {
+    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end,"
+               "fea eval mode off, need to set on for slots shuffle";
+    return;
+  }
+  if ((!input_channel_ || input_channel_->Size() == 0) &&
+      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
+    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
+    return;
+  }
+  platform::Timer timeline;
+  timeline.Start();
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  std::set<uint16_t> index_slots;
+  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+    std::string cur_slot = multi_slot_desc.slots(i).name();
+    if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
+      index_slots.insert(i);
+    }
+  }
+  if (slots_shuffle_original_data_.size() == 0) {
+    // before first slots shuffle, instances could be in
+    // input_channel, oupput_channel or consume_channel
+    if (input_channel_ && input_channel_->Size() != 0) {
+      slots_shuffle_original_data_.reserve(input_channel_->Size());
+      input_channel_->Close();
+      input_channel_->ReadAll(slots_shuffle_original_data_);
+    } else {
+      CHECK(out_channel_size > 0);  // NOLINT
+      if (cur_channel_ == 0) {
+        for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+          std::vector<Record> vec_data;
+          multi_output_channel_[i]->Close();
+          multi_output_channel_[i]->ReadAll(vec_data);
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size() + vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
+          vec_data.clear();
+          vec_data.shrink_to_fit();
+          multi_output_channel_[i]->Clear();
+        }
+      } else {
+        for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+          std::vector<Record> vec_data;
+          multi_consume_channel_[i]->Close();
+          multi_consume_channel_[i]->ReadAll(vec_data);
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size() + vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
+          vec_data.clear();
+          vec_data.shrink_to_fit();
+          multi_consume_channel_[i]->Clear();
+        }
+      }
+    }
+  } else {
+    // if already have original data for slots shuffle, clear channel
+    input_channel_->Clear();
+    if (cur_channel_ == 0) {
+      for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+        if (!multi_output_channel_[i]) {
+          continue;
+        }
+        multi_output_channel_[i]->Clear();
+      }
+    } else {
+      for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+        if (!multi_consume_channel_[i]) {
+          continue;
+        }
+        multi_consume_channel_[i]->Clear();
+      }
+    }
+  }
+  int end_size = 0;
+  if (cur_channel_ == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      if (!multi_output_channel_[i]) {
+        continue;
+      }
+      end_size += multi_output_channel_[i]->Size();
+    }
+  } else {
+    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+      if (!multi_consume_channel_[i]) {
+        continue;
+      }
+      end_size += multi_consume_channel_[i]->Size();
+    }
+  }
+  CHECK(input_channel_->Size() == 0)
+      << "input channel should be empty before slots shuffle";
+  std::vector<Record> random_data;
+  random_data.clear();
+  // get slots shuffled random_data
+  GetRandomData(index_slots, &random_data);
+  input_channel_->Open();
+  input_channel_->Write(std::move(random_data));
+  random_data.clear();
+  random_data.shrink_to_fit();
+  input_channel_->Close();
+
+  timeline.Pause();
+  VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
+          << ", memory data size for slots shuffle=" << input_channel_->Size()
+          << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
 
 }  // end namespace framework
 }  // end namespace paddle

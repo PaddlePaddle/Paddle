@@ -236,6 +236,31 @@ inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
 #endif  // __APPLE__ and windows
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_CUDA
+namespace details {
+
+template <typename T>
+struct CudaStatusType {};
+
+#define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
+  template <>                                        \
+  struct CudaStatusType<type> {                      \
+    using Type = type;                               \
+    static constexpr Type kSuccess = success_value;  \
+  }
+
+DEFINE_CUDA_STATUS_TYPE(cudaError_t, cudaSuccess);
+DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
+DEFINE_CUDA_STATUS_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
+DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
+
+#if !defined(__APPLE__) && !defined(_WIN32)
+DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
+#endif
+
+}  // namespace details
+#endif
+
 #define PADDLE_THROW(...)                                            \
   do {                                                               \
     throw ::paddle::platform::EnforceNotMet(                         \
@@ -255,6 +280,28 @@ inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
       }                                                                   \
     }                                                                     \
   } while (0)
+
+#ifdef PADDLE_WITH_CUDA
+#define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                            \
+  do {                                                                    \
+    auto __cond__ = (COND);                                               \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                      \
+    constexpr auto __success_type__ =                                     \
+        ::paddle::platform::details::CudaStatusType<                      \
+            __CUDA_STATUS_TYPE__>::kSuccess;                              \
+    if (UNLIKELY(__cond__ != __success_type__)) {                         \
+      try {                                                               \
+        ::paddle::platform::throw_on_error(                               \
+            __cond__, ::paddle::string::Sprintf(__VA_ARGS__));            \
+      } catch (...) {                                                     \
+        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                                __FILE__, __LINE__);      \
+      }                                                                   \
+    }                                                                     \
+  } while (0)
+
+#undef DEFINE_CUDA_STATUS_TYPE
+#endif
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \

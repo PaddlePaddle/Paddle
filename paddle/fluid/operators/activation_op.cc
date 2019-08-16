@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace operators {
 
@@ -32,20 +34,6 @@ using paddle::framework::Tensor;
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == kDepOut || GradFunctor::FwdDeps() == kNoDeps;
-}
-
-std::unique_ptr<std::unordered_set<std::string>> GetInplaceOpSet() {
-  std::unique_ptr<std::unordered_set<std::string>> ret(
-      new std::unordered_set<std::string>());
-#define INSERT_INTO_INPLACE_OP_SET(op_type, __omitted, fwd_functor, \
-                                   bwd_functor)                     \
-  if (CanInplaceAct<bwd_functor<float>>()) {                        \
-    ret->insert(#op_type);                                          \
-  }
-
-  FOR_EACH_ACTIVATION_OP(INSERT_INTO_INPLACE_OP_SET);
-#undef INSERT_INTO_INPLACE_OP_SET
-  return ret;
 }
 
 #define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
@@ -84,8 +72,10 @@ class ActivationGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
 
-    if (static_cast<int>(kDepValue) &
-        static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+    if ((static_cast<int>(kDepValue) &
+         static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
+        FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
+                             boost::get<bool>(op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", Input("X"));
     }
 
@@ -577,7 +567,33 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \\frac{x}{1 + e^{- \beta x}}$$
+$$out = \\frac{x}{1 + e^{- \beta \ x}}$$
+
+)DOC");
+  }
+};
+
+class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of HardSwish operator");
+    AddOutput("Out", "Output of HardSwish operator");
+    AddAttr<float>("threshold", "The threshold parameter of HardSwish operator")
+        .SetDefault(6.0f);
+    AddAttr<float>("scale", "The scale parameter of HardSwish operator")
+        .SetDefault(6.0f);
+    AddAttr<float>("offset", "The offset parameter of HardSwish operator")
+        .SetDefault(3.0f);
+    AddComment(R"DOC(
+HardSwish Activation Operator.
+
+The hard version of swish(https://arxiv.org/pdf/1905.02244.pdf).
+
+$out = \frac{x * (min(max(0, x+offset), threshold))}{scale}$
+
+The threshold and scale should be positive. The offset can be either positive or negative.
+The default parameters are set according to the above reference.
+It is recommended to use the defaults for this activation.
 
 )DOC");
   }
@@ -702,8 +718,6 @@ class LeakyReluDoubleGradMaker
     op->SetType("leaky_relu_grad_grad");
     // input1: X
     op->SetInput("X", Input("X"));
-    // input2: Out
-    op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());

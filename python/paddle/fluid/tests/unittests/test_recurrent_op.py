@@ -17,11 +17,13 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import numpy as np
+import paddle.fluid.core as core
+
+from paddle.fluid import ParamAttr
 from paddle.fluid.framework import Program, grad_var_name
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
-import numpy as np
-import paddle.fluid.core as core
 
 np.random.seed(123)
 
@@ -69,8 +71,8 @@ class PySimpleRNN2(PyRNNBase):
         super(PySimpleRNN2, self).__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
-        self.W = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.U = np.random.normal(size=(input_dim, input_dim)).astype("float32")
+        self.W = np.ones(shape=(input_dim, input_dim)).astype("float32")
+        self.U = np.zeros(shape=(input_dim, input_dim)).astype("float32")
         self.h_boot = np.ones(shape=(batch_size, input_dim)).astype("float32")
 
         men_dim = (seq_len, batch_size, input_dim)
@@ -184,7 +186,7 @@ class RecurrentOpTest1(unittest.TestCase):
                        fetch_list=fetch_list,
                        return_numpy=False)
 
-    def test_backward(self, rtol=0.1):
+    def test_backward(self, rtol=0.01):
         self.check_forward()
 
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -206,7 +208,7 @@ class RecurrentOpTest1(unittest.TestCase):
         pd_output = self.forward()
         py_output = self.py_rnn.forward()
         self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.01).all())
 
     def get_numerical_gradient(self, delta=0.005):
         dloss_dout = 1.0
@@ -276,14 +278,20 @@ class RecurrentOpTest2(RecurrentOpTest1):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            temp_l = layers.fc(input=x_t,
-                               size=self.input_dim,
-                               param_attr='W',
-                               bias_attr=False)
-            temp_r = layers.fc(input=h_pre,
-                               size=self.input_dim,
-                               param_attr='U',
-                               bias_attr=False)
+            temp_l = layers.fc(
+                input=x_t,
+                size=self.input_dim,
+                param_attr=ParamAttr(
+                    name='W',
+                    initializer=fluid.initializer.ConstantInitializer(1.0)),
+                bias_attr=False)
+            temp_r = layers.fc(
+                input=h_pre,
+                size=self.input_dim,
+                param_attr=ParamAttr(
+                    name='U',
+                    initializer=fluid.initializer.ConstantInitializer(0.0)),
+                bias_attr=False)
 
             h = layers.sigmoid(x=layers.elementwise_add(x=temp_l, y=temp_r))
 
@@ -293,7 +301,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         return rnn()
 
     def test_backward(self):
-        super(RecurrentOpTest2, self).test_backward(rtol=0.2)
+        super(RecurrentOpTest2, self).test_backward(rtol=0.01)
 
 
 class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
