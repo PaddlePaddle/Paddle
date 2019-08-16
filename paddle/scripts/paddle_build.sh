@@ -549,7 +549,7 @@ function assert_api_spec_approvals() {
       fi
     done
     
-    if [ "API_Flag" == "False" ];then
+    if [ "API_Flag" == "FALSE" ];then
       exit 1
     fi
 
