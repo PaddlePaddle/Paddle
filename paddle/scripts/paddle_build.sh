@@ -1026,9 +1026,9 @@ function main() {
       build_and_check)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+        example
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
-        example
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
