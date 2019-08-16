@@ -38,6 +38,7 @@ class LightPredictorImpl : public PaddlePredictor {
 };
 
 void LightPredictorImpl::Init(const MobileConfig& config) {
+  LOG(INFO) << 1111;
   raw_predictor_.reset(new lite::LightPredictor(config.model_dir()));
 }
 
