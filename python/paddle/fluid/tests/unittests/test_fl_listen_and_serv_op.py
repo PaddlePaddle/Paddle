@@ -25,6 +25,7 @@ import unittest
 from multiprocessing import Process
 from op_test import OpTest
 import numpy
+import urllib
 
 
 def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
@@ -138,16 +139,21 @@ class TestFlListenAndServOp(OpTest):
 
     def test_handle_signal_in_serv_op(self):
         # run pserver on CPU in sync mode
-        cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_startup_program.dms"
-        os.system(cmd)
-        cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_main_program.dms"
-        os.system(cmd)
-        cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_recv_program.dms"
-        os.system(cmd)
-        cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_main_program.dms"
-        os.system(cmd)
-        cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_send_program.dms"
-        os.system(cmd)
+        urllib.urlretrieve(
+            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_startup_program.dms",
+            "pserver_startup_program.dms")
+        urllib.urlretrieve(
+            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_main_program.dms",
+            "pserver_main_program.dms")
+        urllib.urlretrieve(
+            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_recv_program.dms",
+            "trainer_recv_program.dms")
+        urllib.urlretrieve(
+            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_main_program.dms",
+            "trainer_main_program.dms")
+        urllib.urlretrieve(
+            "https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_send_program.dms",
+            "trainer_send_program.dms")
         p1 = self._start_pserver(False, True, run_pserver)
         self._wait_ps_ready(p1.pid)
         time.sleep(5)
