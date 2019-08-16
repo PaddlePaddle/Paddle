@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/merge_selected_rows_op.h"
+#include <utility>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -79,9 +81,9 @@ Example:
 class MergeSelectedRowsOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair( "X", "Out")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("X", "Out")};
   }
 };
 

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -183,9 +184,9 @@ or not. But the output only shares the LoD information with input $X$.
 
 class MulOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair( "X", "Out")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("X", "Out")};
   }
 };
 

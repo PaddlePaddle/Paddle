@@ -17,6 +17,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -87,8 +89,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 class ElementwiseOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
     return {std::make_pair("X", "Out")};
   }
 };

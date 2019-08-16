@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace paddle {
@@ -189,9 +190,9 @@ class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
 class GroupNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> >  GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair( "X", "Y")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("X", "Y")};
   }
 };
 

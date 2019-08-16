@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -81,9 +82,9 @@ class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair("Input", "Output")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("Input", "Output")};
   }
 };
 

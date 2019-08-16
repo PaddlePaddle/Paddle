@@ -16,6 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -156,9 +158,9 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
 class CrossEntropyOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair( "X", "Y")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("X", "Y")};
   }
 };
 

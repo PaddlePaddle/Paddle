@@ -17,6 +17,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -147,9 +149,9 @@ For each row $i$ and each column $j$ in the matrix, we have:
 
 class SoftmaxOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair( "X", "Out")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("X", "Out")};
   }
 };
 

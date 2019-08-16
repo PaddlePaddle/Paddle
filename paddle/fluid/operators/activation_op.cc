@@ -135,9 +135,9 @@ class ActivationOp : public framework::OperatorWithKernel {
 class ActivationOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  const std::vector< std::pair<std::string, std::string> > GetInputOutputWithSameType()
-      const override {
-    return { std::make_pair("X", "Out")};
+  const std::vector<std::pair<std::string, std::string>>
+  GetInputOutputWithSameType() const override {
+    return {std::make_pair("X", "Out")};
   }
 };
 

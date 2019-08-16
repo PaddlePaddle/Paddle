@@ -432,8 +432,7 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
       : InferVarTypeContext(nullptr, nullptr),
         inputs_(inputs),
         outputs_(outputs),
-        attrs_(attrs_map)
-        {  }
+        attrs_(attrs_map) {}
 
   virtual ~RuntimeInferVarTypeContext() {}
 
@@ -443,7 +442,7 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
   }
 
   bool HasVar(const std::string& name) const override {
-    return inputs_->find( name ) != inputs_->end();
+    return inputs_->find(name) != inputs_->end();
   }
 
   bool HasInput(const std::string& name) const override {
@@ -458,32 +457,32 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
 
   const std::vector<std::string>& Input(
       const std::string& name) const override {
-    PADDLE_THROW( "Don't handle input name list in Dygraph mode");
+    PADDLE_THROW("Don't handle input name list in Dygraph mode");
   }
 
   const std::vector<std::string>& Output(
       const std::string& name) const override {
-      PADDLE_THROW( "Don't handle output name list in Dygraph mode");
+    PADDLE_THROW("Don't handle output name list in Dygraph mode");
   }
 
   framework::proto::VarType::Type GetType(
       const std::string& name) const override {
-    PADDLE_THROW( "Don't handle GetType by name in Dygraph mode");
+    PADDLE_THROW("Don't handle GetType by name in Dygraph mode");
   }
 
   void SetType(const std::string& name,
                framework::proto::VarType::Type type) override {
-    PADDLE_THROW( "Don't handle SetType by name in Dygraph mode");
+    PADDLE_THROW("Don't handle SetType by name in Dygraph mode");
   }
 
   framework::proto::VarType::Type GetDataType(
       const std::string& name) const override {
-    PADDLE_THROW( "Don't handle GetDataType by name in Dygraph mode");
+    PADDLE_THROW("Don't handle GetDataType by name in Dygraph mode");
   }
 
   void SetDataType(const std::string& name,
                    framework::proto::VarType::Type type) override {
-    PADDLE_THROW( "Don't handle SetDataType by name in Dygraph mode"); 
+    PADDLE_THROW("Don't handle SetDataType by name in Dygraph mode");
   }
 
   std::vector<framework::proto::VarType::Type> GetDataTypes(
@@ -514,27 +513,31 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
     PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
   }
 
-  void ShareVarType( const std::string& in, const std::string& out) 
-  {
-     auto out_it = outputs_->find( out );
-     auto in_it = inputs_->find( in );
-     PADDLE_ENFORCE( out_it != outputs_->end(), "output [%s] is not in outputs", out);
-     PADDLE_ENFORCE( in_it != inputs_->end(), "input [%s] is not in inputs", in );
-     PADDLE_ENFORCE_EQ( out_it->second.size(), 1, "output [%s] should only contain 1 variable", out);
-     PADDLE_ENFORCE_EQ( in_it->second.size(), 1, "input [%s] should only contain 1 variable", in);
+  void ShareVarType(const std::string& in, const std::string& out) {
+    auto out_it = outputs_->find(out);
+    auto in_it = inputs_->find(in);
+    PADDLE_ENFORCE(out_it != outputs_->end(), "output [%s] is not in outputs",
+                   out);
+    PADDLE_ENFORCE(in_it != inputs_->end(), "input [%s] is not in inputs", in);
+    PADDLE_ENFORCE_EQ(out_it->second.size(), 1,
+                      "output [%s] should only contain 1 variable", out);
+    PADDLE_ENFORCE_EQ(in_it->second.size(), 1,
+                      "input [%s] should only contain 1 variable", in);
 
-     out_it->second[0]->SetType( in_it->second[0]->Type() );
+    out_it->second[0]->SetType(in_it->second[0]->Type());
   }
 
-  void ShareDataType( const std::string& in, const std::string& out)
-  {
-     auto out_it = outputs_->find( out );
-     auto in_it = inputs_->find( in );
-     PADDLE_ENFORCE( out_it != outputs_->end(), "output [%s] is not in outputs", out);
-     PADDLE_ENFORCE( in_it != inputs_->end(), "input [%s] is not in inputs", in );
-     PADDLE_ENFORCE_EQ( out_it->second.size(), 1, "output [%s] should only contain 1 variable", out);
-     PADDLE_ENFORCE_EQ( in_it->second.size(), 1, "input [%s] should only contain 1 variable", in);
-     out_it->second[0]->SetDataType( in_it->second[0]->DataType() );
+  void ShareDataType(const std::string& in, const std::string& out) {
+    auto out_it = outputs_->find(out);
+    auto in_it = inputs_->find(in);
+    PADDLE_ENFORCE(out_it != outputs_->end(), "output [%s] is not in outputs",
+                   out);
+    PADDLE_ENFORCE(in_it != inputs_->end(), "input [%s] is not in inputs", in);
+    PADDLE_ENFORCE_EQ(out_it->second.size(), 1,
+                      "output [%s] should only contain 1 variable", out);
+    PADDLE_ENFORCE_EQ(in_it->second.size(), 1,
+                      "input [%s] should only contain 1 variable", in);
+    out_it->second[0]->SetDataType(in_it->second[0]->DataType());
   }
 
  private:
