@@ -2988,7 +2988,9 @@ class RecomputeOptimizer(object):
             if grad_clip:
                 # TODO(guru4elephant): should add grad_clip for static graph
                 pass
-
+        for param, grads in params_grads:
+            print(param)
+            print(grads)
         optimize_ops = self._optimizer.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
