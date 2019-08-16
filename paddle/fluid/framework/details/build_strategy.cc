@@ -234,8 +234,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       }
     }
 #else
-    PADDLE_ENFORCE(!FLAGS_use_ngraph,
-                   "Please compile with NGRAPH first to use NGRAPH");
+    PADDLE_ENFORCE_NE(FLAGS_use_ngraph, true,
+                      "Please compile with NGRAPH first to use NGRAPH");
 #endif
   }
 
