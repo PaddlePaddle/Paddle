@@ -119,7 +119,7 @@ class SequenceTopkPoolingGradOpMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_topk_pooling, ops::SequenceTopkPoolingOp,
                   ops::SequenceTopkPoolingOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SequenceTopkPoolingGradOpMaker);
 REGISTER_OPERATOR(sequence_topk_pooling_grad, ops::SequenceTopkPoolingGradOp);
 REGISTER_OP_CPU_KERNEL(sequence_topk_pooling,
                        ops::SequenceTopkPoolingKernel<float>);
