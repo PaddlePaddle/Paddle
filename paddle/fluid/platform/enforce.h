@@ -370,7 +370,7 @@ using CommonType2 = typename std::add_lvalue_reference<
 
 // Here, we use SFINAE to check whether T can be converted to std::string
 template <typename T>
-class CanToString {
+struct CanToString {
  private:
   using YesType = uint8_t;
   using NoType = uint16_t;

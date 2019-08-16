@@ -321,19 +321,23 @@ TEST(enforce, cannot_to_string_type) {
   static_assert(paddle::platform::details::CanToString<int>::kValue,
                 "int can be converted to string");
   CannotToStringType obj1(3), obj2(4), obj3(3);
+
   PADDLE_ENFORCE_NE(obj1, obj2, "Object 1 is not equal to Object 2");
   PADDLE_ENFORCE_EQ(obj1, obj3, "Object 1 is equal to Object 3");
-  std::string msg = "Object 1 is not equal to Object 2";
+
+  std::string msg = "Compare obj1 with obj2";
   try {
     PADDLE_ENFORCE_EQ(obj1, obj2, msg);
   } catch (paddle::platform::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     LOG(INFO) << ex_msg;
     EXPECT_TRUE(ex_msg.find(msg) != std::string::npos);
-    EXPECT_TRUE(ex_msg.find("obj1 != obj2") != std::string::npos);
-    EXPECT_TRUE(ex_msg.find("obj1 == obj2") != std::string::npos);
+    EXPECT_TRUE(
+        ex_msg.find("Expected obj1 == obj2, but received obj1 != obj2") !=
+        std::string::npos);
   }
 
+  msg = "Compare x with y";
   try {
     int x = 3, y = 2;
     PADDLE_ENFORCE_EQ(x, y, msg);
@@ -341,8 +345,8 @@ TEST(enforce, cannot_to_string_type) {
     std::string ex_msg = error.what();
     LOG(INFO) << ex_msg;
     EXPECT_TRUE(ex_msg.find(msg) != std::string::npos);
-    EXPECT_TRUE(ex_msg.find("x == y") != std::string::npos);
-    EXPECT_TRUE(ex_msg.find("x:3 != y:2") != std::string::npos);
+    EXPECT_TRUE(ex_msg.find("Expected x == y, but received x:3 != y:2") !=
+                std::string::npos);
   }
 
   std::set<int> set;
