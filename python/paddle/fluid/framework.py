@@ -1861,7 +1861,15 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                self.create_var(name=var.name(), desc=var, type=var.type())
+                if var.persistable():
+                    self.create_parameter(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        dtype=var.dtype(),
+                        shape=var.shape())
+                else:
+                    self.create_var(name=var.name(), desc=var, type=var.type())
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
