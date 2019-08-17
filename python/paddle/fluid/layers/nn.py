@@ -5722,10 +5722,6 @@ def warpctc(input,
                                         label_length=label_length)
 
     """
-    assert ((input_length and label_length) or
-            (not label_length and
-             not input_length)), "Inputs should be both LoDTensors or Tensors."
-
     helper = LayerHelper('warpctc', **locals())
     this_inputs = dict()
     if input_length and label_length:
