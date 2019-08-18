@@ -144,6 +144,15 @@ class DataParallel(layers.Layer):
         self._layers = layers
         self._strategy = strategy
 
+    def __getattr__(self, key):
+        if key in self.__dict__:
+            return object.__getattribute__(self, key)
+        elif key is '_layers':
+            return object.__getattribute__(self, "_sub_layers")["_layers"]
+        else:
+            return getattr(
+                object.__getattribute__(self, "_sub_layers")["_layers"], key)
+
     def forward(self, *inputs, **kwargs):
         return self._layers(*inputs, **kwargs)
 
