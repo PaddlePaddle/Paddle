@@ -1,6 +1,7 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0) 
+set(dist_ENVS http_proxy="" https_proxy="")
 
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
@@ -24,6 +25,7 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
 endif(NOT WITH_DISTRIBUTE)
+
 
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
@@ -136,7 +138,12 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_dist_train)
+
+LIST(REMOVE_ITEM TEST_OPS test_lookup_remote_table_op)
+LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
+LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
+LIST(REMOVE_ITEM TEST_OPS test_dist_train)
+LIST(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
@@ -229,8 +236,14 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 if(WITH_DISTRIBUTE)
-    py_test_modules(test_dist_train MODULES test_dist_train)
+    py_test_modules(test_dist_train MODULES test_dist_train ENVS ${dist_ENVS})
+    py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv_op ENVS ${dist_ENVS})
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20 LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
+            PROPERTIES LABELS "RUN_TYPE=DIST")
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
@@ -290,11 +303,6 @@ endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
-endif()
-
-if(WITH_DISTRIBUTE)
-    set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
-            PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
