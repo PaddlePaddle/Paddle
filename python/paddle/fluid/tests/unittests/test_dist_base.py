@@ -495,11 +495,13 @@ class TestDistBase(unittest.TestCase):
 
     def start_pserver(self, model_file, check_error_log, required_envs):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        ps_cmd = "%s %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
+        ps_cmd = "%s"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             required_envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            ps_cmd = "%s -m coverage run --branch -p %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
+            ps_cmd += " -m coverage run --branch -p"
+
+        ps_cmd += " %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
 
         ps0_cmd = ps_cmd % \
                   (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
@@ -539,13 +541,13 @@ class TestDistBase(unittest.TestCase):
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1):
 
-        cmd = "%s %s --role trainer --lr %f" % (self._python_interp, model,
-                                                self._lr)
+        cmd = self._python_interp
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            cmd = "%s -m coverage run --branch -p %s --role trainer --lr %f" % (
-                self._python_interp, model, self._lr)
+            cmd += " -m coverage run --branch -p"
+
+        cmd += " %s --role trainer --lr %f" % (model, self._lr)
 
         if batch_size != DEFAULT_BATCH_SIZE:
             cmd += " --batch_size %d" % batch_size
@@ -598,11 +600,13 @@ class TestDistBase(unittest.TestCase):
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
-        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver --lr %f"
+        tr_cmd = "%s"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            tr_cmd = "%s -m coverage run --branch -p %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver --lr %f"
+            tr_cmd += " -m coverage run --branch -p"
+
+        tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver --lr %f"
 
         tr0_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
@@ -679,10 +683,12 @@ class TestDistBase(unittest.TestCase):
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
                                trainer_num):
         env = {}
-        tr_cmd = "%s -u %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+        tr_cmd = "%s -u"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            tr_cmd = "%s -u -m coverage run --branch -p %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+            tr_cmd += " -m coverage run --branch -p"
+
+        tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 
         tr_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
