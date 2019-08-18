@@ -267,7 +267,9 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 py_test_modules(test_parallel_executor_crf_auto_growth MODULES test_parallel_executor_crf_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
-set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 940)
+set_tests_properties(test_parallel_executor_seresnext_base PROPERTIES TIMEOUT 300)
+set_tests_properties(test_parallel_executor_seresnext_with_reduce PROPERTIES TIMEOUT 250)
+set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce PROPERTIES TIMEOUT 250)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
@@ -276,8 +278,9 @@ if(NOT WIN32)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # change the timeout from 600 to 2200, because in debug mode, this test need more time.
-    set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 2200)
+    set_tests_properties(test_parallel_executor_seresnext_base PROPERTIES TIMEOUT 900)
+    set_tests_properties(test_parallel_executor_seresnext_with_reduce PROPERTIES TIMEOUT 740)
+    set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce PROPERTIES TIMEOUT 450)
 endif()
 
 if (WITH_NGRAPH)
@@ -294,6 +297,8 @@ if(WITH_DISTRIBUTE)
 endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
-        test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+        test_parallel_executor_seresnext_base test_parallel_executor_seresnext_with_reduce
+        test_parallel_executor_seresnext_with_fuse_all_reduce
+        test_parallel_executor_crf test_sync_batch_norm_op test_parallel_executor_crf_auto_growth
+        test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
