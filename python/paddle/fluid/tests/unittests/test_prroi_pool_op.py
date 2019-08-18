@@ -75,7 +75,6 @@ class TestPRROIPoolOp(OpTest):
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype('float32')
-        print(self, rois, self.rois_num, self.rois_lod)
 
     def setUp(self):
         self.op_type = 'prroi_pool'
