@@ -5709,7 +5709,7 @@ def warpctc(input,
             label_length = fluid.layers.data(name='labels_length', shape=[12],
                                          dtype='int64')
             label = fluid.layers.data(name='label', shape=[12, 1],
-                                      dtype='float32')
+                                      dtype='int32')
             # length of the longest logit sequence
             max_seq_length = 4
             # number of logit sequences
@@ -5723,15 +5723,10 @@ def warpctc(input,
 
     """
     helper = LayerHelper('warpctc', **locals())
-    this_inputs = dict()
+    this_inputs = {'Logits': [input], 'Label': [label]}
     if input_length and label_length:
-        this_inputs['Logits'] = [input]
-        this_inputs['Label'] = [label]
         this_inputs['LogitsLength'] = [input_length]
         this_inputs['LabelLength'] = [label_length]
-    else:
-        this_inputs['Logits'] = [input]
-        this_inputs['Label'] = [label]
 
     loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
