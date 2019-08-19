@@ -11,7 +11,9 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-
+"""
+Test LightNAS.
+"""
 import paddle
 import unittest
 import paddle.fluid as fluid
@@ -24,7 +26,14 @@ from light_nas_space import LightNASSpace
 
 
 class TestLightNAS(unittest.TestCase):
+    """
+    Test LightNAS.
+    """
+
     def test_compression(self):
+        """
+        Test LightNAS.
+        """
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10
@@ -41,8 +50,8 @@ class TestLightNAS(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
 
-        val_fetch_list = [('acc_top1', test_acc1.name), ('acc_top5',
-                                                         test_acc5.name)]
+        val_fetch_list = [('acc_top1', test_acc1.name),
+                          ('acc_top5', test_acc5.name)]
         train_fetch_list = [('loss', train_cost.name)]
 
         com_pass = Compressor(
@@ -58,6 +67,17 @@ class TestLightNAS(unittest.TestCase):
             eval_fetch_list=val_fetch_list,
             train_optimizer=None,
             search_space=space)
+        com_pass.config('./light_nas/compress.yaml')
+        eval_graph = com_pass.run()
+
+        lines = [
+            line for line in open('./light_nas/compress.yaml')
+            if 'target_latency' not in line
+        ]
+        fid = open('./light_nas/compress.yaml')
+        for line in lines:
+            fid.write(line)
+        fid.close()
         com_pass.config('./light_nas/compress.yaml')
         eval_graph = com_pass.run()
 
